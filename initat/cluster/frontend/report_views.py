@@ -315,6 +315,35 @@ class PDFReportGenerator(object):
 
         return logo
 
+    def __config_report_helper(self, header, header_names_list, rpt, data):
+        header_list = [PollyReportsImage(pos=(570, -25),
+                                         width=self.logo_width,
+                                         height=self.logo_height,
+                                         getvalue=self.__get_logo_helper),
+                       Element((0, 0), ("Times-Bold", 20), text=header)]
+
+        detail_list = []
+
+        position = 0
+        for header_name, key in header_names_list:
+            header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name))
+            detail_list.append(Element((position, 0), ("Helvetica", 6), key=key))
+
+            needed_width = stringWidth(header_name, "Helvetica", 12)
+
+            for _dict in data:
+                width = stringWidth(str(_dict[key]), "Helvetica", 6)
+                if width > needed_width:
+                    needed_width = width
+
+            position += needed_width + 5
+
+        header_list.append(Rule((0, 42), 7.5 * 90, thickness=2))
+        detail_list.append(Rule((0, 0), 7.5 * 90, thickness=0.1))
+
+        rpt.pageheader = Band(header_list)
+        rpt.detailband = Band(detail_list)
+
     def generate_network_report(self):
         from initat.cluster.backbone.models import network
 
@@ -347,14 +376,6 @@ class PDFReportGenerator(object):
 
             rpt = Report(data)
 
-            header_list = [PollyReportsImage(pos=(570, -25),
-                                             width=self.logo_width,
-                                             height=self.logo_height,
-                                             getvalue=self.__get_logo_helper),
-                           Element((0, 0), ("Times-Bold", 20), text="Network Overview")]
-
-            detail_list = []
-
             header_names = [("Identifier", "id"),
                             ("Network", "network"),
                             ("Netmask", "netmask"),
@@ -363,18 +384,8 @@ class PDFReportGenerator(object):
                             ('GW Priority', "gwprio"),
                             ("#IPs", "num_ips"),
                             ("Network Type", "network_type")]
-            position = 0
-            for header_name, key in header_names:
-                header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name))
-                detail_list.append(Element((position, 0), ("Helvetica", 6), key=key))
 
-                position += stringWidth(header_name, "Helvetica", 12) + 5
-
-            header_list.append(Rule((0, 42), 7.5 * 90, thickness=2))
-            detail_list.append(Rule((0, 0), 7.5 * 90, thickness=0.1))
-
-            rpt.pageheader = Band(header_list)
-            rpt.detailband = Band(detail_list)
+            self.__config_report_helper("Network Overview", header_names, rpt, data)
 
             rpt.generate(canvas)
             canvas.save()
@@ -543,21 +554,11 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='update_name'),
-                                       Element((400, 0), ("Helvetica", 6), key='install_date'),
-                                       Element((600, 0), ("Helvetica", 6), key='update_status'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+                header_names = [("Update Name", "update_name"),
+                                ("Install Date", "install_date"),
+                                ("Install Status", "update_status")]
 
-                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
-                                                         width=self.logo_width,
-                                                         height=self.logo_height,
-                                                         getvalue=self.__get_logo_helper),
-                                       Element((0, 0), ("Times-Bold", 20),
-                                               text="Installed Updates for {}".format(report.device.full_name)),
-                                       Element((0, 24), ("Helvetica", 12), text="Update Name"),
-                                       Element((400, 24), ("Helvetica", 12), text="Install Date"),
-                                       Element((600, 24), ("Helvetica", 12), text="Install Status"),
-                                       Rule((0, 42), 7.5 * 90, thickness=2), ])
+                self.__config_report_helper("Installed Updates", header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -579,20 +580,10 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key="license_name"),
-                                       Element((500, 0), ("Helvetica", 6), key="license_key"),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+                header_names = [("License Name", "license_name"),
+                                ("License Key", "license_key")]
 
-                rpt.pageheader = Band(
-                    [PollyReportsImage(pos=(570, -25),
-                                       width=self.logo_width,
-                                       height=self.logo_height,
-                                       getvalue=self.__get_logo_helper),
-                     Element((0, 0), ("Times-Bold", 20),
-                             text="Available Licenses for {}".format(report.device.full_name)),
-                     Element((0, 24), ("Helvetica", 12), text="License Name"),
-                     Element((500, 24), ("Helvetica", 12), text="License Key"),
-                     Rule((0, 42), 7.5 * 90, thickness=2), ])
+                self.__config_report_helper("Available Licenses", header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -627,26 +618,13 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='package_name'),
-                                       Element((400, 0), ("Helvetica", 6), key='package_version'),
-                                       Element((500, 0), ("Helvetica", 6), key='package_release'),
-                                       Element((550, 0), ("Helvetica", 6), key='package_size'),
-                                       Element((600, 0), ("Helvetica", 6), key='package_install_date'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+                header_names = [("Name", "package_name"),
+                                ("Version", "package_version"),
+                                ("Release", "package_release"),
+                                ("Size", "package_size"),
+                                ("Install Date", "package_install_date")]
 
-                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
-                                                         width=self.logo_width,
-                                                         height=self.logo_height,
-                                                         getvalue=self.__get_logo_helper),
-                                       Element((0, 0),
-                                               ("Times-Bold", 20),
-                                               text="Installed Packages for {}".format(report.device.full_name)),
-                                       Element((0, 24), ("Helvetica", 12), text="Name"),
-                                       Element((400, 24), ("Helvetica", 12), text="Version"),
-                                       Element((500, 24), ("Helvetica", 12), text="Release"),
-                                       Element((550, 24), ("Helvetica", 12), text="Size"),
-                                       Element((600, 24), ("Helvetica", 12), text="Install Date"),
-                                       Rule((0, 42), 7.5 * 90, thickness=2), ])
+                self.__config_report_helper("Installed Packages", header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -675,23 +653,11 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='update_name'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
-                                       Element((400, 0), ("Helvetica", 6), key='update_version'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
-                                       Element((600, 0), ("Helvetica", 6), key='update_optional'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+                header_names = [("Update Name", "update_name"),
+                                ("Version", "update_version"),
+                                ("Optional", "update_optional")]
 
-                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
-                                                         width=self.logo_width,
-                                                         height=self.logo_height,
-                                                         getvalue=self.__get_logo_helper),
-                                       Element((0, 0), ("Times-Bold", 20),
-                                               text="Available Updates for {}".format(report.device.full_name)),
-                                       Element((0, 24), ("Helvetica", 12), text="Update Name"),
-                                       Element((400, 24), ("Helvetica", 12), text="Version"),
-                                       Element((600, 24), ("Helvetica", 12), text="Optional"),
-                                       Rule((0, 42), 7.5 * 90, thickness=2)])
+                self.__config_report_helper("Available Updates", header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -715,23 +681,11 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='hardware_node_type'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
-                                       Element((65, 0), ("Helvetica", 6), key='hardware_depth'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
-                                       Element((110, 0), ("Helvetica", 6), key='hardware_attributes'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+                header_names = [("Node Type", "hardware_node_type"),
+                                ("Depth", "hardware_depth"),
+                                ("Attributes", "hardware_attributes")]
 
-                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
-                                                         width=self.logo_width,
-                                                         height=self.logo_height,
-                                                         getvalue=self.__get_logo_helper),
-                                       Element((0, 0), ("Times-Bold", 20),
-                                               text="Lstopo Information for {}".format(report.device.full_name)),
-                                       Element((0, 24), ("Helvetica", 12), text="Node Type"),
-                                       Element((65, 24), ("Helvetica", 12), text="Depth"),
-                                       Element((110, 24), ("Helvetica", 12), text="Attributes"),
-                                       Rule((0, 42), 7.5 * 90, thickness=2)])
+                self.__config_report_helper("Lstopo Information", header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -759,20 +713,10 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='process_name'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
-                                       Element((400, 0), ("Helvetica", 6), key='process_id'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+                header_names = [("Process Name", "process_name"),
+                                ("PID", "process_id")]
 
-                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
-                                                         width=self.logo_width,
-                                                         height=self.logo_height,
-                                                         getvalue=self.__get_logo_helper),
-                                       Element((0, 0), ("Times-Bold", 20),
-                                               text="Process Information for {}".format(report.device.full_name)),
-                                       Element((0, 24), ("Helvetica", 12), text="Process Name"),
-                                       Element((400, 24), ("Helvetica", 12), text="PID"),
-                                       Rule((0, 42), 7.5 * 90, thickness=2)])
+                self.__config_report_helper("Process Information", header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -797,29 +741,13 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='handle'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
-                                       Element((50, 0), ("Helvetica", 6), key='dmi_type'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
-                                       Element((100, 0), ("Helvetica", 6), key='header'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
-                                       Element((210, 0), ("Helvetica", 6), key='key'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1),
-                                       Element((320, 0), ("Helvetica", 6), key='value'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+                header_names = [("Handle", "handle"),
+                                ("Type", "dmi_type"),
+                                ("Header", "header"),
+                                ("Key", "key"),
+                                ("Value", "value")]
 
-                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
-                                                         width=self.logo_width,
-                                                         height=self.logo_height,
-                                                         getvalue=self.__get_logo_helper),
-                                       Element((0, 0), ("Times-Bold", 20),
-                                               text="DMI Information for {}".format(report.device.full_name)),
-                                       Element((0, 24), ("Helvetica", 12), text="Handle"),
-                                       Element((50, 24), ("Helvetica", 12), text="Type"),
-                                       Element((100, 24), ("Helvetica", 12), text="Header"),
-                                       Element((210, 24), ("Helvetica", 12), text="Key"),
-                                       Element((320, 24), ("Helvetica", 12), text="Value"),
-                                       Rule((0, 42), 7.5 * 90, thickness=2)])
+                self.__config_report_helper("DMI Information", header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -849,31 +777,16 @@ class PDFReportGenerator(object):
 
                     data.append(mock_object)
 
-                rpt.detailband = Band([Element((0, 0), ("Helvetica", 6), key='domain'),
-                                       Element((45, 0), ("Helvetica", 6), key='bus'),
-                                       Element((75, 0), ("Helvetica", 6), key='slot'),
-                                       Element((105, 0), ("Helvetica", 6), key='func'),
-                                       Element((135, 0), ("Helvetica", 6), key='position'),
-                                       Element((180, 0), ("Helvetica", 6), key='subclass'),
-                                       Element((260, 0), ("Helvetica", 6), key='vendor'),
-                                       Element((360, 0), ("Helvetica", 6), key='device'),
-                                       Rule((0, 0), 7.5 * 90, thickness=0.1)])
+                header_names = [("Domain", "domain"),
+                                ("Bus", "bus"),
+                                ("Slot", "slot"),
+                                ("Func", "func"),
+                                ("Position", "position"),
+                                ("Subclass", "subclass"),
+                                ("Vendor", "vendor"),
+                                ("Device", "device")]
 
-                rpt.pageheader = Band([PollyReportsImage(pos=(570, -25),
-                                                         width=self.logo_width,
-                                                         height=self.logo_height,
-                                                         getvalue=self.__get_logo_helper),
-                                       Element((0, 0), ("Times-Bold", 20),
-                                               text="PCI Information for {}".format(report.device.full_name)),
-                                       Element((0, 24), ("Helvetica", 12), text="Domain"),
-                                       Element((45, 24), ("Helvetica", 12), text="Bus"),
-                                       Element((75, 24), ("Helvetica", 12), text="Slot"),
-                                       Element((105, 24), ("Helvetica", 12), text="Func"),
-                                       Element((135, 24), ("Helvetica", 12), text="Position"),
-                                       Element((180, 24), ("Helvetica", 12), text="Subclass"),
-                                       Element((260, 24), ("Helvetica", 12), text="Vendor"),
-                                       Element((360, 24), ("Helvetica", 12), text="Device"),
-                                       Rule((0, 42), 7.5 * 90, thickness=2)])
+                self.__config_report_helper("PCI Information", header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
