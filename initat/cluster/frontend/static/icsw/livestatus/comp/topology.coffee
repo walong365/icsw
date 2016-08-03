@@ -651,12 +651,6 @@ angular.module(
                     " Redraw"
                 )
             ]
-            _top_list = [
-                div(
-                    {key: "div0", className: "form-group form-inline"}
-                    _list
-                )
-            ]
             if @state.data_present
                 _list.push(
                     button(
@@ -690,6 +684,23 @@ angular.module(
                             "Settings: #{_.round(@state.settings.offset.x, 3)} / #{_.round(@state.settings.offset.y, 3)} @ #{_.round(@state.settings.zoom.factor, 3)}"
                         )
                     )
+            if @state.loading
+                _list.push(
+                    span(
+                        {
+                            className: "text-danger"
+                            key: "infospan"
+                        }
+                        " Fetching data from server..."
+                    )
+                )
+            _top_list = [
+                div(
+                    {key: "div0", className: "form-group form-inline"}
+                    _list
+                )
+            ]
+            if @state.data_present
                 graph_id = @state.graph_id
                 _top_list.push(
                     React.createElement(
@@ -703,13 +714,6 @@ angular.module(
                             graph_command_cb: @graph_command_cb
                             monitoring_data: @props.monitoring_data
                         }
-                    )
-                )
-            if @state.loading
-                _list.push(
-                    span(
-                        {className: "text-danger", key: "infospan"}
-                        " Fetching data from server..."
                     )
                 )
             return div(
@@ -742,7 +746,6 @@ angular.module(
                 (json) =>
                     @setState(
                         {
-                            # fixme: the following leads to mutate warnings up from React 0.13.1
                             loading: false
                             data_present: true
                             graph_id: @state.graph_id + 1
