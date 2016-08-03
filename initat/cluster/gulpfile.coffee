@@ -460,7 +460,6 @@ gulp.task("deploy-fonts", () ->
 gulp.task("deploy-d3", () ->
     return gulp.src(
         [
-            "frontend/static/js/d3js/d3.v3.min.js"
             "frontend/static/js/d3js/d3.min.js"
             "frontend/static/js/dimple.v2.1.6.min.js"
             "frontend/static/js/topojson.js"
