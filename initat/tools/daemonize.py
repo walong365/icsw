@@ -89,7 +89,11 @@ def main():
         gids = [get_gid_from_name(_gid)[0] for _gid in opts.groups.strip().split(",")]
     else:
         gids = []
-    _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid, gids=gids)
+    try:
+        _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid, gids=gids)
+    except TypeError:
+        # gids argument not available in >=python-daemon-2.1.1
+        _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid)
     if opts.nice:
         os.nice(opts.nice)
     if opts.daemonize:
