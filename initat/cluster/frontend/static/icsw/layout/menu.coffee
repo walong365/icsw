@@ -595,10 +595,10 @@ menu_module = angular.module(
 ]).directive("icswLayoutSubMenubar",
 [
     "$templateCache", "icswUserService", "$rootScope", "$compile", "ICSW_SIGNALS",
-    "$state", "icswBreadcrumbs",
+    "$state",
 (
     $templateCache, icswUserService, $rootScope, $compile, ICSW_SIGNALS,
-    $state
+    $state,
 ) ->
     restrict: "E"
     link: (scope, el, attrs) ->
@@ -607,7 +607,8 @@ menu_module = angular.module(
                 if not attrs.$attr.loaded?
                     attrs.$set("loaded")
                     template = $compile(
-                        $templateCache.get("icsw.layout.submenubar"))(scope)
+                        $templateCache.get("icsw.layout.submenubar")
+                    )(scope)
                     el.html(template)
         $rootScope.$on ICSW_SIGNALS("ICSW_USER_NOUSER"),
             (event, toState, toParams, fromState, fromParams, options) ->
@@ -630,14 +631,11 @@ menu_module = angular.module(
     return {
         restrict: "A"
         link: (scope, el, attrs) ->
-            breadcrumb = icswBreadcrumbs
             $rootScope.$on ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"), (event) ->
-                breadcrumb.setup()
-                breadcrumb.generate()
-                scope.breadcrumb = breadcrumb.title()
+                icswBreadcrumbs.setup()
+                scope.breadcrumb = icswBreadcrumbs.generate()
             $rootScope.$on "$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
-                 breadcrumb.generate()
-                 scope.breadcrumb = breadcrumb.title()
+                scope.breadcrumb = icswBreadcrumbs.generate()
 
             scope.select_txt = "No devices selected"
 
@@ -681,8 +679,6 @@ menu_module = angular.module(
 (
     $state, icswRouteHelper,
 ) ->
-    list = []
-    title = undefined
     header_lut = {}
 
     setup_luts = () ->
@@ -690,50 +686,38 @@ menu_module = angular.module(
         for header in menu_headers
             icswheader = header.icswData.menuHeader
             header_lut[icswheader.key] = icswheader.name
-        return
 
-    addBreadcrumb = (title, state, sref) ->
+    _addBreadcrumb = (list, title, state, sref) ->
         list.push
             title: title
             sref: sref
             state: state
-        return
+
+    # generateOutput = (list) ->
+    #     return (entry.title for entry in list).join(" - ")
 
     generateBreadcrumbs = (state) ->
         if state.parent? and state.parent.name != ""
-            generateBreadcrumbs state.parent
+            list = generateBreadcrumbs state.parent
+        else
+            list = []
         if state.icswData? and (state.icswData.$$menuHeader or state.icswData.$$menuEntry)
+            # todo: move breadcrumb generation to menu XML code
             if state.icswData.menuEntry?
-                addBreadcrumb header_lut[state.icswData.menuEntry.menukey]
-                addBreadcrumb(
+                _addBreadcrumb list, header_lut[state.icswData.menuEntry.menukey]
+                _addBreadcrumb(
+                    list
                     state.icswData.menuEntry.name
                     state.name
                     state.icswData.menuEntry.sref
                 )
         else if state.name and state.name == "main"
-            addBreadcrumb "Home"
-        return
-
-    appendTitle = (breadcrumb, index) ->
-        if index < list.length - 1 then breadcrumb.title + ' » ' else breadcrumb.title
-
-    generateOutput = ->
-        # OMG
-        title = ''
-        angular.forEach list, (breadcrumb, index) ->
-            title += appendTitle(breadcrumb, index)
-        return
+            _addBreadcrumb list, "Home"
+        return list
 
     {
         generate: ->
-            list = []
-            generateBreadcrumbs $state.$current
-            generateOutput()
-            return
-        title: ->
-            title
-        list: ->
-            list
+            return generateBreadcrumbs $state.$current
         setup: ->
             setup_luts()
     }

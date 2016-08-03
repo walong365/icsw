@@ -692,26 +692,30 @@ class StatusHistoryUtils(object):
                     _queries.append(
                         Q(device_id=k[0]) & Q(service_id=k[1]) & Q(service_info=k[2]) & Q(date=v[1])
                     )
-        _queries = reduce(
-            operator.ior, _queries
-        )
-        if is_host:
-            _found = obj_man.filter(_queries).values("device_id", *additional_fields)
-        else:
-            _found = obj_man.filter(_queries).values("device_id", "service_id", "service_info", *additional_fields)
-        for k, v in last_service_alert_cache.iteritems():
-            if any(key not in v[0] for key in additional_fields):
-                if is_host:
-                    # filter
-                    _values = [_entry for _entry in _found if _entry["device_id"] == k and _entry["date"] == v[1]]
-                else:
-                    _values = [_entry for _entry in _found if _entry["device_id"] == k[0] and _entry["date"] == v[1] and _entry["service_id"] == k[1] and _entry["service_info"] == k[2]]
-                if not len(_values):
-                    _values = obj_man.filter(device_independent=True, date=v[1])
-                _first_value = _values[0]
-                # if _first_value["msg"] in {"(null)"}:
-                #     _first_value["msg"] = ""
-                v[0].update({key: _first_value[key] for key in additional_fields})
+        if len(_queries):
+            _queries = reduce(
+                operator.ior, _queries
+            )
+            if is_host:
+                _found = obj_man.filter(_queries).values("device_id", *additional_fields)
+            else:
+                _found = obj_man.filter(_queries).values("device_id", "service_id", "service_info", *additional_fields)
+            for k, v in last_service_alert_cache.iteritems():
+                if any(key not in v[0] for key in additional_fields):
+                    if is_host:
+                        # filter
+                        _values = [_entry for _entry in _found if _entry["device_id"] == k and _entry["date"] == v[1]]
+                    else:
+                        _values = [
+                            _entry for _entry in _found if _entry["device_id"] == k[0] and _entry["date"] == v[1] and
+                            _entry["service_id"] == k[1] and _entry["service_info"] == k[2]
+                        ]
+                    if not len(_values):
+                        _values = obj_man.filter(device_independent=True, date=v[1])
+                    _first_value = _values[0]
+                    # if _first_value["msg"] in {"(null)"}:
+                    #     _first_value["msg"] = ""
+                    v[0].update({key: _first_value[key] for key in additional_fields})
         # old code
         if False:
             for k, v in last_service_alert_cache.iteritems():

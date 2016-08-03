@@ -19,9 +19,9 @@
 #
 
 angular.module(
-    "icsw.config.kpi_visualisation",
+    "icsw.config.kpi.visualisation",
     [
-        "icsw.tools.utils", "icsw.d3_v3", "icsw.tools", "icsw.tools.status_history_utils",
+        "icsw.tools.utils", "icsw.d3", "icsw.tools", "icsw.tools.status_history_utils",
     ]
 ).directive("icswConfigKpiEvaluationGraph",
 [
@@ -59,16 +59,20 @@ angular.module(
             top_bottom_padding = 13
 
             scope.tree = undefined
-            d3_service.d3().then((d3) ->
-                scope.svg_el = el[0].getElementsByClassName("kpi-visualisation-svg")[0]
-                scope.svg = d3.select(scope.svg_el)
-                    .append("g")
-                    .attr("transform", "translate(0, #{top_bottom_padding})")
-                scope.tree = d3.layout.tree()
-                    .children((node) ->
-                        if node.hide_children then null else return node.origin.operands)
-                    .nodeSize([330, node_height])  # this would be nice but changes layout horribly
-                    #.separation((a, b) -> return 8)
+            d3_service.d3().then(
+                (d3) ->
+                    scope.svg_el = el[0].getElementsByClassName("kpi-visualisation-svg")[0]
+                    scope.svg = d3.select(scope.svg_el)
+                        .append("g")
+                        .attr("transform", "translate(0, #{top_bottom_padding})")
+                    root = d3.stratify()
+                    # console.log
+                    scope.tree = d3.tree()
+                        # .children(
+                        #     (node) ->
+                        #         if node.hide_children then null else return node.origin.operands)
+                        .nodeSize([330, node_height])  # this would be nice but changes layout horribly
+                        #.separation((a, b) -> return 8)
 
             )
 
@@ -113,6 +117,7 @@ angular.module(
 
                 scope.tree.size([draw_width, draw_height])
 
+                console.log scope.data
                 nodes = scope.tree.nodes(scope.data)
                 links = scope.tree.links(nodes)
 
