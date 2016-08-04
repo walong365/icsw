@@ -9,7 +9,7 @@
             <uib-tabset>
                 <uib-tab>
                     <uib-tab-heading>
-                        <span>Settings</span>
+                        <span>Layout Settings</span>
                     </uib-tab-heading>
                     <br/>
                     <div class="panel panel-default">
@@ -35,7 +35,58 @@
 
                 <uib-tab>
                     <uib-tab-heading>
-                        <span>Selection</span>
+                        <span>Report Settings (General)</span>
+                    </uib-tab-heading>
+                    <br/>
+                    <div class="panel panel-default">
+                        <div class="panel-body" style="padding: 6px 15px">
+                            <table
+                                class="table table-hover table-condensed table-striped"
+                                style="width:auto;"
+                            >
+                                <thead>
+                                    <tr>
+                                        <th class="text-center" colspan=4>General Report Modules</th>
+                                    </tr>
+                                    <tr>
+                                        <th class="text-center">Network Overview</th>
+                                        <th class="text-center">Dummy #1</th>
+                                        <th class="text-center">Dummy #2</th>
+                                        <th class="text-center">Dummy #3</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td width="25%">
+                                            <div class="text-center">
+                                                <input type="button" ng-class="struct.network_report_overview_module_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_general_module(0)"/>
+                                             </div>
+                                        </td>
+                                        <td width="25%">
+                                            <div class="text-center">
+                                                <input type="button" ng-class="struct.network_report_overview_module_selected_1 && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_general_module(0)"/>
+                                             </div>
+                                        </td>
+                                        <td width="25%">
+                                            <div class="text-center">
+                                                <input type="button" ng-class="struct.network_report_overview_module_selected_2 && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_general_module(0)"/>
+                                             </div>
+                                        </td>
+                                        <td width="25%">
+                                            <div class="text-center">
+                                                <input type="button" ng-class="struct.network_report_overview_module_selected_3 && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_general_module(0)"/>
+                                             </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </uib-tab>
+
+                <uib-tab>
+                    <uib-tab-heading>
+                        <span>Report Settings (Devices)</span>
                     </uib-tab-heading>
                     <br/>
                     <div class="panel panel-default">
@@ -55,13 +106,13 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th class="text-center" colspan=3>Device Information</th>
+                                            <th class="text-center" colspan=3 ng-click="select_device_modules()">Device Information Module</th>
 
                                         </tr>
                                         <tr>
-                                            <th st-sort='st_attrs.name'>Name</th>
-                                            <th>Selection</th>
-                                            <th st-sort='st_attrs.description'>Description</th>
+                                            <th>Name</th>
+                                            <th ng-click="select_device_modules()">Selection</th>
+                                            <th>Description</th>
                                         </tr>
                                     </thead>
 
@@ -80,7 +131,7 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th class="text-center" colspan=5 ng-click="select_software_information()">Software Information</th>
+                                            <th class="text-center" colspan=5 ng-click="select_software_information()">Software Information Modules</th>
                                         </tr>
                                         <tr>
                                             <th class="text-center" ng-click="select_column(0)">Installed Packages</th>
@@ -131,7 +182,7 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th class="text-center" ng-click="select_hardware_information()" colspan=4>Hardware Information</th>
+                                            <th class="text-center" ng-click="select_hardware_information()" colspan=4>Hardware Information Modules</th>
                                         </tr>
                                         <tr>
                                             <th class="text-center" ng-click="select_column(5)">Hardware Report</th>
@@ -175,7 +226,7 @@
                 </uib-tab>
                 <uib-tab>
                     <uib-tab-heading>
-                        <span>Generate</span>
+                        <span>Generate Report</span>
                     </uib-tab-heading>
                     <br/>
                     <div class="panel panel-default">

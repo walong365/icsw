@@ -385,7 +385,7 @@
     </route>
     <route name="main.report">
         <stateData type="dict" url_str="/report" templateUrl_str="icsw/device/report/overview"/>
-        <icswData type="dict" pageTitle_str="Device Reporting">
+        <icswData type="dict" pageTitle_str="Reporting">
             <menuEntry type="dict" ordering_int="100" menukey_str="dev" icon_str="fa-book"/>
             <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
             <rights type="list">

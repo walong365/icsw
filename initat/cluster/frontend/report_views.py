@@ -832,7 +832,6 @@ class PDFReportGenerator(object):
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black)])
 
-
         data = [["Name", "Driver Version"]]
         for gpu in hardware_report_ar.gpus.all():
             data.append([Paragraph(str(gpu.gpuname), style_sheet["BodyText"]),
@@ -955,7 +954,7 @@ class PDFReportGenerator(object):
 
             for _report in self.reports:
                 for _bookmark in _report.bookmarks:
-                    if current_page_number +_bookmark.pagenum not in page_num_headings:
+                    if current_page_number + _bookmark.pagenum not in page_num_headings:
                         page_num_headings[current_page_number + _bookmark.pagenum] = []
                     page_num_headings[current_page_number + _bookmark.pagenum].append((_bookmark.name, 1))
 
@@ -1021,7 +1020,8 @@ class PDFReportGenerator(object):
         if self.device_reports:
             device_reports_bookmark = output_pdf.addBookmark("Device Reports", current_page_number)
             for _group_name in group_report_dict:
-                group_bookmark = output_pdf.addBookmark(_group_name, current_page_number, parent=device_reports_bookmark)
+                group_bookmark = output_pdf.addBookmark(_group_name, current_page_number,
+                                                        parent=device_reports_bookmark)
 
                 _device_reports = {}
 
@@ -1031,7 +1031,8 @@ class PDFReportGenerator(object):
                     _device_reports[_report.device].append(_report)
 
                 for _device in _device_reports:
-                    device_bookmark = output_pdf.addBookmark(_device.full_name, current_page_number, parent=group_bookmark)
+                    device_bookmark = output_pdf.addBookmark(_device.full_name, current_page_number,
+                                                             parent=group_bookmark)
 
                     for _report in _device_reports[_device]:
                         for _bookmark in _report.bookmarks:
@@ -1072,7 +1073,7 @@ class PDFReportGenerator(object):
         num_pages = 1
 
         for page_num in sorted(page_num_headings.keys()):
-            for heading, indent in page_num_headings[page_num]:
+            for _, _ in page_num_headings[page_num]:
                 vertical_x += 1
                 if vertical_x > vertical_x_limit:
                     vertical_x = 1
@@ -1324,7 +1325,7 @@ class ReportDataAvailable(View):
                 pk_setting_dict[pk] = disabled
 
                 if _device.device_group in device_group_disabled:
-                    if device_group_disabled[_device.device_group] == True:
+                    if device_group_disabled[_device.device_group]:
                         device_group_disabled[_device.device_group] = disabled
                 else:
                     device_group_disabled[_device.device_group] = disabled
@@ -1345,12 +1346,21 @@ class ReportDataAvailable(View):
 
 
 def generate_pdf(_devices, pk_settings, pdf_report_generator):
-    pdf_report_generator.generate_network_report()
+    # general report settings stored with pk -1
+    general_settings = pk_settings[-1]
 
-    for _device in _devices:
-        pdf_report_generator.generate_device_report(_device, pk_settings[_device.idx])
+    try:
+        if general_settings["network_report_overview_module_selected"]:
+            pdf_report_generator.generate_network_report()
 
-    pdf_report_generator.finalize_pdf()
+        for _device in _devices:
+            pdf_report_generator.generate_device_report(_device, pk_settings[_device.idx])
+
+        pdf_report_generator.finalize_pdf()
+    except Exception as e:
+        logger.info("PDF Generation failed, error was: {}".format(str(e)))
+        pdf_report_generator.buffer = BytesIO()
+        pdf_report_generator.progress = 100
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -1541,7 +1551,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         for pci_entry in ar.assetpcientry_set.all():
             row = base_row[:]
 
-            #row.append(str(pci_entry))
+            # row.append(str(pci_entry))
             row.append(str(pci_entry.domain))
             row.append(str(pci_entry.bus))
             row.append(str(pci_entry.slot))

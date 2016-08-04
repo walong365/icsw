@@ -74,6 +74,8 @@ device_report_module = angular.module(
         generate_progress: 0
 
         selected: true
+
+        network_report_overview_module_selected: false
     }
 
     $scope.uploading = false
@@ -114,6 +116,10 @@ device_report_module = angular.module(
                 $scope.uploader.formData.push({"csrfmiddlewaretoken": token})
         )
 
+    $scope.select_general_module = (selector) ->
+        if selector == 0
+            $scope.struct.network_report_overview_module_selected =  !$scope.struct.network_report_overview_module_selected
+
     select_salt_obj = (obj, attribute) ->
         obj[attribute] = !obj[attribute]
         if obj.is_meta_device
@@ -129,6 +135,15 @@ device_report_module = angular.module(
             for device in $scope.struct.devices
                 if device.device_group == obj.device_group && device.is_meta_device
                     device[attribute] = selected
+
+    $scope.select_device_modules = () ->
+        selected = false
+        for device in $scope.struct.devices
+            selected = selected || device.$selected_for_report
+
+        for device in $scope.struct.devices
+            device.$selected_for_report = !selected
+
 
     $scope.select = (obj, selection_type) ->
         if selection_type == 0
@@ -221,6 +236,13 @@ device_report_module = angular.module(
         $scope.struct.report_generating = true
 
         settings = []
+
+        # special "device" setting used (with negative pk) for general report module settings
+        setting = {
+            pk: -1
+            network_report_overview_module_selected: $scope.struct.network_report_overview_module_selected
+        }
+        settings.push(setting)
 
         for device in $scope.struct.devices
             if !device.is_meta_device && device.$selected_for_report
