@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014,2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -34,8 +34,7 @@ from initat.cluster.backbone.models import mon_icinga_log_last_read,\
 
 
 class Command(BaseCommand):
-    help = ("Delete data parsed by the icinga log parser")
-    args = ''
+    help = "Delete data parsed by the icinga log parser"
 
     def handle(self, **options):
         mon_icinga_log_last_read.objects.all().delete()

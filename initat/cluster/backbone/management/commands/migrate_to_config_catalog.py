@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014,2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,8 +28,7 @@ from initat.tools import logging_tools
 
 
 class Command(BaseCommand):
-    help = ("Migrate to config catalogs.")
-    args = ''
+    help = "Migrate to config catalogs."
 
     def handle(self, **options):
         num_cc = config_catalog.objects.all().count()

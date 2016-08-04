@@ -18,7 +18,6 @@
 """ dump django database to XML """
 
 from collections import OrderedDict
-from optparse import make_option
 
 from django.apps import apps
 from django.core import serializers
@@ -29,40 +28,41 @@ from django.db.models import ForeignKey, OneToOneField
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option(
-            '--format', default='json', dest='format',
-            help='Specifies the output serialization format for fixtures.'
-        ),
-        make_option(
-            '--indent', default=None, dest='indent', type='int',
-            help='Specifies the indent level to use when pretty-printing output'
-        ),
-        make_option(
-            '--database', action='store', dest='database',
-            default=DEFAULT_DB_ALIAS, help='Nominates a specific database to dump fixtures from. Defaults to the "default" database.'
-        ),
-        make_option(
-            '-e', '--exclude', dest='exclude', action='append', default=[],
-            help='An appname or appname.ModelName to exclude (use multiple --exclude to exclude multiple apps/models).'
-        ),
-        make_option(
-            '-n', '--natural', action='store_true', dest='use_natural_keys', default=False,
-            help='Use natural keys if they are available.'
-        ),
-        make_option(
-            '-a', '--all', action='store_true', dest='use_base_manager', default=False,
-            help="Use Django's base manager to dump all models stored in the database, "
-            "including those that would otherwise be filtered or modified by a custom manager."
-        ),
-        make_option(
-            '-t', '--traceback', action='store_true', default=True,
-        )
-    )
     help = ("Output the contents of the database as a fixture of the given "
             "format (using each model's default manager unless --all is "
             "specified).")
+
     args = '[appname appname.ModelName ...]'
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--format', default='json', dest='format',
+            help='Specifies the output serialization format for fixtures.'
+        )
+        parser.add_argument(
+            '--indent', default=None, dest='indent', type=int,
+            help='Specifies the indent level to use when pretty-printing output'
+        )
+        parser.add_argument(
+            '--database', action='store', dest='database',
+            default=DEFAULT_DB_ALIAS, help='Nominates a specific database to dump fixtures from. Defaults to the "default" database.'
+        )
+        parser.add_argument(
+            '-e', '--exclude', dest='exclude', action='append', default=[],
+            help='An appname or appname.ModelName to exclude (use multiple --exclude to exclude multiple apps/models).'
+        )
+        # parser.add_argument(
+        #    '-n', '--natural', action='store_true', dest='use_natural_keys', default=False,
+        #    help='Use natural keys if they are available.'
+        # )
+        parser.add_argument(
+            '-a', '--all', action='store_true', dest='use_base_manager', default=False,
+            help="Use Django's base manager to dump all models stored in the database, "
+                 "including those that would otherwise be filtered or modified by a custom manager."
+        )
+        # parser.add_argument(
+        #     '-t', '--traceback', action='store_true', default=True,
+        # )
 
     def handle(self, *app_labels, **options):
 
@@ -71,7 +71,7 @@ class Command(BaseCommand):
         using = options.get('database')
         excludes = options.get('exclude')
         show_traceback = options.get('traceback')
-        use_natural_keys = options.get('use_natural_keys')
+        # use_natural_keys = options.get('use_natural_keys')
         # use_base_manager = options.get('use_base_manager')
 
         excluded_apps = set()
@@ -91,7 +91,7 @@ class Command(BaseCommand):
                     raise CommandError('Unknown app in excludes: %s' % exclude)
         apps_list = apps.get_app_configs()
         if len(app_labels) == 0:
-            app_list = OrderedDict((app, None) for app in apps.get_app_config() if app not in excluded_apps)
+            app_list = OrderedDict((app, None) for app in apps_list if app not in excluded_apps)
         else:
             app_list = OrderedDict()
             for label in app_labels:
@@ -164,8 +164,13 @@ class Command(BaseCommand):
         try:
             self.stdout.ending = None
             serializers.serialize(
-                _format, get_objects(deps.tree), indent=indent,
-                use_natural_keys=use_natural_keys, stream=self.stdout)
+                _format,
+                get_objects(deps.tree),
+                indent=indent,
+                # no longer supported in django 1.10
+                # use_natural_keys=use_natural_keys,
+                stream=self.stdout
+            )
         except Exception as e:
             if show_traceback:
                 raise
@@ -217,7 +222,7 @@ class Dependencies(object):
         for field in model_obj._meta.fields:
             if isinstance(field, (ForeignKey, OneToOneField)):
                 if field.null:
-                    weak_res.append(field.related.model)
+                    weak_res.append(field.related_model)
                 else:
-                    strong_res.append(field.related.model)
+                    strong_res.append(field.related_model)
         return strong_res, weak_res

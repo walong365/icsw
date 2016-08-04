@@ -508,7 +508,7 @@ class SensorActionFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def hard_control(self, create, extracted, **kwargs):
-        extracted = extracted or ""
+        extracted = extracted or False
         if self.hard_control != extracted:
             self.hard_control = extracted
             self.save()

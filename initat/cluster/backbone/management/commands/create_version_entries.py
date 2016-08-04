@@ -30,8 +30,7 @@ from initat.tools import config_store
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list
-    help = ("Create Database version entries after an migration run.")
+    help = "Create Database version entries after an migration run."
     args = ''
 
     def handle(self, **options):

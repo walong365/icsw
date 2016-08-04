@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014,2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,23 +19,25 @@
 #
 """ create the cluster device supergroup """
 
-from optparse import make_option
-
 from django.core.management.base import BaseCommand
 from django.db.models import Q
+
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import device_group
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option('--name', action='store', dest='name',
-                    default="system", help='Name of the cluster device group [defaults to \"system\"]'),
-        make_option('--description', action='store', dest='description',
-                    default="system group", help='Description of the cluster device group [defaults to \"system group\"]'),
-    )
-    help = ("Create the cluster device group.")
-    args = ''
+    help = "Create the cluster device group."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--name', action='store', dest='name',
+            default="system", help='Name of the cluster device group [defaults to \"system\"]'
+        )
+        parser.add_argument(
+            '--description', action='store', dest='description',
+            default="system group", help='Description of the cluster device group [defaults to \"system group\"]'
+        )
 
     def handle(self, **options):
         try:
