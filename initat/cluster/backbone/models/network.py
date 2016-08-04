@@ -939,6 +939,7 @@ def network_type_pre_save(sender, **kwargs):
 
 # new peer models, not in use right now
 
+"""
 class NetworkPeerType(models.Model):
     # network peer type model
     idx = models.AutoField(primary_key=True)
@@ -972,6 +973,7 @@ class NetworkPeer(models.Model):
             self.penalty,
             self.dest_netdevice.devname
         )
+"""
 
 
 class peer_information(models.Model):

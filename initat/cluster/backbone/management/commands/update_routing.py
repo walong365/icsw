@@ -28,9 +28,7 @@ from initat.tools import logging_tools
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-    )
-    help = ("Create and show the current cluster routing table.")
+    help = "Create and show the current cluster routing table."
     args = ''
 
     def handle(self, **options):

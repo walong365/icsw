@@ -24,7 +24,6 @@
 
 import pprint
 import time
-from optparse import make_option
 
 from django.apps import apps
 from django.contrib.contenttypes.models import ContentType
@@ -37,15 +36,15 @@ from initat.tools import logging_tools
 
 
 class Command(BaseCommand):
-    help = ("Scan the installed models for new CSW permissions.")
-    option_list = BaseCommand.option_list + (
-        make_option(
+    help = "Scan the installed models for new CSW permissions."
+
+    def add_arguments(self, parser):
+        parser.add_argument(
             "--modify",
             action="store_true",
             default=False,
             help="Modify permissions instead of displaying them",
-        ),
-    )
+        )
 
     def handle(self, **options):
         if options.get("modify"):
@@ -81,6 +80,11 @@ class Command(BaseCommand):
                     logging_tools.form_entry_right(perm.csw_object_permission_set.all().count(), header="GroupObjPerms"),
                 ]
             )
+        print(
+            "{} defined:".format(
+                logging_tools.get_plural("Permission", len(out_list)),
+            )
+        )
         print unicode(out_list)
 
     def modify(self, **options):

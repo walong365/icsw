@@ -14,6 +14,8 @@ import time
 
 
 class Command(BaseCommand):
+    help = "Compare the data in the database with the Django models and report "
+        "incompatibilities."
     option_list = BaseCommand.option_list + (
         make_option('--database', action='store', dest='database',
                     default=DEFAULT_DB_ALIAS, help='Nominates a specific database to dump '
@@ -22,8 +24,6 @@ class Command(BaseCommand):
                     help='An appname or appname.ModelName to exclude (use multiple '
                     '--exclude to exclude multiple apps/models).'),
     )
-    help = ("Compare the data in the database with the Django models and report "
-            "incompatibilities.")
     args = '[appname appname.ModelName ...]'
 
     def handle(self, *app_labels, **options):

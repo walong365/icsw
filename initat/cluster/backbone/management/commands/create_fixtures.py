@@ -362,8 +362,7 @@ def _add_snmp_fixtures():
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list
-    help = ("Creates the cluster fixtures.")
+    help = "Creates the cluster fixtures."
 
     def handle(self, **options):
         print("creating fixtures...")
