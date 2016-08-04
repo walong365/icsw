@@ -129,10 +129,6 @@ class RowCollector(object):
             hardware_depth = str(_row[9])
             hardware_attributes = str(_row[10])
 
-            if len(hardware_attributes) > 200:
-                hardware_attributes = hardware_attributes[:200]
-                hardware_attributes += "..."
-
             o = {
                 'hardware_node_type': hardware_node_type,
                 'hardware_depth': hardware_depth,
@@ -178,22 +174,6 @@ class RowCollector(object):
             header = str(_row[10])
             key = str(_row[11])
             value = str(_row[12])
-
-            idx = 0
-            while True:
-                truncated_value = value[idx:idx + 100]
-                if truncated_value:
-                    o = {
-                        "handle": handle,
-                        "dmi_type": dmi_type,
-                        "header": header,
-                        "key": key,
-                        "value": truncated_value
-                    }
-                    self.rows_dict.append(o)
-                    idx += 100
-                else:
-                    break
 
         elif self.current_asset_type == AssetType.PCI:
             domain = _row[8]
@@ -242,8 +222,6 @@ class PDFReportGenerator(object):
             self.pdf_buffers.append(_buffer)
 
         def increase_page_count(self, canvas, doc):
-            id(canvas)
-            id(doc)
             self.number_of_pages += 1
 
     class DeviceReport(Report):
@@ -306,7 +284,6 @@ class PDFReportGenerator(object):
         self.buffer = None
 
     def __get_logo_helper(self, value):
-        id(value)
         _tmp_file = tempfile.NamedTemporaryFile()
         self.logo_buffer.seek(0)
         _tmp_file.write(self.logo_buffer.read())
@@ -324,19 +301,43 @@ class PDFReportGenerator(object):
 
         detail_list = []
 
+        available_width = 72 * 9
+
         position = 0
-        for header_name, key in header_names_list:
+
+        for header_name, key, avail_width_percentage in header_names_list:
             header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name))
             detail_list.append(Element((position, 0), ("Helvetica", 6), key=key))
 
-            needed_width = stringWidth(header_name, "Helvetica", 12)
+            position += available_width * (avail_width_percentage / 100.0) + 10
 
             for _dict in data:
-                width = stringWidth(str(_dict[key]), "Helvetica", 6)
-                if width > needed_width:
-                    needed_width = width
+                s = str(_dict[key])
+                s_new = ""
 
-            position += needed_width + 5
+                wrap_idx = 0
+
+                for i in range(len(s)):
+                    width = stringWidth(s[wrap_idx:i+1], "Helvetica", 6)
+                    if ((width / available_width) * 100.0) > avail_width_percentage:
+                        wrap_idx = i
+                        s_new += "\n"
+                    s_new += s[i]
+                _dict[key] = s_new
+
+        # position = 0
+        # for header_name, key, avail_width_percentage in header_names_list:
+        #     header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name))
+        #     detail_list.append(Element((position, 0), ("Helvetica", 6), key=key))
+        #
+        #     needed_width = stringWidth(header_name, "Helvetica", 12)
+        #
+        #     for _dict in data:
+        #         width = stringWidth(str(_dict[key]), "Helvetica", 6)
+        #         if width > needed_width:
+        #             needed_width = width
+        #
+        #     position += needed_width + 5
 
         header_list.append(Rule((0, 42), 7.5 * 90, thickness=2))
         detail_list.append(Rule((0, 0), 7.5 * 90, thickness=0.1))
@@ -376,14 +377,14 @@ class PDFReportGenerator(object):
 
             rpt = Report(data)
 
-            header_names = [("Identifier", "id"),
-                            ("Network", "network"),
-                            ("Netmask", "netmask"),
-                            ("Broadcast", "broadcast"),
-                            ("Gateway", "gateway"),
-                            ('GW Priority', "gwprio"),
-                            ("#IPs", "num_ips"),
-                            ("Network Type", "network_type")]
+            header_names = [("Identifier", "id", 10.0),
+                            ("Network", "network", 10.0),
+                            ("Netmask", "netmask", 10.0),
+                            ("Broadcast", "broadcast", 10.0),
+                            ("Gateway", "gateway", 10.0),
+                            ('GW Priority', "gwprio", 10.0),
+                            ("#IPs", "num_ips", 10.0),
+                            ("Network Type", "network_type", 20.0)]
 
             self.__config_report_helper("Network Overview", header_names, rpt, data)
 
@@ -554,9 +555,9 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Update Name", "update_name"),
-                                ("Install Date", "install_date"),
-                                ("Install Status", "update_status")]
+                header_names = [("Update Name", "update_name", 70.0),
+                                ("Install Date", "install_date", 15.0),
+                                ("Install Status", "update_status", 15.0)]
 
                 self.__config_report_helper("Installed Updates", header_names, rpt, data)
 
@@ -580,8 +581,8 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("License Name", "license_name"),
-                                ("License Key", "license_key")]
+                header_names = [("License Name", "license_name", 50.0),
+                                ("License Key", "license_key", 50.0)]
 
                 self.__config_report_helper("Available Licenses", header_names, rpt, data)
 
@@ -618,11 +619,11 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Name", "package_name"),
-                                ("Version", "package_version"),
-                                ("Release", "package_release"),
-                                ("Size", "package_size"),
-                                ("Install Date", "package_install_date")]
+                header_names = [("Name", "package_name", 20.0),
+                                ("Version", "package_version", 20.0),
+                                ("Release", "package_release", 20.0),
+                                ("Size", "package_size", 20.0),
+                                ("Install Date", "package_install_date", 20.0)]
 
                 self.__config_report_helper("Installed Packages", header_names, rpt, data)
 
@@ -653,9 +654,9 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Update Name", "update_name"),
-                                ("Version", "update_version"),
-                                ("Optional", "update_optional")]
+                header_names = [("Update Name", "update_name", 33.33),
+                                ("Version", "update_version", 33.33),
+                                ("Optional", "update_optional", 33.33)]
 
                 self.__config_report_helper("Available Updates", header_names, rpt, data)
 
@@ -681,9 +682,9 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Node Type", "hardware_node_type"),
-                                ("Depth", "hardware_depth"),
-                                ("Attributes", "hardware_attributes")]
+                header_names = [("Node Type", "hardware_node_type", 15.00),
+                                ("Depth", "hardware_depth", 15.00),
+                                ("Attributes", "hardware_attributes", 70.00)]
 
                 self.__config_report_helper("Lstopo Information", header_names, rpt, data)
 
@@ -713,8 +714,8 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Process Name", "process_name"),
-                                ("PID", "process_id")]
+                header_names = [("Process Name", "process_name", 50.0),
+                                ("PID", "process_id", 50.0)]
 
                 self.__config_report_helper("Process Information", header_names, rpt, data)
 
@@ -741,11 +742,11 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Handle", "handle"),
-                                ("Type", "dmi_type"),
-                                ("Header", "header"),
-                                ("Key", "key"),
-                                ("Value", "value")]
+                header_names = [("Handle", "handle", 20.0),
+                                ("Type", "dmi_type", 20.0),
+                                ("Header", "header", 20.0),
+                                ("Key", "key", 20.0),
+                                ("Value", "value", 20.0)]
 
                 self.__config_report_helper("DMI Information", header_names, rpt, data)
 
@@ -777,14 +778,14 @@ class PDFReportGenerator(object):
 
                     data.append(mock_object)
 
-                header_names = [("Domain", "domain"),
-                                ("Bus", "bus"),
-                                ("Slot", "slot"),
-                                ("Func", "func"),
-                                ("Position", "position"),
-                                ("Subclass", "subclass"),
-                                ("Vendor", "vendor"),
-                                ("Device", "device")]
+                header_names = [("Domain", "domain", 10.0),
+                                ("Bus", "bus", 10.0),
+                                ("Slot", "slot", 10.0),
+                                ("Func", "func", 10.0),
+                                ("Position", "position", 10.0),
+                                ("Subclass", "subclass", 10.0),
+                                ("Vendor", "vendor", 10.0),
+                                ("Device", "device", 20.0)]
 
                 self.__config_report_helper("PCI Information", header_names, rpt, data)
 
@@ -947,7 +948,6 @@ class PDFReportGenerator(object):
 
         # 1. Pass: Generate pdf, structure is group_name -> device -> report,
         # generate table of contents and bookmark Headings to page number mapping
-
         if self.reports:
             page_num_headings[current_page_number] = []
             page_num_headings[current_page_number].append(("General Reports", 0))
@@ -1358,6 +1358,10 @@ def generate_pdf(_devices, pk_settings, pdf_report_generator):
 
         pdf_report_generator.finalize_pdf()
     except Exception as e:
+        import sys, traceback
+        print '-'*60
+        traceback.print_exc(file=sys.stdout)
+        print '-'*60
         logger.info("PDF Generation failed, error was: {}".format(str(e)))
         pdf_report_generator.buffer = BytesIO()
         pdf_report_generator.progress = 100
