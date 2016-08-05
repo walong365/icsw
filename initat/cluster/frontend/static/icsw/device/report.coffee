@@ -282,7 +282,7 @@ device_report_module = angular.module(
                                     if data.progress > $scope.struct.generate_progress
                                         $scope.struct.generate_progress = data.progress
 
-                                    if data.progress == 100
+                                    if data.progress == -1
                                         icswSimpleAjaxCall({
                                             url: ICSW_URLS.REPORT_GET_REPORT_PDF
                                             data:

@@ -248,7 +248,12 @@ class PDFReportGenerator(object):
                 self.report_settings[setting] = report_settings[setting]
 
     def __init__(self):
-        system_device = device.objects.filter(name="METADEV_system")[0]
+        system_device = None
+        for _device in device.objects.all():
+            if _device.is_cluster_device_group():
+                system_device = _device
+                break
+
         report_logo = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
 
         self.logo_width = None
@@ -1043,7 +1048,7 @@ class PDFReportGenerator(object):
         output_buffer = BytesIO()
         output_pdf.write(output_buffer)
         self.buffer = output_buffer
-        self.progress = 100
+        self.progress = -1
 
     def get_toc_pages(self, page_num_headings):
         style_sheet = getSampleStyleSheet()
@@ -1087,6 +1092,11 @@ class PDFReportGenerator(object):
 
         top_margin = 75
 
+        number_of_entries = 0
+        number_of_entries_generated = 0
+        for page_num in page_num_headings.keys():
+            number_of_entries += len(page_num_headings[page_num])
+
         for page_num in sorted(page_num_headings.keys()):
             for heading, indent in page_num_headings[page_num]:
                 if indent == 0:
@@ -1122,12 +1132,14 @@ class PDFReportGenerator(object):
                 can.drawString(width - 75, heigth - (top_margin + (15 * vertical_x)),
                                "{}".format(page_num + num_pages + 1))
                 vertical_x += 1
+                number_of_entries_generated += 1
                 if vertical_x > vertical_x_limit:
                     vertical_x = 1
-                    can.showPage()
-                    can.setFont("Helvetica", 14)
-                    t_head.wrapOn(can, 0, 0)
-                    t_head.drawOn(can, 25, heigth - 50)
+                    if number_of_entries_generated < number_of_entries:
+                        can.showPage()
+                        can.setFont("Helvetica", 14)
+                        t_head.wrapOn(can, 0, 0)
+                        t_head.drawOn(can, 25, heigth - 50)
 
         can.save()
         return _buffer
@@ -1160,30 +1172,42 @@ class UploadReportGfx(View):
     def post(self, request):
         _file = request.FILES[request.FILES.keys()[0]]
         if _file.content_type in ["image/png", "image/jpeg"]:
-            system_device = device.objects.filter(name="METADEV_system")[0]
-            report_logo_tmp = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
-            if report_logo_tmp:
-                report_logo_tmp = report_logo_tmp[0]
+            system_device = None
+            for _device in device.objects.all():
+                if _device.is_cluster_device_group():
+                    system_device = _device
+                    break
 
-            else:
-                report_logo_tmp = device_variable.objects.create(device=system_device, is_public=False,
-                                                                 name="__REPORT_LOGO__",
-                                                                 inherit=False,
-                                                                 protected=True,
-                                                                 var_type="b")
-            report_logo_tmp.val_blob = base64.b64encode(_file.read())
-            report_logo_tmp.save()
+            if system_device:
+                report_logo_tmp = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
+                if report_logo_tmp:
+                    report_logo_tmp = report_logo_tmp[0]
+
+                else:
+                    report_logo_tmp = device_variable.objects.create(device=system_device, is_public=False,
+                                                                     name="__REPORT_LOGO__",
+                                                                     inherit=False,
+                                                                     protected=True,
+                                                                     var_type="b")
+                report_logo_tmp.val_blob = base64.b64encode(_file.read())
+                report_logo_tmp.save()
 
 
 class GetReportGfx(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
-        system_device = device.objects.filter(name="METADEV_system")[0]
-        report_logo_tmp = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
-
         val_blob = ""
-        if report_logo_tmp:
-            val_blob = report_logo_tmp[0].val_blob
+        system_device = None
+        for _device in device.objects.all():
+            if _device.is_cluster_device_group():
+                system_device = _device
+                break
+
+        if system_device:
+            report_logo_tmp = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
+
+            if report_logo_tmp:
+                val_blob = report_logo_tmp[0].val_blob
 
         return HttpResponse(
             json.dumps(
@@ -1358,13 +1382,9 @@ def generate_pdf(_devices, pk_settings, pdf_report_generator):
 
         pdf_report_generator.finalize_pdf()
     except Exception as e:
-        import sys, traceback
-        print '-'*60
-        traceback.print_exc(file=sys.stdout)
-        print '-'*60
         logger.info("PDF Generation failed, error was: {}".format(str(e)))
         pdf_report_generator.buffer = BytesIO()
-        pdf_report_generator.progress = 100
+        pdf_report_generator.progress = -1
 
 
 def sizeof_fmt(num, suffix='B'):
