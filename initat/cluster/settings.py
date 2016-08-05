@@ -21,11 +21,11 @@
 #
 
 
-import glob
-import os
 import base64
-import sys
+import glob
 import hashlib
+import os
+import sys
 
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string

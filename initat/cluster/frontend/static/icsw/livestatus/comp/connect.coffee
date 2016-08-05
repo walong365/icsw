@@ -391,7 +391,7 @@ angular.module(
             _build_iter = (in_obj, parent) =>
                 for key, value of in_obj
                     node = @_create_and_add_element(parent, key)
-                    if node.depth == 0
+                    if node.__dp_depth == 0
                         @root_element = node
                         @root_element.check_for_emitter()
                     for _el in value
