@@ -101,34 +101,43 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.contents_viewer">
-    <div class="panel panel-default" ng-if="enabled">
+    <div class="panel panel-default" ng-if="struct.enabled">
         <div class="panel-heading">
             Contents of category {{ icsw_category.full_name }}
         </div>
-        <div class="panel-body" ng-if="data_ready">
-            <uib-alert type="warning" ng-if="enabled && icsw_category.num_refs == 0">
+        <div class="panel-body" ng-if="struct.data_ready">
+            <uib-alert type="warning" ng-if="struct.enabled && icsw_category.num_refs == 0">
                 This category is empty.
             </uib-alert>
-            <table st-table="entries" st-safe-src="contents" class="table table-condensed table-striped"
+            <table st-table="entries" st-safe-src="struct.contents" class="table table-condensed table-striped"
                    style="width: auto" ng-show="entries.length > 0">
                 <thead>
                     <tr>
                         <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            <span
+                                icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                possible-items-by-page="10,20,50,100,200,500,1000"
+                            ></span>
+                            <span ng-show="struct.selected">
+                                Selected: {{ struct.selected }}
+                                <icsw-tools-button size="xs" type="clear_selection" ng-click="clear_selection($event)"></icsw-tools-button>
+                                <icsw-tools-button size="xs" type="delete" ng-click="remove_selection($event)"></icsw-tools-button>
+                            </span>
                         </td>
                     </tr>
                     <tr>
+                        <th>Selected</th>
                         <th>Type</th>
-                        <th>SubType</th>
                         <th>Name</th>
                         <th>Info</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr ng-repeat="entry in entries">
+                        <td>
+                            <icsw-tools-yes-no flag="entry.selected" icsw-callback="change_selection"></icsw-tools-yes-no>
+                        </td>
                         <td>{{ entry.type }}</td>
-                        <td>{{ entry.subtype }}</td>
                         <td>{{ entry.name }}</td>
                         <td>{{ entry.info }}</td>
                     </tr>

@@ -40,7 +40,6 @@ angular.module(
 
         update: (new_list, ref_list, gfx_list, dml_list) ->
             # update with new data from server
-            REF_NAMES = ["config", "mon_check_command", "deviceselection", "device"]
             @list.length = 0
             for entry in new_list
                 @_init_ref_dict(entry, true)
