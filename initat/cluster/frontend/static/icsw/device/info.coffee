@@ -280,6 +280,14 @@ angular.module(
 
     icswAcessLevelService.install($scope)
 
+    _dereg_0 = $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), () ->
+        if $scope.struct.data_valid
+            create_info_fields($scope.edit_obj)
+    )
+
+    $scope.$on("$destroy", () ->
+        _dereg_0()
+    )
 
     $scope.do_init = () ->
         defer = $q.defer()
@@ -306,6 +314,7 @@ angular.module(
                 $scope.struct.data_valid = true
                 defer.resolve("done")
         )
+
         return defer.promise
 
     $scope.modify = () ->

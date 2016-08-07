@@ -25,6 +25,7 @@ import netifaces
 import socket
 
 from django.db.models import Q
+
 from initat.cluster.backbone.models import device_variable, config, device, config_blob, \
     config_bool, config_int, config_str, net_ip
 from initat.tools import config_tools, configfile, process_tools

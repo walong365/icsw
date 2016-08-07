@@ -238,15 +238,23 @@ angular.module(
         # console.log "gfx", new_val
     )
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
-        $scope.rebuild_dnt()
-    )
+    _dereg = [
+        $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
+            $scope.rebuild_dnt()
+        )
+        $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
+            $scope.rebuild_dnt()
+        )
+    ]
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
-        $scope.rebuild_dnt()
+    $scope.$on("$destroy", () ->
+        (_dr() for _dr in _dereg)
     )
 
     $scope.rebuild_dnt = () ->
+        if not $scope.struct.device_list_ready
+            # not initialised
+            return
         _ct = $scope.struct.loc_tree
         # build location list for google-maps
         _list = []

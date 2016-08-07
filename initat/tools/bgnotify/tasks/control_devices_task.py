@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,10 +20,10 @@
 import datetime
 
 from django.db.models import Q
+
 from initat.cluster.backbone.models import background_job_run, device, \
     cluster_timezone, SensorAction
 from initat.tools import server_command
-
 from .base import BGInotifyTask
 
 

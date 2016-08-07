@@ -1,14 +1,17 @@
-"""IP packets.
+"""
+
+IP packets.
+
 """
 
 # Copyright 1997, Corporation for National Research Initiatives
 # written by Jeremy Hylton, jeremy@cnri.reston.va.us
 
 
-import socket
-import struct
-import string
 import os
+import socket
+import string
+import struct
 
 from initat.tools import inet
 

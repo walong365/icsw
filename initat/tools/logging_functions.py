@@ -24,8 +24,8 @@
 
 import logging
 import os
-from initat.tools import logging_tools
 
+from initat.tools import logging_tools
 
 SEP_STR = "-" * 50
 

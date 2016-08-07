@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,9 +21,10 @@
 #
 """ mongodb connector object """
 
+import time
+
 import pymongo
 from pymongo.errors import PyMongoError
-import time
 
 from initat.cluster.backbone.models import config_str, config_int
 from initat.cluster.backbone.models.functions import memoize_with_expiry

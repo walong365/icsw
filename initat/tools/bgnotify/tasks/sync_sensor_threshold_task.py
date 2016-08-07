@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,7 +21,6 @@ import datetime
 
 from initat.cluster.backbone.models import background_job_run, cluster_timezone
 from initat.tools import logging_tools, config_tools, server_command
-
 from .base import BGInotifyTask
 
 

@@ -32,7 +32,7 @@ import sys
 import daemon
 
 
-#  do NOT but initat imports here (otherwise path manipulations below will not work)
+#  do NOT put initat imports here (otherwise path manipulations below will not work)
 
 
 def get_gid_from_name(group):
@@ -110,8 +110,9 @@ def main():
     sys.argv = _args
     setproctitle.setproctitle(opts.proctitle)
     main_module = importlib.import_module(opts.modname)
-    from initat.tools.io_stream_helper import io_stream
     if opts.daemonize:
+        # redirect IO-streams
+        from initat.tools.io_stream_helper import io_stream
         sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
         sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
     main_module.main()
