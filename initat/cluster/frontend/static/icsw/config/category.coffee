@@ -33,6 +33,7 @@ angular.module(
 (
     icswReactTreeConfig
 ) ->
+    {span} = React.DOM
     class icswConfigCategoryDisplayTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
@@ -57,20 +58,51 @@ angular.module(
             if cat.depth > 1
                 # r_info = "#{cat.full_name} (#{cat.name})"
                 r_info = "#{cat.name}"
-                if cat.num_refs
-                    r_info = "#{r_info} (refs=#{cat.num_refs})"
-                if is_loc
-                    if cat.physical
-                        r_info = "#{r_info}, physical"
-                    else
-                        r_info = "#{r_info}, structural"
-                    if cat.locked
-                        r_info = "#{r_info}, locked"
             else if cat.depth
                 r_info = cat.full_name
             else
                 r_info = "TOP"
             return r_info
+
+        get_post_view_element: (t_entry) ->
+            _r_obj = []
+            obj = t_entry.obj
+            is_loc = @location_re.test(obj.full_name)
+            if obj.depth > 1
+                if is_loc
+                    if obj.locked
+                        _r_obj.push(" ")
+                        _r_obj.push(
+                            span(
+                                {
+                                    key: "lock"
+                                    className: "fa fa-lock"
+                                    title: "is locked"
+                                }
+                            )
+                        )
+                        _r_obj.push(" ")
+                        _r_obj.push(
+                            span(
+                                {
+                                    key: "_type"
+                                    className: if obj.physical then "glyphicon glyphicon-globe" else "glyphicon glyphicon-th-list"
+                                    title: if obj.pyhiscal then "Physical entry" else "Structural entry"
+                                }
+                            )
+                        )
+                        _r_obj.push(" ")
+                if obj.num_refs
+                    _r_obj.push(
+                        span(
+                            {
+                                key: "num.refs"
+                                className: "label label-success"
+                            }
+                            "#{obj.num_refs} refs"
+                        )
+                    )
+            return _r_obj
 
         handle_context_menu: (event, entry) =>
             cat = entry.obj

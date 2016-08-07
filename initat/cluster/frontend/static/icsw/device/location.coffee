@@ -135,7 +135,13 @@ angular.module(
                             }
                         )
                         " "
-                        if cat.locked then span({key: "lock", className: "fa fa-lock", title: "is locked"}) else null
+                        if cat.locked then span(
+                            {
+                                key: "lock"
+                                className: "fa fa-lock"
+                                title: "is locked"
+                            }
+                        ) else null
                     ]
                 )
             else
