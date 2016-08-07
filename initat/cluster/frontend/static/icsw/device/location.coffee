@@ -403,7 +403,7 @@ angular.module(
                 _lost_f.push("#{_dml_lost_physical} physical")
             if _dml_lost_structural
                 _lost_f.push("#{_dml_lost_structural} structural")
-            _header =  "Modify will result in the lost of #{_lost_f.join(' and ')} placements on #{_gfx_lost} maps, continue ?"
+            _header =  "The outcome of this Modify will be the lost of #{_lost_f.join(' and ')} placements on #{_gfx_lost} maps, continue ?"
             icswToolsSimpleModalService(
                 _header
             ).then(

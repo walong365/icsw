@@ -564,11 +564,11 @@ angular.module(
 [
     "$scope", "$q", "icswConfigTreeService", "icswDeviceTreeService",
     "icswMonitoringBasicTreeService", "$timeout", "blockUI", "ICSW_URLS",
-    "icswSimpleAjaxCall", "icswConfigCategoryModifyCall",
+    "icswSimpleAjaxCall", "icswConfigCategoryModifyCall", "icswToolsSimpleModalService",
 (
     $scope, $q, icswConfigTreeService, icswDeviceTreeService,
     icswMonitoringBasicTreeService, $timeout, blockUI, ICSW_URLS,
-    icswSimpleAjaxCall, icswConfigCategoryModifyCall,
+    icswSimpleAjaxCall, icswConfigCategoryModifyCall, icswToolsSimpleModalService,
 ) ->
     $scope.struct = {
         # is enabled
@@ -579,6 +579,8 @@ angular.module(
         contents: []
         # number selected
         selected: 0
+        # selection supported (not for location due to missing DML handling code)
+        selection_supported: false
     }
 
     update = () ->
@@ -643,6 +645,7 @@ angular.module(
         defer.promise.then(
             (res_list) ->
                 $scope.struct.data_ready = true
+                $scope.struct.selection_supported = $scope.icsw_category.full_name.split("/")[1] != "location"
                 $scope.struct.contents.length = 0
                 for entry in _.orderBy(res_list, ["type", "name"], ["asc", "asc"])
                     $scope.struct.contents.push(entry)
@@ -657,14 +660,24 @@ angular.module(
         _update_selected()
 
     $scope.remove_selection= ($event) ->
-        blockUI.start()
-        icswConfigCategoryModifyCall(
-            (entry.idx for entry in $scope.struct.contents when entry.selected)
-            [$scope.icsw_category]
-            false
+        _sel_idx = (entry.idx for entry in $scope.struct.contents when entry.selected)
+        if _sel_idx.length > 1
+            _sel_str = "#{_sel_idx.length} selected objects"
+        else
+            _sel_str = "selected object"
+        icswToolsSimpleModalService(
+            "Really remote #{_sel_str} from category #{$scope.icsw_category.full_name} ?"
         ).then(
-            (res) ->
-                blockUI.stop()
+            (ok) ->
+                blockUI.start()
+                icswConfigCategoryModifyCall(
+                    _sel_idx
+                    [$scope.icsw_category]
+                    false
+                ).then(
+                    (res) ->
+                        blockUI.stop()
+                )
         )
 
     $scope.change_selection = ($event) ->

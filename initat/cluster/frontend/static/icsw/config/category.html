@@ -126,7 +126,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <th>Selected</th>
+                        <th ng-if="struct.selection_supported">Selected</th>
                         <th>Type</th>
                         <th>Name</th>
                         <th>Info</th>
@@ -134,7 +134,7 @@
                 </thead>
                 <tbody>
                     <tr ng-repeat="entry in entries">
-                        <td>
+                        <td ng-if="struct.selection_supported">
                             <icsw-tools-yes-no flag="entry.selected" icsw-callback="change_selection"></icsw-tools-yes-no>
                         </td>
                         <td>{{ entry.type }}</td>
