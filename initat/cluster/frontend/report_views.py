@@ -341,20 +341,6 @@ class PDFReportGenerator(object):
                     s_new += s[i]
                 _dict[key] = s_new
 
-        # position = 0
-        # for header_name, key, avail_width_percentage in header_names_list:
-        #     header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name))
-        #     detail_list.append(Element((position, 0), ("Helvetica", 6), key=key))
-        #
-        #     needed_width = stringWidth(header_name, "Helvetica", 12)
-        #
-        #     for _dict in data:
-        #         width = stringWidth(str(_dict[key]), "Helvetica", 6)
-        #         if width > needed_width:
-        #             needed_width = width
-        #
-        #     position += needed_width + 5
-
         header_list.append(Rule((0, 42), 7.5 * 90, thickness=2))
         detail_list.append(Rule((0, 0), 7.5 * 90, thickness=0.1))
 
@@ -371,7 +357,6 @@ class PDFReportGenerator(object):
         canvas = Canvas(_buffer, (72 * 11, 72 * 8.5))
 
         networks = network.objects.all()
-
         data = []
 
         for _network in networks:
@@ -388,10 +373,15 @@ class PDFReportGenerator(object):
 
             data.append(o)
 
+        data = sorted(data, key=lambda k: k['id'])
         if data:
             report.generate_bookmark("Networks")
 
             rpt = Report(data)
+            rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+                                              getvalue=lambda x: x['id'][0],
+                                              format=lambda x: "Networks starting with: {}".format(x)), ],
+                                     getvalue=lambda x: x["id"][0])]
 
             header_names = [("Identifier", "id", 10.0),
                             ("Network", "network", 10.0),
@@ -1180,8 +1170,8 @@ class PDFReportGenerator(object):
                 str_to_draw = "{}".format(page_number + 1)
                 can.drawString(25, 25, str_to_draw)
 
-                if (page_number - 2) in page_num_prefix_dict:
-                    str_to_draw = "({})".format(page_num_prefix_dict[page_number - 2])
+                if (page_number - toc_offset_num) in page_num_prefix_dict:
+                    str_to_draw = "({})".format(page_num_prefix_dict[page_number - toc_offset_num])
 
                     can.drawString(700, 25, str_to_draw)
 
