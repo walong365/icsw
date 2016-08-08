@@ -436,7 +436,7 @@ class StaticAssetEnrichment(object):
         _ref_list = StaticAsset.objects.filter(
             Q(device__in=pk_list)
         ).prefetch_related(
-            "StaticAssetValueField_set"
+            "staticassetfieldvalue_set"
         )
         _data = StaticAssetSerializer(_ref_list, many=True).data
         return _data

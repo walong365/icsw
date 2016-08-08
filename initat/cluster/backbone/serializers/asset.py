@@ -285,7 +285,7 @@ class StaticAssetFieldValueSerializer(serializers.ModelSerializer):
 
 
 class StaticAssetSerializer(serializers.ModelSerializer):
-    staticassetfieldvalue_set = StaticAssetFieldValueSerializer(many=True)
+    staticassetfieldvalue_set = StaticAssetFieldValueSerializer(many=True, read_only=True)
 
     class Meta:
         model = StaticAsset

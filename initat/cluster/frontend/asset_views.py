@@ -41,11 +41,11 @@ from rest_framework.response import Response
 
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
     AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
-    AssetBatch, StaticAssetTemplateField
+    AssetBatch, StaticAssetTemplateField, StaticAsset
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
-    StaticAssetTemplateFieldSerializer
+    StaticAssetTemplateFieldSerializer, StaticAssetSerializer
 
 try:
     from openpyxl import Workbook
@@ -936,3 +936,22 @@ def _generate_csv_entry_for_assetrun(ar, row_writer_func):
             row.append(str(display))
 
             row_writer_func(row)
+
+
+class DeviceStaticAssetViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
+    def create_asset(self, request):
+        new_asset = StaticAssetSerializer(data=request.data)
+        if new_asset.is_valid():
+            asset = new_asset.save()
+            asset.add_fields()
+            return Response(StaticAssetSerializer(asset).data)
+        else:
+            raise ValidationError(
+                "cannot create new StaticAsset"
+            )
+
+    @method_decorator(login_required)
+    def delete_asset(self, request, **kwargs):
+        StaticAsset.objects.get(Q(idx=kwargs["pk"])).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)

@@ -689,11 +689,13 @@ device_variable_module = angular.module(
 [
     "$scope", "icswDeviceVariableScopeTreeService", "icswDeviceTreeService", "$q",
     "icswDeviceTreeHelperService", "icswComplexModalService", "$compile", "$templateCache",
-    "icswStaticAssetTemplateTreeService",
+    "icswStaticAssetTemplateTreeService", "blockUI", "ICSW_URLS", "Restangular",
+    "icswUserService", "icswToolsSimpleModalService",
 (
     $scope, icswDeviceVariableScopeTreeService, icswDeviceTreeService, $q,
     icswDeviceTreeHelperService, icswComplexModalService, $compile, $templateCache,
-    icswStaticAssetTemplateTreeService,
+    icswStaticAssetTemplateTreeService, blockUI, ICSW_URLS, Restangular,
+    icswUserService, icswToolsSimpleModalService,
 ) ->
     $scope.struct = {
         # device tree
@@ -708,58 +710,89 @@ device_variable_module = angular.module(
         device: undefined
         # device local asset struct tree
         asset_struct: undefined
+        # user
+        user: undefined
     }
+
+    _reload_assets = () ->
+        $q.all(
+            [
+                icswDeviceVariableScopeTreeService.load($scope.$id)
+                $scope.struct.device_tree.enrich_devices(
+                    $scope.struct.helper
+                    [
+                        "variable_info",
+                        "static_asset_info",
+                    ]
+                    true
+                )
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.dvs_tree = data[0]
+                _asset_struct = {}
+                for key_list in $scope.struct.asset_tree.static_assets
+                    _cs = {
+                        used: []
+                        unused: []
+                    }
+                    _asset_struct[key_list[0]] = _cs
+                    # build lut, template -> asset
+                    _asset_lut = {}
+                    for _as in $scope.struct.device.staticasset_set
+                        _asset_lut[_as.static_asset_template] = _as
+                        _as.$$static_asset_template = $scope.struct.asset_tree.lut[_as.static_asset_template]
+                    for _asset in key_list[1]
+                        if _asset.idx of _asset_lut
+                            _cs.used.push(_asset_lut[_asset.idx])
+                        else
+                            _cs.unused.push(_asset)
+                $scope.struct.asset_struct = _asset_struct
+        )
+
     $q.all(
         [
             icswDeviceTreeService.load($scope.id)
             icswStaticAssetTemplateTreeService.load($scope.$id)
+            icswUserService.load($scope.$id)
         ]
     ).then(
         (data) ->
             $scope.struct.device = $scope.device
             $scope.struct.device_tree = data[0]
             $scope.struct.asset_tree = data[1]
+            $scope.struct.user = data[2]
+
             $scope.struct.helper = icswDeviceTreeHelperService.create($scope.struct.device_tree, [$scope.struct.device])
-            $q.all(
-                [
-                    icswDeviceVariableScopeTreeService.load($scope.$id)
-                    $scope.struct.device_tree.enrich_devices(
-                        $scope.struct.helper
-                        [
-                            "variable_info",
-                            "static_asset_info",
-                        ]
-                    )
-                ]
-            ).then(
-                (data) ->
-                    $scope.struct.dvs_tree = data[0]
-                    _asset_struct = {}
-                    for key_list in $scope.struct.asset_tree.static_assets
-                        _cs = {
-                            used: []
-                            unused: []
-                        }
-                        _asset_struct[key_list[0]] = _cs
-                        _asset_pks = (_as.static_asset_template for _as in $scope.struct.device.staticasset_set)
-                        for _asset in key_list[1]
-                            if _asset.idx in _asset_pks
-                                _csused.push(_asset)
-                            else
-                                _cs.unused.push(_asset)
-                    $scope.struct.asset_struct = _asset_struct
-            )
+            _reload_assets()
     )
+
+    $scope.delete_asset = ($event, asset) ->
+        icswToolsSimpleModalService("Really delete static asset #{asset.$$static_asset_template.name} ?").then(
+            (ok) ->
+                blockUI.start()
+                Restangular.restangularizeElement(null, asset, ICSW_URLS.ASSET_DEVICE_ASSET_DETAIL.slice(1).slice(0, -2))
+                asset.remove().then(
+                    (del) ->
+                        _reload_assets()
+                        blockUI.stop()
+                    (error) ->
+                        blockUI.stop()
+                )
+        )
 
     $scope.add_assets = ($event, asset_type) ->
         sub_scope = $scope.$new(true)
         sub_scope.asset_tree = $scope.struct.asset_tree
         unset_list = []
+        asset_list = []
         for key, value of $scope.struct.asset_struct
             if key == asset_type
-                if value.unused.length
-                    unset_list.push([key, value.unused])
-                    for _us in value.unused
+                # helper field for faster access
+                asset_list = value.unused
+                if asset_list.length
+                    unset_list.push([key, asset_list])
+                    for _us in asset_list
                         # helper field
                         _us.$$create = false
         sub_scope.unset_list = unset_list
@@ -771,7 +804,29 @@ device_variable_module = angular.module(
                 closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    d.resolve("done")
+                    _to_add = []
+                    for _us in asset_list
+                        if _us.$$create
+                            _to_add.push(_us)
+                    if _to_add.length
+                        $q.all(
+                            (
+                                Restangular.all(ICSW_URLS.ASSET_DEVICE_ASSET_CALL.slice(1)).post(
+                                    {
+                                        device: $scope.struct.device.idx
+                                        static_asset_template: _us.idx
+                                        create_user: $scope.struct.user.user.idx
+                                    }
+                                )
+                            ) for _us in _to_add
+                        ).then(
+                            (new_assets) ->
+                                _reload_assets()
+                                blockUI.stop()
+                                d.resolve("done")
+                        )
+                    else
+                        d.resolve("nothing to do")
                     return d.promise
                 cancel_callback: (modal) ->
                     # dbu.restore_backup($scope.edit_obj)
