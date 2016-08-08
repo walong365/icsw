@@ -175,6 +175,16 @@ class RowCollector(object):
             key = str(_row[11])
             value = str(_row[12])
 
+            o = {
+                'handle': handle,
+                'dmi_type': dmi_type,
+                'header': header,
+                'key': key,
+                'value': value
+            }
+
+            self.rows_dict.append(o)
+
         elif self.current_asset_type == AssetType.PCI:
             domain = _row[8]
             bus = _row[9]
@@ -256,6 +266,7 @@ class PDFReportGenerator(object):
 
         report_logo = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
 
+        self.last_poll_time = None
         self.logo_width = None
         self.logo_height = None
         self.logo_buffer = BytesIO()
@@ -1150,6 +1161,11 @@ class PDFReportGenerator(object):
         num_pages = existing_pdf.getNumPages()
 
         for page_number in range(num_pages):
+            # this loop might take a long time -> kill this loop if no polling happend in the last few seconds (i.e the
+            # user closed the browser windows or switched to a different view
+            if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
+                break
+
             self.progress = int((page_number / float(num_pages)) * 100)
             page = existing_pdf.getPage(page_number)
 
@@ -1229,7 +1245,10 @@ class GetProgress(View):
 
         progress = 0
         if report_generator_id in REPORT_GENERATORS:
-            progress = REPORT_GENERATORS[report_generator_id].progress
+            report_generator = REPORT_GENERATORS[report_generator_id]
+            progress = report_generator.progress
+
+            report_generator.last_poll_time = datetime.datetime.now()
 
         return HttpResponse(
             json.dumps(
