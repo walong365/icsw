@@ -1010,7 +1010,7 @@ class PDFReportGenerator(object):
 
                         current_page_number += _report.number_of_pages
 
-        toc_buffer = self.get_toc_pages(page_num_headings)
+        toc_buffer, page_num_prefix_dict = self.__get_toc_pages(page_num_headings)
         toc_pdf = PdfFileReader(toc_buffer)
         toc_pdf_page_num = toc_pdf.getNumPages()
 
@@ -1019,7 +1019,7 @@ class PDFReportGenerator(object):
 
         # 2. Pass: Add page numbers
         output_pdf.write(output_buffer)
-        output_pdf = self.add_page_numbers(output_buffer, toc_pdf_page_num)
+        output_pdf = self.__add_page_numbers(output_buffer, toc_pdf_page_num, page_num_prefix_dict)
 
         # 3. Pass: Generate Bookmarks
         current_page_number = toc_pdf_page_num
@@ -1061,7 +1061,7 @@ class PDFReportGenerator(object):
         self.buffer = output_buffer
         self.progress = -1
 
-    def get_toc_pages(self, page_num_headings):
+    def __get_toc_pages(self, page_num_headings):
         style_sheet = getSampleStyleSheet()
 
         paragraph_header = Paragraph('<font face="times-bold" size="22">Contents</font>', style_sheet["BodyText"])
@@ -1108,6 +1108,8 @@ class PDFReportGenerator(object):
         for page_num in page_num_headings.keys():
             number_of_entries += len(page_num_headings[page_num])
 
+        page_num_prefix_dict = {}
+
         for page_num in sorted(page_num_headings.keys()):
             for heading, indent in page_num_headings[page_num]:
                 if indent == 0:
@@ -1127,6 +1129,8 @@ class PDFReportGenerator(object):
                 else:
                     prefix = "{}.{}.{}.{}".format(prefix_0 - 1, prefix_1 - 1, prefix_2 - 1, prefix_3)
                     prefix_3 += 1
+
+                page_num_prefix_dict[page_num] = prefix
 
                 heading_str = "{} {}".format(prefix, heading)
 
@@ -1153,9 +1157,9 @@ class PDFReportGenerator(object):
                         t_head.drawOn(can, 25, heigth - 50)
 
         can.save()
-        return _buffer
+        return (_buffer, page_num_prefix_dict)
 
-    def add_page_numbers(self, pdf_buffer, toc_offset_num):
+    def __add_page_numbers(self, pdf_buffer, toc_offset_num, page_num_prefix_dict):
         output = PdfFileWriter()
         existing_pdf = PdfFileReader(pdf_buffer)
         num_pages = existing_pdf.getNumPages()
@@ -1172,7 +1176,15 @@ class PDFReportGenerator(object):
             if page_number >= toc_offset_num:
                 page_num_buffer = BytesIO()
                 can = Canvas(page_num_buffer, pagesize=landscape(letter))
-                can.drawString(25, 25, "{}".format(page_number + 1))
+
+                str_to_draw = "{}".format(page_number + 1)
+                can.drawString(25, 25, str_to_draw)
+
+                if (page_number - 2) in page_num_prefix_dict:
+                    str_to_draw = "({})".format(page_num_prefix_dict[page_number - 2])
+
+                    can.drawString(700, 25, str_to_draw)
+
                 can.save()
                 page_num_buffer.seek(0)
                 page_num_pdf = PdfFileReader(page_num_buffer)
