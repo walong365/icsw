@@ -503,6 +503,22 @@ device_report_module = angular.module(
                     return "btn btn-xs btn-default"
             scope.toggle_dev_sel = () ->
                 device.$selected_for_report = !device.$selected_for_report
+
+                group_device = undefined
+
+                group_selected = false
+
+                for entry in scope.struct.devices
+                    if entry.device_group == device.device_group
+                        if entry.is_meta_device == true
+                            group_device = entry
+                        else
+                            group_selected = group_selected || entry.$selected_for_report
+
+
+                if group_device != undefined
+                    group_device.$selected_for_report = group_selected
+
             scope.change_dg_sel = () ->
                 tree = icswDeviceTreeService.current()
                 selected = false
