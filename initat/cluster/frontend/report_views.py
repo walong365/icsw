@@ -517,8 +517,12 @@ class PDFReportGenerator(object):
         elements.append(Spacer(1, 30))
         elements.append(t_body)
 
-        doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
-        report.add_to_report(_buffer)
+        try:
+            doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
+            report.add_to_report(_buffer)
+        except Exception as e:
+            print e
+
 
     def generate_report_for_asset_batch(self, asset_batch, report):
         _buffer = BytesIO()
@@ -601,7 +605,10 @@ class PDFReportGenerator(object):
 
                 from initat.cluster.backbone.models import asset
 
-                packages = asset.get_packages_for_ar(ar)
+                try:
+                    packages = asset.get_packages_for_ar(ar)
+                except Exception:
+                    packages = []
 
                 report.generate_bookmark("Installed Packages")
 
@@ -1010,6 +1017,7 @@ class PDFReportGenerator(object):
         # 2. Pass: Add page numbers
         output_pdf.write(output_buffer)
         output_pdf = self.__add_page_numbers(output_buffer, toc_pdf_page_num, page_num_prefix_dict)
+        self.progress = 100
 
         # 3. Pass: Generate Bookmarks
         current_page_number = toc_pdf_page_num
@@ -1147,7 +1155,7 @@ class PDFReportGenerator(object):
                         t_head.drawOn(can, 25, heigth - 50)
 
         can.save()
-        return (_buffer, page_num_prefix_dict)
+        return _buffer, page_num_prefix_dict
 
     def __add_page_numbers(self, pdf_buffer, toc_offset_num, page_num_prefix_dict):
         output = PdfFileWriter()
@@ -1160,7 +1168,7 @@ class PDFReportGenerator(object):
             if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
                 break
 
-            self.progress = int((page_number / float(num_pages)) * 100)
+            self.progress = int((page_number / float(num_pages)) * 90) + 10
             page = existing_pdf.getPage(page_number)
 
             if page_number >= toc_offset_num:
@@ -1398,11 +1406,23 @@ def generate_pdf(_devices, pk_settings, pdf_report_generator):
         if general_settings["network_report_overview_module_selected"]:
             pdf_report_generator.generate_network_report()
 
+        idx = 1
         for _device in _devices:
+            if pdf_report_generator.last_poll_time and \
+                            (datetime.datetime.now() - pdf_report_generator.last_poll_time).seconds > 5:
+                return
             pdf_report_generator.generate_device_report(_device, pk_settings[_device.idx])
+            pdf_report_generator.progress = int((float(idx) / len(_devices)) * 10)
+            idx += 1
+
+        pdf_report_generator.progress = 10
 
         pdf_report_generator.finalize_pdf()
     except Exception as e:
+        import traceback, sys
+        print '-'*60
+        traceback.print_exc(file=sys.stdout)
+        print '-'*60
         logger.info("PDF Generation failed, error was: {}".format(str(e)))
         pdf_report_generator.buffer = BytesIO()
         pdf_report_generator.progress = -1
