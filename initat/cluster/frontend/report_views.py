@@ -44,8 +44,9 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.lib.pagesizes import landscape, letter
 from reportlab.lib.styles import getSampleStyleSheet
 
-from PollyReports import Element, Rule, Report, Band
+from PollyReports import Element, Rule, Band
 from PollyReports import Image as PollyReportsImage
+from PollyReports import Report as PollyReportsReport
 
 from PyPDF2 import PdfFileWriter, PdfFileReader
 
@@ -211,51 +212,73 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
 
+class GenericReport(object):
+    def __init__(self):
+        self.bookmarks = []
+        self.number_of_pages = 0
+        self.pdf_buffers = []
+
+    def generate_bookmark(self, name):
+        bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages)
+        self.bookmarks.append(bookmark)
+        return bookmark
+
+    def add_to_report(self, _buffer):
+        self.pdf_buffers.append(_buffer)
+
+    def increase_page_count(self, canvas, doc):
+        self.number_of_pages += 1
+
+class DeviceReport(GenericReport):
+    def __init__(self, _device, report_settings):
+        super(DeviceReport, self).__init__()
+
+        self.device = _device
+
+        # default settings
+        self.report_settings = {
+            "packages_selected": True,
+            "licenses_selected": True,
+            "installed_updates_selected": True,
+            "avail_updates_selected": True,
+            "hardware_report_selected": True,
+            "lstopo_report_selected": True,
+            "process_report_selected": True,
+            "dmi_report_selected": True,
+            "pci_report_selected": True
+        }
+
+        # update default settings with new settings
+        for setting in report_settings:
+            self.report_settings[setting] = report_settings[setting]
+
+    def module_selected(self, assetrun):
+        if AssetType(assetrun.run_type) == AssetType.PACKAGE:
+            return self.report_settings["packages_selected"]
+        elif AssetType(assetrun.run_type) == AssetType.HARDWARE:
+            return self.report_settings["lstopo_report_selected"]
+        elif AssetType(assetrun.run_type) == AssetType.LICENSE:
+            return self.report_settings["licenses_selected"]
+        elif AssetType(assetrun.run_type) == AssetType.UPDATE:
+            return self.report_settings["installed_updates_selected"]
+        elif AssetType(assetrun.run_type) == AssetType.SOFTWARE_VERSION:
+            return True
+        elif AssetType(assetrun.run_type) == AssetType.PROCESS:
+            return self.report_settings["process_report_selected"]
+        elif AssetType(assetrun.run_type) == AssetType.PENDING_UPDATE:
+            return self.report_settings["avail_updates_selected"]
+        elif AssetType(assetrun.run_type) == AssetType.DMI:
+            return self.report_settings["dmi_report_selected"]
+        elif AssetType(assetrun.run_type) == AssetType.PCI:
+            return self.report_settings["pci_report_selected"]
+        elif AssetType(assetrun.run_type) == AssetType.PRETTYWINHW:
+            return self.report_settings["hardware_report_selected"]
+
 class PDFReportGenerator(object):
     class Bookmark(object):
         def __init__(self, name, pagenum):
             self.name = name
             self.pagenum = pagenum
-
-    class Report(object):
-        def __init__(self):
-            self.bookmarks = []
-            self.number_of_pages = 0
-            self.pdf_buffers = []
-
-        def generate_bookmark(self, name):
-            bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages)
-            self.bookmarks.append(bookmark)
-            return bookmark
-
-        def add_to_report(self, _buffer):
-            self.pdf_buffers.append(_buffer)
-
-        def increase_page_count(self, canvas, doc):
-            self.number_of_pages += 1
-
-    class DeviceReport(Report):
-        def __init__(self, _device, report_settings):
-            super(PDFReportGenerator.DeviceReport, self).__init__()
-
-            self.device = _device
-
-            # default settings
-            self.report_settings = {
-                "packages_selected": True,
-                "licenses_selected": True,
-                "installed_updates_selected": True,
-                "avail_updates_selected": True,
-                "hardware_report_selected": True,
-                "lstopo_report_selected": True,
-                "process_report_selected": True,
-                "dmi_report_selected": True,
-                "pci_report_selected": True
-            }
-
-            # update default settings with new settings
-            for setting in report_settings:
-                self.report_settings[setting] = report_settings[setting]
 
     def __init__(self):
         system_device = None
@@ -359,7 +382,7 @@ class PDFReportGenerator(object):
     def generate_network_report(self):
         from initat.cluster.backbone.models import network
 
-        report = PDFReportGenerator.Report()
+        report = GenericReport()
 
         _buffer = BytesIO()
         # (72 * 11, 72 * 8.5) --> letter size
@@ -386,7 +409,7 @@ class PDFReportGenerator(object):
         if data:
             report.generate_bookmark("Networks")
 
-            rpt = Report(data)
+            rpt = PollyReportsReport(data)
             rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
                                               getvalue=lambda x: x['id'][0],
                                               format=lambda x: "Networks starting with: {}".format(x)), ],
@@ -410,7 +433,7 @@ class PDFReportGenerator(object):
             self.reports.append(report)
 
     def generate_device_report(self, _device, report_settings):
-        report = PDFReportGenerator.DeviceReport(_device, report_settings)
+        report = DeviceReport(_device, report_settings)
         self.device_reports.append(report)
 
         # create generic overview page
@@ -610,7 +633,7 @@ class PDFReportGenerator(object):
 
                 report.generate_bookmark("Installed Updates")
 
-                rpt = Report(data)
+                rpt = PollyReportsReport(data)
 
                 if data:
                     rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
@@ -642,7 +665,7 @@ class PDFReportGenerator(object):
 
                 report.generate_bookmark("Available Licenses")
 
-                rpt = Report(data)
+                rpt = PollyReportsReport(data)
 
                 if not data:
                     mock_object = {
@@ -676,7 +699,7 @@ class PDFReportGenerator(object):
                 data = [package.get_as_row() for package in packages]
                 data = sorted(data, key=lambda k: k['package_name'])
 
-                rpt = Report(data)
+                rpt = PollyReportsReport(data)
 
                 if data:
                     rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
@@ -713,7 +736,7 @@ class PDFReportGenerator(object):
 
                 report.generate_bookmark("Available Updates")
 
-                rpt = Report(data)
+                rpt = PollyReportsReport(data)
 
                 if data:
                     rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
@@ -746,7 +769,7 @@ class PDFReportGenerator(object):
 
                 report.generate_bookmark("Lstopo Information")
 
-                rpt = Report(data)
+                rpt = PollyReportsReport(data)
 
                 if not data:
                     mock_object = {
@@ -774,7 +797,7 @@ class PDFReportGenerator(object):
 
                 report.generate_bookmark("Process Information")
 
-                rpt = Report(data)
+                rpt = PollyReportsReport(data)
 
                 if data:
                     rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
@@ -804,7 +827,7 @@ class PDFReportGenerator(object):
 
                 report.generate_bookmark("DMI Information")
 
-                rpt = Report(data)
+                rpt = PollyReportsReport(data)
 
                 if not data:
                     mock_object = {
@@ -835,7 +858,7 @@ class PDFReportGenerator(object):
 
                 report.generate_bookmark("PCI Information")
 
-                rpt = Report(data)
+                rpt = PollyReportsReport(data)
 
                 if not data:
                     mock_object = {
@@ -1395,22 +1418,29 @@ class XlsxReportGenerator(object):
         workbook = Workbook()
         workbook.remove_sheet(workbook.active)
 
-        len(self.devices)
-
         idx = 1
         for _device in self.devices:
+            device_report = DeviceReport(_device, self.settings[_device.idx])
             if _device.assetbatch_set.all():
                 asset_batch = sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)[-1]
                 asset_runs = asset_batch.assetrun_set.all()
 
                 for ar in asset_runs:
+                    if not device_report.module_selected(ar):
+                        continue
                     sheet = workbook.create_sheet()
-                    sheet.title = _device.full_name + "_" + AssetType(ar.run_type).name
+                    _title = _device.full_name + " " + AssetType(ar.run_type).name
+
+                    # xlsx limited to max 31 chars in title
+                    if len(_title) > 31:
+                        _title = _title[:31]
+
+                    sheet.title = _title
 
                     generate_csv_entry_for_assetrun(ar, sheet.append)
                     data_generated = True
 
-            self.progress = int(round((idx / len(self.devices)) * 100))
+            self.progress = int(round((float(idx) / len(self.devices)) * 100))
             idx += 1
 
         if data_generated:
