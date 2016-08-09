@@ -233,16 +233,17 @@
                         <div class="panel-body" style="padding: 6px 15px">
                             <div class="input-group">
                                 <br/><label class="control-label">Generate Report</label><br/>
-                                <button class="btn btn-primary dropdown-toggle" ng-click="downloadPdf()" type="button" ng-disabled="struct.generate_button_disabled">Generate</button>
-                                <!-- <div class="dropdown">
-                                    <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown">
+                                <!-- <button class="btn btn-primary dropdown-toggle" ng-click="downloadPdf()" type="button" ng-disabled="struct.generate_button_disabled">Generate</button> -->
+                                <div class="dropdown">
+                                    <button class="btn btn-primary dropdown-toggle" type="button" data-toggle="dropdown" ng-disabled="struct.generate_button_disabled">
                                         Generate Report
                                         <span class="caret"></span>
                                     </button>
                                     <ul class="dropdown-menu">
-                                        <li><a href="" ng-click='downloadPdf()'>as PDF</a></li>
+                                        <li><a href="" ng-click='generate_report(0)'>as PDF</a></li>
+                                        <li><a href="" ng-click='generate_report(1)'>as xlsx</a></li>
                                     </ul>
-                                </div> -->
+                                </div>
 
                                 <br/>
 

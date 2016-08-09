@@ -259,7 +259,7 @@ class AssetRunsViewSet(viewsets.ViewSet):
             )
         else:
             queryset = AssetRun.objects.all()
-        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=2)))
+        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=30)))
         queryset = queryset.order_by(
             # should be created, FIXME later
             "-idx",

@@ -78,6 +78,28 @@ device_report_module = angular.module(
         network_report_overview_module_selected: false
     }
 
+    b64_to_blob = (b64_data, content_type, slice_size) ->
+        content_type = content_type or ''
+        slice_size = slice_size or 512
+        byte_characters = atob(b64_data)
+        byte_arrays = []
+        offset = 0
+        while offset < byte_characters.length
+            slice = byte_characters.slice(offset, offset + slice_size)
+            byte_numbers = new Array(slice.length)
+            i = 0
+
+            while i < slice.length
+                byte_numbers[i] = slice.charCodeAt(i)
+                i++
+
+            byte_array = new Uint8Array(byte_numbers)
+            byte_arrays.push byte_array
+            offset += slice_size
+
+        blob = new Blob(byte_arrays, type: content_type)
+        return blob
+
     $scope.uploading = false
     $scope.percentage = 0
     $scope.getPercentage = () ->
@@ -230,7 +252,7 @@ device_report_module = angular.module(
     $scope.get_tr_class = (obj) ->
         return if obj.is_meta_device then "success" else ""
 
-    $scope.downloadPdf = ->
+    $scope.generate_report = (report_type) ->
         $scope.struct.generate_button_disabled = true
         $scope.struct.report_download_url = undefined
         $scope.struct.report_generating = true
@@ -260,8 +282,13 @@ device_report_module = angular.module(
                 }
                 settings.push(setting)
 
+        if (report_type == 0)
+            url_to_use = ICSW_URLS.REPORT_GENERATE_REPORT_PDF
+        else
+            url_to_use = ICSW_URLS.REPORT_GENERATE_REPORT_XLSX
+
         icswSimpleAjaxCall({
-            url: ICSW_URLS.REPORT_GENERATE_REPORT_PDF
+            url: url_to_use
             data:
                 pks: settings
             dataType: 'json'
@@ -277,22 +304,26 @@ device_report_module = angular.module(
                             dataType: 'json'
                         }).then(
                             (data) ->
-                                console.log(data)
                                 if $scope.struct.report_generating
                                     if data.progress > $scope.struct.generate_progress
                                         $scope.struct.generate_progress = data.progress
 
                                     if data.progress == -1
                                         icswSimpleAjaxCall({
-                                            url: ICSW_URLS.REPORT_GET_REPORT_PDF
+                                            url: ICSW_URLS.REPORT_GET_REPORT_DATA
                                             data:
                                                 id: result.id
                                             dataType: 'json'
                                         }).then(
                                             (result) ->
-                                                if result.pdf
+                                                if result.hasOwnProperty("pdf")
                                                     $scope.struct.report_download_name = "Report.pdf"
-                                                    blob = new Blob([ atob(result.pdf) ], { type : 'application/pdf' })
+                                                    blob = b64_to_blob(result.pdf, 'application/pdf')
+                                                    $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+
+                                                if result.hasOwnProperty("xlsx")
+                                                    $scope.struct.report_download_name = "Report.xlsx"
+                                                    blob = b64_to_blob(result.xlsx, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                                                     $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
 
                                                 $scope.struct.report_generating = false

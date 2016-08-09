@@ -299,6 +299,14 @@ class PDFReportGenerator(object):
         self.progress = 0
         self.buffer = None
 
+    def get_report_data(self):
+        if self.buffer:
+            return self.buffer.getvalue()
+        return ""
+
+    def get_report_type(self):
+        return "pdf"
+
     def __get_logo_helper(self, value):
         _tmp_file = tempfile.NamedTemporaryFile()
         self.logo_buffer.seek(0)
@@ -576,7 +584,6 @@ class PDFReportGenerator(object):
             traceback.print_exc(file=sys.stdout)
             print '-' * 60
 
-
     def generate_report_for_asset_batch(self, asset_batch, report):
         _buffer = BytesIO()
 
@@ -660,7 +667,8 @@ class PDFReportGenerator(object):
 
                 try:
                     packages = asset.get_packages_for_ar(ar)
-                except Exception:
+                except Exception as e:
+                    logger.info("PDF generation for packages failed, error was: {}".format(str(e)))
                     packages = []
 
                 report.generate_bookmark("Installed Packages")
@@ -1322,68 +1330,34 @@ class GetProgress(View):
         )
 
 
-class GetReportPdf(View):
+class GetReportData(View):
     @method_decorator(login_required)
     def post(self, request):
         report_generator_id = int(request.POST["id"])
 
-        data = ""
+        report_data = ""
+        report_type = "unknown"
 
         if report_generator_id in REPORT_GENERATORS:
-            data = REPORT_GENERATORS[report_generator_id].buffer.getvalue()
+            report_generator = REPORT_GENERATORS[report_generator_id]
+            report_data = report_generator.get_report_data()
+            report_type = report_generator.get_report_type()
             del REPORT_GENERATORS[report_generator_id]
 
-        pdf_b64 = base64.b64encode(data)
+        data_b64 = base64.b64encode(report_data)
 
         return HttpResponse(
             json.dumps(
                 {
-                    'pdf': pdf_b64
+                    report_type: data_b64
                 }
             )
         )
 
-
 class GenerateReportPdf(View):
     @method_decorator(login_required)
     def post(self, request):
-        current_time = datetime.datetime.now()
-        # remove references of old report generators
-        for report_generator_id in REPORT_GENERATORS.keys():
-            if (current_time - REPORT_GENERATORS[report_generator_id].timestamp).seconds > REPORT_TIMEOUT_SECONDS:
-                del REPORT_GENERATORS[report_generator_id]
-
-        settings_dict = {}
-
-        for key in request.POST.iterkeys():
-            valuelist = request.POST.getlist(key)
-            # look for pk in key
-
-            index = key.split("[")[1][:-1]
-            if index not in settings_dict:
-                settings_dict[index] = {}
-
-            if key[::-1][:4] == ']kp[':
-                settings_dict[index]["pk"] = int(valuelist[0])
-            else:
-                value = True if valuelist[0] == "true" else False
-
-                settings_dict[index][key.split("[")[-1][:-1]] = value
-
-        pk_settings = {}
-
-        for setting_index in settings_dict:
-            pk = settings_dict[setting_index]['pk']
-            pk_settings[pk] = {}
-
-            for key in settings_dict[setting_index]:
-                if key != 'pk':
-                    pk_settings[pk][key] = settings_dict[setting_index][key]
-
-        _devices = []
-        for _device in device.objects.filter(idx__in=[int(pk) for pk in pk_settings.keys()]):
-            if not _device.is_meta_device:
-                _devices.append(_device)
+        pk_settings, _devices, current_time = _init_report_settings(request)
 
         pdf_report_generator = PDFReportGenerator()
         pdf_report_generator.timestamp = current_time
@@ -1399,6 +1373,68 @@ class GenerateReportPdf(View):
             )
         )
 
+from openpyxl import Workbook
+from openpyxl.writer.excel import save_virtual_workbook
+
+class XlsxReportGenerator(object):
+    def __init__(self, settings, _devices):
+        self.data = ""
+        self.settings = settings
+        self.devices = _devices
+        self.progress = 0
+
+    def get_report_data(self):
+        return self.data
+
+    def get_report_type(self):
+        return "xlsx"
+
+    def generate_report(self):
+        data_generated = False
+
+        workbook = Workbook()
+        workbook.remove_sheet(workbook.active)
+
+        len(self.devices)
+
+        idx = 1
+        for _device in self.devices:
+            if _device.assetbatch_set.all():
+                asset_batch = sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)[-1]
+                asset_runs = asset_batch.assetrun_set.all()
+
+                for ar in asset_runs:
+                    sheet = workbook.create_sheet()
+                    sheet.title = _device.full_name + "_" + AssetType(ar.run_type).name
+
+                    generate_csv_entry_for_assetrun(ar, sheet.append)
+                    data_generated = True
+
+            self.progress = int(round((idx / len(self.devices)) * 100))
+            idx += 1
+
+        if data_generated:
+            self.data = save_virtual_workbook(workbook)
+        self.progress = -1
+
+class GenerateReportXlsx(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        pk_settings, _devices, current_time = _init_report_settings(request)
+
+        xlsx_report_generator = XlsxReportGenerator(pk_settings, _devices)
+        xlsx_report_generator.timestamp = current_time
+        REPORT_GENERATORS[id(xlsx_report_generator)] = xlsx_report_generator
+
+        Thread(target=_generate_report, args=[xlsx_report_generator]).start()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'id': id(xlsx_report_generator)
+                }
+            )
+        )
 
 class ReportDataAvailable(View):
     @method_decorator(login_required)
@@ -1479,6 +1515,9 @@ def generate_pdf(_devices, pk_settings, pdf_report_generator):
         logger.info("PDF Generation failed, error was: {}".format(str(e)))
         pdf_report_generator.buffer = BytesIO()
         pdf_report_generator.progress = -1
+
+def _generate_report(report_generator):
+    report_generator.generate_report()
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -1762,3 +1801,46 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
             row.append(str(display))
 
             row_writer_func(row)
+
+
+
+def _init_report_settings(request):
+    current_time = datetime.datetime.now()
+    # remove references of old report generators
+    for report_generator_id in REPORT_GENERATORS.keys():
+        if (current_time - REPORT_GENERATORS[report_generator_id].timestamp).seconds > REPORT_TIMEOUT_SECONDS:
+            del REPORT_GENERATORS[report_generator_id]
+
+    settings_dict = {}
+
+    for key in request.POST.iterkeys():
+        valuelist = request.POST.getlist(key)
+        # look for pk in key
+
+        index = key.split("[")[1][:-1]
+        if index not in settings_dict:
+            settings_dict[index] = {}
+
+        if key[::-1][:4] == ']kp[':
+            settings_dict[index]["pk"] = int(valuelist[0])
+        else:
+            value = True if valuelist[0] == "true" else False
+
+            settings_dict[index][key.split("[")[-1][:-1]] = value
+
+    pk_settings = {}
+
+    for setting_index in settings_dict:
+        pk = settings_dict[setting_index]['pk']
+        pk_settings[pk] = {}
+
+        for key in settings_dict[setting_index]:
+            if key != 'pk':
+                pk_settings[pk][key] = settings_dict[setting_index][key]
+
+    _devices = []
+    for _device in device.objects.filter(idx__in=[int(pk) for pk in pk_settings.keys()]):
+        if not _device.is_meta_device:
+            _devices.append(_device)
+
+    return pk_settings, _devices, current_time
