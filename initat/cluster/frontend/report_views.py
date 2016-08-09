@@ -317,6 +317,7 @@ class PDFReportGenerator(object):
 
         detail_list = []
 
+        # letter size
         available_width = 72 * 9
 
         position = 0
@@ -438,10 +439,10 @@ class PDFReportGenerator(object):
 
         body_data = []
 
-        # Device Comment
-        data = [[_device.comment]]
+        # FQDN
+        data = [[_device.full_name]]
 
-        text_block = Paragraph('<b>Comment:</b>', style_sheet["BodyText"])
+        text_block = Paragraph('<b>FQDN:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(200 * mm),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 2, colors.black),
@@ -449,10 +450,91 @@ class PDFReportGenerator(object):
                   )
         body_data.append((text_block, t))
 
-        # Device Full Name
-        data = [[_device.full_name]]
+        # Device Groups
+        data = [[_device.device_group_name()]]
 
-        text_block = Paragraph('<b>Full Name:</b>', style_sheet["BodyText"])
+        text_block = Paragraph('<b>DeviceGroup:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(200 * mm),
+                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ]
+                  )
+
+        body_data.append((text_block, t))
+
+        # Device Class
+        data = [[_device.device_class.name]]
+
+        text_block = Paragraph('<b>DeviceGroup:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(200 * mm),
+                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ]
+                  )
+
+        body_data.append((text_block, t))
+
+        # ComCapabilites
+
+        str_to_use = ""
+
+        for com_cap in _device.com_capability_list.all():
+            if not str_to_use:
+                str_to_use = com_cap.name
+            else:
+                str_to_use += ", {}".format(com_cap.name)
+        data = [[str_to_use]]
+
+        text_block = Paragraph('<b>ComCapabilities:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(200 * mm),
+                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ]
+                  )
+
+        body_data.append((text_block, t))
+
+        # Ip info
+        str_to_use = ""
+        for _ip in _device.all_ips():
+            if not str_to_use:
+                str_to_use = str(_ip)
+            else:
+                str_to_use += ", {}".format(str(_ip))
+        data = [[str_to_use]]
+
+        text_block = Paragraph('<b>IP Info:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(200 * mm),
+                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ]
+                  )
+
+        body_data.append((text_block, t))
+
+        # SNMP Schemes
+        str_to_use = ""
+        for _snmp_scheme in _device.snmp_schemes.all():
+            if not str_to_use:
+                str_to_use = str(_snmp_scheme)
+            else:
+                str_to_use += ", {}".format(str(_snmp_scheme))
+        data = [[str_to_use]]
+
+        text_block = Paragraph('<b>SNMP Scheme:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(200 * mm),
+                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ]
+                  )
+
+        body_data.append((text_block, t))
+
+        # SNMP Info
+        str_to_use = ""
+        data = [[str_to_use]]
+
+        text_block = Paragraph('<b>SNMP Info:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(200 * mm),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 2, colors.black),
@@ -462,48 +544,16 @@ class PDFReportGenerator(object):
         body_data.append((text_block, t))
 
         # Device Categories
-        data = []
+        str_to_use = ""
         for _category in _device.categories.all():
-            data.append([_category.name])
+            if not str_to_use:
+                str_to_use = _category.name
+            else:
+                str_to_use += ", {}".format(_category.name)
+        data = [[str_to_use]]
 
-        if data:
-            text_block = Paragraph('<b>Categories:</b>', style_sheet["BodyText"])
-            t = Table(data, colWidths=(200 * mm),
-                      style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                             ('BOX', (0, 0), (-1, -1), 2, colors.black),
-                             ]
-                      )
-
-            body_data.append((text_block, t))
-
-        # Device Groups
-        data = [[_device.device_group_name()]]
-
-        text_block = Paragraph('<b>Group:</b>', style_sheet["BodyText"])
+        text_block = Paragraph('<b>Categories:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(200 * mm),
-                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
-                         ]
-                  )
-
-        body_data.append((text_block, t))
-
-        # Device netdevices
-        data = [["Name", "IP(s)", "MAC"]]
-        for _netdevice in _device.netdevice_set.all():
-            ip_text = ""
-
-            for _ip in _netdevice.net_ip_set.all():
-                if ip_text:
-                    ip_text += ", "
-                ip_text += _ip.ip
-
-            text_block = Paragraph(ip_text, style_sheet["BodyText"])
-
-            data.append([_netdevice.devname, text_block, _netdevice.macaddr])
-
-        text_block = Paragraph('<b>Net device(s):</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(66 * mm, 67 * mm, 67 * mm),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 2, colors.black),
                          ]
@@ -521,7 +571,10 @@ class PDFReportGenerator(object):
             doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
             report.add_to_report(_buffer)
         except Exception as e:
-            print e
+            import traceback, sys
+            print '-' * 60
+            traceback.print_exc(file=sys.stdout)
+            print '-' * 60
 
 
     def generate_report_for_asset_batch(self, asset_batch, report):
