@@ -1,22 +1,17 @@
 <script type="text/ng-template" id="icsw.device.category.overview">
-    <icsw-tools-ensure-device-selection
-        dev-list="struct.devices"
-        list-ready="struct.device_list_ready"
-    >
-        <h3>
-            Categories for <icsw-device-list-info icsw-device-list="struct.devices"></icsw-device-list-info>
-        </h3>
-        <icsw-config-category-tree-select
-            icsw-sub-tree="'device'"
-            edit-obj="struct.devices"
-            icsw-selected-category="selected_category(entry)"
-            icsw-mode="obj"
-        ></icsw-config-category-tree-select>
-        <div style="height: 10px"></div>
-        <icsw-config-category-contents-viewer
-            icsw-category="struct.current_cat"
-        ></icsw-config-category-contents-viewer>
-    </icsw-tools-ensure-device-selection>
+    <h3>
+        Categories for <icsw-device-list-info icsw-device-list="struct.devices"></icsw-device-list-info>
+    </h3>
+    <icsw-config-category-tree-select
+        icsw-sub-tree="'device'"
+        edit-obj="struct.devices"
+        icsw-selected-category="selected_category(entry)"
+        icsw-mode="obj"
+    ></icsw-config-category-tree-select>
+    <div style="height: 10px"></div>
+    <icsw-config-category-contents-viewer
+        icsw-category="struct.current_cat"
+    ></icsw-config-category-contents-viewer>
 </script>
 
 <script type="text/ng-template" id="icsw.device.category.edit">

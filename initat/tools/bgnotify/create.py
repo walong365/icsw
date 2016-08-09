@@ -15,13 +15,14 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" cluster-server, create background jobs """
+""" various servers, create background jobs """
 
 import datetime
 
 from django.db.models import Q
-from initat.tools import server_command
+
 from initat.cluster.backbone.models.functions import cluster_timezone
+from initat.tools import server_command
 
 
 def create_bg_job(server_pk, user_obj, cmd, cause, obj, **kwargs):

@@ -135,7 +135,13 @@ angular.module(
                             }
                         )
                         " "
-                        if cat.locked then span({key: "lock", className: "fa fa-lock", title: "is locked"}) else null
+                        if cat.locked then span(
+                            {
+                                key: "lock"
+                                className: "fa fa-lock"
+                                title: "is locked"
+                            }
+                        ) else null
                     ]
                 )
             else
@@ -232,15 +238,23 @@ angular.module(
         # console.log "gfx", new_val
     )
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
-        $scope.rebuild_dnt()
-    )
+    _dereg = [
+        $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
+            $scope.rebuild_dnt()
+        )
+        $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
+            $scope.rebuild_dnt()
+        )
+    ]
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
-        $scope.rebuild_dnt()
+    $scope.$on("$destroy", () ->
+        (_dr() for _dr in _dereg)
     )
 
     $scope.rebuild_dnt = () ->
+        if not $scope.struct.device_list_ready
+            # not initialised
+            return
         _ct = $scope.struct.loc_tree
         # build location list for google-maps
         _list = []
@@ -389,7 +403,7 @@ angular.module(
                 _lost_f.push("#{_dml_lost_physical} physical")
             if _dml_lost_structural
                 _lost_f.push("#{_dml_lost_structural} structural")
-            _header =  "Modify will result in the lost of #{_lost_f.join(' and ')} placements on #{_gfx_lost} maps, continue ?"
+            _header =  "The outcome of this Modify will be the lost of #{_lost_f.join(' and ')} placements on #{_gfx_lost} maps, continue ?"
             icswToolsSimpleModalService(
                 _header
             ).then(

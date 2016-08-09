@@ -304,11 +304,11 @@
 
 <script type="text/ng-template" id="icsw.device.static.asset.overview">
     <legend>
-        Static Assets ({{ struct.asset_tree.static_assets.length }})
+        Static Assets ({{ struct.asset_tree.static_assets.length }} types)
     </legend>
     <fieldset ng-repeat="key_list in struct.asset_tree.static_assets">
         <legend>
-            {{ key_list[0] }}
+            {{ key_list[0] }}, {{ struct.asset_struct[key_list[0]].used.length }} in use
             <icsw-tools-button
                 type="create"
                 size="xs"
@@ -316,9 +316,24 @@
                 ng-click="add_assets($event, key_list[0])"
             ></icsw-tools-button>
         </legend>
-        <div ng-repeat="asset in struct.asset_struct[key_list[0]].used">
-            {{ asset.name }}
-        </div>
+        <table class="table table-condensed table-hover table-striped" style="width:auto;">
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>#fields</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="asset in struct.asset_struct[key_list[0]].used">
+                    <td>{{ asset.$$static_asset_template.name }}</td>
+                    <td class="text-center">{{ asset.staticassetfieldvalue_set.length }}</td>
+                    <td>
+                        <icsw-tools-button type="delete" size="xs" ng-click="delete_asset($event, asset)"></icsw-tools-button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
     </fieldset>
 </script>
 

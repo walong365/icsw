@@ -24,7 +24,7 @@
 import bz2
 import datetime
 import gzip
-import logging  # @UnusedImport
+import logging
 import logging.handlers
 import os
 import re
@@ -33,6 +33,7 @@ import string
 import sys
 import syslog
 import time
+
 from pygments.token import Token
 
 LOG_LEVEL_OK = 20
@@ -973,6 +974,7 @@ def struct_to_string(in_struct):
             _r[0],
         )
     else:
+        # empty strings will be displayed as [], so node[][2] means {node, node2}
         return "{}[{}]".format(
             _pf,
             "][".join(_r),

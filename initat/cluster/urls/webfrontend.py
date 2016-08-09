@@ -73,9 +73,19 @@ asset_patterns = [
         name="static_asset_template_field_detail",
     ),
     url(
-        "^static_asset_field/$",
+        "^static_asset_field$",
         asset_views.StaticAssetTemplateViewSet.as_view({"post": "create_field"}),
         name="static_asset_template_field_call",
+    ),
+    url(
+        "^device_asset$",
+        asset_views.DeviceStaticAssetViewSet.as_view({"post": "create_asset"}),
+        name="device_asset_call",
+    ),
+    url(
+        "^device_asset/(?P<pk>[0-9]+$)",
+        asset_views.DeviceStaticAssetViewSet.as_view({"delete": "delete_asset"}),
+        name="device_asset_detail"
     ),
 ]
 

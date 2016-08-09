@@ -114,7 +114,7 @@
             </ports>
         </network>
     </instance>
-    <instance name="memcached" check_type="simple" pid_file_name="memcached/memcached.pid" any_threads_ok="1" runs_on="system">
+    <instance name="memcached" check_type="simple" init_script_name="init-memcached" pid_file_name="init-memcached/memcached.pid" any_threads_ok="1" runs_on="system">
         <network>
             <ports>
                 <port type="command">8001</port>

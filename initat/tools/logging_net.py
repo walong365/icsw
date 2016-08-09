@@ -22,7 +22,7 @@
 """ logging tools, network related """
 
 import inspect
-import logging  # @UnusedImport
+import logging
 import logging.handlers
 import os
 import pickle

@@ -33,6 +33,7 @@ angular.module(
 (
     icswReactTreeConfig
 ) ->
+    {span} = React.DOM
     class icswConfigCategoryDisplayTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
@@ -57,21 +58,51 @@ angular.module(
             if cat.depth > 1
                 # r_info = "#{cat.full_name} (#{cat.name})"
                 r_info = "#{cat.name}"
-                if cat.num_refs
-                    r_info = "#{r_info} (refs=#{cat.num_refs})"
-                if is_loc
-                    if cat.physical
-                        r_info = "#{r_info}, physical"
-                    else
-                        r_info = "#{r_info}, structural"
-                    if cat.locked
-                        r_info = "#{r_info}, locked"
             else if cat.depth
                 r_info = cat.full_name
             else
                 r_info = "TOP"
-            # r_info = "#{r_info}"
             return r_info
+
+        get_post_view_element: (t_entry) ->
+            _r_obj = []
+            obj = t_entry.obj
+            is_loc = @location_re.test(obj.full_name)
+            if obj.depth > 1
+                if is_loc
+                    if obj.locked
+                        _r_obj.push(" ")
+                        _r_obj.push(
+                            span(
+                                {
+                                    key: "lock"
+                                    className: "fa fa-lock"
+                                    title: "is locked"
+                                }
+                            )
+                        )
+                        _r_obj.push(" ")
+                        _r_obj.push(
+                            span(
+                                {
+                                    key: "_type"
+                                    className: if obj.physical then "glyphicon glyphicon-globe" else "glyphicon glyphicon-th-list"
+                                    title: if obj.pyhiscal then "Physical entry" else "Structural entry"
+                                }
+                            )
+                        )
+                        _r_obj.push(" ")
+                if obj.num_refs
+                    _r_obj.push(
+                        span(
+                            {
+                                key: "num.refs"
+                                className: "label label-success"
+                            }
+                            "#{obj.num_refs} refs"
+                        )
+                    )
+            return _r_obj
 
         handle_context_menu: (event, entry) =>
             cat = entry.obj
@@ -128,6 +159,10 @@ angular.module(
                 top_level = scope.mode
             # console.log "***", top_level, obj_or_parent
             if create
+                # if obj_or_parent?
+                #     console.log "***", obj_or_parent
+                #     _parent = obj_or_parent
+                # else
                 _parent = (value for value in scope.dn_tree.mode_entries when value.depth == 1 and value.full_name.split("/")[1] == top_level)[0]
                 _name = "new_#{top_level}_cat"
                 useable: true
@@ -440,94 +475,231 @@ angular.module(
 
 ]).directive("icswConfigCategoryContentsViewer",
 [
-    "Restangular", "ICSW_URLS", "icswConfigTreeService", "icswDeviceTreeService", "$q",
-    "icswMonitoringBasicTreeService",
+    "Restangular",
 (
-    Restangular, ICSW_URLS, icswConfigTreeService, icswDeviceTreeService, $q,
-    icswMonitoringBasicTreeService,
+    Restangular,
 ) ->
     return {
         restrict: "EA"
         templateUrl: "icsw.config.category.contents_viewer"
+        controller: "icswConfigCategoryContentsViewerCtrl"
         scope:
             icsw_category: '=icswCategory'
-        link : (scope, elements, attrs) ->
-            scope.enabled = false
-            scope.data_ready = false
-            update = () ->
-                scope.data_ready = false
-                _cat = scope.icsw_category
-                _wait_list = []
-                _ref_list = []
-                # todo: add deviceselection
-                _lut = {
-                    config: icswConfigTreeService
-                    device: icswDeviceTreeService
-                    mon_check_command: icswMonitoringBasicTreeService
-                    deviceselectipon: null
-                }
-                for key, refs of _cat.reference_dict
-                    if refs.length
-                        _ext_call = _lut[key]
-                        if _ext_call
-                            _wait_list.push(_ext_call.load(scope.$id))
-                            _ref_list.push(key)
-                        else
-                            console.error "cannot handle references to #{key}"
-                res_list = []
-                defer = $q.defer()
-                if _wait_list.length
-                    $q.all(
-                        _wait_list
-                    ).then(
-                        (data) ->
-                            for [key, res_obj] in _.zip(_ref_list, data)
-                                # key, res_obj = res_tuple
-                                pk_list = _cat.reference_dict[key]
-                                for pk in pk_list
-                                    [subtype, info] = ["", ""]
-                                    if key == "device"
-                                        _dev = res_obj.all_lut[pk]
-                                        name = _dev.full_name
-                                        if _dev.is_meta_device
-                                            subtype = "Group"
-                                        else
-                                            info = "DeviceGroup " + res_obj.group_lut[_dev.device_group].name
-                                    else if key == "config"
-                                        _conf = res_obj.lut[pk]
-                                        name = _conf.name
-                                        info = "Coniguration"
-                                    else if key == "mon_check_command"
-                                        _mcc = res_obj.mon_check_command_lut[pk]
-                                        name = _mcc.name
-                                    res_list.push(
-                                        type: key
-                                        subtype: subtype
-                                        name: name
-                                        info: info
-                                    )
-                            defer.resolve(res_list)
-                    )
-                else
-                    defer.resolve(res_list)
-                defer.promise.then(
-                    (res_list) ->
-                        scope.data_ready = true
-                        scope.contents = res_list
-                )
-            scope.$watch(
-                "icsw_category",
-                (new_val) ->
-                    if new_val
-                        scope.enabled = true
-                        update()
-                    else
-                        scope.enabled = false
-                        scope.data_ready = false
-                # hm, to be improved...
-                true
-            )
     }
+]).service("icswConfigCategoryModifyCall",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceTreeService", "icswConfigTreeService",
+    "icswCategoryTreeService", "icswTools", "ICSW_SIGNALS", "$rootScope",
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswDeviceTreeService, icswConfigTreeService,
+    icswCategoryTreeService, icswTools, ICSW_SIGNALS, $rootScope,
+) ->
+    return (obj_pks, cat_objs, add) ->
+        load_id = icswTools.get_unique_id()
+        defer = $q.defer()
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.BASE_CHANGE_CATEGORY
+            data:
+                obj_pks: angular.toJson(obj_pks)
+                cat_pks: angular.toJson((cat.idx for cat in cat_objs))
+                set: if add then "1" else "0"
+        ).then(
+            (xml) ->
+                # see code in location.coffee
+                change_dict = angular.fromJson($(xml).find("value[name='changes']").text())
+                # console.log "cd=", change_dict
+                # build dict
+                cat_dict = {}
+                for entry in cat_objs
+                    _type = entry.full_name.split("/")[1]
+                    if _type not of cat_dict
+                        cat_dict[_type] = []
+                    cat_dict[_type].push(entry.idx)
+                    cat_dict[entry.idx] = _type
+                # console.log "D=", cat_dict
+                if "location" of cat_dict
+                    console.error "location not supported in icswConfigCategoryModifyCalL"
+                # console.log "**", cat_objs
+                $q.all(
+                    [
+                        icswDeviceTreeService.load(load_id)
+                        icswCategoryTreeService.load(load_id)
+                        icswConfigTreeService.load(load_id)
+                    ]
+                ).then(
+                    (data) ->
+                        device_tree = data[0]
+                        cat_tree = data[1]
+                        config_tree = data[2]
+                        # device or location
+                        sync_pks = []
+                        for [obj_idx, cat_idx] in change_dict.added
+                            _ct = cat_dict[cat_idx]
+                            if _ct == "config"
+                                config_tree.add_category_to_config_by_pk(obj_idx, cat_idx)
+                            else if _ct == "mon"
+                                config_tree.add_category_to_mcc_by_pk(obj_idx, cat_idx)
+                            else
+                                device_tree.add_category_to_device_by_pk(obj_idx, cat_idx)
+                                if obj_idx not in sync_pks
+                                    sync_pks.push(obj_idx)
+                        for [obj_idx, cat_idx] in change_dict.removed
+                            _ct = cat_dict[cat_idx]
+                            if _ct == "config"
+                                config_tree.remove_category_from_config_by_pk(obj_idx, cat_idx)
+                            else if _ct == "mon"
+                                config_tree.remove_category_from_mcc_by_pk(obj_idx, cat_idx)
+                            else
+                                device_tree.remove_category_from_device_by_pk(obj_idx, cat_idx)
+                                if obj_idx not in sync_pks
+                                    sync_pks.push(obj_idx)
+                        if sync_pks.length
+                            cat_tree.sync_devices((device_tree.all_lut[_pk] for _pk in sync_pks))
+                        $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"))
+                        defer.resolve("done")
+                )
+        )
+        return defer.promise
+]).controller("icswConfigCategoryContentsViewerCtrl",
+[
+    "$scope", "$q", "icswConfigTreeService", "icswDeviceTreeService",
+    "icswMonitoringBasicTreeService", "$timeout", "blockUI", "ICSW_URLS",
+    "icswSimpleAjaxCall", "icswConfigCategoryModifyCall", "icswToolsSimpleModalService",
+(
+    $scope, $q, icswConfigTreeService, icswDeviceTreeService,
+    icswMonitoringBasicTreeService, $timeout, blockUI, ICSW_URLS,
+    icswSimpleAjaxCall, icswConfigCategoryModifyCall, icswToolsSimpleModalService,
+) ->
+    $scope.struct = {
+        # is enabled
+        enabled: false
+        # data is ready
+        data_ready: false
+        # contents of list
+        contents: []
+        # number selected
+        selected: 0
+        # selection supported (not for location due to missing DML handling code)
+        selection_supported: false
+    }
+
+    update = () ->
+        $scope.struct.data_ready = false
+        $scope.struct.selected = 0
+        _cat = $scope.icsw_category
+        _wait_list = []
+        _ref_list = []
+        # todo: add deviceselection
+        _lut = {
+            config: icswConfigTreeService
+            device: icswDeviceTreeService
+            mon_check_command: icswMonitoringBasicTreeService
+            deviceselection: null
+        }
+        for key, refs of _cat.reference_dict
+            if refs.length
+                _ext_call = _lut[key]
+                if _ext_call
+                    _wait_list.push(_ext_call.load($scope.$id))
+                    _ref_list.push(key)
+                else
+                    console.error "cannot handle references to #{key}"
+        res_list = []
+        defer = $q.defer()
+        if _wait_list.length
+            $q.all(
+                _wait_list
+            ).then(
+                (data) ->
+                    for [key, res_obj] in _.zip(_ref_list, data)
+                        # key, res_obj = res_tuple
+                        pk_list = _cat.reference_dict[key]
+                        for pk in pk_list
+                            [subtype, info, type] = ["", "", key]
+                            if key == "device"
+                                _dev = res_obj.all_lut[pk]
+                                name = _dev.full_name
+                                if _dev.is_meta_device
+                                    type = "Group"
+                                    name = name.substr(8)
+                                else
+                                    info = "DeviceGroup " + res_obj.group_lut[_dev.device_group].name
+                            else if key == "config"
+                                _conf = res_obj.lut[pk]
+                                name = _conf.name
+                                info = "Coniguration"
+                            else if key == "mon_check_command"
+                                _mcc = res_obj.mon_check_command_lut[pk]
+                                name = _mcc.name
+                            res_list.push(
+                                idx: pk
+                                type: type
+                                name: name
+                                info: info
+                                selected: false
+                            )
+                    defer.resolve(res_list)
+            )
+        else
+            defer.resolve(res_list)
+        defer.promise.then(
+            (res_list) ->
+                $scope.struct.data_ready = true
+                $scope.struct.selection_supported = $scope.icsw_category.full_name.split("/")[1] != "location"
+                $scope.struct.contents.length = 0
+                for entry in _.orderBy(res_list, ["type", "name"], ["asc", "asc"])
+                    $scope.struct.contents.push(entry)
+        )
+
+    _update_selected = () ->
+        $scope.struct.selected = (entry for entry in $scope.struct.contents when entry.selected).length
+
+    $scope.clear_selection = ($event) ->
+        for entry in $scope.struct.contents
+            entry.selected = false
+        _update_selected()
+
+    $scope.remove_selection= ($event) ->
+        _sel_idx = (entry.idx for entry in $scope.struct.contents when entry.selected)
+        if _sel_idx.length > 1
+            _sel_str = "#{_sel_idx.length} selected objects"
+        else
+            _sel_str = "selected object"
+        icswToolsSimpleModalService(
+            "Really remote #{_sel_str} from category #{$scope.icsw_category.full_name} ?"
+        ).then(
+            (ok) ->
+                blockUI.start()
+                icswConfigCategoryModifyCall(
+                    _sel_idx
+                    [$scope.icsw_category]
+                    false
+                ).then(
+                    (res) ->
+                        blockUI.stop()
+                )
+        )
+
+    $scope.change_selection = ($event) ->
+        $timeout(
+            () ->
+                _update_selected()
+            0
+        )
+
+    # watcher for current category
+    $scope.$watch(
+        "icsw_category",
+        (new_val) ->
+            if new_val
+                $scope.struct.enabled = true
+                update()
+            else
+                $scope.struct.enabled = false
+                $scope.struct.data_ready = false
+        # hm, to be improved...
+        true
+    )
 ]).service("icswCatSelectionTreeService",
 [
     "icswReactTreeConfig",
@@ -671,6 +843,8 @@ angular.module(
             @scope.new_selection(undefined, sel_list)
             
         handle_click: ($event, entry) =>
+            @clear_active()
+            entry.set_active(!entry.active)
             if entry.obj.depth > 0
                 @scope.click_category(entry.obj)
 
@@ -712,10 +886,12 @@ angular.module(
     "$scope", "$templateCache", "icswCatSelectionTreeService", "icswConfigTreeService", "$q",
     "icswCategoryTreeService", "icswAcessLevelService", "blockUI", "icswSimpleAjaxCall",
     "ICSW_URLS", "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS", "icswBaseCategoryTree",
+    "icswConfigCategoryModifyCall",
 (
     $scope, $templateCache, icswCatSelectionTreeService, icswConfigTreeService, $q,
     icswCategoryTreeService, icswAcessLevelService, blockUI, icswSimpleAjaxCall,
     ICSW_URLS, icswDeviceTreeService, $rootScope, ICSW_SIGNALS, icswBaseCategoryTree,
+    icswConfigCategoryModifyCall,
 ) ->
     $scope.struct = {
         # object list
@@ -1044,58 +1220,15 @@ angular.module(
         # console.log "S", t_entry, new_sel
         if $scope.struct.mode == "obj"
             blockUI.start()
-            cat = t_entry.obj
-            icswSimpleAjaxCall(
-                url: ICSW_URLS.BASE_CHANGE_CATEGORY
-                data:
-                    obj_pks: angular.toJson((_entry.idx for _entry in $scope.struct.objects))
-                    cat_pks: angular.toJson([cat.idx])
-                    set: if t_entry.selected then "1" else "0"
+            icswConfigCategoryModifyCall(
+                (_entry.idx for _entry in $scope.struct.objects)
+                [t_entry.obj]
+                t_entry.selected
             ).then(
-                (xml) ->
-                    # see code in location.coffee
-                    change_dict = angular.fromJson($(xml).find("value[name='changes']").text())
-                    _wait = $q.defer()
-                    if $scope.sub_tree in ["config", "mon"]
-                        icswConfigTreeService.load($scope.$id).then(
-                            (config_tree) ->
-                                if $scope.sub_tree == "config"
-                                    for [obj_idx, cat_idx] in change_dict.added
-                                        config_tree.add_category_to_config_by_pk(obj_idx, cat_idx)
-                                    for [obj_idx, cat_idx] in change_dict.removed
-                                        config_tree.remove_category_from_config_by_pk(obj_idx, cat_idx)
-                                else
-                                    for [obj_idx, cat_idx] in change_dict.added
-                                        config_tree.add_category_to_mcc_by_pk(obj_idx, cat_idx)
-                                    for [obj_idx, cat_idx] in change_dict.removed
-                                        config_tree.remove_category_from_mcc_by_pk(obj_idx, cat_idx)
-                                config_tree.update_category_tree()
-                                _wait.resolve("done")
-                        )
-                    else
-                        icswDeviceTreeService.load($scope.$id).then(
-                            (device_tree) ->
-                                # device or location
-                                sync_pks = []
-                                for [dev_idx, cat_idx] in change_dict.added
-                                    device_tree.add_category_to_device_by_pk(dev_idx, cat_idx)
-                                    if dev_idx not in sync_pks
-                                        sync_pks.push(dev_idx)
-                                for [dev_idx, cat_idx] in change_dict.removed
-                                    device_tree.remove_category_from_device_by_pk(dev_idx, cat_idx)
-                                    if dev_idx not in sync_pks
-                                        sync_pks.push(dev_idx)
-                                if sync_pks.length
-                                    $scope.struct.cat_tree.sync_devices((device_tree.all_lut[_pk] for _pk in sync_pks))
-                                _wait.resolve("done")
-                        )
-                    _wait.promise.then(
-                        (done) ->
-                            build_tree()
-                            blockUI.stop()
-                    )
+                (res) ->
+                    blockUI.stop()
+                    # build_tree is called via $rootScope signal
             )
-            # $scope.edit_obj.categories = new_sel
         else
             send_selection_to_filter(new_sel)
 ])

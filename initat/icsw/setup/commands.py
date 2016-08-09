@@ -504,7 +504,7 @@ class Migration(migrations.Migration):
     ]
 """
     )
-    _list_stat, _list_out = call_manage(["migrate", "backbone", "--list", "--no-color"], output=True)
+    _list_stat, _list_out = call_manage(["showmigrations", "backbone", "--no-color"], output=True)
     dummy_mig.restore()
     ds0.restore()
     ds0.cleanup()

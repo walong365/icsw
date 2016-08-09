@@ -1524,6 +1524,21 @@ class StaticAssetTemplateField(models.Model):
         nf.save()
         return nf
 
+    def create_field_value(self, asset):
+        new_f = StaticAssetFieldValue(
+            static_asset=asset,
+            static_asset_template_field=self,
+            change_user=asset.create_user,
+        )
+        if self.field_type == StaticAssetTemplateFieldType.INTEGER.value:
+            new_f.value_int = self.default_value_int
+        elif self.field_type == StaticAssetTemplateFieldType.STRING.value:
+            new_f.value_str = self.default_value_str
+        else:
+            new_f.value_date = self.default_value_date
+        new_f.save()
+        return new_f
+
     class Meta:
         unique_together = [
             ("static_asset_template", "name")
@@ -1535,9 +1550,15 @@ class StaticAsset(models.Model):
     idx = models.AutoField(primary_key=True)
     # template
     static_asset_template = models.ForeignKey("backbone.StaticAssetTemplate")
+    # create user
+    create_user = models.ForeignKey("backbone.user", null=True)
     # device
     device = models.ForeignKey("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
+
+    def add_fields(self):
+        for _f in self.static_asset_template.staticassettemplatefield_set.all():
+            _f.create_field_value(self)
 
 
 class StaticAssetFieldValue(models.Model):
@@ -1547,7 +1568,7 @@ class StaticAssetFieldValue(models.Model):
     # field
     static_asset_template_field = models.ForeignKey("backbone.StaticAssetTemplateField")
     # change user
-    user = models.ForeignKey("backbone.user")
+    change_user = models.ForeignKey("backbone.user")
     # value
     value_str = models.CharField(null=True, blank=True, max_length=255, default=None)
     value_int = models.IntegerField(null=True, blank=True, default=None)
