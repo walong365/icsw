@@ -712,6 +712,8 @@ device_variable_module = angular.module(
         asset_struct: undefined
         # user
         user: undefined
+        # available assets (not set and enabled)
+        num_available: 0
     }
 
     _reload_assets = () ->
@@ -730,24 +732,22 @@ device_variable_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.dvs_tree = data[0]
-                _asset_struct = {}
-                for key_list in $scope.struct.asset_tree.static_assets
-                    _cs = {
-                        used: []
-                        unused: []
-                    }
-                    _asset_struct[key_list[0]] = _cs
-                    # build lut, template -> asset
-                    _asset_lut = {}
-                    for _as in $scope.struct.device.staticasset_set
-                        _asset_lut[_as.static_asset_template] = _as
-                        _as.$$static_asset_template = $scope.struct.asset_tree.lut[_as.static_asset_template]
-                    for _asset in key_list[1]
-                        if _asset.idx of _asset_lut
-                            _cs.used.push(_asset_lut[_asset.idx])
-                        else
-                            _cs.unused.push(_asset)
+                # build lut, template_idx -> device_asset
+                _asset_lut = {}
+                for _as in $scope.struct.device.staticasset_set
+                    _asset_lut[_as.static_asset_template] = _as
+                    _as.$$static_asset_template = $scope.struct.asset_tree.lut[_as.static_asset_template]
+                _asset_struct = {
+                    used: []
+                    unused: []
+                }
+                for _asset in $scope.struct.asset_tree.list
+                    if _asset.idx of _asset_lut
+                        _asset_struct.used.push(_asset_lut[_asset.idx])
+                    else
+                        _asset_struct.unused.push(_asset)
                 $scope.struct.asset_struct = _asset_struct
+                $scope.struct.num_available = (entry for entry in _asset_struct.unused when entry.enabled).length
         )
 
     $q.all(
@@ -781,21 +781,18 @@ device_variable_module = angular.module(
                 )
         )
 
-    $scope.add_assets = ($event, asset_type) ->
+    $scope.add_assets = ($event) ->
         sub_scope = $scope.$new(true)
         sub_scope.asset_tree = $scope.struct.asset_tree
-        unset_list = []
-        asset_list = []
-        for key, value of $scope.struct.asset_struct
-            if key == asset_type
-                # helper field for faster access
-                asset_list = value.unused
-                if asset_list.length
-                    unset_list.push([key, asset_list])
-                    for _us in asset_list
-                        # helper field
-                        _us.$$create = false
-        sub_scope.unset_list = unset_list
+        unused_list = []
+
+        for _us in $scope.struct.asset_struct.unused
+            if _us.enabled
+                unused_list.push(_us)
+                # set create flag to false
+                _us.$$create = false
+        sub_scope.unused_list = _.orderBy(unused_list, ["name"], ["asc"])
+
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.device.static.asset.add"))(sub_scope)
@@ -805,7 +802,7 @@ device_variable_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     _to_add = []
-                    for _us in asset_list
+                    for _us in sub_scope.unused_list
                         if _us.$$create
                             _to_add.push(_us)
                     if _to_add.length

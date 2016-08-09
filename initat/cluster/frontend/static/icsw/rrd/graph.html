@@ -105,7 +105,7 @@
 <script type="text/ng-template" id="icsw.rrd.graph.sensor">
     <div ng-cloak>
         <uib-accordion close-others="false">
-            <uib-accordion-group ng-repeat="sensor in graph.sensors" is-open="sensor.open">
+            <div uib-accordion-group class="panel-default" ng-repeat="sensor in graph.sensors" is-open="sensor.open">
                 <uib-accordion-heading>
                     Sensor key: <code>{{ sensor.mv_key }}</code>, device: {{ graph.device_tree.all_lut[sensor.device_id].full_name }}
                     <span ng-show="sensor.thresholds.length">, #thresholds: {{  sensor.thresholds.length }}</span>
@@ -139,7 +139,7 @@
                         </span>
                     </div>
                 </div>
-            </uib-accordion-group>
+            </div>
         </uib-accordion>
     </div>
 </script>

@@ -274,6 +274,10 @@ class StaticAssetTemplateFieldSerializer(serializers.ModelSerializer):
 
 class StaticAssetTemplateSerializer(serializers.ModelSerializer):
     staticassettemplatefield_set = StaticAssetTemplateFieldSerializer(many=True, read_only=True)
+    num_refs = serializers.SerializerMethodField()
+
+    def get_num_refs(self, obj):
+        return obj.staticasset_set.all().count()
 
     class Meta:
         model = StaticAssetTemplate

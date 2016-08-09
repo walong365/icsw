@@ -304,53 +304,45 @@
 
 <script type="text/ng-template" id="icsw.device.static.asset.overview">
     <legend>
-        Static Assets ({{ struct.asset_tree.static_assets.length }} types)
+        Static Assets ({{ struct.asset_struct.used.length }} of {{ struct.asset_tree.list.length }} set)
+        <icsw-tools-button
+            type="create"
+            size="xs"
+            ng-show="struct.asset_struct.unused.length && struct.num_available"
+            ng-click="add_assets($event)"
+        ></icsw-tools-button>
     </legend>
-    <fieldset ng-repeat="key_list in struct.asset_tree.static_assets">
-        <legend>
-            {{ key_list[0] }}, {{ struct.asset_struct[key_list[0]].used.length }} in use
-            <icsw-tools-button
-                type="create"
-                size="xs"
-                ng-show="struct.asset_struct[key_list[0]].unused.length"
-                ng-click="add_assets($event, key_list[0])"
-            ></icsw-tools-button>
-        </legend>
-        <table class="table table-condensed table-hover table-striped" style="width:auto;">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>#fields</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-repeat="asset in struct.asset_struct[key_list[0]].used">
-                    <td>{{ asset.$$static_asset_template.name }}</td>
-                    <td class="text-center">{{ asset.staticassetfieldvalue_set.length }}</td>
-                    <td>
-                        <icsw-tools-button type="delete" size="xs" ng-click="delete_asset($event, asset)"></icsw-tools-button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </fieldset>
+    <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="struct.asset_struct.used.length">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>#fields</th>
+                <th>Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="asset in struct.asset_struct.used">
+                <td>{{ asset.$$static_asset_template.name }}</td>
+                <td>{{ asset.$$static_asset_template.$$staticAssetType }}</td>
+                <td class="text-center">{{ asset.staticassetfieldvalue_set.length }}</td>
+                <td>
+                    <icsw-tools-button type="delete" size="xs" ng-click="delete_asset($event, asset)"></icsw-tools-button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </script>
 
 <script type="text/ng-template" id="icsw.device.static.asset.add">
-    <h3>Please select a new template</h3>
-    <fieldset ng-repeat="key_list in unset_list">
-        <legend>
-            {{ key_list[0] }}
-        </legend>
-        <div ng-repeat="asset in key_list[1]" class="form-group row">
-            <label class="control-label col-sm-6">
-                {{ asset.name }}
-            </label>
-            <div class="controls col-sm-6">
-                <icsw-tools-yes-no flag="asset.$$create"/>
-            </div>
+    <h3>Please select new template(s)</h3>
+    <div ng-repeat="asset in unused_list" class="form-group row">
+        <label class="control-label col-sm-6">
+            {{ asset.name }} ({{ asset.$$staticAssetType }})
+        </label>
+        <div class="controls col-sm-6">
+            <icsw-tools-yes-no flag="asset.$$create"/>
         </div>
-    </fieldset>
+    </div>
 </script>
 

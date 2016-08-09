@@ -1348,10 +1348,12 @@ class StaticAssetTemplateField(models.Model):
     has_bounds = models.BooleanField(default=False)
     value_int_lower_bound = models.IntegerField(default=0)
     value_int_upper_bound = models.IntegerField(default=0)
-    # monitor flag, only for datefiles
+    # monitor flag, only for datefields
     monitor = models.BooleanField(default=False)
     # hidden, used for linking
     hidden = models.BooleanField(default=False)
+    # show_in_overview
+    show_in_overview = models.BooleanField(default=False)
     # created
     date = models.DateTimeField(auto_now_add=True)
 
@@ -1372,6 +1374,7 @@ class StaticAssetTemplateField(models.Model):
             monitor=self.monitor,
             fixed=self.fixed,
             hidden=self.hidden,
+            show_in_overview=self.show_in_overview,
         )
         nf.save()
         return nf

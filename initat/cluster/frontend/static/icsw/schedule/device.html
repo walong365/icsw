@@ -300,6 +300,7 @@
                 <th>Type</th>
                 <th>User</th>
                 <th>Enabled</th>
+                <th>#refs</th>
                 <th>#Fields</th>
                 <th>Created</th>
                 <th colspan="3" class="text-center">Action</th>
@@ -325,6 +326,9 @@
                     {{ obj.enabled | yesno1 }}
                 </td>
                 <td class="text-center">
+                    {{ obj.num_refs }}
+                </td>
+                <td class="text-center">
                     {{ obj.$$num_fields }}
                 </td>
                 <td class="text-center">
@@ -333,7 +337,7 @@
                 <td>
                     <icsw-tools-button ng-if="!obj.system_template" type="modify" size="xs" ng-click="create_or_edit($event, obj, false)"></icsw-tools-button>
                 </td><td>
-                    <icsw-tools-button ng-if="!obj.system_template" type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button>
+                    <icsw-tools-button ng-if="!obj.system_template && !obj.num_refs" type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button>
                 </td><td>
                     <icsw-tools-button type="copy" size="xs" ng-click="copy($event, obj)"></icsw-tools-button>
                 </td>
@@ -382,7 +386,7 @@
                 </div>
             </div>
         </fieldset>
-        <div class="row">
+        <div class="row" ng-if="!edit_obj.num_refs">
             <div class="form-group">
                 <label class="col-sm-3 control-label" title="Template is enabled">
                     Enabled
@@ -407,6 +411,7 @@
                         <th>Consumable</th>
                         <th>Bounds</th>
                         <th>Monitor</th>
+                        <th>Overview</th>
                         <th>Fixed</th>
                         <th>Action</th>
                     </tr>
@@ -421,6 +426,7 @@
                         <td class="text-center">{{ field.consumable | yesno1 }}</td>
                         <td class="text-center">{{ field.has_bounds | yesno1 }}</td>
                         <td class="text-center">{{ field.monitor | yesno1 }}</td>
+                        <td class="text-center">{{ field.show_in_overview | yesno1 }}</td>
                         <td class="text-center">{{ field.fixed | yesno1 }}</td>
                         <td>
                             <icsw-tools-button type="modify" size="xs" ng-click="modify_or_create_field($event, edit_obj, field, false)"></icsw-tools-button>
@@ -537,7 +543,7 @@
                         Bounds
                     </label>
                     <div class="col-sm-3 controls">
-                        <icsw-tools-yes-no flag="edit_obj.bounds" icsw-callback="field_changed"></icsw-tools-yes-no>
+                        <icsw-tools-yes-no flag="edit_obj.has_bounds" icsw-callback="field_changed"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -550,9 +556,17 @@
                         <icsw-tools-yes-no flag="edit_obj.fixed" icsw-callback="field_changed"></icsw-tools-yes-no>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Field is show in overview">
+                        Show in Overview
+                    </label>
+                    <div class="col-sm-3 controls">
+                        <icsw-tools-yes-no flag="edit_obj.show_in_overview" icsw-callback="field_changed"></icsw-tools-yes-no>
+                    </div>
+                </div>
             </div>
         </div>
-        <fieldset ng-show="edit_obj.field_type == 1 && edit_obj.bounds">
+        <fieldset ng-show="edit_obj.field_type == 1 && edit_obj.has_bounds">
             <legend>Bounds</legend>
             <div class="form-group">
                 <label class="control-label col-xs-3">

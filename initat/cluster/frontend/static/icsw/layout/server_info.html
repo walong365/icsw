@@ -4,7 +4,7 @@
 
 <script type="text/ng-template" id="icsw.layout.server.info.overview">
     <uib-accordion close-others="no">
-        <uib-accordion-group is-open="struct.is_open_roles">
+        <div uib-accordion-group class="panel-default" is-open="struct.is_open_roles">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.is_open_roles, 'glyphicon-chevron-right': !struct.is_open_roles}"></i>
                 {{ num_roles() }} valid cluster roles defined
@@ -55,8 +55,8 @@
                     </tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
-        <uib-accordion-group is-open="struct.is_open_list">
+        </div>
+        <div uib-accordion-group class="panel-default" is-open="struct.is_open_list">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.is_open_list, 'glyphicon-chevron-right': !struct.is_open_list}"></i>
                 <ng-pluralize count="struct.server_info_list.length" when="{'0': 'No Server results', 'one': 'One Server result', 'other': '{} Server results'}"></ng-pluralize>
@@ -97,8 +97,8 @@
                     </tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
-        <uib-accordion-group is-open="struct.is_open_detail">
+        </div>
+        <div uib-accordion-group class="panel-default" is-open="struct.is_open_detail">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.is_open_detail, 'glyphicon-chevron-right': !struct.is_open_detail}"></i>
                 <ng-pluralize count="struct.server_info_list.length" when="{'0': 'No Servers checked', 'one': 'One Server checked', 'other': '{} Servers checked'}"></ng-pluralize>
@@ -128,7 +128,7 @@
                     </tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
+        </div>
     </uib-accordion>
 </script>
 

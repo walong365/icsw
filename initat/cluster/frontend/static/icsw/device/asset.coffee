@@ -1055,9 +1055,13 @@ device_asset_module = angular.module(
             for _struct in icswStaticAssetFunctions.get_form_dict("asset_type")
                 _found = (entry for entry in @list when entry.type == _struct.idx)
                 if _found.length
+                    for _entry in _found
+                        # set name
+                        _entry.$$staticAssetType = _struct.name
                     @static_asset_type_lut[_struct.name] = _found
             @static_asset_type_keys = _.keys(@static_asset_type_lut)
             @static_asset_type_keys.sort()
+            # list of (type, template_list) tuples
             @static_assets = []
             for _key in @static_asset_type_keys
                 @static_assets.push([_key, @static_asset_type_lut[_key]])

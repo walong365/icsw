@@ -9,7 +9,7 @@
     <h3 ng-show="struct.data_valid">License overview (ClusterID is {{ struct.license_tree.cluster_info.CLUSTER_ID }})</h3>
     <uib-accordion close-others="false" ng-if="struct.data_valid">
 
-        <uib-accordion-group is-open="your_licenses_open" is-disabled="license_views_disabled">
+        <div uib-accordion-group class="panel-default" is-open="your_licenses_open" is-disabled="license_views_disabled">
             <uib-accordion-heading>
                 Your licenses for this cluster
                 <i class="pull-right glyphicon"
@@ -17,10 +17,10 @@
             </uib-accordion-heading>
 
             <icsw-system-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-system-license-local-licenses>
-        </uib-accordion-group>
+        </div>
 
 
-        <uib-accordion-group is-open="lic_packs_open" is-disabled="license_views_disabled">
+        <div uib-accordion-group class="panel-default" is-open="lic_packs_open" is-disabled="license_views_disabled">
             <uib-accordion-heading>
                 License packages
                 <i class="pull-right glyphicon"
@@ -28,9 +28,9 @@
             </uib-accordion-heading>
 
             <icsw-system-license-packages></icsw-system-license-packages>
-        </uib-accordion-group>
+        </div>
 
-        <uib-accordion-group is-open="lic_upload_open">
+        <div uib-accordion-group class="panel-default" is-open="lic_upload_open">
             <uib-accordion-heading>
                 Upload license file
                 <i class="pull-right glyphicon"
@@ -42,7 +42,7 @@
             </div>
             <input type="button" ng-show="uploader.queue.length " class="btn btn-warning btn-sm" value="upload"
                    ng-click="uploader.uploadAll()">
-        </uib-accordion-group>
+        </div>
 
     </uib-accordion>
 
@@ -145,7 +145,7 @@
                 </tbody>
             </table>
             <uib-accordion close-others="true">
-                <uib-accordion-group
+                <div uib-accordion-group class="panel-default"
                     ng-repeat="data in get_list(pack.cluster_licenses) | orderBy:cluster_order_fun"
                 >
                     <!-- workaround for angular bug https://github.com/angular/angular.js/issues/1286 -->
@@ -190,7 +190,7 @@
                             </tr>
                         </tbody>
                     </table>
-                </uib-accordion-group>
+                </div>
             </uib-accordion>
         </uib-tab>
     </uib-tabset>

@@ -4,7 +4,7 @@
         <icsw-tools-button ng-if="show_copy_button" type="modify" size="xs" value="Copy networks" ng-click="copy_network()"></icsw-tools-button>
     </h3>
     <uib-accordion close-others="no">
-        <uib-accordion-group is-open="device_open">
+        <div uib-accordion-group class="panel-default" is-open="device_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': device_open, 'glyphicon-chevron-right': !device_open}"></i>
                 {{ devices.length }} devices
@@ -26,8 +26,8 @@
                     <tr icsw-device-network-device-row ng-repeat="ndip_obj in devices"></tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
-        <uib-accordion-group is-open="netdevice_open">
+        </div>
+        <div uib-accordion-group class="panel-default" is-open="netdevice_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
                 {{ local_helper_obj.netdevice_list.length }} netdevices
@@ -74,8 +74,8 @@
                     <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in display_entries"></tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
-        <uib-accordion-group is-open="netip_open">
+        </div>
+        <div uib-accordion-group class="panel-default" is-open="netip_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
                 {{ local_helper_obj.net_ip_list.length }} IPs
@@ -96,8 +96,8 @@
                     <tr icsw-device-network-ip-row ng-repeat="ndip_obj in local_helper_obj.net_ip_list"></tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
-        <uib-accordion-group is-open="peer_open">
+        </div>
+        <div uib-accordion-group class="panel-default" is-open="peer_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': peer_open, 'glyphicon-chevron-right': !peer_open}"></i>
                 {{ local_helper_obj.peer_list.length }} peer connections
@@ -122,7 +122,7 @@
                     <tr icsw-device-network-peer-row ng-repeat="ndip_obj in local_helper_obj.peer_list track by $index"></tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
+        </div>
     </uib-accordion>
 </script>
 
@@ -340,7 +340,7 @@
             </icsw-device-network-overview>
         </uib-tab>
 
-        <uib-tab heading="Network topology">
+         <uib-tab heading="Network topology">
             <div>
                 <icsw-device-livestatus icsw-livestatus-view="'nettop'"></icsw-device-livestatus>
             </div>
