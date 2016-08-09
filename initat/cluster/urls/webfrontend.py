@@ -79,6 +79,9 @@ asset_patterns = [
         asset_views.DeviceStaticAssetViewSet.as_view({"delete": "delete_asset"}),
         name="device_asset_detail"
     ),
+    url(
+        "device_asset_post$", asset_views.device_asset_post.as_view(), name="device_asset_post",
+    )
 ]
 
 session_patterns = [

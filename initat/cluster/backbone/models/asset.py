@@ -1338,6 +1338,10 @@ class StaticAssetTemplateField(models.Model):
     optional = models.BooleanField(default=True)
     # is consumable (for integer fields)
     consumable = models.BooleanField(default=False)
+    # consumable values, should be start > warn > critical
+    consumable_start_value = models.IntegerField(default=0)
+    consumable_warn_value = models.IntegerField(default=0)
+    consumable_critical_value = models.IntegerField(default=0)
     # field is fixed (cannot be altered)
     fixed = models.BooleanField(default=False)
     # default value
@@ -1348,9 +1352,9 @@ class StaticAssetTemplateField(models.Model):
     has_bounds = models.BooleanField(default=False)
     value_int_lower_bound = models.IntegerField(default=0)
     value_int_upper_bound = models.IntegerField(default=0)
-    # monitor flag, only for datefields
+    # monitor flag, only for datefields and / or consumable (...?)
     monitor = models.BooleanField(default=False)
-    # hidden, used for linking
+    # hidden, used for linking (...?)
     hidden = models.BooleanField(default=False)
     # show_in_overview
     show_in_overview = models.BooleanField(default=False)
@@ -1375,9 +1379,20 @@ class StaticAssetTemplateField(models.Model):
             fixed=self.fixed,
             hidden=self.hidden,
             show_in_overview=self.show_in_overview,
+            consumable_start_value=self.consumable_start_value,
+            consumable_warn_value=self.consumable_warn_value,
+            consumable_critical_value=self.consumable_critical_value,
         )
         nf.save()
         return nf
+
+    def get_attr_name(self):
+        if self.field_type == StaticAssetTemplateFieldType.INTEGER.value:
+            return ("value_int", "int")
+        elif self.field_type == StaticAssetTemplateFieldType.STRING.value:
+            return ("value_str", "str")
+        else:
+            return ("value_date", "date")
 
     def create_field_value(self, asset):
         new_f = StaticAssetFieldValue(
@@ -1385,12 +1400,8 @@ class StaticAssetTemplateField(models.Model):
             static_asset_template_field=self,
             change_user=asset.create_user,
         )
-        if self.field_type == StaticAssetTemplateFieldType.INTEGER.value:
-            new_f.value_int = self.default_value_int
-        elif self.field_type == StaticAssetTemplateFieldType.STRING.value:
-            new_f.value_str = self.default_value_str
-        else:
-            new_f.value_date = self.default_value_date
+        _local, _short = self.get_attr_name()
+        setattr(new_f, _local, getattr(self, "default_{}".format(_local)))
         new_f.save()
         return new_f
 
@@ -1429,3 +1440,45 @@ class StaticAssetFieldValue(models.Model):
     value_int = models.IntegerField(null=True, blank=True, default=None)
     value_date = models.DateField(null=True, blank=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
+
+    def check_new_value(self, in_dict, xml_response):
+        _field = self.static_asset_template_field
+        _local, _short = _field.get_attr_name()
+        _value = in_dict[_short]
+        _errors = []
+        if not _field.fixed:
+            if _short == "int":
+                # check for lower / upper bounds
+                if _field.has_bounds:
+                    if _value < _field.value_int_lower_bound:
+                        _errors.append(
+                            "value {:d} is below lower bound {:d}".format(
+                                _value,
+                                _field.value_int_lower_bound,
+                            )
+                        )
+                    if _value > _field.value_int_upper_bound:
+                        _errors.append(
+                            "value {:d} is above upper bound {:d}".format(
+                                _value,
+                                _field.value_int_upper_bound,
+                            )
+                        )
+        if _errors:
+            xml_response.error(
+                "Field {}: {}".format(
+                    _field.name,
+                    ", ".join(_errors)
+                )
+            )
+            return False
+        else:
+            return True
+
+    def set_new_value(self, in_dict):
+        _field = self.static_asset_template_field
+        _local, _short = _field.get_attr_name()
+        if not _field.fixed:
+            # ignore changes to fixed values
+            setattr(self, _local, in_dict[_short])
+            self.save()

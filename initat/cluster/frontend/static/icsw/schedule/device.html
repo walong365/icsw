@@ -520,12 +520,12 @@
                         <icsw-tools-yes-no flag="edit_obj.optional" icsw-callback="field_changed"></icsw-tools-yes-no>
                     </div>
                 </div>
-                <div class="form-group" ng-show="edit_obj.field_type == 1">
-                    <label class="col-sm-7 control-label" title="Field is consumable">
-                        consumable
+                <div class="form-group">
+                    <label class="col-sm-7 control-label" title="Field is show in overview">
+                        Show in Overview
                     </label>
                     <div class="col-sm-3 controls">
-                        <icsw-tools-yes-no flag="edit_obj.consumable" icsw-callback="field_changed"></icsw-tools-yes-no>
+                        <icsw-tools-yes-no flag="edit_obj.show_in_overview" icsw-callback="field_changed"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -556,12 +556,12 @@
                         <icsw-tools-yes-no flag="edit_obj.fixed" icsw-callback="field_changed"></icsw-tools-yes-no>
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Field is show in overview">
-                        Show in Overview
+                <div class="form-group" ng-show="edit_obj.field_type == 1">
+                    <label class="col-sm-7 control-label" title="Field is consumable">
+                        consumable
                     </label>
                     <div class="col-sm-3 controls">
-                        <icsw-tools-yes-no flag="edit_obj.show_in_overview" icsw-callback="field_changed"></icsw-tools-yes-no>
+                        <icsw-tools-yes-no flag="edit_obj.consumable" icsw-callback="field_changed"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -577,6 +577,21 @@
                 </div>
                 <div class="controls col-xs-4">
                     <input class="form-control" type="number" ng-model="edit_obj.value_int_upper_bound"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset ng-show="edit_obj.field_type == 1 && edit_obj.consumable">
+            <legend>Bounds</legend>
+            <div class="form-group">
+                <label class="control-label col-xs-3">
+                    Consumable start / warn / crit
+                </label>
+                <div class="controls col-xs-9 form-inline">
+                    <input class="form-control" type="number" size="8" style="width:140px;" ng-model="edit_obj.consumable_start_value"/>
+                    &nbsp;&gt;&nbsp;
+                    <input class="form-control" type="number" size="8" style="width:140px;" ng-model="edit_obj.consumable_warn_value"/>
+                    &nbsp;&gt;&nbsp;
+                    <input class="form-control" type="number" size="8" style="width:140px;" ng-model="edit_obj.consumable_critical_value"/>
                 </div>
             </div>
         </fieldset>

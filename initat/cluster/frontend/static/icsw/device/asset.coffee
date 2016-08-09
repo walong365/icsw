@@ -1051,6 +1051,8 @@ device_asset_module = angular.module(
 
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
+            # field lut
+            @field_lut = {}
             @static_asset_type_lut = {}
             for _struct in icswStaticAssetFunctions.get_form_dict("asset_type")
                 _found = (entry for entry in @list when entry.type == _struct.idx)
@@ -1059,6 +1061,9 @@ device_asset_module = angular.module(
                         # set name
                         _entry.$$staticAssetType = _struct.name
                     @static_asset_type_lut[_struct.name] = _found
+            for _template in @list
+                for _field in _template.staticassettemplatefield_set
+                    @field_lut[_field.idx] = _field
             @static_asset_type_keys = _.keys(@static_asset_type_lut)
             @static_asset_type_keys.sort()
             # list of (type, template_list) tuples
@@ -1174,6 +1179,52 @@ device_asset_module = angular.module(
                     d.reject("not ok")
             )
             return d.promise
+
+        # device related calls
+        build_asset_struct: (device) =>
+            # return populated asset struture
+            _asset_lut = {}
+            for _as in device.staticasset_set
+                _asset_lut[_as.static_asset_template] = _as
+                @salt_device_asset(_as)
+
+            _asset_struct = {
+                used: []
+                unused: []
+                num_available: 0
+            }
+            for _asset in @list
+                if _asset.idx of _asset_lut
+                    _asset_struct.used.push(_asset_lut[_asset.idx])
+                else
+                    _asset_struct.unused.push(_asset)
+            _asset_struct.num_available = (entry for entry in _asset_struct.unused when entry.enabled).length
+            return _asset_struct
+
+        salt_device_asset: (as) =>
+            # salts StaticAsset of device
+            as.$$static_asset_template = @lut[as.static_asset_template]
+            info_f = []
+            for _f in as.staticassetfieldvalue_set
+                _f.$$field = @field_lut[_f.static_asset_template_field]
+                _f.$$field_type_str = icswStaticAssetFunctions.resolve("field_type", _f.$$field.field_type)
+                if _f.$$field.show_in_overview
+                    info_f.push(_f.$$field.name + "=" + @get_field_display_value(_f, _f.$$field))
+            if info_f.length
+                as.$$field_info = info_f.join(", ")
+            else
+                as.$$field_info = "---"
+
+        get_field_display_value: (field, temp_field) =>
+            # console.log icswStaticAssetFunctions.resolve("field_type", temp_field.field_type)
+            if temp_field.field_type == 1
+                # integer
+                return "#{field.value_int}"
+            else if temp_field.field_type == 2
+                # string
+                return field.value_str
+            else
+                return field.value_date
 
 ]).service("icswStaticAssetTemplateTreeService",
 [

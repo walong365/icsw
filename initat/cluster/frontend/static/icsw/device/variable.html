@@ -308,7 +308,7 @@
         <icsw-tools-button
             type="create"
             size="xs"
-            ng-show="struct.asset_struct.unused.length && struct.num_available"
+            ng-show="struct.asset_struct.unused.length && struct.asset_struct.num_available"
             ng-click="add_assets($event)"
         ></icsw-tools-button>
     </legend>
@@ -318,7 +318,8 @@
                 <th>Name</th>
                 <th>Type</th>
                 <th>#fields</th>
-                <th>Action</th>
+                <th>FieldInfo</th>
+                <th colspan="2">Action</th>
             </tr>
         </thead>
         <tbody>
@@ -326,6 +327,10 @@
                 <td>{{ asset.$$static_asset_template.name }}</td>
                 <td>{{ asset.$$static_asset_template.$$staticAssetType }}</td>
                 <td class="text-center">{{ asset.staticassetfieldvalue_set.length }}</td>
+                <td>{{ asset.$$field_info }}</td>
+                <td>
+                    <icsw-tools-button type="modify" size="xs" ng-click="modify_asset($event, asset)"></icsw-tools-button>
+                </td>
                 <td>
                     <icsw-tools-button type="delete" size="xs" ng-click="delete_asset($event, asset)"></icsw-tools-button>
                 </td>
@@ -342,6 +347,46 @@
         </label>
         <div class="controls col-sm-6">
             <icsw-tools-yes-no flag="asset.$$create"/>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.static.asset.modify">
+    <div class="form-group row" ng-repeat="field in asset.staticassetfieldvalue_set">
+        <label class="control-label col-sm-4">
+            {{ field.$$field.name }} ({{ field.$$field_type_str }})
+        </label>
+        <div class="controls col-sm-8 form-inline" ng-if="field.$$field.field_type == 1">
+            <span ng-show="field.$$field.fixed">
+                {{ field.value_int }}
+            </span>
+            <span ng-show="!field.$$field.fixed">
+                <input class="form-control" type="number" ng-model="field.value_int" style="width:140px;"/>
+            </span>
+            <span ng-show="field.$$field.consumable">
+                <span class="glyphicon glyphicon-dashboard"></span>:
+                {{ field.$$field.consumable_start_value }}
+            </span>
+            <span ng-show="field.$$field.has_bounds">
+                <span class="glyphicon glyphicon-resize-horizontal"></span>:
+                bounds: [{{ field.$$field.value_int_lower_bound }} - {{ field.$$field.value_int_upper_bound }}]
+            </span>
+        </div>
+        <div class="controls col-sm-8 form-inline" ng-if="field.$$field.field_type == 2">
+            <span ng-show="field.$$field.fixed">
+                {{ field.value_str }}
+            </span>
+            <span ng-show="!field.$$field.fixed">
+                <input class="form-control" ng-model="field.value_str" style="width:140px;"/>
+            </span>
+        </div>
+        <div class="controls col-sm-8 form-inline" ng-if="field.$$field.field_type == 3">
+            <span ng-show="field.$$field.fixed">
+                {{ field.value_date }}
+            </span>
+            <span ng-show="!field.$$field.fixed">
+                {{ field.value_date }}
+            </span>
         </div>
     </div>
 </script>

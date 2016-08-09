@@ -38,10 +38,11 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
     AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
-    AssetBatch, StaticAssetTemplateField, StaticAsset
+    AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
@@ -955,3 +956,26 @@ class DeviceStaticAssetViewSet(viewsets.ViewSet):
     def delete_asset(self, request, **kwargs):
         StaticAsset.objects.get(Q(idx=kwargs["pk"])).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class device_asset_post(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request, *args, **kwargs):
+        _lut = {_value["idx"]: _value for _value in json.loads(request.POST["asset_data"])}
+        _field_list = StaticAssetFieldValue.objects.filter(
+            Q(pk__in=_lut.keys())
+        ).select_related(
+            "static_asset_template_field"
+        )
+        _all_ok = all(
+            [
+                _field.check_new_value(_lut[_field.pk], request.xml_response) for _field in _field_list
+            ]
+        )
+        if _all_ok:
+            [
+                _field.set_new_value(_lut[_field.pk]) for _field in _field_list
+            ]
+        else:
+            request.xml_response.error("validation problem")
