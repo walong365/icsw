@@ -77,6 +77,8 @@ device_report_module = angular.module(
         selected: true
 
         network_report_overview_module_selected: false
+
+        pdf_page_format: "landscape(A4)"
     }
 
     b64_to_blob = (b64_data, content_type, slice_size) ->
@@ -264,6 +266,7 @@ device_report_module = angular.module(
         setting = {
             pk: -1
             network_report_overview_module_selected: $scope.struct.network_report_overview_module_selected
+            pdf_page_format: $scope.struct.pdf_page_format
         }
         settings.push(setting)
 

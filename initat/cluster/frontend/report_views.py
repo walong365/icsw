@@ -279,7 +279,7 @@ class PDFReportGenerator(object):
             self.name = name
             self.pagenum = pagenum
 
-    def __init__(self):
+    def __init__(self, general_settings):
         system_device = None
         for _device in device.objects.all():
             if _device.is_cluster_device_group():
@@ -288,6 +288,7 @@ class PDFReportGenerator(object):
 
         report_logo = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
 
+        self.general_settings = general_settings
         self.last_poll_time = None
         self.logo_width = None
         self.logo_height = None
@@ -321,7 +322,8 @@ class PDFReportGenerator(object):
         self.progress = 0
         self.buffer = None
 
-        self.page_format = landscape(A4)
+        print general_settings["pdf_page_format"]
+        self.page_format = eval(general_settings["pdf_page_format"])
         self.margin = 36
 
     def get_report_data(self):
@@ -1402,7 +1404,7 @@ class GenerateReportPdf(View):
     def post(self, request):
         pk_settings, _devices, current_time = _init_report_settings(request)
 
-        pdf_report_generator = PDFReportGenerator()
+        pdf_report_generator = PDFReportGenerator(pk_settings[-1])
         pdf_report_generator.timestamp = current_time
         REPORT_GENERATORS[id(pdf_report_generator)] = pdf_report_generator
 
@@ -1973,7 +1975,12 @@ def _init_report_settings(request):
         if key[::-1][:4] == ']kp[':
             settings_dict[index]["pk"] = int(valuelist[0])
         else:
-            value = True if valuelist[0] == "true" else False
+            if valuelist[0] == "true":
+                value = True
+            elif valuelist[0] == "false":
+                value = False
+            else:
+                value = valuelist[0]
 
             settings_dict[index][key.split("[")[-1][:-1]] = value
 
