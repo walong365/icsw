@@ -68,6 +68,7 @@ device_report_module = angular.module(
         report_generating: false
         report_download_url: undefined
         report_download_name: undefined
+        report_download_url_name: undefined
 
         generate_button_disabled: false
         generate_interval: undefined
@@ -317,11 +318,13 @@ device_report_module = angular.module(
                                         }).then(
                                             (result) ->
                                                 if result.hasOwnProperty("pdf")
+                                                    $scope.struct.report_download_url_name = "Download PDF"
                                                     $scope.struct.report_download_name = "Report.pdf"
                                                     blob = b64_to_blob(result.pdf, 'application/pdf')
                                                     $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
 
                                                 if result.hasOwnProperty("xlsx")
+                                                    $scope.struct.report_download_url_name = "Download XLSX"
                                                     $scope.struct.report_download_name = "Report.xlsx"
                                                     blob = b64_to_blob(result.xlsx, 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
                                                     $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)

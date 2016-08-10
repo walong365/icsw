@@ -598,14 +598,8 @@ class PDFReportGenerator(object):
         elements.append(Spacer(1, 30))
         elements.append(t_body)
 
-        try:
-            doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
-            report.add_to_report(_buffer)
-        except Exception as e:
-            import traceback, sys
-            print '-' * 60
-            traceback.print_exc(file=sys.stdout)
-            print '-' * 60
+        doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
+        report.add_to_report(_buffer)
 
     def generate_report_for_asset_batch(self, asset_batch, report):
         _buffer = BytesIO()
@@ -1400,11 +1394,15 @@ from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
 
 class XlsxReportGenerator(object):
-    def __init__(self, settings, _devices):
+    def __init__(self, per_device_settings, _devices):
         self.data = ""
-        self.settings = settings
+        self.per_device_settings = per_device_settings
+        # general settings stored under special key -1
+        self.general_settings = per_device_settings[-1]
         self.devices = _devices
         self.progress = 0
+        self.workbook = Workbook()
+        self.data_generated = False
 
     def get_report_data(self):
         return self.data
@@ -1413,14 +1411,17 @@ class XlsxReportGenerator(object):
         return "xlsx"
 
     def generate_report(self):
-        data_generated = False
+        self.workbook.remove_sheet(self.workbook.active)
 
-        workbook = Workbook()
-        workbook.remove_sheet(workbook.active)
+        if self.general_settings['network_report_overview_module_selected']:
+            self.generate_network_report()
 
         idx = 1
         for _device in self.devices:
-            device_report = DeviceReport(_device, self.settings[_device.idx])
+            self.generate_device_overview(_device)
+            self.data_generated = True
+            device_report = DeviceReport(_device, self.per_device_settings[_device.idx])
+
             if _device.assetbatch_set.all():
                 asset_batch = sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)[-1]
                 asset_runs = asset_batch.assetrun_set.all()
@@ -1428,7 +1429,7 @@ class XlsxReportGenerator(object):
                 for ar in asset_runs:
                     if not device_report.module_selected(ar):
                         continue
-                    sheet = workbook.create_sheet()
+                    sheet = self.workbook.create_sheet()
                     _title = _device.full_name + " " + AssetType(ar.run_type).name
 
                     # xlsx limited to max 31 chars in title
@@ -1438,14 +1439,106 @@ class XlsxReportGenerator(object):
                     sheet.title = _title
 
                     generate_csv_entry_for_assetrun(ar, sheet.append)
-                    data_generated = True
 
             self.progress = int(round((float(idx) / len(self.devices)) * 100))
             idx += 1
 
-        if data_generated:
-            self.data = save_virtual_workbook(workbook)
+        if self.data_generated:
+            self.data = save_virtual_workbook(self.workbook)
         self.progress = -1
+
+    def generate_device_overview(self, _device):
+        sheet = self.workbook.create_sheet()
+        sheet.title = _device.full_name
+
+        header_row = ["FQDN",
+                      "DeviceGroup",
+                      "DeviceClass",
+                      "ComCapabilities",
+                      "IP Info",
+                      "SNMP Scheme",
+                      "SNMP Info",
+                      "Device Categories"
+                      ]
+
+        sheet.append(header_row)
+
+        data_rows = {}
+
+        idx = 0
+        if idx not in data_rows:
+            data_rows[idx] = ['' for _ in range(len(header_row))]
+
+        data_rows[idx][0] = _device.full_name
+        data_rows[idx][1] = _device.device_group_name()
+        data_rows[idx][2] = _device.device_class.name
+
+        idx = 0
+        for com_cap in _device.com_capability_list.all():
+            if idx not in data_rows:
+                data_rows[idx] = ['' for _ in range(len(header_row))]
+            data_rows[idx][3] = com_cap.name
+            idx += 1
+
+        idx = 0
+        for _ip in _device.all_ips():
+            if idx not in data_rows:
+                data_rows[idx] = ['' for _ in range(len(header_row))]
+            data_rows[idx][4] = str(_ip)
+            idx += 1
+
+        idx = 0
+        for _snmp_scheme in _device.snmp_schemes.all():
+            if idx not in data_rows:
+                data_rows[idx] = ['' for _ in range(len(header_row))]
+            data_rows[idx][5] = str(_snmp_scheme)
+            idx += 1
+
+        idx = 0
+        for _snmp_scheme in _device.snmp_schemes.all():
+            if idx not in data_rows:
+                data_rows[idx] = ['' for _ in range(len(header_row))]
+            data_rows[idx][7] = str(_snmp_scheme)
+            idx += 1
+
+        for i in range(len(data_rows)):
+            sheet.append(data_rows[i])
+
+    def generate_network_report(self):
+        from initat.cluster.backbone.models import network
+
+        networks = network.objects.all()
+
+        if networks:
+            self.data_generated = True
+            sheet = self.workbook.create_sheet()
+            sheet.title = "Network Overview"
+
+            header_row = ["Identifier",
+                          "Network",
+                          "Netmask",
+                          "Broadcast",
+                          "Gateway",
+                          "GW Priority",
+                          "#IPs",
+                          "Network Type"]
+
+
+            sheet.append(header_row)
+
+            for _network in networks:
+                row = [
+                    _network.identifier,
+                    _network.network,
+                    _network.netmask,
+                    _network.broadcast,
+                    _network.gateway,
+                    _network.gw_pri,
+                    _network.num_ip(),
+                    _network.network_type.description
+                ]
+
+                sheet.append(row)
 
 class GenerateReportXlsx(View):
     @method_decorator(login_required)
