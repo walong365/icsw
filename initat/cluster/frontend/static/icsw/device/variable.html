@@ -385,7 +385,22 @@
                 {{ field.value_date }}
             </span>
             <span ng-show="!field.$$field.fixed">
-                {{ field.value_date }}
+                <span class="input-group">
+                    <input
+                        class="form-control"
+                        uib-datepicker-popup="dd.MM.yyyy"
+                        datepicker-options="datepicker_options.date_options"
+                        type="text"
+                        ng-model="field.$$default_date"
+                        is-open="datepicker_options.open[field.idx]"
+                        button-bar="button_bar"
+                    />
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-default" ng-click="open_picker($event, field.idx)">
+                            <i class="glyphicon glyphicon-calendar"></i>
+                        </button>
+                    </span>
+                </span>
             </span>
         </div>
     </div>

@@ -833,6 +833,38 @@ device_variable_module = angular.module(
         sub_scope = $scope.$new(true)
         sub_scope.asset = asset
 
+        sub_scope.open_picker = ($event, picker_idx) ->
+            sub_scope.datepicker_options.open[picker_idx] = true
+
+        sub_scope.button_bar = {
+            show: true
+            now: {
+                show: true
+                text: 'Now'
+            },
+            today: {
+                show: true
+                text: 'Today'
+            },
+            close: {
+                show: true
+                text: 'Close'
+            }
+        }
+        sub_scope.datepicker_options = {
+            date_options: {
+                format: "dd.MM.yyyy"
+                formatYear: "yyyy"
+                minDate: new Date(2000, 1, 1)
+                startingDay: 1
+                minMode: "day"
+                datepickerMode: "day"
+            }
+            time_options: {
+                showMeridian: false
+            }
+            open: {}
+        }
         # create backup values
         _bu_f = {}
         for _f in asset.staticassetfieldvalue_set
@@ -841,6 +873,8 @@ device_variable_module = angular.module(
                 "s": _f.value_str
                 "d": _f.value_date
             }
+            _f.$$default_date = moment(_f.value_date).toDate()
+            sub_scope.datepicker_options.open[_f.idx] = false
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.device.static.asset.modify"))(sub_scope)
@@ -851,6 +885,8 @@ device_variable_module = angular.module(
                     d = $q.defer()
                     post_params = []
                     for _f in asset.staticassetfieldvalue_set
+                        # cast back to string
+                        _f.value_date = moment(_f.$$default_date).format("DD.MM.YYYY")
                         post_params.push(
                             {
                                 "idx": _f.idx

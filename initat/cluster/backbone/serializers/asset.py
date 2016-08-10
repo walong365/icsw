@@ -268,6 +268,8 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
 
 
 class StaticAssetTemplateFieldSerializer(serializers.ModelSerializer):
+    default_value_date = serializers.DateField(input_formats=["%d.%m.%Y"])
+
     class Meta:
         model = StaticAssetTemplateField
 

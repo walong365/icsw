@@ -1480,5 +1480,9 @@ class StaticAssetFieldValue(models.Model):
         _local, _short = _field.get_attr_name()
         if not _field.fixed:
             # ignore changes to fixed values
-            setattr(self, _local, in_dict[_short])
+            if _short == "date":
+                # cast date
+                setattr(self, _local, datetime.datetime.strptime(in_dict[_short], "%d.%m.%Y").date())
+            else:
+                setattr(self, _local, in_dict[_short])
             self.save()

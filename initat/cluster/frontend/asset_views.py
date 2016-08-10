@@ -374,7 +374,7 @@ class StaticAssetTemplateViewSet(viewsets.ViewSet):
             _new_field = _cur_ser.save()
         else:
             # todo, fixme
-            print dir(_cur_ser), _cur_ser.errors, _cur_ser
+            raise ValidationError("Validation error: {}".format(str(_cur_ser.errors)))
         resp = _cur_ser.data
         c_list, r_list = get_change_reset_list(_prev_field, _new_field, request.data)
         resp = Response(resp)
@@ -963,6 +963,8 @@ class device_asset_post(View):
     @method_decorator(xml_wrapper)
     def post(self, request, *args, **kwargs):
         _lut = {_value["idx"]: _value for _value in json.loads(request.POST["asset_data"])}
+        # import pprint
+        # pprint.pprint(_lut)
         _field_list = StaticAssetFieldValue.objects.filter(
             Q(pk__in=_lut.keys())
         ).select_related(

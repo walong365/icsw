@@ -506,7 +506,22 @@
                     DefaultDate
                 </label>
                 <div class="controls col-xs-7">
-                    <input class="form-control" type="date" ng-model="edit_obj.$$default_date"/>
+                    <span class="input-group">
+                        <input
+                            class="form-control"
+                            uib-datepicker-popup="dd.MM.yyyy"
+                            datepicker-options="datepicker_options.date_options"
+                            type="text"
+                            ng-model="edit_obj.$$default_date"
+                            is-open="datepicker_options.open"
+                            button-bar="button_bar"
+                        />
+                        <span class="input-group-btn">
+                            <button type="button" class="btn btn-default" ng-click="open_picker()">
+                                <i class="glyphicon glyphicon-calendar"></i>
+                            </button>
+                        </span>
+                    </span>
                 </div>
             </div>
         </fieldset>

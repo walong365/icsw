@@ -1224,7 +1224,7 @@ device_asset_module = angular.module(
                 # string
                 return field.value_str
             else
-                return field.value_date
+                return moment(field.value_date).format("DD.MM.YYYY")
 
 ]).service("icswStaticAssetTemplateTreeService",
 [

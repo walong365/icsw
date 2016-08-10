@@ -703,7 +703,7 @@ monitoring_device_module = angular.module(
             return "????"
 
     _set_default_value = (field) ->
-        field.default_value_date = moment(field.$$default_date).format("YYYY-MM-DD")
+        field.default_value_date = moment(field.$$default_date).format("DD.MM.YYYY")
 
     _get_default_value = (field) ->
         # set $$default_value according to type
@@ -831,6 +831,39 @@ monitoring_device_module = angular.module(
                 f_bu = new icswStaticAssetTemplateFieldBackup()
                 f_bu.create_backup(field)
             s2_scope.edit_obj = field
+
+            s2_scope.open_picker = ($event) ->
+                s2_scope.datepicker_options.open = true
+
+            s2_scope.button_bar = {
+                show: true
+                now: {
+                    show: true
+                    text: 'Now'
+                },
+                today: {
+                    show: true
+                    text: 'Today'
+                },
+                close: {
+                    show: true
+                    text: 'Close'
+                }
+            }
+            s2_scope.datepicker_options = {
+                date_options: {
+                    format: "dd.MM.yyyy"
+                    formatYear: "yyyy"
+                    minDate: new Date(2000, 1, 1)
+                    startingDay: 1
+                    minMode: "day"
+                    datepickerMode: "day"
+                }
+                time_options: {
+                    showMeridian: false
+                }
+                open: false
+            }
             s2_scope.field_type_list = icswStaticAssetFunctions.get_form_dict("field_type")
 
             # functions
