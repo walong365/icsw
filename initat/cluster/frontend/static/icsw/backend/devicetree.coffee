@@ -190,7 +190,7 @@ angular.module(
 
         post_g_static_asset_info: () ->
 
-            console.log "static_asset_info"
+            console.log "post_g static_asset_info"
 
         post_g_device_connection_info: () ->
             dev_pks = (dev.idx for dev in @devices)
