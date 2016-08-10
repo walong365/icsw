@@ -36,12 +36,11 @@ from io import BytesIO
 
 from reportlab.lib.utils import ImageReader
 from reportlab.lib import colors
-from reportlab.lib.units import mm
 from reportlab.platypus import SimpleDocTemplate, Spacer, Table, Paragraph, Image
 from reportlab.graphics.shapes import Drawing, Rect
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.lib.pagesizes import landscape, letter
+from reportlab.lib.pagesizes import landscape, letter, A4, A3
 from reportlab.lib.styles import getSampleStyleSheet
 
 from PollyReports import Element, Rule, Band
@@ -322,6 +321,9 @@ class PDFReportGenerator(object):
         self.progress = 0
         self.buffer = None
 
+        self.page_format = landscape(A4)
+        self.margin = 36
+
     def get_report_data(self):
         if self.buffer:
             return self.buffer.getvalue()
@@ -340,7 +342,9 @@ class PDFReportGenerator(object):
         return logo
 
     def __config_report_helper(self, header, header_names_list, rpt, data):
-        header_list = [PollyReportsImage(pos=(570, -25),
+        available_width = self.page_format[0] - (self.margin * 2)
+
+        header_list = [PollyReportsImage(pos=(available_width - self.logo_width, -25),
                                          width=self.logo_width,
                                          height=self.logo_height,
                                          getvalue=self.__get_logo_helper),
@@ -348,16 +352,13 @@ class PDFReportGenerator(object):
 
         detail_list = []
 
-        # letter size
-        available_width = 72 * 9
-
         position = 0
 
         for header_name, key, avail_width_percentage in header_names_list:
             header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name))
             detail_list.append(Element((position, 0), ("Helvetica", 6), key=key))
 
-            position += available_width * (avail_width_percentage / 100.0) + 10
+            position += available_width * (avail_width_percentage / 100.0)
 
             for _dict in data:
                 s = str(_dict[key])
@@ -373,8 +374,8 @@ class PDFReportGenerator(object):
                     s_new += s[i]
                 _dict[key] = s_new
 
-        header_list.append(Rule((0, 42), 7.5 * 90, thickness=2))
-        detail_list.append(Rule((0, 0), 7.5 * 90, thickness=0.1))
+        header_list.append(Rule((0, 42), self.page_format[0] - (self.margin * 2), thickness=2))
+        detail_list.append(Rule((0, 0), self.page_format[0] - (self.margin * 2), thickness=0.1))
 
         rpt.pageheader = Band(header_list)
         rpt.detailband = Band(detail_list)
@@ -385,8 +386,7 @@ class PDFReportGenerator(object):
         report = GenericReport()
 
         _buffer = BytesIO()
-        # (72 * 11, 72 * 8.5) --> letter size
-        canvas = Canvas(_buffer, (72 * 11, 72 * 8.5))
+        canvas = Canvas(_buffer, (self.page_format))
 
         networks = network.objects.all()
         data = []
@@ -450,12 +450,17 @@ class PDFReportGenerator(object):
         report.generate_bookmark("Overview")
 
         _buffer = BytesIO()
-        doc = SimpleDocTemplate(_buffer, pagesize=landscape(letter), rightMargin=25, leftMargin=25, topMargin=0,
+        doc = SimpleDocTemplate(_buffer,
+                                pagesize=self.page_format,
+                                rightMargin=25,
+                                leftMargin=25,
+                                topMargin=0,
                                 bottomMargin=25)
-        doc.pagesize = landscape(letter)
         elements = []
 
         style_sheet = getSampleStyleSheet()
+
+        available_width = self.page_format[0] - (self.margin * 2)
 
         paragraph_header = Paragraph('<font face="times-bold" size="22">Overview for {}</font>'.format(
             _device.name), style_sheet["BodyText"])
@@ -466,7 +471,7 @@ class PDFReportGenerator(object):
 
         data = [[paragraph_header, logo]]
 
-        t_head = Table(data, colWidths=(570, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+        t_head = Table(data, colWidths=(available_width - self.logo_width, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
         body_data = []
 
@@ -474,9 +479,9 @@ class PDFReportGenerator(object):
         data = [[_device.full_name]]
 
         text_block = Paragraph('<b>FQDN:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(200 * mm),
+        t = Table(data, colWidths=(available_width * 0.85),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
                   )
         body_data.append((text_block, t))
@@ -485,9 +490,9 @@ class PDFReportGenerator(object):
         data = [[_device.device_group_name()]]
 
         text_block = Paragraph('<b>DeviceGroup:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(200 * mm),
+        t = Table(data, colWidths=(available_width * 0.85),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
                   )
 
@@ -496,17 +501,16 @@ class PDFReportGenerator(object):
         # Device Class
         data = [[_device.device_class.name]]
 
-        text_block = Paragraph('<b>DeviceGroup:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(200 * mm),
+        text_block = Paragraph('<b>DeviceClass:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(available_width * 0.85),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
                   )
 
         body_data.append((text_block, t))
 
         # ComCapabilites
-
         str_to_use = ""
 
         for com_cap in _device.com_capability_list.all():
@@ -517,9 +521,9 @@ class PDFReportGenerator(object):
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>ComCapabilities:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(200 * mm),
+        t = Table(data, colWidths=(available_width * 0.85),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
                   )
 
@@ -535,9 +539,9 @@ class PDFReportGenerator(object):
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>IP Info:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(200 * mm),
+        t = Table(data, colWidths=(available_width * 0.85),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
                   )
 
@@ -553,9 +557,9 @@ class PDFReportGenerator(object):
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>SNMP Scheme:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(200 * mm),
+        t = Table(data, colWidths=(available_width * 0.85),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
                   )
 
@@ -566,9 +570,9 @@ class PDFReportGenerator(object):
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>SNMP Info:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(200 * mm),
+        t = Table(data, colWidths=(available_width * 0.85),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
                   )
 
@@ -584,15 +588,15 @@ class PDFReportGenerator(object):
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>Categories:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(200 * mm),
+        t = Table(data, colWidths=(available_width * 0.85),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
                   )
 
         body_data.append((text_block, t))
 
-        t_body = Table(body_data, colWidths=(100, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+        t_body = Table(body_data, colWidths=(available_width * 0.15, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
         elements.append(t_head)
         elements.append(Spacer(1, 30))
@@ -604,8 +608,7 @@ class PDFReportGenerator(object):
     def generate_report_for_asset_batch(self, asset_batch, report):
         _buffer = BytesIO()
 
-        # (72 * 11, 72 * 8.5) --> letter size
-        canvas = Canvas(_buffer, (72 * 11, 72 * 8.5))
+        canvas = Canvas(_buffer, self.page_format)
 
         assetruns = asset_batch.assetrun_set.all()
         row_collector = RowCollector()
@@ -796,7 +799,7 @@ class PDFReportGenerator(object):
                 if data:
                     rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
                                                       getvalue=lambda x: x['process_name'][0],
-                                                      format=lambda x: "Updates starting with: {}".format(x)), ],
+                                                      format=lambda x: "Processes starting with: {}".format(x)), ],
                                              getvalue=lambda x: x["process_name"][0]), ]
                 else:
                     mock_object = {
@@ -905,12 +908,17 @@ class PDFReportGenerator(object):
         report.generate_bookmark("Hardware Report")
 
         _buffer = BytesIO()
-        doc = SimpleDocTemplate(_buffer, pagesize=landscape(letter), rightMargin=25, leftMargin=25, topMargin=00,
+        doc = SimpleDocTemplate(_buffer,
+                                pagesize=self.page_format,
+                                rightMargin=25,
+                                leftMargin=25,
+                                topMargin=0,
                                 bottomMargin=25)
-        doc.pagesize = landscape(letter)
         elements = []
 
         style_sheet = getSampleStyleSheet()
+
+        available_width = self.page_format[0] - (self.margin * 2)
 
         data = [["Name", "Cores"]]
         for cpu in hardware_report_ar.cpus.all():
@@ -920,7 +928,8 @@ class PDFReportGenerator(object):
         p0_1 = Paragraph('<b>CPUs:</b>', style_sheet["BodyText"])
 
         t_1 = Table(data,
-                    colWidths=(100 * mm, 100 * mm),
+                    colWidths=(available_width * 0.90 * 0.50,
+                               available_width * 0.90 * 0.50),
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black)])
 
@@ -931,7 +940,8 @@ class PDFReportGenerator(object):
 
         p0_2 = Paragraph('<b>GPUs:</b>', style_sheet["BodyText"])
         t_2 = Table(data,
-                    colWidths=(100 * mm, 100 * mm),
+                    colWidths=(available_width * 0.90 * 0.50,
+                               available_width * 0.90 * 0.50),
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black),
                            ])
@@ -944,7 +954,9 @@ class PDFReportGenerator(object):
 
         p0_3 = Paragraph('<b>HDDs:</b>', style_sheet["BodyText"])
         t_3 = Table(data,
-                    colWidths=(66 * mm, 67 * mm, 67 * mm),
+                    colWidths=(available_width * 0.90 * 0.33,
+                               available_width * 0.90 * 0.34,
+                               available_width * 0.90 * 0.33),
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black),
                            ])
@@ -973,7 +985,10 @@ class PDFReportGenerator(object):
 
         p0_4 = Paragraph('<b>Partitions:</b>', style_sheet["BodyText"])
         t_4 = Table(data,
-                    colWidths=(50 * mm, 50 * mm, 50 * mm, 50 * mm),
+                    colWidths=(available_width * 0.90 * 0.25,
+                               available_width * 0.90 * 0.25,
+                               available_width * 0.90 * 0.25,
+                               available_width * 0.90 * 0.25),
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black),
                            ])
@@ -989,7 +1004,11 @@ class PDFReportGenerator(object):
 
         p0_5 = Paragraph('<b>Memory Modules:</b>', style_sheet["BodyText"])
         t_5 = Table(data,
-                    colWidths=(40 * mm, 40 * mm, 40 * mm, 40 * mm, 40 * mm),
+                    colWidths=(available_width * 0.90 * 0.2,
+                               available_width * 0.90 * 0.2,
+                               available_width * 0.90 * 0.2,
+                               available_width * 0.90 * 0.2,
+                               available_width * 0.90 * 0.2),
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black),
                            ])
@@ -1000,7 +1019,7 @@ class PDFReportGenerator(object):
                 [p0_4, t_4],
                 [p0_5, t_5]]
 
-        t_body = Table(data, colWidths=(100, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+        t_body = Table(data, colWidths=(available_width * 0.10, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
         p_h = Paragraph('<font face="times-bold" size="22">Hardware Report for {}</font>'.format(
             hardware_report_ar.device.name), style_sheet["BodyText"])
@@ -1011,7 +1030,7 @@ class PDFReportGenerator(object):
 
         data = [[p_h, logo]]
 
-        t_head = Table(data, colWidths=(570, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+        t_head = Table(data, colWidths=(available_width - self.logo_width, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
         elements.append(t_head)
         elements.append(Spacer(1, 30))
@@ -1148,14 +1167,18 @@ class PDFReportGenerator(object):
 
         data = [[paragraph_header, logo]]
 
-        t_head = Table(data, colWidths=(570, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+        available_width = self.page_format[0] - (self.margin * 2)
+
+        t_head = Table(data,
+                       colWidths=(available_width - self.logo_width, None),
+                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
         _buffer = BytesIO()
-        can = Canvas(_buffer, pagesize=landscape(letter))
+        can = Canvas(_buffer, pagesize=self.page_format)
 
         can.setFont("Helvetica", 14)
 
-        width, heigth = landscape(letter)
+        width, heigth = self.page_format
 
         t_head.wrapOn(can, 0, 0)
         t_head.drawOn(can, 25, heigth - 50)
@@ -1242,7 +1265,7 @@ class PDFReportGenerator(object):
 
         for page_number in range(num_pages):
             # this loop might take a long time -> kill this loop if no polling happend in the last few seconds (i.e the
-            # user closed the browser windows or switched to a different view
+            # user closed the browser window or switched to a different view
             if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
                 break
 
@@ -1251,7 +1274,8 @@ class PDFReportGenerator(object):
 
             if page_number >= toc_offset_num:
                 page_num_buffer = BytesIO()
-                can = Canvas(page_num_buffer, pagesize=landscape(letter))
+                can = Canvas(page_num_buffer, pagesize=self.page_format)
+                can.setFont("Helvetica", 14)
 
                 str_to_draw = "{}".format(page_number + 1)
                 can.drawString(25, 25, str_to_draw)
@@ -1259,7 +1283,9 @@ class PDFReportGenerator(object):
                 if (page_number - toc_offset_num) in page_num_prefix_dict:
                     str_to_draw = "({})".format(page_num_prefix_dict[page_number - toc_offset_num])
 
-                    can.drawString(700, 25, str_to_draw)
+                    can.drawString(self.page_format[0] - self.margin - stringWidth(str_to_draw, "Helvetica", 14),
+                                   25,
+                                   str_to_draw)
 
                 can.save()
                 page_num_buffer.seek(0)
