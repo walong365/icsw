@@ -1,6 +1,6 @@
 
 <script type="text/ng-template" id="icsw.schedule.overview">
-    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server...</div>
     <h3>
         Dispatch settings ({{ struct.dispatch_tree.list.length }} entries)
         <icsw-tools-button type="create" size="xs" ng-click="create_or_edit($event, null, true)"></icsw-tools-button>
@@ -179,7 +179,7 @@
 
 <script type="text/ng-template" id="icsw.schedule.device">
 
-    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server...</div>
     <h3>
         Device schedules ({{ struct.devices.length }} entries)
         <icsw-tools-button type="modify" size="xs" ng-click="edit($event, null)" value="modify selected"></icsw-tools-button>
@@ -273,8 +273,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.static.asset.template.overview">
-    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
-    <h3>
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server...</div>
+    <h3 ng-if="!struct.loading">
         StaticAsset Templates ({{ struct.template_tree.list.length }} entries)
         <icsw-tools-button type="create" size="xs" ng-click="create_or_edit($event, null, true)"></icsw-tools-button>
     </h3>

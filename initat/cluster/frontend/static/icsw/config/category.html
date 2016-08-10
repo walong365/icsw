@@ -106,9 +106,9 @@
             Contents of category {{ icsw_category.full_name }}
         </div>
         <div class="panel-body" ng-if="struct.data_ready">
-            <uib-alert type="warning" ng-if="struct.enabled && icsw_category.num_refs == 0">
+            <div uib-alert class="alert-warning" ng-if="struct.enabled && icsw_category.num_refs == 0">
                 This category is empty.
-            </uib-alert>
+            </div>
             <table st-table="entries" st-safe-src="struct.contents" class="table table-condensed table-striped"
                    style="width: auto" ng-show="entries.length > 0">
                 <thead>

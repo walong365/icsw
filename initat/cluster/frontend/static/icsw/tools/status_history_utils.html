@@ -1,9 +1,9 @@
 
 <script type="text/ng-template" id="icsw.tools.device_hist_status">
     <div ng-if="detailed_view"> <!-- use full layout -->
-        <uib-alert type="warning" ng-show="struct.loading">
+        <div uib-alert class="alert-warning" ng-show="struct.loading">
             Loading data from Server...
-        </uib-alert>
+        </div>
         <div class="row" ng-show="!struct.loading">
             <div class="col-md-1"> <!-- style="margin-top: -8px;"> -->
                 <div style="float: left">

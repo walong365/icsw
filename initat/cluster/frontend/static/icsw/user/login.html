@@ -56,7 +56,7 @@
                 </fieldset>
                 <fieldset>
                     <legend>License Information</legend>
-                    <uib-alert type="warning" ng-show="!struct.fx_mode && struct.data_valid" style="margin:0;">
+                    <div uib-alert class="alert-warning" ng-show="!struct.fx_mode && struct.data_valid" style="margin:0;">
                         <p class="text-right" style="margin:0;">
                             FX-Mode is not licensed
                             <span class="fa-stack fa-2x">
@@ -64,17 +64,17 @@
                                 <i class="fa fa-ban fa-stack-2x text-danger"></i>
                             </span>
                         </p>
-                    </uib-alert>
-                    <uib-alert type="success" ng-show="struct.fx_mode && struct.data_valid" style="margin:0;">
+                    </div>
+                    <div uib-alert type="success" ng-show="struct.fx_mode && struct.data_valid" style="margin:0;">
                         <p class="text-right" style="margin:0px;">FX-Mode activated <span class="fa fa-bolt fa-border fa-1x"></span></p>
-                    </uib-alert>
-                    <uib-alert ng-show="license_tree.pack_list.length == 0" style="font-size: larger" style="margin:0;">
+                    </div>
+                    <div uib-alert ng-show="license_tree.pack_list.length == 0" style="font-size: larger" style="margin:0;">
                         You are running an <strong>unlicensed version</strong>.<br />
                         Please contact <strong>support@init.at</strong> in order to obtain a license.
-                    </uib-alert>
-                    <uib-alert ng-show="disabled" style="font-size: larger" style="margin:0;">
+                    </div>
+                    <div uib-alert ng-show="disabled" style="font-size: larger" style="margin:0;">
                         Awaiting license information ...
-                    </uib-alert>
+                    </div>
                 </fieldset>
             </div>
         </div>

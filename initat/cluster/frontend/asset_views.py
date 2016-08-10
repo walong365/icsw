@@ -977,7 +977,7 @@ class device_asset_post(View):
         )
         if _all_ok:
             [
-                _field.set_new_value(_lut[_field.pk]) for _field in _field_list
+                _field.set_new_value(_lut[_field.pk], request.user) for _field in _field_list
             ]
         else:
             request.xml_response.error("validation problem")

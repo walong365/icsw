@@ -12,7 +12,7 @@
             </ul>
         </div>
     </h2>
-    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server ...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server ...</div>
     <icsw-tools-ensure-device-selection dev-list="struct.devices"> <!-- don't need list-ready since it's handled in the page below -->
         <uib-accordion close-others="no">
             <div uib-accordion-group class="panel-default" is-open="struct.monconfig_open" ng-show="!struct.fetching">

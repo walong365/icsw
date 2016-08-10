@@ -5,16 +5,16 @@
         <span class="text-warning" ng-show="struct.loading">Loading initial data...</span>
     </h2>
 
-    <uib-alert type="danger" ng-if="struct.error">
+    <div uib-alert type="danger" ng-if="struct.error">
         <strong>{{ struct.error }}</strong>
-    </uib-alert>
+    </div>
 
     <icsw-tools-ensure-device-selection dev-list="struct.device_pks_ordered" list-ready="struct.device_list_ready">
         <uib-tabset>
             <uib-tab ng-if="!error && no_device_with_logs_selected" heading="N/A" active="struct.device_tab_active['no_device_tab']">
-                <uib-alert type="warning">
+                <div uib-alert class="alert-warning">
                     No device with logs selected.
-                </uib-alert>
+                </div>
             </uib-tab>
             <uib-tab ng-repeat="device_pk in struct.all_pks_ordered"
                 heading="{{ struct.devices_rest[device_pk].name }} ({{ struct.devices_rest[device_pk].capabilities_description}} )"
@@ -76,9 +76,9 @@
                         <tbody ng-if="struct.entries.length == 0 && !struct.entries_is_loading">
                             <tr>
                                 <td colspan="99" class="text-center">
-                                    <uib-alert type="info" style="max-width: 450px">
+                                    <div uib-alert type="info" style="max-width: 450px">
                                         Query returned no entries.
-                                    </uib-alert>
+                                    </div>
                                 </td>
                             </tr>
                         </tbody>

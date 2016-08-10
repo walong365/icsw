@@ -16,7 +16,7 @@
 <script type="text/ng-template" id="icsw/main/user/tree.html">
     <div ng-controller="icswUserGroupTreeCtrl">
         <div ng-if="struct.error_string">
-            <uib-alert type="warning">{{ struct.error_string }}</uib-alert>
+            <div uib-alert class="alert-warning">{{ struct.error_string }}</div>
         </div>
         <uib-tabset ng-if="struct.tree_loaded">
             <uib-tab>

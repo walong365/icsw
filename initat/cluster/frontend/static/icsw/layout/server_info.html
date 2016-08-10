@@ -13,7 +13,7 @@
                 <span class="text-warning" ng-show="struct.loading">Updating ...</span>
                 <span class="label label-danger" ng-show="struct.unroutable_config_names.length">There are {{ struct.unroutable_config_names.length }} unroutable configs</span>
             </uib-accordion-heading>
-            <uib-alert type="warning" ng-show="struct.unroutable_config_names.length">
+            <div uib-alert class="alert-warning" ng-show="struct.unroutable_config_names.length">
                 <h2>Unroutable Configs</h2>
                 <table class="table table-hover table-striped" style="width:auto;">
                     <thead>
@@ -31,7 +31,7 @@
                         </tr>
                     </tbody>
                 </table>
-            </uib-alert>
+            </div>
             <table class="table table-hover table-striped" style="width:auto;">
                 <thead>
                     <tr>

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016 Gregor Kaufmann, init.at
+# Copyright (C) 2016 Gregor Kaufmann, Andreas Lang-Nevyjel init.at
 #
 # this file is part of icsw-server
 #
@@ -22,13 +22,10 @@ import base64
 import bz2
 import datetime
 import json
-import pickle
-import uuid
 
-from django.utils import timezone, dateparse
-import django.utils.timezone
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone, dateparse
 from enum import IntEnum
 from lxml import etree
 
@@ -1475,7 +1472,7 @@ class StaticAssetFieldValue(models.Model):
         else:
             return True
 
-    def set_new_value(self, in_dict):
+    def set_new_value(self, in_dict, user):
         _field = self.static_asset_template_field
         _local, _short = _field.get_attr_name()
         if not _field.fixed:
@@ -1485,4 +1482,5 @@ class StaticAssetFieldValue(models.Model):
                 setattr(self, _local, datetime.datetime.strptime(in_dict[_short], "%d.%m.%Y").date())
             else:
                 setattr(self, _local, in_dict[_short])
+            self.change_user = user
             self.save()

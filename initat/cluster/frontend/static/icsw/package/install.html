@@ -1,6 +1,6 @@
 <script type="text/ng-template" id="icsw.package.install.overview">
     <uib-tabset ng-show="struct.tree_loaded">
-        <uib-alert type="warning" ng-show="struct.repo_info_str">{{ struct.repo_info_str }}</uib-alert>
+        <div uib-alert class="alert-warning" ng-show="struct.repo_info_str">{{ struct.repo_info_str }}</div>
         <uib-tab heading="Package repositories">
             <div>
                 <h3>
@@ -221,8 +221,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.device.overview">
-    <uib-alert type="warning" ng-show="struct.device_info_str">{{ struct.device_info_str }}</uib-alert>
-    <uib-alert type="warning" ng-show="struct.package_info_str">{{ struct.package_info_str }}</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="struct.device_info_str">{{ struct.device_info_str }}</div>
+    <div uib-alert class="alert-warning" ng-show="struct.package_info_str">{{ struct.package_info_str }}</div>
     <h3>
         <div class="form-inline">
             ({{ struct.devices.length }} devices, {{ struct.package_tree.filtered_list.length }} of {{ struct.package_tree.list.length }} packages),
