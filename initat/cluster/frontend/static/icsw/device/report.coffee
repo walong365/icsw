@@ -81,7 +81,33 @@ device_report_module = angular.module(
         pdf_page_format: "landscape(A4)"
 
         user: undefined
+
+        assetbatch_selection_mode: ""
     }
+
+    $scope.assetbatch_selection_mode_change = () ->
+        if $scope.struct.assetbatch_selection_mode == ""
+            return
+
+        idx_list = []
+
+        for _dev in $scope.struct.devices
+            idx_list.push _dev.idx
+
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.REPORT_REPORT_DATA_AVAILABLE
+            data:
+                idx_list: idx_list
+                assetbatch_selection_mode: $scope.struct.assetbatch_selection_mode
+            dataType: 'json'
+        }).then(
+            (result) ->
+                for dev in $scope.struct.devices
+                    if result.pk_setting_dict.hasOwnProperty(dev.idx)
+                        dev.$selection_buttons_disabled = result.pk_setting_dict[dev.idx]
+            (not_ok) ->
+                console.log not_ok
+        )
 
     b64_to_blob = (b64_data, content_type, slice_size) ->
         content_type = content_type or ''
@@ -113,7 +139,6 @@ device_report_module = angular.module(
     ).then(
         (data) ->
             $scope.struct.user = data[0].user
-            console.log($scope.struct.user)
     )
 
 
@@ -249,22 +274,6 @@ device_report_module = angular.module(
                         dev.$lstopo_report_selected = false
                         $scope.struct.devices.push(dev)
                         idx_list.push(dev.idx)
-
-                icswSimpleAjaxCall({
-                    url: ICSW_URLS.REPORT_REPORT_DATA_AVAILABLE
-                    data:
-                        idx_list: idx_list
-                        assetbatch_selection_mode: 0
-                    dataType: 'json'
-                }).then(
-                    (result) ->
-                        for dev in $scope.struct.devices
-                            if result.pk_setting_dict.hasOwnProperty(dev.idx)
-                                dev.$selection_buttons_disabled = result.pk_setting_dict[dev.idx]
-                    (not_ok) ->
-                        console.log not_ok
-                )
-
         )
         
     $scope.get_tr_class = (obj) ->
@@ -283,7 +292,7 @@ device_report_module = angular.module(
             network_report_overview_module_selected: $scope.struct.network_report_overview_module_selected
             pdf_page_format: $scope.struct.pdf_page_format
             user_idx: $scope.struct.user.idx
-            assetbatch_selection_mode: 0
+            assetbatch_selection_mode: $scope.struct.assetbatch_selection_mode
         }
         settings.push(setting)
 
