@@ -468,10 +468,9 @@ class PDFReportGenerator(object):
         # create generic overview page
         self.generate_overview_page(report)
 
-        # search latest assetbatch and generate
-        if _device.assetbatch_set.all():
-            asset_batch = sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)[-1]
-            self.generate_report_for_asset_batch(asset_batch, report)
+        selected_runs = _luigi_select_assetruns_for_device(_device, self.general_settings["assetbatch_selection_mode"])
+
+        self.generate_report_for_assetruns(selected_runs, report)
 
     def generate_overview_page(self, report):
         _device = report.device
@@ -634,18 +633,17 @@ class PDFReportGenerator(object):
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
         report.add_to_report(_buffer)
 
-    def generate_report_for_asset_batch(self, asset_batch, report):
+    def generate_report_for_assetruns(self, assetruns, report):
         _buffer = BytesIO()
 
         canvas = Canvas(_buffer, self.page_format)
 
-        assetruns = asset_batch.assetrun_set.all()
         row_collector = RowCollector()
 
         # Hardware report is generated last
         hardware_report_ar = None
 
-        for ar in sorted(assetruns, key=lambda _ar: _ar.run_type):
+        for ar in assetruns:
             row_collector.reset()
             row_collector.current_asset_type = AssetType(ar.run_type)
             generate_csv_entry_for_assetrun(ar, row_collector.collect)
@@ -1306,7 +1304,7 @@ class PDFReportGenerator(object):
 
         for _device_group in device_group_to_devices_dict:
             for _device in device_group_to_devices_dict[_device_group]:
-                row = [_device.full_name]
+                row = [Paragraph(_device.full_name, style_sheet["BodyText"])]
 
                 for i in range(1, 10):
                     if i == 1:
@@ -1358,7 +1356,7 @@ class PDFReportGenerator(object):
                 config_data.append(row)
 
         t_config = Table(config_data, colWidths=[available_width * (float(1) / len(header_row)) for _ in range(len(header_row))],
-                         style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
+                         style=[('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
                                 ('RIGHTPADDING', (0, 0), (-1, -1), 0)]
                          )
@@ -1666,23 +1664,22 @@ class XlsxReportGenerator(object):
             self.data_generated = True
             device_report = DeviceReport(_device, self.per_device_settings[_device.idx])
 
-            if _device.assetbatch_set.all():
-                asset_batch = sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)[-1]
-                asset_runs = asset_batch.assetrun_set.all()
+            selected_runs = _luigi_select_assetruns_for_device(_device,
+                                                               self.general_settings["assetbatch_selection_mode"])
 
-                for ar in asset_runs:
-                    if not device_report.module_selected(ar):
-                        continue
-                    sheet = self.workbook.create_sheet()
-                    _title = _device.full_name + " " + AssetType(ar.run_type).name
+            for ar in selected_runs:
+                if not device_report.module_selected(ar):
+                    continue
+                sheet = self.workbook.create_sheet()
+                _title = _device.full_name + " " + AssetType(ar.run_type).name
 
-                    # xlsx limited to max 31 chars in title
-                    if len(_title) > 31:
-                        _title = _title[:31]
+                # xlsx limited to max 31 chars in title
+                if len(_title) > 31:
+                    _title = _title[:31]
 
-                    sheet.title = _title
+                sheet.title = _title
 
-                    generate_csv_entry_for_assetrun(ar, sheet.append)
+                generate_csv_entry_for_assetrun(ar, sheet.append)
 
             self.progress = int(round((float(idx) / len(self.devices)) * 100))
             idx += 1
@@ -1813,6 +1810,8 @@ class ReportDataAvailable(View):
                 idx_list = _list
                 break
 
+        assetbatch_selection_mode = int(request.POST['assetbatch_selection_mode'])
+
         meta_devices = []
 
         device_group_disabled = {}
@@ -1828,7 +1827,7 @@ class ReportDataAvailable(View):
                     continue
 
                 disabled = True
-                if _device.assetbatch_set.all():
+                if _luigi_select_assetruns_for_device(_device, assetbatch_selection_mode):
                     disabled = False
 
                 pk_setting_dict[pk] = disabled
@@ -2217,3 +2216,51 @@ def _init_report_settings(request):
             _devices.append(_device)
 
     return pk_settings, _devices, current_time
+
+
+# asset_batch_selection_mode
+# 0 == latest only, 1 == latest fully working, 2 == mixed runs from multiple assetbatches
+def _luigi_select_assetruns_for_device(_device, asset_batch_selection_mode=0):
+    selected_asset_runs = []
+
+    asset_batch_selection_mode = int(asset_batch_selection_mode)
+    assert (asset_batch_selection_mode <= 2 and asset_batch_selection_mode >= 0)
+
+    # search latest assetbatch and generate
+    if _device.assetbatch_set.all():
+        for assetbatch in reversed(sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)):
+            if asset_batch_selection_mode == 0:
+                selected_asset_runs = assetbatch.assetrun_set.all()
+                break
+            elif asset_batch_selection_mode == 1:
+                if assetbatch.num_runs == assetbatch.num_completed and assetbatch.num_runs_error == 0:
+                    selected_asset_runs = assetbatch.assetrun_set.all()
+            elif asset_batch_selection_mode == 2:
+                for assetrun in assetbatch.assetrun_set.all():
+                    if assetrun.has_data():
+                        if AssetType(assetrun.run_type) not in [AssetType(ar.run_type) for ar in selected_asset_runs]:
+                            selected_asset_runs.append(assetrun)
+
+    sorted_runs = {}
+
+    for ar in selected_asset_runs:
+        if AssetType(ar.run_type) == AssetType.PACKAGE:
+            sorted_runs[0] = ar
+        elif AssetType(ar.run_type) == AssetType.LICENSE:
+            sorted_runs[1] = ar
+        elif AssetType(ar.run_type) == AssetType.UPDATE:
+            sorted_runs[2] = ar
+        elif AssetType(ar.run_type) == AssetType.PENDING_UPDATE:
+            sorted_runs[3] = ar
+        elif AssetType(ar.run_type) == AssetType.PROCESS:
+            sorted_runs[4] = ar
+        elif AssetType(ar.run_type) == AssetType.PRETTYWINHW:
+            sorted_runs[5] = ar
+        elif AssetType(ar.run_type) == AssetType.DMI:
+            sorted_runs[6] = ar
+        elif AssetType(ar.run_type) == AssetType.PCI:
+            sorted_runs[7] = ar
+        elif AssetType(ar.run_type) == AssetType.HARDWARE:
+            sorted_runs[8] = ar
+
+    return [sorted_runs[idx] for idx in sorted_runs]

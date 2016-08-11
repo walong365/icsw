@@ -1339,6 +1339,9 @@ class AssetRun(models.Model):
 
         return self.get_asset_changeset(self.device.assetrun_set.get(run_index=self.run_index - 1))
 
+    def has_data(self):
+        return RunResult(self.run_result) == RunResult.SUCCESS
+
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)

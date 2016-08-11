@@ -254,6 +254,7 @@ device_report_module = angular.module(
                     url: ICSW_URLS.REPORT_REPORT_DATA_AVAILABLE
                     data:
                         idx_list: idx_list
+                        assetbatch_selection_mode: 0
                     dataType: 'json'
                 }).then(
                     (result) ->
@@ -282,6 +283,7 @@ device_report_module = angular.module(
             network_report_overview_module_selected: $scope.struct.network_report_overview_module_selected
             pdf_page_format: $scope.struct.pdf_page_format
             user_idx: $scope.struct.user.idx
+            assetbatch_selection_mode: 0
         }
         settings.push(setting)
 
