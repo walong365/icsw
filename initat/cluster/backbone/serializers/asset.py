@@ -50,6 +50,7 @@ __all__ = [
     "AssetDMIValueSerializer",
     "StaticAssetSerializer",
     "StaticAssetFieldValueSerializer",
+    "StaticAssetTemplateRefsSerializer",
 ]
 
 
@@ -276,10 +277,6 @@ class StaticAssetTemplateFieldSerializer(serializers.ModelSerializer):
 
 class StaticAssetTemplateSerializer(serializers.ModelSerializer):
     staticassettemplatefield_set = StaticAssetTemplateFieldSerializer(many=True, read_only=True)
-    num_refs = serializers.SerializerMethodField()
-
-    def get_num_refs(self, obj):
-        return obj.staticasset_set.all().count()
 
     class Meta:
         model = StaticAssetTemplate
@@ -295,3 +292,8 @@ class StaticAssetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StaticAsset
+
+
+class StaticAssetTemplateRefsSerializer(serializers.Serializer):
+    static_asset_template = serializers.IntegerField()
+    device_name = serializers.CharField()

@@ -48,6 +48,8 @@ asset_patterns = [
     url("^get_assetruns_for_devices$", asset_views.AssetRunsViewSet.as_view({"get": "list_all"}), name="get_assetruns_for_devices"),
     url("^get_asset_packages$", asset_views.AssetPackageViewSet.as_view({"get": "get_all"}), name="get_all_asset_packages"),
     url("^get_static_templates$", asset_views.StaticAssetTemplateViewSet.as_view({"get": "get_all"}), name="get_static_templates"),
+    url("^get_static_template_refs$", asset_views.StaticAssetTemplateViewSet.as_view({"get": "get_refs"}), name="get_static_template_references"),
+    url("^reorder_template_field$", asset_views.StaticAssetTemplateViewSet.as_view({"post": "reorder_fields"}), name="reorder_template_fields"),
     url("^copy_static_template$", asset_views.copy_static_template.as_view(), name="copy_static_template"),
     url(
         "^create_static_template$",
@@ -60,12 +62,12 @@ asset_patterns = [
         name="static_asset_template_detail"
     ),
     url(
-        "^static_asset_field/(?P<pk>[0-9]+)$",
+        "^static_asset_template_field/(?P<pk>[0-9]+)$",
         asset_views.StaticAssetTemplateViewSet.as_view({"delete": "delete_field", "put": "store_field"}),
         name="static_asset_template_field_detail",
     ),
     url(
-        "^static_asset_field$",
+        "^static_asset_template_field$",
         asset_views.StaticAssetTemplateViewSet.as_view({"post": "create_field"}),
         name="static_asset_template_field_call",
     ),
@@ -80,8 +82,17 @@ asset_patterns = [
         name="device_asset_detail"
     ),
     url(
+        "^device_asset_field/(?P<pk>[0-9]+$)",
+        asset_views.DeviceStaticAssetViewSet.as_view({"delete": "delete_field"}),
+        name="device_asset_field_detail"
+    ),
+    url(
         "device_asset_post$", asset_views.device_asset_post.as_view(), name="device_asset_post",
-    )
+    ),
+    url(
+        "device_asset_add_unused$", asset_views.DeviceStaticAssetViewSet.as_view({"post": "add_unused"}),
+        name="device_asset_add_unused",
+    ),
 ]
 
 session_patterns = [

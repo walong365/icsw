@@ -46,7 +46,7 @@ from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
-    StaticAssetTemplateFieldSerializer, StaticAssetSerializer
+    StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer
 
 try:
     from openpyxl import Workbook
@@ -295,6 +295,7 @@ class AssetRunsViewSet(viewsets.ViewSet):
 
 
 class AssetPackageViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
     def get_all(self, request):
         queryset = AssetPackage.objects.all().prefetch_related(
             "assetpackageversion_set"
@@ -307,12 +308,37 @@ class AssetPackageViewSet(viewsets.ViewSet):
 
 
 class StaticAssetTemplateViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
     def get_all(self, request):
         queryset = StaticAssetTemplate.objects.all().prefetch_related(
             "staticassettemplatefield_set"
         )
+        [_template.check_ordering() for _template in queryset]
         serializer = StaticAssetTemplateSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @method_decorator(login_required)
+    def get_refs(self, request):
+        queryset = StaticAsset.objects.all().prefetch_related(
+            "device__domain_tree_node"
+        )
+        _data = []
+        for _entry in queryset:
+            _template_idx = _entry.static_asset_template_id
+            _full_name = _entry.device.full_name
+            _data.append({"static_asset_template": _template_idx, "device_name": _full_name})
+        return Response(StaticAssetTemplateRefsSerializer(_data, many=True).data)
+
+    @method_decorator(login_required)
+    def reorder_fields(self, request):
+        field_1 = StaticAssetTemplateField.objects.get(Q(pk=request.data["field1"]))
+        field_2 = StaticAssetTemplateField.objects.get(Q(pk=request.data["field2"]))
+        _swap = field_1.ordering
+        field_1.ordering = field_2.ordering
+        field_2.ordering = _swap
+        field_1.save(update_fields=["ordering"])
+        field_2.save(update_fields=["ordering"])
+        return Response({"msg": "done"})
 
     @method_decorator(login_required)
     def create_template(self, request):
@@ -956,6 +982,23 @@ class DeviceStaticAssetViewSet(viewsets.ViewSet):
     def delete_asset(self, request, **kwargs):
         StaticAsset.objects.get(Q(idx=kwargs["pk"])).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @method_decorator(login_required())
+    def delete_field(self, request, **kwargs):
+        cur_obj = StaticAssetFieldValue.objects.get(Q(pk=kwargs["pk"]))
+        can_delete_answer = can_delete_obj(cur_obj)
+        if can_delete_answer:
+            cur_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise ValueError(can_delete_answer.msg)
+
+    @method_decorator(login_required)
+    def add_unused(self, request, **kwargs):
+        _asset = StaticAsset.objects.get(Q(pk=request.data["asset"]))
+        for _field in StaticAssetTemplateField.objects.filter(Q(pk__in=request.data["fields"])):
+            _field.create_field_value(_asset)
+        return Response({"msg": "added"})
 
 
 class device_asset_post(View):

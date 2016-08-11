@@ -318,6 +318,7 @@
                 <th>Name</th>
                 <th>Type</th>
                 <th>#fields</th>
+                <th>#unused</th>
                 <th>FieldInfo</th>
                 <th colspan="2">Action</th>
             </tr>
@@ -327,6 +328,12 @@
                 <td>{{ asset.$$static_asset_template.name }}</td>
                 <td>{{ asset.$$static_asset_template.$$staticAssetType }}</td>
                 <td class="text-center">{{ asset.staticassetfieldvalue_set.length }}</td>
+                <td class="text-center">
+                    <button ng-show="asset.$$unused_fields.length" ng-click="add_unused_fields($event, asset)" type="button" class="btn btn-xs btn-info">
+                        {{ asset.$$unused_fields.length }} <span class="fa fa-info-circle fa_icsw"></span>
+                    </button>
+                    <span ng-show="!asset.$$unused_fields.length">0</span>
+                </td>
                 <td>{{ asset.$$field_info }}</td>
                 <td>
                     <icsw-tools-button type="modify" size="xs" ng-click="modify_asset($event, asset)"></icsw-tools-button>
@@ -351,10 +358,23 @@
     </div>
 </script>
 
+<script type="text/ng-template" id="icsw.device.static.asset.add.unused">
+    <h3>Please select unused field(s)</h3>
+    <div ng-repeat="field in unused_fields" class="form-group row">
+        <label class="control-label col-sm-6">
+            {{ field.name }} ({{ field.$$field_type }})
+        </label>
+        <div class="controls col-sm-6">
+            <icsw-tools-yes-no flag="field.$$add"/>
+        </div>
+    </div>
+</script>
+
 <script type="text/ng-template" id="icsw.device.static.asset.modify">
     <div class="form-group row" ng-repeat="field in asset.staticassetfieldvalue_set">
         <label class="control-label col-sm-4">
             {{ field.$$field.name }} ({{ field.$$field_type_str }})
+            <icsw-tools-button size="xs" ng-show="field.$$field.optional" type="delete" ng-click="remove_field($event, field)"></icsw-tools-button>
         </label>
         <div class="controls col-sm-8 form-inline" ng-if="field.$$field.field_type == 1">
             <span ng-show="field.$$field.fixed">
@@ -401,6 +421,15 @@
                         </button>
                     </span>
                 </span>
+            </span>
+        </div>
+        <div class="controls col-sm-8 form-inline" ng-if="field.$$field.field_type == 4">
+            {{ field.$$field.fixed }}
+            <span ng-show="field.$$field.fixed">
+                {{ field.value_text }}
+            </span>
+            <span ng-show="!field.$$field.fixed">
+                <textarea class="form-control" rows="10" cols="80" ng-model="field.value_text"/>
             </span>
         </div>
     </div>

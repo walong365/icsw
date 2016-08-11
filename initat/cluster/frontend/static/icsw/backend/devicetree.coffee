@@ -292,6 +292,8 @@ angular.module(
             for dev in @devices
                 if not dev.is_meta_device
                     meta = @tree.get_meta_device(dev)
+                    if not meta.device_variables_filtered?
+                        console.error "metadevice #{meta.full_name} / #{meta.idx} not init, deviceHelper call missing?"
                     for d_var in meta.device_variables_filtered
                         if d_var.inherit
                             if d_var.name in dev.$local_var_names

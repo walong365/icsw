@@ -326,7 +326,10 @@
                     {{ obj.enabled | yesno1 }}
                 </td>
                 <td class="text-center">
-                    {{ obj.num_refs }}
+                    <button ng-show="obj.num_refs" uib-popover-html="obj.refs_content" type="button" class="btn btn-xs btn-info">
+                        {{ obj.num_refs }} <span class="fa fa-info-circle fa_icsw"></span>
+                    </button>
+                    <span ng-show="!obj.num_refs">---</span>
                 </td>
                 <td class="text-center">
                     {{ obj.$$num_fields }}
@@ -413,7 +416,8 @@
                         <th>Monitor</th>
                         <th>Overview</th>
                         <th>Fixed</th>
-                        <th>Action</th>
+                        <th colspan="2">Ordering</th>
+                        <th colspan="2">Action</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -429,7 +433,19 @@
                         <td class="text-center">{{ field.show_in_overview | yesno1 }}</td>
                         <td class="text-center">{{ field.fixed | yesno1 }}</td>
                         <td>
+                            <button type="button" ng-show="!$last" class="btn btn-xs btn-default" ng-click="move_field($event, field, false)">
+                                <span class="glyphicon glyphicon-triangle-bottom"></span>
+                            </button>
+                        </td>
+                        <td>
+                            <button type="button" ng-show="!$first" class="btn btn-xs btn-default" ng-click="move_field($event, field, true)">
+                                <span class="glyphicon glyphicon-triangle-top"></span>
+                            </button>
+                        </td>
+                        <td>
                             <icsw-tools-button type="modify" size="xs" ng-click="modify_or_create_field($event, edit_obj, field, false)"></icsw-tools-button>
+                        </td>
+                        <td>
                             <icsw-tools-button type="delete" size="xs" ng-click="delete_field($event, edit_obj, field)"></icsw-tools-button>
                         </td>
                     </tr>
@@ -448,6 +464,14 @@
     <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Base settings</legend>
+            <div class="form-group" ng-show="!create">
+                <label class="control-label col-xs-3">
+                    Ordering
+                </label>
+                <div class="controls col-xs-7">
+                    {{ edit_obj.ordering + 1 }} of {{ template.staticassettemplatefield_set.length }}
+                </div>
+            </div>
             <div class="form-group">
                 <label class="control-label col-xs-3 requiredField">
                     Name<span class="asteriskField">*</span>
@@ -524,6 +548,14 @@
                     </span>
                 </div>
             </div>
+            <div class="form-group" ng-show="edit_obj.field_type == 4">
+                <label class="control-label col-xs-3">
+                    DefaultText
+                </label>
+                <div class="controls col-xs-7">
+                    <textarea class="form-control" rows="10" cols="80" ng-model="edit_obj.default_value_text"/>
+                </div>
+            </div>
         </fieldset>
         <div class="row">
             <div class="col-md-4">
@@ -535,30 +567,14 @@
                         <icsw-tools-yes-no flag="edit_obj.optional" icsw-callback="field_changed"></icsw-tools-yes-no>
                     </div>
                 </div>
+            </div>
+            <div class="col-md-4">
                 <div class="form-group">
                     <label class="col-sm-7 control-label" title="Field is show in overview">
                         Show in Overview
                     </label>
                     <div class="col-sm-3 controls">
                         <icsw-tools-yes-no flag="edit_obj.show_in_overview" icsw-callback="field_changed"></icsw-tools-yes-no>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Create monitoring entry">
-                        Monitor
-                    </label>
-                    <div class="col-sm-3 controls">
-                        <icsw-tools-yes-no flag="edit_obj.monitor" icsw-callback="field_changed"></icsw-tools-yes-no>
-                    </div>
-                </div>
-                <div class="form-group" ng-show="edit_obj.field_type == 1">
-                    <label class="col-sm-7 control-label" title="Field has bounds">
-                        Bounds
-                    </label>
-                    <div class="col-sm-3 controls">
-                        <icsw-tools-yes-no flag="edit_obj.has_bounds" icsw-callback="field_changed"></icsw-tools-yes-no>
                     </div>
                 </div>
             </div>
@@ -571,19 +587,14 @@
                         <icsw-tools-yes-no flag="edit_obj.fixed" icsw-callback="field_changed"></icsw-tools-yes-no>
                     </div>
                 </div>
-                <div class="form-group" ng-show="edit_obj.field_type == 1">
-                    <label class="col-sm-7 control-label" title="Field is consumable">
-                        consumable
-                    </label>
-                    <div class="col-sm-3 controls">
-                        <icsw-tools-yes-no flag="edit_obj.consumable" icsw-callback="field_changed"></icsw-tools-yes-no>
-                    </div>
-                </div>
             </div>
         </div>
-        <fieldset ng-show="edit_obj.field_type == 1 && edit_obj.has_bounds">
-            <legend>Bounds</legend>
-            <div class="form-group">
+        <fieldset ng-show="edit_obj.field_type == 1">
+            <legend>
+                Bounds
+                <icsw-tools-yes-no flag="edit_obj.has_bounds" icsw-callback="field_changed"></icsw-tools-yes-no>
+            </legend>
+            <div class="form-group" ng-show="edit_obj.has_bounds">
                 <label class="control-label col-xs-3">
                     Bounds
                 </label>
@@ -595,9 +606,12 @@
                 </div>
             </div>
         </fieldset>
-        <fieldset ng-show="edit_obj.field_type == 1 && edit_obj.consumable">
-            <legend>Bounds</legend>
-            <div class="form-group">
+        <fieldset ng-show="edit_obj.field_type == 1">
+            <legend>
+                Consumable
+                <icsw-tools-yes-no flag="edit_obj.consumable" icsw-callback="field_changed"></icsw-tools-yes-no>
+            </legend>
+            <div class="form-group" ng-show="edit_obj.consumable">
                 <label class="control-label col-xs-3">
                     Consumable start / warn / crit
                 </label>
@@ -608,6 +622,35 @@
                     &nbsp;&gt;&nbsp;
                     <input class="form-control" type="number" size="8" style="width:140px;" ng-model="edit_obj.consumable_critical_value"/>
                 </div>
+            </div>
+        </fieldset>
+        <fieldset ng-show="edit_obj.field_type == 3">
+            <legend>
+                DateCheck
+                <icsw-tools-yes-no flag="edit_obj.date_check" icsw-callback="field_changed"></icsw-tools-yes-no>
+            </legend>
+            <div class="form-group" ng-show="edit_obj.date_check">
+                <label class="control-label col-xs-3">
+                    Date limits in days
+                </label>
+                <div class="controls col-xs-9 form-inline">
+                    warn
+                    <input class="form-control" type="number" size="8" min="1" max="365" style="width:140px;" ng-model="edit_obj.date_warn_value"/>
+                    &nbsp;&gt;&nbsp;
+                    critical
+                    <input class="form-control" type="number" size="8" min="1" max="365" style="width:140px;" ng-model="edit_obj.date_critical_value"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset ng-show="edit_obj.$$monitor_ok">
+            <legend>
+                Monitor
+                <icsw-tools-yes-no flag="edit_obj.monitor" icsw-callback="field_changed"></icsw-tools-yes-no>
+            </legend>
+            <div class="form-group" ng-show="edit_obj.monitor">
+                <label class="control-label col-xs-3">
+                    MonitorMaster
+                </label>
             </div>
         </fieldset>
     </form>

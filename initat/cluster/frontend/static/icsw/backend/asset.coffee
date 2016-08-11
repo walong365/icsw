@@ -171,6 +171,7 @@ device_asset_module = angular.module(
 ) ->
     class icswStaticAssetTemplateTree
         constructor: (list) ->
+            console.log "NEW TREE"
             @list = []
             @update(list)
 
@@ -213,17 +214,67 @@ device_asset_module = angular.module(
         salt_template: (entry) =>
             entry.$$num_fields = entry.staticassettemplatefield_set.length
             entry.$$asset_type = icswStaticAssetFunctions.resolve("asset_type", entry.type)
+            entry.refs_content = "..."
+            entry.num_refs = 0
             entry.$$created = moment(entry.date).format("YYYY-MM-DD HH:mm:ss")
             for field in entry.staticassettemplatefield_set
                 @salt_field(field)
+            @reorder_template(entry)
+
+        move_field: (template, field, up) =>
+            defer = $q.defer()
+            cur_idx = field.ordering
+            if up
+                new_idx = cur_idx - 1
+            else
+                new_idx = cur_idx + 1
+            swap_field = (_field for _field in template.staticassettemplatefield_set when _field.ordering == new_idx)[0]
+            swap_field.ordering = cur_idx
+            field.ordering = new_idx
+            @reorder_template(template)
+            Restangular.all(ICSW_URLS.ASSET_REORDER_TEMPLATE_FIELDS.slice(1)).post(
+                {
+                    field1: field.idx
+                    field2: swap_field.idx
+                }
+            ).then(
+                (done) =>
+                    @reorder_template(template)
+                    defer.resolve("done")
+            )
+            return defer.promise
+
+        reorder_template: (entry) =>
+            # sort fields according to ordering
+            icswTools.order_in_place(
+                entry.staticassettemplatefield_set
+                ["ordering"]
+                ["asc"]
+            )
 
         salt_field: (field) =>
             # salt static asset template field
             field.$$field_type = icswStaticAssetFunctions.resolve("field_type", field.field_type)
-            if field.field_type == 3
-                # date
-                field.$$
+            if field.field_type == 1 and field.consumable
+                field.$$monitor_ok = true
+            else if field.field_type == 3 and field.date_check
+                field.$$monitor_ok = true
+            else
+                field.$$monitor_ok = false
             icswStaticAssetFunctions.get_default_value(field)
+
+        add_references: () =>
+            Restangular.all(ICSW_URLS.ASSET_GET_STATIC_TEMPLATE_REFERENCES.slice(1)).getList().then(
+                (data) =>
+                    _info_dict = {}
+                    for entry in data
+                        if entry.static_asset_template not of _info_dict
+                            _info_dict[entry.static_asset_template] = []
+                        _info_dict[entry.static_asset_template].push(entry.device_name)
+                    for key, value of _info_dict
+                        @lut[key].num_refs = value.length
+                        @lut[key].refs_content = value.join(", ")
+            )
 
         copy_template: (src_obj, new_obj, create_user) =>
             defer = $q.defer()
@@ -292,6 +343,7 @@ device_asset_module = angular.module(
                 (new_field) =>
                     _.remove(template.staticassettemplatefield_set, (entry) -> return entry.idx == field.idx)
                     template.staticassettemplatefield_set.push(new_field)
+                    @field_lut[new_field.idx] = new_field
                     @salt_template(template)
                     d.resolve("ok")
                 (notok) ->
@@ -335,16 +387,44 @@ device_asset_module = angular.module(
         salt_device_asset: (as) =>
             # salts StaticAsset of device
             as.$$static_asset_template = @lut[as.static_asset_template]
-            info_f = []
+            _used_fields = []
             for _f in as.staticassetfieldvalue_set
                 _f.$$field = @field_lut[_f.static_asset_template_field]
+                _f.$$ordering = _f.$$field.ordering
+                # console.log _f.static_asset_template_field, _f.$$field.name, _f.$$field.fixed, _f.$$field.show_in_overview
                 _f.$$field_type_str = icswStaticAssetFunctions.resolve("field_type", _f.$$field.field_type)
+                _used_fields.push(_f.$$field.idx)
+            _unused_fields = []
+            for _f in @lut[as.static_asset_template].staticassettemplatefield_set
+                if _f.optional and _f.idx not in _used_fields
+                    _unused_fields.push(_f)
+            as.$$unused_fields = _unused_fields
+            # order
+            icswTools.order_in_place(
+                as.staticassetfieldvalue_set
+                ["$$ordering"]
+                ["asc"]
+            )
+
+            info_f = []
+            for _f in as.staticassetfieldvalue_set
                 if _f.$$field.show_in_overview
                     info_f.push(_f.$$field.name + "=" + @get_field_display_value(_f, _f.$$field))
             if info_f.length
                 as.$$field_info = info_f.join(", ")
             else
                 as.$$field_info = "---"
+
+        remove_device_asset_field: (asset, field) =>
+            defer = $q.defer()
+            Restangular.restangularizeElement(null, field, ICSW_URLS.ASSET_DEVICE_ASSET_FIELD_DETAIL.slice(1).slice(0, -2))
+            field.remove().then(
+                (ok) =>
+                    _.remove(asset.staticassetfieldvalue_set, (entry) -> return entry.idx == field.idx)
+                    @salt_device_asset(asset)
+                    defer.resolve("deleted")
+            )
+            return defer.promise
 
         get_field_display_value: (field, temp_field) =>
             # console.log icswStaticAssetFunctions.resolve("field_type", temp_field.field_type)
@@ -354,8 +434,12 @@ device_asset_module = angular.module(
             else if temp_field.field_type == 2
                 # string
                 return field.value_str
-            else
+            else if temp_field.field_type == 3
                 return moment(field.value_date).format("DD.MM.YYYY")
+            else if temp_field.field_type == 4
+                return field.value_text
+            else
+                return "Unknown field type #{temp_field.field_type}"
 
 ]).service("icswStaticAssetTemplateTreeService",
 [
