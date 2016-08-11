@@ -1,6 +1,6 @@
 
 <script type="text/ng-template" id="icsw.monitoring.cluster">
-    <uib-alert type="warning" ng-show="!struct.tree_valid">Loading tree...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="!struct.tree_valid">Loading tree...</div>
     <uib-tabset ng-cloak ng-show="struct.tree_valid">
 
         <uib-tab heading="Host Clusters">

@@ -5,11 +5,11 @@
 <script type="text/ng-template" id="icsw.system.license.overview">
 
 
-    <uib-alert type="warning" ng-if="!struct.data_valid">Loading License data</uib-alert>
+    <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Loading License data</div>
     <h3 ng-show="struct.data_valid">License overview (ClusterID is {{ struct.license_tree.cluster_info.CLUSTER_ID }})</h3>
     <uib-accordion close-others="false" ng-if="struct.data_valid">
 
-        <uib-accordion-group is-open="your_licenses_open" is-disabled="license_views_disabled">
+        <div uib-accordion-group class="panel-default" is-open="your_licenses_open" is-disabled="license_views_disabled">
             <uib-accordion-heading>
                 Your licenses for this cluster
                 <i class="pull-right glyphicon"
@@ -17,10 +17,10 @@
             </uib-accordion-heading>
 
             <icsw-system-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-system-license-local-licenses>
-        </uib-accordion-group>
+        </div>
 
 
-        <uib-accordion-group is-open="lic_packs_open" is-disabled="license_views_disabled">
+        <div uib-accordion-group class="panel-default" is-open="lic_packs_open" is-disabled="license_views_disabled">
             <uib-accordion-heading>
                 License packages
                 <i class="pull-right glyphicon"
@@ -28,9 +28,9 @@
             </uib-accordion-heading>
 
             <icsw-system-license-packages></icsw-system-license-packages>
-        </uib-accordion-group>
+        </div>
 
-        <uib-accordion-group is-open="lic_upload_open">
+        <div uib-accordion-group class="panel-default" is-open="lic_upload_open">
             <uib-accordion-heading>
                 Upload license file
                 <i class="pull-right glyphicon"
@@ -42,7 +42,7 @@
             </div>
             <input type="button" ng-show="uploader.queue.length " class="btn btn-warning btn-sm" value="upload"
                    ng-click="uploader.uploadAll()">
-        </uib-accordion-group>
+        </div>
 
     </uib-accordion>
 
@@ -79,12 +79,12 @@
                             <div ng-switch on="_state(lic.id).lic.parameters[param_type] < lic.parameter_usage[param_type]">
                                 <div ng-switch-when="true">
                                     <!-- parameter exceeded -->
-                                    <uib-alert type="danger" style="padding: 5px">
+                                    <div uib-alert type="danger" style="padding: 5px">
                                         <i class="glyphicon glyphicon-exclamation-sign"></i>
                                         <strong>{{ param_type }}</strong>:
                                         {{ lic.$$state.lic.parameters[param_type] }}
                                         (used: {{ lic.parameter_usage[param_type] }})
-                                    </uib-alert>
+                                    </div>
                                 </div>
                                 <div ng-switch-default>
                                     <!-- everything ok, parameter usage within limits -->
@@ -94,11 +94,11 @@
                                 </div>
                             </div>
                         </div>
-                        <uib-alert type="danger" ng-show="!lic.$$state.lic.parameters[param_type]" style="padding: 5px">
+                        <div uib-alert type="danger" ng-show="!lic.$$state.lic.parameters[param_type]" style="padding: 5px">
                             <!-- parameter used which is not present -->
                             <i class="glyphicon glyphicon-exclamation-sign"></i>
                             <strong>{{ param_type }}</strong>: used: {{ lic.parameter_usage[param_type] }}
-                        </uib-alert>
+                        </div>
                     </div>
                 </td>
                 <td ng-class="lic.$$bootstrap_class">
@@ -110,8 +110,8 @@
                 <td>{{ lic.$$state.date_info }}</td>
                 <td>
                     <div ng-show="lic.$$in_warning">
-                        <uib-alert type="danger" ng-bind-html="lic.$$warning_info" style="padding: 5px">
-                        </uib-alert>
+                        <div uib-alert type="danger" ng-bind-html="lic.$$warning_info" style="padding: 5px">
+                        </div>
                     </div>
                 </td>
                 <td>{{ lic.$$state.package.type_name }}</td>
@@ -145,7 +145,7 @@
                 </tbody>
             </table>
             <uib-accordion close-others="true">
-                <uib-accordion-group
+                <div uib-accordion-group class="panel-default"
                     ng-repeat="data in get_list(pack.cluster_licenses) | orderBy:cluster_order_fun"
                 >
                     <!-- workaround for angular bug https://github.com/angular/angular.js/issues/1286 -->
@@ -190,7 +190,7 @@
                             </tr>
                         </tbody>
                     </table>
-                </uib-accordion-group>
+                </div>
             </uib-accordion>
         </uib-tab>
     </uib-tabset>

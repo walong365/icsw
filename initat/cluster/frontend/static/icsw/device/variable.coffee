@@ -431,6 +431,7 @@ device_variable_module = angular.module(
                         $scope.dataLoaded = true
                 )
         )
+
     $scope.get_tr_class = (obj) ->
         if obj.is_cluster_device_group
             return "danger"
@@ -690,12 +691,12 @@ device_variable_module = angular.module(
     "$scope", "icswDeviceVariableScopeTreeService", "icswDeviceTreeService", "$q",
     "icswDeviceTreeHelperService", "icswComplexModalService", "$compile", "$templateCache",
     "icswStaticAssetTemplateTreeService", "blockUI", "ICSW_URLS", "Restangular",
-    "icswUserService", "icswToolsSimpleModalService",
+    "icswUserService", "icswToolsSimpleModalService", "icswSimpleAjaxCall",
 (
     $scope, icswDeviceVariableScopeTreeService, icswDeviceTreeService, $q,
     icswDeviceTreeHelperService, icswComplexModalService, $compile, $templateCache,
     icswStaticAssetTemplateTreeService, blockUI, ICSW_URLS, Restangular,
-    icswUserService, icswToolsSimpleModalService,
+    icswUserService, icswToolsSimpleModalService, icswSimpleAjaxCall,
 ) ->
     $scope.struct = {
         # device tree
@@ -712,9 +713,12 @@ device_variable_module = angular.module(
         asset_struct: undefined
         # user
         user: undefined
+        # available assets (not set and enabled)
+        num_available: 0
     }
 
     _reload_assets = () ->
+        defer = $q.defer()
         $q.all(
             [
                 icswDeviceVariableScopeTreeService.load($scope.$id)
@@ -730,25 +734,11 @@ device_variable_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.dvs_tree = data[0]
-                _asset_struct = {}
-                for key_list in $scope.struct.asset_tree.static_assets
-                    _cs = {
-                        used: []
-                        unused: []
-                    }
-                    _asset_struct[key_list[0]] = _cs
-                    # build lut, template -> asset
-                    _asset_lut = {}
-                    for _as in $scope.struct.device.staticasset_set
-                        _asset_lut[_as.static_asset_template] = _as
-                        _as.$$static_asset_template = $scope.struct.asset_tree.lut[_as.static_asset_template]
-                    for _asset in key_list[1]
-                        if _asset.idx of _asset_lut
-                            _cs.used.push(_asset_lut[_asset.idx])
-                        else
-                            _cs.unused.push(_asset)
-                $scope.struct.asset_struct = _asset_struct
+                # build lut, template_idx -> device_asset
+                $scope.struct.asset_struct = $scope.struct.asset_tree.build_asset_struct($scope.struct.device)
+                defer.resolve("done")
         )
+        return defer.promise
 
     $q.all(
         [
@@ -763,7 +753,8 @@ device_variable_module = angular.module(
             $scope.struct.asset_tree = data[1]
             $scope.struct.user = data[2]
 
-            $scope.struct.helper = icswDeviceTreeHelperService.create($scope.struct.device_tree, [$scope.struct.device])
+            trace_devices =  $scope.struct.device_tree.get_device_trace([$scope.struct.device])
+            $scope.struct.helper = icswDeviceTreeHelperService.create($scope.struct.device_tree, trace_devices)
             _reload_assets()
     )
 
@@ -774,38 +765,37 @@ device_variable_module = angular.module(
                 Restangular.restangularizeElement(null, asset, ICSW_URLS.ASSET_DEVICE_ASSET_DETAIL.slice(1).slice(0, -2))
                 asset.remove().then(
                     (del) ->
-                        _reload_assets()
-                        blockUI.stop()
+                        _reload_assets().then(
+                            (ok) ->
+                                blockUI.stop()
+                        )
                     (error) ->
                         blockUI.stop()
                 )
         )
 
-    $scope.add_assets = ($event, asset_type) ->
+    $scope.add_assets = ($event) ->
         sub_scope = $scope.$new(true)
         sub_scope.asset_tree = $scope.struct.asset_tree
-        unset_list = []
-        asset_list = []
-        for key, value of $scope.struct.asset_struct
-            if key == asset_type
-                # helper field for faster access
-                asset_list = value.unused
-                if asset_list.length
-                    unset_list.push([key, asset_list])
-                    for _us in asset_list
-                        # helper field
-                        _us.$$create = false
-        sub_scope.unset_list = unset_list
+        unused_list = []
+
+        for _us in $scope.struct.asset_struct.unused
+            if _us.enabled
+                unused_list.push(_us)
+                # set create flag to false
+                _us.$$create = false
+        sub_scope.unused_list = _.orderBy(unused_list, ["name"], ["asc"])
+
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.device.static.asset.add"))(sub_scope)
                 title: "Add static templates"
-                ok_label: "Create"
+                ok_label: "Add"
                 closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     _to_add = []
-                    for _us in asset_list
+                    for _us in sub_scope.unused_list
                         if _us.$$create
                             _to_add.push(_us)
                     if _to_add.length
@@ -821,9 +811,11 @@ device_variable_module = angular.module(
                             ) for _us in _to_add
                         ).then(
                             (new_assets) ->
-                                _reload_assets()
-                                blockUI.stop()
-                                d.resolve("done")
+                                _reload_assets().then(
+                                    (ok) ->
+                                        blockUI.stop()
+                                        d.resolve("done")
+                                )
                         )
                     else
                         d.resolve("nothing to do")
@@ -837,8 +829,161 @@ device_variable_module = angular.module(
         ).then(
             (fin) ->
                 sub_scope.$destroy()
-                # recreate structure
-                # _build_struct($scope.device)
+        )
+
+    $scope.add_unused_fields = ($event, asset) ->
+        sub_scope = $scope.$new(true)
+        sub_scope.unused_fields = asset.$$unused_fields
+        for _uf in sub_scope.unused_fields
+            _uf.$$add = false
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.device.static.asset.add.unused"))(sub_scope)
+                title: "Add unused fields"
+                ok_label: "Add"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    _to_add = []
+                    for _fs in sub_scope.unused_fields
+                        if _uf.$$add
+                            _to_add.push(_uf.idx)
+                    if _to_add.length
+                        blockUI.start("adding unused fields")
+                        Restangular.all(ICSW_URLS.ASSET_DEVICE_ASSET_ADD_UNUSED.slice(1)).post(
+                            {
+                                asset: asset.idx
+                                fields: _to_add
+                            }
+                        ).then(
+                            (new_assets) ->
+                                _reload_assets().then(
+                                    (ok) ->
+                                        blockUI.stop()
+                                        d.resolve("done")
+                                )
+                        )
+                    else
+                        d.resolve("nothing to do")
+                    return d.promise
+                cancel_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+        )
+
+
+    $scope.modify_asset = ($event, asset) ->
+        sub_scope = $scope.$new(true)
+        sub_scope.asset = asset
+
+        sub_scope.open_picker = ($event, picker_idx) ->
+            sub_scope.datepicker_options.open[picker_idx] = true
+
+        sub_scope.button_bar = {
+            show: true
+            now: {
+                show: true
+                text: 'Now'
+            },
+            today: {
+                show: true
+                text: 'Today'
+            },
+            close: {
+                show: true
+                text: 'Close'
+            }
+        }
+        sub_scope.datepicker_options = {
+            date_options: {
+                format: "dd.MM.yyyy"
+                formatYear: "yyyy"
+                minDate: new Date(2000, 1, 1)
+                startingDay: 1
+                minMode: "day"
+                datepickerMode: "day"
+            }
+            time_options: {
+                showMeridian: false
+            }
+            open: {}
+        }
+
+        sub_scope.remove_field = ($event, field) ->
+            icswToolsSimpleModalService("Really delete field '#{field.$$field.name}' ?").then(
+                (ok) ->
+                    blockUI.start()
+                    $scope.struct.asset_tree.remove_device_asset_field(asset, field).then(
+                        (done) ->
+                            blockUI.stop()
+                    )
+            )
+        # create backup values
+        _bu_f = {}
+        for _f in asset.staticassetfieldvalue_set
+            _bu_f[_f.idx] = {
+                "i": _f.value_int
+                "s": _f.value_str
+                "d": _f.value_date
+                "t": _f.value_text
+            }
+            _f.$$default_date = moment(_f.value_date).toDate()
+            sub_scope.datepicker_options.open[_f.idx] = false
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.device.static.asset.modify"))(sub_scope)
+                title: "Modify static template '#{asset.$$static_asset_template.name}'"
+                ok_label: "modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    post_params = []
+                    for _f in asset.staticassetfieldvalue_set
+                        # cast back to string
+                        _f.value_date = moment(_f.$$default_date).format("DD.MM.YYYY")
+                        post_params.push(
+                            {
+                                "idx": _f.idx
+                                "int": _f.value_int
+                                "str": _f.value_str
+                                "date": _f.value_date
+                                "text": _f.value_text
+                            }
+                        )
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.ASSET_DEVICE_ASSET_POST
+                            data:
+                                asset_data: angular.toJson(post_params)
+                        }
+                    ).then(
+                        (res) ->
+                            _reload_assets().then(
+                                (ok) ->
+                                    d.resolve("done")
+                            )
+                        (error) ->
+                            d.reject("not ok")
+                    )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    for _f in asset.staticassetfieldvalue_set
+                        _f.value_int = _bu_f[_f.idx].i
+                        _f.value_str = _bu_f[_f.idx].s
+                        _f.value_date = _bu_f[_f.idx].d
+                        _f.value_text = _bu_f[_f.idx].t
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
         )
 
 ])

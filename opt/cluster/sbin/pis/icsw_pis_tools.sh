@@ -100,6 +100,7 @@ function is_chroot() {
 
 function restart_software() {
     mode=$1
+    RESTART_CAUSE=${2:-"N/A"}
     if is_chroot ; then
         echo "running chrooted, skipping restart"
     else

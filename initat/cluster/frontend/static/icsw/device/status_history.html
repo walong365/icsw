@@ -94,13 +94,13 @@
                 detailed-view="true"
             ></icsw-tools-device-hist-status-overview>
 
-            <uib-alert type="danger" ng-show="service_data.length == 0 && !struct.loading">
+            <div uib-alert type="danger" ng-show="service_data.length == 0 && !struct.loading">
                 No services for this device and time span.
-            </uib-alert>
+            </div>
 
-            <uib-alert type="warning" ng-show="struct.loading">
+            <div uib-alert class="alert-warning" ng-show="struct.loading">
                 Loading data from Server...
-            </uib-alert>
+            </div>
 
             <table class="table table-condensed table-hover icsw-table-striped-4" style="margin-top: 10px" ng-show="service_data.length > 0 && !struct.loading">
                 <thead>

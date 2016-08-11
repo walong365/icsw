@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Bernhard Mallinger (mallinger@init.at)
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel (mallinger@init.at, lang-nevyjel@init.at)
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <lang-nevyjel@init.at>
 #
 # This file is part of icsw
 #

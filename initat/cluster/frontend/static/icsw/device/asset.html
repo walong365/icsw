@@ -5,7 +5,7 @@
 
 <script type="text/ng-template" id="icsw.device.asset.overview">
     <div class="container-fluid">
-        <uib-alert type="warning" ng-show="!struct.data_loaded">Fetching data from server ...</uib-alert>
+        <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching data from server ...</div>
 
         <div ng-if="struct.data_loaded">
             <h1>
@@ -407,7 +407,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.asset.details.na">
-    <uib-alert type="warning">Not Implemented (AssetType is {{ asset_run.$$run_type }})</uib-alert>
+    <div uib-alert class="alert-warning">Not Implemented (AssetType is {{ asset_run.$$run_type }})</div>
 </script>
 
 <script type="text/ng-template" id="icsw.asset.details.package">

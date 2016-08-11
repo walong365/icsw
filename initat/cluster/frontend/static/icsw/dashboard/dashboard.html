@@ -160,7 +160,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.dashboard.overview">
-    <uib-alert ng-if="!struct.data_loaded" class="warning">Loading initial data...</uib-alert>
+    <div uib-alert ng-if="!struct.data_loaded" class="alert-warning">Loading initial data...</div>
     <div class="panel panel-success" ng-if="struct.data_loaded">
         <div class="panel-heading">
             Main Dashboard ({{ struct.container.num_open }} of {{ struct.container.num_total }} shown)

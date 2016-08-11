@@ -715,7 +715,10 @@ angular.module(
                 "name", "field_description", "field_type", "optional", "consumable",
                 "default_value_str", "default_value_int", "default_value_date",
                 "has_bounds", "value_int_lower_bound", "value_int_upper_bound",
-                "monitor", "static_asset_template", "fixed",
+                "monitor", "static_asset_template", "fixed", "ordering",
+                "consumable_start_value", "consumable_warn_value",
+                "consumable_critical_value",
+                "date_check", "date_warn_value", "date_critical_value",
             ]
 ])
 

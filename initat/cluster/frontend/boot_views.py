@@ -24,7 +24,6 @@
 """ boot views """
 
 import json
-import pprint
 import logging
 import time
 
@@ -34,15 +33,16 @@ from django.db.models import Q, Count
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from initat.cluster.backbone.models import device, cd_connection, cluster_timezone, \
-    kernel, image, partition_table, status, network, DeviceLogEntry, mac_ignore
-from initat.cluster.backbone.serializers import device_serializer_boot
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from rest_framework.authentication import SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
+
+from initat.cluster.backbone.models import device, cd_connection, cluster_timezone, \
+    kernel, image, partition_table, status, network, DeviceLogEntry, mac_ignore
+from initat.cluster.backbone.serializers import device_serializer_boot
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import logging_tools, server_command
 
 logger = logging.getLogger("cluster.boot")

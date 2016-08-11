@@ -3,7 +3,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.boot.table">
-    <uib-alert type="warning" ng-show="!struct.tree_valid">Loading BaseData ...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="!struct.tree_valid">Loading BaseData ...</div>
     <h2>
         <span class="label label-danger" ng-show="struct.boot_helper.connection_problem_counter" title="number of connection problems">{{ struct.boot_helper.connection_problem_counter }}</span>
         Boot config for {{ struct.devices.length }} devices,
@@ -414,7 +414,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.boot.mac.bootlog.info">
-    <uib-alert type="warning" ng-show="!struct.data_valid">Fetching initial data...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="!struct.data_valid">Fetching initial data...</div>
     <div class="row">
         <div class="col-md-6">
             <h4>

@@ -82,6 +82,7 @@ icsw_app = angular.module(
         "icsw.backend.system.license",
         "icsw.backend.domain_name_tree",
         "icsw.backend.category",
+        "icsw.backend.asset",
         "icsw.backend.devicetree",
         "icsw.backend.backup",
         "icsw.backend.network",

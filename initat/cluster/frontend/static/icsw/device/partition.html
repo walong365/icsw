@@ -3,7 +3,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.partition.overview">
-    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server ...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server ...</div>
     <h2 ng-show="struct.devices.length">Disk info for {{ struct.devices.length }} devices</h2>
     <icsw-tools-ensure-device-selection dev-list="struct.devices">
         <uib-tabset>
@@ -62,7 +62,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.partition.edit.overview">
-    <uib-alert type="warning" ng-show="struct.loading">Loading data from server...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Loading data from server...</div>
     <uib-tabset>
         <uib-tab heading="Partitions">
             <h2>
@@ -161,7 +161,7 @@
             Number of system partitions: {{ layout.sys_partition_set.length }}
         </li>
         <li class="list-group-item" ng-show="struct.error_list.length">
-            <uib-alert type="danger">Problems: {{ struct.error_list.length }}</uib-alert>
+            <div uib-alert type="danger">Problems: {{ struct.error_list.length }}</div>
             <ul class="list-group">
                 <li ng-repeat="error in struct.error_list" class="list-group-item">
                     <span text-class="warning">{{ error.msg }}</span>

@@ -439,6 +439,11 @@ LOGGING = {
         },
     },
     'handlers': {
+        "console": {
+            "level": "INFO" if DEBUG else "WARN",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
         "init_unified": {
             "level": "INFO" if DEBUG else "WARN",
             "class": "initat.tools.logging_net.init_handler_unified",
@@ -457,9 +462,9 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['init_unified', "init_mail"],
+            'handlers': ['init_unified', "init_mail", "console"],
             'propagate': True,
-            'level': 'WARN',
+            'level': 'INFO',
         },
         'initat': {
             'handlers': ['init_unified', "init_mail"],

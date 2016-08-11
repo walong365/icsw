@@ -155,7 +155,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.livestatus.maplist">
-    <uib-alert type="warning" ng-show="!struct.data_valid">Loading data...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="!struct.data_valid">Loading data...</div>
     <div ng-if="struct.data_valid">
         <h3 ng-show="!struct.maps_present">No maps to show</h3>
         <h3 ng-show="struct.maps_present">

@@ -16,7 +16,7 @@
 <script type="text/ng-template" id="icsw/main/user/tree.html">
     <div ng-controller="icswUserGroupTreeCtrl">
         <div ng-if="struct.error_string">
-            <uib-alert type="warning">{{ struct.error_string }}</uib-alert>
+            <div uib-alert class="alert-warning">{{ struct.error_string }}</div>
         </div>
         <uib-tabset ng-if="struct.tree_loaded">
             <uib-tab>
@@ -125,7 +125,7 @@
                         <td colspan="2">
 
                             <uib-accordion close-others="false">
-                               <uib-accordion-group is-open="web_viewer">
+                               <div uib-accordion-group class="panel-default" is-open="web_viewer">
                                    <uib-accordion-heading>
                                        Web viewer
                                        <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
@@ -136,7 +136,7 @@
                                        -->
                                        <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
                                    </div>
-                               </uib-accordion-group>
+                               </div>
                            </uib-accordion>
                         </td>
                     </tr>

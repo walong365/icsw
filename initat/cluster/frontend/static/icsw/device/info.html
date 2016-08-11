@@ -48,11 +48,11 @@
 
 <script type="text/ng-template" id="icsw.deviceempty.info.form">
     <h2>Details</h2>
-    <alert type="warning" style="max-width:500px;">No devices selected</alert>
+    <alert class="alert-warning" style="max-width:500px;">No devices selected</alert>
 </script>
 
 <script type="text/ng-template" id="icsw.device.info.overview">
-    <uib-alert type="warning" ng-if="!struct.data_valid">Fetching data from server ...</uib-alert>
+    <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Fetching data from server ...</div>
     <uib-tabset ng-if="struct.data_valid">
         <uib-tab ng-repeat="entry in struct.slist">
             <uib-tab-heading>

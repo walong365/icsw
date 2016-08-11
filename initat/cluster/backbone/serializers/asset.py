@@ -52,6 +52,7 @@ __all__ = [
     "AssetDMIValueSerializer",
     "StaticAssetSerializer",
     "StaticAssetFieldValueSerializer",
+    "StaticAssetTemplateRefsSerializer",
 ]
 
 
@@ -275,6 +276,8 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
 
 
 class StaticAssetTemplateFieldSerializer(serializers.ModelSerializer):
+    default_value_date = serializers.DateField(input_formats=["%d.%m.%Y"])
+
     class Meta:
         model = StaticAssetTemplateField
 
@@ -296,3 +299,8 @@ class StaticAssetSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = StaticAsset
+
+
+class StaticAssetTemplateRefsSerializer(serializers.Serializer):
+    static_asset_template = serializers.IntegerField()
+    device_name = serializers.CharField()

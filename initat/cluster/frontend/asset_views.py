@@ -38,15 +38,16 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework import viewsets, status
 from rest_framework.response import Response
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 
 from initat.cluster.frontend.report_views import PDFReportGenerator, generate_csv_entry_for_assetrun
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
     AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
-    AssetBatch, StaticAssetTemplateField, StaticAsset
+    AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
-    StaticAssetTemplateFieldSerializer, StaticAssetSerializer
+    StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer
 
 try:
     from openpyxl import Workbook
@@ -295,6 +296,7 @@ class AssetRunsViewSet(viewsets.ViewSet):
 
 
 class AssetPackageViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
     def get_all(self, request):
         queryset = AssetPackage.objects.all().prefetch_related(
             "assetpackageversion_set"
@@ -307,12 +309,37 @@ class AssetPackageViewSet(viewsets.ViewSet):
 
 
 class StaticAssetTemplateViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
     def get_all(self, request):
         queryset = StaticAssetTemplate.objects.all().prefetch_related(
             "staticassettemplatefield_set"
         )
+        [_template.check_ordering() for _template in queryset]
         serializer = StaticAssetTemplateSerializer(queryset, many=True)
         return Response(serializer.data)
+
+    @method_decorator(login_required)
+    def get_refs(self, request):
+        queryset = StaticAsset.objects.all().prefetch_related(
+            "device__domain_tree_node"
+        )
+        _data = []
+        for _entry in queryset:
+            _template_idx = _entry.static_asset_template_id
+            _full_name = _entry.device.full_name
+            _data.append({"static_asset_template": _template_idx, "device_name": _full_name})
+        return Response(StaticAssetTemplateRefsSerializer(_data, many=True).data)
+
+    @method_decorator(login_required)
+    def reorder_fields(self, request):
+        field_1 = StaticAssetTemplateField.objects.get(Q(pk=request.data["field1"]))
+        field_2 = StaticAssetTemplateField.objects.get(Q(pk=request.data["field2"]))
+        _swap = field_1.ordering
+        field_1.ordering = field_2.ordering
+        field_2.ordering = _swap
+        field_1.save(update_fields=["ordering"])
+        field_2.save(update_fields=["ordering"])
+        return Response({"msg": "done"})
 
     @method_decorator(login_required)
     def create_template(self, request):
@@ -374,7 +401,7 @@ class StaticAssetTemplateViewSet(viewsets.ViewSet):
             _new_field = _cur_ser.save()
         else:
             # todo, fixme
-            print dir(_cur_ser), _cur_ser.errors, _cur_ser
+            raise ValidationError("Validation error: {}".format(str(_cur_ser.errors)))
         resp = _cur_ser.data
         c_list, r_list = get_change_reset_list(_prev_field, _new_field, request.data)
         resp = Response(resp)
@@ -571,3 +598,45 @@ class DeviceStaticAssetViewSet(viewsets.ViewSet):
     def delete_asset(self, request, **kwargs):
         StaticAsset.objects.get(Q(idx=kwargs["pk"])).delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @method_decorator(login_required())
+    def delete_field(self, request, **kwargs):
+        cur_obj = StaticAssetFieldValue.objects.get(Q(pk=kwargs["pk"]))
+        can_delete_answer = can_delete_obj(cur_obj)
+        if can_delete_answer:
+            cur_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise ValueError(can_delete_answer.msg)
+
+    @method_decorator(login_required)
+    def add_unused(self, request, **kwargs):
+        _asset = StaticAsset.objects.get(Q(pk=request.data["asset"]))
+        for _field in StaticAssetTemplateField.objects.filter(Q(pk__in=request.data["fields"])):
+            _field.create_field_value(_asset)
+        return Response({"msg": "added"})
+
+
+class device_asset_post(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request, *args, **kwargs):
+        _lut = {_value["idx"]: _value for _value in json.loads(request.POST["asset_data"])}
+        # import pprint
+        # pprint.pprint(_lut)
+        _field_list = StaticAssetFieldValue.objects.filter(
+            Q(pk__in=_lut.keys())
+        ).select_related(
+            "static_asset_template_field"
+        )
+        _all_ok = all(
+            [
+                _field.check_new_value(_lut[_field.pk], request.xml_response) for _field in _field_list
+            ]
+        )
+        if _all_ok:
+            [
+                _field.set_new_value(_lut[_field.pk], request.user) for _field in _field_list
+            ]
+        else:
+            request.xml_response.error("validation problem")

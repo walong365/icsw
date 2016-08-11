@@ -55,17 +55,24 @@ preprocess = require("gulp-preprocess")
 
 use_theme = "default"
 
-themes =
-    default : ["frontend/static/css/theme-default/bootstrap-dialog.css",
-               "frontend/static/css/theme-default/bootstrap.css",
-               "frontend/static/css/icsw_src.css",
-               "frontend/static/css/theme-default/theme-fixes.css"]
-    cora : ["frontend/static/css/theme-cora/bootstrap.css",
-            "frontend/static/css/icsw_src.css",
-            "frontend/static/css/theme-cora/theme-fixes.css"]
-    sirocco : ["frontend/static/css/theme-sirocco/bootstrap.css",
-               "frontend/static/css/icsw_src.css",
-               "frontend/static/css/theme-sirocco/theme-fixes.css"]
+themes = {
+    default : [
+        "frontend/static/css/theme-default/bootstrap-dialog.css",
+        "frontend/static/css/theme-default/bootstrap.css",
+        "frontend/static/css/icsw_src.css",
+        "frontend/static/css/theme-default/theme-fixes.css"
+    ]
+    cora : [
+        "frontend/static/css/theme-cora/bootstrap.css",
+        "frontend/static/css/icsw_src.css",
+        "frontend/static/css/theme-cora/theme-fixes.css"
+    ]
+    sirocco : [
+        "frontend/static/css/theme-sirocco/bootstrap.css",
+        "frontend/static/css/icsw_src.css",
+        "frontend/static/css/theme-sirocco/theme-fixes.css"
+    ]
+}
 
 svg_style_default = "frontend/static/css/theme-default/svg-style.css"
 svg_style_cora = "frontend/static/css/theme-cora/svg-style.css"
@@ -184,7 +191,7 @@ sources = {
             "frontend/static/js/restangular.min.js",
             "frontend/static/js/angular-block-ui.js",
             "frontend/static/js/select.js",
-            "frontend/static/js/ui-bootstrap-tpls-1.3.3.min.js",
+            "frontend/static/js/ui-bootstrap-tpls-2.0.1.min.js",
             "frontend/static/js/angular-ui-router.js",
             "frontend/static/js/datetime-picker.js",
             "frontend/static/js/datetime-picker.tpls.js",

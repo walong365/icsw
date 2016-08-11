@@ -158,5 +158,5 @@ else
 fi
 
 if [ "${RESTART_SRV}" = "1" ] ; then
-    restart_software "server"
+    restart_software "server" ${RESTART_CAUSE}
 fi

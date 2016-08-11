@@ -55,7 +55,7 @@ import inspect
 
 logger = logging.getLogger("cluster.rest")
 
-SERIALIZER_BLACKLIST = ["device_selection_serializer"]
+SERIALIZER_BLACKLIST = ["device_selection_serializer", "StaticAssetTemplateRefsSerializer"]
 
 # build REST_LIST from models content
 REST_LIST = []
@@ -80,7 +80,7 @@ for module in model_serializer_modules:
         if inspect.isclass(val) and issubclass(val, rest_framework.serializers.Serializer):
             if key.endswith("_serializer") and key not in SERIALIZER_BLACKLIST:
                 REST_LIST.append((module, "_".join(key.split("_")[:-1])))
-            elif key.endswith("Serializer"):
+            elif key.endswith("Serializer") and key not in SERIALIZER_BLACKLIST:
                 REST_LIST.append((module, key[:-10]))
 
 

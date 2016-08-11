@@ -304,53 +304,134 @@
 
 <script type="text/ng-template" id="icsw.device.static.asset.overview">
     <legend>
-        Static Assets ({{ struct.asset_tree.static_assets.length }} types)
+        Static Assets ({{ struct.asset_struct.used.length }} of {{ struct.asset_tree.list.length }} set)
+        <icsw-tools-button
+            type="create"
+            size="xs"
+            ng-show="struct.asset_struct.unused.length && struct.asset_struct.num_available"
+            ng-click="add_assets($event)"
+        ></icsw-tools-button>
     </legend>
-    <fieldset ng-repeat="key_list in struct.asset_tree.static_assets">
-        <legend>
-            {{ key_list[0] }}, {{ struct.asset_struct[key_list[0]].used.length }} in use
-            <icsw-tools-button
-                type="create"
-                size="xs"
-                ng-show="struct.asset_struct[key_list[0]].unused.length"
-                ng-click="add_assets($event, key_list[0])"
-            ></icsw-tools-button>
-        </legend>
-        <table class="table table-condensed table-hover table-striped" style="width:auto;">
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>#fields</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-repeat="asset in struct.asset_struct[key_list[0]].used">
-                    <td>{{ asset.$$static_asset_template.name }}</td>
-                    <td class="text-center">{{ asset.staticassetfieldvalue_set.length }}</td>
-                    <td>
-                        <icsw-tools-button type="delete" size="xs" ng-click="delete_asset($event, asset)"></icsw-tools-button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </fieldset>
+    <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="struct.asset_struct.used.length">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>#fields</th>
+                <th>#unused</th>
+                <th>FieldInfo</th>
+                <th colspan="2">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="asset in struct.asset_struct.used">
+                <td>{{ asset.$$static_asset_template.name }}</td>
+                <td>{{ asset.$$static_asset_template.$$staticAssetType }}</td>
+                <td class="text-center">{{ asset.staticassetfieldvalue_set.length }}</td>
+                <td class="text-center">
+                    <button ng-show="asset.$$unused_fields.length" ng-click="add_unused_fields($event, asset)" type="button" class="btn btn-xs btn-info">
+                        {{ asset.$$unused_fields.length }} <span class="fa fa-info-circle fa_icsw"></span>
+                    </button>
+                    <span ng-show="!asset.$$unused_fields.length">0</span>
+                </td>
+                <td>{{ asset.$$field_info }}</td>
+                <td>
+                    <icsw-tools-button type="modify" size="xs" ng-click="modify_asset($event, asset)"></icsw-tools-button>
+                </td>
+                <td>
+                    <icsw-tools-button type="delete" size="xs" ng-click="delete_asset($event, asset)"></icsw-tools-button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 </script>
 
 <script type="text/ng-template" id="icsw.device.static.asset.add">
-    <h3>Please select a new template</h3>
-    <fieldset ng-repeat="key_list in unset_list">
-        <legend>
-            {{ key_list[0] }}
-        </legend>
-        <div ng-repeat="asset in key_list[1]" class="form-group row">
-            <label class="control-label col-sm-6">
-                {{ asset.name }}
-            </label>
-            <div class="controls col-sm-6">
-                <icsw-tools-yes-no flag="asset.$$create"/>
-            </div>
+    <h3>Please select new template(s)</h3>
+    <div ng-repeat="asset in unused_list" class="form-group row">
+        <label class="control-label col-sm-6">
+            {{ asset.name }} ({{ asset.$$staticAssetType }})
+        </label>
+        <div class="controls col-sm-6">
+            <icsw-tools-yes-no flag="asset.$$create"/>
         </div>
-    </fieldset>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.static.asset.add.unused">
+    <h3>Please select unused field(s)</h3>
+    <div ng-repeat="field in unused_fields" class="form-group row">
+        <label class="control-label col-sm-6">
+            {{ field.name }} ({{ field.$$field_type }})
+        </label>
+        <div class="controls col-sm-6">
+            <icsw-tools-yes-no flag="field.$$add"/>
+        </div>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.static.asset.modify">
+    <div class="form-group row" ng-repeat="field in asset.staticassetfieldvalue_set">
+        <label class="control-label col-sm-4">
+            {{ field.$$field.name }} ({{ field.$$field_type_str }})
+            <icsw-tools-button size="xs" ng-show="field.$$field.optional" type="delete" ng-click="remove_field($event, field)"></icsw-tools-button>
+        </label>
+        <div class="controls col-sm-8 form-inline" ng-if="field.$$field.field_type == 1">
+            <span ng-show="field.$$field.fixed">
+                {{ field.value_int }}
+            </span>
+            <span ng-show="!field.$$field.fixed">
+                <input class="form-control" type="number" ng-model="field.value_int" style="width:140px;"/>
+            </span>
+            <span ng-show="field.$$field.consumable">
+                <span class="glyphicon glyphicon-dashboard"></span>:
+                {{ field.$$field.consumable_start_value }}
+            </span>
+            <span ng-show="field.$$field.has_bounds">
+                <span class="glyphicon glyphicon-resize-horizontal"></span>:
+                bounds: [{{ field.$$field.value_int_lower_bound }} - {{ field.$$field.value_int_upper_bound }}]
+            </span>
+        </div>
+        <div class="controls col-sm-8 form-inline" ng-if="field.$$field.field_type == 2">
+            <span ng-show="field.$$field.fixed">
+                {{ field.value_str }}
+            </span>
+            <span ng-show="!field.$$field.fixed">
+                <input class="form-control" ng-model="field.value_str" style="width:140px;"/>
+            </span>
+        </div>
+        <div class="controls col-sm-8 form-inline" ng-if="field.$$field.field_type == 3">
+            <span ng-show="field.$$field.fixed">
+                {{ field.value_date }}
+            </span>
+            <span ng-show="!field.$$field.fixed">
+                <span class="input-group">
+                    <input
+                        class="form-control"
+                        uib-datepicker-popup="dd.MM.yyyy"
+                        datepicker-options="datepicker_options.date_options"
+                        type="text"
+                        ng-model="field.$$default_date"
+                        is-open="datepicker_options.open[field.idx]"
+                        button-bar="button_bar"
+                    />
+                    <span class="input-group-btn">
+                        <button type="button" class="btn btn-default" ng-click="open_picker($event, field.idx)">
+                            <i class="glyphicon glyphicon-calendar"></i>
+                        </button>
+                    </span>
+                </span>
+            </span>
+        </div>
+        <div class="controls col-sm-8 form-inline" ng-if="field.$$field.field_type == 4">
+            {{ field.$$field.fixed }}
+            <span ng-show="field.$$field.fixed">
+                {{ field.value_text }}
+            </span>
+            <span ng-show="!field.$$field.fixed">
+                <textarea class="form-control" rows="10" cols="80" ng-model="field.value_text"/>
+            </span>
+        </div>
+    </div>
 </script>
 

@@ -673,6 +673,7 @@ monitoring_device_module = angular.module(
             [1, "Integer", ""]
             [2, "String", ""]
             [3, "Date", ""]
+            [4, "Text", ""]
         ]
     }
     # list of dicts for forms
@@ -703,7 +704,7 @@ monitoring_device_module = angular.module(
             return "????"
 
     _set_default_value = (field) ->
-        field.default_value_date = moment(field.$$default_date).format("YYYY-MM-DD")
+        field.default_value_date = moment(field.$$default_date).format("DD.MM.YYYY")
 
     _get_default_value = (field) ->
         # set $$default_value according to type
@@ -714,6 +715,9 @@ monitoring_device_module = angular.module(
         else if field.field_type == 3
             _def_val = field.default_value_date
             field.$$default_date = moment(field.default_value_date).toDate()
+        else if field.field_type == 4
+            # text
+            _def_val = field.default_value_text
         else
             _def_val = none
         field.$$default_value = _def_val
@@ -744,13 +748,13 @@ monitoring_device_module = angular.module(
     "$templateCache", "$compile", "icswStaticAssetTemplateBackup", "toaster", "blockUI", "Restangular",
     "ICSW_URLS", "icswStaticAssetTemplateTreeService", "icswDispatcherSettingTreeService", "icswComCapabilityTreeService",
     "icswToolsSimpleModalService", "icswUserService", "icswUserGroupTreeService", "icswStaticAssetFunctions",
-    "icswStaticAssetTemplateFieldBackup",
+    "icswStaticAssetTemplateFieldBackup", "$timeout",
 (
     $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
     $templateCache, $compile, icswStaticAssetTemplateBackup, toaster, blockUI, Restangular,
     ICSW_URLS, icswStaticAssetTemplateTreeService, icswDispatcherSettingTreeService, icswComCapabilityTreeService,
     icswToolsSimpleModalService, icswUserService, icswUserGroupTreeService, icswStaticAssetFunctions,
-    icswStaticAssetTemplateFieldBackup,
+    icswStaticAssetTemplateFieldBackup, $timeout,
 ) ->
     $scope.struct = {
         # loading
@@ -773,10 +777,13 @@ monitoring_device_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.template_tree = data[0]
+                # salt reference contents
+                $scope.struct.template_tree.add_references()
                 $scope.struct.user = data[1].user
                 $scope.struct.user_group_tree = data[2]
                 # get monitoring masters and slaves
                 $scope.struct.loading = false
+
         )
     _load()
 
@@ -791,6 +798,121 @@ monitoring_device_module = angular.module(
                     (notok) ->
                         blockUI.stop()
                 )
+        )
+
+
+    modify_or_create_field = ($event, parent_scope, as_temp, field, create) ->
+        s2_scope = parent_scope.$new(true)
+        if create
+            field = {
+                static_asset_template: as_temp.idx
+                name: "New field"
+                default_value_str: ""
+                default_value_int: 0
+                default_value_date: moment().toDate()
+                field_type: 2
+                ordering: as_temp.staticassettemplatefield_set.length
+                # warn and critical for date
+                date_check: false
+                date_warn_value: 60
+                date_critical_value: 30
+            }
+            _ok_label = "create"
+        else
+            f_bu = new icswStaticAssetTemplateFieldBackup()
+            f_bu.create_backup(field)
+            _ok_label = "modify"
+        s2_scope.edit_obj = field
+        s2_scope.create = create
+
+        s2_scope.open_picker = ($event) ->
+            s2_scope.datepicker_options.open = true
+
+        s2_scope.button_bar = {
+            show: true
+            now: {
+                show: true
+                text: 'Now'
+            },
+            today: {
+                show: true
+                text: 'Today'
+            },
+            close: {
+                show: true
+                text: 'Close'
+            }
+        }
+        s2_scope.datepicker_options = {
+            date_options: {
+                format: "dd.MM.yyyy"
+                formatYear: "yyyy"
+                minDate: new Date(2000, 1, 1)
+                startingDay: 1
+                minMode: "day"
+                datepickerMode: "day"
+            }
+            time_options: {
+                showMeridian: false
+            }
+            open: false
+        }
+        s2_scope.field_type_list = icswStaticAssetFunctions.get_form_dict("field_type")
+        s2_scope.template = as_temp
+
+        # functions
+        s2_scope.field_changed = () ->
+            $timeout(
+                () ->
+                    $scope.struct.template_tree.salt_field(s2_scope.edit_obj)
+                0
+            )
+
+        s2_scope.field_changed()
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.static.asset.field.form"))(s2_scope)
+                title: "Static AssetTemplateField #{s2_scope.edit_obj.name}"
+                ok_label: _ok_label
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if s2_scope.form_data.invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        blockUI.start("saving Field...")
+                        icswStaticAssetFunctions.set_default_value(s2_scope.edit_obj)
+                        if create
+                            $scope.struct.template_tree.create_field(parent_scope.edit_obj, s2_scope.edit_obj).then(
+                                (ok) ->
+                                    blockUI.stop()
+                                    d.resolve("done")
+                                (notok) ->
+                                    blockUI.stop()
+                                    d.reject("not done")
+                            )
+                        else
+                            $scope.struct.template_tree.update_field(parent_scope.edit_obj, s2_scope.edit_obj).then(
+                                (ok) ->
+                                    blockUI.stop()
+                                    d.resolve("done")
+                                (notok) ->
+                                    blockUI.stop()
+                                    d.reject("not done")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create
+                        f_bu.restore_backup(field)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                $scope.struct.template_tree.link()
+                s2_scope.$destroy()
         )
 
     $scope.create_or_edit = ($event, obj, create) ->
@@ -817,72 +939,7 @@ monitoring_device_module = angular.module(
         sub_scope.asset_type_list = icswStaticAssetFunctions.get_form_dict("asset_type")
 
         sub_scope.modify_or_create_field = ($event, as_temp, field, create) ->
-            s2_scope = sub_scope.$new(true)
-            if create
-                field = {
-                    static_asset_template: as_temp.idx
-                    name: "New field"
-                    default_value_str: ""
-                    default_value_int: 0
-                    default_value_date: moment().toDate()
-                    field_type: 2
-                }
-            else
-                f_bu = new icswStaticAssetTemplateFieldBackup()
-                f_bu.create_backup(field)
-            s2_scope.edit_obj = field
-            s2_scope.field_type_list = icswStaticAssetFunctions.get_form_dict("field_type")
-
-            # functions
-            s2_scope.field_changed = () ->
-                $scope.struct.template_tree.salt_field(s2_scope.edit_obj)
-            s2_scope.field_changed()
-                
-            _ok_label = "modify"
-            icswComplexModalService(
-                {
-                    message: $compile($templateCache.get("icsw.static.asset.field.form"))(s2_scope)
-                    title: "Static AssetTemplateField #{s2_scope.edit_obj.name}"
-                    ok_label: _ok_label
-                    ok_callback: (modal) ->
-                        d = $q.defer()
-                        if s2_scope.form_data.invalid
-                            toaster.pop("warning", "form validation problem", "", 0)
-                            d.reject("form not valid")
-                        else
-                            blockUI.start("saving Field...")
-                            icswStaticAssetFunctions.set_default_value(s2_scope.edit_obj)
-                            if create
-                                $scope.struct.template_tree.create_field(sub_scope.edit_obj, s2_scope.edit_obj).then(
-                                    (ok) ->
-                                        blockUI.stop()
-                                        d.resolve("done")
-                                    (notok) ->
-                                        blockUI.stop()
-                                        d.reject("not done")
-                                )
-                            else
-                                $scope.struct.template_tree.update_field(sub_scope.edit_obj, s2_scope.edit_obj).then(
-                                    (ok) ->
-                                        blockUI.stop()
-                                        d.resolve("done")
-                                    (notok) ->
-                                        blockUI.stop()
-                                        d.reject("not done")
-                                )
-                        return d.promise
-                    cancel_callback: (modal) ->
-                        if not create
-                            f_bu.restore_backup(field)
-                        d = $q.defer()
-                        d.resolve("cancel")
-                        return d.promise
-                }
-            ).then(
-                (fin) ->
-                    $scope.struct.template_tree.link()
-                    s2_scope.$destroy()
-            )
+            modify_or_create_field($event, sub_scope, as_temp, field, create)
 
         sub_scope.delete_field = ($event, as_temp, field) ->
             icswToolsSimpleModalService("Really delete field #{field.name} ?").then(
@@ -896,11 +953,19 @@ monitoring_device_module = angular.module(
                     )
             )
 
+        sub_scope.move_field = ($event, field, up) ->
+            blockUI.start("reorder...")
+            $scope.struct.template_tree.move_field(sub_scope.edit_obj, field, up).then(
+                (done) ->
+                    blockUI.stop()
+            )
+
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.static.asset.template.form"))(sub_scope)
                 title: "Static AssetTemplate #{sub_scope.edit_obj.name}"
                 ok_label: _ok_label
+                css_class: "modal-wide"
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
