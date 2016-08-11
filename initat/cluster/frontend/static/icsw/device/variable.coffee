@@ -250,8 +250,8 @@ device_variable_module = angular.module(
         sub_scope.edit_obj = obj_or_parent
 
         sub_scope.valid_var_types = [
-            {"short" : "i", "long" : "integer"},
-            {"short" : "s", "long" : "string"},
+            {short: "i", long: "integer"},
+            {short: "s", long: "string"},
         ]
         # init fields
         sub_scope.change_scope()

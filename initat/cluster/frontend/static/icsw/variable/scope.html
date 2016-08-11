@@ -1,0 +1,65 @@
+<script type="text/ng-template" id="icsw/device/variable.html">
+    <uib-tabset>
+        <uib-tab heading="DeviceVariables">
+            <icsw-device-variable-overview icsw-sel-man="0"></icsw-device-variable-overview>
+        </uib-tab>
+        <uib-tab heading="ScopeVariables">
+            <icsw-variable-scope-overview></icsw-variable-scope-overview>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.variable.scope.overview">
+    <h3 ng-show="struct.loaded">
+        Scopes defined: {{ struct.device_variable_scope_tree.list.length }}, fixed: {{ struct.device_variable_scope_tree.$$num_fixed_scopes }}
+    </h3>
+    <uib-tabset ng-if="struct.loaded">
+        <uib-tab ng-repeat="entry in struct.device_variable_scope_tree.$$fixed_list">
+            <uib-tab-heading>
+                {{ entry.name }}
+            </uib-tab-heading>
+            <icsw-variable-scope-table icsw-variable-scope="entry"></icsw-variable-scope-table>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.variable.scope.table.overview">
+    <h3>
+        Variable scope '{{ var_scope.name }}', number of entries: {{ var_scope.dvs_allowed_names_set.length }}
+    </h3>
+    <table st-table="entries" st-safe-src="var_scope.dvs_allowed_names_set" class="table table-condensed table-striped" style="width:auto;">
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-displayed-pages="11"
+                        st-items-by-page="15"
+                        possible-items-by-page="15,30,100,200"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Name</th>
+                <th>Group</th>
+                <th>Unique</th>
+                <th>ForcedType</th>
+                <th>Description</th>
+                <th colspan="1">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="entry in entries">
+                <td>{{ entry.name }}</td>
+                <td>{{ entry.group }}</td>
+                <td class="text-center">{{ entry.unique | yesno1 }}</td>
+                <td class="text-center">{{ entry.$$forced_type_str }}</td>
+                <td>{{ entry.description }}</td>
+                <td>
+                    <icsw-tools-button type="modify" size="xs"></icsw-tools-button>
+                    <icsw-tools-button type="delete" size="xs"></icsw-tools-button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>

@@ -30,13 +30,9 @@ angular.module(
     ]
 ).service("icswDeviceVariableScopeTree",
 [
-    "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo",
-    "icswSimpleAjaxCall", "$rootScope", "$timeout", "icswDeviceTreeGraph",
-    "ICSW_SIGNALS", "icswDeviceTreeHelper", "icswNetworkTreeService",
+    "icswDeviceVariableFunctions",
 (
-    icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo,
-    icswSimpleAjaxCall, $rootScope, $timeout, icswDeviceTreeGraph,
-    ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService
+    icswDeviceVariableFunctions,
 ) ->
     class icswDeviceVariableScopeTree
         constructor: (list) ->
@@ -46,20 +42,88 @@ angular.module(
         update: (list) =>
             @list.length = 0 
             for entry in list
+                @salt_scope(entry)
                 @list.push(entry)
+            @$$fixed_list = (entry for entry in @list when entry.$$fixed)
+            @$$num_fixed_scopes =  @$$fixed_list.length
             @build_luts()
             
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
             @lut_by_name= _.keyBy(@list, "name")
             @_inv_lut = _.keyBy(@lut_by_name["inventory"].dvs_allowed_names_set, "name")
+
+        salt_scope: (entry) =>
+            if entry.dvs_allowed_names_set.length
+                entry.$$fixed = true
+                (@salt_allowed_name(_dve) for _dve in entry.dvs_allowed_names_set)
+            else
+                entry.$$fixed = false
             
         get_inventory_var_names: () =>
             return _.orderBy(entry.name for entry in @lut_by_name["inventory"].dvs_allowed_names_set)
             
         get_inventory_var: (name) =>
             return @_inv_lut[name]
-            
+
+        salt_allowed_name: (entry) =>
+            entry.$$forced_type_str = icswDeviceVariableFunctions.resolve("var_type", entry.forced_type)
+
+]).service("icswDeviceVariableFunctions",
+[
+    "$q",
+(
+    $q,
+) ->
+    info_dict = {
+        var_type: [
+            ["", "ignore", ""]
+            ["i", "Integer", ""]
+            ["s", "String", ""]
+            ["d", "DateTime", ""]
+            ["D", "Date", ""]
+            ["t", "Time", ""]
+            ["b", "Blob", ""]
+        ]
+    }
+    # list of dicts for forms
+    form_dict = {}
+    # create forward and backward resolves
+    res_dict = {}
+    for name, _list of info_dict
+        res_dict[name] = {}
+        form_dict[name] = []
+        for [_idx, _str, _class] in _list
+            # forward resolve
+            res_dict[name][_idx] = [_str, _class]
+            # backward resolve
+            res_dict[name][_str] = [_idx, _class]
+            res_dict[name][_.lowerCase(_str)] = [_idx, _class]
+            # form dict
+            form_dict[name].push({idx: _idx, name: _str})
+
+    _resolve = (name, key, idx) ->
+        if name of res_dict
+            if key of res_dict[name]
+                return res_dict[name][key][idx]
+            else
+                console.error "unknown key #{key} for name #{name} in resolve"
+                return "???"
+        else
+            console.error "unknown name #{name} in resolve"
+            return "????"
+
+    return {
+        resolve: (name, key) ->
+            return _resolve(name, key, 0)
+
+        get_class: (name, key) ->
+            return _resolve(name, key, 1)
+
+        get_form_dict: (name) ->
+            return form_dict[name]
+    }
+
 ]).service("icswDeviceVariableScopeTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTreeBase",
