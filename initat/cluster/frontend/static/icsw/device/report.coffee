@@ -49,13 +49,13 @@ device_report_module = angular.module(
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "FileUploader", "icswCSRFService"
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
     "icswDispatcherSettingTreeService", "Restangular", "icswActiveSelectionService",
-    "icswComplexModalService", "$interval"
+    "icswComplexModalService", "$interval", "icswUserService"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, FileUploader, icswCSRFService
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
     icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService,
-    icswComplexModalService, $interval
+    icswComplexModalService, $interval, icswUserService
 ) ->
     $scope.struct = {
         # list of devices
@@ -79,6 +79,8 @@ device_report_module = angular.module(
         network_report_overview_module_selected: false
 
         pdf_page_format: "landscape(A4)"
+
+        user: undefined
     }
 
     b64_to_blob = (b64_data, content_type, slice_size) ->
@@ -102,6 +104,18 @@ device_report_module = angular.module(
 
         blob = new Blob(byte_arrays, type: content_type)
         return blob
+
+
+    $q.all(
+        [
+            icswUserService.load()
+        ]
+    ).then(
+        (data) ->
+            $scope.struct.user = data[0].user
+            console.log($scope.struct.user)
+    )
+
 
     $scope.uploading = false
     $scope.percentage = 0
@@ -267,6 +281,7 @@ device_report_module = angular.module(
             pk: -1
             network_report_overview_module_selected: $scope.struct.network_report_overview_module_selected
             pdf_page_format: $scope.struct.pdf_page_format
+            user_idx: $scope.struct.user.idx
         }
         settings.push(setting)
 

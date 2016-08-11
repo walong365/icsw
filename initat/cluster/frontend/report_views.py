@@ -41,7 +41,7 @@ from reportlab.graphics.shapes import Drawing, Rect
 from reportlab.pdfgen.canvas import Canvas
 from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.lib.pagesizes import landscape, letter, A4, A3
-from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 
 from PollyReports import Element, Rule, Band
 from PollyReports import Image as PollyReportsImage
@@ -279,7 +279,7 @@ class PDFReportGenerator(object):
             self.name = name
             self.pagenum = pagenum
 
-    def __init__(self, general_settings):
+    def __init__(self, settings):
         system_device = None
         for _device in device.objects.all():
             if _device.is_cluster_device_group():
@@ -288,7 +288,8 @@ class PDFReportGenerator(object):
 
         report_logo = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
 
-        self.general_settings = general_settings
+        self.general_settings = settings[-1]
+        self.device_settings = settings
         self.last_poll_time = None
         self.logo_width = None
         self.logo_height = None
@@ -322,9 +323,35 @@ class PDFReportGenerator(object):
         self.progress = 0
         self.buffer = None
 
-        print general_settings["pdf_page_format"]
-        self.page_format = eval(general_settings["pdf_page_format"])
+        self.page_format = eval(self.general_settings["pdf_page_format"])
         self.margin = 36
+
+        report_index_var = system_device.device_variable_set.filter(name="__REPORT_INDEX__")
+        if report_index_var:
+            report_index_var = report_index_var[0]
+            report_index_var.val_int += 1
+            report_index_var.save()
+
+            self.report_index = report_index_var.val_int
+        else:
+            report_index_var = device_variable.objects.create(device=system_device,
+                                                              is_public=False,
+                                                              name="__REPORT_INDEX__",
+                                                              inherit=False,
+                                                              protected=True,
+                                                              var_type="i")
+            report_index_var.val_int = 1
+            report_index_var.save()
+
+            self.report_index = 1
+
+
+        self.cluster_id = "Unknown"
+        cluster_id_var = system_device.device_variable_set.filter(name="CLUSTER_ID")
+        if cluster_id_var:
+            cluster_id_var = cluster_id_var[0]
+            self.cluster_id = cluster_id_var.val_str
+
 
     def get_report_data(self):
         if self.buffer:
@@ -1110,16 +1137,25 @@ class PDFReportGenerator(object):
         toc_pdf = PdfFileReader(toc_buffer)
         toc_pdf_page_num = toc_pdf.getNumPages()
 
-        for i in reversed(range(toc_pdf.getNumPages())):
+        for i in reversed(range(toc_pdf_page_num)):
             output_pdf.insertPage(toc_pdf.getPage(i))
+
+        frontpage_buffer = self.__generate_front_page()
+        frontpage_pdf = PdfFileReader(frontpage_buffer)
+        frontpage_page_num = frontpage_pdf.getNumPages()
+
+        for i in reversed(range(frontpage_page_num)):
+            output_pdf.insertPage(frontpage_pdf.getPage(i))
+
+        number_of_pre_content_sites = frontpage_page_num + toc_pdf_page_num
 
         # 2. Pass: Add page numbers
         output_pdf.write(output_buffer)
-        output_pdf = self.__add_page_numbers(output_buffer, toc_pdf_page_num, page_num_prefix_dict)
+        output_pdf = self.__add_page_numbers(output_buffer, number_of_pre_content_sites, page_num_prefix_dict)
         self.progress = 100
 
         # 3. Pass: Generate Bookmarks
-        current_page_number = toc_pdf_page_num
+        current_page_number = number_of_pre_content_sites
 
         if self.reports:
             general_reports_bookmark = output_pdf.addBookmark("General Reports", current_page_number)
@@ -1158,6 +1194,186 @@ class PDFReportGenerator(object):
         self.buffer = output_buffer
         self.progress = -1
 
+    def __generate_front_page(self):
+        _buffer = BytesIO()
+        doc = SimpleDocTemplate(_buffer,
+                                pagesize=self.page_format,
+                                rightMargin=0,
+                                leftMargin=0,
+                                topMargin=0,
+                                bottomMargin=0)
+        elements = []
+
+        style_sheet = getSampleStyleSheet()
+        style_sheet.add(ParagraphStyle(name='red font', textColor=colors.red))
+        style_sheet.add(ParagraphStyle(name='green font', textColor=colors.green))
+
+        available_width = self.page_format[0] - (self.margin * 2)
+
+        data = [["Report #{}".format(self.report_index)]]
+
+        t_head = Table(data, colWidths=(available_width),
+                       style=[('FONTSIZE', (0, 0), (-1, -1), 22),
+                              ('TEXTFONT', (0, 0), (-1, -1), 'Helvetica'),
+                              ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                              ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                              ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                              ('RIGHTPADDING', (0, 0), (-1, -1), 0)])
+
+        # body content
+        from initat.cluster.backbone.models import user
+        _user = user.objects.get(idx=self.general_settings["user_idx"])
+        _user_str = str(_user)
+
+        _creation_str = datetime.datetime.now().strftime("%a %d. %b %Y %H:%M:%S")
+
+        body_data = []
+
+        data = [[self.report_index]]
+
+        text_block = Paragraph('<b>ReportID:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(available_width * 0.85),
+                  style=[]
+                  )
+        body_data.append((text_block, t))
+
+        data = [[self.cluster_id]]
+
+        text_block = Paragraph('<b>ClusterID:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(available_width * 0.85),
+                  style=[]
+                  )
+
+        body_data.append((text_block, t))
+
+        data = [[_creation_str]]
+
+        text_block = Paragraph('<b>CreationDate:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(available_width * 0.85),
+                  style=[]
+                  )
+
+        body_data.append((text_block, t))
+
+        data = [[_user_str]]
+
+        text_block = Paragraph('<b>Requested by user:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(available_width * 0.85),
+                  style=[]
+                  )
+
+        body_data.append((text_block, t))
+
+        t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
+                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
+                              ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                              ('RIGHTPADDING', (0, 0), (-1, -1), 0)]
+                       )
+
+
+        # config matrix
+        config_data = []
+
+
+        header_row = [Paragraph('Device', style_sheet["BodyText"]),
+                      Paragraph('Installed Packages', style_sheet["BodyText"]),
+                      Paragraph('Available Licenses', style_sheet["BodyText"]),
+                      Paragraph('Installed Updates', style_sheet["BodyText"]),
+                      Paragraph('Available Updates', style_sheet["BodyText"]),
+                      Paragraph('Process Information', style_sheet["BodyText"]),
+                      Paragraph('Hardware Report', style_sheet["BodyText"]),
+                      Paragraph('DMI Information', style_sheet["BodyText"]),
+                      Paragraph('PCI Information', style_sheet["BodyText"]),
+                      Paragraph('LSTOPO Information', style_sheet["BodyText"])]
+
+
+
+        config_data.append(header_row)
+
+        device_group_to_devices_dict = {}
+
+        for idx in self.device_settings:
+            if idx < 0:
+                continue
+
+            _device = device.objects.get(idx=idx)
+            _device_group = _device.device_group.name
+            if _device_group not in device_group_to_devices_dict:
+                device_group_to_devices_dict[_device_group] = []
+
+            device_group_to_devices_dict[_device_group].append(_device)
+
+
+        for _device_group in device_group_to_devices_dict:
+            for _device in device_group_to_devices_dict[_device_group]:
+                row = [_device.full_name]
+
+                for i in range(1, 10):
+                    if i == 1:
+                        if self.device_settings[_device.idx]["packages_selected"]:
+                            row.append(Paragraph('On', style_sheet["green font"]))
+                        else:
+                            row.append(Paragraph('Off', style_sheet["red font"]))
+                    if i == 2:
+                        if self.device_settings[_device.idx]["licenses_selected"]:
+                            row.append(Paragraph('On', style_sheet["green font"]))
+                        else:
+                            row.append(Paragraph('Off', style_sheet["red font"]))
+                    if i == 3:
+                        if self.device_settings[_device.idx]["installed_updates_selected"]:
+                            row.append(Paragraph('On', style_sheet["green font"]))
+                        else:
+                            row.append(Paragraph('Off', style_sheet["red font"]))
+                    if i == 4:
+                        if self.device_settings[_device.idx]["avail_updates_selected"]:
+                            row.append(Paragraph('On', style_sheet["green font"]))
+                        else:
+                            row.append(Paragraph('Off', style_sheet["red font"]))
+                    if i == 5:
+                        if self.device_settings[_device.idx]["process_report_selected"]:
+                            row.append(Paragraph('On', style_sheet["green font"]))
+                        else:
+                            row.append(Paragraph('Off', style_sheet["red font"]))
+                    if i == 6:
+                        if self.device_settings[_device.idx]["hardware_report_selected"]:
+                            row.append(Paragraph('On', style_sheet["green font"]))
+                        else:
+                            row.append(Paragraph('Off', style_sheet["red font"]))
+                    if i == 7:
+                        if self.device_settings[_device.idx]["dmi_report_selected"]:
+                            row.append(Paragraph('On', style_sheet["green font"]))
+                        else:
+                            row.append(Paragraph('Off', style_sheet["red font"]))
+                    if i == 8:
+                        if self.device_settings[_device.idx]["pci_report_selected"]:
+                            row.append(Paragraph('On', style_sheet["green font"]))
+                        else:
+                            row.append(Paragraph('Off', style_sheet["red font"]))
+                    if i == 9:
+                        if self.device_settings[_device.idx]["lstopo_report_selected"]:
+                            row.append(Paragraph('On', style_sheet["green font"]))
+                        else:
+                            row.append(Paragraph('Off', style_sheet["red font"]))
+
+                config_data.append(row)
+
+        t_config = Table(config_data, colWidths=[available_width * (float(1) / len(header_row)) for _ in range(len(header_row))],
+                         style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
+                                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                                ('RIGHTPADDING', (0, 0), (-1, -1), 0)]
+                         )
+
+        elements.append(t_head)
+        elements.append(Spacer(1, 30))
+        elements.append(t_body)
+        elements.append(Spacer(1, 30))
+        elements.append(t_config)
+
+        doc.build(elements)
+
+        return _buffer
+
+
     def __get_toc_pages(self, page_num_headings):
         style_sheet = getSampleStyleSheet()
 
@@ -1177,7 +1393,6 @@ class PDFReportGenerator(object):
 
         _buffer = BytesIO()
         can = Canvas(_buffer, pagesize=self.page_format)
-
         can.setFont("Helvetica", 14)
 
         width, heigth = self.page_format
@@ -1258,6 +1473,7 @@ class PDFReportGenerator(object):
                         t_head.drawOn(can, 25, heigth - 50)
 
         can.save()
+
         return _buffer, page_num_prefix_dict
 
     def __add_page_numbers(self, pdf_buffer, toc_offset_num, page_num_prefix_dict):
@@ -1404,7 +1620,7 @@ class GenerateReportPdf(View):
     def post(self, request):
         pk_settings, _devices, current_time = _init_report_settings(request)
 
-        pdf_report_generator = PDFReportGenerator(pk_settings[-1])
+        pdf_report_generator = PDFReportGenerator(pk_settings)
         pdf_report_generator.timestamp = current_time
         REPORT_GENERATORS[id(pdf_report_generator)] = pdf_report_generator
 
@@ -1666,6 +1882,7 @@ def generate_pdf(_devices, pk_settings, pdf_report_generator):
         logger.info("PDF Generation failed, error was: {}".format(str(e)))
         pdf_report_generator.buffer = BytesIO()
         pdf_report_generator.progress = -1
+
 
 def _generate_report(report_generator):
     report_generator.generate_report()
