@@ -81,11 +81,109 @@ device_variable_module = angular.module(
     }
 ]).controller("icswVariableScopeTableCtrl",
 [
-    "$scope", "$q",
+    "$scope", "$q", "icswToolsSimpleModalService", "blockUI", "toaster",
+    "icswDeviceVariableScopeTreeService", "$templateCache", "$compile", "icswComplexModalService",
+    "icswDeviceVariableFunctions", "icswDVSAllowedNameBackup",
 (
-    $scope, $q,
+    $scope, $q, icswToolsSimpleModalService, blockUI, toaster,
+    icswDeviceVariableScopeTreeService, $templateCache, $compile, icswComplexModalService,
+    icswDeviceVariableFunctions, icswDVSAllowedNameBackup,
 ) ->
     $scope.struct = {
-
+        # dvs tree
+        dvs_tree: undefined
+        # data_ready
+        data_ready: false
     }
+    _load = () ->
+        $scope.struct.data_ready = false
+        $q.all(
+            [
+                icswDeviceVariableScopeTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.dvs_tree = data[0]
+                $scope.struct.data_ready = true
+        )
+    _load()
+
+    $scope.delete_dvs_an = ($event, entry) ->
+        icswToolsSimpleModalService("Really delete entry '#{entry.name}' in Scope '#{$scope.var_scope.name}' ?").then(
+            (ok) ->
+                blockUI.start()
+                $scope.struct.dvs_tree.delete_dvs_an(entry).then(
+                    (ok) ->
+                        blockUI.stop()
+                    (not_ok) ->
+                        blockUI.stop()
+                )
+
+        )
+
+    create_or_edit = ($event, var_scope, create, entry) ->
+        sub_scope = $scope.$new(true)
+        if create
+            entry = {
+                device_variable_scope: var_scope.idx
+                name: "allowed_name"
+                unique: false
+                group: ""
+                forced_type: icswDeviceVariableFunctions.get_form_dict("var_type")[0].idx
+                description: "new allowed name"
+            }
+        else
+            dbu = new icswDVSAllowedNameBackup()
+            dbu.create_backup(entry)
+        sub_scope.type_list = icswDeviceVariableFunctions.get_form_dict("var_type")
+        sub_scope.$$forced_type_str = icswDeviceVariableFunctions.resolve("var_type", entry.forced_type)
+        sub_scope.edit_obj = entry
+        sub_scope.create = create
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.variable.scope.dvsan.form"))(sub_scope)
+                title: "Allowed ScopeVariable in scope '#{var_scope.name}'"
+                # css_class: "modal-wide"
+                ok_label: if create then "Create" else "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        if create
+                            # single creation
+                            $scope.struct.dvs_tree.create_dvs_an(var_scope, sub_scope.edit_obj).then(
+                                (new_conf) ->
+                                    d.resolve("created")
+                                (notok) ->
+                                    d.reject("not created")
+                            )
+                        else
+                            $scope.struct.dvs_tree.update_dvs_an(var_scope, sub_scope.edit_obj).then(
+                                (new_var) ->
+                                    d.resolve("updated")
+                                (not_ok) ->
+                                    d.reject("not updated")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create
+                        dbu.restore_backup(entry)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+        )
+
+
+    $scope.create_dvs_an = ($event, var_scope) ->
+        create_or_edit($event, var_scope, true, null)
+
+    $scope.edit_dvs_an = ($event, var_scope, entry) ->
+        create_or_edit($event, var_scope, false, entry)
 ])

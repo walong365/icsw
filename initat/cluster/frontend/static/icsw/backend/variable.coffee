@@ -30,9 +30,9 @@ angular.module(
     ]
 ).service("icswDeviceVariableScopeTree",
 [
-    "icswDeviceVariableFunctions",
+    "icswDeviceVariableFunctions", "$q", "Restangular", "ICSW_URLS",
 (
-    icswDeviceVariableFunctions,
+    icswDeviceVariableFunctions, $q, Restangular, ICSW_URLS,
 ) ->
     class icswDeviceVariableScopeTree
         constructor: (list) ->
@@ -51,23 +51,62 @@ angular.module(
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
             @lut_by_name= _.keyBy(@list, "name")
-            @_inv_lut = _.keyBy(@lut_by_name["inventory"].dvs_allowed_names_set, "name")
+            @_inv_lut = _.keyBy(@lut_by_name["inventory"].dvs_allowed_name_set, "name")
 
         salt_scope: (entry) =>
-            if entry.dvs_allowed_names_set.length
+            if entry.dvs_allowed_name_set.length
                 entry.$$fixed = true
-                (@salt_allowed_name(_dve) for _dve in entry.dvs_allowed_names_set)
+                (@salt_allowed_name(_dve) for _dve in entry.dvs_allowed_name_set)
             else
                 entry.$$fixed = false
             
         get_inventory_var_names: () =>
-            return _.orderBy(entry.name for entry in @lut_by_name["inventory"].dvs_allowed_names_set)
+            return _.orderBy(entry.name for entry in @lut_by_name["inventory"].dvs_allowed_name_set)
             
         get_inventory_var: (name) =>
             return @_inv_lut[name]
 
         salt_allowed_name: (entry) =>
             entry.$$forced_type_str = icswDeviceVariableFunctions.resolve("var_type", entry.forced_type)
+
+        delete_dvs_an: (entry) =>
+            defer = $q.defer()
+            _scope = @lut[entry.device_variable_scope]
+            Restangular.restangularizeElement(null, entry, ICSW_URLS.DEVICE_DEVICE_VARIABLE_SCOPE_ENTRY_DETAIL.slice(1).slice(0, -2))
+            entry.remove().then(
+                (ok) ->
+                    _.remove(_scope.dvs_allowed_name_set, (_entry) => return _entry.idx == entry.idx)
+                    defer.resolve("ok")
+                (notok) ->
+                    defer.resolve("not ok")
+            )
+            return defer.promise
+
+        create_dvs_an: (var_scope, entry) =>
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.DEVICE_DEVICE_VARIABLE_SCOPE_ENTRY_LIST.slice(1)).post(entry).then(
+                (new_obj) =>
+                    var_scope.dvs_allowed_name_set.push(new_obj)
+                    @salt_scope(var_scope)
+                    defer.resolve("created")
+                (not_ok) ->
+                    defer.reject("variable not created")
+            )
+            return defer.promise
+
+        update_dvs_an: (var_scope, entry) =>
+            defer = $q.defer()
+            Restangular.restangularizeElement(null, entry, ICSW_URLS.DEVICE_DEVICE_VARIABLE_SCOPE_ENTRY_DETAIL.slice(1).slice(0, -2))
+            entry.put().then(
+                (new_obj) =>
+                    _.remove(var_scope.dvs_allowed_name_set, (_dvs) => return _dvs.idx == entry.idx)
+                    var_scope.dvs_allowed_name_set.push(new_obj)
+                    @salt_scope(var_scope)
+                    defer.resolve("created")
+                (not_ok) ->
+                    defer.reject("variable not created")
+            )
+            return defer.promise
 
 ]).service("icswDeviceVariableFunctions",
 [

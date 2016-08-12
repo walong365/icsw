@@ -239,9 +239,9 @@ device_variable_module = angular.module(
         # functions
         sub_scope.change_scope = () ->
             cur_scope = _dvst.lut[sub_scope.edit_obj.device_variable_scope]
-            if cur_scope.dvs_allowed_names_set.length
+            if cur_scope.dvs_allowed_name_set.length
                 sub_scope.$$discrete_names = true
-                sub_scope.$$possible_names = (entry.name for entry in cur_scope.dvs_allowed_names_set)
+                sub_scope.$$possible_names = (entry.name for entry in cur_scope.dvs_allowed_name_set)
                 sub_scope.edit_obj.name = sub_scope.$$possible_names[0]
             else 
                 sub_scope.$$discrete_names = false

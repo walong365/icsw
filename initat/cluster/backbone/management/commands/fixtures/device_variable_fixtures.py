@@ -21,7 +21,7 @@
 
 
 from initat.cluster.backbone import factories
-from initat.cluster.backbone.models import device_variable_scope, dvs_allowed_names
+from initat.cluster.backbone.models import device_variable_scope, dvs_allowed_name
 from initat.tools import process_tools
 
 
@@ -40,7 +40,7 @@ def add_fixtures(**kwargs):
         ("id", "Numeric ID", "admin", "i"),
         ("time_of_purchase", "Date of purchase", "admin", "D"),
     ]:
-        factories.DVSAllowedNamesFactory(
+        factories.DVSAllowedNameFactory(
             name=_name,
             description=_descr,
             device_variable_scope=_fact_dict["inventory"],
@@ -53,5 +53,5 @@ def add_fixtures(**kwargs):
         for _e in device_variable_scope.objects.all():
             print unicode(_e)
 
-        for _e in dvs_allowed_names.objects.all():
+        for _e in dvs_allowed_name.objects.all():
             print unicode(_e)

@@ -3,7 +3,7 @@
         <uib-tab heading="DeviceVariables">
             <icsw-device-variable-overview icsw-sel-man="0"></icsw-device-variable-overview>
         </uib-tab>
-        <uib-tab heading="ScopeVariables">
+        <uib-tab heading="VariableScopes">
             <icsw-variable-scope-overview></icsw-variable-scope-overview>
         </uib-tab>
     </uib-tabset>
@@ -25,9 +25,10 @@
 
 <script type="text/ng-template" id="icsw.variable.scope.table.overview">
     <h3>
-        Variable scope '{{ var_scope.name }}', number of entries: {{ var_scope.dvs_allowed_names_set.length }}
+        Variable scope '{{ var_scope.name }}', number of entries: {{ var_scope.dvs_allowed_name_set.length }}
+        <icsw-tools-button size="xs" type="create" ng-click="create_dvs_an($event, var_scope)"></icsw-tools-button>
     </h3>
-    <table st-table="entries" st-safe-src="var_scope.dvs_allowed_names_set" class="table table-condensed table-striped" style="width:auto;">
+    <table st-table="entries" st-safe-src="var_scope.dvs_allowed_name_set" class="table table-condensed table-striped" style="width:auto;">
         <thead>
             <tr>
                 <td colspan="99">
@@ -56,10 +57,72 @@
                 <td class="text-center">{{ entry.$$forced_type_str }}</td>
                 <td>{{ entry.description }}</td>
                 <td>
-                    <icsw-tools-button type="modify" size="xs"></icsw-tools-button>
-                    <icsw-tools-button type="delete" size="xs"></icsw-tools-button>
+                    <icsw-tools-button type="modify" size="xs" ng-click="edit_dvs_an($event, var_scope, entry)"></icsw-tools-button>
+                    <icsw-tools-button type="delete" size="xs" ng-click="delete_dvs_an($event, entry)"></icsw-tools-button>
                 </td>
             </tr>
         </tbody>
     </table>
+</script>
+
+<script type="text/ng-template" id="icsw.variable.scope.dvsan.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Allowed Variable '{{ edit_obj.name }}'</h2>
+        <fieldset>
+            <legend>Basic settings</legend>
+            <div class="form-group ng-class:form_error('name')">
+                <label class="control-label col-sm-3 requiredField">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control" name="name" maxlength="765" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group ng-class:form_error('description')">
+                <label class="control-label col-sm-3 requiredField">
+                    Description
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control" name="description" maxlength="765" ng-model="edit_obj.description" type="text"/>
+                </div>
+            </div>
+            <div class="form-group ng-class:form_error('group')">
+                <label class="control-label col-sm-3">
+                    Group
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control" name="group" maxlength="765" ng-model="edit_obj.group" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField">
+                    Type
+                </label>
+                <div class="controls col-sm-8" ng-if="create">
+                    <ui-select ng-model="edit_obj.forced_type" style="max-width:400px; min-width:240px;">
+                        <ui-select-match class="ui-select-match" placeholder="Forced Variable type">
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in type_list | props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+                <div class="controls col-sm-8" ng-if="!create">
+                    {{ $$forced_type_str }}
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Flags</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3">
+                    Unique
+                </label>
+                <div class="controls col-sm-8">
+                    <icsw-tools-yes-no flag="edit_obj.unique"/>
+                </div>
+            </div>
+        </fieldset>
+    </form>
 </script>
