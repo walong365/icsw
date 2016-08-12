@@ -132,27 +132,51 @@ device_report_module = angular.module(
                 (result) ->
                     for device in $scope.struct.devices
                         if result.pk_setting_dict.hasOwnProperty(device.idx)
-                            for asset_type in result.pk_setting_dict[device.idx]
+
+                            device_info_obj = result.pk_setting_dict[device.idx]
+
+                            for obj in device_info_obj
+                                button_title_str = ""
+                                if obj.hasOwnProperty("length")
+                                    asset_type = obj[0]
+                                    asset_run_time = moment(obj[1]).format("YYYY-MM-DD HH:mm:ss")
+                                    asset_batch_id = obj[2]
+
+                                    button_title_str = "AssetBatchId: " + asset_batch_id + "\n" + "AssetRunTime: " + asset_run_time
+
+                                else
+                                    asset_type = obj
+
                                 asset_type_name = icswAssetHelperFunctions.resolve("asset_type", asset_type)
 
                                 if asset_type_name == "Package"
                                     device.$packages_selected_button_disabled = false
+                                    device.$packages_selected_button_title = button_title_str
                                 else if asset_type_name == "License"
                                     device.$licenses_selected_button_disabled = false
+                                    device.$licenses_selected_button_title = button_title_str
                                 else if asset_type_name == "Update"
                                     device.$installed_updates_button_disabled = false
+                                    device.$installed_updates_button_title = button_title_str
                                 else if asset_type_name == "Pending update"
                                     device.$avail_updates_button_disabled = false
+                                    device.$avail_updates_button_title = button_title_str
                                 else if asset_type_name == "Process"
                                     device.$process_report_button_disabled = false
+                                    device.$process_report_button_title = button_title_str
                                 else if asset_type_name == "Windows Hardware"
                                     device.$hardware_report_button_disabled = false
+                                    device.$hardware_report_button_title = button_title_str
                                 else if asset_type_name == "DMI"
                                     device.$dmi_report_button_disabled = false
+                                    device.$dmi_report_button_title = button_title_str
                                 else if asset_type_name == "PCI"
                                     device.$pci_report_button_disabled = false
+                                    device.$pci_report_button_title = button_title_str
                                 else if asset_type_name == "Hardware"
                                     device.$lstopo_report_button_disabled = false
+                                    device.$lstopo_report_button_title= button_title_str
+
               (not_ok) ->
                   console.log not_ok
           )
@@ -309,6 +333,8 @@ device_report_module = angular.module(
 
                 for dev in devs
                     if !dev.is_cluster_device_group
+                        dev.$title_str = ""
+
                         dev.$selected_for_report = false
 
                         dev.$packages_selected = false

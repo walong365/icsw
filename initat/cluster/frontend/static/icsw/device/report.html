@@ -166,27 +166,27 @@
                                         <tr ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)">
                                             <td style="height:30px">
                                                 <div class="text-center">
-                                                    <input type="button" ng-disabled="obj.$packages_selected_button_disabled" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
+                                                    <input type="button" title="{{ obj.$packages_selected_button_title }}" ng-disabled="obj.$packages_selected_button_disabled" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
                                                  </div>
                                             </td>
                                             <td style="height:30px">
                                                 <div class="text-center">
-                                                    <input type="button" ng-disabled="obj.$licenses_selected_button_disabled" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
+                                                    <input type="button" title="{{ obj.$licenses_selected_button_title }}" ng-disabled="obj.$licenses_selected_button_disabled" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
                                                 </div>
                                             </td>
                                             <td style="height:30px">
                                                 <div class="text-center">
-                                                    <input type="button" ng-disabled="obj.$installed_updates_button_disabled" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
+                                                    <input type="button" title="{{ obj.$installed_updates_button_title }}" ng-disabled="obj.$installed_updates_button_disabled" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
                                                  </div>
                                             </td>
                                             <td style="height:30px">
                                                 <div class="text-center">
-                                                    <input type="button" ng-disabled="obj.$avail_updates_button_disabled" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
+                                                    <input type="button" title="{{ obj.$avail_updates_button_title }}" ng-disabled="obj.$avail_updates_button_disabled" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
                                                 </div>
                                             </td>
                                             <td style="height:30px">
                                                 <div class="text-center">
-                                                    <input type="button" ng-disabled="obj.$process_report_button_disabled" ng-class="obj.$process_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
+                                                    <input type="button" title="{{ obj.$process_report_button_title }}" ng-disabled="obj.$process_report_button_disabled" ng-class="obj.$process_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
                                                 </div>
                                             </td>
                                         </tr>
@@ -217,22 +217,22 @@
                                         <tr ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)">
                                             <td style="height:30px">
                                                 <div class="text-center">
-                                                    <input type="button" ng-disabled="obj.$hardware_report_button_disabled" ng-class="obj.$hardware_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 5)"/>
+                                                    <input type="button" title="{{ obj.$hardware_report_button_title }}" ng-disabled="obj.$hardware_report_button_disabled" ng-class="obj.$hardware_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 5)"/>
                                                 </div>
                                             </td>
                                             <td style="height:30px">
                                                 <div class="text-center">
-                                                    <input type="button" ng-disabled="obj.$dmi_report_button_disabled" ng-class="obj.$dmi_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 6)"/>
+                                                    <input type="button" title="{{ obj.$dmi_report_button_title }}" ng-disabled="obj.$dmi_report_button_disabled" ng-class="obj.$dmi_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 6)"/>
                                                 </div>
                                             </td>
                                             <td style="height:30px">
                                                 <div class="text-center">
-                                                    <input type="button" ng-disabled="obj.$pci_report_button_disabled" ng-class="obj.$pci_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 7)"/>
+                                                    <input type="button" title="{{ obj.$pci_report_button_title }}" ng-disabled="obj.$pci_report_button_disabled" ng-class="obj.$pci_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 7)"/>
                                                 </div>
                                             </td>
                                             <td style="height:30px">
                                                 <div class="text-center">
-                                                    <input type="button" ng-disabled="obj.$lstopo_report_button_disabled" ng-class="obj.$lstopo_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 8)"/>
+                                                    <input type="button" title="{{ obj.$lstopo_report_button_title }}" ng-disabled="obj.$lstopo_report_button_disabled" ng-class="obj.$lstopo_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 8)"/>
                                                 </div>
                                             </td>
                                         </tr>

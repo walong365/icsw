@@ -1881,7 +1881,7 @@ class ReportDataAvailable(View):
                 continue
 
             selected_runs = _luigi_select_assetruns_for_device(_device, assetbatch_selection_mode)
-            selected_run_types = [ar.run_type for ar in selected_runs]
+            selected_run_info_array = [(ar.run_type, str(ar.run_start_time), ar.asset_batch.idx)  for ar in selected_runs]
 
             if _device.device_group_name() not in group_selected_runs:
                 group_selected_runs[_device.device_group_name()] = []
@@ -1890,15 +1890,11 @@ class ReportDataAvailable(View):
                 if run_type not in group_selected_runs[_device.device_group_name()]:
                     group_selected_runs[_device.device_group_name()].append(run_type)
 
-            pk_setting_dict[idx] = selected_run_types
+            pk_setting_dict[idx] = selected_run_info_array
 
         for _device in meta_devices:
             if _device.device_group_name() in group_selected_runs:
                 pk_setting_dict[_device.idx] = group_selected_runs[_device.device_group_name()]
-
-        print meta_devices
-        print group_selected_runs
-
 
         return HttpResponse(
             json.dumps(
