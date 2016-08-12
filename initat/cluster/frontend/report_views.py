@@ -1800,6 +1800,59 @@ class GenerateReportXlsx(View):
             )
         )
 
+# class ReportDataAvailable(View):
+#     @method_decorator(login_required)
+#     def post(self, request):
+#         idx_list = None
+#         for item in request.POST.iterlists():
+#             key, _list = item
+#             if key == "idx_list[]":
+#                 idx_list = _list
+#                 break
+#
+#         assetbatch_selection_mode = int(request.POST['assetbatch_selection_mode'])
+#
+#         meta_devices = []
+#
+#         device_group_disabled = {}
+#
+#         pk_setting_dict = {}
+#         if idx_list:
+#             for pk in idx_list:
+#                 pk = int(pk)
+#                 _device = device.objects.get(idx=pk)
+#
+#                 if _device.is_meta_device:
+#                     meta_devices.append(_device)
+#                     continue
+#
+#                 disabled = True
+#                 if selected_runs:
+#                     disabled = False
+#
+#                 pk_setting_dict[pk] = disabled
+#
+#                 if _device.device_group in device_group_disabled:
+#                     if device_group_disabled[_device.device_group]:
+#                         device_group_disabled[_device.device_group] = disabled
+#                 else:
+#                     device_group_disabled[_device.device_group] = disabled
+#
+#             for _device in meta_devices:
+#                 if _device.device_group in device_group_disabled:
+#                     pk_setting_dict[_device.idx] = device_group_disabled[_device.device_group]
+#                 else:
+#                     pk_setting_dict[_device.idx] = True
+#
+#         return HttpResponse(
+#             json.dumps(
+#                 {
+#                     'pk_setting_dict': pk_setting_dict,
+#                 }
+#             )
+#         )
+
+
 class ReportDataAvailable(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -1812,37 +1865,40 @@ class ReportDataAvailable(View):
 
         assetbatch_selection_mode = int(request.POST['assetbatch_selection_mode'])
 
+        pk_setting_dict = {}
+
         meta_devices = []
 
-        device_group_disabled = {}
+        group_selected_runs = {}
 
-        pk_setting_dict = {}
-        if idx_list:
-            for pk in idx_list:
-                pk = int(pk)
-                _device = device.objects.get(idx=pk)
 
-                if _device.is_meta_device:
-                    meta_devices.append(_device)
-                    continue
+        for idx in idx_list:
+            idx = int(idx)
+            _device = device.objects.get(idx=idx)
 
-                disabled = True
-                if _luigi_select_assetruns_for_device(_device, assetbatch_selection_mode):
-                    disabled = False
+            if _device.is_meta_device:
+                meta_devices.append(_device)
+                continue
 
-                pk_setting_dict[pk] = disabled
+            selected_runs = _luigi_select_assetruns_for_device(_device, assetbatch_selection_mode)
+            selected_run_types = [ar.run_type for ar in selected_runs]
 
-                if _device.device_group in device_group_disabled:
-                    if device_group_disabled[_device.device_group]:
-                        device_group_disabled[_device.device_group] = disabled
-                else:
-                    device_group_disabled[_device.device_group] = disabled
+            if _device.device_group_name() not in group_selected_runs:
+                group_selected_runs[_device.device_group_name()] = []
 
-            for _device in meta_devices:
-                if _device.device_group in device_group_disabled:
-                    pk_setting_dict[_device.idx] = device_group_disabled[_device.device_group]
-                else:
-                    pk_setting_dict[_device.idx] = True
+            for run_type in [ar.run_type for ar in selected_runs]:
+                if run_type not in group_selected_runs[_device.device_group_name()]:
+                    group_selected_runs[_device.device_group_name()].append(run_type)
+
+            pk_setting_dict[idx] = selected_run_types
+
+        for _device in meta_devices:
+            if _device.device_group_name() in group_selected_runs:
+                pk_setting_dict[_device.idx] = group_selected_runs[_device.device_group_name()]
+
+        print meta_devices
+        print group_selected_runs
+
 
         return HttpResponse(
             json.dumps(
@@ -2230,7 +2286,9 @@ def _luigi_select_assetruns_for_device(_device, asset_batch_selection_mode=0):
     if _device.assetbatch_set.all():
         for assetbatch in reversed(sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)):
             if asset_batch_selection_mode == 0:
-                selected_asset_runs = assetbatch.assetrun_set.all()
+                for assetrun in assetbatch.assetrun_set.all():
+                    if assetrun.has_data():
+                        selected_asset_runs.append(assetrun)
                 break
             elif asset_batch_selection_mode == 1:
                 if assetbatch.num_runs == assetbatch.num_completed and assetbatch.num_runs_error == 0:
