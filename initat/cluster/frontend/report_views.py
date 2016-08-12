@@ -468,7 +468,7 @@ class PDFReportGenerator(object):
         # create generic overview page
         self.generate_overview_page(report)
 
-        selected_runs = _luigi_select_assetruns_for_device(_device, self.general_settings["assetbatch_selection_mode"])
+        selected_runs = _select_assetruns_for_device(_device, self.general_settings["assetbatch_selection_mode"])
 
         self.generate_report_for_assetruns(selected_runs, report)
 
@@ -1643,8 +1643,6 @@ class XlsxReportGenerator(object):
         self.general_settings = per_device_settings[-1]
         self.devices = _devices
         self.progress = 0
-        self.workbook = Workbook()
-        self.data_generated = False
 
     def get_report_data(self):
         return self.data
@@ -1653,25 +1651,31 @@ class XlsxReportGenerator(object):
         return "xlsx"
 
     def generate_report(self):
-        self.workbook.remove_sheet(self.workbook.active)
+        workbooks = []
 
         if self.general_settings['network_report_overview_module_selected']:
-            self.generate_network_report()
+            workbook = Workbook()
+            workbook.remove_sheet(workbook.active)
+            self.generate_network_report(workbook)
+
+            workbooks.append((workbook, "Network_Overview.xlsx"))
 
         idx = 1
         for _device in self.devices:
-            self.generate_device_overview(_device)
-            self.data_generated = True
+            workbook = Workbook()
+            workbook.remove_sheet(workbook.active)
+
+            self.generate_device_overview(_device, workbook)
             device_report = DeviceReport(_device, self.per_device_settings[_device.idx])
 
-            selected_runs = _luigi_select_assetruns_for_device(_device,
-                                                               self.general_settings["assetbatch_selection_mode"])
+            selected_runs = _select_assetruns_for_device(_device,
+                                                         self.general_settings["assetbatch_selection_mode"])
 
             for ar in selected_runs:
                 if not device_report.module_selected(ar):
                     continue
-                sheet = self.workbook.create_sheet()
-                _title = _device.full_name + " " + AssetType(ar.run_type).name
+                sheet = workbook.create_sheet()
+                _title = AssetType(ar.run_type).name
 
                 # xlsx limited to max 31 chars in title
                 if len(_title) > 31:
@@ -1684,13 +1688,33 @@ class XlsxReportGenerator(object):
             self.progress = int(round((float(idx) / len(self.devices)) * 100))
             idx += 1
 
-        if self.data_generated:
-            self.data = save_virtual_workbook(self.workbook)
+            workbooks.append((workbook, _device.full_name))
+
+        from zipfile import ZipFile
+        buffer = BytesIO()
+        zipfile = ZipFile(buffer, "w")
+
+        for workbook, workbook_name in workbooks:
+            s = save_virtual_workbook(workbook)
+
+            zipfile.writestr("{}.xlsx".format(workbook_name), s)
+
+        zipfile.close()
+
+        self.data = buffer.getvalue()
+
         self.progress = -1
 
-    def generate_device_overview(self, _device):
-        sheet = self.workbook.create_sheet()
-        sheet.title = _device.full_name
+    def generate_device_overview(self, _device, workbook):
+        sheet = workbook.create_sheet()
+
+        _title = _device.full_name
+
+        # xlsx limited to max 31 chars in title
+        if len(_title) > 31:
+            _title = _title[:31]
+
+        sheet.title = _title
 
         header_row = ["FQDN",
                       "DeviceGroup",
@@ -1745,14 +1769,13 @@ class XlsxReportGenerator(object):
         for i in range(len(data_rows)):
             sheet.append(data_rows[i])
 
-    def generate_network_report(self):
+    def generate_network_report(self, workbook):
         from initat.cluster.backbone.models import network
 
         networks = network.objects.all()
 
         if networks:
-            self.data_generated = True
-            sheet = self.workbook.create_sheet()
+            sheet = workbook.create_sheet()
             sheet.title = "Network Overview"
 
             header_row = ["Identifier",
@@ -1880,7 +1903,7 @@ class ReportDataAvailable(View):
                 meta_devices.append(_device)
                 continue
 
-            selected_runs = _luigi_select_assetruns_for_device(_device, assetbatch_selection_mode)
+            selected_runs = _select_assetruns_for_device(_device, assetbatch_selection_mode)
             selected_run_info_array = [(ar.run_type, str(ar.run_start_time), ar.asset_batch.idx)  for ar in selected_runs]
 
             if _device.device_group_name() not in group_selected_runs:
@@ -2272,7 +2295,7 @@ def _init_report_settings(request):
 
 # asset_batch_selection_mode
 # 0 == latest only, 1 == latest fully working, 2 == mixed runs from multiple assetbatches
-def _luigi_select_assetruns_for_device(_device, asset_batch_selection_mode=0):
+def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
     selected_asset_runs = []
 
     asset_batch_selection_mode = int(asset_batch_selection_mode)
