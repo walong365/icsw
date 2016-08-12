@@ -16,7 +16,7 @@
     <uib-tabset ng-if="struct.loaded">
         <uib-tab ng-repeat="entry in struct.device_variable_scope_tree.$$fixed_list">
             <uib-tab-heading>
-                {{ entry.name }}
+                {{ entry.name }} <span ng-show="entry.default_scope" class="label label-success">default</span>
             </uib-tab-heading>
             <icsw-variable-scope-table icsw-variable-scope="entry"></icsw-variable-scope-table>
         </uib-tab>
@@ -25,7 +25,9 @@
 
 <script type="text/ng-template" id="icsw.variable.scope.table.overview">
     <h3>
-        Variable scope '{{ var_scope.name }}', number of entries: {{ var_scope.dvs_allowed_name_set.length }}
+        Variable scope '{{ var_scope.name }}',
+        <span ng-show="var_scope.description">({{ var_scope.description }})</span>
+        number of entries: {{ var_scope.dvs_allowed_name_set.length }}
         <icsw-tools-button size="xs" type="create" ng-click="create_dvs_an($event, var_scope)"></icsw-tools-button>
     </h3>
     <table st-table="entries" st-safe-src="var_scope.dvs_allowed_name_set" class="table table-condensed table-striped" style="width:auto;">
@@ -57,8 +59,8 @@
                 <td class="text-center">{{ entry.$$forced_type_str }}</td>
                 <td>{{ entry.description }}</td>
                 <td>
-                    <icsw-tools-button type="modify" size="xs" ng-click="edit_dvs_an($event, var_scope, entry)"></icsw-tools-button>
-                    <icsw-tools-button type="delete" size="xs" ng-click="delete_dvs_an($event, entry)"></icsw-tools-button>
+                    <icsw-tools-button type="modify" size="xs" ng-show="entry.editable" ng-click="edit_dvs_an($event, var_scope, entry)"></icsw-tools-button>
+                    <icsw-tools-button type="delete" size="xs" ng-show="entry.editable" ng-click="delete_dvs_an($event, entry)"></icsw-tools-button>
                 </td>
             </tr>
         </tbody>

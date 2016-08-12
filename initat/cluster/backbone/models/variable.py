@@ -88,6 +88,7 @@ class device_variable_scope(models.Model):
         max_length=32,
         unique=True,
     )
+    description = models.TextField(default="", blank=True)
     # variable prefix
     prefix = models.CharField(max_length=127, default="")
     # forced flags, json-encoded flags
@@ -112,6 +113,8 @@ class dvs_allowed_name(models.Model):
     )
     # globally unique
     unique = models.BooleanField(default=False)
+    # editable (on frontend)
+    editable = models.BooleanField(default=False)
     # forced type
     forced_type = models.CharField(
         max_length=3,

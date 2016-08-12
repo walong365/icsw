@@ -581,6 +581,13 @@ class device_variable_scope_factory(factory.django.DjangoModelFactory):
             self.prefix = extracted
             self.save()
 
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.description != extracted:
+            self.description = extracted
+            self.save()
+
 
 class DVSAllowedNameFactory(factory.django.DjangoModelFactory):
     class Meta:
@@ -592,6 +599,13 @@ class DVSAllowedNameFactory(factory.django.DjangoModelFactory):
         extracted = extracted or False
         if self.unique != extracted:
             self.unique = extracted
+            self.save()
+
+    @factory.post_generation
+    def editable(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.editable != extracted:
+            self.editable = extracted
             self.save()
 
     @factory.post_generation
