@@ -137,31 +137,27 @@
     <icsw-device-tree-filters ng-if="struct.tree_loaded"></icsw-device-tree-filters>
 
     <div class="panel panel-default">
-        <div class="panel-body" style="padding: 6px 15px">
+        <div class="panel-body">
             <!-- entries_displayed is st-table interal -->
+            <div class="btn-group">
+                <button ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('create') }}"
+                       ng-show="dg_present()" ng-click="create_device( $event)"> create device</button>
+                <button ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('create') }}"
+                       ng-click="create_device_group($event)"> create devicegroup</button>
+                <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('modify') }}"
+                       ng-click="edit_many($event)"> modify selected</button>
+                <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('delete') }}"
+                       ng-click="delete_many($event)"> delete selected</button>
+            </div>
             <table
                 st-table="entries_displayed"
                 st-safe-src="entries_filtered"
                 st-trigger-redraw="struct.trigger_redraw"
                 class="table table-hover table-condensed table-striped"
                 style="width:auto;"
+                ng-show="entries_displayed.length"
             >
                 <thead>
-                    <tr>
-                        <td colspan="99">
-                            <div class="btn-group">
-                                <button ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('create') }}"
-                                       ng-show="dg_present()" ng-click="create_device( $event)"> create device</button>
-                                <button ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('create') }}"
-                                       ng-click="create_device_group($event)"> create devicegroup</button>
-                                <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('modify') }}"
-                                       ng-click="edit_many($event)"> modify selected</button>
-                                <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('delete') }}"
-                                       ng-click="delete_many($event)"> delete selected</button>
-                            </div>
-                        </td>
-                    </tr>
-
                     <tr>
                         <td colspan="99">
                             <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>

@@ -362,7 +362,7 @@ def _add_snmp_fixtures():
 
 
 class Command(BaseCommand):
-    help = "Creates the cluster fixtures."
+    help = "Creates the ICSW fixtures."
 
     def handle(self, **options):
         print("creating fixtures...")
