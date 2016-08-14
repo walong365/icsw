@@ -333,6 +333,7 @@ class GraphVar(object):
                 if self.y_scaled:
                     _th.lower_value *= self.scale_y_factor
                     _th.upper_value *= self.scale_y_factor
+
                 c_lines.extend(
                     [
                         "CDEF:{}={},{},-,{},ADDNAN".format(
