@@ -23,7 +23,7 @@
     >
         <thead icsw-image-head></thead>
         <tbody>
-            <tr icsw-image-row ng-repeat="obj in entries_displayed" ng-class="{warning: obj.build_lock}"></tr>
+            <tr icsw-image-row ng-repeat="obj in entries_displayed" ng-class="{'warning': obj.build_lock, 'danger': !obj.size}"></tr>
         </tbody>
     </table>
     <icsw-image-new-images></icsw-image-new-images>
