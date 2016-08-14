@@ -16,7 +16,7 @@
     <uib-tabset ng-if="struct.loaded">
         <uib-tab ng-repeat="entry in struct.device_variable_scope_tree.$$fixed_list">
             <uib-tab-heading>
-                {{ entry.name }} <span ng-show="entry.default_scope" class="label label-success">default</span>
+                {{ entry.name }} (pri={{ entry.priority }}) <span ng-show="entry.default_scope" class="label label-success">default</span>
             </uib-tab-heading>
             <icsw-variable-scope-table icsw-variable-scope="entry"></icsw-variable-scope-table>
         </uib-tab>

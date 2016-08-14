@@ -588,6 +588,13 @@ class device_variable_scope_factory(factory.django.DjangoModelFactory):
             self.description = extracted
             self.save()
 
+    @factory.post_generation
+    def priority(self, create, extracted, **kwargs):
+        extracted = extracted or 0
+        if self.priority != extracted:
+            self.priority = extracted
+            self.save()
+
 
 class DVSAllowedNameFactory(factory.django.DjangoModelFactory):
     class Meta:

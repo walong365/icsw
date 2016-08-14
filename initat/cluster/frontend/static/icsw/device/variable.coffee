@@ -464,9 +464,9 @@ device_variable_module = angular.module(
     }
 ]).directive("icswDeviceVariableTable",
 [
-    "$templateCache", "$compile", "$q", "Restangular", "ICSW_URLS",
+    "$templateCache",
 (
-    $templateCache, $compile, $q, Restangular, ICSW_URLS,
+    $templateCache,
 ) ->
     return {
         restrict : "EA"
@@ -494,7 +494,7 @@ device_variable_module = angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.variable.row")
     }
-]).directive("icswDeviceInventoryVarsOverview",
+]).directive("icswDeviceFixedScopeVarsOverview",
 [
     "$templateCache",
 (
@@ -502,13 +502,13 @@ device_variable_module = angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.device.inventory.vars.overview")
-        controller: "icswDeviceInventoryVarsOverviewCtrl"
+        template: $templateCache.get("icsw.device.fixed.scope.vars.overview")
+        controller: "icswDeviceFixedScopeVarsOverviewCtrl"
         scope: {
             device: "=icswDevice"
         }
     }
-]).controller("icswDeviceInventoryVarsOverviewCtrl",
+]).controller("icswDeviceFixedScopeVarsOverviewCtrl",
 [
     "$scope", "icswDeviceVariableScopeTreeService", "icswDeviceTreeService", "$q",
     "icswDeviceTreeHelperService", "icswComplexModalService", "$compile", "$templateCache",
@@ -523,30 +523,19 @@ device_variable_module = angular.module(
         helper: undefined
         # devvarscope_tree
         dvs_tree: undefined
-        # list of inventory vars, [var_def, dev_var or null]
-        inventory_vars: []
+        # fixed variable helper
+        fixed_var_helper: undefined
+        # toggle: show / hide
+        shown: false
     }
+
     _build_struct = (device) ->
-        # create inventory_vars struct
-        _ivs = []
         # device local vars
-        _inv_var_lut = {}
-        for _var in device.device_variable_set
-            if _var.device_variable_scope == $scope.struct.dvs_tree.lut_by_name["inventory"].idx
-                _inv_var_lut[_var.name] = _var
-        for entry in ($scope.struct.dvs_tree.get_inventory_var(_name) for _name in $scope.struct.dvs_tree.get_inventory_var_names())
-            # get dev var
-            _struct = {
-                def: entry
-            }
-            if entry.name of _inv_var_lut
-                _struct.set = true
-                _struct.var = _inv_var_lut[entry.name]
-            else
-                _struct.set = false
-                _struct.var = null
-            _ivs.push(_struct)
-        $scope.struct.inventory_vars = _ivs
+        if not $scope.struct.fixed_var_helper?
+            $scope.struct.fixed_var_helper = $scope.struct.dvs_tree.build_fixed_variable_helper(device)
+        else
+            # only update
+            $scope.struct.fixed_var_helper.update()
 
     icswDeviceTreeService.load($scope.id).then(
         (data) ->
@@ -570,11 +559,12 @@ device_variable_module = angular.module(
             )
     )
 
-    $scope.modify_inventory = ($event) ->
+    $scope.modify_fixed_scope = ($event, scope) ->
         sub_scope = $scope.$new(true)
+        _struct = $scope.struct.fixed_var_helper.scope_struct_lut[scope.idx]
         # salt structure
         _slist = []
-        for _struct in $scope.struct.inventory_vars
+        for _struct in _struct.list
             if _struct.set
                 _value = _struct.var.$var_value
             else
@@ -596,7 +586,7 @@ device_variable_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.device.inventory.modify"))(sub_scope)
-                title: "Modify Inventory vars"
+                title: "Modify #{scope.name} vars"
                 # css_class: "modal-wide"
                 ok_label: "Modify"
                 closable: true
@@ -618,7 +608,7 @@ device_variable_module = angular.module(
                                     device: $scope.device.idx
                                     name: entry.def.name
                                     var_type: _type
-                                    device_variable_scope: $scope.struct.dvs_tree.lut_by_name["inventory"].idx
+                                    device_variable_scope: scope.idx
                                 }
                                 if _type == "s"
                                     _new_var.val_str = entry.$$value
@@ -715,6 +705,8 @@ device_variable_module = angular.module(
         user: undefined
         # available assets (not set and enabled)
         num_available: 0
+        # flag: shown or not
+        shown: false
     }
 
     _reload_assets = () ->

@@ -88,6 +88,9 @@ class device_variable_scope(models.Model):
         max_length=32,
         unique=True,
     )
+    # priority (for ordering)
+    priority = models.IntegerField(default=0)
+    # description
     description = models.TextField(default="", blank=True)
     # variable prefix
     prefix = models.CharField(max_length=127, default="")

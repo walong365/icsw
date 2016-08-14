@@ -28,11 +28,79 @@ angular.module(
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
         "icsw.device.info", "icsw.user",
     ]
-).service("icswDeviceVariableScopeTree",
+).service("icswDeviceFixedVariableHelper",
 [
-    "icswDeviceVariableFunctions", "$q", "Restangular", "ICSW_URLS",
+    "$q",
 (
-    icswDeviceVariableFunctions, $q, Restangular, ICSW_URLS,
+    $q,
+) ->
+    class icswDeviceFixedVariableHelper
+        constructor: (dvs_tree, device) ->
+            @dvs_tree = dvs_tree
+            @device = device
+            @init()
+
+        init: () =>
+            @scope_structs = []
+            @scope_struct_lut = {}
+            @update()
+
+        update: () =>
+            @num_total_vars = 0
+            @num_used_vars = 0
+            _inv_var_lut = {}
+            _fixed_scope_idxs = (entry.idx for entry in @dvs_tree.$$fixed_list)
+            for _var in @device.device_variable_set
+                if _var.device_variable_scope in _fixed_scope_idxs
+                    _inv_var_lut[_var.name] = _var
+            # create inventory_vars struct
+            for _fixed_scope in @dvs_tree.$$fixed_list
+                _local_list = []
+                for entry in _fixed_scope.dvs_allowed_name_set
+                    # get dev var
+                    _struct = {
+                        def: entry
+                    }
+                    if entry.name of _inv_var_lut
+                        _struct.set = true
+                        _struct.var = _inv_var_lut[entry.name]
+                    else
+                        _struct.set = false
+                        _struct.var = null
+                    _local_list.push(_struct)
+                @add_fixed_scope(_fixed_scope, _local_list)
+
+        add_fixed_scope: (scope, local_list) =>
+            total_local = local_list.length
+            local_set = (entry for entry in local_list when entry.set).length
+            # check for existing
+            console.log scope.idx, @scope_struct_lut
+            if scope.idx of @scope_struct_lut
+                _struct = @scope_struct_lut[scope.idx]
+                console.log "update"
+                _struct.list.length = 0
+                for _entry in local_list
+                    _struct.list.push(_entry)
+            else
+                _struct = {
+                    scope: scope
+                    list: local_list
+                }
+                @scope_structs.push(_struct)
+                @scope_struct_lut[scope.idx] = _struct
+            _struct.num_total = total_local
+            _struct.num_set = local_set
+            @num_total_vars += total_local
+            @num_used_vars += local_set
+
+
+]).service("icswDeviceVariableScopeTree",
+[
+    "icswDeviceVariableFunctions", "$q", "Restangular", "ICSW_URLS", "icswTools",
+    "icswDeviceFixedVariableHelper",
+(
+    icswDeviceVariableFunctions, $q, Restangular, ICSW_URLS, icswTools,
+    icswDeviceFixedVariableHelper,
 ) ->
     class icswDeviceVariableScopeTree
         constructor: (list) ->
@@ -44,6 +112,7 @@ angular.module(
             for entry in list
                 @salt_scope(entry)
                 @list.push(entry)
+            icswTools.order_in_place(@list, ["priority"], ["desc"])
             @$$fixed_list = (entry for entry in @list when entry.$$fixed)
             @$$num_fixed_scopes =  @$$fixed_list.length
             @build_luts()
@@ -51,20 +120,19 @@ angular.module(
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
             @lut_by_name= _.keyBy(@list, "name")
-            @_inv_lut = _.keyBy(@lut_by_name["inventory"].dvs_allowed_name_set, "name")
 
         salt_scope: (entry) =>
             if entry.dvs_allowed_name_set.length
                 entry.$$fixed = true
                 (@salt_allowed_name(_dve) for _dve in entry.dvs_allowed_name_set)
+                icswTools.order_in_place(entry.dvs_allowed_name_set, ["name"], ["asc"])
             else
                 entry.$$fixed = false
             
-        get_inventory_var_names: () =>
-            return _.orderBy(entry.name for entry in @lut_by_name["inventory"].dvs_allowed_name_set)
-            
-        get_inventory_var: (name) =>
-            return @_inv_lut[name]
+        # return a new device_fixed_variable_helper
+        build_fixed_variable_helper: (device) =>
+            fvh = new icswDeviceFixedVariableHelper(@, device)
+            return fvh
 
         salt_allowed_name: (entry) =>
             entry.$$forced_type_str = icswDeviceVariableFunctions.resolve("var_type", entry.forced_type)

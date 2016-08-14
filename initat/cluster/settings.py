@@ -432,7 +432,7 @@ LOGGING = {
             "()": "initat.tools.logging_net.initat_formatter",
         },
         'verbose': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
+            'format': '%(levelname)s %(asctime)s %(message)s'
         },
         'simple': {
             'format': '%(levelname)s %(message)s'

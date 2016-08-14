@@ -19,15 +19,13 @@
 #
 """ structures and functions for the grapher part of rrd-grapher service """
 
-import os
 import math
+import os
 import time
 import uuid
 
 from django.conf import settings
-
 from django.db.models import Q
-
 from lxml.builder import E
 
 from initat.cluster.backbone.models import cluster_timezone, MachineVector, \
@@ -332,6 +330,9 @@ class GraphVar(object):
             for _th in self.thresholds:
                 _thl_name = "{}{:d}l".format(_th_base, _th.idx)
                 _thu_name = "{}{:d}u".format(_th_base, _th.idx)
+                if self.y_scaled:
+                    _th.lower_value *= self.scale_y_factor
+                    _th.upper_value *= self.scale_y_factor
                 c_lines.extend(
                     [
                         "CDEF:{}={},{},-,{},ADDNAN".format(
