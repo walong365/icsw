@@ -33,7 +33,7 @@ class SyncUserTask(BGInotifyTask):
 
     def run(self, cur_bg):
         # step 1: create user homes
-        _uo = user.objects  # @UndefinedVariable
+        _uo = user.objects
         create_user_list = _uo.exclude(
             Q(export=None)
         ).filter(

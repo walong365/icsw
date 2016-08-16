@@ -34,7 +34,7 @@ angular.module(
     _bi_info = []
     load_data = (client) ->
         _defer = $q.defer()
-        _wait_list = [icswCachingCall.fetch(client, ICSW_URLS.REST_BACKGROUND_JOB_LIST, {}, [])]
+        _wait_list = [icswCachingCall.fetch(client, ICSW_URLS.REST_BACKGROUND_JOB_LIST, {_num_entries: 100}, [])]
         $q.all(_wait_list).then((data) ->
             _bi_info = data[0]
             _defer.resolve(_bi_info)

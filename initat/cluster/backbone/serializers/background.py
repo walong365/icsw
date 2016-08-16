@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2014,2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,11 +20,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" DB definitions for background jobs """
+""" Serializers for background jobs DB objects """
+
+import logging
 
 from rest_framework import serializers
+
 from initat.cluster.backbone.models import background_job, background_job_run
-import logging
 
 logger = logging.getLogger(__name__)
 
