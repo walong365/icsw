@@ -26,6 +26,7 @@ import glob
 import hashlib
 import os
 import sys
+import warnings
 
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
@@ -109,8 +110,6 @@ if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
     )
 
 if DEBUG:
-    import warnings
-
     warnings.filterwarnings(
         "error",
         r"DateTimeField .* received a naive datetime",
@@ -241,7 +240,7 @@ MIDDLEWARE_CLASSES = (
 
 if not DEBUG:
     MIDDLEWARE_CLASSES = tuple(
-        ["django.middleware.gzip.GZipMiddleware"] +
+        # ["django.middleware.gzip.GZipMiddleware"] +
         list(
             MIDDLEWARE_CLASSES
         )

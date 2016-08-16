@@ -301,7 +301,7 @@ class RRDGraph(object):
             _iterate_line, _line_iteration = (True, 0)
             while _iterate_line:
                 for _graph_target in _graph_line:
-                    abs_file_loc = str(os.path.join(self.para_dict["graph_root"], _graph_target.graph_name))
+                    _graph_target.abs_file_loc = str(os.path.join(self.para_dict["graph_root"], _graph_target.graph_name))
                     # clear list of defs, reset result
                     _graph_target.reset()
                     # reset colorizer for current graph
@@ -309,7 +309,7 @@ class RRDGraph(object):
                     self.abs_start_time = int((self.para_dict["start_time"] - self.dt_1970).total_seconds())
                     self.abs_end_time = int((self.para_dict["end_time_fc"] - self.dt_1970).total_seconds())
                     rrd_pre_args = [
-                        abs_file_loc,
+                        _graph_target.abs_file_loc,
                         "-E",  # slope mode
                         "-Rlight",  # font render mode, slight hint
                         "-Gnormal",  # render mode

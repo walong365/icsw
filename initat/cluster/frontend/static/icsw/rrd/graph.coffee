@@ -70,6 +70,7 @@ angular.module(
             @active = true
             @error = false
             @src = @xml.attr("href") or ""
+            @abssrc = @xml.attr("abssrc") or ""
             @num_devices = @xml.find("devices device").length
             @value_min = parseFloat(@xml.attr("value_min"))
             @value_max = parseFloat(@xml.attr("value_max"))
@@ -709,9 +710,9 @@ angular.module(
     }
 ]).service("icswRrdGraphDisplayReact",
 [
-    "$q", "icswRRDSensorDialogService", "ICSW_SIGNALS",
+    "$q", "icswRRDSensorDialogService", "ICSW_SIGNALS", "$window", "ICSW_URLS",
 (
-    $q, icswRRDSensorDialogService, ICSW_SIGNALS,
+    $q, icswRRDSensorDialogService, ICSW_SIGNALS, $window, ICSW_URLS,
 ) ->
     {div, text, h4, span, button, img, br} = React.DOM
     return React.createClass(
@@ -758,6 +759,28 @@ angular.module(
                         ]
                     )
                 ]
+                if _graph.src
+                    _head1_list.push(
+                        button(
+                            {
+                                key: "download"
+                                type: "button"
+                                className: "btn btn-xs btn-success"
+                                onClick: (event) =>
+                                    $window.location = ICSW_URLS.RRD_DOWNLOAD_RRD.slice(0, -1) + angular.toJson({path: _graph.abssrc})
+                                    # event.preventDefault()
+                            }
+                            [
+                                span(
+                                    {
+                                        key: "span"
+                                        className:  "glyphicon glyphicon-download-alt"
+                                    }
+                                )
+                                "download"
+                            ]
+                        )
+                    )
                 if _graph.src and _graph.num_sensors
                     _head1_list.push(
                         " "

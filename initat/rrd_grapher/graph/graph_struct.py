@@ -453,6 +453,8 @@ class GraphTarget(object):
             uuid.uuid4(),
             int(time.time())
         )
+        # will be set in loop
+        self.abs_file_loc = ""
         self.rel_file_loc = os.path.join(
             "/",
             settings.REL_SITE_ROOT,
@@ -613,6 +615,7 @@ class GraphTarget(object):
         )
         if self.valid:
             _xml.attrib["href"] = self.rel_file_loc
+            _xml.attrib["abssrc"] = self.abs_file_loc
             for _key, _value in self.result_dict.iteritems():
                 _xml.attrib[_key] = _value
             _var_dict = {}

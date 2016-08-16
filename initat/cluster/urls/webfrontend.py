@@ -314,6 +314,7 @@ rrd_patterns = [
     url(r"^dev_rrds$", rrd_views.device_rrds.as_view(), name="device_rrds"),
     url(r"^graph_rrd$", rrd_views.graph_rrds.as_view(), name="graph_rrds"),
     url(r"^trigger_threshold", rrd_views.trigger_sensor_threshold.as_view(), name="trigger_sensor_threshold"),
+    url(r"^download_graph/(?P<hash>.*)$", rrd_views.download_rrd.as_view(), name="download_rrd")
 ]
 
 discovery_patterns = [
