@@ -48,6 +48,8 @@ def add_fixtures(**kwargs):
             ("*IPMI_USERNAME", "IPMI Username", "ipmi", "s"),
             ("*IPMI_PASSWORD", "IPMI Password", "ipmi", "s"),
             ("*IPMI_INTERFACE", "IPMI Interface type", "ipmi", "s"),
+            ("*WMI_USERNAME", "WMI Username", "wmi", "s"),
+            ("*WMI_PASSWORD", "WMI Password", "wmi", "s"),
         ]
     }
     for _scope_name, _var_list in _defaults.iteritems():

@@ -43,8 +43,10 @@ class _WmiJobBase(EventLogPollerJobBase):
     def __init__(self, log, db, target_device, target_ip):
         super(_WmiJobBase, self).__init__(log, db, target_device, target_ip)
 
-        self.username = device_variable.objects.get_device_variable_value(device=self.target_device,
-                                                                          var_name=self.WMI_USERNAME_VARIABLE_NAME)
+        self.username = device_variable.objects.get_device_variable_value(
+            device=self.target_device,
+            var_name=self.WMI_USERNAME_VARIABLE_NAME
+        )
         if not self.username:
             raise RuntimeError(
                 "For WMI event log scanning, the device {} must have a device variable "
@@ -52,8 +54,10 @@ class _WmiJobBase(EventLogPollerJobBase):
                     self.target_device, self.WMI_USERNAME_VARIABLE_NAME
                 )
             )
-        self.password = device_variable.objects.get_device_variable_value(device=self.target_device,
-                                                                          var_name=self.WMI_PASSWORD_VARIABLE_NAME)
+        self.password = device_variable.objects.get_device_variable_value(
+            device=self.target_device,
+            var_name=self.WMI_PASSWORD_VARIABLE_NAME
+        )
         if not self.password:
             raise RuntimeError(
                 "For WMI event log scanning, the device {} must have a device variable "
