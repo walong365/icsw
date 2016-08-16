@@ -384,7 +384,7 @@ angular.module(
         $scope._add_value_entry = (entry, lut, parent, top) =>
             _vd = $scope.struct.vectordata
             # debg ?
-            _vd.a = "ddd"
+            # _vd.a = "ddd"
             # top is the parent node from the value entry (== mvstructentry)
             if entry.key
                 g_key = "#{top.key}.#{entry.key}"
@@ -890,7 +890,7 @@ angular.module(
                         {
                             key: "info"
                         }
-                        if _graph.num_devices == 1 then " 1 device" else " #{_graph.num_devices} devices: "
+                        if _graph.num_devices == 1 then " 1 device: " else " #{_graph.num_devices} devices: "
                         _graph.device_names.join(", ")
                         br()
                     )
