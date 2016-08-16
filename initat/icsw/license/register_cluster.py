@@ -20,18 +20,57 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 import sys
+import os
 import traceback
 import urllib
 import urllib2
 
 from lxml import etree
+from initat.tools import process_tools
 
 __all__ = [
-    "register_cluster"
+    "register_cluster",
+    "install_license_file",
 ]
 
 
 REGISTRATION_URL = "http://www.initat.org/cluster/registration"
+
+
+def _install_license(content):
+    try:
+        content_xml = etree.fromstring(content)
+    except:
+        print("Error interpreting license: {}".format(process_tools.get_except_info()))
+        sys.exit(-1)
+
+    for message_xml in content_xml.xpath("//messages/message"):
+        prefix = {
+            20: "",
+            30: "Warning: ",
+            40: "Error: "
+        }.get(int(message_xml.get('log_level')), "")
+        print("{}{}".format(prefix, message_xml.text))
+
+    code = int(content_xml.find("header").get("code"))
+    if code < 40:  # no error
+        lic_file_content = content_xml.xpath("//values/value[@name='license_file']")[0].text
+        # NOTE: this check currently isn't functional as the license file contains the creation time
+        if License.objects.filter(license_file=lic_file_content).exists():
+            print("License file already added.")
+        else:
+            License(file_name="uploaded_via_command_line", license_file=lic_file_content).save()
+            print("Successfully added license file.")
+    else:
+        print ("Exiting due to errors.")
+        sys.exit(1)
+
+
+def install_license_file(opts):
+    if not os.path.exists(opts.licensefile):
+        print("Licensefile {} not readable".format(opts.licensefile))
+        sys.exit(0)
+    _install_license(file(opts.licensefile, "r").read())
 
 
 def register_cluster(opts):
@@ -55,25 +94,4 @@ def register_cluster(opts):
         sys.exit(1)
     else:
         content = res.read()
-        content_xml = etree.fromstring(content)
-
-        for message_xml in content_xml.xpath("//messages/message"):
-            prefix = {
-                20: "",
-                30: "Warning: ",
-                40: "Error: "
-            }.get(int(message_xml.get('log_level')), "")
-            print("{}{}".format(prefix, message_xml.text))
-
-        code = int(content_xml.find("header").get("code"))
-        if code < 40:  # no error
-            lic_file_content = content_xml.xpath("//values/value[@name='license_file']")[0].text
-            # NOTE: this check currently isn't functional as the license file contains the creation time
-            if License.objects.filter(license_file=lic_file_content).exists():
-                print("License file already added.")
-            else:
-                License(file_name="uploaded_via_command_line", license_file=lic_file_content).save()
-                print("Successfully added license file.")
-        else:
-            print ("Exiting due to errors.")
-            sys.exit(1)
+        _install_license(content)
