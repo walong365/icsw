@@ -146,6 +146,8 @@ def main(opt_ns):
     elif opt_ns.childcom in ["start", "stop", "restart", "debug", "reload"]:
         if opt_ns.childcom == "debug":
             debug_args = opt_ns.debug_args
+            if opt_ns.debug_flag:
+                debug_args.append("--debug-flag")
         else:
             debug_args = None
         cur_t = transition.ServiceTransition(

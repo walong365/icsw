@@ -58,7 +58,7 @@ class ServerBackgroundNotifyMixin(object):
         _timeout = background_job.objects.filter(
             Q(initiator=self.srv_routing.local_device.pk) &
             Q(state__in=["pre-init", "pending"]) &
-            Q(valid_until__lte=datetime.datetime.now())
+            Q(valid_until__lte=cluster_timezone.localize(datetime.datetime.now()))
         )
         if _timeout.count():
             self.log("{} timeout".format(logging_tools.get_plural("background job", _timeout.count())), logging_tools.LOG_LEVEL_WARN)

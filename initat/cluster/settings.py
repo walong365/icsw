@@ -108,6 +108,16 @@ if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
         )
     )
 
+if DEBUG:
+    import warnings
+
+    warnings.filterwarnings(
+        "error",
+        r"DateTimeField .* received a naive datetime",
+        RuntimeWarning,
+        r'django\.db\.models\.fields',
+    )
+
 SECRET_KEY = _cs["django.secret.key"]
 # create a somehow shorter key
 SECRET_KEY_SHORT = base64.b64encode(SECRET_KEY)[0:10]
