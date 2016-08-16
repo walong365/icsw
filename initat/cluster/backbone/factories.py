@@ -32,7 +32,7 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
     ComCapability, SensorAction, config_catalog, GraphSettingSize, GraphSettingTimeshift, \
     GraphSettingForecast, GraphTimeFrame, DispatcherSettingSchedule, DispatcherSetting, \
-    StaticAssetTemplate, StaticAssetTemplateField, dvs_allowed_names, device_variable_scope, \
+    StaticAssetTemplate, StaticAssetTemplateField, dvs_allowed_name, device_variable_scope, \
     DeviceClass
 
 
@@ -581,10 +581,24 @@ class device_variable_scope_factory(factory.django.DjangoModelFactory):
             self.prefix = extracted
             self.save()
 
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.description != extracted:
+            self.description = extracted
+            self.save()
 
-class DVSAllowedNamesFactory(factory.django.DjangoModelFactory):
+    @factory.post_generation
+    def priority(self, create, extracted, **kwargs):
+        extracted = extracted or 0
+        if self.priority != extracted:
+            self.priority = extracted
+            self.save()
+
+
+class DVSAllowedNameFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = dvs_allowed_names
+        model = dvs_allowed_name
         django_get_or_create = ("name", "device_variable_scope",)
 
     @factory.post_generation
@@ -592,6 +606,13 @@ class DVSAllowedNamesFactory(factory.django.DjangoModelFactory):
         extracted = extracted or False
         if self.unique != extracted:
             self.unique = extracted
+            self.save()
+
+    @factory.post_generation
+    def editable(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.editable != extracted:
+            self.editable = extracted
             self.save()
 
     @factory.post_generation

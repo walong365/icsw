@@ -41,7 +41,7 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "device_variable",
     "device_variable_scope",
-    "dvs_allowed_names",
+    "dvs_allowed_name",
 ]
 
 
@@ -88,6 +88,10 @@ class device_variable_scope(models.Model):
         max_length=32,
         unique=True,
     )
+    # priority (for ordering)
+    priority = models.IntegerField(default=0)
+    # description
+    description = models.TextField(default="", blank=True)
     # variable prefix
     prefix = models.CharField(max_length=127, default="")
     # forced flags, json-encoded flags
@@ -102,7 +106,7 @@ class device_variable_scope(models.Model):
         )
 
 
-class dvs_allowed_names(models.Model):
+class dvs_allowed_name(models.Model):
     idx = models.AutoField(primary_key=True)
     device_variable_scope = models.ForeignKey("backbone.device_variable_scope")
     name = models.CharField(
@@ -112,6 +116,8 @@ class dvs_allowed_names(models.Model):
     )
     # globally unique
     unique = models.BooleanField(default=False)
+    # editable (on frontend)
+    editable = models.BooleanField(default=False)
     # forced type
     forced_type = models.CharField(
         max_length=3,
@@ -127,8 +133,8 @@ class dvs_allowed_names(models.Model):
         default="",
     )
     # group, for grouping :-)
-    group = models.CharField(max_length=127, default="")
-    description = models.TextField(default="")
+    group = models.CharField(max_length=127, default="", blank=True)
+    description = models.TextField(default="", blank=True)
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -174,6 +180,8 @@ class device_variable(models.Model):
     val_blob = models.TextField(blank=True, null=True, default="")
     val_date = models.DateTimeField(null=True, blank=True)
     val_time = models.TextField(blank=True, null=True)  # This field type is a guess.
+    # link to dvs_allowed_name entry
+    dvs_allowed_name = models.ForeignKey("backbone.dvs_allowed_name", null=True, blank=True)
     uuid = models.TextField(default="", max_length=64)
     date = models.DateTimeField(auto_now_add=True)
 
@@ -270,8 +278,8 @@ def device_variable_pre_save(sender, **kwargs):
             if cur_inst.var_type == "i":
                 check_integer(cur_inst, "val_int")
             check_empty_string(cur_inst, "var_type")
-            if _dvs.dvs_allowed_names_set.all().count():
-                _allowed = _dvs.dvs_allowed_names_set.all()
+            if _dvs.dvs_allowed_name_set.all().count():
+                _allowed = _dvs.dvs_allowed_name_set.all()
                 if cur_inst.name not in [entry.name for entry in _allowed]:
                     raise ValidationError(
                         "Name '{}' not allowed in scope '{}'".format(
@@ -280,6 +288,7 @@ def device_variable_pre_save(sender, **kwargs):
                         )
                     )
                 _allowed_struct = [entry for entry in _allowed if entry.name == cur_inst.name][0]
+                cur_inst.dvs_allowed_name = _allowed_struct
                 if _allowed_struct.unique:
                     _found = device_variable.objects.exclude(
                         Q(pk=cur_inst.idx)

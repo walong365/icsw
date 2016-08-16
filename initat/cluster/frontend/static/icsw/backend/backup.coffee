@@ -720,5 +720,13 @@ angular.module(
                 "consumable_critical_value",
                 "date_check", "date_warn_value", "date_critical_value",
             ]
+]).service("icswDVSAllowedNameBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswDVSAllowedNameBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "forced_type", "name", "description", "group", "unique", "device_variable_scope",
+            ]
 ])
 

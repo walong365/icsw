@@ -79,6 +79,7 @@ icsw_app = angular.module(
         "icsw.user.password",
         "icsw.user.dashboard",
         "icsw.system.license",
+        "icsw.variable.scope",
         "icsw.backend.system.license",
         "icsw.backend.domain_name_tree",
         "icsw.backend.category",

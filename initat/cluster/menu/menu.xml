@@ -311,7 +311,7 @@
     </route>
     <route name="main.devvars">
         <stateData type="dict" url_str="/variables"
-                   template_str="&lt;icsw-device-variable-overview icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-device-variable-overview&gt;"/>
+                   templateUrl_str="icsw/device/variable.html"/>
         <icswData type="dict" pageTitle_str="Device variables">
             <menuEntry type="dict" ordering_int="30" menukey_str="dev" icon_str="fa-code"/>
             <rights type="list">

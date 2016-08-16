@@ -215,6 +215,16 @@ device_patterns = [
         name="device_variable_scope_list",
     ),
     url(
+        "^device_variable_scope_entry$",
+        device_views.DeviceVariableScopeViewSet.as_view({"post": "create_entry"}),
+        name="device_variable_scope_entry_list",
+    ),
+    url(
+        "^device_variable_scope_dvs_detail/(?P<pk>[0-9]+)$",
+        device_views.DeviceVariableScopeViewSet.as_view({"delete": "delete_entry", "put": "store_entry"}),
+        name="device_variable_scope_entry_detail",
+    ),
+    url(
         "^device_class_call$",
         device_views.DeviceClassViewSet.as_view({"get": "list"}),
         name="device_class_list",

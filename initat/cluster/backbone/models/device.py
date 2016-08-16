@@ -25,6 +25,7 @@ import crypt
 import logging
 import random
 import time
+import uuid
 
 from django.core.exceptions import ValidationError
 from django.db.models import signals, CASCADE
@@ -531,7 +532,7 @@ def device_post_save(sender, **kwargs):
                 # get metadevice
                 _md = _cur_inst.device_group.device
                 if _md.device_class_id not in _possible_classes:
-                    if _possible_classes[0] != None:
+                    if _possible_classes[0] is not None:
                         _md.device_class = DeviceClass.objects.get(Q(pk=_possible_classes[0]))
                     _md.save(update_fields=["device_class"])
 

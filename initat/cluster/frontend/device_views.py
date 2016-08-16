@@ -42,7 +42,8 @@ from initat.cluster.backbone.models import device_group, device, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
     SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
-    AssetBatch, DeviceScanLock, device_variable_scope, StaticAsset, DeviceClass
+    AssetBatch, DeviceScanLock, device_variable_scope, StaticAsset, DeviceClass, \
+    dvs_allowed_name
 from initat.cluster.backbone.models import get_change_reset_list
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
@@ -51,7 +52,8 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
     SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
     AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, DeviceScanLockSerializer, \
-    device_variable_scope_serializer, StaticAssetSerializer, DeviceClassSerializer
+    device_variable_scope_serializer, StaticAssetSerializer, DeviceClassSerializer, \
+    dvs_allowed_name_serializer
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -765,10 +767,65 @@ class DeviceVariableScopeViewSet(viewsets.ViewSet):
     def list(self, request):
         return Response(
             device_variable_scope_serializer(
-                device_variable_scope.objects.all().prefetch_related("dvs_allowed_names_set"),
+                device_variable_scope.objects.all().prefetch_related("dvs_allowed_name_set"),
                 many=True,
             ).data
         )
+
+    @method_decorator(login_required)
+    def delete_entry(self, request, **kwargs):
+        dvs_entry = dvs_allowed_name.objects.get(Q(pk=kwargs["pk"]))
+        can_delete_answer = can_delete_obj(dvs_entry, logger)
+        if can_delete_answer:
+            print "*", dvs_entry
+        else:
+            raise ValidationError(
+                "cannot delete: {}".format(
+                    logging_tools.get_plural("reference", len(can_delete_answer.related_objects))
+                )
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @method_decorator(login_required)
+    def create_entry(self, request, **kwargs):
+        new_obj = dvs_allowed_name_serializer(data=request.data)
+        # print new_obj.device_variable_scope
+        if new_obj.is_valid():
+            new_obj.save()
+        else:
+            raise ValidationError(
+                "New Variable not valid: {}".format(
+                    ", ".join(
+                        [
+                            "{}: {}".format(
+                                _key,
+                                ", ".join(_value),
+                            ) for _key, _value in new_obj.errors.iteritems()
+                        ]
+                    )
+                )
+            )
+        return Response(new_obj.data)
+
+    @method_decorator(login_required)
+    def store_entry(self, request, *args, **kwargs):
+        _prev_var = dvs_allowed_name.objects.get(Q(pk=kwargs["pk"]))
+        # print _prev_var
+        _cur_ser = dvs_allowed_name_serializer(
+            dvs_allowed_name.objects.get(Q(pk=kwargs["pk"])),
+            data=request.data
+        )
+        # print "*" * 20
+        # print _cur_ser.device_variable_type
+        if _cur_ser.is_valid():
+            _new_var = _cur_ser.save()
+        resp = _cur_ser.data
+        c_list, r_list = get_change_reset_list(_prev_var, _new_var, request.data)
+        resp = Response(resp)
+        # print c_list, r_list
+        resp.data["_change_list"] = c_list
+        resp.data["_reset_list"] = r_list
+        return resp
 
 
 class DeviceClassViewSet(viewsets.ViewSet):

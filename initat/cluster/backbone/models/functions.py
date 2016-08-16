@@ -226,7 +226,9 @@ def can_delete_obj(obj, logger=None):
     from initat.cluster.backbone.models import device
     ignore_objs = {
         "device_group": list(device.objects.filter(Q(device_group=obj.idx) & Q(is_meta_device=True)))
-    }.get(obj._meta.object_name, [])
+    }.get(
+        obj._meta.object_name, []
+    )
     related_objects = []
     num_refs = get_related_models(obj, ignore_objs=ignore_objs, related_objects=related_objects)
 
