@@ -715,7 +715,8 @@ class BaseAssetPackage(object):
 
             if self.install_date:
                 try:
-                    _install_date = datetime.datetime.fromtimestamp(int(self.install_date)).isoformat(" ")
+                    _install_date = datetime.datetime.fromtimestamp(int(self.install_date)).\
+                        strftime(ASSET_DATETIMEFORMAT)
                 except:
                     _install_date = "N/A"
             else:
@@ -739,7 +740,8 @@ class BaseAssetPackage(object):
                     month = _install_date[4:6]
                     day = _install_date[6:8]
 
-                    _install_date = datetime.datetime(year=int(year), month=int(month), day=int(day)).isoformat(" ")
+                    _install_date = datetime.datetime(year=int(year), month=int(month), day=int(day)).\
+                        strftime(ASSET_DATETIMEFORMAT)
                 except:
                     _install_date = "N/A"
 
@@ -782,8 +784,10 @@ class BaseAssetPackage(object):
         return hash((self.name, self.version, self.release, self.size, self.install_date, self.package_type))
 
 ########################################################################################################################
-# Enums
+# Enums / Globals
 ########################################################################################################################
+
+ASSET_DATETIMEFORMAT = "%a %d. %b %Y %H:%M:%S"
 
 
 class AssetType(IntEnum):

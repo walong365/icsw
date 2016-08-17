@@ -51,6 +51,7 @@ from PyPDF2 import PdfFileWriter, PdfFileReader
 
 from initat.cluster.backbone.models import device, device_variable, AssetType, PackageTypeEnum, RunStatus, RunResult
 from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 
 
 logger = logging.getLogger(__name__)
@@ -72,8 +73,17 @@ class RowCollector(object):
 
         if self.current_asset_type == AssetType.UPDATE:
             update_name = str(_row[8])
-            install_date = str(_row[12])
+            # update_version = str(_row[9])
+            # update_release = str(_row[10])
+            # update_kb_idx = str(_row[11])
+            install_date = _row[12]
+            # update_install_date = str(_row[12])
             update_status = str(_row[13])
+            # update_installed = str(_row[15])
+
+
+            if type(install_date) != str:
+                install_date = install_date.strftime(ASSET_DATETIMEFORMAT)
 
             o = {
                 'update_name': update_name,
@@ -153,6 +163,9 @@ class RowCollector(object):
 
             else:
                 package_size_str = "N/A"
+
+            if type(package_install_date) != str:
+                package_install_date = package_install_date.strftime(ASSET_DATETIMEFORMAT)
 
             o = {
                 'package_name': package_name,
@@ -279,7 +292,7 @@ class PDFReportGenerator(object):
             self.name = name
             self.pagenum = pagenum
 
-    def __init__(self, settings):
+    def __init__(self, settings, _devices):
         system_device = None
         for _device in device.objects.all():
             if _device.is_cluster_device_group():
@@ -288,6 +301,9 @@ class PDFReportGenerator(object):
 
         report_logo = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
 
+        self._devices = _devices
+
+        self.settings = settings
         self.general_settings = settings[-1]
         self.device_settings = settings
         self.last_poll_time = None
@@ -320,6 +336,8 @@ class PDFReportGenerator(object):
 
         self.reports = []
         self.device_reports = []
+        self.current_page_num = 0
+
         self.progress = 0
         self.buffer = None
 
@@ -352,6 +370,26 @@ class PDFReportGenerator(object):
             cluster_id_var = cluster_id_var[0]
             self.cluster_id = cluster_id_var.val_str
 
+        self.sections = {}
+
+    def __generate_section_number(self, *sections):
+        root_section = self.sections
+
+        version_str = ""
+
+        for section in sections:
+            if section not in root_section:
+                root_section[section] = {}
+
+            version_str += ".{}".format(len(root_section))
+
+            root_section = root_section[section]
+
+        return version_str[1:]
+
+
+    def get_progress(self):
+        return self.progress
 
     def get_report_data(self):
         if self.buffer:
@@ -436,6 +474,7 @@ class PDFReportGenerator(object):
 
         data = sorted(data, key=lambda k: k['id'])
         if data:
+            section_number = self.__generate_section_number("General", "Networks")
             report.generate_bookmark("Networks")
 
             rpt = PollyReportsReport(data)
@@ -453,28 +492,30 @@ class PDFReportGenerator(object):
                             ("#IPs", "num_ips", 10.0),
                             ("Network Type", "network_type", 20.0)]
 
-            self.__config_report_helper("Network Overview", header_names, rpt, data)
+            self.__config_report_helper("{} Network Overview".format(section_number), header_names, rpt, data)
 
             rpt.generate(canvas)
             canvas.save()
             report.number_of_pages += rpt.pagenumber
             report.add_to_report(_buffer)
             self.reports.append(report)
+            self.current_page_num += rpt.pagenumber
 
     def generate_device_report(self, _device, report_settings):
-        report = DeviceReport(_device, report_settings)
-        self.device_reports.append(report)
+        device_report = DeviceReport(_device, report_settings)
+        self.device_reports.append(device_report)
 
         # create generic overview page
-        self.generate_overview_page(report)
+        self.generate_overview_page(device_report)
 
         selected_runs = _select_assetruns_for_device(_device, self.general_settings["assetbatch_selection_mode"])
 
-        self.generate_report_for_assetruns(selected_runs, report)
+        self.generate_report_for_assetruns(selected_runs, device_report)
 
     def generate_overview_page(self, report):
         _device = report.device
 
+        section_number = self.__generate_section_number("Device Reports", _device.device_group_name(), _device.full_name, "Overview")
         report.generate_bookmark("Overview")
 
         _buffer = BytesIO()
@@ -490,8 +531,8 @@ class PDFReportGenerator(object):
 
         available_width = self.page_format[0] - (self.margin * 2)
 
-        paragraph_header = Paragraph('<font face="times-bold" size="22">Overview for {}</font>'.format(
-            _device.name), style_sheet["BodyText"])
+        paragraph_header = Paragraph('<font face="times-bold" size="22">{} Overview for {}</font>'.format(
+            section_number, _device.name), style_sheet["BodyText"])
 
         logo = Image(self.logo_buffer)
         logo.drawHeight = self.logo_height
@@ -636,6 +677,8 @@ class PDFReportGenerator(object):
     def generate_report_for_assetruns(self, assetruns, report):
         _buffer = BytesIO()
 
+        _device = report.device
+
         canvas = Canvas(_buffer, self.page_format)
 
         row_collector = RowCollector()
@@ -643,7 +686,32 @@ class PDFReportGenerator(object):
         # Hardware report is generated last
         hardware_report_ar = None
 
+        sorted_runs = {}
+
         for ar in assetruns:
+            if AssetType(ar.run_type) == AssetType.PACKAGE:
+                sorted_runs[0] = ar
+            elif AssetType(ar.run_type) == AssetType.LICENSE:
+                sorted_runs[1] = ar
+            elif AssetType(ar.run_type) == AssetType.UPDATE:
+                sorted_runs[2] = ar
+            elif AssetType(ar.run_type) == AssetType.PENDING_UPDATE:
+                sorted_runs[3] = ar
+            elif AssetType(ar.run_type) == AssetType.PROCESS:
+                sorted_runs[4] = ar
+            elif AssetType(ar.run_type) == AssetType.PRETTYWINHW:
+                sorted_runs[5] = ar
+            elif AssetType(ar.run_type) == AssetType.DMI:
+                sorted_runs[6] = ar
+            elif AssetType(ar.run_type) == AssetType.PCI:
+                sorted_runs[7] = ar
+            elif AssetType(ar.run_type) == AssetType.HARDWARE:
+                sorted_runs[8] = ar
+
+
+        for idx in sorted_runs:
+            ar = sorted_runs[idx]
+
             row_collector.reset()
             row_collector.current_asset_type = AssetType(ar.run_type)
             generate_csv_entry_for_assetrun(ar, row_collector.collect)
@@ -655,6 +723,8 @@ class PDFReportGenerator(object):
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_status'])
 
+                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
+                                                                _device.full_name, "Installed Updates")
                 report.generate_bookmark("Installed Updates")
 
                 rpt = PollyReportsReport(data)
@@ -676,7 +746,7 @@ class PDFReportGenerator(object):
                                 ("Install Date", "install_date", 15.0),
                                 ("Install Status", "update_status", 15.0)]
 
-                self.__config_report_helper("Installed Updates", header_names, rpt, data)
+                self.__config_report_helper("{} Installed Updates".format(section_number), header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -687,6 +757,8 @@ class PDFReportGenerator(object):
 
                 data = row_collector.rows_dict[1:]
 
+                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
+                                                                _device.full_name, "Available Licenses")
                 report.generate_bookmark("Available Licenses")
 
                 rpt = PollyReportsReport(data)
@@ -701,7 +773,7 @@ class PDFReportGenerator(object):
                 header_names = [("License Name", "license_name", 50.0),
                                 ("License Key", "license_key", 50.0)]
 
-                self.__config_report_helper("Available Licenses", header_names, rpt, data)
+                self.__config_report_helper("{} Available Licenses".format(section_number), header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -718,6 +790,8 @@ class PDFReportGenerator(object):
                     logger.info("PDF generation for packages failed, error was: {}".format(str(e)))
                     packages = []
 
+                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
+                                                                _device.full_name, "Installed Packages")
                 report.generate_bookmark("Installed Packages")
 
                 data = [package.get_as_row() for package in packages]
@@ -740,13 +814,13 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Name", "package_name", 20.0),
-                                ("Version", "package_version", 20.0),
-                                ("Release", "package_release", 20.0),
-                                ("Size", "package_size", 20.0),
-                                ("Install Date", "package_install_date", 20.0)]
+                header_names = [("Name", "package_name", 40.0),
+                                ("Version", "package_version", 15.00),
+                                ("Release", "package_release", 15.00),
+                                ("Size", "package_size", 15.00),
+                                ("Install Date", "package_install_date", 15.00)]
 
-                self.__config_report_helper("Installed Packages", header_names, rpt, data)
+                self.__config_report_helper("{} Installed Packages".format(section_number), header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -757,6 +831,9 @@ class PDFReportGenerator(object):
 
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_name'])
+
+                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
+                                                                _device.full_name, "Available Updates")
 
                 report.generate_bookmark("Available Updates")
 
@@ -779,7 +856,7 @@ class PDFReportGenerator(object):
                                 ("Version", "update_version", 33.33),
                                 ("Optional", "update_optional", 33.33)]
 
-                self.__config_report_helper("Available Updates", header_names, rpt, data)
+                self.__config_report_helper("{} Available Updates".format(section_number), header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -791,6 +868,8 @@ class PDFReportGenerator(object):
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['hardware_depth'])
 
+                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
+                                                                _device.full_name, "Lstopo Information")
                 report.generate_bookmark("Lstopo Information")
 
                 rpt = PollyReportsReport(data)
@@ -807,7 +886,7 @@ class PDFReportGenerator(object):
                                 ("Depth", "hardware_depth", 15.00),
                                 ("Attributes", "hardware_attributes", 70.00)]
 
-                self.__config_report_helper("Lstopo Information", header_names, rpt, data)
+                self.__config_report_helper("{} Lstopo Information".format(section_number), header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -819,6 +898,8 @@ class PDFReportGenerator(object):
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['process_name'])
 
+                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
+                                                                _device.full_name, "Process Information")
                 report.generate_bookmark("Process Information")
 
                 rpt = PollyReportsReport(data)
@@ -838,7 +919,7 @@ class PDFReportGenerator(object):
                 header_names = [("Process Name", "process_name", 50.0),
                                 ("PID", "process_id", 50.0)]
 
-                self.__config_report_helper("Process Information", header_names, rpt, data)
+                self.__config_report_helper("{} Process Information".format(section_number), header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -849,6 +930,8 @@ class PDFReportGenerator(object):
 
                 data = row_collector.rows_dict[1:]
 
+                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
+                                                                _device.full_name, "DMI Information")
                 report.generate_bookmark("DMI Information")
 
                 rpt = PollyReportsReport(data)
@@ -863,13 +946,13 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Handle", "handle", 20.0),
-                                ("Type", "dmi_type", 20.0),
-                                ("Header", "header", 20.0),
-                                ("Key", "key", 20.0),
-                                ("Value", "value", 20.0)]
+                header_names = [("Handle", "handle", 8.0),
+                                ("Type", "dmi_type", 8.0),
+                                ("Header", "header", 15.0),
+                                ("Key", "key", 15.0),
+                                ("Value", "value", 54.0)]
 
-                self.__config_report_helper("DMI Information", header_names, rpt, data)
+                self.__config_report_helper("{} DMI Information".format(section_number), header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -880,6 +963,8 @@ class PDFReportGenerator(object):
 
                 data = row_collector.rows_dict[1:]
 
+                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
+                                                                _device.full_name, "PCI Information")
                 report.generate_bookmark("PCI Information")
 
                 rpt = PollyReportsReport(data)
@@ -899,16 +984,16 @@ class PDFReportGenerator(object):
 
                     data.append(mock_object)
 
-                header_names = [("Domain", "domain", 10.0),
-                                ("Bus", "bus", 10.0),
-                                ("Slot", "slot", 10.0),
-                                ("Func", "func", 10.0),
+                header_names = [("Domain", "domain", 7.5),
+                                ("Bus", "bus", 5.0),
+                                ("Slot", "slot", 5.0),
+                                ("Func", "func", 5.0),
                                 ("Position", "position", 10.0),
                                 ("Subclass", "subclass", 10.0),
-                                ("Vendor", "vendor", 10.0),
-                                ("Device", "device", 20.0)]
+                                ("Vendor", "vendor", 28.75),
+                                ("Device", "device", 28.75)]
 
-                self.__config_report_helper("PCI Information", header_names, rpt, data)
+                self.__config_report_helper("{} PCI Information".format(section_number), header_names, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -932,7 +1017,11 @@ class PDFReportGenerator(object):
         #
         # pdfmetrics.registerFont(TTFont('Forque', '/home/kaufmann/Forque.ttf'))
 
-        report.generate_bookmark("Hardware Report")
+        _device = report.device
+
+        section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
+                                                        _device.full_name, "Hardware Report")
+        report.generate_bookmark("Hardware Report".format(section_number))
 
         _buffer = BytesIO()
         doc = SimpleDocTemplate(_buffer,
@@ -1048,7 +1137,7 @@ class PDFReportGenerator(object):
 
         t_body = Table(data, colWidths=(available_width * 0.10, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
-        p_h = Paragraph('<font face="times-bold" size="22">Hardware Report for {}</font>'.format(
+        p_h = Paragraph('<font face="times-bold" size="22">{} Hardware Report for {}</font>'.format(section_number,
             hardware_report_ar.device.name), style_sheet["BodyText"])
 
         logo = Image(self.logo_buffer)
@@ -1083,7 +1172,7 @@ class PDFReportGenerator(object):
         current_page_number = 0
         page_num_headings = {}
 
-        # 1. Pass: Generate pdf, structure is group_name -> device -> report,
+        # 1. Pass: Generate pdf, structure is group_name -> device -> report (except for general reports)
         # generate table of contents and bookmark Headings to page number mapping
         if self.reports:
             page_num_headings[current_page_number] = []
@@ -1115,7 +1204,7 @@ class PDFReportGenerator(object):
                         _device_reports[_report.device] = []
                     _device_reports[_report.device].append(_report)
 
-                for _device in _device_reports:
+                for _device in sorted(_device_reports, key=lambda _device: _device.full_name):
                     if current_page_number not in page_num_headings:
                         page_num_headings[current_page_number] = []
                     page_num_headings[current_page_number].append((_device.full_name, 2))
@@ -1177,7 +1266,7 @@ class PDFReportGenerator(object):
                         _device_reports[_report.device] = []
                     _device_reports[_report.device].append(_report)
 
-                for _device in _device_reports:
+                for _device in sorted(_device_reports, key=lambda _device: _device.full_name):
                     device_bookmark = output_pdf.addBookmark(_device.full_name, current_page_number,
                                                              parent=group_bookmark)
 
@@ -1223,7 +1312,7 @@ class PDFReportGenerator(object):
         _user = user.objects.get(idx=self.general_settings["user_idx"])
         _user_str = str(_user)
 
-        _creation_str = datetime.datetime.now().strftime("%a %d. %b %Y %H:%M:%S")
+        _creation_str = datetime.datetime.now().strftime(ASSET_DATETIMEFORMAT)
 
         body_data = []
 
@@ -1512,6 +1601,31 @@ class PDFReportGenerator(object):
 
         return output
 
+    def generate_report(self):
+        if self.general_settings["network_report_overview_module_selected"]:
+            self.generate_network_report()
+
+        group_device_dict = {}
+        for _device in self._devices:
+            _group_name = _device.device_group_name()
+            if _group_name not in group_device_dict:
+                group_device_dict[_group_name] = []
+
+            group_device_dict[_group_name].append(_device)
+
+        idx = 1
+        for _group_name in group_device_dict:
+            for _device in sorted(group_device_dict[_group_name], key=lambda _device: _device.full_name):
+                if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
+                    return
+                self.generate_device_report(_device, self.device_settings[_device.idx])
+                self.progress = int((float(idx) / len(self._devices)) * 10)
+                idx += 1
+
+        self.progress = 10
+
+        self.finalize_pdf()
+
 
 class UploadReportGfx(View):
     @method_decorator(xml_wrapper)
@@ -1618,11 +1732,11 @@ class GenerateReportPdf(View):
     def post(self, request):
         pk_settings, _devices, current_time = _init_report_settings(request)
 
-        pdf_report_generator = PDFReportGenerator(pk_settings)
+        pdf_report_generator = PDFReportGenerator(pk_settings, _devices)
         pdf_report_generator.timestamp = current_time
         REPORT_GENERATORS[id(pdf_report_generator)] = pdf_report_generator
 
-        Thread(target=generate_pdf, args=(_devices, pk_settings, pdf_report_generator)).start()
+        Thread(target=_generate_report, args=[pdf_report_generator]).start()
 
         return HttpResponse(
             json.dumps(
@@ -1636,11 +1750,11 @@ from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
 
 class XlsxReportGenerator(object):
-    def __init__(self, per_device_settings, _devices):
+    def __init__(self, device_settings, _devices):
         self.data = ""
-        self.per_device_settings = per_device_settings
+        self.device_settings = device_settings
         # general settings stored under special key -1
-        self.general_settings = per_device_settings[-1]
+        self.general_settings = device_settings[-1]
         self.devices = _devices
         self.progress = 0
 
@@ -1666,7 +1780,7 @@ class XlsxReportGenerator(object):
             workbook.remove_sheet(workbook.active)
 
             self.generate_device_overview(_device, workbook)
-            device_report = DeviceReport(_device, self.per_device_settings[_device.idx])
+            device_report = DeviceReport(_device, self.device_settings[_device.idx])
 
             selected_runs = _select_assetruns_for_device(_device,
                                                          self.general_settings["assetbatch_selection_mode"])
@@ -1823,58 +1937,6 @@ class GenerateReportXlsx(View):
             )
         )
 
-# class ReportDataAvailable(View):
-#     @method_decorator(login_required)
-#     def post(self, request):
-#         idx_list = None
-#         for item in request.POST.iterlists():
-#             key, _list = item
-#             if key == "idx_list[]":
-#                 idx_list = _list
-#                 break
-#
-#         assetbatch_selection_mode = int(request.POST['assetbatch_selection_mode'])
-#
-#         meta_devices = []
-#
-#         device_group_disabled = {}
-#
-#         pk_setting_dict = {}
-#         if idx_list:
-#             for pk in idx_list:
-#                 pk = int(pk)
-#                 _device = device.objects.get(idx=pk)
-#
-#                 if _device.is_meta_device:
-#                     meta_devices.append(_device)
-#                     continue
-#
-#                 disabled = True
-#                 if selected_runs:
-#                     disabled = False
-#
-#                 pk_setting_dict[pk] = disabled
-#
-#                 if _device.device_group in device_group_disabled:
-#                     if device_group_disabled[_device.device_group]:
-#                         device_group_disabled[_device.device_group] = disabled
-#                 else:
-#                     device_group_disabled[_device.device_group] = disabled
-#
-#             for _device in meta_devices:
-#                 if _device.device_group in device_group_disabled:
-#                     pk_setting_dict[_device.idx] = device_group_disabled[_device.device_group]
-#                 else:
-#                     pk_setting_dict[_device.idx] = True
-#
-#         return HttpResponse(
-#             json.dumps(
-#                 {
-#                     'pk_setting_dict': pk_setting_dict,
-#                 }
-#             )
-#         )
-
 
 class ReportDataAvailable(View):
     @method_decorator(login_required)
@@ -1928,38 +1990,18 @@ class ReportDataAvailable(View):
         )
 
 
-def generate_pdf(_devices, pk_settings, pdf_report_generator):
-    # general report settings stored with pk -1
-    general_settings = pk_settings[-1]
-
+def _generate_report(report_generator):
     try:
-        if general_settings["network_report_overview_module_selected"]:
-            pdf_report_generator.generate_network_report()
-
-        idx = 1
-        for _device in _devices:
-            if pdf_report_generator.last_poll_time and \
-                            (datetime.datetime.now() - pdf_report_generator.last_poll_time).seconds > 5:
-                return
-            pdf_report_generator.generate_device_report(_device, pk_settings[_device.idx])
-            pdf_report_generator.progress = int((float(idx) / len(_devices)) * 10)
-            idx += 1
-
-        pdf_report_generator.progress = 10
-
-        pdf_report_generator.finalize_pdf()
+        report_generator.generate_report()
     except Exception as e:
         import traceback, sys
         print '-'*60
         traceback.print_exc(file=sys.stdout)
         print '-'*60
-        logger.info("PDF Generation failed, error was: {}".format(str(e)))
-        pdf_report_generator.buffer = BytesIO()
-        pdf_report_generator.progress = -1
-
-
-def _generate_report(report_generator):
-    report_generator.generate_report()
+        logger.info("Report Generation failed, error was: {}".format(str(e)))
+        report_generator.buffer = BytesIO()
+        report_generator.data = ""
+        report_generator.progress = -1
 
 
 def sizeof_fmt(num, suffix='B'):
@@ -2245,7 +2287,6 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
             row_writer_func(row)
 
 
-
 def _init_report_settings(request):
     current_time = datetime.datetime.now()
     # remove references of old report generators
@@ -2330,7 +2371,9 @@ def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
         elif AssetType(ar.run_type) == AssetType.PENDING_UPDATE:
             sorted_runs[3] = ar
         elif AssetType(ar.run_type) == AssetType.PROCESS:
-            sorted_runs[4] = ar
+            # disabled for now
+            pass
+            #sorted_runs[4] = ar
         elif AssetType(ar.run_type) == AssetType.PRETTYWINHW:
             sorted_runs[5] = ar
         elif AssetType(ar.run_type) == AssetType.DMI:
@@ -2338,6 +2381,8 @@ def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
         elif AssetType(ar.run_type) == AssetType.PCI:
             sorted_runs[7] = ar
         elif AssetType(ar.run_type) == AssetType.HARDWARE:
-            sorted_runs[8] = ar
+            # disabled for now
+            pass
+            #sorted_runs[8] = ar
 
     return [sorted_runs[idx] for idx in sorted_runs]
