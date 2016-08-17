@@ -1351,6 +1351,15 @@ class PDFReportGenerator(object):
 
         body_data.append((text_block, t))
 
+        data = [[self.general_settings['hostname']]]
+
+        text_block = Paragraph('<b>Requested by host:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(available_width * 0.85),
+                  style=[]
+                  )
+
+        body_data.append((text_block, t))
+
         t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
                               ('LEFTPADDING', (0, 0), (-1, -1), 0),
@@ -1731,6 +1740,12 @@ class GenerateReportPdf(View):
     @method_decorator(login_required)
     def post(self, request):
         pk_settings, _devices, current_time = _init_report_settings(request)
+
+        if 'HOSTNAME' in request.META:
+            pk_settings[-1]['hostname'] = request.META['HOSTNAME']
+        else:
+            pk_settings[-1]['hostname'] = "unknown"
+
 
         pdf_report_generator = PDFReportGenerator(pk_settings, _devices)
         pdf_report_generator.timestamp = current_time
