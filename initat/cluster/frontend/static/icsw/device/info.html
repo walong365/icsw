@@ -53,7 +53,7 @@
 
 <script type="text/ng-template" id="icsw.device.info.overview">
     <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Fetching data from server ...</div>
-    <uib-tabset ng-if="struct.data_valid">
+    <uib-tabset ng-if="struct.data_valid && struct.slist.length > 1">
         <uib-tab ng-repeat="entry in struct.slist">
             <uib-tab-heading>
                 <span ng-show="entry.edit_obj.is_meta_device" class="glyphicon glyphicon-list"></span>
@@ -63,6 +63,7 @@
             <icsw-device-info-device icsw-struct="entry"></icsw-device-info-device>
         </uib-tab>
     </uib-tabset>
+    <icsw-device-info-device ng-if="struct.data_valid && struct.slist.length == 1" icsw-struct="struct.slist[0]"></icsw-device-info-device>
 </script>
 
 <script type="text/ng-template" id="icsw.device.info.form">
