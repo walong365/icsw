@@ -291,7 +291,7 @@ class LicenseUsage(object):
         from initat.cluster.backbone.models import ext_license
         return lic.pk if isinstance(lic, ext_license) else int(lic)
 
-    # NOTE: keep in sync with js, see systeme/license.coffee line 222
+    # NOTE: keep in sync with js, see system/license.coffee line 222
     GRACE_PERIOD = relativedelta.relativedelta(weeks=2)
 
     @staticmethod

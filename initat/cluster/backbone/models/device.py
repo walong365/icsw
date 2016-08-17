@@ -456,6 +456,14 @@ def device_pre_save(sender, **kwargs):
             cur_inst.uuid = str(uuid.uuid4())
         if not cur_inst.device_class:
             cur_inst.device_class = DeviceClass.objects.get(Q(default_system_class=True))
+        # check for already existing device
+        try:
+            _cur_dev = device.objects.get(Q(name=cur_inst.name) & Q(domain_tree_node=cur_inst.domain_tree_node))
+        except device.DoesNotExist:
+            pass
+        else:
+            raise ValidationError("device with name '{}' already exists".format(_cur_dev.full_name))
+
         # check for uniqueness of UUID
         try:
             present_dev = device.objects.get(Q(uuid=cur_inst.uuid))

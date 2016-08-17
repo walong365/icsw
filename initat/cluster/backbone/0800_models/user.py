@@ -280,6 +280,13 @@ class group(models.Model):
     perms = models.ManyToManyField(csw_permission, related_name="db_group_perms", blank=True, through=group_permission)
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_group_perms", blank=True, through=group_object_permission)
 
+    # for Django1.10
+    def is_anonymous(self):
+        return False
+
+    def is_authenticated(self):
+        return True
+
     class Meta:
         db_table = u'ggroup'
         ordering = ("groupname",)

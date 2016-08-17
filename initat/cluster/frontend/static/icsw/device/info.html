@@ -1,46 +1,46 @@
 <script type="text/ng-template" id="icsw.device.info">
-    <uib-tabset>
-        <uib-tab select="activate('general')" active="general_active">
+    <uib-tabset active="active_tab">
+        <uib-tab select="activate('general')">
             <uib-tab-heading>
-                General
+                General{{ addon_text }}
             </uib-tab-heading>
             <icsw-simple-device-info icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist"></icsw-simple-device-info>
         </uib-tab>
-        <uib-tab ng-if="acl_read(null, 'backbone.device.change_network') && dev_pk_nmd_list.length" select="activate('network')" active="network_active">
+        <uib-tab ng-if="acl_read(null, 'backbone.device.change_network') && normal_sel" select="activate('network')">
             <uib-tab-heading>
                 Network{{ addon_text_nmd }}
             </uib-tab-heading>
-            <icsw-device-network-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['network']"></icsw-device-network-overview>
+            <icsw-device-network-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist"></icsw-device-network-overview>
         </uib-tab>
-        <uib-tab ng-if="acl_read(null, 'backbone.device.change_config')" select="activate('config')" active="config_active">
+        <uib-tab ng-if="acl_read(null, 'backbone.device.change_config')" select="activate('config')">
             <uib-tab-heading>
                 Config{{ addon_text }}
             </uib-tab-heading>
-            <icsw-device-configuration-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['config']">
+            <icsw-device-configuration-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
             </icsw-device-configuration-overview>
             <!-- only valid for corvus -->
-            <icsw-device-configuration-var-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['config']">
+            <icsw-device-configuration-var-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
             </icsw-device-configuration-var-overview>
         </uib-tab>
-         <uib-tab ng-if="acl_read(null, 'backbone.device.change_category') && dev_pk_nmd_list.length" select="activate('category')" active="category_active">
+         <uib-tab ng-if="acl_read(null, 'backbone.device.change_category') && normal_sel" select="activate('category')">
             <uib-tab-heading>
                 Category{{ addon_text_nmd }}
             </uib-tab-heading>
-            <icsw-device-category-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['category']">
+            <icsw-device-category-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
             </icsw-device-category-overview>
         </uib-tab>
-         <uib-tab ng-if="acl_read(null, 'backbone.device.change_location') && dev_pk_nmd_list.length" select="activate('location')" active="category_active">
+         <uib-tab ng-if="acl_read(null, 'backbone.device.change_location') && normal_sel" select="activate('location')">
             <uib-tab-heading>
                 Location{{ addon_text_nmd }}
             </uib-tab-heading>
-            <icsw-device-location-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['location']">
+            <icsw-device-location-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
             </icsw-device-location-overview>
         </uib-tab>
-        <uib-tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('device_variable')" active="device_variable_active">
+        <uib-tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('device_variable')">
             <uib-tab-heading>
                 Device Variable{{ addon_text }}
             </uib-tab-heading>
-            <icsw-device-variable-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="dev_list['device_variable']">
+            <icsw-device-variable-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
             </icsw-device-variable-overview>
         </uib-tab>
     </uib-tabset>
@@ -53,7 +53,7 @@
 
 <script type="text/ng-template" id="icsw.device.info.overview">
     <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Fetching data from server ...</div>
-    <uib-tabset ng-if="struct.data_valid">
+    <uib-tabset ng-if="struct.data_valid && struct.slist.length > 1">
         <uib-tab ng-repeat="entry in struct.slist">
             <uib-tab-heading>
                 <span ng-show="entry.edit_obj.is_meta_device" class="glyphicon glyphicon-list"></span>
@@ -63,6 +63,7 @@
             <icsw-device-info-device icsw-struct="entry"></icsw-device-info-device>
         </uib-tab>
     </uib-tabset>
+    <icsw-device-info-device ng-if="struct.data_valid && struct.slist.length == 1" icsw-struct="struct.slist[0]"></icsw-device-info-device>
 </script>
 
 <script type="text/ng-template" id="icsw.device.info.form">

@@ -32,7 +32,8 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, macbootlog, mac_ignore, \
-    log_source_lookup, LogSource, DeviceLogEntry, user
+    log_source_lookup, LogSource, DeviceLogEntry, user, LicenseUsage, LicenseEnum, \
+    LicenseParameterTypeEnum
 from initat.tools import config_tools, configfile, icmp_class, ipvx_tools, logging_tools, \
     process_tools, server_command, threading_tools
 from .command_tools import simple_command
@@ -60,6 +61,8 @@ class Host(object):
             init_logger=True
         )
         self.log("added client, type is {}".format("META" if self.device.is_meta_device else "real"))
+        # log license usage
+        LicenseUsage.log_usage(LicenseEnum.netboot, LicenseParameterTypeEnum.device, self.device)
         self.additional_lut_keys = set()
         # clear ip_dict
         self.ip_dict = {}

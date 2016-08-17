@@ -135,7 +135,9 @@
     <uib-tabset>
         <uib-tab heading="Configurations">
             <icsw-config-config-table></icsw-config-config-table>
+            <!-- removed temporarily due to CSW-576
             <icsw-config-uploader></icsw-config-uploader>
+            -->
             <icsw-config-generate-config icsw-sel-man="0"></icsw-config-generate-config>
         </uib-tab>
         <uib-tab heading="Monitoring categories">
@@ -237,7 +239,9 @@
             <h2>
                 {{ config_tree.list.length }} configurations, {{ filtered.length }} shown, {{ config_tree.$selected }} selected
                 <icsw-tools-button-static type="create" value="create new config" ng-click="create($event)" size="xs"></icsw-tools-button-static>
+                <!-- removed temporarily due to bug in CSW-576
                 <icsw-config-download config-tree="config_tree"></icsw-config-download>
+                -->
             </h2>
             <thead>
                 <tr>

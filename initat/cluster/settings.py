@@ -26,6 +26,7 @@ import glob
 import hashlib
 import os
 import sys
+import warnings
 
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
@@ -108,6 +109,14 @@ if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
         )
     )
 
+if DEBUG:
+    warnings.filterwarnings(
+        "error",
+        r"DateTimeField .* received a naive datetime",
+        RuntimeWarning,
+        r'django\.db\.models\.fields',
+    )
+
 SECRET_KEY = _cs["django.secret.key"]
 # create a somehow shorter key
 SECRET_KEY_SHORT = base64.b64encode(SECRET_KEY)[0:10]
@@ -153,7 +162,7 @@ LANGUAGES = (
 
 ANONYMOUS_USER_ID = -1
 
-SILENCED_SYSTEM_CHECKS = ["auth.C010"]
+SILENCED_SYSTEM_CHECKS = ["auth.C010", "auth.C009"]
 
 SITE_ID = 1
 
@@ -231,7 +240,7 @@ MIDDLEWARE_CLASSES = (
 
 if not DEBUG:
     MIDDLEWARE_CLASSES = tuple(
-        ["django.middleware.gzip.GZipMiddleware"] +
+        # ["django.middleware.gzip.GZipMiddleware"] +
         list(
             MIDDLEWARE_CLASSES
         )

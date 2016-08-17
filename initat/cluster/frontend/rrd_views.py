@@ -23,6 +23,7 @@
 """ RRD views """
 
 import datetime
+import os
 import json
 import logging
 
@@ -30,7 +31,7 @@ import dateutil.parser
 import dateutil.tz
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.http.response import HttpResponse
+from django.http.response import HttpResponse, HttpResponseGone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
@@ -133,3 +134,22 @@ class trigger_sensor_threshold(View):
             type=request.POST["type"],
         )
         _result = contact_server(request, "collectd-server", srv_com, timeout=30)
+
+
+class download_rrd(View):
+    @method_decorator(login_required)
+    def get(self, request, **kwargs):
+        _path = json.loads(kwargs["hash"])["path"]
+        if os.path.exists(_path):
+            act_resp = HttpResponse(
+                content_type="image/png"
+            )
+            act_resp["Content-disposition"] = "attachment; filename=graph.png"
+            act_resp["Content-Transfer-Encoding"] = "binary"
+            # print dir(act_resp)
+            act_resp.write(file(_path, "rb").read())
+            # print len(act_resp.content)
+        else:
+            # hm, working ... ?
+            act_resp = HttpResponseGone()
+        return act_resp

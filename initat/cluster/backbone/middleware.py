@@ -103,18 +103,19 @@ def show_database_calls(*args, **kwargs):
                 )
         if len(connection.queries) > DB_CALL_LIMIT and cur_width:
             for act_sql in connection.queries:
-                out_str = act_sql["sql"].replace("\n", "<NL>")
-                _len_pre = len(out_str)
-                out_str = out_str[0:cur_width - 21]
-                _len_post = len(out_str)
-                output(
-                    u"{:6.2f} [{:4d}/{:5d}] {}".format(
-                        float(act_sql["time"]),
-                        _len_post,
-                        _len_pre,
-                        out_str
+                if act_sql["sql"]:
+                    out_str = act_sql["sql"].replace("\n", "<NL>")
+                    _len_pre = len(out_str)
+                    out_str = out_str[0:cur_width - 21]
+                    _len_post = len(out_str)
+                    output(
+                        u"{:6.2f} [{:4d}/{:5d}] {}".format(
+                            float(act_sql["time"]),
+                            _len_post,
+                            _len_pre,
+                            out_str
+                        )
                     )
-                )
         _line = "{} {:4d} {:8.4f} {:<50s}\n".format(
             time.ctime(),
             len(connection.queries),

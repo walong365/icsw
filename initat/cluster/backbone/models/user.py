@@ -730,7 +730,7 @@ class user(models.Model):
     scan_user_home = models.BooleanField(default=False)
     # scan depth
     scan_depth = models.IntegerField(default=2)
-    #theme
+    # theme
     ui_theme_selection = models.CharField(max_length=64, default=settings.THEME_DEFAULT)
 
     @property

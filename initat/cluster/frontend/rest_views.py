@@ -84,15 +84,6 @@ for module in model_serializer_modules:
                 REST_LIST.append((module, key[:-10]))
 
 
-# @api_view(('GET',))
-# def api_root(request, format=None):
-#    return Response({
-#        'user'         : reverse('rest:user_list_h', request=request),
-#        'group'        : reverse('rest:group_list_h', request=request),
-#        # 'network_type' : reverse('rest:network_type_list_h', request=request),
-#    })
-
-
 def csw_exception_handler(exc, info_dict):
     response = exception_handler(exc, info_dict)
     if response is None:
@@ -166,16 +157,16 @@ class rest_logging(object):
         try:
             result = self._func(*args, **kwargs)
         except:
+            _err_str = process_tools.get_except_info()
             self.log(
-                u"exception: {}".format(
-                    process_tools.get_except_info()
-                ),
+                u"exception: {}".format(_err_str),
                 logging_tools.LOG_LEVEL_ERROR
             )
             exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
                 self.log(u"  {}".format(line))
-            raise
+            result = Response(_err_str, status=status.HTTP_406_NOT_ACCEPTABLE)
+            # raise
         e_time = time.time()
         self.log(
             "call took {}".format(

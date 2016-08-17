@@ -72,6 +72,7 @@ class Parser(object):
     def _add_debug_parser(self, sub_parser):
         _act = sub_parser.add_parser("debug", help="debug service")
         _act.set_defaults(childcom="debug")
+        _act.add_argument("--debug-flag", default=False, action="store_true", help="enabled DEBUG flag [%(default)s]")
         _act.add_argument("service", nargs=1, type=str, help="service to debug")
         _act.add_argument("debug_args", nargs="*", type=str, help="extra debug arguments")
 
