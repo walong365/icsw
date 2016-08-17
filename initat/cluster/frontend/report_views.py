@@ -429,17 +429,29 @@ class PDFReportGenerator(object):
 
             for _dict in data:
                 s = str(_dict[key])
-                s_new = ""
 
-                wrap_idx = 0
+                s_new_comps = ""
 
-                for i in range(len(s)):
-                    width = stringWidth(s[wrap_idx:i+1], "Helvetica", 6)
-                    if ((width / available_width) * 100.0) > avail_width_percentage:
-                        wrap_idx = i
-                        s_new += "\n"
-                    s_new += s[i]
-                _dict[key] = s_new
+                comps = s.split("\n")
+                for comp in comps:
+                    s_new = ""
+                    wrap_idx = 0
+
+                    for i in range(len(comp)):
+                        width = stringWidth(s[wrap_idx:i+1], "Helvetica", 6)
+                        if ((width / available_width) * 101.5) > avail_width_percentage:
+                            wrap_idx = i
+                            s_new += "\n"
+                        s_new += comp[i]
+
+                    if s_new_comps:
+                        s_new_comps += "\n{}".format(s_new)
+                    else:
+                        s_new_comps = s_new
+
+
+
+                _dict[key] = s_new_comps
 
         header_list.append(Rule((0, 42), self.page_format[0] - (self.margin * 2), thickness=2))
         detail_list.append(Rule((0, 0), self.page_format[0] - (self.margin * 2), thickness=0.1))
@@ -447,7 +459,43 @@ class PDFReportGenerator(object):
         rpt.pageheader = Band(header_list)
         rpt.detailband = Band(detail_list)
 
-    def generate_network_report(self):
+    def __generate_general_device_overview_report(self):
+        report = GenericReport()
+
+        _buffer = BytesIO()
+        canvas = Canvas(_buffer, self.page_format)
+
+        data = _generate_hardware_info_data_dict(self._devices, self.general_settings["assetbatch_selection_mode"])
+
+        data = sorted(data, key=lambda k: k['group'])
+        if data:
+            section_number = self.__generate_section_number("General", "Device Overview")
+            report.generate_bookmark("Device Overview")
+
+            rpt = PollyReportsReport(data)
+            rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+                                              getvalue=lambda x: x['group'],
+                                              format=lambda x: "Group: {}".format(x)), ],
+                                     getvalue=lambda x: x["group"])]
+
+            header_names = [("Device Name", "name", 10.0),
+                            ("CPU Info", "cpu", 18.0),
+                            ("GPU Info", "gpu", 18.0),
+                            ("Memory Info", "memory", 18.0),
+                            ("HDD Info", "hdd", 18.0),
+                            ("Partition Info", "partition", 18.0)
+                            ]
+
+            self.__config_report_helper("{} Device Overview".format(section_number), header_names, rpt, data)
+
+            rpt.generate(canvas)
+            canvas.save()
+            report.number_of_pages += rpt.pagenumber
+            report.add_to_report(_buffer)
+            self.reports.append(report)
+            self.current_page_num += rpt.pagenumber
+
+    def __generate_network_report(self):
         from initat.cluster.backbone.models import network
 
         report = GenericReport()
@@ -1033,6 +1081,9 @@ class PDFReportGenerator(object):
         elements = []
 
         style_sheet = getSampleStyleSheet()
+        style_sheet.add(ParagraphStyle(name='courier',
+                                       fontName='Courier',
+                                       fontSize=12))
 
         available_width = self.page_format[0] - (self.margin * 2)
 
@@ -1065,7 +1116,7 @@ class PDFReportGenerator(object):
         data = [["Name", "Serialnumber", "Size"]]
         for hdd in hardware_report_ar.hdds.all():
             data.append([Paragraph(str(hdd.name), style_sheet["BodyText"]),
-                         Paragraph(str(hdd.serialnumber), style_sheet["BodyText"]),
+                         Paragraph(str(hdd.serialnumber), style_sheet["courier"]),
                          Paragraph(sizeof_fmt(hdd.size), style_sheet["BodyText"])])
 
         p0_3 = Paragraph('<b>HDDs:</b>', style_sheet["BodyText"])
@@ -1612,7 +1663,10 @@ class PDFReportGenerator(object):
 
     def generate_report(self):
         if self.general_settings["network_report_overview_module_selected"]:
-            self.generate_network_report()
+            self.__generate_network_report()
+
+        if self.general_settings["general_device_overview_module_selected"]:
+            self.__generate_general_device_overview_report()
 
         group_device_dict = {}
         for _device in self._devices:
@@ -1783,11 +1837,16 @@ class XlsxReportGenerator(object):
         workbooks = []
 
         if self.general_settings['network_report_overview_module_selected']:
-            workbook = Workbook()
-            workbook.remove_sheet(workbook.active)
-            self.generate_network_report(workbook)
+            workbook = self.__generate_network_report()
 
             workbooks.append((workbook, "Network_Overview.xlsx"))
+
+        if self.general_settings['general_device_overview_module_selected']:
+            workbook = self.__generate_general_device_overview_report()
+
+            workbooks.append((workbook, "Device_Overview.xlsx"))
+
+
 
         idx = 1
         for _device in self.devices:
@@ -1898,8 +1957,11 @@ class XlsxReportGenerator(object):
         for i in range(len(data_rows)):
             sheet.append(data_rows[i])
 
-    def generate_network_report(self, workbook):
+    def __generate_network_report(self):
         from initat.cluster.backbone.models import network
+
+        workbook = Workbook()
+        workbook.remove_sheet(workbook.active)
 
         networks = network.objects.all()
 
@@ -1932,6 +1994,40 @@ class XlsxReportGenerator(object):
                 ]
 
                 sheet.append(row)
+
+        return workbook
+
+    def __generate_general_device_overview_report(self):
+        workbook = Workbook()
+
+
+        data = _generate_hardware_info_data_dict(self.devices, self.general_settings["assetbatch_selection_mode"])
+
+        if data:
+            workbook.remove_sheet(workbook.active)
+
+            sheet = workbook.create_sheet("General Device Overview")
+            sheet.title = "General Device Overview"
+
+            header_row = ["Name", "Group", "CPU Info", "GPU Info", "Memory Info", "HDD Info", "Partition Info"]
+
+            sheet.append(header_row)
+
+            for _row in data:
+                row = [
+                    _row['name'],
+                    _row['group'],
+                    _row['cpu'],
+                    _row['gpu'],
+                    _row['memory'],
+                    _row['hdd'],
+                    _row['partition']
+                ]
+
+                sheet.append(row)
+
+
+        return workbook
 
 class GenerateReportXlsx(View):
     @method_decorator(login_required)
@@ -2401,3 +2497,61 @@ def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
             #sorted_runs[8] = ar
 
     return [sorted_runs[idx] for idx in sorted_runs]
+
+def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
+    data = []
+
+    for _device in _devices:
+        selected_runs = _select_assetruns_for_device(_device, assetbatch_selection_mode)
+
+        cpu_str = "N/A"
+        gpu_str = "N/A"
+        hdd_str = "N/A"
+        partition_str = "N/A"
+        memory_str = "N/A"
+
+        for assetrun in selected_runs:
+            if AssetType(assetrun.run_type) == AssetType.PRETTYWINHW:
+                for cpu in assetrun.cpus.all():
+                    if cpu_str != "N/A":
+                        cpu_str += "\n{}".format(str(cpu))
+                    else:
+                        cpu_str = str(cpu)
+
+                for gpu in assetrun.gpus.all():
+                    if gpu_str != "N/A":
+                        gpu_str += "\n{}".format(str(gpu))
+                    else:
+                        gpu_str = str(gpu)
+
+                for hdd in assetrun.hdds.all():
+                    if hdd_str != "N/A":
+                        hdd_str += "\n{}".format(str(hdd))
+                    else:
+                        hdd_str = str(hdd)
+
+                for partition in assetrun.partitions.all():
+                    if partition_str != "N/A":
+                        partition_str += "\n{}".format(str(partition))
+                    else:
+                        partition_str = str(partition)
+
+                for memory_module in assetrun.memory_modules.all():
+                    if memory_str != "N/A":
+                        memory_str += "\n{}".format(str(memory_module))
+                    else:
+                        memory_str = str(memory_module)
+
+        o = {
+            'name': _device.full_name,
+            'group': _device.device_group_name(),
+            'cpu': cpu_str,
+            'gpu': gpu_str,
+            'hdd': hdd_str,
+            'partition': partition_str,
+            'memory': memory_str
+        }
+
+        data.append(o)
+
+    return data

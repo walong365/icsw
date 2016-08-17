@@ -905,12 +905,12 @@ class AssetHWMemoryEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "MemoryEntry[BankLabel:{}|FormFactor:{}|Memorytype:{}|Manufacturer:{}|Capacity:{}]".format(
+        return "BankLabel:{} FormFactor:{} Memorytype:{} Manufacturer:{} Capacity:{}".format(
             self.banklabel,
-            self.formfactor,
-            self.memorytype,
+            self.get_name_of_form_factor(),
+            self.get_name_of_memory_type(),
             self.manufacturer,
-            self.capacity
+            sizeof_fmt(self.capacity)
         )
 
     def get_name_of_form_factor(self):
@@ -946,7 +946,7 @@ class AssetHWCPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "CPUEntry[CPUname:{}|Numberofcores:{}]".format(self.cpuname, self.numberofcores)
+        return "{} [Cores:{}]".format(self.cpuname, self.numberofcores)
 
 
 class AssetHWGPUEntry(models.Model):
@@ -959,7 +959,7 @@ class AssetHWGPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "GPUEntry[GPUname:{}|Driverversion:{}]".format(self.gpuname, self.driverversion)
+        return "{} [Version:{}]".format(self.gpuname, self.driverversion)
 
 
 class AssetHWHDDEntry(models.Model):
@@ -974,7 +974,7 @@ class AssetHWHDDEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "HDDEntry[Name:{}|Serialnumber:{}|Size:{}]".format(self.name, self.serialnumber, self.size)
+        return "{} [Serialnumber:{} Size:{}]".format(self.name, self.serialnumber, sizeof_fmt(self.size))
 
 
 class AssetHWLogicalEntry(models.Model):
@@ -989,7 +989,7 @@ class AssetHWLogicalEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "PartitionEntry[Name:{}|Size:{}|Free:{}]".format(self.name, self.size, self.free)
+        return "{} [Size:{} Free:{}]".format(self.name, sizeof_fmt(self.size), sizeof_fmt(self.free))
 
 
 class AssetHWDisplayEntry(models.Model):
@@ -1006,7 +1006,7 @@ class AssetHWDisplayEntry(models.Model):
     manufacturer = models.TextField(null=True)
 
     def __unicode__(self):
-        return "DisplayEntry[Name:{}|Type:{}|xpixels:{}|ypixels:{}|manufacturer:{}]".format(
+        return "{} [Type:{} xpixels:{} ypixels:{} manufacturer:{}]".format(
             self.name,
             self.type,
             self.xpixels,
@@ -1692,3 +1692,12 @@ class StaticAssetFieldValue(models.Model):
                 setattr(self, _local, in_dict[_short])
             self.change_user = user
             self.save()
+
+def sizeof_fmt(num, suffix='B'):
+    if num is None:
+        return "N/A"
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
