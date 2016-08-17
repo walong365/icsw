@@ -47,25 +47,22 @@ angular.module(
     }
 ]).service("DeviceOverviewService",
 [
-    "Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q", "icswAcessLevelService",
+    "Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q",
     "icswComplexModalService", "DeviceOverviewSelection", "DeviceOverviewSettings",
 (
-    Restangular, $rootScope, $templateCache, $compile, $uibModal, $q, icswAcessLevelService,
+    Restangular, $rootScope, $templateCache, $compile, $uibModal, $q,
     icswComplexModalService, DeviceOverviewSelection, DeviceOverviewSettings
 ) ->
     return (event) ->
         # create new modal for device
         # device object with access_levels
         _defer = $q.defer()
-        devicelist = DeviceOverviewSelection.get_selection()
-        sub_scope = $rootScope.$new()
-        console.log "devlist", devicelist
-        icswAcessLevelService.install(sub_scope)
-        sub_scope.popupmode = 1
-        sub_scope.devicelist = devicelist
+        sub_scope = $rootScope.$new(true)
+        # console.log "devlist", devicelist
+        sub_scope.devicelist = DeviceOverviewSelection.get_selection()
         icswComplexModalService(
             {
-                message: $compile("<icsw-device-overview></icsw-device-overview>")(sub_scope)
+                message: $compile("<icsw-device-overview icsw-popup-mode='1' icsw-device-list='devicelist'></icsw-device-overview>")(sub_scope)
                 title: "Device Info"
                 css_class: "modal-wide modal-tall"
                 closable: true
@@ -100,65 +97,48 @@ angular.module(
     }
 ]).directive("icswDeviceOverview",
 [
-    "$compile", "DeviceOverviewSettings", "$templateCache",
+    "$compile", "DeviceOverviewSettings", "$templateCache", "icswAcessLevelService",
 (
-    $compile, DeviceOverviewSettings, $templateCache
+    $compile, DeviceOverviewSettings, $templateCache, icswAcessLevelService,
 ) ->
     return {
         restrict: "EA"
         replace: true
-        scope: false
-        compile: (element, attrs) ->
-            return (scope, iElement, Attrs) ->
-                scope.pk_list = {
-                    general: []
-                    network: []
-                    config: []
-                    status_history: []
-                    livestatus: []
-                    graphing: []
-                    device_variable: []
-                }
-                scope.dev_list = {
-                    general: []
-                    network: []
-                    config: []
-                    status_history: []
-                    livestatus: []
-                    graphing: []
-                    device_variable: []
-                }
-                for key of scope.pk_list
-                    scope["#{key}_active"] = false
-                # pk list of devices
-                scope.dev_pk_list = (dev.idx for dev in scope.devicelist)
-                # pk list of devices without meta-devices
-                scope.dev_pk_nmd_list = (dev.idx for dev in scope.devicelist when !dev.is_meta_device)
-                scope.device_nmd_list = (dev for dev in scope.devicelist when !dev.is_meta_device)
-                _cur_mode = DeviceOverviewSettings.get_mode()
-                scope["#{_cur_mode}_active"] = true
-                scope.activate = (name) ->
-                    DeviceOverviewSettings.set_mode(name)
-                    if name in ["network", "status_history", "livestatus", "category", "location"]
-                        scope.pk_list[name] = scope.device_nmd_list
-                        scope.dev_list[name] = scope.devicelist
-                    else if name in ["config", "graphing", "device_variable"]
-                        scope.pk_list[name] = scope.devicelist
-                        scope.dev_list[name] = scope.devicelist
-                if scope.dev_pk_list.length > 1
-                    scope.addon_text = " (#{scope.devicelist.length})"
-                else
-                    scope.addon_text = ""
-                if scope.dev_pk_nmd_list.length > 1
-                    scope.addon_text_nmd = " (#{scope.device_nmd_list.length})"
-                else
-                    scope.addon_text_nmd = ""
-                # destroy old subscope, important
-                scope.$on("$destroy", () -> console.log "Destroy Device-overview scope")
-                new_el = $compile($templateCache.get("icsw.device.info"))(scope)
-                iElement.children().remove()
-                iElement.append(new_el)
-                console.log "Overview init"
+        scope: {
+            devicelist: "=icswDeviceList"
+            popupmode: "@icswPopupMode"
+        }
+        link: (scope, element, attrs) ->
+            # console.log "LINK", scope.popupmode
+            # console.log "DL=", scope.devicelist
+            icswAcessLevelService.install(scope)
+            # number of total devices
+            scope.total_sel = scope.devicelist.length
+            # number of normal (== non-meta) devices
+            scope.normal_sel = (dev.idx for dev in scope.devicelist when !dev.is_meta_device).length
+            scope.device_nmd_list = (dev for dev in scope.devicelist when !dev.is_meta_device)
+            scope.activate = (name) ->
+                # remember setting
+                DeviceOverviewSettings.set_mode(name)
+            if scope.total_sel > 1
+                scope.addon_text = " (#{scope.total_sel})"
+            else
+                scope.addon_text = ""
+            if scope.normal_sel > 1
+                scope.addon_text_nmd = " (#{scope.normal_sel})"
+            else
+                scope.addon_text_nmd = ""
+            # destroy old subscope, important
+            scope.$on(
+                "$destroy",
+                () ->
+                    console.log "Destroy Device-overview scope"
+            )
+            scope.active_tab = 0
+            new_el = $compile($templateCache.get("icsw.device.info"))(scope)
+            element.children().remove()
+            element.append(new_el)
+            console.log "Overview init"
     }
 ]).directive("icswSimpleDeviceInfo",
 [
