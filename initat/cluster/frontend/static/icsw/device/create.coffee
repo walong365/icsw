@@ -58,7 +58,10 @@ angular.module(
             (data) ->
                 $scope.device_tree = data[0]
                 $scope.peer_tree = data[1]
-                $scope.device_data.device_group = (entry for entry in $scope.device_tree.group_list when $scope.device_tree.ignore_cdg(entry))[0].name
+                # present non-system device group
+                ns_dg = (entry for entry in $scope.device_tree.group_list when $scope.device_tree.ignore_cdg(entry))
+                if ns_dg.length
+                    $scope.device_data.device_group = ns_dg[0].name
                 if $scope.peer_tree.peer_list.length
                     $scope.device_data.peer = $scope.peer_tree.peer_list[0].idx
 
