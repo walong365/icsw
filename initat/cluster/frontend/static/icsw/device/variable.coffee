@@ -675,7 +675,7 @@ device_variable_module = angular.module(
     class icswStaticAssetObject
         constructor: (device) ->
             @device = device
-            console.log "d", @device
+            # console.log "d", @device
 ]).controller("icswDeviceStaticAssetOverviewCtrl",
 [
     "$scope", "icswDeviceVariableScopeTreeService", "icswDeviceTreeService", "$q",

@@ -474,10 +474,16 @@ angular.module(
                 blockUI.stop()
         )
 
-]).directive("icswDeviceLocationOverview", ["$templateCache", ($templateCache) ->
+]).directive("icswDeviceLocationOverview",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
-         restrict : "EA"
+        restrict : "EA"
         template: $templateCache.get("icsw.device.location.overview")
+        scope: true
         controller: "icswDeviceLocationCtrl"
     }
 ]).directive("icswDeviceLocationList",

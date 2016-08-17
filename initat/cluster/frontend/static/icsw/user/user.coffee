@@ -90,6 +90,9 @@ user_module = angular.module(
             @user = user[0]
             @build_luts()
 
+        is_authenticated: () =>
+            return @user.is_authenticated
+
         update_user: () =>
             _defer = $q.defer()
             if @user
@@ -138,7 +141,8 @@ user_module = angular.module(
                 @_store_dc_filter()
 
         _store_dc_filter: () =>
-            @set_json_var(@dc_var_name, angular.toJson(@__dc_filter))
+            if @user.is_authenticated
+                @set_json_var(@dc_var_name, angular.toJson(@__dc_filter))
 
         build_luts: () =>
             # create luts (for vars)
@@ -156,7 +160,7 @@ user_module = angular.module(
             if @has_var(name)
                 return @var_lut[name]
             else
-                return def_val
+                return {name: name, value: def_val, $$default: true}
 
         delete_var: (name) =>
             _del = $q.defer()
@@ -213,7 +217,7 @@ user_module = angular.module(
                     new_var
                 ).then(
                     (nv) ->
-                        console.log "new var=", nv
+                        # console.log "new var=", nv
                         _wait.resolve(nv)
                 )
             _wait.promise.then(

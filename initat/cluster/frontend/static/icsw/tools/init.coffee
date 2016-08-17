@@ -659,6 +659,7 @@ angular.module(
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
         _ICSW_RMS_UPDATE_DATA: "_icsw.rms.update.data"
         _ICSW_RRD_CROPRANGE_SET: "_icsw.rrd.croprange.set"
+        _ICSW_DEVICE_TABS_CHANGED: "_icsw.device.tabs.changed"
     }
     return (name) ->
         if name not of _dict

@@ -79,10 +79,42 @@ angular.module(
         return _defer.promise
         # my_mixin.edit(null, devicelist[0])
         # todo: destroy sub_scope
-]).service("DeviceOverviewSettings", [() ->
+]).service("DeviceOverviewSettings",
+[
+    "icswUserService", "ICSW_SIGNALS", "$rootScope",
+(
+    icswUserService, ICSW_SIGNALS, $rootScope,
+) ->
     # default value
-    def_mode = "general"
+    _defs = {
+        active_tab: "general"
+        disabled_tabs: ""
+    }
     is_active = false
+    user = undefined
+    VAR_NAME_ACT_TAB = "$$ICSW_MODE_ACTIVE_TAB"
+    VAR_NAME_DISABLED_TABS = "$$ICSW_DISABLED_TABS"
+
+    _load_user = () ->
+        icswUserService.load("$$icsw_do_settings").then(
+            (cur_user) ->
+                user = cur_user
+                if user.is_authenticated()
+                    _defs.active_tab = user.get_var(VAR_NAME_ACT_TAB, _defs.mode).value
+                    _defs.disabled_tabs = user.get_var(VAR_NAME_DISABLED_TABS, _defs.disabled_tabs).value
+        )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (new_user) ->
+        _load_user()
+    )
+
+    _load_user()
+
+    set_var = (var_name, key, value) ->
+        _defs[key] = value
+        if user?
+            user.set_string_var(var_name, value)
+
     return {
         is_active: () ->
             return is_active
@@ -90,16 +122,52 @@ angular.module(
             is_active = true
         close: () ->
             is_active = false
+
+        # mode calls
         get_mode : () ->
-            return def_mode
+            return _defs.active_tab
         set_mode: (mode) ->
-            def_mode = mode
+            return set_var(VAR_NAME_ACT_TAB, "active_tab", mode)
+
+        # disabled tabs calls
+        get_disabled_tabs: () ->
+            return _defs.disabled_tabs
+
+        set_disabled_tabs: (tabs) ->
+            return set_var(VAR_NAME_DISABLED_TABS, "disabled_tabs", tabs)
     }
+]).service("icswDeviceOverviewTabTemplate",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    class icswDeviceOverviewTabTemplate
+        constructor: (@name, @with_meta, @right) ->
+            @template = $templateCache.get("icsw.device.info.tab.#{@name}")
+
+]).service("icswDeviceOverviewTabs",
+[
+    "icswDeviceOverviewTabTemplate",
+(
+    icswDeviceOverviewTabTemplate,
+) ->
+    _list = [
+        new icswDeviceOverviewTabTemplate("general", true, "")
+        new icswDeviceOverviewTabTemplate("network", false, "backbone.device.change_network")
+        new icswDeviceOverviewTabTemplate("config", true, "backbone.device.change_config")
+        new icswDeviceOverviewTabTemplate("category", false, "backbone.device.change_category")
+        new icswDeviceOverviewTabTemplate("location", false, "backbone.device.change_location")
+        new icswDeviceOverviewTabTemplate("variable", true, "backbone.device.change_variables")
+    ]
+    return _list
 ]).directive("icswDeviceOverview",
 [
     "$compile", "DeviceOverviewSettings", "$templateCache", "icswAcessLevelService",
+    "icswDeviceOverviewTabs", "ICSW_SIGNALS",
 (
     $compile, DeviceOverviewSettings, $templateCache, icswAcessLevelService,
+    icswDeviceOverviewTabs, ICSW_SIGNALS,
 ) ->
     return {
         restrict: "EA"
@@ -109,37 +177,134 @@ angular.module(
             popupmode: "@icswPopupMode"
         }
         link: (scope, element, attrs) ->
-            # console.log "LINK", scope.popupmode
-            # console.log "DL=", scope.devicelist
-            icswAcessLevelService.install(scope)
-            # number of total devices
-            scope.total_sel = scope.devicelist.length
-            # number of normal (== non-meta) devices
-            scope.normal_sel = (dev.idx for dev in scope.devicelist when !dev.is_meta_device).length
-            scope.device_nmd_list = (dev for dev in scope.devicelist when !dev.is_meta_device)
-            scope.activate = (name) ->
-                # remember setting
-                DeviceOverviewSettings.set_mode(name)
-            if scope.total_sel > 1
-                scope.addon_text = " (#{scope.total_sel})"
-            else
-                scope.addon_text = ""
-            if scope.normal_sel > 1
-                scope.addon_text_nmd = " (#{scope.normal_sel})"
-            else
-                scope.addon_text_nmd = ""
+
             # destroy old subscope, important
             scope.$on(
                 "$destroy",
                 () ->
+                    if sub_scope?
+                        sub_scope.$destroy()
                     console.log "Destroy Device-overview scope"
             )
-            scope.active_tab = 0
-            new_el = $compile($templateCache.get("icsw.device.info"))(scope)
-            element.children().remove()
-            element.append(new_el)
-            console.log "Overview init"
+
+            scope.$on(ICSW_SIGNALS("_ICSW_DEVICE_TABS_CHANGED"), () ->
+                build_template()
+            )
+
+            sub_scope = undefined
+
+            build_scope= () ->
+                sub_scope = scope.$new(true)
+                icswAcessLevelService.install(sub_scope)
+                # copy devicelist
+                sub_scope.devicelist = (entry for entry in scope.devicelist)
+                sub_scope.popupmode = scope.popupmode
+                # number of total devices
+                sub_scope.total_sel = scope.devicelist.length
+                # number of normal (== non-meta) devices
+                sub_scope.normal_sel = (dev.idx for dev in scope.devicelist when !dev.is_meta_device).length
+                sub_scope.device_nmd_list = (dev for dev in scope.devicelist when !dev.is_meta_device)
+
+                sub_scope.activate = (name) ->
+                    # remember setting
+                    DeviceOverviewSettings.set_mode(name)
+
+                if sub_scope.total_sel > 1
+                    sub_scope.addon_text = " (#{sub_scope.total_sel})"
+                else
+                    sub_scope.addon_text = ""
+                if sub_scope.normal_sel > 1
+                    sub_scope.addon_text_nmd = " (#{sub_scope.normal_sel})"
+                else
+                    sub_scope.addon_text_nmd = ""
+                return sub_scope
+
+
+            build_template = () ->
+                if sub_scope?
+                    sub_scope.$destroy()
+                sub_scope = build_scope()
+                # build template
+                template_f = []
+                _valid_names = []
+                _disabled_tabs = DeviceOverviewSettings.get_disabled_tabs().split(",")
+                for tab in icswDeviceOverviewTabs
+                    if tab.with_meta and sub_scope.total_sel
+                        _add = true
+                    else if not tab.with_meta and sub_scope.normal_sel
+                        _add = true
+                    else
+                        _add = false
+                    if tab.name in _disabled_tabs
+                        _add = false
+                    else if tab.right
+                        if not sub_scope.acl_read(null, tab.right)
+                            _add = false
+                    if _add
+                        _valid_names.push(tab.name)
+                        template_f.push("<uib-tab select='activate(\"#{tab.name}\")'>#{tab.template}</uib-tab>")
+
+                _valid_names.push("$$modify")
+                template_f.push($templateCache.get("icsw.device.info.tab.tab_setup"))
+
+                sub_scope.active_tab = _.indexOf(_valid_names, DeviceOverviewSettings.get_mode())
+                if sub_scope.active_tab < 0
+                    sub_scope.active_tab = 0
+
+                template = template_f.join("")
+                template = "<uib-tabset active='active_tab'>#{template}</uib-tabset>"
+                # console.log "template=", template
+                new_el = $compile(template)(sub_scope)
+                element.children().remove()
+                element.append(new_el)
+
+            build_template()
     }
+]).directive("icswDeviceInfoTabModify",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        controller: "icswDeviceInfoTabModifyCtrl"
+        template: $templateCache.get("icsw.device.info.tab.modify")
+        scope: true
+    }
+]).controller("icswDeviceInfoTabModifyCtrl",
+[
+    "$scope", "icswDeviceOverviewTabs", "DeviceOverviewSettings", "ICSW_SIGNALS",
+(
+    $scope, icswDeviceOverviewTabs, DeviceOverviewSettings, ICSW_SIGNALS,
+) ->
+    $scope.struct = {
+        # tab list
+        tab_list: []
+        # currently disabled
+        disabled_str: ""
+    }
+    update = () ->
+        $scope.struct.disabled_str = DeviceOverviewSettings.get_disabled_tabs()
+        disabled_tabs = $scope.struct.disabled_str.split(",")
+        $scope.struct.tab_list = []
+        for entry in icswDeviceOverviewTabs
+            $scope.struct.tab_list.push(
+                {
+                    name: entry.name
+                    $$active: entry.name not in disabled_tabs
+                }
+            )
+
+    update()
+
+    $scope.modify_tabs = ($event) ->
+        _new_disabled_str = (entry.name for entry in $scope.struct.tab_list when not entry.$$active).join(",")
+        if _new_disabled_str != $scope.struct.disabled_str
+            $scope.struct.disabled_str = _new_disabled_str
+            DeviceOverviewSettings.set_disabled_tabs($scope.struct.disabled_str)
+            $scope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_TABS_CHANGED"))
+
 ]).directive("icswSimpleDeviceInfo",
 [
     "$templateCache", "$compile",

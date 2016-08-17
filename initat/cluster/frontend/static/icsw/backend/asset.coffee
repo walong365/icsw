@@ -171,7 +171,6 @@ device_asset_module = angular.module(
 ) ->
     class icswStaticAssetTemplateTree
         constructor: (list) ->
-            console.log "NEW TREE"
             @list = []
             @update(list)
 
