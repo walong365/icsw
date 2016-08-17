@@ -273,10 +273,10 @@ angular.module(
     }
 ]).controller("icswConfigCategoryTreeGoogleMapCtrl",
 [
-    "$scope", "$templateCache", "uiGmapGoogleMapApi", "$timeout", "$rootScope", "ICSW_SIGNALS",
+    "$scope", "$templateCache", "$timeout", "$rootScope", "ICSW_SIGNALS", "icswGoogleMapConfig",
     "icswGoogleMapsLivestatusOverlay", "icswGoogleMapsMarkerOverlay", "uiGmapIsReady", "icswGoogleMapsHelper",
 (
-    $scope, $templateCache, uiGmapGoogleMapApi, $timeout, $rootScope, ICSW_SIGNALS,
+    $scope, $templateCache, $timeout, $rootScope, ICSW_SIGNALS, icswGoogleMapConfig,
     icswGoogleMapsLivestatusOverlay, icswGoogleMapsMarkerOverlay, uiGmapIsReady, icswGoogleMapsHelper,
 ) ->
 
@@ -412,7 +412,7 @@ angular.module(
         if $scope.struct.map_active and $scope.locations? and $scope.locations.length and not $scope.struct.maps_ready
             # console.log "Zoom"
             build_markers()
-            uiGmapGoogleMapApi.then(
+            icswGoogleMapConfig.init().then(
                 (maps) ->
                     $scope.struct.maps_ready = true
                     $scope.struct.google_maps = maps

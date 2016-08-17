@@ -63,6 +63,7 @@ class get_cluster_info(View):
             "DATABASE_VERSION": settings.ICSW_DATABASE_VERSION,
             "SOFTWARE_VERSION": settings.ICSW_SOFTWARE_VERSION,
             "MODELS_VERSION": settings.ICSW_MODELS_VERSION,
+            "GOOGLE_MAPS_KEY": settings.ICSW_GOOGLE_MAPS_KEY,
         }
         for _key, _value in device_variable.objects.values_list("name", "val_str").filter(
             Q(name__in=["CLUSTER_NAME", "CLUSTER_ID"]) &

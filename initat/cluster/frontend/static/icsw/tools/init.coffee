@@ -161,18 +161,46 @@ angular.module(
         clear_token: () ->
             csrf_token = undefined
     }
-]).config([
-    "uiGmapGoogleMapApiProvider",
+]).service("icswGoogleMapConfig",
+[
+    "uiGmapMapScriptLoader", "$q", "icswSystemLicenseDataService",
 (
-    uiGmapGoogleMapApiProvider,
+    uiGmapMapScriptLoader, $q, icswSystemLicenseDataService,
 ) ->
-    uiGmapGoogleMapApiProvider.configure(
-        {
-            #  key: 'your api key'
-            v: '3.23'  # defaults to latest 3.X anyhow
-            libraries: 'weather,geometry,visualization'
-        }
-    )
+    _is_init = false
+    _map = undefined
+
+    init = () ->
+        defer = $q.defer()
+        if _is_init
+            defer.resolve(_map)
+        else
+            icswSystemLicenseDataService.load("gmap_init").then(
+                (data) ->
+                    uiGmapMapScriptLoader.load(
+                        {
+                            # defaults, please check when updating google-maps-angular !
+                            key: data.cluster_info.GOOGLE_MAPS_KEY
+                            v: '3.24'  # defaults to latest 3.X anyhow
+                            libraries: 'weather,geometry,visualization'
+                            transport: "https"
+                            china: false
+                            language: "en"
+                            preventLoad: false
+                        }
+                    ).then(
+                        (map) ->
+                            _is_init = true
+                            _map = map
+                            defer.resolve(_map)
+                    )
+            )
+        return defer.promise
+
+    return {
+        init: () ->
+            return init()
+    }
 ]).config([
     "blockUIConfig",
 (
