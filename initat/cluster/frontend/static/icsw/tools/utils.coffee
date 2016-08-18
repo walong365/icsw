@@ -61,7 +61,7 @@ angular.module(
         <!--
         <icsw-tools-button type="select_devices" ng-click="do_select()"></icsw-tools-button>
         -->
-        <uib-alert type="warning" style="max-width: 500px">No devices selected.</uib-alert>
+        <div uib-alert class="alert-warning" style="max-width: 500px">No devices selected.</div>
     </div>
     <div ng-transclude ng-if="devList.length > 0"></div>
 </div>

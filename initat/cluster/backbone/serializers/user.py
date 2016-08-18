@@ -151,10 +151,10 @@ class user_serializer(serializers.ModelSerializer):
         return _login_name
 
     def get_is_anonymous(self, obj):
-        return self.context["is_anonymous"]
+        return self.context.get("is_anonymous", False)
 
     def get_is_authenticated(self, obj):
-        return self.context["is_authenticated"]
+        return self.context.get("is_authenticated", True)
 
     class Meta:
         model = user

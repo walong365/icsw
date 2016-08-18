@@ -33,7 +33,9 @@ from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_hos
     mon_icinga_log_raw_service_downtime_data
 from initat.tools import logging_tools
 
-__all__ = ["icinga_log_aggregator"]
+__all__ = [
+    "icinga_log_aggregator"
+]
 
 
 # itertools recipe
@@ -58,8 +60,10 @@ class icinga_log_aggregator(object):
         from initat.md_config_server.config import global_config
         if global_config["ENABLE_ICINGA_LOG_PARSING"]:  # this is actually also checked in icinga_log_reader.update()
             if 'sqlite' in settings.DATABASES['default']['ENGINE']:
-                self.log("log aggregation is not supported with the sqlite database backend",
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "log aggregation is not supported with the sqlite database backend",
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 self._host_flapping_cache = mon_icinga_log_raw_host_flapping_data.objects.all().order_by('date')
                 self._service_flapping_cache = mon_icinga_log_raw_service_flapping_data.objects.all().order_by('date')

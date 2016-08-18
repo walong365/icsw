@@ -161,7 +161,7 @@
             Number of system partitions: {{ layout.sys_partition_set.length }}
         </li>
         <li class="list-group-item" ng-show="struct.error_list.length">
-            <div uib-alert type="danger">Problems: {{ struct.error_list.length }}</div>
+            <div uib-alert class="alert-danger">Problems: {{ struct.error_list.length }}</div>
             <ul class="list-group">
                 <li ng-repeat="error in struct.error_list" class="list-group-item">
                     <span text-class="warning">{{ error.msg }}</span>
