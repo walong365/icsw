@@ -157,8 +157,8 @@ sources = {
             "frontend/static/js/jquery.blockUI.js",
             # datetime manipulation done right
             "frontend/static/js/moment-with-locales.js",
-            # recurring moment handling
-            "frontend/static/js/moment-recur.js",
+            # recurring moment handling, not needed right now
+            # "frontend/static/js/moment-recur.js",
             "frontend/static/js/cropper.js",
             "frontend/static/js/spin.js",
             "frontend/static/js/ladda.js",
