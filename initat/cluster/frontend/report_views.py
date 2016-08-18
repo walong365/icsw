@@ -25,6 +25,7 @@ import json
 import logging
 import datetime
 import tempfile
+import os
 
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
@@ -53,6 +54,13 @@ from initat.cluster.backbone.models import device, device_variable, AssetType, P
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
+
+from initat.cluster.settings import FILE_ROOT
+
+pdfmetrics.registerFont(TTFont('Arial', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "arial.ttf")))
+pdfmetrics.registerFont(TTFont('Arial-Bold', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "arialbd.ttf")))
 
 logger = logging.getLogger(__name__)
 
@@ -372,7 +380,7 @@ class PDFReportGenerator(object):
 
         self.sections = {}
 
-        self.page_num_info_dict = {}
+        self.creation_date = datetime.datetime.now()
 
     def __generate_section_number(self, *sections):
         root_section = self.sections
@@ -417,15 +425,15 @@ class PDFReportGenerator(object):
                                          width=self.logo_width,
                                          height=self.logo_height,
                                          getvalue=self.__get_logo_helper),
-                       Element((0, 0), ("Times-Bold", 20), text=header)]
+                       Element((0, 0), ("Arial-Bold", 16), text=header)]
 
         detail_list = []
 
         position = 0
 
         for header_name, key, avail_width_percentage in header_names_left:
-            header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name))
-            detail_list.append(Element((position, 0), ("Helvetica", 6), key=key))
+            header_list.append(Element((position, 24), ("Arial", 12), text=header_name))
+            detail_list.append(Element((position, 0), ("Arial", 6), key=key))
 
             position += available_width * (avail_width_percentage / 100.0)
 
@@ -440,7 +448,7 @@ class PDFReportGenerator(object):
                     wrap_idx = 0
 
                     for i in range(len(comp)):
-                        width = stringWidth(s[wrap_idx:i+1], "Helvetica", 6)
+                        width = stringWidth(s[wrap_idx:i+1], "Arial", 6)
                         if ((width / available_width) * 101.5) > avail_width_percentage:
                             wrap_idx = i
                             s_new += "\n"
@@ -456,8 +464,8 @@ class PDFReportGenerator(object):
         position = self.page_format[0] - (self.margin * 2)
 
         for header_name, key, avail_width_percentage in reversed(header_names_right):
-            header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name, align="right"))
-            detail_list.append(Element((position, 0), ("Helvetica", 6), key=key, align="right"))
+            header_list.append(Element((position, 24), ("Arial", 12), text=header_name, align="right"))
+            detail_list.append(Element((position, 0), ("Arial", 6), key=key, align="right"))
 
             position -= available_width * (avail_width_percentage / 100.0)
 
@@ -472,7 +480,7 @@ class PDFReportGenerator(object):
                     wrap_idx = 0
 
                     for i in range(len(comp)):
-                        width = stringWidth(s[wrap_idx:i+1], "Helvetica", 6)
+                        width = stringWidth(s[wrap_idx:i+1], "Arial", 6)
                         if ((width / available_width) * 101.5) > avail_width_percentage:
                             wrap_idx = i
                             s_new += "\n"
@@ -505,7 +513,7 @@ class PDFReportGenerator(object):
             report.generate_bookmark("Device Overview")
 
             rpt = PollyReportsReport(data)
-            rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+            rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
                                               getvalue=lambda x: x['group'],
                                               format=lambda x: "Group: {}".format(x)), ],
                                      getvalue=lambda x: x["group"])]
@@ -560,7 +568,7 @@ class PDFReportGenerator(object):
             report.generate_bookmark("Networks")
 
             rpt = PollyReportsReport(data)
-            rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+            rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
                                               getvalue=lambda x: x['id'][0],
                                               format=lambda x: "Networks starting with: {}".format(x)), ],
                                      getvalue=lambda x: x["id"][0])]
@@ -617,7 +625,7 @@ class PDFReportGenerator(object):
 
         available_width = self.page_format[0] - (self.margin * 2)
 
-        paragraph_header = Paragraph('<font face="times-bold" size="22">{} Overview for {}</font>'.format(
+        paragraph_header = Paragraph('<font face="Arial-Bold" size="16">{} Overview for {}</font>'.format(
             section_number, _device.name), style_sheet["BodyText"])
 
         logo = Image(self.logo_buffer)
@@ -809,14 +817,16 @@ class PDFReportGenerator(object):
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_status'])
 
+                heading = "System Updates" # "Installed Updates"
+
                 section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, "Installed Updates")
-                report.generate_bookmark("Installed Updates")
+                                                                _device.full_name, heading)
+                report.generate_bookmark(heading)
 
                 rpt = PollyReportsReport(data)
 
                 if data:
-                    rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+                    rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
                                                       getvalue=lambda x: x['update_status'],
                                                       format=lambda x: "Updates with status: {}".format(x)), ],
                                              getvalue=lambda x: x["update_status"]), ]
@@ -832,7 +842,7 @@ class PDFReportGenerator(object):
                                      ("Install Status", "update_status", 15.0)]
                 header_names_right = [("Install Date", "install_date", 15.0)]
 
-                self.__config_report_helper("{} Installed Updates for {}".format(section_number, _device.full_name),
+                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
                                             header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
@@ -844,9 +854,11 @@ class PDFReportGenerator(object):
 
                 data = row_collector.rows_dict[1:]
 
+                heading = "Active Licenses" # "Available Licenses"
+
                 section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, "Available Licenses")
-                report.generate_bookmark("Available Licenses")
+                                                                _device.full_name, heading)
+                report.generate_bookmark(heading)
 
                 rpt = PollyReportsReport(data)
 
@@ -861,7 +873,7 @@ class PDFReportGenerator(object):
                                      ("License Key", "license_key", 50.0)]
                 header_names_right = []
 
-                self.__config_report_helper("{} Available Licenses for {}".format(section_number, _device.full_name),
+                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
                                             header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
@@ -879,9 +891,11 @@ class PDFReportGenerator(object):
                     logger.info("PDF generation for packages failed, error was: {}".format(str(e)))
                     packages = []
 
+                heading = "Installed Software" # "Installed Packages"
+
                 section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, "Installed Packages")
-                report.generate_bookmark("Installed Packages")
+                                                                _device.full_name, heading)
+                report.generate_bookmark(heading)
 
                 data = [package.get_as_row() for package in packages]
                 data = sorted(data, key=lambda k: k['package_name'])
@@ -889,7 +903,7 @@ class PDFReportGenerator(object):
                 rpt = PollyReportsReport(data)
 
                 if data:
-                    rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+                    rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
                                                       getvalue=lambda x: x['package_name'][0],
                                                       format=lambda x: "Packages starting with: {}".format(x)), ],
                                              getvalue=lambda x: x["package_name"][0]), ]
@@ -909,7 +923,7 @@ class PDFReportGenerator(object):
                 header_names_right = [("Size", "package_size", 15.00),
                                      ("Install Date", "package_install_date", 15.00)]
 
-                self.__config_report_helper("{} Installed Packages for {}".format(section_number, _device.full_name),
+                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
                                             header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
@@ -922,15 +936,17 @@ class PDFReportGenerator(object):
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_name'])
 
-                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, "Available Updates")
+                heading = "Updates ready for install" # "Available Updates"
 
-                report.generate_bookmark("Available Updates")
+                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
+                                                                _device.full_name, heading)
+
+                report.generate_bookmark(heading)
 
                 rpt = PollyReportsReport(data)
 
                 if data:
-                    rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+                    rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
                                                       getvalue=lambda x: x['update_name'][0].upper(),
                                                       format=lambda x: "Updates starting with: {}".format(x)), ],
                                              getvalue=lambda x: x["update_name"][0].upper()), ]
@@ -947,7 +963,7 @@ class PDFReportGenerator(object):
                                      ("Optional", "update_optional", 33.33)]
                 header_names_right = []
 
-                self.__config_report_helper("{} Available Updates for".format(section_number, _device.full_name),
+                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
                                             header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
@@ -960,9 +976,11 @@ class PDFReportGenerator(object):
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['hardware_depth'])
 
+                heading = "Lstopo Information"
+
                 section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, "Lstopo Information")
-                report.generate_bookmark("Lstopo Information")
+                                                                _device.full_name, heading)
+                report.generate_bookmark(heading)
 
                 rpt = PollyReportsReport(data)
 
@@ -979,7 +997,7 @@ class PDFReportGenerator(object):
                                      ("Attributes", "hardware_attributes", 70.00)]
                 header_names_right = []
 
-                self.__config_report_helper("{} Lstopo Information for {}".format(section_number, _device.full_name),
+                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
                                             header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
@@ -992,14 +1010,16 @@ class PDFReportGenerator(object):
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['process_name'])
 
+                heading = "Process Information"
+
                 section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, "Process Information")
-                report.generate_bookmark("Process Information")
+                                                                _device.full_name, heading)
+                report.generate_bookmark(heading)
 
                 rpt = PollyReportsReport(data)
 
                 if data:
-                    rpt.groupheaders = [Band([Element((0, 4), ("Helvetica-Bold", 10),
+                    rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
                                                       getvalue=lambda x: x['process_name'][0],
                                                       format=lambda x: "Processes starting with: {}".format(x)), ],
                                              getvalue=lambda x: x["process_name"][0]), ]
@@ -1014,7 +1034,7 @@ class PDFReportGenerator(object):
                                      ("PID", "process_id", 50.0)]
                 header_names_right = []
 
-                self.__config_report_helper("{} Process Information for {}".format(section_number, _device.full_name),
+                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
                                             header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
@@ -1024,11 +1044,13 @@ class PDFReportGenerator(object):
                 if not report.report_settings['dmi_report_selected']:
                     continue
 
+                heading = "Hardware Details" #"DMI Information"
+
                 data = row_collector.rows_dict[1:]
 
                 section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, "DMI Information")
-                report.generate_bookmark("DMI Information")
+                                                                _device.full_name, heading)
+                report.generate_bookmark(heading)
 
                 rpt = PollyReportsReport(data)
 
@@ -1049,7 +1071,7 @@ class PDFReportGenerator(object):
                                      ("Value", "value", 54.0)]
                 header_names_right = []
 
-                self.__config_report_helper("{} DMI Information for {}".format(section_number, _device.full_name),
+                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
                                             header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
@@ -1061,9 +1083,11 @@ class PDFReportGenerator(object):
 
                 data = row_collector.rows_dict[1:]
 
+                heading = "PCI Details"
+
                 section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, "PCI Information")
-                report.generate_bookmark("PCI Information")
+                                                                _device.full_name, heading)
+                report.generate_bookmark(heading)
 
                 rpt = PollyReportsReport(data)
 
@@ -1092,7 +1116,7 @@ class PDFReportGenerator(object):
                                      ("Device", "device", 28.75)]
                 header_names_right = []
 
-                self.__config_report_helper("{} PCI Information for {}".format(section_number, _device.full_name),
+                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
                                             header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
@@ -1240,7 +1264,7 @@ class PDFReportGenerator(object):
 
         t_body = Table(data, colWidths=(available_width * 0.10, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
-        p_h = Paragraph('<font face="times-bold" size="22">{} Hardware Report for {}</font>'.format(section_number,
+        p_h = Paragraph('<font face="Arial-Bold" size="16">{} Hardware Report for {}</font>'.format(section_number,
             hardware_report_ar.device.name), style_sheet["BodyText"])
 
         logo = Image(self.logo_buffer)
@@ -1404,7 +1428,7 @@ class PDFReportGenerator(object):
 
         t_head = Table(data, colWidths=(available_width),
                        style=[('FONTSIZE', (0, 0), (-1, -1), 22),
-                              ('TEXTFONT', (0, 0), (-1, -1), 'Helvetica'),
+                              ('TEXTFONT', (0, 0), (-1, -1), 'Arial'),
                               ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                               ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                               ('LEFTPADDING', (0, 0), (-1, -1), 0),
@@ -1415,7 +1439,7 @@ class PDFReportGenerator(object):
         _user = user.objects.get(idx=self.general_settings["user_idx"])
         _user_str = str(_user)
 
-        _creation_str = datetime.datetime.now().strftime(ASSET_DATETIMEFORMAT)
+        _creation_str = self.creation_date.strftime(ASSET_DATETIMEFORMAT)
 
         body_data = []
 
@@ -1576,7 +1600,7 @@ class PDFReportGenerator(object):
     def __get_toc_pages(self, page_num_headings):
         style_sheet = getSampleStyleSheet()
 
-        paragraph_header = Paragraph('<font face="times-bold" size="22">Contents</font>', style_sheet["BodyText"])
+        paragraph_header = Paragraph('<font face="Arial-Bold" size="16">Contents</font>', style_sheet["BodyText"])
 
         logo = Image(self.logo_buffer)
         logo.drawHeight = self.logo_height
@@ -1592,7 +1616,7 @@ class PDFReportGenerator(object):
 
         _buffer = BytesIO()
         can = Canvas(_buffer, pagesize=self.page_format)
-        can.setFont("Helvetica", 14)
+        can.setFont("Arial", 14)
 
         width, heigth = self.page_format
 
@@ -1651,10 +1675,10 @@ class PDFReportGenerator(object):
 
                 can.drawString(25 + (25 * indent), heigth - (top_margin + (15 * vertical_x)), heading_str)
 
-                heading_str_width = stringWidth(heading_str, "Helvetica", 14)
+                heading_str_width = stringWidth(heading_str, "Arial", 14)
 
                 dots = "."
-                while (25 * indent) + heading_str_width + stringWidth(dots, "Helvetica", 14) < (width - 150):
+                while (25 * indent) + heading_str_width + stringWidth(dots, "Arial", 14) < (width - 150):
                     dots += "."
 
                 can.drawString(35 + (25 * indent) + heading_str_width, heigth - (top_margin + (15 * vertical_x)), dots)
@@ -1667,7 +1691,7 @@ class PDFReportGenerator(object):
                     vertical_x = 1
                     if number_of_entries_generated < number_of_entries:
                         can.showPage()
-                        can.setFont("Helvetica", 14)
+                        can.setFont("Arial", 14)
                         t_head.wrapOn(can, 0, 0)
                         t_head.drawOn(can, 25, heigth - 50)
 
@@ -1692,17 +1716,18 @@ class PDFReportGenerator(object):
             if page_number >= toc_offset_num:
                 page_num_buffer = BytesIO()
                 can = Canvas(page_num_buffer, pagesize=self.page_format)
-                can.setFont("Helvetica", 8)
+                can.setFont("Arial", 8)
 
-                str_to_draw = "Page: {} | ReportId: {} | ClusterId: {}".format(page_number + 1,
+                creationdate_str = self.creation_date.strftime(ASSET_DATETIMEFORMAT)
+                str_to_draw = "Page: {} | ReportId: {} | ClusterId: {} | Generated: {}".format(page_number + 1,
                                                                          self.report_index,
-                                                                         self.cluster_id)
+                                                                         self.cluster_id, creationdate_str)
                 can.drawString(25, 15, str_to_draw)
 
                 # if (page_number - toc_offset_num) in page_num_prefix_dict:
                 #     str_to_draw = "({})".format(page_num_prefix_dict[page_number - toc_offset_num])
                 #
-                #     can.drawString(self.page_format[0] - self.margin - stringWidth(str_to_draw, "Helvetica", 14),
+                #     can.drawString(self.page_format[0] - self.margin - stringWidth(str_to_draw, "Arial", 14),
                 #                    25,
                 #                    str_to_draw)
 
@@ -1893,12 +1918,12 @@ class XlsxReportGenerator(object):
         if self.general_settings['network_report_overview_module_selected']:
             workbook = self.__generate_network_report()
 
-            workbooks.append((workbook, "Network_Overview.xlsx"))
+            workbooks.append((workbook, "Network_Overview"))
 
         if self.general_settings['general_device_overview_module_selected']:
             workbook = self.__generate_general_device_overview_report()
 
-            workbooks.append((workbook, "Device_Overview.xlsx"))
+            workbooks.append((workbook, "Device_Overview"))
 
 
 
