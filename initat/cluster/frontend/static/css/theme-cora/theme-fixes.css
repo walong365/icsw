@@ -179,12 +179,29 @@ table.rotateheaders th {
     font-size:12px;
     font-weight:600;
     color:#aaaaaa;
+    list-style: outside none none;
     margin-top: 4px;
+    padding-left:0;
+    margin-bottom:0px;
+}
+.submenu-bar .sub-breadcrumb > li {
+    display: block;
+    position: relative;
+    float:left;
+}
+.submenu-bar .sub-breadcrumb > li:before {
+    content: "»";
+    padding: 0 3px 0 5px;
+}
+.submenu-bar .sub-breadcrumb > li:first-child:before {
+    content: "";
+    padding: 0;
 }
 .submenu-bar .quickselect {
     font-size:16px;
     font-weight:600;
     color:#aaaaaa;
+    list-style: outside none none;
     margin: 2px 10px 0 0;
 }
 .navbar-fixed-top {

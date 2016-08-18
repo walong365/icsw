@@ -73,16 +73,18 @@
 </script>
 
 <script type="text/ng-template" id="icsw.layout.submenubar">
-    <nav class="navbar navbar-default" icsw-menu-sub-directive>
-        <ol class="breadcrumb">
+    <nav class="navbar navbar-default submenu-bar" icsw-menu-sub-directive>
+        <ul class="sub-breadcrumb pull-left">
             <li ng-repeat="entry in breadcrumb" ng-class="{'active': entry.last}">
-                <a ng-show="!$last">{{ entry.title }}</a>
+                <span ng-show="!$last">{{ entry.title }}</span>
                 <span ng-show="$last">{{ entry.title }}</span>
             </li>
-            <li class="pull-right cursorpointer" ng-click="device_selection($event)">
-                {{ select_txt }}
+        </ul>
+        <ul class="quickselect pull-right">
+            <li class=" cursorpointer " ng-click="device_selection($event)">
+                <a>{{ select_txt }}</a>
             </li>
-        </ol>
+        </ul>
     </nav>
 </script>
 

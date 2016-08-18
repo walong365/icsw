@@ -47,14 +47,31 @@ icsw-tools-button{
     vertical-align:10;
 }
 .submenu-bar .sub-breadcrumb {
-    font-size:12px;
+    font-size:11px;
     font-weight:600;
-    color:#444444;
+    color:#555555;
+    list-style: outside none none;
     margin-top: 7px;
+    padding-left:0;
+    margin-bottom:0px;
+}
+.submenu-bar .sub-breadcrumb > li {
+    display: block;
+    position: relative;
+    float:left;
+}
+.submenu-bar .sub-breadcrumb > li:before {
+    content: "/";
+    padding: 0 3px 0 5px;
+}
+.submenu-bar .sub-breadcrumb > li:first-child:before {
+    content: "";
+    padding: 0;
 }
 .submenu-bar .quickselect {
     font-size:14px;
     font-weight:600;
     color:#444444;
+    list-style: outside none none;
     margin: 7px 10px 0 0;
 }
