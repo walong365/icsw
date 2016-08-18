@@ -372,6 +372,8 @@ class PDFReportGenerator(object):
 
         self.sections = {}
 
+        self.page_num_info_dict = {}
+
     def __generate_section_number(self, *sections):
         root_section = self.sections
 
@@ -408,7 +410,7 @@ class PDFReportGenerator(object):
 
         return logo
 
-    def __config_report_helper(self, header, header_names_list, rpt, data):
+    def __config_report_helper(self, header, header_names_left, header_names_right, rpt, data, _device=None):
         available_width = self.page_format[0] - (self.margin * 2)
 
         header_list = [PollyReportsImage(pos=(available_width - self.logo_width, -25),
@@ -421,7 +423,7 @@ class PDFReportGenerator(object):
 
         position = 0
 
-        for header_name, key, avail_width_percentage in header_names_list:
+        for header_name, key, avail_width_percentage in header_names_left:
             header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name))
             detail_list.append(Element((position, 0), ("Helvetica", 6), key=key))
 
@@ -449,7 +451,37 @@ class PDFReportGenerator(object):
                     else:
                         s_new_comps = s_new
 
+                _dict[key] = s_new_comps
 
+        position = self.page_format[0] - (self.margin * 2)
+
+        for header_name, key, avail_width_percentage in reversed(header_names_right):
+            header_list.append(Element((position, 24), ("Helvetica", 12), text=header_name, align="right"))
+            detail_list.append(Element((position, 0), ("Helvetica", 6), key=key, align="right"))
+
+            position -= available_width * (avail_width_percentage / 100.0)
+
+            for _dict in data:
+                s = str(_dict[key])
+
+                s_new_comps = ""
+
+                comps = s.split("\n")
+                for comp in comps:
+                    s_new = ""
+                    wrap_idx = 0
+
+                    for i in range(len(comp)):
+                        width = stringWidth(s[wrap_idx:i+1], "Helvetica", 6)
+                        if ((width / available_width) * 101.5) > avail_width_percentage:
+                            wrap_idx = i
+                            s_new += "\n"
+                        s_new += comp[i]
+
+                    if s_new_comps:
+                        s_new_comps += "\n{}".format(s_new)
+                    else:
+                        s_new_comps = s_new
 
                 _dict[key] = s_new_comps
 
@@ -478,15 +510,17 @@ class PDFReportGenerator(object):
                                               format=lambda x: "Group: {}".format(x)), ],
                                      getvalue=lambda x: x["group"])]
 
-            header_names = [("Device Name", "name", 10.0),
-                            ("CPU Info", "cpu", 18.0),
-                            ("GPU Info", "gpu", 18.0),
-                            ("Memory Info", "memory", 18.0),
-                            ("HDD Info", "hdd", 18.0),
-                            ("Partition Info", "partition", 18.0)
-                            ]
+            header_names_left = [("Device Name", "name", 10.0),
+                                 ("CPU Info", "cpu", 18.0),
+                                 ("GPU Info", "gpu", 18.0),
+                                 ("Memory Info", "memory", 18.0),
+                                 ("HDD Info", "hdd", 18.0),
+                                 ("Partition Info", "partition", 18.0)
+                                 ]
+            header_names_right = []
 
-            self.__config_report_helper("{} Device Overview".format(section_number), header_names, rpt, data)
+            self.__config_report_helper("{} Device Overview".format(section_number), header_names_left,
+                                        header_names_right, rpt, data)
 
             rpt.generate(canvas)
             canvas.save()
@@ -531,7 +565,7 @@ class PDFReportGenerator(object):
                                               format=lambda x: "Networks starting with: {}".format(x)), ],
                                      getvalue=lambda x: x["id"][0])]
 
-            header_names = [("Identifier", "id", 10.0),
+            header_names_left = [("Identifier", "id", 10.0),
                             ("Network", "network", 10.0),
                             ("Netmask", "netmask", 10.0),
                             ("Broadcast", "broadcast", 10.0),
@@ -540,7 +574,11 @@ class PDFReportGenerator(object):
                             ("#IPs", "num_ips", 10.0),
                             ("Network Type", "network_type", 20.0)]
 
-            self.__config_report_helper("{} Network Overview".format(section_number), header_names, rpt, data)
+            header_names_right = []
+
+            self.__config_report_helper("{} Network Overview".format(section_number),
+                                        header_names_left,
+                                        header_names_right, rpt, data)
 
             rpt.generate(canvas)
             canvas.save()
@@ -628,10 +666,10 @@ class PDFReportGenerator(object):
         body_data.append((text_block, t))
 
         # ComCapabilites
-        str_to_use = ""
+        str_to_use = "N/A"
 
         for com_cap in _device.com_capability_list.all():
-            if not str_to_use:
+            if str_to_use == "N/A":
                 str_to_use = com_cap.name
             else:
                 str_to_use += ", {}".format(com_cap.name)
@@ -647,9 +685,9 @@ class PDFReportGenerator(object):
         body_data.append((text_block, t))
 
         # Ip info
-        str_to_use = ""
+        str_to_use = "N/A"
         for _ip in _device.all_ips():
-            if not str_to_use:
+            if str_to_use == "N/A":
                 str_to_use = str(_ip)
             else:
                 str_to_use += ", {}".format(str(_ip))
@@ -665,9 +703,9 @@ class PDFReportGenerator(object):
         body_data.append((text_block, t))
 
         # SNMP Schemes
-        str_to_use = ""
+        str_to_use = "N/A"
         for _snmp_scheme in _device.snmp_schemes.all():
-            if not str_to_use:
+            if str_to_use == "N/A":
                 str_to_use = str(_snmp_scheme)
             else:
                 str_to_use += ", {}".format(str(_snmp_scheme))
@@ -683,7 +721,7 @@ class PDFReportGenerator(object):
         body_data.append((text_block, t))
 
         # SNMP Info
-        str_to_use = ""
+        str_to_use = "N/A"
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>SNMP Info:</b>', style_sheet["BodyText"])
@@ -696,9 +734,9 @@ class PDFReportGenerator(object):
         body_data.append((text_block, t))
 
         # Device Categories
-        str_to_use = ""
+        str_to_use = "N/A"
         for _category in _device.categories.all():
-            if not str_to_use:
+            if str_to_use == "N/A":
                 str_to_use = _category.name
             else:
                 str_to_use += ", {}".format(_category.name)
@@ -790,11 +828,12 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Update Name", "update_name", 70.0),
-                                ("Install Date", "install_date", 15.0),
-                                ("Install Status", "update_status", 15.0)]
+                header_names_left = [("Update Name", "update_name", 70.0),
+                                     ("Install Status", "update_status", 15.0)]
+                header_names_right = [("Install Date", "install_date", 15.0)]
 
-                self.__config_report_helper("{} Installed Updates".format(section_number), header_names, rpt, data)
+                self.__config_report_helper("{} Installed Updates for {}".format(section_number, _device.full_name),
+                                            header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -818,10 +857,12 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("License Name", "license_name", 50.0),
-                                ("License Key", "license_key", 50.0)]
+                header_names_left = [("License Name", "license_name", 50.0),
+                                     ("License Key", "license_key", 50.0)]
+                header_names_right = []
 
-                self.__config_report_helper("{} Available Licenses".format(section_number), header_names, rpt, data)
+                self.__config_report_helper("{} Available Licenses for {}".format(section_number, _device.full_name),
+                                            header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -862,13 +903,14 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Name", "package_name", 40.0),
-                                ("Version", "package_version", 15.00),
-                                ("Release", "package_release", 15.00),
-                                ("Size", "package_size", 15.00),
-                                ("Install Date", "package_install_date", 15.00)]
+                header_names_left = [("Name", "package_name", 40.0),
+                                     ("Version", "package_version", 15.00),
+                                     ("Release", "package_release", 15.00)]
+                header_names_right = [("Size", "package_size", 15.00),
+                                     ("Install Date", "package_install_date", 15.00)]
 
-                self.__config_report_helper("{} Installed Packages".format(section_number), header_names, rpt, data)
+                self.__config_report_helper("{} Installed Packages for {}".format(section_number, _device.full_name),
+                                            header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -900,11 +942,13 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Update Name", "update_name", 33.33),
-                                ("Version", "update_version", 33.33),
-                                ("Optional", "update_optional", 33.33)]
+                header_names_left = [("Update Name", "update_name", 33.33),
+                                     ("Version", "update_version", 33.33),
+                                     ("Optional", "update_optional", 33.33)]
+                header_names_right = []
 
-                self.__config_report_helper("{} Available Updates".format(section_number), header_names, rpt, data)
+                self.__config_report_helper("{} Available Updates for".format(section_number, _device.full_name),
+                                            header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -930,11 +974,13 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Node Type", "hardware_node_type", 15.00),
-                                ("Depth", "hardware_depth", 15.00),
-                                ("Attributes", "hardware_attributes", 70.00)]
+                header_names_left = [("Node Type", "hardware_node_type", 15.00),
+                                     ("Depth", "hardware_depth", 15.00),
+                                     ("Attributes", "hardware_attributes", 70.00)]
+                header_names_right = []
 
-                self.__config_report_helper("{} Lstopo Information".format(section_number), header_names, rpt, data)
+                self.__config_report_helper("{} Lstopo Information for {}".format(section_number, _device.full_name),
+                                            header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -964,10 +1010,12 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Process Name", "process_name", 50.0),
-                                ("PID", "process_id", 50.0)]
+                header_names_left = [("Process Name", "process_name", 50.0),
+                                     ("PID", "process_id", 50.0)]
+                header_names_right = []
 
-                self.__config_report_helper("{} Process Information".format(section_number), header_names, rpt, data)
+                self.__config_report_helper("{} Process Information for {}".format(section_number, _device.full_name),
+                                            header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -994,13 +1042,15 @@ class PDFReportGenerator(object):
                     }
                     data.append(mock_object)
 
-                header_names = [("Handle", "handle", 8.0),
-                                ("Type", "dmi_type", 8.0),
-                                ("Header", "header", 15.0),
-                                ("Key", "key", 15.0),
-                                ("Value", "value", 54.0)]
+                header_names_left = [("Handle", "handle", 8.0),
+                                     ("Type", "dmi_type", 8.0),
+                                     ("Header", "header", 15.0),
+                                     ("Key", "key", 15.0),
+                                     ("Value", "value", 54.0)]
+                header_names_right = []
 
-                self.__config_report_helper("{} DMI Information".format(section_number), header_names, rpt, data)
+                self.__config_report_helper("{} DMI Information for {}".format(section_number, _device.full_name),
+                                            header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1032,16 +1082,18 @@ class PDFReportGenerator(object):
 
                     data.append(mock_object)
 
-                header_names = [("Domain", "domain", 7.5),
-                                ("Bus", "bus", 5.0),
-                                ("Slot", "slot", 5.0),
-                                ("Func", "func", 5.0),
-                                ("Position", "position", 10.0),
-                                ("Subclass", "subclass", 10.0),
-                                ("Vendor", "vendor", 28.75),
-                                ("Device", "device", 28.75)]
+                header_names_left = [("Domain", "domain", 7.5),
+                                     ("Bus", "bus", 5.0),
+                                     ("Slot", "slot", 5.0),
+                                     ("Func", "func", 5.0),
+                                     ("Position", "position", 10.0),
+                                     ("Subclass", "subclass", 10.0),
+                                     ("Vendor", "vendor", 28.75),
+                                     ("Device", "device", 28.75)]
+                header_names_right = []
 
-                self.__config_report_helper("{} PCI Information".format(section_number), header_names, rpt, data)
+                self.__config_report_helper("{} PCI Information for {}".format(section_number, _device.full_name),
+                                            header_names_left, header_names_right, rpt, data, _device)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1640,17 +1692,19 @@ class PDFReportGenerator(object):
             if page_number >= toc_offset_num:
                 page_num_buffer = BytesIO()
                 can = Canvas(page_num_buffer, pagesize=self.page_format)
-                can.setFont("Helvetica", 14)
+                can.setFont("Helvetica", 8)
 
-                str_to_draw = "{}".format(page_number + 1)
-                can.drawString(25, 25, str_to_draw)
+                str_to_draw = "Page: {} | ReportId: {} | ClusterId: {}".format(page_number + 1,
+                                                                         self.report_index,
+                                                                         self.cluster_id)
+                can.drawString(25, 15, str_to_draw)
 
-                if (page_number - toc_offset_num) in page_num_prefix_dict:
-                    str_to_draw = "({})".format(page_num_prefix_dict[page_number - toc_offset_num])
-
-                    can.drawString(self.page_format[0] - self.margin - stringWidth(str_to_draw, "Helvetica", 14),
-                                   25,
-                                   str_to_draw)
+                # if (page_number - toc_offset_num) in page_num_prefix_dict:
+                #     str_to_draw = "({})".format(page_num_prefix_dict[page_number - toc_offset_num])
+                #
+                #     can.drawString(self.page_format[0] - self.margin - stringWidth(str_to_draw, "Helvetica", 14),
+                #                    25,
+                #                    str_to_draw)
 
                 can.save()
                 page_num_buffer.seek(0)
@@ -2451,7 +2505,7 @@ def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
     selected_asset_runs = []
 
     asset_batch_selection_mode = int(asset_batch_selection_mode)
-    assert (asset_batch_selection_mode <= 2 and asset_batch_selection_mode >= 0)
+    assert (asset_batch_selection_mode <= 2 and asset_batch_selection_mode >= -1)
 
     # search latest assetbatch and generate
     if _device.assetbatch_set.all():

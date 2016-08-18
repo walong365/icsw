@@ -83,7 +83,7 @@ device_report_module = angular.module(
 
         user: undefined
 
-        assetbatch_selection_mode: ""
+        assetbatch_selection_mode: "-1"
     }
 
     $scope.assetbatch_selection_mode_change = () ->
