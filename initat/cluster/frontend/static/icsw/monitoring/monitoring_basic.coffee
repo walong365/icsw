@@ -114,7 +114,6 @@ monitoring_basic_module = angular.module(
         update: (args...) =>
             for [entry, _list] in _.zip(ELIST, args)
                 @["#{entry}_list"].length = 0
-                _list = []
                 for _el in _list
                     @["#{entry}_list"].push(_el)
             @build_luts()

@@ -124,6 +124,7 @@ angular.module(
             class device_category_tree_config extends base_tree_config
                 get_category_list: () ->
                     return scope.cur_edit_kpi.available_device_categories
+
             class monitoring_category_tree_config extends base_tree_config
                 get_category_list: () ->
                     return scope.cur_edit_kpi.available_monitoring_categories
@@ -152,14 +153,7 @@ angular.module(
 
             scope._rebuild_tree = () ->
                 scope.device_category_tree.clear_root_nodes()
-                scope.monitoring_category_tree = new monitoring_category_tree_config(
-                    scope
-                    {
-                        show_selection_buttons: false
-                        show_select: true
-                        show_descendants: true
-                    }
-                )
+                scope.monitoring_category_tree.clear_root_nodes()
                 roots = []
                 # delayed link list
                 _d_link = []
@@ -321,10 +315,11 @@ angular.module(
 
         child_scope.is_checked = (dev_cat_id, mon_cat_id) ->
             return _.some(cur_edit_kpi.selected_device_monitoring_category_tuple, (elem) -> return elem[0] == dev_cat_id and elem[1] == mon_cat_id)
+
         child_scope.toggle_dev_mon_cat = (dev_cat_id, mon_cat_id) ->
             elem = [dev_cat_id, mon_cat_id]
             if child_scope.is_checked(dev_cat_id, mon_cat_id)
-                _.remove(cur_edit_kpi.selected_device_monitoring_category_tuple, elem)
+                _.remove(cur_edit_kpi.selected_device_monitoring_category_tuple, (entry) -> return entry[0] == elem[0] and entry[1] == elem[1])
             else
                 cur_edit_kpi.selected_device_monitoring_category_tuple.push(elem)
 
@@ -344,27 +339,33 @@ angular.module(
             })
 
             if mode == KPI_DLG_MODE_CREATE
-                icswConfigKpiDataService.kpi.post(cur_edit_kpi).then((obj) ->
-                    icswConfigKpiDataService.kpi.push(obj)
+                icswConfigKpiDataService.kpi.post(cur_edit_kpi).then(
+                    (obj) ->
+                        icswConfigKpiDataService.kpi.push(obj)
 
-                    for tup in cur_edit_kpi.selected_device_monitoring_category_tuple
-                        entry = create_data_source_tuple(obj, tup)
-                        icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
-                            (obj) -> icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
-                        )
+                        for tup in cur_edit_kpi.selected_device_monitoring_category_tuple
+                            entry = create_data_source_tuple(obj, tup)
+                            icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
+                                (obj) ->
+                                    icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
+                            )
                 )
             else if mode == KPI_DLG_MODE_MODIFY
                 for new_tup in cur_edit_kpi.selected_device_monitoring_category_tuple
                     if _.find(orig_kpi.selected_device_monitoring_category_tuple, new_tup) == undefined
                         entry = create_data_source_tuple(cur_edit_kpi, new_tup)
                         icswConfigKpiDataService.kpi_data_source_tuple.post(entry, {silent: 1}).then(
-                            (obj) -> icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
+                            (obj) ->
+                                icswConfigKpiDataService.kpi_data_source_tuple.push(obj)
                         )
 
                 for old_tup in orig_kpi.selected_device_monitoring_category_tuple
                     if _.find(cur_edit_kpi.selected_device_monitoring_category_tuple, old_tup) == undefined
-                        rest_elem = _.find(icswConfigKpiDataService.kpi_data_source_tuple,
-                                          (elem) -> return elem.device_category == old_tup[0] && elem.monitoring_category == old_tup[1])
+                        rest_elem = _.find(
+                            icswConfigKpiDataService.kpi_data_source_tuple,
+                            (elem) ->
+                                return elem.device_category == old_tup[0] && elem.monitoring_category == old_tup[1]
+                        )
                         if rest_elem?
                             rest_elem.remove()
                             _.remove(icswConfigKpiDataService.kpi_data_source_tuple, rest_elem)
