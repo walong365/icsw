@@ -155,16 +155,6 @@
             </rights>
         </icswData>
     </route>
-    <route name="main.monitorbasics">
-        <stateData type="dict" url_str="/monitorbasics" template_str="&lt;icsw-monitoring-basic&gt;&lt;/icsw-monitoring-basic&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring Basic setup">
-            <menuHeader type="dict" ordering_int="70" name_str="Monitoring" key_str="mon" icon_str="fa-gears"/>
-            <menuEntry type="dict" ordering_int="0" icon_str="fa-bars" menukey_str="mon" name_str="Basic setup"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.setup_monitoring</value>
-            </rights>
-        </icswData>
-    </route>
     <route name="main.monitorredirect">
         <stateData type="dict" url_str="/monitorredirect" resolve_bool="yes"/>
         <icswData type="dict" redirectToFromOnError_bool="yes">
@@ -487,23 +477,14 @@
             </rights>
         </icswData>
     </route>
-    <route name="main.monitorcluster">
-        <stateData type="dict" url_str="/monitorcluster" template_str="&lt;icsw-monitoring-cluster&gt;&lt;/icsw-monitoring-cluster&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring Cluster / Dependency setup">
-            <menuEntry type="dict" ordering_int="20" icon_str="fa-chain" menukey_str="mon" name_str="Cluster / Dependency setup"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.setup_monitoring</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitoresc">
-        <stateData type="dict" url_str="/monitoresc" template_str="&lt;icsw-monitoring-escalation&gt;&lt;/icsw-monitoring-escalation&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring Escalation setup">
-            <menuEntry type="dict" ordering_int="30" icon_str="fa-bolt" menukey_str="mon" name_str="Escalation setup"/>
+    <route name="main.monitorbasics">
+        <stateData type="dict" url_str="/monitorbasics" templateUrl_str="icsw/monitoring/setup"/>
+        <icswData type="dict" pageTitle_str="Monitoring setup">
+            <menuHeader type="dict" ordering_int="70" name_str="Monitoring" key_str="mon" icon_str="fa-gears"/>
+            <menuEntry type="dict" ordering_int="0" icon_str="fa-bars" menukey_str="mon" name_str="Basic setup"/>
             <rights type="list">
                 <value>backbone.mon_check_command.setup_monitoring</value>
             </rights>
         </icswData>
     </route>
 </routes>
-
