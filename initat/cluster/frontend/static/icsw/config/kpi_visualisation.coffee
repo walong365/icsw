@@ -117,7 +117,7 @@ angular.module(
 
                 scope.tree.size([draw_width, draw_height])
 
-                console.log scope.data
+                # console.log scope.data
                 hr_data = d3.hierarchy(scope.data, (node) -> return node.origin.operands)
                 nodes = scope.tree(hr_data)
                 # links = hr_data.links()
@@ -215,7 +215,7 @@ angular.module(
                     .style("cursor", "pointer")
                     #.attr("transform", (d) -> return "translate(" + d.x + "," + d.y + ")")
                     .attr("transform", (d) ->
-                        console.log "*", d.x, d.y
+                        # console.log "*", d.x, d.y
                         return "translate(" + my_translate(d.x, d.y).join(",") + ")"
                     ).html(
                         (d) ->

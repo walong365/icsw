@@ -746,7 +746,7 @@ angular.module(
                                 watch_dict[dev.idx].push(client)
 
                 if client not of result_dict
-                    console.log "new client", client
+                    console.log "new retain client #{client}"
                     result_dict[client] = new icswMonitoringResult()
                 else
                     # console.log "k", client
