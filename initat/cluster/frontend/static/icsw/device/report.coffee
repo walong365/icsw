@@ -86,6 +86,16 @@ device_report_module = angular.module(
         assetbatch_selection_mode: "-1"
     }
 
+    icswSimpleAjaxCall({
+        url: ICSW_URLS.REPORT_REPORT_HISTORY_AVAILABLE
+        dataType: 'json'
+    }).then(
+        (result) ->
+            console.log(result)
+        (error) ->
+            console.log(error)
+    )
+
     $scope.assetbatch_selection_mode_change = () ->
         for dev in $scope.struct.devices
                 dev.$selected_for_report = false

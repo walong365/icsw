@@ -53,6 +53,13 @@ from PyPDF2 import PdfFileWriter, PdfFileReader
 from initat.cluster.backbone.models import device, device_variable, AssetType, PackageTypeEnum, RunStatus, RunResult
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
+from initat.cluster.backbone.models.report import ReportHistory
+from initat.cluster.backbone.models import user
+
+from openpyxl import Workbook
+from openpyxl.writer.excel import save_virtual_workbook
+
+from django.utils import timezone
 
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
@@ -64,6 +71,10 @@ pdfmetrics.registerFont(TTFont('Arial-Bold', os.path.join(FILE_ROOT, "frontend",
 
 logger = logging.getLogger(__name__)
 
+
+########################################################################################################################
+# Report Generator Classes / Functions
+########################################################################################################################
 
 class RowCollector(object):
     def __init__(self):
@@ -352,26 +363,6 @@ class PDFReportGenerator(object):
         self.page_format = eval(self.general_settings["pdf_page_format"])
         self.margin = 36
 
-        report_index_var = system_device.device_variable_set.filter(name="__REPORT_INDEX__")
-        if report_index_var:
-            report_index_var = report_index_var[0]
-            report_index_var.val_int += 1
-            report_index_var.save()
-
-            self.report_index = report_index_var.val_int
-        else:
-            report_index_var = device_variable.objects.create(device=system_device,
-                                                              is_public=False,
-                                                              name="__REPORT_INDEX__",
-                                                              inherit=False,
-                                                              protected=True,
-                                                              var_type="i")
-            report_index_var.val_int = 1
-            report_index_var.save()
-
-            self.report_index = 1
-
-
         self.cluster_id = "Unknown"
         cluster_id_var = system_device.device_variable_set.filter(name="CLUSTER_ID")
         if cluster_id_var:
@@ -381,6 +372,10 @@ class PDFReportGenerator(object):
         self.sections = {}
 
         self.creation_date = datetime.datetime.now()
+
+        self.report_history = ReportHistory()
+        self.report_history.save()
+        self.report_index = self.report_history.idx
 
     def __generate_section_number(self, *sections):
         root_section = self.sections
@@ -1408,6 +1403,14 @@ class PDFReportGenerator(object):
         self.buffer = output_buffer
         self.progress = -1
 
+        # create report history entry
+        _user = user.objects.get(idx=self.general_settings["user_idx"])
+        self.report_history.created_by_user = _user
+        self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
+        self.report_history.number_of_pages = output_pdf.getNumPages()
+        self.report_history.data = base64.b64encode(self.buffer.getvalue())
+        self.report_history.save()
+
     def __generate_front_page(self):
         _buffer = BytesIO()
         doc = SimpleDocTemplate(_buffer,
@@ -1435,7 +1438,6 @@ class PDFReportGenerator(object):
                               ('RIGHTPADDING', (0, 0), (-1, -1), 0)])
 
         # body content
-        from initat.cluster.backbone.models import user
         _user = user.objects.get(idx=self.general_settings["user_idx"])
         _user_str = str(_user)
 
@@ -1769,134 +1771,6 @@ class PDFReportGenerator(object):
         self.finalize_pdf()
 
 
-class UploadReportGfx(View):
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _file = request.FILES[request.FILES.keys()[0]]
-        if _file.content_type in ["image/png", "image/jpeg"]:
-            system_device = None
-            for _device in device.objects.all():
-                if _device.is_cluster_device_group():
-                    system_device = _device
-                    break
-
-            if system_device:
-                report_logo_tmp = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
-                if report_logo_tmp:
-                    report_logo_tmp = report_logo_tmp[0]
-
-                else:
-                    report_logo_tmp = device_variable.objects.create(device=system_device, is_public=False,
-                                                                     name="__REPORT_LOGO__",
-                                                                     inherit=False,
-                                                                     protected=True,
-                                                                     var_type="b")
-                report_logo_tmp.val_blob = base64.b64encode(_file.read())
-                report_logo_tmp.save()
-
-
-class GetReportGfx(View):
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        val_blob = ""
-        system_device = None
-        for _device in device.objects.all():
-            if _device.is_cluster_device_group():
-                system_device = _device
-                break
-
-        if system_device:
-            report_logo_tmp = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
-
-            if report_logo_tmp:
-                val_blob = report_logo_tmp[0].val_blob
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'gfx': val_blob
-                }
-            )
-        )
-
-
-REPORT_GENERATORS = {}
-REPORT_TIMEOUT_SECONDS = 1800
-
-
-class GetProgress(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        report_generator_id = int(request.POST["id"])
-
-        progress = 0
-        if report_generator_id in REPORT_GENERATORS:
-            report_generator = REPORT_GENERATORS[report_generator_id]
-            progress = report_generator.progress
-
-            report_generator.last_poll_time = datetime.datetime.now()
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'progress': progress
-                }
-            )
-        )
-
-
-class GetReportData(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        report_generator_id = int(request.POST["id"])
-
-        report_data = ""
-        report_type = "unknown"
-
-        if report_generator_id in REPORT_GENERATORS:
-            report_generator = REPORT_GENERATORS[report_generator_id]
-            report_data = report_generator.get_report_data()
-            report_type = report_generator.get_report_type()
-            del REPORT_GENERATORS[report_generator_id]
-
-        data_b64 = base64.b64encode(report_data)
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    report_type: data_b64
-                }
-            )
-        )
-
-class GenerateReportPdf(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        pk_settings, _devices, current_time = _init_report_settings(request)
-
-        if 'HOSTNAME' in request.META:
-            pk_settings[-1]['hostname'] = request.META['HOSTNAME']
-        else:
-            pk_settings[-1]['hostname'] = "unknown"
-
-
-        pdf_report_generator = PDFReportGenerator(pk_settings, _devices)
-        pdf_report_generator.timestamp = current_time
-        REPORT_GENERATORS[id(pdf_report_generator)] = pdf_report_generator
-
-        Thread(target=_generate_report, args=[pdf_report_generator]).start()
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'id': id(pdf_report_generator)
-                }
-            )
-        )
-
-from openpyxl import Workbook
-from openpyxl.writer.excel import save_virtual_workbook
-
 class XlsxReportGenerator(object):
     def __init__(self, device_settings, _devices):
         self.data = ""
@@ -2108,6 +1982,136 @@ class XlsxReportGenerator(object):
 
         return workbook
 
+########################################################################################################################
+# Views
+########################################################################################################################
+REPORT_GENERATORS = {}
+REPORT_TIMEOUT_SECONDS = 1800
+
+
+class GetProgress(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        report_generator_id = int(request.POST["id"])
+
+        progress = 0
+        if report_generator_id in REPORT_GENERATORS:
+            report_generator = REPORT_GENERATORS[report_generator_id]
+            progress = report_generator.progress
+
+            report_generator.last_poll_time = datetime.datetime.now()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'progress': progress
+                }
+            )
+        )
+
+
+class GetReportData(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        report_generator_id = int(request.POST["id"])
+
+        report_data = ""
+        report_type = "unknown"
+
+        if report_generator_id in REPORT_GENERATORS:
+            report_generator = REPORT_GENERATORS[report_generator_id]
+            report_data = report_generator.get_report_data()
+            report_type = report_generator.get_report_type()
+            del REPORT_GENERATORS[report_generator_id]
+
+        data_b64 = base64.b64encode(report_data)
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    report_type: data_b64
+                }
+            )
+        )
+
+
+class GenerateReportPdf(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        pk_settings, _devices, current_time = _init_report_settings(request)
+
+        if 'HOSTNAME' in request.META:
+            pk_settings[-1]['hostname'] = request.META['HOSTNAME']
+        else:
+            pk_settings[-1]['hostname'] = "unknown"
+
+
+        pdf_report_generator = PDFReportGenerator(pk_settings, _devices)
+        pdf_report_generator.timestamp = current_time
+        REPORT_GENERATORS[id(pdf_report_generator)] = pdf_report_generator
+
+        Thread(target=_generate_report, args=[pdf_report_generator]).start()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'id': id(pdf_report_generator)
+                }
+            )
+        )
+
+
+class UploadReportGfx(View):
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _file = request.FILES[request.FILES.keys()[0]]
+        if _file.content_type in ["image/png", "image/jpeg"]:
+            system_device = None
+            for _device in device.objects.all():
+                if _device.is_cluster_device_group():
+                    system_device = _device
+                    break
+
+            if system_device:
+                report_logo_tmp = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
+                if report_logo_tmp:
+                    report_logo_tmp = report_logo_tmp[0]
+
+                else:
+                    report_logo_tmp = device_variable.objects.create(device=system_device, is_public=False,
+                                                                     name="__REPORT_LOGO__",
+                                                                     inherit=False,
+                                                                     protected=True,
+                                                                     var_type="b")
+                report_logo_tmp.val_blob = base64.b64encode(_file.read())
+                report_logo_tmp.save()
+
+
+class GetReportGfx(View):
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        val_blob = ""
+        system_device = None
+        for _device in device.objects.all():
+            if _device.is_cluster_device_group():
+                system_device = _device
+                break
+
+        if system_device:
+            report_logo_tmp = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
+
+            if report_logo_tmp:
+                val_blob = report_logo_tmp[0].val_blob
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'gfx': val_blob
+                }
+            )
+        )
+
+
 class GenerateReportXlsx(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -2179,29 +2183,138 @@ class ReportDataAvailable(View):
             )
         )
 
+class ReportHistoryAvailable(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        data = {}
 
-def _generate_report(report_generator):
-    try:
-        report_generator.generate_report()
-    except Exception as e:
-        import traceback, sys
-        print '-'*60
-        traceback.print_exc(file=sys.stdout)
-        print '-'*60
-        logger.info("Report Generation failed, error was: {}".format(str(e)))
-        report_generator.buffer = BytesIO()
-        report_generator.data = ""
-        report_generator.progress = -1
+        for report_history in ReportHistory.objects.all():
+            if not report_history.created_by_user:
+                continue
+            if not report_history.created_at_time:
+                continue
+
+            o = {
+                'created_by_user': str(report_history.created_by_user),
+                'created_at_time': str(report_history.created_at_time),
+                'number_of_pages': str(report_history.number_of_pages),
+                'number_of_downloads': str(report_history.number_of_downloads)
+            }
+
+            data[report_history.idx] = o
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'report_history': data
+                }
+            )
+        )
 
 
-def sizeof_fmt(num, suffix='B'):
-    if num is None:
-        return "N/A"
-    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
-        if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
-        num /= 1024.0
-    return "%.1f%s%s" % (num, 'Yi', suffix)
+########################################################################################################################
+# Helper Functions
+########################################################################################################################
+
+def _init_report_settings(request):
+    current_time = datetime.datetime.now()
+    # remove references of old report generators
+    for report_generator_id in REPORT_GENERATORS.keys():
+        if (current_time - REPORT_GENERATORS[report_generator_id].timestamp).seconds > REPORT_TIMEOUT_SECONDS:
+            del REPORT_GENERATORS[report_generator_id]
+
+    settings_dict = {}
+
+    for key in request.POST.iterkeys():
+        valuelist = request.POST.getlist(key)
+        # look for pk in key
+
+        index = key.split("[")[1][:-1]
+        if index not in settings_dict:
+            settings_dict[index] = {}
+
+        if key[::-1][:4] == ']kp[':
+            settings_dict[index]["pk"] = int(valuelist[0])
+        else:
+            if valuelist[0] == "true":
+                value = True
+            elif valuelist[0] == "false":
+                value = False
+            else:
+                value = valuelist[0]
+
+            settings_dict[index][key.split("[")[-1][:-1]] = value
+
+    pk_settings = {}
+
+    for setting_index in settings_dict:
+        pk = settings_dict[setting_index]['pk']
+        pk_settings[pk] = {}
+
+        for key in settings_dict[setting_index]:
+            if key != 'pk':
+                pk_settings[pk][key] = settings_dict[setting_index][key]
+
+    _devices = []
+    for _device in device.objects.filter(idx__in=[int(pk) for pk in pk_settings.keys()]):
+        if not _device.is_meta_device:
+            _devices.append(_device)
+
+    return pk_settings, _devices, current_time
+
+
+# asset_batch_selection_mode
+# 0 == latest only, 1 == latest fully working, 2 == mixed runs from multiple assetbatches
+def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
+    selected_asset_runs = []
+
+    asset_batch_selection_mode = int(asset_batch_selection_mode)
+    assert (asset_batch_selection_mode <= 2 and asset_batch_selection_mode >= -1)
+
+    # search latest assetbatch and generate
+    if _device.assetbatch_set.all():
+        for assetbatch in reversed(sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)):
+            if asset_batch_selection_mode == 0:
+                for assetrun in assetbatch.assetrun_set.all():
+                    if assetrun.has_data():
+                        selected_asset_runs.append(assetrun)
+                break
+            elif asset_batch_selection_mode == 1:
+                if assetbatch.num_runs == assetbatch.num_completed and assetbatch.num_runs_error == 0:
+                    selected_asset_runs = assetbatch.assetrun_set.all()
+            elif asset_batch_selection_mode == 2:
+                for assetrun in assetbatch.assetrun_set.all():
+                    if assetrun.has_data():
+                        if AssetType(assetrun.run_type) not in [AssetType(ar.run_type) for ar in selected_asset_runs]:
+                            selected_asset_runs.append(assetrun)
+
+    sorted_runs = {}
+
+    for ar in selected_asset_runs:
+        if AssetType(ar.run_type) == AssetType.PACKAGE:
+            sorted_runs[0] = ar
+        elif AssetType(ar.run_type) == AssetType.LICENSE:
+            sorted_runs[1] = ar
+        elif AssetType(ar.run_type) == AssetType.UPDATE:
+            sorted_runs[2] = ar
+        elif AssetType(ar.run_type) == AssetType.PENDING_UPDATE:
+            sorted_runs[3] = ar
+        elif AssetType(ar.run_type) == AssetType.PROCESS:
+            # disabled for now
+            pass
+            #sorted_runs[4] = ar
+        elif AssetType(ar.run_type) == AssetType.PRETTYWINHW:
+            sorted_runs[5] = ar
+        elif AssetType(ar.run_type) == AssetType.DMI:
+            sorted_runs[6] = ar
+        elif AssetType(ar.run_type) == AssetType.PCI:
+            sorted_runs[7] = ar
+        elif AssetType(ar.run_type) == AssetType.HARDWARE:
+            # disabled for now
+            pass
+            #sorted_runs[8] = ar
+
+    return [sorted_runs[idx] for idx in sorted_runs]
 
 
 def generate_csv_entry_for_assetrun(ar, row_writer_func):
@@ -2477,105 +2590,29 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
             row_writer_func(row)
 
 
-def _init_report_settings(request):
-    current_time = datetime.datetime.now()
-    # remove references of old report generators
-    for report_generator_id in REPORT_GENERATORS.keys():
-        if (current_time - REPORT_GENERATORS[report_generator_id].timestamp).seconds > REPORT_TIMEOUT_SECONDS:
-            del REPORT_GENERATORS[report_generator_id]
-
-    settings_dict = {}
-
-    for key in request.POST.iterkeys():
-        valuelist = request.POST.getlist(key)
-        # look for pk in key
-
-        index = key.split("[")[1][:-1]
-        if index not in settings_dict:
-            settings_dict[index] = {}
-
-        if key[::-1][:4] == ']kp[':
-            settings_dict[index]["pk"] = int(valuelist[0])
-        else:
-            if valuelist[0] == "true":
-                value = True
-            elif valuelist[0] == "false":
-                value = False
-            else:
-                value = valuelist[0]
-
-            settings_dict[index][key.split("[")[-1][:-1]] = value
-
-    pk_settings = {}
-
-    for setting_index in settings_dict:
-        pk = settings_dict[setting_index]['pk']
-        pk_settings[pk] = {}
-
-        for key in settings_dict[setting_index]:
-            if key != 'pk':
-                pk_settings[pk][key] = settings_dict[setting_index][key]
-
-    _devices = []
-    for _device in device.objects.filter(idx__in=[int(pk) for pk in pk_settings.keys()]):
-        if not _device.is_meta_device:
-            _devices.append(_device)
-
-    return pk_settings, _devices, current_time
+def sizeof_fmt(num, suffix='B'):
+    if num is None:
+        return "N/A"
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-# asset_batch_selection_mode
-# 0 == latest only, 1 == latest fully working, 2 == mixed runs from multiple assetbatches
-def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
-    selected_asset_runs = []
+def _generate_report(report_generator):
+    try:
+        report_generator.generate_report()
+    except Exception as e:
+        import traceback, sys
+        print '-'*60
+        traceback.print_exc(file=sys.stdout)
+        print '-'*60
+        logger.info("Report Generation failed, error was: {}".format(str(e)))
+        report_generator.buffer = BytesIO()
+        report_generator.data = ""
+        report_generator.progress = -1
 
-    asset_batch_selection_mode = int(asset_batch_selection_mode)
-    assert (asset_batch_selection_mode <= 2 and asset_batch_selection_mode >= -1)
-
-    # search latest assetbatch and generate
-    if _device.assetbatch_set.all():
-        for assetbatch in reversed(sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)):
-            if asset_batch_selection_mode == 0:
-                for assetrun in assetbatch.assetrun_set.all():
-                    if assetrun.has_data():
-                        selected_asset_runs.append(assetrun)
-                break
-            elif asset_batch_selection_mode == 1:
-                if assetbatch.num_runs == assetbatch.num_completed and assetbatch.num_runs_error == 0:
-                    selected_asset_runs = assetbatch.assetrun_set.all()
-            elif asset_batch_selection_mode == 2:
-                for assetrun in assetbatch.assetrun_set.all():
-                    if assetrun.has_data():
-                        if AssetType(assetrun.run_type) not in [AssetType(ar.run_type) for ar in selected_asset_runs]:
-                            selected_asset_runs.append(assetrun)
-
-    sorted_runs = {}
-
-    for ar in selected_asset_runs:
-        if AssetType(ar.run_type) == AssetType.PACKAGE:
-            sorted_runs[0] = ar
-        elif AssetType(ar.run_type) == AssetType.LICENSE:
-            sorted_runs[1] = ar
-        elif AssetType(ar.run_type) == AssetType.UPDATE:
-            sorted_runs[2] = ar
-        elif AssetType(ar.run_type) == AssetType.PENDING_UPDATE:
-            sorted_runs[3] = ar
-        elif AssetType(ar.run_type) == AssetType.PROCESS:
-            # disabled for now
-            pass
-            #sorted_runs[4] = ar
-        elif AssetType(ar.run_type) == AssetType.PRETTYWINHW:
-            sorted_runs[5] = ar
-        elif AssetType(ar.run_type) == AssetType.DMI:
-            sorted_runs[6] = ar
-        elif AssetType(ar.run_type) == AssetType.PCI:
-            sorted_runs[7] = ar
-        elif AssetType(ar.run_type) == AssetType.HARDWARE:
-            # disabled for now
-            pass
-            #sorted_runs[8] = ar
-
-    return [sorted_runs[idx] for idx in sorted_runs]
 
 def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
     data = []

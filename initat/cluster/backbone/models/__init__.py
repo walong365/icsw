@@ -73,6 +73,7 @@ from initat.cluster.backbone.models.dispatch import *
 from initat.cluster.backbone.signals import UserChanged, GroupChanged, \
     BootsettingsChanged, VirtualDesktopUserSettingChanged, SensorThresholdChanged
 from initat.cluster.backbone.models.asset import *
+from initat.cluster.backbone.models.report import *
 import initat.cluster.backbone.models.model_history
 
 

@@ -40,6 +40,7 @@ report_patterns = [
     url("^get_report_data$", report_views.GetReportData.as_view(), name="get_report_data"),
     url("^report_data_available$", report_views.ReportDataAvailable.as_view(), name="report_data_available"),
     url("^generate_report_xlsx$", report_views.GenerateReportXlsx.as_view(), name="generate_report_xlsx"),
+    url("^report_history_available$", report_views.ReportHistoryAvailable.as_view(), name="report_history_available"),
 ]
 
 asset_patterns = [
