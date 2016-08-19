@@ -120,8 +120,8 @@ angular.module(
                 console.log scope.data
                 hr_data = d3.hierarchy(scope.data, (node) -> return node.origin.operands)
                 nodes = scope.tree(hr_data)
-                links = hr_data.links()
-                console.log "n,l", nodes, links
+                # links = hr_data.links()
+                # console.log "n,l", nodes, links
                 # links = scope.tree.links(nodes)
 
                 # fixed depth
@@ -132,13 +132,13 @@ angular.module(
 
                 my_translate = (x, y) -> return [x, draw_height - y]
 
-                #diagonal = d3.svg.diagonal().projection(
-                #    (d) ->
-                #        return my_translate(d.x, d.y)
-                #)
+                diagonal = (d) ->
+                    [sx, sy] = my_translate(d.x, d.y)
+                    [dx, dy] = my_translate(d.parent.x, d.parent.y)
+                    return "M#{sx},#{sy}C#{dx},#{sy} #{dx},#{dy} #{dx},#{dy}"
 
                 link = scope.svg.selectAll(".link")
-                    .data(links)
+                    .data(hr_data.descendants().slice(1))
 #
                 link.enter()
                     .append("g")
@@ -147,24 +147,24 @@ angular.module(
                     .attr("fill", "none")
                     .attr("stroke", "#ff8888")
                     .attr("stroke-width", "1.5px")
-                    # .attr("d", diagonal);
+                    .attr("d", diagonal)
 
                 duration = 0.001  # milliseconds
 
                 link.transition()
                     .duration(duration)
                     .select("path")
-                    # .attr("d", diagonal);
+                    .attr("d", diagonal)
 
                 link.exit().remove()
 
                 node = scope.svg.selectAll(".node")
                     .data(hr_data.descendants())
-                console.log "n", node
+                # console.log "n", node
 
                 _html = (node) ->
                     d = node.data
-                    console.log "html", d
+                    # console.log "html", d
                     res = "<circle r=\"4\"></circle>"
                     if d.hide_children and d.origin.type != 'initial'
                         res += "<circle r=\"1.5\" fill=\"white\"></circle>"
@@ -220,6 +220,32 @@ angular.module(
                     ).html(
                         (d) ->
                             return _html(d)
+                    ).on("mouseenter", (node) =>
+                        $timeout(
+                            () ->
+                                if scope._mouse_on_node == node.data
+                                    icswConfigKpiVisUtils.sort_kpi_set(node.data)
+                                    scope.kpi_set_to_show = node.data
+                            50
+                        )
+                        scope._mouse_on_node = node.data
+                    ).on("mouseleave", (node) =>
+                        scope._mouse_on_node = undefined
+                    ).on("click", (node) =>
+                        # not working right now ..
+                        if node.data.hide_children
+                            # unhide recursively
+                            unhide_rec = (node) ->
+                                node.hide_children = false
+                                for child in node.origin.operands
+                                    unhide_rec(child)
+
+                            unhide_rec(node.data)
+                        else
+                            # hide locally
+                            node.data.hide_children = true
+
+                        scope.redraw()
                     )
 
                 node.transition()
@@ -239,36 +265,6 @@ angular.module(
                 #    #.style("text-anchor", (d) -> return if d.children then "end" else "start")
                 #    .style("text-anchor", (d) -> return "start")
 
-                node.on("click", scope.on_node_click)
-                node.on("mouseenter", scope.on_mouse_enter)
-                node.on("mouseleave", scope.on_mouse_leave)
-
-            scope.on_node_click = (node) ->
-                if node.hide_children
-                    # unhide recursively
-                    unhide_rec = (node) ->
-                        node.hide_children = false
-                        for child in node.origin.operands
-                            unhide_rec(child)
-
-                    unhide_rec(node)
-                else
-                    # hide locally
-                    node.hide_children = true
-
-                scope.redraw()
-            scope.on_mouse_enter = (node) ->
-                $timeout(
-                    () ->
-                        if scope._mouse_on_node == node
-                            icswConfigKpiVisUtils.sort_kpi_set(node)
-                            scope.kpi_set_to_show = node
-                    50
-                )
-                scope._mouse_on_node = node
-            scope.on_mouse_leave = (node) ->
-                # when mouse leaves single node
-                scope._mouse_on_node = undefined
             scope.on_mouse_leave_widget = () ->
                 # when mouse leaves full widget
                 # to hide set:
