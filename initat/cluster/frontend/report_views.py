@@ -375,7 +375,7 @@ class PDFReportGenerator(object):
 
         self.report_history = ReportHistory()
         self.report_history.save()
-        self.report_index = self.report_history.idx
+        self.report_id = self.report_history.idx
 
     def __generate_section_number(self, *sections):
         root_section = self.sections
@@ -391,7 +391,6 @@ class PDFReportGenerator(object):
             root_section = root_section[section]
 
         return version_str[1:]
-
 
     def get_progress(self):
         return self.progress
@@ -1131,11 +1130,6 @@ class PDFReportGenerator(object):
             self.generate_hardware_report(hardware_report_ar, report)
 
     def generate_hardware_report(self, hardware_report_ar, report):
-        # from reportlab.pdfbase import pdfmetrics
-        # from reportlab.pdfbase.ttfonts import TTFont
-        #
-        # pdfmetrics.registerFont(TTFont('Forque', '/home/kaufmann/Forque.ttf'))
-
         _device = report.device
 
         section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
@@ -1409,6 +1403,8 @@ class PDFReportGenerator(object):
         self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
         self.report_history.number_of_pages = output_pdf.getNumPages()
         self.report_history.data = base64.b64encode(self.buffer.getvalue())
+        self.report_history.size = len(self.buffer.getvalue())
+        self.report_history.type = self.get_report_type()
         self.report_history.save()
 
     def __generate_front_page(self):
@@ -1427,7 +1423,7 @@ class PDFReportGenerator(object):
 
         available_width = self.page_format[0] - (self.margin * 2)
 
-        data = [["Report #{}".format(self.report_index)]]
+        data = [["Report #{}".format(self.report_id)]]
 
         t_head = Table(data, colWidths=(available_width),
                        style=[('FONTSIZE', (0, 0), (-1, -1), 22),
@@ -1445,7 +1441,7 @@ class PDFReportGenerator(object):
 
         body_data = []
 
-        data = [[self.report_index]]
+        data = [[self.report_id]]
 
         text_block = Paragraph('<b>ReportID:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.85),
@@ -1722,8 +1718,8 @@ class PDFReportGenerator(object):
 
                 creationdate_str = self.creation_date.strftime(ASSET_DATETIMEFORMAT)
                 str_to_draw = "Page: {} | ReportId: {} | ClusterId: {} | Generated: {}".format(page_number + 1,
-                                                                         self.report_index,
-                                                                         self.cluster_id, creationdate_str)
+                                                                                               self.report_id,
+                                                                                               self.cluster_id, creationdate_str)
                 can.drawString(25, 15, str_to_draw)
 
                 # if (page_number - toc_offset_num) in page_num_prefix_dict:
@@ -1779,6 +1775,12 @@ class XlsxReportGenerator(object):
         self.general_settings = device_settings[-1]
         self.devices = _devices
         self.progress = 0
+
+        self.report_history = ReportHistory()
+        self.report_history.save()
+        self.report_id = self.report_history.idx
+
+        self.creation_date = datetime.datetime.now()
 
     def get_report_data(self):
         return self.data
@@ -1843,6 +1845,15 @@ class XlsxReportGenerator(object):
         zipfile.close()
 
         self.data = buffer.getvalue()
+
+        _user = user.objects.get(idx=self.general_settings["user_idx"])
+        self.report_history.created_by_user = _user
+        self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
+        self.report_history.number_of_pages = 0
+        self.report_history.data = base64.b64encode(self.data)
+        self.report_history.size = len(self.data)
+        self.report_history.type = self.get_report_type()
+        self.report_history.save()
 
         self.progress = -1
 
@@ -2013,23 +2024,34 @@ class GetProgress(View):
 class GetReportData(View):
     @method_decorator(login_required)
     def post(self, request):
-        report_generator_id = int(request.POST["id"])
-
-        report_data = ""
+        data_b64 = ""
         report_type = "unknown"
+        report_id = None
 
-        if report_generator_id in REPORT_GENERATORS:
-            report_generator = REPORT_GENERATORS[report_generator_id]
-            report_data = report_generator.get_report_data()
-            report_type = report_generator.get_report_type()
-            del REPORT_GENERATORS[report_generator_id]
+        if "report_generator_id" in request.POST:
+            report_generator_id = int(request.POST["report_generator_id"])
+            report_data = ""
 
-        data_b64 = base64.b64encode(report_data)
+            if report_generator_id in REPORT_GENERATORS:
+                report_generator = REPORT_GENERATORS[report_generator_id]
+                report_data = report_generator.get_report_data()
+                report_type = report_generator.get_report_type()
+                report_id = report_generator.report_id
+                del REPORT_GENERATORS[report_generator_id]
+
+            data_b64 = base64.b64encode(report_data)
+        elif "report_id" in request.POST:
+            report_id = int(request.POST["report_id"])
+
+            report_history = ReportHistory.objects.get(idx=report_id)
+            report_type = report_history.type
+            data_b64 = report_history.data
 
         return HttpResponse(
             json.dumps(
                 {
-                    report_type: data_b64
+                    report_type: data_b64,
+                    "report_id": report_id
                 }
             )
         )
@@ -2187,6 +2209,7 @@ class ReportHistoryAvailable(View):
     @method_decorator(login_required)
     def post(self, request):
         data = {}
+        report_ids = []
 
         for report_history in ReportHistory.objects.all():
             if not report_history.created_by_user:
@@ -2195,18 +2218,41 @@ class ReportHistoryAvailable(View):
                 continue
 
             o = {
+                'report_id': str(report_history.idx),
                 'created_by_user': str(report_history.created_by_user),
                 'created_at_time': str(report_history.created_at_time),
                 'number_of_pages': str(report_history.number_of_pages),
+                'size': sizeof_fmt(report_history.size),
+                'type': str(report_history.type),
                 'number_of_downloads': str(report_history.number_of_downloads)
             }
 
+            report_ids.append(report_history.idx)
             data[report_history.idx] = o
 
         return HttpResponse(
             json.dumps(
                 {
+                    'report_ids': sorted(report_ids),
                     'report_history': data
+                }
+            )
+        )
+
+class UpdateDownloadCount(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        idx = int(request.POST["idx"])
+
+        report_history = ReportHistory.objects.get(idx=idx)
+
+        report_history.number_of_downloads += 1
+        report_history.save()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'download_count': report_history.number_of_downloads
                 }
             )
         )

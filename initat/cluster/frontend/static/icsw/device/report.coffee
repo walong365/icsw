@@ -69,6 +69,7 @@ device_report_module = angular.module(
         report_download_url: undefined
         report_download_name: undefined
         report_download_url_name: undefined
+        report_id: undefined
 
         generate_button_disabled: false
         generate_interval: undefined
@@ -84,17 +85,29 @@ device_report_module = angular.module(
         user: undefined
 
         assetbatch_selection_mode: "-1"
+
+        available_reports: []
+        available_reports_dict: {}
     }
 
-    icswSimpleAjaxCall({
-        url: ICSW_URLS.REPORT_REPORT_HISTORY_AVAILABLE
-        dataType: 'json'
-    }).then(
-        (result) ->
-            console.log(result)
-        (error) ->
-            console.log(error)
-    )
+    refresh_available_reports = () ->
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.REPORT_REPORT_HISTORY_AVAILABLE
+            dataType: 'json'
+        }).then(
+            (result) ->
+                for report_id in result.report_ids
+                    if $scope.struct.available_reports_dict.hasOwnProperty(report_id)
+                       $scope.struct.available_reports_dict[report_id].number_of_downloads =  result.report_history[report_id].number_of_downloads
+                    else
+                        prettier_time_string = moment(result.report_history[report_id].created_at_time).format("YYYY-MM-DD HH:mm:ss")
+                        result.report_history[report_id].created_at_time_pretty = prettier_time_string
+                        $scope.struct.available_reports.push(result.report_history[report_id])
+                        $scope.struct.available_reports_dict[report_id] = result.report_history[report_id]
+            (error) ->
+                console.log(error)
+        )
+    refresh_available_reports()
 
     $scope.assetbatch_selection_mode_change = () ->
         for dev in $scope.struct.devices
@@ -448,25 +461,29 @@ device_report_module = angular.module(
                                         icswSimpleAjaxCall({
                                             url: ICSW_URLS.REPORT_GET_REPORT_DATA
                                             data:
-                                                id: result.id
+                                                report_generator_id: result.id
                                             dataType: 'json'
                                         }).then(
                                             (result) ->
+                                                console.log(result)
                                                 if result.hasOwnProperty("pdf")
                                                     $scope.struct.report_download_url_name = "Download PDF Report"
                                                     $scope.struct.report_download_name = "Report.pdf"
                                                     blob = b64_to_blob(result.pdf, 'application/pdf')
                                                     $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+                                                    $scope.struct.report_id = result.report_id
 
                                                 if result.hasOwnProperty("xlsx")
                                                     $scope.struct.report_download_url_name = "Download (zipped) XLSX Report"
                                                     $scope.struct.report_download_name = "Report.zip"
                                                     blob = b64_to_blob(result.xlsx, 'application/zip')
                                                     $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+                                                    $scope.struct.report_id = result.report_id
 
                                                 $scope.struct.report_generating = false
                                                 $scope.struct.generate_button_disabled = false
                                                 $interval.cancel($scope.struct.generate_interval)
+                                                refresh_available_reports()
                                                 $scope.struct.generate_progress = 0
                                             (not_ok) ->
                                                 console.log not_ok
@@ -656,6 +673,49 @@ device_report_module = angular.module(
 
             if !device.$lstopo_report_button_disabled
                 device.$lstopo_report_selected = !selected
+
+    $scope.update_download_counter = (report_obj) ->
+        console.log(report_obj)
+
+        if report_obj == undefined
+            report_id = $scope.struct.report_id
+        else
+            report_id = report_obj.report_id
+
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.REPORT_UPDATE_DOWNLOAD_COUNT
+            data:
+                idx: report_id
+            dataType: 'json'
+        }).then(
+            (result) ->
+                refresh_available_reports()
+            (error) ->
+                console.log(error)
+        )
+
+    $scope.downloadify_report_obj = (report_obj) ->
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.REPORT_GET_REPORT_DATA
+            data:
+                report_id: report_obj.report_id
+            dataType: 'json'
+        }).then(
+            (result) ->
+                if result.hasOwnProperty("pdf")
+                    report_obj.report_download_name = "Report.pdf"
+                    blob = b64_to_blob(result.pdf, 'application/pdf')
+                    report_obj.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+
+                if result.hasOwnProperty("xlsx")
+                    report_obj.report_download_name = "Report.xlsx"
+                    blob = b64_to_blob(result.xlsx, 'application/zip')
+                    report_obj.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+
+            (error) ->
+                console.log(error)
+        )
+
 
 ]).directive("icswDeviceTreeReportRow",
 [

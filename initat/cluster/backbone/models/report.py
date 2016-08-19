@@ -39,6 +39,10 @@ class ReportHistory(models.Model):
 
     data = models.TextField(null=True)
 
+    size = models.BigIntegerField(default=0)
+
+    type = models.TextField(null=True)
+
 ########################################################################################################################
 # Serializers
 ########################################################################################################################
