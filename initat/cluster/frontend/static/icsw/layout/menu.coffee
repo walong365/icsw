@@ -193,7 +193,7 @@ menu_module = angular.module(
                 scope.update_progress_bar()
             )
 
-            scope.sglclick = ($event)->
+            scope.go_mainboard = ($event)->
                 $state.go("main.dashboard")
 
             scope.update_progress_bar = () ->
@@ -354,6 +354,8 @@ menu_module = angular.module(
                 _idx++
                 data = state.icswData
                 _key = data.key
+                if data.menuEntry.isHidden? and data.menuEntry.isHidden
+                    continue
                 if data.$$allowed
                     # console.log _key
                     if (data.menuEntry.preSpacer? and valid_entry) or _post_spacer
@@ -614,6 +616,7 @@ menu_module = angular.module(
     bc_list = []
 
     add_state = (state) ->
+        console.log state.icswData
         if state.icswData? and state.icswData.menuEntry?
             if state.icswData.menuEntry.sref?
                 _.remove(bc_list, (entry) -> return entry.icswData.menuEntry.sref == state.icswData.menuEntry.sref)

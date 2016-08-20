@@ -266,7 +266,9 @@
     </route>
     <route name="main.dashboard">
         <stateData type="dict" url_str="/dashboard" templateUrl_str="icsw/main/dashboard.html"/>
-        <icswData type="dict" pageTitle_str="Dashboard"/>
+        <icswData type="dict" pageTitle_str="Dashboard">
+            <menuEntry type="dict" ordering_int="0" icon_str="fa-dashboard" isHidden_bool="yes" menukey_str="sys" name_str="Dashboard"/>
+        </icswData>
     </route>
     <route name="main.userjobinfo">
         <stateData type="dict" url_str="/userjobinfo" templateUrl_str="icsw.dashboard.jobinfo"/>

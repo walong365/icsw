@@ -154,6 +154,14 @@
                                     </choice>
                                 </attribute>
                             </optional>
+                            <optional>
+                                <attribute name="isHidden_bool">
+                                    <choice>
+                                        <value>yes</value>
+                                        <value>no</value>
+                                    </choice>
+                                </attribute>
+                            </optional>
                         </element>
                     </optional>
                     <optional>
