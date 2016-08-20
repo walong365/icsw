@@ -615,10 +615,15 @@ angular.module(
         # global signals (for $rootScope)
 
         ICSW_ACLS_CHANGED: "icsw.acls.changed"
+        # user login / logout
         ICSW_USER_LOGGEDOUT: "icsw.user.loggedout"
         ICSW_USER_LOGGEDIN: "icsw.user.loggedin"
+        # device selection receiver registered / unregistered
         ICSW_DSR_REGISTERED: "icsw.dsr.registered"
         ICSW_DSR_UNREGISTERED: "icsw.dsr.unregistered"
+        # breadcrumbs changed
+        ICSW_BREADCRUMBS_CHANGED: "icsw.breadcrumbs.changed"
+        # selector shown
         ICSW_SELECTOR_SHOW: "icsw.selector.show"
         ICSW_DEVICE_TREE_LOADED: "icsw.device.tree.loaded"
         ICSW_CATEGORY_TREE_LOADED: "icsw.category.tree.loaded"

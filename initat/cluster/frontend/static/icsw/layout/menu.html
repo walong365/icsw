@@ -63,9 +63,10 @@
 <script type="text/ng-template" id="icsw.layout.submenubar">
     <nav class="navbar navbar-default" ng-if="struct.current_user">
         <ol class="breadcrumb">
-            <li ng-repeat="entry in breadcrumb" ng-class="{'active': entry.last}">
-                <a ng-show="!$last">{{ entry.title }}</a>
-                <span ng-show="$last">{{ entry.title }}</span>
+            <li ng-repeat="entry in struct.bc_list track by $index">
+                <a class="cursorpointer" ui-sref="{{ entry.name }}" ui-sref-opts="{icswRegister: false}">
+                    <span class="fa" ng-class="entry.icswData.menuEntry.icon"/> {{ entry.icswData.menuEntry.name }}
+                </a>
             </li>
             <li class="pull-right cursorpointer" ng-click="device_selection($event)">
                 <span class="label label-success" ng-show="struct.num_selected">{{ struct.select_txt }} selected</span>

@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+""" routing component of ICSW """
+
 menu_module = angular.module(
     "icsw.layout.routing",
     [
@@ -76,9 +78,11 @@ menu_module = angular.module(
 ]).controller("icswMainCtrl", [
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
+    "icswBreadcrumbs",
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
+    icswBreadcrumbs,
 ) ->
     hotkeys.bindTo($scope).add(
         combo: "s"
@@ -106,7 +110,10 @@ menu_module = angular.module(
         $scope.struct.current_user = undefined
     )
 
-    $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
+    $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params, options) ->
+        if options.icswRegister?
+            # copy to to_params
+            to_params.icswRegister = options.icswRegister
         to_main = if to_state.name.match(/^main/) then true else false
         from_main = if from_state.name.match(/^main/) then true else false
         console.log "$stateChangeStart from '#{from_state.name}' (#{from_main}) to '#{to_state.name}' (#{to_main})"
@@ -140,6 +147,12 @@ menu_module = angular.module(
                 # reduce flicker
                 $(document.body).hide()
                 $window.location.reload()
+        if to_main
+            if to_params.icswRegister? and not to_params.icswRegister
+                # to not register statechange from breadcrumb line
+                true
+            else
+                icswBreadcrumbs.add_state(to_state)
     )
     $scope.$on("$stateChangeError", (event, to_state, to_params, from_state, from_params, error) ->
         console.error "error moving to state #{to_state.name} (#{to_state}), error is #{error}"

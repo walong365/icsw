@@ -555,6 +555,8 @@ menu_module = angular.module(
         num_selected: 0
         # selection string
         select_txt: "No devices selected"
+        # breadcrumb list
+        bc_list: []
     }
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
@@ -565,17 +567,14 @@ menu_module = angular.module(
         $scope.struct.current_user = undefined
     )
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"), () ->
-        icswBreadcrumbs.setup()
-        $scope.breadcrumb = icswBreadcrumbs.generate()
-    )
-    $rootScope.$on("$stateChangeSuccess", () ->
-        $scope.breadcrumb = icswBreadcrumbs.generate()
-    )
-
     $scope.device_selection = ($event) ->
         icswLayoutSelectionDialogService.quick_dialog("right")
 
+    $rootScope.$on(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), (event, bc_list) ->
+        $scope.struct.bc_list.length = 0
+        for entry in bc_list
+            $scope.struct.bc_list.push(entry)
+    )
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
         _cur_sel = icswActiveSelectionService.current()
         #sel_groups = _cur_sel.get_devsel_list()[3].length
@@ -605,52 +604,28 @@ menu_module = angular.module(
                 sel_devices++
             else
                 sel_groups++
-]).factory('icswBreadcrumbs',
+]).service('icswBreadcrumbs',
 [
-    "$state", "icswRouteHelper",
+    "$state", "icswRouteHelper", "$rootScope", "ICSW_SIGNALS",
 (
-    $state, icswRouteHelper,
+    $state, icswRouteHelper, $rootScope, ICSW_SIGNALS,
 ) ->
-    header_lut = {}
+    # list of breadcrumbs
+    bc_list = []
 
-    setup_luts = () ->
-        menu_headers = icswRouteHelper.get_struct().menu_header_states
-        for header in menu_headers
-            icswheader = header.icswData.menuHeader
-            header_lut[icswheader.key] = icswheader.name
+    add_state = (state) ->
+        if state.icswData? and state.icswData.menuEntry?
+            if state.icswData.menuEntry.sref?
+                _.remove(bc_list, (entry) -> return entry.icswData.menuEntry.sref == state.icswData.menuEntry.sref)
+                # state with menu entry
+                bc_list.push(state)
+                if bc_list.length > 6
+                    bc_list = bc_list.slice(1)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), bc_list)
+            # console.log bc_list.length, (entry.name for entry in bc_list)
 
-    _addBreadcrumb = (list, title, state, sref) ->
-        list.push
-            title: title
-            sref: sref
-            state: state
-
-    # generateOutput = (list) ->
-    #     return (entry.title for entry in list).join(" - ")
-
-    generateBreadcrumbs = (state) ->
-        if state.parent? and state.parent.name != ""
-            list = generateBreadcrumbs state.parent
-        else
-            list = []
-        if state.icswData? and (state.icswData.$$menuHeader or state.icswData.$$menuEntry)
-            # todo: move breadcrumb generation to menu XML code
-            if state.icswData.menuEntry?
-                _addBreadcrumb list, header_lut[state.icswData.menuEntry.menukey]
-                _addBreadcrumb(
-                    list
-                    state.icswData.menuEntry.name
-                    state.name
-                    state.icswData.menuEntry.sref
-                )
-        else if state.name and state.name == "main"
-            _addBreadcrumb list, "Home"
-        return list
-
-    {
-        generate: ->
-            return generateBreadcrumbs $state.$current
-        setup: ->
-            setup_luts()
+    return {
+        add_state: (state) ->
+            add_state(state)
     }
 ])
