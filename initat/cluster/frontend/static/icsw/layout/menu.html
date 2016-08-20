@@ -20,7 +20,7 @@
                 </a>
             </li> -->
             <li>
-                <a class="dropdown-toggle cursorpointer" data-toggle="dropdown" style="padding-bottom:15px;">
+                <a class="dropdown-toggle cursorpointer" data-toggle="dropdown"> <!--  style="padding-bottom:15px;"> -->
                     <span ng-if="struct.current_user">
                         <span class="fa fa-user fa-lg fa_top"></span>
                         <span title="{{ struct.current_user.full_name }}">{{ struct.current_user.login }}</span>
@@ -49,21 +49,9 @@
                         </a>
                     </li>
                     <li class="divider" ng-if="struct.current_user"></li>
-                    <li ng-if="struct.current_user">
-                        <a ui-sref="main.serverinfo">
-                            <span class="fa fa-info fa_icsw"></span>
-                            Server information
-                        </a>
-                    </li>
                     <li ng-show="handbook_url_valid">
                         <a href="{{ handbook_url }}" target="_blank">
                             <span class="fa fa-book fa_icsw"></span>PDF Handbook
-                        </a>
-                    </li>
-                    <li ng-show="has_menu_permission('background_job.show_background')">
-                        <a ui-sref="main.backgroundinfo">
-                            <span class="fa fa-list fa-sm fa_icsw"></span>
-                            Background Job Info
                         </a>
                     </li>
                 </ul>
@@ -73,14 +61,15 @@
 </script>
 
 <script type="text/ng-template" id="icsw.layout.submenubar">
-    <nav class="navbar navbar-default" icsw-menu-sub-directive>
+    <nav class="navbar navbar-default" ng-if="struct.current_user">
         <ol class="breadcrumb">
             <li ng-repeat="entry in breadcrumb" ng-class="{'active': entry.last}">
                 <a ng-show="!$last">{{ entry.title }}</a>
                 <span ng-show="$last">{{ entry.title }}</span>
             </li>
             <li class="pull-right cursorpointer" ng-click="device_selection($event)">
-                {{ select_txt }}
+                <span class="label label-success" ng-show="struct.num_selected">{{ struct.select_txt }} selected</span>
+                <span class="label label-warning" ng-show="!struct.num_selected">No devices selected</span>
             </li>
         </ol>
     </nav>
@@ -93,7 +82,7 @@
                 <uib-progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></uib-progressbar>
             </div>
         </li>
-        <li class="active" ng-if="num_gauges == 0"><!--redirect_to_init()-->
+        <li class="active" ng-if="num_gauges == 0"><!-- redirect_to_init() -->
             <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="sglclick($event)" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
         </li>
     </ul>

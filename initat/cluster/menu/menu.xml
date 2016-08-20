@@ -31,6 +31,7 @@
     <route name="main.serverinfo">
         <stateData type="dict" url_str="/serverinfo&quot;" templateUrl_str="icsw/main/serverinfo.html"/>
         <icswData type="dict" pageTitle_str="Server info">
+            <menuEntry type="dict" ordering_int="50" menukey_str="sys" icon_str="fa-info" name_str="Server Information"/>
             <rights type="list">
                 <value>$$CHECK_FOR_SUPERUSER</value>
             </rights>
@@ -39,7 +40,7 @@
     <route name="main.statelist">
         <stateData type="dict" url_str="/statelist" template_str="&lt;icsw-internal-state-list&gt;&lt;/icsw-internal-state-list&gt;"/>
         <icswData type="dict" pageTitle_str="Internal State list">
-            <menuEntry type="dict" ordering_int="30" preSpacer_bool="yes" postSpacer_bool="yes" menukey_str="sys" icon_str="fa-bars"/>
+            <menuEntry type="dict" ordering_int="30" preSpacer_bool="yes" menukey_str="sys" icon_str="fa-bars"/>
             <rights type="list">
                 <value>$$CHECK_FOR_SUPERUSER</value>
             </rights>
@@ -68,15 +69,6 @@
             <menuEntry type="dict" ordering_int="10" icon_str="fa-history" menukey_str="sys" name_str="History"/>
             <rights type="list">
                 <value>backbone.user.snapshots</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.domaintree">
-        <stateData type="dict" url_str="/domaintree" templateUrl_str="icsw/main/device/domaintree.html"/>
-        <icswData type="dict" pageTitle_str="Domain name tree">
-            <menuEntry type="dict" ordering_int="45" menukey_str="dev" icon_str="fa-list-alt"/>
-            <rights type="list">
-                <value>backbone.user.modify_domain_name_tree</value>
             </rights>
         </icswData>
     </route>
@@ -117,8 +109,8 @@
     <route name="main.scheddevice">
         <stateData type="dict" url_str="/sched/device" template_str="&lt;icsw-schedule-device icsw-sel-man='0'&gt;&lt;/icsw-schedule-device&gt;"/>
         <icswData type="dict" pageTitle_str="Set Device Schedules">
-            <menuHeader type="dict" ordering_int="70" name_str="Scheduling" key_str="sched" icon_str="fa-gears"/>
-            <menuEntry type="dict" ordering_int="20" icon_str="fa-laptop" menukey_str="sched" name_str="Device settings"/>
+            <menuHeader type="dict" ordering_int="70" name_str="Assets" key_str="asset" icon_str="fa-shopping-bag"/>
+            <menuEntry type="dict" ordering_int="20" icon_str="fa-laptop" menukey_str="asset" name_str="Device settings"/>
             <rights type="list">
                 <value>backbone.device.dispatch_settings</value>
             </rights>
@@ -127,7 +119,7 @@
     <route name="main.schedoverview">
         <stateData type="dict" url_str="/sched/overview" template_str="&lt;icsw-schedule-overview&gt;&lt;/icsw-schedule-overview&gt;"/>
         <icswData type="dict" pageTitle_str="Schedule settings">
-            <menuEntry type="dict" ordering_int="10" icon_str="fa-gears" menukey_str="sched" name_str="Settings"/>
+            <menuEntry type="dict" ordering_int="10" icon_str="fa-gears" menukey_str="asset" name_str="Settings"/>
             <rights type="list">
                 <value>backbone.dispatchersetting.setup</value>
             </rights>
@@ -137,7 +129,7 @@
         <stateData type="dict" url_str="/sched/stattemp"
                    template_str="&lt;icsw-static-asset-template-overview&gt;&lt;/icsw-static-asset-template-overview&gt;"/>
         <icswData type="dict" pageTitle_str="Static Asset templates">
-            <menuEntry type="dict" ordering_int="30" icon_str="fa-reorder" menukey_str="sched" name_str="Static Asset templates"/>
+            <menuEntry type="dict" ordering_int="30" icon_str="fa-reorder" menukey_str="asset" name_str="Static Asset templates"/>
             <rights type="list">
                 <value>backbone.staticassettemplate.setup</value>
             </rights>
@@ -197,7 +189,7 @@
     <route name="main.devicenetwork">
         <stateData type="dict" url_str="/network" template_str="&lt;icsw-device-network-total&gt;&lt;/icsw-device-network-total&gt;"/>
         <icswData type="dict" pageTitle_str="Network">
-            <menuEntry type="dict" ordering_int="30" menukey_str="dev" icon_str="fa-sitemap"/>
+            <menuEntry type="dict" ordering_int="30" menukey_str="config" icon_str="fa-sitemap"/>
             <rights type="list">
                 <value>backbone.device.change_network</value>
             </rights>
@@ -217,13 +209,42 @@
             </rights>
         </icswData>
     </route>
+    <!-- trees -->
     <route name="main.devtree">
         <stateData type="dict" url_str="/devtree" templateUrl_str="icsw/main/device/tree.html"/>
         <icswData type="dict" pageTitle_str="Device tree">
-            <menuEntry type="dict" ordering_int="15" menukey_str="dev" icon_str="fa-list"/>
+            <menuHeader type="dict" ordering_int="20" name_str="Trees" key_str="tree" icon_str="fa-tree"/>
+            <menuEntry type="dict" postSpacer_bool="yes" ordering_int="2" menukey_str="tree" icon_str="fa-list" name_str="Devices"/>
             <dashboardEntry type="dict" sizeX_int="2" sizeY_int="5"/>
             <rights type="list">
                 <value>backbone.user.modify_tree</value>
+            </rights>
+        </icswData>
+    </route>
+    <route name="main.domaintree">
+        <stateData type="dict" url_str="/domaintree" templateUrl_str="icsw/main/device/domaintree.html"/>
+        <icswData type="dict" pageTitle_str="Domain names">
+            <menuEntry type="dict" ordering_int="10" menukey_str="tree" icon_str="fa-list-alt"/>
+            <rights type="list">
+                <value>backbone.user.modify_domain_name_tree</value>
+            </rights>
+        </icswData>
+    </route>
+    <route name="main.categorytree">
+        <stateData type="dict" url_str="/categorytree" templateUrl_str="icsw/main/category/tree.html"/>
+        <icswData type="dict" pageTitle_str="Category tree">
+            <menuEntry type="dict" ordering_int="20" icon_str="fa-table" menukey_str="tree" name_str="Categories"/>
+            <rights type="list">
+                <value>backbone.user.modify_category_tree</value>
+            </rights>
+        </icswData>
+    </route>
+    <route name="main.devlocation">
+        <stateData type="dict" url_str="/devlocation" templateUrl_str="icsw/main/device/location.html"/>
+        <icswData type="dict" pageTitle_str="Locations">
+            <menuEntry type="dict" ordering_int="40" menukey_str="tree" icon_str="fa-map-marker"/>
+            <rights type="list">
+                <value>backbone.user.modify_category_tree</value>
             </rights>
         </icswData>
     </route>
@@ -288,12 +309,17 @@
     </route>
     <route name="main.backgroundinfo">
         <stateData type="dict" url_str="/sysbackgroundinfo" templateUrl_str="icsw/main/sysbackgroundinfo.html"/>
-        <icswData type="dict" pageTitle_str="Background Job Information"/>
+        <icswData type="dict" pageTitle_str="Background Job Information">
+            <menuEntry type="dict" ordering_int="40" icon_str="fa-list" menukey_str="sys" name_str="Background Job Info"/>
+            <rights type="list">
+                <value>backbone.background_job.show_background</value>
+            </rights>
+        </icswData>
     </route>
     <route name="main.deviceconnection">
         <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
         <icswData type="dict" pageTitle_str="Device Connections">
-            <menuEntry type="dict" ordering_int="25" icon_str="fa-plug" menukey_str="dev" name_str="Device connections"/>
+            <menuEntry type="dict" ordering_int="25" icon_str="fa-plug" menukey_str="config" name_str="Connections"/>
             <rights type="list">
                 <value>backbone.device.change_connection</value>
             </rights>
@@ -303,7 +329,7 @@
         <stateData type="dict" url_str="/variables"
                    templateUrl_str="icsw/device/variable.html"/>
         <icswData type="dict" pageTitle_str="Device variables">
-            <menuEntry type="dict" ordering_int="30" menukey_str="dev" icon_str="fa-code"/>
+            <menuEntry type="dict" ordering_int="30" menukey_str="config" icon_str="fa-code" name_str="Variables"/>
             <rights type="list">
                 <value>backbone.device.change_variables</value>
             </rights>
@@ -321,7 +347,7 @@
     <route name="main.deviceinfo">
         <stateData type="dict" url_str="/deviceinfo" template_str="&lt;icsw-simple-device-info icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-simple-device-info&gt;"/>
         <icswData type="dict" pageTitle_str="Device info">
-            <menuEntry type="dict" ordering_int="10" preSpacer_bool="yes" postSpacer_bool="yes" menukey_str="dev" icon_str="fa-bars"/>
+            <menuEntry type="dict" ordering_int="10" preSpacer_bool="yes" postSpacer_bool="yes" menukey_str="stat" icon_str="fa-bars"/>
             <dashboardEntry type="dict" sizeX_int="4" sizeY_int="3" allowState_bool="yes"/>
             <rights type="list">
                 <value>backbone.user.modify_tree</value>
@@ -344,8 +370,8 @@
     <route name="main.devicecreate">
         <stateData type="dict" url_str="/devicecreate" templateUrl_str="icsw/main/device/create.html"/>
         <icswData type="dict" pageTitle_str="Create new Device" validForQuicklink_bool="yes">
-            <menuHeader type="dict" ordering_int="0" name_str="Device" key_str="dev" icon_str="fa-hdd-o"/>
-            <menuEntry type="dict" ordering_int="5" icon_str="fa-plus-circle" menukey_str="dev" name_str="Create new device"/>
+            <menuHeader type="dict" ordering_int="0" name_str="Configuration" key_str="config" icon_str="fa-hdd-o"/>
+            <menuEntry type="dict" ordering_int="5" icon_str="fa-plus-circle" menukey_str="config" name_str="Create new device"/>
             <rights type="list">
                 <value>backbone.user.modify_tree</value>
             </rights>
@@ -353,8 +379,8 @@
     </route>
     <route name="main.configoverview">
         <stateData type="dict" url_str="/configoverview" templateUrl_str="icsw/main/config/overview.html"/>
-        <icswData type="dict" pageTitle_str="Configuration Overview">
-            <menuEntry type="dict" ordering_int="10" preSpacer_bool="yes" icon_str="fa-check-square-o" menukey_str="dev" name_str="Configurations"/>
+        <icswData type="dict" pageTitle_str="Overview">
+            <menuEntry type="dict" ordering_int="10" preSpacer_bool="yes" icon_str="fa-check-square-o" menukey_str="config" name_str="Base"/>
             <rights type="list">
                 <value>backbone.device.change_config</value>
             </rights>
@@ -366,26 +392,17 @@
             <serviceTypes type="list">
                 <value>discovery-server</value>
             </serviceTypes>
-            <menuEntry type="dict" ordering_int="30" menukey_str="dev" icon_str="fa-code"/>
+            <menuEntry type="dict" ordering_int="30" menukey_str="asset" icon_str="fa-code"/>
             <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
             <rights type="list">
                 <value>backbone.device.assets</value>
             </rights>
         </icswData>
     </route>
-    <route name="main.devlocation">
-        <stateData type="dict" url_str="/devlocation" templateUrl_str="icsw/main/device/location.html"/>
-        <icswData type="dict" pageTitle_str="Device location">
-            <menuEntry type="dict" ordering_int="40" menukey_str="dev" icon_str="fa-map-marker"/>
-            <rights type="list">
-                <value>backbone.user.modify_category_tree</value>
-            </rights>
-        </icswData>
-    </route>
     <route name="main.deviceconfig">
         <stateData type="dict" url_str="/deviceconfig" templateUrl_str="icsw/main/device/config.html"/>
         <icswData type="dict" pageTitle_str="Configure Device">
-            <menuEntry type="dict" ordering_int="10" icon_str="fa-check-square" menukey_str="dev" name_str="Device Configurations"/>
+            <menuEntry type="dict" ordering_int="10" icon_str="fa-check-square" menukey_str="config" name_str="Device Configurations"/>
             <rights type="list">
                 <value>backbone.device.change_config</value>
             </rights>
@@ -418,15 +435,6 @@
             </rights>
         </icswData>
     </route>
-    <route name="main.categorytree">
-        <stateData type="dict" url_str="/categorytree" templateUrl_str="icsw/main/category/tree.html"/>
-        <icswData type="dict" pageTitle_str="Category tree">
-            <menuEntry type="dict" ordering_int="14" icon_str="fa-table" menukey_str="dev" name_str="Device category"/>
-            <rights type="list">
-                <value>backbone.user.modify_category_tree</value>
-            </rights>
-        </icswData>
-    </route>
     <route name="main.syslicenseoverview">
         <stateData type="dict" url_str="/syslicenseoverview" templateUrl_str="icsw/main/license/overview.html"/>
         <icswData type="dict" pageTitle_str="License information" validForQuicklink_bool="yes">
@@ -450,7 +458,7 @@
         <stateData type="dict" url_str="/monitorov"
                    template_str="&lt;icsw-monitoring-list-overview icsw-sel-man='0'&gt;&lt;/icsw-monitoring-list-overview&gt;"/>
         <icswData type="dict" pageTitle_str="Monitoring List">
-            <menuEntry type="dict" ordering_int="0" icon_str="fa-list" menukey_str="mon" name_str="Monitoring list"/>
+            <menuEntry type="dict" ordering_int="0" icon_str="fa-list" menukey_str="stat" name_str="Monitoring list"/>
             <rights type="list">
                 <value>backbone.mon_check_command.setup_monitoring</value>
             </rights>
@@ -481,7 +489,7 @@
         <stateData type="dict" url_str="/monitorbasics" templateUrl_str="icsw/monitoring/setup"/>
         <icswData type="dict" pageTitle_str="Monitoring setup">
             <menuHeader type="dict" ordering_int="70" name_str="Monitoring" key_str="mon" icon_str="fa-gears"/>
-            <menuEntry type="dict" ordering_int="0" icon_str="fa-bars" menukey_str="mon" name_str="Basic setup"/>
+            <menuEntry type="dict" ordering_int="0" icon_str="fa-bars" menukey_str="mon" name_str="Basic settings"/>
             <rights type="list">
                 <value>backbone.mon_check_command.setup_monitoring</value>
             </rights>

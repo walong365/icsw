@@ -19,20 +19,19 @@
 #
 """ inject addons in already compiled main.html """
 
-import os
 import json
+import os
 import re
 import sys
-from optparse import make_option
 
-from initat.cluster.backbone.models import device, csw_permission
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from lxml import etree
 from lxml.builder import E
-from initat.icsw.service.instance import InstanceXML
 
-from initat.tools import logging_tools
+from initat.cluster.backbone.models import csw_permission
+from initat.icsw.service.instance import InstanceXML
+from initat.tools import logging_tools, process_tools
 
 
 class MenuRelax(object):
@@ -145,7 +144,18 @@ class FileModify(object):
 
         _res = {}
         for route in xml:
-            _res[route.attrib["name"]] = _iter_dict(route)
+            if route.tag is etree.Comment:
+                continue
+            try:
+                _res[route.attrib["name"]] = _iter_dict(route)
+            except:
+                print(
+                    "Error handling the element '{}': {}".format(
+                        etree.tostring(route, pretty_print=True),
+                        process_tools.get_except_info(),
+                    )
+                )
+                raise
         return ["    {}".format(_line) for _line in json.dumps(_res, indent=4).split("\n")[1:-1]]
 
     def read_menus(self, mp_list):
