@@ -1,5 +1,6 @@
 <routes>
-    <menuHeader type="dict" name_str="Configuration" key_str="config" icon_str="fa-hdd-o">
+    <routeGroup name="config">
+        <menuHeader type="dict" name_str="Configuration" icon_str="fa-hdd-o"/>
         <route name="main.devicecreate">
             <stateData type="dict" url_str="/devicecreate" templateUrl_str="icsw/main/device/create.html"/>
             <icswData type="dict" pageTitle_str="Create new Device" validForQuicklink_bool="yes">
@@ -55,9 +56,10 @@
                 </rights>
             </icswData>
         </route>
-    </menuHeader>
+    </routeGroup>
     <!-- trees -->
-    <menuHeader type="dict" name_str="Trees" key_str="tree" icon_str="fa-tree">
+    <routeGroup name="tree">
+        <menuHeader type="dict" name_str="Trees" icon_str="fa-tree"/>
         <route name="main.devtree">
             <stateData type="dict" url_str="/devtree" templateUrl_str="icsw/main/device/tree.html"/>
             <icswData type="dict" pageTitle_str="Device tree">
@@ -95,8 +97,9 @@
                 </rights>
             </icswData>
         </route>
-    </menuHeader>
-    <menuHeader type="dict" name_str="Status" key_str="stat" icon_str="fa-line-chart">
+    </routeGroup>
+    <routeGroup name="stat">
+        <menuHeader type="dict" name_str="Status" icon_str="fa-line-chart"/>
         <route name="main.monitorov">
             <stateData type="dict" url_str="/monitorov"
                        template_str="&lt;icsw-monitoring-list-overview icsw-sel-man='0'&gt;&lt;/icsw-monitoring-list-overview&gt;"/>
@@ -180,8 +183,9 @@
                 </rights>
             </icswData>
         </route>
-    </menuHeader>
-    <menuHeader type="dict" name_str="Monitoring" key_str="mon" icon_str="fa-gears">
+    </routeGroup>
+    <routeGroup name="mon">
+        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-gears"/>
         <route name="main.monitorbasics">
             <stateData type="dict" url_str="/monitorbasics" templateUrl_str="icsw/monitoring/setup"/>
             <icswData type="dict" pageTitle_str="Monitoring setup">
@@ -268,8 +272,9 @@
                 </rights>
             </icswData>
         </route>
-    </menuHeader>
-    <menuHeader type="dict" name_str="Assets" key_str="asset" icon_str="fa-shopping-bag">
+    </routeGroup>
+    <routeGroup name="asset">
+        <menuHeader type="dict" name_str="Assets" icon_str="fa-shopping-bag"/>
         <route name="main.schedoverview">
             <stateData type="dict" url_str="/sched/overview" template_str="&lt;icsw-schedule-overview&gt;&lt;/icsw-schedule-overview&gt;"/>
             <icswData type="dict" pageTitle_str="Schedule settings">
@@ -311,8 +316,9 @@
                 </rights>
             </icswData>
         </route>
-    </menuHeader>
-    <menuHeader type="dict" name_str="Cluster" key_str="cluster" icon_str="fa-cubes">
+    </routeGroup>
+    <routeGroup name="cluster">
+        <menuHeader type="dict" name_str="Cluster" icon_str="fa-cubes"/>
         <route name="main.deployboot">
             <stateData type="dict" url_str="/deployboot" templateUrl_str="icsw/main/deploy/boot.html"/>
             <icswData type="dict" pageTitle_str="Boot nodes">
@@ -365,8 +371,9 @@
                 </rights>
             </icswData>
         </route>
-    </menuHeader>
-    <menuHeader type="dict" name_str="RMS" key_str="rms" icon_str="fa-list-ol">
+    </routeGroup>
+    <routeGroup name="rms">
+        <menuHeader type="dict" name_str="RMS" icon_str="fa-list-ol"/>
         <route name="main.rmsoverview">
             <stateData type="dict" url_str="/rmsoverview" templateUrl_str="icsw/main/rms/overview.html"/>
             <icswData type="dict" pageTitle_str="RMS Overview">
@@ -408,8 +415,9 @@
                 </licenses>
             </icswData>
         </route>
-    </menuHeader>
-    <menuHeader type="dict" name_str="System" key_str="sys" icon_str="fa-cog">
+    </routeGroup>
+    <routeGroup name="sys">
+        <menuHeader type="dict" name_str="System" icon_str="fa-cog"/>
         <route name="main.usertree">
             <stateData type="dict" url_str="/usertree" templateUrl_str="icsw/main/user/tree.html"/>
             <icswData type="dict" pageTitle_str="User and Group tree">
@@ -455,8 +463,8 @@
                 </rights>
             </icswData>
         </route>
-    </menuHeader>
-    <menuHeader type="dict" name_str="dummy" key_str="dummy" icon_str="" isHidden_bool="yes">
+    </routeGroup>
+    <routeGroup name="dummy">
         <route name="main.dashboard">
             <stateData type="dict" url_str="/dashboard" templateUrl_str="icsw/main/dashboard.html"/>
             <icswData type="dict" pageTitle_str="Dashboard"/>
@@ -504,5 +512,5 @@
                 <dashboardEntry type="dict" sizeX_int="2" sizeY_int="1"/>
             </icswData>
         </route>
-    </menuHeader>
+    </routeGroup>
 </routes>

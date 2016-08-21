@@ -161,19 +161,25 @@ class FileModify(object):
     def transform(self, in_xml):
         # should be a XSLT transformation
         new_xml = E.routes()
-        for menu_idx, header in enumerate(in_xml.findall(".//menuHeader")):
-            header.attrib["ordering_int"] = "{:d}".format((menu_idx + 1) * 10)
+        for menu_idx, group in enumerate(in_xml.findall(".//routeGroup")):
+            key_str = group.attrib["name"]
+            menu_head_el = group.find(".//menuHeader")
+            if menu_head_el is not None:
+                menu_head_el.attrib["ordering_int"] = "{:d}".format((menu_idx + 1) * 10)
+                menu_head_el.attrib["key_str"] = key_str
             _header_added = False
-            for route_idx, route in enumerate(header.findall(".//route")):
+            for route_idx, route in enumerate(group.findall(".//route")):
                 _me = route.find(".//icswData/menuEntry")
                 if _me is not None:
+                    if menu_head_el is None:
+                        raise ValueError("No menu_head_el defined")
                     _data = route.find(".//icswData")
-                    _me.attrib["menukey_str"] = header.attrib["key_str"]
+                    _me.attrib["menukey_str"] = key_str
                     _me.attrib["ordering_int"] = "{:d}".format((route_idx + 1) * 10)
                     if not _header_added:
                         # add header to first route entry with menuEntry
                         _header_added = True
-                        _data.append(E.menuHeader(**{_key: _value for _key, _value in header.attrib.iteritems()}))
+                        _data.append(E.menuHeader(**{_key: _value for _key, _value in menu_head_el.attrib.iteritems()}))
                 new_xml.append(route)
 
         return new_xml

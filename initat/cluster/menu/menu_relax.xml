@@ -1,27 +1,24 @@
 <element name="routes" xmlns="http://relaxng.org/ns/structure/1.0">
     <oneOrMore>
-        <element name="menuHeader">
-            <attribute name="type">
-                <choice>
-                    <value>dict</value>
-                </choice>
-            </attribute>
+        <element name="routeGroup">
+            <attribute name="name"></attribute>
             <optional>
-                <attribute name="name_str"></attribute>
-            </optional>
-            <optional>
-                <attribute name="key_str"></attribute>
-            </optional>
-            <optional>
-                <attribute name="icon_str"></attribute>
-            </optional>
-            <optional>
-                <attribute name="isHidden_bool">
-                    <choice>
-                        <value>yes</value>
-                        <value>no</value>
-                    </choice>
-                </attribute>
+                <element name="menuHeader">
+                    <attribute name="type">
+                        <choice>
+                            <value>dict</value>
+                        </choice>
+                    </attribute>
+                    <optional>
+                        <attribute name="name_str"></attribute>
+                    </optional>
+                    <optional>
+                        <attribute name="key_str"></attribute>
+                    </optional>
+                    <optional>
+                        <attribute name="icon_str"></attribute>
+                    </optional>
+                </element>
             </optional>
             <oneOrMore>
                 <element name="route">
