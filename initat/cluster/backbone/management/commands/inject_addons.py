@@ -158,6 +158,27 @@ class FileModify(object):
                 raise
         return ["    {}".format(_line) for _line in json.dumps(_res, indent=4).split("\n")[1:-1]]
 
+    def transform(self, in_xml):
+        # should be a XSLT transformation
+        new_xml = E.routes()
+        for menu_idx, header in enumerate(in_xml.findall(".//menuHeader")):
+            header.attrib["ordering_int"] = "{:d}".format((menu_idx + 1) * 10)
+            _header_added = False
+            for route_idx, route in enumerate(header.findall(".//route")):
+                _me = route.find(".//icswData/menuEntry")
+                if _me is not None:
+                    _data = route.find(".//icswData")
+                    _me.attrib["menukey_str"] = header.attrib["key_str"]
+                    _me.attrib["ordering_int"] = "{:d}".format((route_idx + 1) * 10)
+                    if not _header_added:
+                        # add header to first route entry with menuEntry
+                        _header_added = True
+                        _data.append(E.menuHeader(**{_key: _value for _key, _value in header.attrib.iteritems()}))
+                new_xml.append(route)
+            print header
+
+        return new_xml
+
     def read_menus(self, mp_list):
         _xml = E.routes()
         for _file in mp_list:
@@ -168,6 +189,7 @@ class FileModify(object):
         _my_relax = MenuRelax()
         # check for validity
         _my_relax.validate(_xml)
+        _xml = self.transform(_xml)
         # move to json
         import pprint
         pprint.pprint(self.route_xml_to_json(_xml))
