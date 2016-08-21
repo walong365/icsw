@@ -192,8 +192,8 @@ class FileModify(object):
             try:
                 _my_relax.validate(_src_xml)
             except:
-                print(
-                    "*** Error validating {}: {}".format(
+                sys.stderr.write(
+                    "*** Error validating {}: {}\n".format(
                         _full_path,
                         process_tools.get_except_info(),
                     )
