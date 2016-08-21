@@ -180,13 +180,27 @@ class FileModify(object):
         return new_xml
 
     def read_menus(self, mp_list):
+        # relax instance
+        _my_relax = MenuRelax()
         _xml = E.routes()
         for _file in mp_list:
-            for _route in etree.fromstring(
-                file(os.path.join(settings.FILE_ROOT, _file), "r").read()
-            ):
-                _xml.append(_route)
-        _my_relax = MenuRelax()
+            # simple merger, to be improved
+            _full_path = os.path.join(settings.FILE_ROOT, _file)
+            _src_xml = etree.fromstring(
+                file(_full_path, "r").read()
+            )
+            try:
+                _my_relax.validate(_src_xml)
+            except:
+                print(
+                    "*** Error validating {}: {}".format(
+                        _full_path,
+                        process_tools.get_except_info(),
+                    )
+                )
+            else:
+                for _top_el in _src_xml:
+                    _xml.append(_top_el)
         # check for validity
         _my_relax.validate(_xml)
         _xml = self.transform(_xml)
