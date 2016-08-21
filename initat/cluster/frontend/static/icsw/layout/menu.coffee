@@ -616,15 +616,30 @@ menu_module = angular.module(
     bc_list = []
 
     add_state = (state) ->
-        console.log state.icswData
-        if state.icswData? and state.icswData.menuEntry?
-            if state.icswData.menuEntry.sref?
-                _.remove(bc_list, (entry) -> return entry.icswData.menuEntry.sref == state.icswData.menuEntry.sref)
+        if state.icswData?
+            _add = false
+            if state.icswData.menuEntry? and state.icswData.menuEntry.sref?
+                _add = true
+                _add_struct = {
+                    icon: state.icswData.menuEntry.icon
+                    sref: state.name
+                    name: state.icswData.menuEntry.name
+                }
+            else if state.icswData.pageTitle?
+                _add = true
+                _add_struct = {
+                    icon: ""
+                    sref: state.name
+                    name: state.icswData.pageTitle
+                }
+            if _add
+                _.remove(bc_list, (entry) -> return entry.sref == _add_struct.sref)
                 # state with menu entry
-                bc_list.push(state)
+                bc_list.push(_add_struct)
                 if bc_list.length > 6
                     bc_list = bc_list.slice(1)
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), bc_list)
+
             # console.log bc_list.length, (entry.name for entry in bc_list)
 
     return {

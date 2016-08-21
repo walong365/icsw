@@ -64,8 +64,8 @@
     <nav class="navbar navbar-default" ng-if="struct.current_user">
         <ol class="breadcrumb">
             <li ng-repeat="entry in struct.bc_list track by $index">
-                <a class="cursorpointer" ui-sref="{{ entry.name }}" ui-sref-opts="{icswRegister: false}">
-                    <span class="fa" ng-class="entry.icswData.menuEntry.icon"/> {{ entry.icswData.menuEntry.name }}
+                <a class="cursorpointer" ui-sref="{{ entry.sref }}" ui-sref-opts="{icswRegister: false}">
+                    <span class="fa" ng-class="entry.icon"/> {{ entry.name }}
                 </a>
             </li>
             <li class="pull-right cursorpointer" ng-click="device_selection($event)">
