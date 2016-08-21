@@ -175,7 +175,6 @@ class FileModify(object):
                         _header_added = True
                         _data.append(E.menuHeader(**{_key: _value for _key, _value in header.attrib.iteritems()}))
                 new_xml.append(route)
-            print header
 
         return new_xml
 
