@@ -100,6 +100,16 @@
     </routeGroup>
     <routeGroup name="stat">
         <menuHeader type="dict" name_str="Status" icon_str="fa-line-chart"/>
+        <route name="main.deviceinfo">
+            <stateData type="dict" url_str="/deviceinfo" template_str="&lt;icsw-simple-device-info icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-simple-device-info&gt;"/>
+            <icswData type="dict" pageTitle_str="Device info">
+                <menuEntry type="dict" icon_str="fa-bars" postSpacer_bool="yes"/>
+                <dashboardEntry type="dict" sizeX_int="4" sizeY_int="3" allowState_bool="yes"/>
+                <rights type="list">
+                    <value>backbone.user.modify_tree</value>
+                </rights>
+            </icswData>
+        </route>
         <route name="main.monitorov">
             <stateData type="dict" url_str="/monitorov"
                        template_str="&lt;icsw-monitoring-list-overview icsw-sel-man='0'&gt;&lt;/icsw-monitoring-list-overview&gt;"/>
@@ -107,16 +117,6 @@
                 <menuEntry type="dict" icon_str="fa-list" name_str="Monitoring list"/>
                 <rights type="list">
                     <value>backbone.mon_check_command.setup_monitoring</value>
-                </rights>
-            </icswData>
-        </route>
-        <route name="main.deviceinfo">
-            <stateData type="dict" url_str="/deviceinfo" template_str="&lt;icsw-simple-device-info icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-simple-device-info&gt;"/>
-            <icswData type="dict" pageTitle_str="Device info">
-                <menuEntry type="dict" preSpacer_bool="yes" postSpacer_bool="yes" icon_str="fa-bars"/>
-                <dashboardEntry type="dict" sizeX_int="4" sizeY_int="3" allowState_bool="yes"/>
-                <rights type="list">
-                    <value>backbone.user.modify_tree</value>
                 </rights>
             </icswData>
         </route>
@@ -134,6 +134,19 @@
                 </rights>
             </icswData>
         </route>
+        <route name="main.statushistory">
+            <stateData type="dict" url_str="/statushistory" templateUrl_str="icsw/main/status_history.html"/>
+            <icswData type="dict" pageTitle_str="Status History">
+                <licenses type="list">
+                    <value>reporting</value>
+                </licenses>
+                <dashboardEntry type="dict" sizeX_int="4" sizeY_int="4"/>
+                <menuEntry type="dict" icon_str="fa-pie-chart" postSpacer_bool="yes"/>
+                <rights type="list">
+                    <value>backbone.device.show_status_history</value>
+                </rights>
+            </icswData>
+        </route>
         <route name="main.graph">
             <stateData type="dict" url_str="/graph" templateUrl_str="icsw.rrd.graph"/>
             <icswData type="dict" pageTitle_str="Graph">
@@ -144,18 +157,6 @@
                 <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
                 <rights type="list">
                     <value>backbone.device.show_graphs</value>
-                </rights>
-            </icswData>
-        </route>
-        <route name="main.statushistory">
-            <stateData type="dict" url_str="/statushistory" templateUrl_str="icsw/main/status_history.html"/>
-            <icswData type="dict" pageTitle_str="Status History">
-                <licenses type="list">
-                    <value>reporting</value>
-                </licenses>
-                <menuEntry type="dict" icon_str="fa-pie-chart"/>
-                <rights type="list">
-                    <value>backbone.device.show_status_history</value>
                 </rights>
             </icswData>
         </route>
@@ -185,7 +186,7 @@
         </route>
     </routeGroup>
     <routeGroup name="mon">
-        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-gears"/>
+        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-eye"/>
         <route name="main.monitorbasics">
             <stateData type="dict" url_str="/monitorbasics" templateUrl_str="icsw/monitoring/setup"/>
             <icswData type="dict" pageTitle_str="Monitoring setup">
