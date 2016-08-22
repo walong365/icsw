@@ -70,7 +70,7 @@
             </li>
             <li class="pull-right cursorpointer" ng-click="device_selection($event)">
                 <span class="label label-success" ng-show="struct.num_selected">{{ struct.select_txt }} selected</span>
-                <span class="label label-warning" ng-show="!struct.num_selected">No devices selected</span>
+                <span ng-show="!struct.num_selected">No devices selected</span>
             </li>
         </ol>
     </nav>
