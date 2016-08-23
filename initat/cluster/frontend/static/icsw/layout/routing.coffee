@@ -79,11 +79,11 @@ menu_module = angular.module(
 ]).controller("icswMainCtrl", [
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
-    "icswBreadcrumbs", "$state",
+    "icswBreadcrumbs", "$state", "$window",
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
-    icswBreadcrumbs, $state,
+    icswBreadcrumbs, $state, $window,
 ) ->
     hotkeys.bindTo($scope).add(
         combo: "s"
