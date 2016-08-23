@@ -28,8 +28,8 @@
 .svg_sel { opacity: 0.7; }
 .svg_clicked { stroke-width: 2px !important; }
 
-.svg_d3link { stroke: #92aa00; stroke-width: 2px; opacity: 1; }
-.svg_d3circle { stroke-width: 2px; stroke: #92aa00; fill: #666666; }
-.svg_d3circle_selected { stroke-width: 2px; stroke: #92aa00; fill: #bb3d1e; }
-.svg_d3text { stroke-width:1px; stroke:#black; paint-order:stroke; text-anchor:middle; alignment-baseline:middle; fill:white; }
+.svg_d3link { stroke: #888888; stroke-width: 2px; opacity: 1; }
+.svg_d3circle { stroke-width: 2px; stroke: #888888; fill: #aaaaaa; }
+.svg_d3circle_selected { stroke-width: 2px; stroke: #888888; fill: #bb3d1e; }
+.svg_d3text { stroke-width:1px; stroke:#ffffff; paint-order:stroke; text-anchor:middle; alignment-baseline:middle; fill:#111111; }
 
