@@ -391,15 +391,6 @@
                 </licenses>
             </icswData>
         </route>
-        <route name="main.history">
-            <stateData type="dict" url_str="/history" template_str="&lt;icsw-history-overview&gt;&lt;/icsw-history-overview&gt;"/>
-            <icswData type="dict" pageTitle_str="Database history">
-                <menuEntry type="dict" icon_str="fa-history" name_str="History"/>
-                <rights type="list">
-                    <value>backbone.user.snapshots</value>
-                </rights>
-            </icswData>
-        </route>
         <route name="main.licoverview">
             <stateData type="dict" url_str="/licoverview" templateUrl_str="icsw/main/rms/licoverview.html"/>
             <icswData type="dict" pageTitle_str="License Liveview">
@@ -461,6 +452,15 @@
                 <menuEntry type="dict" icon_str="fa-info" name_str="Server Information"/>
                 <rights type="list">
                     <value>$$CHECK_FOR_SUPERUSER</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.history">
+            <stateData type="dict" url_str="/history" template_str="&lt;icsw-history-overview&gt;&lt;/icsw-history-overview&gt;"/>
+            <icswData type="dict" pageTitle_str="Database history">
+                <menuEntry type="dict" icon_str="fa-history" name_str="History"/>
+                <rights type="list">
+                    <value>backbone.user.snapshots</value>
                 </rights>
             </icswData>
         </route>
