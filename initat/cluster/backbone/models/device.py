@@ -458,7 +458,7 @@ def device_pre_save(sender, **kwargs):
             cur_inst.device_class = DeviceClass.objects.get(Q(default_system_class=True))
         # check for already existing device
         try:
-            _cur_dev = device.objects.exlude(
+            _cur_dev = device.objects.exclude(
                 Q(pk=cur_inst.idx)
             ).get(
                 Q(name=cur_inst.name) & Q(domain_tree_node=cur_inst.domain_tree_node)
