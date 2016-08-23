@@ -78,11 +78,11 @@ menu_module = angular.module(
 ]).controller("icswMainCtrl", [
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
-    "icswBreadcrumbs",
+    "icswBreadcrumbs", "$state",
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
-    icswBreadcrumbs,
+    icswBreadcrumbs, $state,
 ) ->
     hotkeys.bindTo($scope).add(
         combo: "s"
@@ -109,7 +109,6 @@ menu_module = angular.module(
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
         $scope.struct.current_user = undefined
     )
-
     $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params, options) ->
         if options.icswRegister?
             # copy to to_params
@@ -118,9 +117,11 @@ menu_module = angular.module(
         from_main = if from_state.name.match(/^main/) then true else false
         console.log "$stateChangeStart from '#{from_state.name}' (#{from_main}) to '#{to_state.name}' (#{to_main})"
         if to_main and not from_main
-            if to_state.icswData? and not to_state.icswData.$$allowed and $scope.struct.current_user.is_authenticated()
+            if to_state.icswData? and not to_state.icswData.$$allowed
                 console.error "target state not allowed", to_state.icswData.$$allowed, $scope.struct.current_user
                 event.preventDefault()
+                $state.go("login")
+
     )
 
     $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->

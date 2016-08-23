@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,12 +19,12 @@
 #
 """ discovery-server, host monitoring functions """
 
+import commands
+import tempfile
 import time
 
 from django.db import transaction
 from django.db.models import Q
-import tempfile
-import commands
 from lxml import etree
 
 from initat.cluster.backbone.exceptions import NoMatchingNetworkDeviceTypeFoundError, \
@@ -33,8 +33,8 @@ from initat.cluster.backbone.models import partition, partition_disc, \
     partition_table, partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, \
     netdevice_speed, peer_information, DeviceLogEntry, DeviceInventory
 from initat.cluster.backbone.models.functions import get_related_models
-from initat.snmp.snmp_struct import ResultNode
 from initat.icsw.service.instance import InstanceXML
+from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, net_tools, partition_tools, \
     process_tools, server_command, dmi_tools, pci_database
 from .config import global_config

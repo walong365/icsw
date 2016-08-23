@@ -272,7 +272,7 @@ device_variable_module = angular.module(
                         if create
                             if single_create
                                 # single creation
-                                scope.device_tree.create_device_variable(sub_scope.edit_obj).then(
+                                scope.device_tree.create_device_variable(sub_scope.edit_obj, scope.helper).then(
                                     (new_conf) ->
                                         d.resolve("created")
                                     (notok) ->
@@ -284,11 +284,9 @@ device_variable_module = angular.module(
                                 for dev in scope.devices
                                     local_var = angular.copy(sub_scope.edit_obj)
                                     local_var.device = dev.idx
-                                    wait_list.push(scope.device_tree.create_device_variable(local_var))
+                                    wait_list.push(scope.device_tree.create_device_variable(local_var, scope.helper))
                                 $q.allSettled(wait_list).then(
                                     (result) ->
-                                        # todo: check result
-                                        scope.helper.filter_device_variables()
                                         d.resolve("created")
                                 )
                         else
@@ -373,9 +371,8 @@ device_variable_module = angular.module(
                 new_var = angular.copy(d_var)
                 new_var.device = device.idx
                 blockUI.start()
-                scope.device_tree.create_device_variable(new_var).then(
+                scope.device_tree.create_device_variable(new_var, scope.helper).then(
                     (new_conf) ->
-                        scope.helper.filter_device_variables()
                         blockUI.stop()
                     (notok) ->
                         blockUI.stop()
