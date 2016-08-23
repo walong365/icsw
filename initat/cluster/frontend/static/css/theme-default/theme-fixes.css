@@ -65,7 +65,7 @@ icsw-tools-button{
     padding: 0 3px 0 5px;
 }
 .submenu-bar .sub-breadcrumb > li:first-child:before {
-    content: "";
+    content: " ";
     padding: 0;
 }
 .submenu-bar .quickselect {

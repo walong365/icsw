@@ -19,20 +19,20 @@ icsw-login-page .container-fluid .well{
 /**** Loginpage end ****/
 /**** Fancytree start ****/
 ul.fancytree-container {
-    background-color: #404040;
+    background-color: transparent;
 }
 span.fancytree-title {
-    color: #ffffff;
+    color: #313131;
 }
 .fancytree-expander {
-    color: #ffffff;
+    color: #313131;
 }
 span.fancytree-node:hover span.fancytree-title {
     background-color: transparent;
     border-color: none;
 }
 span.fancytree-node:hover {
-    background-color: #313131;
+    background-color: #e0e0e0;
 }
 span.fancytree-node > div.btn-group > input {
     margin-left: 1px;
@@ -83,6 +83,9 @@ span.fancytree-expander {
 .nav-tabs {
     margin-top: 7px;
 }
+.nav-tabs > li {
+    margin-bottom: 0px;
+}
 .nav-tabs > li > a {
     height:31px;
 }
@@ -101,14 +104,18 @@ span.fancytree-expander {
     background-color: #444444;
 }
 
+.modal-header {
+    padding: 10px 15px;
+}
+
 .panel-success {
-    border-color: #555555;
+    border-color: #cccccc;
 }
 .alert h1, .alert h2, .alert h3, .alert h4, .alert h5 {
     color: #ffffff;
 }
 pre {
-    background-color: #cccccc;
+    background-color: #ffffff;
 }
 .form-control-inline {
     min-width: 0;
@@ -116,16 +123,16 @@ pre {
     display: inline;
 }
 .panel-success > .panel-heading {
-    background-color: #555555;
-    border-color: #555555;
-    color: #ffffff;
+    background-color: #f0f0f0;
+    border-color: #cccccc;
+    color: #555555;
  }
 
 table.rotateheaders th {
-    background-color: #313131;
+    background-color: #ffffff;
 }
 .modal-body table.rotateheaders th {
-    background-color: #555555;
+    background-color: #ffffff;
 }
 
 .input-group-addon {
@@ -166,4 +173,53 @@ table.rotateheaders th {
 }
 .input-group .form-control {
     height: auto;
+}
+.submenu-bar {
+    display:block;
+    padding-left:10px;
+    background-color:#eeeeee;
+    margin-bottom: 17px;
+    min-height: 25px;
+    vertical-align:10;
+    border-bottom: 1px solid #dddddd;
+}
+.submenu-bar .sub-breadcrumb {
+    font-size:12px;
+    font-weight:400;
+    color:#666666;
+    list-style: outside none none;
+    margin-top: 4px;
+    padding-left:0;
+    margin-bottom:0px;
+}
+.submenu-bar .sub-breadcrumb > li {
+    display: block;
+    position: relative;
+    float:left;
+    -webkit-margin-before: 0em;
+    -webkit-margin-after: 0em;
+}
+.submenu-bar .sub-breadcrumb > li:before {
+    content: "»";
+    padding: 0 3px 0 5px;
+}
+.submenu-bar .sub-breadcrumb > li:first-child:before {
+    content: " ";
+    padding: 0;
+}
+.submenu-bar .quickselect {
+    font-size:15px;
+    font-weight:600;
+    color:#666666;
+    list-style: outside none none;
+    margin: 2px 10px 0 0;
+}
+.submenu-bar .quickselect a {
+    color:#666666;
+}
+.navbar-fixed-top {
+    border-width: 0;
+}
+icsw-dashboard-view > .panel-success {
+
 }
