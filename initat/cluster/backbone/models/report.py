@@ -19,6 +19,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import os
+import base64
 
 from django.db import models
 
@@ -46,11 +47,17 @@ class ReportHistory(models.Model):
 
     size = models.BigIntegerField(default=0)
 
+    b64_size = models.BigIntegerField(default=0)
+
     type = models.TextField(null=True)
 
     filename = models.TextField(null=True)
 
     def write_data(self, data):
+        b64data = base64.b64encode(data)
+        self.b64_size = len(b64data)
+        self.save()
+
         f = open(os.path.join(REPORT_DATA_STORAGE_DIR, self.filename), "wb")
         f.write(data)
         f.close()

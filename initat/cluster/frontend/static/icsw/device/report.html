@@ -327,7 +327,13 @@
                                         <td>{{ obj.number_of_downloads }}</td>
                                         <td>
                                             <div ng-if="obj.report_download_url == undefined">
-                                                <input type="button" class="btn btn-sm btn-primary" ng-click="downloadify_report_obj(obj)" value="Create download link"/>
+                                                <div ng-if="obj.report_download_started == undefined">
+                                                    <input type="button" class="btn btn-sm btn-primary" ng-click="downloadify_report_obj(obj)" value="Create download link"/>
+                                                </div>
+                                                <div ng-if="obj.report_download_started != undefined" class="progress">
+                                                    <div class="progress-bar progress-bar-striped active" role="progressbar" aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( getReportHistoryDownloadPercentage(obj) + '%' ) }">
+                                                    </div>
+                                                </div>
                                             </div>
                                             <div ng-if="obj.report_download_url != undefined">
                                                 <a ng-click="update_download_counter(obj)" download="{{ obj.report_download_name }}" style="padding: 0px 15px" ng-href="{{ obj.report_download_url }}">download</a>

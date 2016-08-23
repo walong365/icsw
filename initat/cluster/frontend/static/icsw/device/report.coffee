@@ -49,13 +49,15 @@ device_report_module = angular.module(
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "FileUploader", "icswCSRFService"
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
     "icswDispatcherSettingTreeService", "Restangular", "icswActiveSelectionService",
-    "icswComplexModalService", "$interval", "icswUserService", "icswAssetHelperFunctions"
+    "icswComplexModalService", "$interval", "icswUserService", "icswAssetHelperFunctions",
+    "$http"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, FileUploader, icswCSRFService
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
     icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService,
-    icswComplexModalService, $interval, icswUserService, icswAssetHelperFunctions
+    icswComplexModalService, $interval, icswUserService, icswAssetHelperFunctions,
+    $http
 ) ->
     $scope.struct = {
         # list of devices
@@ -695,13 +697,21 @@ device_report_module = angular.module(
         )
 
     $scope.downloadify_report_obj = (report_obj) ->
-        icswSimpleAjaxCall({
-            url: ICSW_URLS.REPORT_GET_REPORT_DATA
-            data:
-                report_id: report_obj.report_id
-            dataType: 'json'
-        }).then(
+        report_obj.download_progress_percentage = 0
+        report_obj.report_download_started = true
+
+        $http.get(ICSW_URLS.REPORT_GET_REPORT_DATA,
+            {
+                params:
+                    report_id: report_obj.report_id
+                eventHandlers:
+                    progress: (c) ->
+
+                        report_obj.download_progress_percentage = (c.loaded / report_obj.raw_size) * 100
+            }
+        ).then(
             (result) ->
+                result = result.data
                 if result.hasOwnProperty("pdf")
                     report_obj.report_download_name = "Report.pdf"
                     blob = b64_to_blob(result.pdf, 'application/pdf')
@@ -716,6 +726,12 @@ device_report_module = angular.module(
                 console.log(error)
         )
 
+
+    $scope.getReportHistoryDownloadPercentage = (report_obj) ->
+        if report_obj.download_progress_percentage == undefined
+            return 0
+
+        return report_obj.download_progress_percentage
 
 ]).directive("icswDeviceTreeReportRow",
 [

@@ -2065,6 +2065,24 @@ class GetReportData(View):
             )
         )
 
+    @method_decorator(login_required)
+    def get(self, request):
+        report_id = int(request.GET["report_id"])
+
+        report_history = ReportHistory.objects.get(idx=report_id)
+        report_type = report_history.type
+        data = report_history.get_data()
+        data_b64 = base64.b64encode(data)
+
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    report_type: data_b64,
+                }
+            )
+        )
+
 
 class GenerateReportPdf(View):
     @method_decorator(login_required)
@@ -2232,6 +2250,7 @@ class ReportHistoryAvailable(View):
                 'created_at_time': str(report_history.created_at_time),
                 'number_of_pages': str(report_history.number_of_pages),
                 'size': sizeof_fmt(report_history.size),
+                'raw_size': report_history.b64_size,
                 'type': str(report_history.type),
                 'number_of_downloads': str(report_history.number_of_downloads)
             }
