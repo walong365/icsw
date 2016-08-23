@@ -45,11 +45,19 @@ def add_fixtures(**kwargs):
             ("time_of_purchase", "Date of purchase", "admin", "D"),
         ],
         "comm": [
+            # IPMI settings
             ("*IPMI_USERNAME", "IPMI Username", "ipmi", "s"),
             ("*IPMI_PASSWORD", "IPMI Password", "ipmi", "s"),
             ("*IPMI_INTERFACE", "IPMI Interface type", "ipmi", "s"),
+            # WMI settings
             ("*WMI_USERNAME", "WMI Username", "wmi", "s"),
             ("*WMI_PASSWORD", "WMI Password", "wmi", "s"),
+            # nrpe
+            ("*NRPE_PORT", "Port for NRPE client", "nrpe", "i"),
+            # snmp
+            ("*SNMP_VERSION", "SNMP Version", "snmp", "i"),
+            ("*SNMP_READ_COMMUNITY", "SNMP Read Community string", "snmp", "s"),
+            ("*SNMP_WRITE_COMMUNITY", "SNMP Write Community string", "snmp", "s"),
         ]
     }
     for _scope_name, _var_list in _defaults.iteritems():

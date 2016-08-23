@@ -1,8 +1,8 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015,2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -18,12 +18,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 import collections
-import pprint
+import itertools
+import operator
+
 import django.utils.timezone
 from django.db.models import Q
-import operator
-import itertools
-from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, AlertList
+
+from initat.cluster.backbone.models import mon_icinga_log_raw_service_alert_data, mon_icinga_log_raw_base, \
+    AlertList
 
 
 # itertools recipe

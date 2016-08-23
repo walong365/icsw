@@ -1,3 +1,31 @@
+<script type="text/ng-template" id="icsw/monitoring/setup">
+    <icsw-monitoring-setup></icsw-monitoring-setup>
+    <uib-tabset>
+        <uib-tab>
+            <uib-tab-heading>
+                Basic Setup
+            </uib-tab-heading>
+            <icsw-monitoring-basic></icsw-monitoring-basic>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                Cluster Setup
+            </uib-tab-heading>
+            <icsw-monitoring-cluster></icsw-monitoring-cluster>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                Escalation Setup
+            </uib-tab-heading>
+            <icsw-monitoring-escalation></icsw-monitoring-escalation>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.monitoring.setup">
+    <h3>Monitoring Setup</h3>
+</script>
+
 <script type="text/ng-template" id="icsw.monitoring.basic">
 
     <div uib-alert class="alert-warning" ng-show="!struct.tree_valid">Loading tree...</div>

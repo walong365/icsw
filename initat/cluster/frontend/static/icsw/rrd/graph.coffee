@@ -425,7 +425,10 @@ angular.module(
                 cur_node._dev_pks.push($scope.mv_dev_pk)
             cur_node._node_type = "e"
             cur_node.build_info.push(entry.build_info)
-            cur_node.num_sensors = entry.num_sensors
+            if not cur_node.num_sensors?
+                # init number of sensors
+                cur_node.num_sensors = 0
+            cur_node.num_sensors += entry.num_sensors
             if entry.num_sensors?
                 $scope.struct.vectordata.num_sensors += entry.num_sensors
             cur_node.folder = false
@@ -1119,7 +1122,10 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     th_scope.threshold.notify_users = threshold.notify_users_obj
-                    th_scope.threshold.device_selection = threshold.device_selection_obj.idx
+                    if threshold.device_selection_obj
+                        th_scope.threshold.device_selection = threshold.device_selection_obj.idx
+                    else
+                        th_scope.threshold.device_selection = null
                     user_settings.create_threshold_entry(sensor, th_scope.threshold).then(
                         (created) ->
                             if !create

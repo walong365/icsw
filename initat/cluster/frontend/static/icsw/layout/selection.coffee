@@ -106,10 +106,10 @@ angular.module(
 ]).service("icswSelection",
 [
     "icswDeviceTreeService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope",
-    "Restangular", "icswSavedSelectionService", "ICSW_SIGNALS",
+    "Restangular", "icswSavedSelectionService", "ICSW_SIGNALS", "icswUserService",
 (
     icswDeviceTreeService, $q, icswSimpleAjaxCall, ICSW_URLS, $rootScope,
-    Restangular, icswSavedSelectionService, ICSW_SIGNALS
+    Restangular, icswSavedSelectionService, ICSW_SIGNALS, icswUserService,
 ) ->
 
     class icswSelection
@@ -124,14 +124,14 @@ angular.module(
             @user = undefined
             @sel_var_name = "$$saved_selection__$$SESSIONID$$"
             @__user_var_used = false
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), ($event, user) =>
-                @user = user
-                if @user?
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), ($event) =>
+                @user = icswUserService.get()
+                if @user.is_authenticated()
                     @sel_var_name = @user.expand_var(@sel_var_name)
-                    if user.has_var(@sel_var_name)
+                    if @user.has_var(@sel_var_name)
                         if not @__user_var_used
                             @__user_var_used = true
-                            @_last_stored = user.get_var(@sel_var_name).json_value
+                            @_last_stored = @user.get_var(@sel_var_name).json_value
                             _stored = angular.fromJson(@_last_stored)
                             @dev_sel = _stored.dev_sel
                             @tot_dev_sel = _stored.tot_dev_sel
@@ -583,9 +583,9 @@ angular.module(
         )
     )
     stop_listen.push(
-        $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, new_user) ->
-            # console.log "new user", new_user
-            if new_user and new_user.idx
+        $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), (event) ->
+            new_user = icswUserService.get()
+            if new_user.is_authenticated()
                 _install_tree(user)
         )
     )

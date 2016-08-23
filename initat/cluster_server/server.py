@@ -29,7 +29,7 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.tools import cluster_location, logging_tools, process_tools, server_command, \
-    server_mixins, threading_tools, uuid_tools, configfile
+    server_mixins, threading_tools, uuid_tools
 from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 from .backup_process import backup_process
 from .capabilities import capability_process

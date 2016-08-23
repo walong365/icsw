@@ -141,7 +141,7 @@ user_module = angular.module(
                 @_store_dc_filter()
 
         _store_dc_filter: () =>
-            if @user.is_authenticated
+            if @is_authenticated()
                 @set_json_var(@dc_var_name, angular.toJson(@__dc_filter))
 
         build_luts: () =>
@@ -261,22 +261,29 @@ user_module = angular.module(
 
         logout: () =>
             q = $q.defer()
-            @clear_result()
             icswSimpleAjaxCall(
                 {
                     url: ICSW_URLS.SESSION_LOGOUT
                     dataType: "json"
                 }
             ).then(
-                (json) ->
+                (json) =>
+                    @clear_result()
                     q.resolve(json)
             )
             return q.promise
 
         force_logout: () =>
             @cancel_pending_load()
-            $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_NOUSER"))
             return @logout()
+
+        get_load_signal: (result) =>
+            if result.is_authenticated()
+                # user is authenticated, send default signal
+                return @signal
+            else
+                # not authenticated, no signal to send
+                return null
 
         update: () =>
             result = @get_result()
@@ -289,7 +296,8 @@ user_module = angular.module(
         [
             ICSW_URLS.SESSION_GET_AUTHENTICATED_USER
         ]
-        "ICSW_USER_CHANGED"
+        "ICSW_USER_LOGGEDIN"
+        "ICSW_USER_LOGGEDOUT"
     )
 ]).service("icswUserGroupPermissionTree",
 [
@@ -498,7 +506,7 @@ user_module = angular.module(
         return _fetch_dict[client]
 
     return {
-        "load": (client) ->
+        load: (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise
@@ -555,6 +563,10 @@ user_module = angular.module(
                 else
                     _fn = "#{user.login}"
                 user.$$long_name = _fn
+                if user.email
+                    user.$$user_email = "#{user.login} (#{user.email})"
+                else
+                    user.$$user_email = "#{user.login} (N/A)"
 
         # remove / delete calls
         delete_user: (user) =>

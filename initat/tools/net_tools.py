@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# this file is part of python-modules-base
+# this file is part of icsw-client
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -42,12 +42,19 @@ class zmq_connection(object):
         self.__linger_time = kwargs.get("linger", 500)
         self.__timeout = kwargs.get("timeout", 5)
         self.identity = identity_str
-        self.poller = zmq.Poller()
-        self.poller_handler = {}
+        if "poller_base" in kwargs:
+            self.__ext_poller = True
+            self.__poller_base = kwargs["poller_base"]
+            self.__ext_callback = kwargs["callback"]
+        else:
+            self.__ext_poller = False
+            self.__poller_base = self
+            self.poller = zmq.Poller()
+            self.poller_handler = {}
+        self.__socket_dict = {}
+        self.__add_list = []
         self.__results = {}
         self.__pending = set()
-        self.__add_list = []
-        self.__socket_dict = {}
         self.num_connections = 0
         self.__registered = set()
         self.__dummy_fd = -1
@@ -105,11 +112,15 @@ class zmq_connection(object):
             self.__results[cur_fd] = unicode(_result)
         else:
             # self.register_poller(new_sock, zmq.POLLOUT, self.__show)
-            sock_fd = new_sock.getsockopt(zmq.FD)  # @UndefinedVariable
-            self.register_poller(new_sock, sock_fd, zmq.POLLIN, self.__receive)  # @UndefinedVariable
-            # self.register_poller(new_sock, sock_fd, zmq.POLLERR, self.__show)
-            self.__socket_dict[sock_fd] = new_sock
+            sock_fd = new_sock.getsockopt(zmq.FD)
+            if self.__ext_poller:
+                self.start_time = time.time()
+                self.__poller_base.register_poller(new_sock, zmq.POLLIN, self.__receive)
+            else:
+                self.register_poller(new_sock, sock_fd, zmq.POLLIN, self.__receive)
+                # self.register_poller(new_sock, sock_fd, zmq.POLLERR, self.__show)
             self.__add_list.append((sock_fd, c_type))
+            self.__socket_dict[sock_fd] = new_sock
             try:
                 new_sock.send_unicode(unicode(command))
             except:
@@ -126,7 +137,7 @@ class zmq_connection(object):
             else:
                 self.__results[sock_fd] = None
                 self.__pending.add(sock_fd)
-        if not kwargs.get("multi", False):
+        if not kwargs.get("multi", False) and not self.__ext_poller:
             return self.loop()[0]
         else:
             return self.num_connections - 1
@@ -156,16 +167,26 @@ class zmq_connection(object):
                 break
         self.close()
         # self.context.term()
+        return self._interpret_all()
+
+    def _interpret_all(self):
         return [self._interpret_result(com_type, self.__results[cur_fd]) for cur_fd, com_type in self.__add_list]
 
     def __show(self, sock_fd):
         print sock_fd
 
     def _close_socket(self, sock_fd):
-        self.unregister_poller(sock_fd)
+        if self.__ext_poller:
+            self.__poller_base.unregister_poller(self.__socket_dict[sock_fd], zmq.POLLIN)
+        else:
+            self.unregister_poller(sock_fd)
         self.__socket_dict[sock_fd].close()
         del self.__socket_dict[sock_fd]
         self.__pending.remove(sock_fd)
+        if not self.__pending and self.__ext_poller:
+            self.__ext_callback(*self._interpret_all())
+            # cleanup
+            self.close()
 
     def _interpret_result(self, in_type, in_bytes):
         if in_bytes is not None:

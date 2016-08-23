@@ -104,7 +104,7 @@ angular.module(
                     _defs.disabled_tabs = user.get_var(VAR_NAME_DISABLED_TABS, _defs.disabled_tabs).value
         )
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (new_user) ->
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
         _load_user()
     )
 

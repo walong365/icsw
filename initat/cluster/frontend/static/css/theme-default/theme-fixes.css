@@ -52,22 +52,17 @@ icsw-tools-button{
     color:#555555;
     list-style: outside none none;
     margin-top: 7px;
-    padding-left:0;
-    margin-bottom:0px;
+    padding-left: 0;
+    margin-bottom: 0px;
+    width: 100%;
 }
 .submenu-bar .sub-breadcrumb > li {
     display: block;
     position: relative;
     float:left;
+    padding-right: 10px;
 }
-.submenu-bar .sub-breadcrumb > li:before {
-    content: "/";
-    padding: 0 3px 0 5px;
-}
-.submenu-bar .sub-breadcrumb > li:first-child:before {
-    content: " ";
-    padding: 0;
-}
+
 .submenu-bar .quickselect {
     font-size:14px;
     font-weight:600;

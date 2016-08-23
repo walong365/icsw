@@ -291,7 +291,7 @@
                 <td class="text-left">{{ assetrun.$$device.full_name }}</td>
                 <td class="text-center" ng-class="assetrun.$$run_status_class">{{ assetrun.$$run_status }}</td>
                 <td class="text-center" ng-class="assetrun.$$run_result_class">{{ assetrun.$$run_result }}</td>
-                <td ng-class="assetrun.$$error_class">{{ assetrun.$$error_class }}{{ assetrun.error_string }} {{ assetrun.interpret_error_string }}</td>
+                <td ng-class="assetrun.$$error_class">{{ assetrun.$$error_class }} {{ assetrun.error_string }} {{ assetrun.interpret_error_string }}</td>
                 <td class="text-right">{{ assetrun.$$num_results }}</td>
                 <td>
                     <icsw-tools-button ng-if="assetrun.$$num_results" size="xs" type="show" is-show="!assetrun.$$expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>

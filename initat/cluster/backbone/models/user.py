@@ -911,9 +911,9 @@ class user(models.Model):
                 "[{}]".format("{:d}".format(self.pk) if type(self.pk) in [int, long] else "???"),
             ] if _entry
         ]
-        return u"{} ({})".format(
+        return u"{}{}".format(
             self.login,
-            " ".join(_add_fields),
+            " ({})".format(" ".join(_add_fields)) if _add_fields else "",
         )
 
 

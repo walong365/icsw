@@ -34,8 +34,6 @@ monitoring_cluster_module = angular.module(
         template: $templateCache.get("icsw.monitoring.cluster")
         controller: "icswMonitoringClusterCtrl"
     }
-]).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
-    icswRouteExtensionProvider.add_route("main.monitorcluster")
 ]).service("icswMonitoringClusterTree",
 [
     "$q", "Restangular", "ICSW_URLS", "ICSW_SIGNALS", "icswTools",

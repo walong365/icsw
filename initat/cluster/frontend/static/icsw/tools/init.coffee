@@ -480,7 +480,8 @@ angular.module(
         # console.log "init states, count:", _struct.icsw_states.length
         _check_rights()
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), (event, user) ->
+        console.log "SIG", event, user
         _user = user
         _check_rights()
     )
@@ -614,11 +615,15 @@ angular.module(
         # global signals (for $rootScope)
 
         ICSW_ACLS_CHANGED: "icsw.acls.changed"
-        ICSW_USER_CHANGED: "icsw.user.changed"
-        ICSW_USER_NOUSER: "icsw.user.nouser"
+        # user login / logout
+        ICSW_USER_LOGGEDOUT: "icsw.user.loggedout"
         ICSW_USER_LOGGEDIN: "icsw.user.loggedin"
+        # device selection receiver registered / unregistered
         ICSW_DSR_REGISTERED: "icsw.dsr.registered"
         ICSW_DSR_UNREGISTERED: "icsw.dsr.unregistered"
+        # breadcrumbs changed
+        ICSW_BREADCRUMBS_CHANGED: "icsw.breadcrumbs.changed"
+        # selector shown
         ICSW_SELECTOR_SHOW: "icsw.selector.show"
         ICSW_DEVICE_TREE_LOADED: "icsw.device.tree.loaded"
         ICSW_CATEGORY_TREE_LOADED: "icsw.category.tree.loaded"
@@ -920,7 +925,7 @@ angular.module(
                 _changed()
         )
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), (event, user) ->
         # console.log "***", user
         reload(true)
     )
@@ -1569,7 +1574,7 @@ angular.module(
     icswCachingCall, $rootScope, ICSW_SIGNALS, icswTools,
 ) ->
     class icswTreeBase
-        constructor: (@name, @tree_class, @rest_map, @signal) ->
+        constructor: (@name, @tree_class, @rest_map, @signal, @clear_signal=undefined) ->
             @_result = undefined
             @_load_called = false
             @_cancel_load = false
@@ -1613,12 +1618,26 @@ angular.module(
             @_result = undefined
             @_load_called = false
             if @signal
-                $rootScope.$emit(ICSW_SIGNALS(@signal), @_result)
-            
+                if @clear_signal?
+                    $rootScope.$emit(ICSW_SIGNALS(@clear_signal), @_result)
+                else
+                    $rootScope.$emit(ICSW_SIGNALS(@signal), @_result)
+
         cancel_pending_load: () =>
             if @_load_called
                 @_cancel_load = true
-                
+
+        # public get_load_signal function
+        get_load_signal: (result) =>
+            return @signal
+
+        # function to determine signal to send after load, needed for unauthenticated user get
+        _get_load_signal: (result) =>
+            if @signal
+                return @get_load_signal(result)
+            else
+                return null
+
         # private functions
         load_data: (client) =>
             @_load_called = true
@@ -1658,8 +1677,10 @@ angular.module(
                             @init_result(data...)
                         @send_results()
                         # signal if required
-                        if @signal
-                            $rootScope.$emit(ICSW_SIGNALS(@signal), @_result)
+                        _send_signal = @_get_load_signal(@_result)
+                        if _send_signal
+                            # console.log "emit", _send_signal, @_result
+                            $rootScope.$emit(ICSW_SIGNALS(_send_signal), @_result)
             )
             return @_load_defer
 

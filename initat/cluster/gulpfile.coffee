@@ -102,6 +102,8 @@ sources = {
             "frontend/static/css/toaster.css",
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/hotkeys.css",
+            # yamm3 mega menu, not used right now
+            # "frontend/static/css/yamm.css",
             # not needed right now, not working with tree-code
             # "frontend/static/css/awesome-bootstrap-checkbox.css",
         ]
@@ -169,8 +171,8 @@ sources = {
             "frontend/static/js/webfrontend_translation.js",
             "frontend/static/js/angular-gridster.js",
             "frontend/static/js/angular-promise-extras.js",
-            "frontend/static/js/react-15.3.0.js",
-            "frontend/static/js/react-dom-15.3.0.js",
+            "frontend/static/js/react-15.3.1.js",
+            "frontend/static/js/react-dom-15.3.1.js",
             # not needed ?
             # "frontend/static/js/react-draggable.js",
             "frontend/static/js/hotkeys.js",
@@ -194,7 +196,7 @@ sources = {
             "frontend/static/js/restangular.min.js",
             "frontend/static/js/angular-block-ui.js",
             "frontend/static/js/select.js",
-            "frontend/static/js/ui-bootstrap-tpls-2.0.2.min.js",
+            "frontend/static/js/ui-bootstrap-tpls-2.1.1.min.js",
             "frontend/static/js/angular-ui-router.js",
             "frontend/static/js/datetime-picker.js",
             "frontend/static/js/datetime-picker.tpls.js",

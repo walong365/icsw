@@ -246,7 +246,15 @@ device_variable_module = angular.module(
             else 
                 sub_scope.$$discrete_names = false
                 sub_scope.$$possible_names = []
-            
+
+        sub_scope.change_name = () ->
+            cur_scope = _dvst.lut[sub_scope.edit_obj.device_variable_scope]
+            cur_var = (entry for entry in cur_scope.dvs_allowed_name_set when entry.name == sub_scope.edit_obj.name)
+            if cur_var.length
+                cur_var = cur_var[0]
+                if cur_var.forced_type in ["i", "s"]
+                    sub_scope.edit_obj.var_type = cur_var.forced_type
+
         sub_scope.edit_obj = obj_or_parent
 
         sub_scope.valid_var_types = [
@@ -272,7 +280,7 @@ device_variable_module = angular.module(
                         if create
                             if single_create
                                 # single creation
-                                scope.device_tree.create_device_variable(sub_scope.edit_obj).then(
+                                scope.device_tree.create_device_variable(sub_scope.edit_obj, scope.helper).then(
                                     (new_conf) ->
                                         d.resolve("created")
                                     (notok) ->
@@ -284,11 +292,9 @@ device_variable_module = angular.module(
                                 for dev in scope.devices
                                     local_var = angular.copy(sub_scope.edit_obj)
                                     local_var.device = dev.idx
-                                    wait_list.push(scope.device_tree.create_device_variable(local_var))
+                                    wait_list.push(scope.device_tree.create_device_variable(local_var, scope.helper))
                                 $q.allSettled(wait_list).then(
                                     (result) ->
-                                        # todo: check result
-                                        scope.helper.filter_device_variables()
                                         d.resolve("created")
                                 )
                         else
@@ -373,9 +379,8 @@ device_variable_module = angular.module(
                 new_var = angular.copy(d_var)
                 new_var.device = device.idx
                 blockUI.start()
-                scope.device_tree.create_device_variable(new_var).then(
+                scope.device_tree.create_device_variable(new_var, scope.helper).then(
                     (new_conf) ->
-                        scope.helper.filter_device_variables()
                         blockUI.stop()
                     (notok) ->
                         blockUI.stop()

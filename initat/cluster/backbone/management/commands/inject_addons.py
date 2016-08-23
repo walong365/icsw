@@ -19,20 +19,19 @@
 #
 """ inject addons in already compiled main.html """
 
-import os
 import json
+import os
 import re
 import sys
-from optparse import make_option
 
-from initat.cluster.backbone.models import device, csw_permission
 from django.conf import settings
 from django.core.management.base import BaseCommand
 from lxml import etree
 from lxml.builder import E
-from initat.icsw.service.instance import InstanceXML
 
-from initat.tools import logging_tools
+from initat.cluster.backbone.models import csw_permission
+from initat.icsw.service.instance import InstanceXML
+from initat.tools import logging_tools, process_tools
 
 
 class MenuRelax(object):
@@ -145,19 +144,71 @@ class FileModify(object):
 
         _res = {}
         for route in xml:
-            _res[route.attrib["name"]] = _iter_dict(route)
+            if route.tag is etree.Comment:
+                continue
+            try:
+                _res[route.attrib["name"]] = _iter_dict(route)
+            except:
+                print(
+                    "Error handling the element '{}': {}".format(
+                        etree.tostring(route, pretty_print=True),
+                        process_tools.get_except_info(),
+                    )
+                )
+                raise
         return ["    {}".format(_line) for _line in json.dumps(_res, indent=4).split("\n")[1:-1]]
 
+    def transform(self, in_xml):
+        # should be a XSLT transformation
+        new_xml = E.routes()
+        for menu_idx, group in enumerate(in_xml.findall(".//routeGroup")):
+            key_str = group.attrib["name"]
+            menu_head_el = group.find(".//menuHeader")
+            if menu_head_el is not None:
+                menu_head_el.attrib["ordering_int"] = "{:d}".format((menu_idx + 1) * 10)
+                menu_head_el.attrib["key_str"] = key_str
+            _header_added = False
+            for route_idx, route in enumerate(group.findall(".//route")):
+                _me = route.find(".//icswData/menuEntry")
+                if _me is not None:
+                    if menu_head_el is None:
+                        raise ValueError("No menu_head_el defined")
+                    _data = route.find(".//icswData")
+                    _me.attrib["menukey_str"] = key_str
+                    _me.attrib["ordering_int"] = "{:d}".format((route_idx + 1) * 10)
+                    if not _header_added:
+                        # add header to first route entry with menuEntry
+                        _header_added = True
+                        _data.append(E.menuHeader(**{_key: _value for _key, _value in menu_head_el.attrib.iteritems()}))
+                new_xml.append(route)
+
+        return new_xml
+
     def read_menus(self, mp_list):
+        # relax instance
+        _my_relax = MenuRelax()
         _xml = E.routes()
         for _file in mp_list:
-            for _route in etree.fromstring(
-                file(os.path.join(settings.FILE_ROOT, _file), "r").read()
-            ):
-                _xml.append(_route)
-        _my_relax = MenuRelax()
+            # simple merger, to be improved
+            _full_path = os.path.join(settings.FILE_ROOT, _file)
+            _src_xml = etree.fromstring(
+                file(_full_path, "r").read()
+            )
+            try:
+                _my_relax.validate(_src_xml)
+            except:
+                sys.stderr.write(
+                    "*** Error validating {}: {}\n".format(
+                        _full_path,
+                        process_tools.get_except_info(),
+                    )
+                )
+            else:
+                for _top_el in _src_xml:
+                    _xml.append(_top_el)
         # check for validity
         _my_relax.validate(_xml)
+        _xml = self.transform(_xml)
         # move to json
         import pprint
         pprint.pprint(self.route_xml_to_json(_xml))

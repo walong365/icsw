@@ -179,7 +179,7 @@ class KpiProcess(threading_tools.process_obj):
         kpi_serialized = json.loads(srv_com['kpi_serialized'].text)
         kpi_idx = kpi_serialized.get('idx', None)
         kpi_db = Kpi.objects.get(pk=kpi_idx) if kpi_idx is not None else Kpi()
-        field_names = frozenset(Kpi._meta.get_all_field_names())
+        field_names = frozenset([_f.name for _f in Kpi._meta.get_fields()])
         for k, v in kpi_serialized.iteritems():
             if k in field_names:
                 setattr(kpi_db, k, v)
