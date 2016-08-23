@@ -56,8 +56,8 @@ def add_fixtures(**kwargs):
             ("*NRPE_PORT", "Port for NRPE client", "nrpe", "i"),
             # snmp
             ("*SNMP_VERSION", "SNMP Version", "snmp", "i"),
-            ("*SNMP_READ_COMMUNITY", "SNMP Read Community string", "s"),
-            ("*SNMP_WRITE_COMMUNITY", "SNMP Write Community string", "s"),
+            ("*SNMP_READ_COMMUNITY", "SNMP Read Community string", "snmp", "s"),
+            ("*SNMP_WRITE_COMMUNITY", "SNMP Write Community string", "snmp", "s"),
         ]
     }
     for _scope_name, _var_list in _defaults.iteritems():
