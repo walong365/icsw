@@ -25,7 +25,18 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "icsw.system.license", "icsw.layout.theme"
     ]
-).controller("icswLoginCtrl",
+).directive("icswLoginPage",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.user.login.page")
+        controller: "icswLoginCtrl"
+    }
+]).controller("icswLoginCtrl",
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
     "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
@@ -33,7 +44,7 @@ angular.module(
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
     initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
-    icswToolsSimpleModalService, themeService
+    icswToolsSimpleModalService, themeService,
 ) ->
     $scope.initProduct = initProduct
     $scope.license_tree = undefined
@@ -65,6 +76,7 @@ angular.module(
                     }
                 )
                 icswSystemLicenseDataService.load($scope.$id)
+                icswUserService.load($scope.$id)
             ]
         ).then(
             (data) ->
@@ -77,6 +89,9 @@ angular.module(
                 $scope.license_tree = data[2]
                 $scope.struct.fx_mode = icswSystemLicenseDataService.fx_mode()
                 $scope.struct.data_valid = true
+                # current user is still valid, force logout
+                if data[3].is_authenticated()
+                    $state.go("logout")
                 if first_call
                     first_call = false
                     $scope.login_data.next_url = $(xml).find("value[name='next_url']").text()
@@ -114,7 +129,7 @@ angular.module(
                                     dataType: "json"
                                 ).then(
                                     (expelled) ->
-                                        console.log "expelled=", expelled
+                                        # console.log "expelled=", expelled
                                         _do_login.resolve("login")
                                 )
                             (nono) ->
@@ -125,10 +140,12 @@ angular.module(
                         _do_login.resolve("nodups")
                     _do_login.promise.then(
                         (login) ->
+                            # console.log "slogin"
                             $q.all(
                                 [
                                     icswCSRFService.get_token()
-                                    icswUserService.load()
+                                    # reload to force loading of user
+                                    icswUserService.reload($scope.$id)
                                 ]
                             ).then(
                                 (data) ->
@@ -164,7 +181,7 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.authentication.form")
     }
-]).directive("icswLoginPage",
+]).directive("icswLogoutPage",
 [
     "$templateCache",
 (
@@ -172,7 +189,21 @@ angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.user.login.page")
-        controller: "icswLoginCtrl"
+        template: $templateCache.get("icsw.user.logout.page")
+        controller: "icswLogoutCtrl"
     }
+]).controller("icswLogoutCtrl",
+[
+    "$scope", "icswUserService", "$state",
+(
+    $scope, icswUserService, $state,
+) ->
+    cur_user = icswUserService.get()
+    if cur_user?
+        icswUserService.logout().then(
+            (done) ->
+                $state.go("login")
+        )
+    else
+        $state.go("login")
 ])

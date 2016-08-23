@@ -1,519 +1,517 @@
 <routes>
-    <route name="main.graph">
-        <stateData type="dict" url_str="/graph" templateUrl_str="icsw.rrd.graph"/>
-        <icswData type="dict" pageTitle_str="Graph">
-            <licenses type="list">
-                <value>graphing</value>
-            </licenses>
-            <menuEntry type="dict" ordering_int="40" menukey_str="stat" icon_str="fa-line-chart"/>
-            <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
-            <rights type="list">
-                <value>backbone.device.show_graphs</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.deployboot">
-        <stateData type="dict" url_str="/deployboot" templateUrl_str="icsw/main/deploy/boot.html"/>
-        <icswData type="dict" pageTitle_str="Boot nodes">
-            <menuHeader type="dict" ordering_int="80" name_str="Cluster" key_str="cluster" icon_str="fa-cubes"/>
-            <serviceTypes type="list">
-                <value>mother</value>
-            </serviceTypes>
-            <rights type="list">
-                <value>backbone.device.change_boot</value>
-            </rights>
-            <menuEntry type="dict" ordering_int="10" menukey_str="cluster" icon_str="fa-rocket"/>
-            <licenses type="list">
-                <value>netboot</value>
-            </licenses>
-        </icswData>
-    </route>
-    <route name="main.serverinfo">
-        <stateData type="dict" url_str="/serverinfo&quot;" templateUrl_str="icsw/main/serverinfo.html"/>
-        <icswData type="dict" pageTitle_str="Server info">
-            <rights type="list">
-                <value>$$CHECK_FOR_SUPERUSER</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.statelist">
-        <stateData type="dict" url_str="/statelist" template_str="&lt;icsw-internal-state-list&gt;&lt;/icsw-internal-state-list&gt;"/>
-        <icswData type="dict" pageTitle_str="Internal State list">
-            <menuEntry type="dict" ordering_int="30" preSpacer_bool="yes" postSpacer_bool="yes" menukey_str="sys" icon_str="fa-bars"/>
-            <rights type="list">
-                <value>$$CHECK_FOR_SUPERUSER</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.rmsoverview">
-        <stateData type="dict" url_str="/rmsoverview" templateUrl_str="icsw/main/rms/overview.html"/>
-        <icswData type="dict" pageTitle_str="RMS Overview">
-            <menuHeader type="dict" ordering_int="90" name_str="RMS" key_str="rms" icon_str="fa-list-ol"/>
-            <serviceTypes type="list">
-                <value>rms-server</value>
-            </serviceTypes>
-            <dashboardEntry type="dict" sizeX_int="4" sizeY_int="6"/>
-            <rights type="list">
-                <value>backbone.user.rms_show</value>
-            </rights>
-            <menuEntry type="dict" ordering_int="0" icon_str="fa-table" menukey_str="rms" name_str="RMS Overview"/>
-            <licenses type="list">
-                <value>rms</value>
-            </licenses>
-        </icswData>
-    </route>
-    <route name="main.history">
-        <stateData type="dict" url_str="/history" template_str="&lt;icsw-history-overview&gt;&lt;/icsw-history-overview&gt;"/>
-        <icswData type="dict" pageTitle_str="Database history">
-            <menuEntry type="dict" ordering_int="10" icon_str="fa-history" menukey_str="sys" name_str="History"/>
-            <rights type="list">
-                <value>backbone.user.snapshots</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.domaintree">
-        <stateData type="dict" url_str="/domaintree" templateUrl_str="icsw/main/device/domaintree.html"/>
-        <icswData type="dict" pageTitle_str="Domain name tree">
-            <menuEntry type="dict" ordering_int="45" menukey_str="dev" icon_str="fa-list-alt"/>
-            <rights type="list">
-                <value>backbone.user.modify_domain_name_tree</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.kpi">
-        <stateData type="dict" url_str="/kpi" template_str="&lt;icsw-config-kpi&gt;&lt;/icsw-config-kpi&gt;"/>
-        <icswData type="dict" pageTitle_str="Key performance indicators">
-            <licenses type="list">
-                <value>kpi</value>
-            </licenses>
-            <menuEntry type="dict" ordering_int="60" menukey_str="stat" icon_str="fa-code-fork"/>
-            <rights type="list">
-                <value>backbone.kpi.kpi</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.partition">
-        <stateData type="dict" url_str="/partition" templateUrl_str="icsw/main/partition.html"/>
-        <icswData type="dict" pageTitle_str="Partition overview">
-            <licenses type="list">
-                <value>netboot</value>
-            </licenses>
-            <menuEntry type="dict" ordering_int="35" menukey_str="cluster" icon_str="fa-database"/>
-            <rights type="list">
-                <value>backbone.partition_fs.modify_partitions</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitordisk">
-        <stateData type="dict" url_str="/monitordisk"
-                   template_str="&lt;icsw-device-partition-overview icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-device-partition-overview&gt;"/>
-        <icswData type="dict" pageTitle_str="Disk">
-            <menuEntry type="dict" ordering_int="50" menukey_str="mon" icon_str="fa-hdd-o"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.setup_monitoring</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.scheddevice">
-        <stateData type="dict" url_str="/sched/device" template_str="&lt;icsw-schedule-device icsw-sel-man='0'&gt;&lt;/icsw-schedule-device&gt;"/>
-        <icswData type="dict" pageTitle_str="Set Device Schedules">
-            <menuHeader type="dict" ordering_int="70" name_str="Scheduling" key_str="sched" icon_str="fa-gears"/>
-            <menuEntry type="dict" ordering_int="20" icon_str="fa-laptop" menukey_str="sched" name_str="Device settings"/>
-            <rights type="list">
-                <value>backbone.device.dispatch_settings</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.schedoverview">
-        <stateData type="dict" url_str="/sched/overview" template_str="&lt;icsw-schedule-overview&gt;&lt;/icsw-schedule-overview&gt;"/>
-        <icswData type="dict" pageTitle_str="Schedule settings">
-            <menuEntry type="dict" ordering_int="10" icon_str="fa-gears" menukey_str="sched" name_str="Settings"/>
-            <rights type="list">
-                <value>backbone.dispatchersetting.setup</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.statictemplates">
-        <stateData type="dict" url_str="/sched/stattemp"
-                   template_str="&lt;icsw-static-asset-template-overview&gt;&lt;/icsw-static-asset-template-overview&gt;"/>
-        <icswData type="dict" pageTitle_str="Static Asset templates">
-            <menuEntry type="dict" ordering_int="30" icon_str="fa-reorder" menukey_str="sched" name_str="Static Asset templates"/>
-            <rights type="list">
-                <value>backbone.staticassettemplate.setup</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.statushistory">
-        <stateData type="dict" url_str="/statushistory" templateUrl_str="icsw/main/status_history.html"/>
-        <icswData type="dict" pageTitle_str="Status History">
-            <licenses type="list">
-                <value>reporting</value>
-            </licenses>
-            <menuEntry type="dict" ordering_int="60" menukey_str="stat" icon_str="fa-pie-chart"/>
-            <rights type="list">
-                <value>backbone.device.show_status_history</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitorbasics">
-        <stateData type="dict" url_str="/monitorbasics" template_str="&lt;icsw-monitoring-basic&gt;&lt;/icsw-monitoring-basic&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring Basic setup">
-            <menuHeader type="dict" ordering_int="70" name_str="Monitoring" key_str="mon" icon_str="fa-gears"/>
-            <menuEntry type="dict" ordering_int="0" icon_str="fa-bars" menukey_str="mon" name_str="Basic setup"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.setup_monitoring</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitorredirect">
-        <stateData type="dict" url_str="/monitorredirect" resolve_bool="yes"/>
-        <icswData type="dict" redirectToFromOnError_bool="yes">
-            <menuEntry type="dict" ordering_int="120" icon_str="fa-share-alt" menukey_str="mon" name_str="Icinga"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.redirect_to_icinga</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitorb0">
-        <stateData type="dict" url_str="/monitorb0" resolve_bool="yes"/>
-        <icswData type="dict" redirectToFromOnError_bool="yes">
-            <menuEntry type="dict" preSpacer_bool="yes" name_str="rebuild config cached" ordering_int="101" labelClass_str="label-success" menukey_str="mon"
-                       icon_str="fa-share-alt"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.create_config</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitorb1">
-        <stateData type="dict" url_str="/monitorb1" resolve_bool="yes"/>
-        <icswData type="dict" redirectToFromOnError_bool="yes">
-            <menuEntry type="dict" labelClass_str="label-warning" ordering_int="102" icon_str="fa-share-alt" menukey_str="mon"
-                       name_str="rebuild config dynamic"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.create_config</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitorb2">
-        <stateData type="dict" url_str="/monitorb2" resolve_bool="yes"/>
-        <icswData type="dict" redirectToFromOnError_bool="yes">
-            <menuEntry type="dict" name_str="rebuild config refresh" ordering_int="103" labelClass_str="label-danger" postSpacer_bool="yes" menukey_str="mon"
-                       icon_str="fa-share-alt"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.create_config</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.devicenetwork">
-        <stateData type="dict" url_str="/network" template_str="&lt;icsw-device-network-total&gt;&lt;/icsw-device-network-total&gt;"/>
-        <icswData type="dict" pageTitle_str="Network">
-            <menuEntry type="dict" ordering_int="30" menukey_str="dev" icon_str="fa-sitemap"/>
-            <rights type="list">
-                <value>backbone.device.change_network</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.useraccount">
-        <stateData type="dict" url_str="/useraccount" templateUrl_str="icsw/main/user/account.html"/>
-        <icswData type="dict" pageTitle_str="Account info"/>
-    </route>
-    <route name="main.usertree">
-        <stateData type="dict" url_str="/usertree" templateUrl_str="icsw/main/user/tree.html"/>
-        <icswData type="dict" pageTitle_str="User and Group tree">
-            <menuHeader type="dict" ordering_int="100" name_str="System" key_str="sys" icon_str="fa-cog"/>
-            <menuEntry type="dict" ordering_int="0" icon_str="fa-user" menukey_str="sys" name_str="User"/>
-            <rights type="list">
-                <value>backbone.group.group_admin</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.devtree">
-        <stateData type="dict" url_str="/devtree" templateUrl_str="icsw/main/device/tree.html"/>
-        <icswData type="dict" pageTitle_str="Device tree">
-            <menuEntry type="dict" ordering_int="15" menukey_str="dev" icon_str="fa-list"/>
-            <dashboardEntry type="dict" sizeX_int="2" sizeY_int="5"/>
-            <rights type="list">
-                <value>backbone.user.modify_tree</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.licoverview">
-        <stateData type="dict" url_str="/licoverview" templateUrl_str="icsw/main/rms/licoverview.html"/>
-        <icswData type="dict" pageTitle_str="License Liveview">
-            <serviceTypes type="list">
-                <value>rms-server</value>
-            </serviceTypes>
-            <dashboardEntry type="dict" sizeX_int="2" sizeY_int="6"/>
-            <rights type="list">
-                <value>backbone.user.license_liveview</value>
-            </rights>
-            <menuEntry type="dict" ordering_int="30" icon_str="fa-line-chart" menukey_str="rms" name_str="License liveview"/>
-            <licenses type="list">
-                <value>ext_license</value>
-            </licenses>
-        </icswData>
-    </route>
-    <route name="main.dashboard">
-        <stateData type="dict" url_str="/dashboard" templateUrl_str="icsw/main/dashboard.html"/>
-        <icswData type="dict" pageTitle_str="Dashboard"/>
-    </route>
-    <route name="main.userjobinfo">
-        <stateData type="dict" url_str="/userjobinfo" templateUrl_str="icsw.dashboard.jobinfo"/>
-        <icswData type="dict" pageTitle_str="RMS Information">
-            <licenses type="list">
-                <value>rms</value>
-            </licenses>
-            <serviceTypes type="list">
-                <value>rms-server</value>
-            </serviceTypes>
-            <dashboardEntry type="dict" sizeX_int="3" sizeY_int="2"/>
-            <rights type="list">
-                <value>backbone.user.rms_show</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.userquotainfo">
-        <stateData type="dict" url_str="/userquotainfo" templateUrl_str="icsw.dashboard.diskquota"/>
-        <icswData type="dict" pageTitle_str="User Disk and Quota info">
-            <dashboardEntry type="dict" sizeX_int="3" sizeY_int="2"/>
-        </icswData>
-    </route>
-    <route name="main.virtualdesktopinfo">
-        <stateData type="dict" url_str="/vduinfo" templateUrl_str="icsw.dashboard.virtualdesktops"/>
-        <icswData type="dict" pageTitle_str="Virtual Desktops">
-            <dashboardEntry type="dict" sizeX_int="3" sizeY_int="2"/>
-        </icswData>
-    </route>
-    <route name="main.quicklinks">
-        <stateData type="dict" url_str="/quicklinks" templateUrl_str="icsw.dashboard.quicklinks"/>
-        <icswData type="dict" pageTitle_str="Quicklinks">
-            <dashboardEntry type="dict" sizeX_int="2" sizeY_int="1" defaultEnabled_bool="yes"/>
-        </icswData>
-    </route>
-    <route name="main.externallinks">
-        <stateData type="dict" url_str="/externallinks" templateUrl_str="icsw.dashboard.externallinks"/>
-        <icswData type="dict" pageTitle_str="External links">
-            <dashboardEntry type="dict" sizeX_int="2" sizeY_int="1"/>
-        </icswData>
-    </route>
-    <route name="main.backgroundinfo">
-        <stateData type="dict" url_str="/sysbackgroundinfo" templateUrl_str="icsw/main/sysbackgroundinfo.html"/>
-        <icswData type="dict" pageTitle_str="Background Job Information"/>
-    </route>
-    <route name="main.deviceconnection">
-        <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
-        <icswData type="dict" pageTitle_str="Device Connections">
-            <menuEntry type="dict" ordering_int="25" icon_str="fa-plug" menukey_str="dev" name_str="Device connections"/>
-            <rights type="list">
-                <value>backbone.device.change_connection</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.devvars">
-        <stateData type="dict" url_str="/variables"
-                   templateUrl_str="icsw/device/variable.html"/>
-        <icswData type="dict" pageTitle_str="Device variables">
-            <menuEntry type="dict" ordering_int="30" menukey_str="dev" icon_str="fa-code"/>
-            <rights type="list">
-                <value>backbone.device.change_variables</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitorhint">
-        <stateData type="dict" url_str="/monitorhint" template_str="&lt;icsw-device-mon-config icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-device-mon-config&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring hints">
-            <menuEntry type="dict" ordering_int="40" menukey_str="mon" icon_str="fa-info"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.setup_monitoring</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.deviceinfo">
-        <stateData type="dict" url_str="/deviceinfo" template_str="&lt;icsw-simple-device-info icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-simple-device-info&gt;"/>
-        <icswData type="dict" pageTitle_str="Device info">
-            <menuEntry type="dict" ordering_int="10" preSpacer_bool="yes" postSpacer_bool="yes" menukey_str="dev" icon_str="fa-bars"/>
-            <dashboardEntry type="dict" sizeX_int="4" sizeY_int="3" allowState_bool="yes"/>
-            <rights type="list">
-                <value>backbone.user.modify_tree</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.eventlog">
-        <stateData type="dict" url_str="/eventlog" template_str="&lt;icsw-discovery-event-log icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-discovery-event-log&gt;"/>
-        <icswData type="dict" pageTitle_str="Syslog, WMI- und IPMI-Event logs">
-            <licenses type="list">
-                <value>discovery_server</value>
-            </licenses>
-            <menuEntry type="dict" ordering_int="100" icon_str="fa-list-alt" menukey_str="stat" name_str="Syslog, WMI- and IPMI-Event logs"/>
-            <menuHeader type="dict" ordering_int="50" name_str="Status" key_str="stat" icon_str="fa-line-chart"/>
-            <rights type="list">
-                <value>backbone.device.discovery_server</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.devicecreate">
-        <stateData type="dict" url_str="/devicecreate" templateUrl_str="icsw/main/device/create.html"/>
-        <icswData type="dict" pageTitle_str="Create new Device" validForQuicklink_bool="yes">
-            <menuHeader type="dict" ordering_int="0" name_str="Device" key_str="dev" icon_str="fa-hdd-o"/>
-            <menuEntry type="dict" ordering_int="5" icon_str="fa-plus-circle" menukey_str="dev" name_str="Create new device"/>
-            <rights type="list">
-                <value>backbone.user.modify_tree</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.configoverview">
-        <stateData type="dict" url_str="/configoverview" templateUrl_str="icsw/main/config/overview.html"/>
-        <icswData type="dict" pageTitle_str="Configuration Overview">
-            <menuEntry type="dict" ordering_int="10" preSpacer_bool="yes" icon_str="fa-check-square-o" menukey_str="dev" name_str="Configurations"/>
-            <rights type="list">
-                <value>backbone.device.change_config</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.devasset">
-        <stateData type="dict" url_str="/asset" templateUrl_str="icsw/device/asset/overview"/>
-        <icswData type="dict" pageTitle_str="Device Assets">
-            <serviceTypes type="list">
-                <value>discovery-server</value>
-            </serviceTypes>
-            <menuEntry type="dict" ordering_int="30" menukey_str="dev" icon_str="fa-diamond"/>
-            <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
-            <rights type="list">
-                <value>backbone.device.assets</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.report">
-        <stateData type="dict" url_str="/report" templateUrl_str="icsw/device/report/overview"/>
-        <icswData type="dict" pageTitle_str="Reporting">
-            <menuEntry type="dict" ordering_int="100" menukey_str="dev" icon_str="fa-book"/>
-            <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
-            <rights type="list">
-                <value>backbone.device.assets</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.devlocation">
-        <stateData type="dict" url_str="/devlocation" templateUrl_str="icsw/main/device/location.html"/>
-        <icswData type="dict" pageTitle_str="Device location">
-            <menuEntry type="dict" ordering_int="40" menukey_str="dev" icon_str="fa-map-marker"/>
-            <rights type="list">
-                <value>backbone.user.modify_category_tree</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.deviceconfig">
-        <stateData type="dict" url_str="/deviceconfig" templateUrl_str="icsw/main/device/config.html"/>
-        <icswData type="dict" pageTitle_str="Configure Device">
-            <menuEntry type="dict" ordering_int="10" icon_str="fa-check-square" menukey_str="dev" name_str="Device Configurations"/>
-            <rights type="list">
-                <value>backbone.device.change_config</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.imagekernel">
-        <stateData type="dict" url_str="/imagekernel" templateUrl_str="icsw/main/imagekernel.html"/>
-        <icswData type="dict" pageTitle_str="Images and Kernels">
-            <licenses type="list">
-                <value>netboot</value>
-            </licenses>
-            <menuEntry type="dict" ordering_int="25" menukey_str="cluster" icon_str="fa-linux"/>
-            <rights type="list">
-                <value>backbone.image.modify_images</value>
-                <value>backbone.kernel.modify_kernels</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.livestatus">
-        <stateData type="dict" url_str="/livestatus/all"
-                   template_str="&lt;icsw-device-livestatus icsw-livestatus-view=&quot;'test'&quot;&gt;&lt;/icsw-device-livestatus&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring dashboard">
-            <licenses type="list">
-                <value>monitoring_dashboard</value>
-            </licenses>
-            <menuEntry type="dict" ordering_int="20" menukey_str="stat" icon_str="fa-dot-circle-o"/>
-            <dashboardEntry type="dict" sizeX_int="4" sizeY_int="4"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.show_monitoring_dashboard</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.categorytree">
-        <stateData type="dict" url_str="/categorytree" templateUrl_str="icsw/main/category/tree.html"/>
-        <icswData type="dict" pageTitle_str="Category tree">
-            <menuEntry type="dict" ordering_int="14" icon_str="fa-table" menukey_str="dev" name_str="Device category"/>
-            <rights type="list">
-                <value>backbone.user.modify_category_tree</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.syslicenseoverview">
-        <stateData type="dict" url_str="/syslicenseoverview" templateUrl_str="icsw/main/license/overview.html"/>
-        <icswData type="dict" pageTitle_str="License information" validForQuicklink_bool="yes">
-            <menuEntry type="dict" ordering_int="20" icon_str="fa-key" menukey_str="sys" name_str="License"/>
-            <rights type="list">
-                <value>$$CHECK_FOR_SUPERUSER</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitordevice">
-        <stateData type="dict" url_str="/monitordevice" template_str="&lt;icsw-monitoring-device icsw-sel-man='0'&gt;&lt;/icsw-monitoring-device&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring Device settings">
-            <menuEntry type="dict" ordering_int="10" icon_str="fa-laptop" menukey_str="mon" name_str="Device settings"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.setup_monitoring</value>
-                <value>backbone.device.change_monitoring</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitorov">
-        <stateData type="dict" url_str="/monitorov"
-                   template_str="&lt;icsw-monitoring-list-overview icsw-sel-man='0'&gt;&lt;/icsw-monitoring-list-overview&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring List">
-            <menuEntry type="dict" ordering_int="0" icon_str="fa-list" menukey_str="mon" name_str="Monitoring list"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.setup_monitoring</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitorbuildinfo">
-        <stateData type="dict" url_str="/monitorbuildinfo" template_str="&lt;icsw-monitoring-build-info&gt;&lt;/icsw-monitoring-build-info&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring build info">
-            <menuEntry type="dict" ordering_int="60" icon_str="fa-info-circle" menukey_str="mon" name_str="Build info"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.setup_monitoring</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.packageinstall">
-        <stateData type="dict" url_str="/packageinstall" template_str="&lt;icsw-package-install-overview ng-cloak/&gt;"/>
-        <icswData type="dict" pageTitle_str="Package install">
-            <licenses type="list">
-                <value>package_install</value>
-            </licenses>
-            <menuEntry type="dict" ordering_int="50" menukey_str="cluster" icon_str="fa-download"/>
-            <rights type="list">
-                <value>backbone.package.package_install</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitorcluster">
-        <stateData type="dict" url_str="/monitorcluster" template_str="&lt;icsw-monitoring-cluster&gt;&lt;/icsw-monitoring-cluster&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring Cluster / Dependency setup">
-            <menuEntry type="dict" ordering_int="20" icon_str="fa-chain" menukey_str="mon" name_str="Cluster / Dependency setup"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.setup_monitoring</value>
-            </rights>
-        </icswData>
-    </route>
-    <route name="main.monitoresc">
-        <stateData type="dict" url_str="/monitoresc" template_str="&lt;icsw-monitoring-escalation&gt;&lt;/icsw-monitoring-escalation&gt;"/>
-        <icswData type="dict" pageTitle_str="Monitoring Escalation setup">
-            <menuEntry type="dict" ordering_int="30" icon_str="fa-bolt" menukey_str="mon" name_str="Escalation setup"/>
-            <rights type="list">
-                <value>backbone.mon_check_command.setup_monitoring</value>
-            </rights>
-        </icswData>
-    </route>
+    <routeGroup name="config">
+        <menuHeader type="dict" name_str="Configuration" icon_str="fa-hdd-o"/>
+        <route name="main.devicecreate">
+            <stateData type="dict" url_str="/devicecreate" templateUrl_str="icsw/main/device/create.html"/>
+            <icswData type="dict" pageTitle_str="Create new Device" validForQuicklink_bool="yes">
+                <menuEntry type="dict" icon_str="fa-plus-circle" name_str="Create new device"/>
+                <rights type="list">
+                    <value>backbone.user.modify_tree</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.configoverview">
+            <stateData type="dict" url_str="/configoverview" templateUrl_str="icsw/main/config/overview.html"/>
+            <icswData type="dict" pageTitle_str="Overview">
+                <menuEntry type="dict" preSpacer_bool="yes" icon_str="fa-check-square-o" name_str="Base"/>
+                <rights type="list">
+                    <value>backbone.device.change_config</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.deviceconfig">
+            <stateData type="dict" url_str="/deviceconfig" templateUrl_str="icsw/main/device/config.html"/>
+            <icswData type="dict" pageTitle_str="Configure Device">
+                <menuEntry type="dict" icon_str="fa-check-square" name_str="Device Configurations"/>
+                <rights type="list">
+                    <value>backbone.device.change_config</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.deviceconnection">
+            <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
+            <icswData type="dict" pageTitle_str="Device Connections">
+                <menuEntry type="dict" icon_str="fa-plug" name_str="Connections"/>
+                <rights type="list">
+                    <value>backbone.device.change_connection</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.devicenetwork">
+            <stateData type="dict" url_str="/network" template_str="&lt;icsw-device-network-total&gt;&lt;/icsw-device-network-total&gt;"/>
+            <icswData type="dict" pageTitle_str="Network">
+                <menuEntry type="dict" icon_str="fa-sitemap"/>
+                <rights type="list">
+                    <value>backbone.device.change_network</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.devvars">
+            <stateData type="dict" url_str="/variables"
+                       templateUrl_str="icsw/device/variable.html"/>
+            <icswData type="dict" pageTitle_str="Device variables">
+                <menuEntry type="dict" icon_str="fa-code" name_str="Variables"/>
+                <rights type="list">
+                    <value>backbone.device.change_variables</value>
+                </rights>
+            </icswData>
+        </route>
+    </routeGroup>
+    <!-- trees -->
+    <routeGroup name="tree">
+        <menuHeader type="dict" name_str="Trees" icon_str="fa-tree"/>
+        <route name="main.devtree">
+            <stateData type="dict" url_str="/devtree" templateUrl_str="icsw/main/device/tree.html"/>
+            <icswData type="dict" pageTitle_str="Device tree">
+                <menuEntry type="dict" postSpacer_bool="yes" icon_str="fa-list" name_str="Devices"/>
+                <dashboardEntry type="dict" sizeX_int="2" sizeY_int="5"/>
+                <rights type="list">
+                    <value>backbone.user.modify_tree</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.domaintree">
+            <stateData type="dict" url_str="/domaintree" templateUrl_str="icsw/main/device/domaintree.html"/>
+            <icswData type="dict" pageTitle_str="Domain names">
+                <menuEntry type="dict" icon_str="fa-list-alt"/>
+                <rights type="list">
+                    <value>backbone.user.modify_domain_name_tree</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.categorytree">
+            <stateData type="dict" url_str="/categorytree" templateUrl_str="icsw/main/category/tree.html"/>
+            <icswData type="dict" pageTitle_str="Category tree">
+                <menuEntry type="dict" icon_str="fa-table" name_str="Categories"/>
+                <rights type="list">
+                    <value>backbone.user.modify_category_tree</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.devlocation">
+            <stateData type="dict" url_str="/devlocation" templateUrl_str="icsw/main/device/location.html"/>
+            <icswData type="dict" pageTitle_str="Locations">
+                <menuEntry type="dict" icon_str="fa-map-marker"/>
+                <rights type="list">
+                    <value>backbone.user.modify_category_tree</value>
+                </rights>
+            </icswData>
+        </route>
+    </routeGroup>
+    <routeGroup name="stat">
+        <menuHeader type="dict" name_str="Status" icon_str="fa-line-chart"/>
+        <route name="main.deviceinfo">
+            <stateData type="dict" url_str="/deviceinfo" template_str="&lt;icsw-simple-device-info icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-simple-device-info&gt;"/>
+            <icswData type="dict" pageTitle_str="Device info">
+                <menuEntry type="dict" icon_str="fa-bars" postSpacer_bool="yes"/>
+                <dashboardEntry type="dict" sizeX_int="4" sizeY_int="3" allowState_bool="yes"/>
+                <rights type="list">
+                    <value>backbone.user.modify_tree</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.monitorov">
+            <stateData type="dict" url_str="/monitorov"
+                       template_str="&lt;icsw-monitoring-list-overview icsw-sel-man='0'&gt;&lt;/icsw-monitoring-list-overview&gt;"/>
+            <icswData type="dict" pageTitle_str="Monitoring List">
+                <menuEntry type="dict" icon_str="fa-list" name_str="Monitoring list"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.setup_monitoring</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.livestatus">
+            <stateData type="dict" url_str="/livestatus/all"
+                       template_str="&lt;icsw-device-livestatus icsw-livestatus-view=&quot;'test'&quot;&gt;&lt;/icsw-device-livestatus&gt;"/>
+            <icswData type="dict" pageTitle_str="Monitoring dashboard">
+                <licenses type="list">
+                    <value>monitoring_dashboard</value>
+                </licenses>
+                <menuEntry type="dict" icon_str="fa-dot-circle-o"/>
+                <dashboardEntry type="dict" sizeX_int="4" sizeY_int="4"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.show_monitoring_dashboard</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.statushistory">
+            <stateData type="dict" url_str="/statushistory" templateUrl_str="icsw/main/status_history.html"/>
+            <icswData type="dict" pageTitle_str="Status History">
+                <licenses type="list">
+                    <value>reporting</value>
+                </licenses>
+                <dashboardEntry type="dict" sizeX_int="4" sizeY_int="4"/>
+                <menuEntry type="dict" icon_str="fa-pie-chart" postSpacer_bool="yes"/>
+                <rights type="list">
+                    <value>backbone.device.show_status_history</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.graph">
+            <stateData type="dict" url_str="/graph" templateUrl_str="icsw.rrd.graph"/>
+            <icswData type="dict" pageTitle_str="Graph">
+                <licenses type="list">
+                    <value>graphing</value>
+                </licenses>
+                <menuEntry type="dict" icon_str="fa-line-chart"/>
+                <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
+                <rights type="list">
+                    <value>backbone.device.show_graphs</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.kpi">
+            <stateData type="dict" url_str="/kpi" template_str="&lt;icsw-config-kpi&gt;&lt;/icsw-config-kpi&gt;"/>
+            <icswData type="dict" pageTitle_str="Key performance indicators">
+                <licenses type="list">
+                    <value>kpi</value>
+                </licenses>
+                <menuEntry type="dict" icon_str="fa-code-fork"/>
+                <rights type="list">
+                    <value>backbone.kpi.kpi</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.eventlog">
+            <stateData type="dict" url_str="/eventlog" template_str="&lt;icsw-discovery-event-log icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-discovery-event-log&gt;"/>
+            <icswData type="dict" pageTitle_str="Syslog, WMI- und IPMI-Event logs">
+                <licenses type="list">
+                    <value>discovery_server</value>
+                </licenses>
+                <menuEntry type="dict" icon_str="fa-list-alt" name_str="Syslog, WMI- and IPMI-Event logs"/>
+                <rights type="list">
+                    <value>backbone.device.discovery_server</value>
+                </rights>
+            </icswData>
+        </route>
+    </routeGroup>
+    <routeGroup name="mon">
+        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-eye"/>
+        <route name="main.monitorbasics">
+            <stateData type="dict" url_str="/monitorbasics" templateUrl_str="icsw/monitoring/setup"/>
+            <icswData type="dict" pageTitle_str="Monitoring setup">
+                <menuEntry type="dict" icon_str="fa-bars" name_str="Basic settings"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.setup_monitoring</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.monitordevice">
+            <stateData type="dict" url_str="/monitordevice" template_str="&lt;icsw-monitoring-device icsw-sel-man='0'&gt;&lt;/icsw-monitoring-device&gt;"/>
+            <icswData type="dict" pageTitle_str="Monitoring Device settings">
+                <menuEntry type="dict" icon_str="fa-laptop" name_str="Device settings"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.setup_monitoring</value>
+                    <value>backbone.device.change_monitoring</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.monitorhint">
+            <stateData type="dict" url_str="/monitorhint" template_str="&lt;icsw-device-mon-config icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-device-mon-config&gt;"/>
+            <icswData type="dict" pageTitle_str="Monitoring hints">
+                <menuEntry type="dict" icon_str="fa-info"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.setup_monitoring</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.monitordisk">
+            <stateData type="dict" url_str="/monitordisk"
+                       template_str="&lt;icsw-device-partition-overview icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-device-partition-overview&gt;"/>
+            <icswData type="dict" pageTitle_str="Disk">
+                <menuEntry type="dict" icon_str="fa-hdd-o"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.setup_monitoring</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.monitorb0">
+            <stateData type="dict" url_str="/monitorb0" resolve_bool="yes"/>
+            <icswData type="dict" redirectToFromOnError_bool="yes">
+                <menuEntry type="dict" preSpacer_bool="yes" name_str="rebuild config cached" labelClass_str="label-success"
+                           icon_str="fa-share-alt"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.create_config</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.monitorb1">
+            <stateData type="dict" url_str="/monitorb1" resolve_bool="yes"/>
+            <icswData type="dict" redirectToFromOnError_bool="yes">
+                <menuEntry type="dict" labelClass_str="label-warning" icon_str="fa-share-alt"
+                           name_str="rebuild config dynamic"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.create_config</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.monitorb2">
+            <stateData type="dict" url_str="/monitorb2" resolve_bool="yes"/>
+            <icswData type="dict" redirectToFromOnError_bool="yes">
+                <menuEntry type="dict" name_str="rebuild config refresh" labelClass_str="label-danger" postSpacer_bool="yes"
+                           icon_str="fa-share-alt"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.create_config</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.monitorbuildinfo">
+            <stateData type="dict" url_str="/monitorbuildinfo" template_str="&lt;icsw-monitoring-build-info&gt;&lt;/icsw-monitoring-build-info&gt;"/>
+            <icswData type="dict" pageTitle_str="Monitoring build info">
+                <menuEntry type="dict" icon_str="fa-info-circle" name_str="Build info"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.setup_monitoring</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.monitorredirect">
+            <stateData type="dict" url_str="/monitorredirect" resolve_bool="yes"/>
+            <icswData type="dict" redirectToFromOnError_bool="yes">
+                <menuEntry type="dict" icon_str="fa-share-alt" name_str="Icinga"/>
+                <rights type="list">
+                    <value>backbone.mon_check_command.redirect_to_icinga</value>
+                </rights>
+            </icswData>
+        </route>
+    </routeGroup>
+    <routeGroup name="asset">
+        <menuHeader type="dict" name_str="Assets" icon_str="fa-shopping-bag"/>
+        <route name="main.schedoverview">
+            <stateData type="dict" url_str="/sched/overview" template_str="&lt;icsw-schedule-overview&gt;&lt;/icsw-schedule-overview&gt;"/>
+            <icswData type="dict" pageTitle_str="Schedule settings">
+                <menuEntry type="dict" icon_str="fa-gears" name_str="Settings"/>
+                <rights type="list">
+                    <value>backbone.dispatchersetting.setup</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.scheddevice">
+            <stateData type="dict" url_str="/sched/device" template_str="&lt;icsw-schedule-device icsw-sel-man='0'&gt;&lt;/icsw-schedule-device&gt;"/>
+            <icswData type="dict" pageTitle_str="Set Device Schedules">
+                <menuEntry type="dict" icon_str="fa-laptop" name_str="Device settings"/>
+                <rights type="list">
+                    <value>backbone.device.dispatch_settings</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.statictemplates">
+            <stateData type="dict" url_str="/sched/stattemp"
+                       template_str="&lt;icsw-static-asset-template-overview&gt;&lt;/icsw-static-asset-template-overview&gt;"/>
+            <icswData type="dict" pageTitle_str="Static Asset templates">
+                <menuEntry type="dict" icon_str="fa-reorder" name_str="Static Asset templates"/>
+                <rights type="list">
+                    <value>backbone.staticassettemplate.setup</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.devasset">
+            <stateData type="dict" url_str="/asset" templateUrl_str="icsw/device/asset/overview"/>
+            <icswData type="dict" pageTitle_str="Device Assets">
+                <serviceTypes type="list">
+                    <value>discovery-server</value>
+                </serviceTypes>
+                <menuEntry type="dict" icon_str="fa-code"/>
+                <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
+                <rights type="list">
+                    <value>backbone.device.assets</value>
+                </rights>
+            </icswData>
+        </route>
+    </routeGroup>
+    <routeGroup name="cluster">
+        <menuHeader type="dict" name_str="Cluster" icon_str="fa-cubes"/>
+        <route name="main.deployboot">
+            <stateData type="dict" url_str="/deployboot" templateUrl_str="icsw/main/deploy/boot.html"/>
+            <icswData type="dict" pageTitle_str="Boot nodes">
+                <serviceTypes type="list">
+                    <value>mother</value>
+                </serviceTypes>
+                <rights type="list">
+                    <value>backbone.device.change_boot</value>
+                </rights>
+                <menuEntry type="dict" icon_str="fa-rocket"/>
+                <licenses type="list">
+                    <value>netboot</value>
+                </licenses>
+            </icswData>
+        </route>
+        <route name="main.imagekernel">
+            <stateData type="dict" url_str="/imagekernel" templateUrl_str="icsw/main/imagekernel.html"/>
+            <icswData type="dict" pageTitle_str="Images and Kernels">
+                <licenses type="list">
+                    <value>netboot</value>
+                </licenses>
+                <menuEntry type="dict" icon_str="fa-linux"/>
+                <rights type="list">
+                    <value>backbone.image.modify_images</value>
+                    <value>backbone.kernel.modify_kernels</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.partition">
+            <stateData type="dict" url_str="/partition" templateUrl_str="icsw/main/partition.html"/>
+            <icswData type="dict" pageTitle_str="Partition overview">
+                <licenses type="list">
+                    <value>netboot</value>
+                </licenses>
+                <menuEntry type="dict" icon_str="fa-database"/>
+                <rights type="list">
+                    <value>backbone.partition_fs.modify_partitions</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.packageinstall">
+            <stateData type="dict" url_str="/packageinstall" template_str="&lt;icsw-package-install-overview ng-cloak/&gt;"/>
+            <icswData type="dict" pageTitle_str="Package install">
+                <licenses type="list">
+                    <value>package_install</value>
+                </licenses>
+                <menuEntry type="dict" icon_str="fa-download"/>
+                <rights type="list">
+                    <value>backbone.package.package_install</value>
+                </rights>
+            </icswData>
+        </route>
+    </routeGroup>
+    <routeGroup name="rms">
+        <menuHeader type="dict" name_str="RMS" icon_str="fa-list-ol"/>
+        <route name="main.rmsoverview">
+            <stateData type="dict" url_str="/rmsoverview" templateUrl_str="icsw/main/rms/overview.html"/>
+            <icswData type="dict" pageTitle_str="RMS Overview">
+                <serviceTypes type="list">
+                    <value>rms-server</value>
+                </serviceTypes>
+                <dashboardEntry type="dict" sizeX_int="4" sizeY_int="6"/>
+                <rights type="list">
+                    <value>backbone.user.rms_show</value>
+                </rights>
+                <menuEntry type="dict" icon_str="fa-table" name_str="RMS Overview"/>
+                <licenses type="list">
+                    <value>rms</value>
+                </licenses>
+            </icswData>
+        </route>
+        <route name="main.history">
+            <stateData type="dict" url_str="/history" template_str="&lt;icsw-history-overview&gt;&lt;/icsw-history-overview&gt;"/>
+            <icswData type="dict" pageTitle_str="Database history">
+                <menuEntry type="dict" icon_str="fa-history" name_str="History"/>
+                <rights type="list">
+                    <value>backbone.user.snapshots</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.licoverview">
+            <stateData type="dict" url_str="/licoverview" templateUrl_str="icsw/main/rms/licoverview.html"/>
+            <icswData type="dict" pageTitle_str="License Liveview">
+                <serviceTypes type="list">
+                    <value>rms-server</value>
+                </serviceTypes>
+                <dashboardEntry type="dict" sizeX_int="2" sizeY_int="6"/>
+                <rights type="list">
+                    <value>backbone.user.license_liveview</value>
+                </rights>
+                <menuEntry type="dict" icon_str="fa-line-chart" name_str="License liveview"/>
+                <licenses type="list">
+                    <value>ext_license</value>
+                </licenses>
+            </icswData>
+        </route>
+    </routeGroup>
+    <routeGroup name="sys">
+        <menuHeader type="dict" name_str="System" icon_str="fa-cog"/>
+        <route name="main.usertree">
+            <stateData type="dict" url_str="/usertree" templateUrl_str="icsw/main/user/tree.html"/>
+            <icswData type="dict" pageTitle_str="User and Group tree">
+                <menuEntry type="dict" icon_str="fa-user" name_str="User"/>
+                <rights type="list">
+                    <value>backbone.group.group_admin</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.syslicenseoverview">
+            <stateData type="dict" url_str="/syslicenseoverview" templateUrl_str="icsw/main/license/overview.html"/>
+            <icswData type="dict" pageTitle_str="License information" validForQuicklink_bool="yes">
+                <menuEntry type="dict" icon_str="fa-key" name_str="License"/>
+                <rights type="list">
+                    <value>$$CHECK_FOR_SUPERUSER</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.statelist">
+            <stateData type="dict" url_str="/statelist" template_str="&lt;icsw-internal-state-list&gt;&lt;/icsw-internal-state-list&gt;"/>
+            <icswData type="dict" pageTitle_str="Internal State list">
+                <menuEntry type="dict" preSpacer_bool="yes" icon_str="fa-bars"/>
+                <rights type="list">
+                    <value>$$CHECK_FOR_SUPERUSER</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.backgroundinfo">
+            <stateData type="dict" url_str="/sysbackgroundinfo" templateUrl_str="icsw/main/sysbackgroundinfo.html"/>
+            <icswData type="dict" pageTitle_str="Background Job Information">
+                <menuEntry type="dict" icon_str="fa-list" name_str="Background Job Info"/>
+                <rights type="list">
+                    <value>backbone.background_job.show_background</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.serverinfo">
+            <stateData type="dict" url_str="/serverinfo&quot;" templateUrl_str="icsw/main/serverinfo.html"/>
+            <icswData type="dict" pageTitle_str="Server info">
+                <menuEntry type="dict" icon_str="fa-info" name_str="Server Information"/>
+                <rights type="list">
+                    <value>$$CHECK_FOR_SUPERUSER</value>
+                </rights>
+            </icswData>
+        </route>
+    </routeGroup>
+    <routeGroup name="dummy">
+        <route name="main.dashboard">
+            <stateData type="dict" url_str="/dashboard" templateUrl_str="icsw/main/dashboard.html"/>
+            <icswData type="dict" pageTitle_str="Dashboard"/>
+        </route>
+        <route name="main.useraccount">
+            <stateData type="dict" url_str="/useraccount" templateUrl_str="icsw/main/user/account.html"/>
+            <icswData type="dict" pageTitle_str="Account info"/>
+        </route>
+        <route name="main.userjobinfo">
+            <stateData type="dict" url_str="/userjobinfo" templateUrl_str="icsw.dashboard.jobinfo"/>
+            <icswData type="dict" pageTitle_str="RMS Information">
+                <licenses type="list">
+                    <value>rms</value>
+                </licenses>
+                <serviceTypes type="list">
+                    <value>rms-server</value>
+                </serviceTypes>
+                <dashboardEntry type="dict" sizeX_int="3" sizeY_int="2"/>
+                <rights type="list">
+                    <value>backbone.user.rms_show</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.userquotainfo">
+            <stateData type="dict" url_str="/userquotainfo" templateUrl_str="icsw.dashboard.diskquota"/>
+            <icswData type="dict" pageTitle_str="User Disk and Quota info">
+                <dashboardEntry type="dict" sizeX_int="3" sizeY_int="2"/>
+            </icswData>
+        </route>
+        <route name="main.virtualdesktopinfo">
+            <stateData type="dict" url_str="/vduinfo" templateUrl_str="icsw.dashboard.virtualdesktops"/>
+            <icswData type="dict" pageTitle_str="Virtual Desktops">
+                <dashboardEntry type="dict" sizeX_int="3" sizeY_int="2"/>
+            </icswData>
+        </route>
+        <route name="main.quicklinks">
+            <stateData type="dict" url_str="/quicklinks" templateUrl_str="icsw.dashboard.quicklinks"/>
+            <icswData type="dict" pageTitle_str="Quicklinks">
+                <dashboardEntry type="dict" sizeX_int="2" sizeY_int="1" defaultEnabled_bool="yes"/>
+            </icswData>
+        </route>
+        <route name="main.externallinks">
+            <stateData type="dict" url_str="/externallinks" templateUrl_str="icsw.dashboard.externallinks"/>
+            <icswData type="dict" pageTitle_str="External links">
+                <dashboardEntry type="dict" sizeX_int="2" sizeY_int="1"/>
+            </icswData>
+        </route>
+    </routeGroup>
 </routes>
-

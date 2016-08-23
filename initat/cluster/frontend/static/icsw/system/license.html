@@ -79,7 +79,7 @@
                             <div ng-switch on="_state(lic.id).lic.parameters[param_type] < lic.parameter_usage[param_type]">
                                 <div ng-switch-when="true">
                                     <!-- parameter exceeded -->
-                                    <div uib-alert type="danger" style="padding: 5px">
+                                    <div uib-alert class="alert-danger" style="padding: 5px">
                                         <i class="glyphicon glyphicon-exclamation-sign"></i>
                                         <strong>{{ param_type }}</strong>:
                                         {{ lic.$$state.lic.parameters[param_type] }}
@@ -94,7 +94,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div uib-alert type="danger" ng-show="!lic.$$state.lic.parameters[param_type]" style="padding: 5px">
+                        <div uib-alert class="alert-danger" ng-show="!lic.$$state.lic.parameters[param_type]" style="padding: 5px">
                             <!-- parameter used which is not present -->
                             <i class="glyphicon glyphicon-exclamation-sign"></i>
                             <strong>{{ param_type }}</strong>: used: {{ lic.parameter_usage[param_type] }}
@@ -110,7 +110,7 @@
                 <td>{{ lic.$$state.date_info }}</td>
                 <td>
                     <div ng-show="lic.$$in_warning">
-                        <div uib-alert type="danger" ng-bind-html="lic.$$warning_info" style="padding: 5px">
+                        <div uib-alert class="alert-danger" ng-bind-html="lic.$$warning_info" style="padding: 5px">
                         </div>
                     </div>
                 </td>

@@ -142,12 +142,12 @@ monitoring_overview_module = angular.module(
             _devs = $scope.struct.devices
             $q.all(
                 [
-                    status_utils_functions.get_device_data(_devs, $scope.yesterday, 'day')
-                    status_utils_functions.get_device_data(_devs, $scope.last_week, 'week')
-                    status_utils_functions.get_device_data(_devs, $scope.last_month, 'month')
-                    status_utils_functions.get_service_data(_devs, $scope.yesterday, 'day', merge_services=1)  #, historic_cont("service_data_yesterday"), merge_services=1)
-                    status_utils_functions.get_service_data(_devs, $scope.last_week, 'week', merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
-                    status_utils_functions.get_service_data(_devs, $scope.last_month, 'month', merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
+                    status_utils_functions.get_device_data(_devs, $scope.yesterday, 'day', [])
+                    status_utils_functions.get_device_data(_devs, $scope.last_week, 'week', [])
+                    status_utils_functions.get_device_data(_devs, $scope.last_month, 'month', [])
+                    status_utils_functions.get_service_data(_devs, $scope.yesterday, 'day', [], merge_services=1)  #, historic_cont("service_data_yesterday"), merge_services=1)
+                    status_utils_functions.get_service_data(_devs, $scope.last_week, 'week', [], merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
+                    status_utils_functions.get_service_data(_devs, $scope.last_month, 'month', [], merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
                 ]
             ).then(
                 (data) ->

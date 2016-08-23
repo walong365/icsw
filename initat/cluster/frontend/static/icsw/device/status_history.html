@@ -54,6 +54,7 @@
                             </span>
                         </input>
                     </div>
+                    <icsw-tools-button type="reload" size="xs" ng-show="!struct.loading" ng-click="reload_data($event)"></icsw-tools-button>
                 </div>
             </div>
             <h4 class="alert alert-danger" style="width: 300px" ng-if="struct.timespan_error ">{{ struct.timespan_error }}</h4>
@@ -82,9 +83,11 @@
                 <small>
                     (<ng-pluralize count="service_data.length" when="{'0': 'No services', 'one': '1 service', 'other': '{} services'}">
                     <!-- weird formatting here because there shouldn't be a space before ')' in any case -->
-                    </ng-pluralize><span ng-show="get_time_frame() != undefined">
-                    from {{ get_time_frame().start_str }} to {{ get_time_frame().end_str }}
+                    </ng-pluralize>
+                    <span ng-show="get_time_frame() != undefined">
+                        from {{ get_time_frame().start_str }} to {{ get_time_frame().end_str }}
                     </span>)
+                    <span ng-show="get_time_frame().partial" class="text-warning">, timerange not fully covered</span>
                 </small>
             </h3>
         </div>
@@ -94,7 +97,7 @@
                 detailed-view="true"
             ></icsw-tools-device-hist-status-overview>
 
-            <div uib-alert type="danger" ng-show="service_data.length == 0 && !struct.loading">
+            <div uib-alert class="alert-danger" ng-show="service_data.length == 0 && !struct.loading">
                 No services for this device and time span.
             </div>
 

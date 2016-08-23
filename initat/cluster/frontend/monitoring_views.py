@@ -40,10 +40,9 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
-    parse_commandline, mon_check_command_special
-from initat.cluster.backbone.models.functions import duration
+    parse_commandline, mon_check_command_special, device
+from initat.cluster.backbone.models.functions import duration, cluster_timezone
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
@@ -343,11 +342,13 @@ class resolve_name(View):
 
 ########################################
 # device status history views
+
 class _device_status_history_util(object):
     @staticmethod
     def get_timespan_tuple_from_request(request):
         date = duration_utils.parse_date(request.GET["date"])
         duration_type = {
+            "hour": duration.Hour,
             'day': duration.Day,
             'week': duration.Week,
             'month': duration.Month,
@@ -359,15 +360,22 @@ class _device_status_history_util(object):
         return start, end, duration_type
 
     @staticmethod
-    def get_timespan_db_from_request(request):
-        start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
-        try:
-            return mon_icinga_log_aggregated_timespan.objects.get(
-                duration_type=duration_type.ID,
-                start_date__range=(start, end - datetime.timedelta(seconds=1))
-            )
-        except mon_icinga_log_aggregated_timespan.DoesNotExist:
-            return None
+    def get_timespans_db_from_request(request):
+        db_ids = request.GET.get("db_ids", "")
+        if db_ids:
+            _timespans = mon_icinga_log_aggregated_timespan.objects.filter(Q(pk__in=json.loads(db_ids)))
+        else:
+            start, end, duration_type = _device_status_history_util.get_timespan_tuple_from_request(request)
+            try:
+                _timespans = [
+                    mon_icinga_log_aggregated_timespan.objects.get(
+                        duration_type=duration_type.ID,
+                        start_date__range=(start, end - datetime.timedelta(seconds=1))
+                    )
+                ]
+            except mon_icinga_log_aggregated_timespan.DoesNotExist:
+                _timespans = []
+        return _timespans
 
     @staticmethod
     def get_line_graph_data(request, for_host):
@@ -452,11 +460,15 @@ class get_hist_timespan(RetrieveAPIView):
     @method_decorator(login_required)
     @rest_logging
     def retrieve(self, request, *args, **kwargs):
-        timespan = _device_status_history_util.get_timespan_db_from_request(request)
-        if timespan:
+        timespans = _device_status_history_util.get_timespans_db_from_request(request)
+        if len(timespans):
             data = {
                 'status': 'found',
-                'start': timespan.start_date, 'end': timespan.end_date
+                'start': timespans[0].start_date,
+                'end': timespans[0].end_date,
+                "db_ids": [timespans[0].idx],
+                # partial data found
+                "partial": False,
             }
         else:
             data = {
@@ -470,12 +482,38 @@ class get_hist_timespan(RetrieveAPIView):
                 pass  # no data at all, can't do anything useful
             else:
                 date = duration_utils.parse_date(request.GET["date"])
-                if latest_timespan_db.end_date < date:
-                    data = {
-                        'status': 'found earlier',
-                        'start': latest_timespan_db.start_date,
-                        'end': latest_timespan_db.end_date
-                    }
+                # check for current datetime in the requested timespan
+                _now = cluster_timezone.localize(datetime.datetime.now())
+                _now_covered = start < _now < end
+                if _now_covered:
+                    # print "Now covered"
+                    shorter_duration = duration_type.get_shorter_duration()
+                    _shorter = list(
+                        mon_icinga_log_aggregated_timespan.objects.filter(
+                            duration_type=shorter_duration.ID,
+                            start_date__range=(start, end - datetime.timedelta(seconds=1))
+                        ).order_by("start_date")
+                    )
+                    if len(_shorter):
+                        data = {
+                            "start": _shorter[0].start_date,
+                            "end": _shorter[-1].end_date,
+                            "status": "found",
+                            "db_ids": [_db.idx for _db in _shorter],
+                            "partial": True,
+                        }
+                else:
+                    # check for earlier data
+                    # print latest_timespan_db.end_date, date, latest_timespan_db.end_date < date
+                    if latest_timespan_db.end_date < date:
+                        data = {
+                            'status': 'found earlier',
+                            'start': latest_timespan_db.start_date,
+                            "db_ids": [latest_timespan_db.idx],
+                            'end': latest_timespan_db.end_date,
+                            "partial": False,
+                        }
+                # print data
 
         return Response(data)
 
@@ -486,13 +524,13 @@ class get_hist_device_data(ListAPIView):
     def list(self, request, *args, **kwargs):
         device_ids = json.loads(request.GET.get("device_ids"))
 
-        timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
+        timespans_db = _device_status_history_util.get_timespans_db_from_request(request)
 
         data = []
-        if timespan_db:
+        if len(timespans_db):
             data = mon_icinga_log_aggregated_host_data.objects.filter(
                 device_id__in=device_ids,
-                timespan=timespan_db
+                timespan__in=timespans_db
             ).values('device_id', 'state', 'state_type', 'value')
 
         data_per_device = {device_id: [] for device_id in device_ids}
@@ -523,12 +561,12 @@ class get_hist_service_data(ListAPIView):
     def list(self, request, *args, **kwargs):
         device_ids = json.loads(request.GET.get("device_ids"))
 
-        timespan_db = _device_status_history_util.get_timespan_db_from_request(request)
+        timespans_db = _device_status_history_util.get_timespans_db_from_request(request)
 
         merge_services = bool(int(request.GET.get("merge_services", 0)))
         return_data = mon_icinga_log_aggregated_service_data.objects.get_data(
             devices=device_ids,
-            timespans=[timespan_db],
+            timespans=timespans_db,
             license=LicenseEnum.reporting,
             merge_services=merge_services
         )

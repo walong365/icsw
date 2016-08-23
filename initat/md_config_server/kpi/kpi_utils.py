@@ -1,8 +1,8 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015, 2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -18,13 +18,6 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
 import ast
-# noinspection PyUnresolvedReferences
-import pytz
-import datetime
-# noinspection PyUnresolvedReferences
-from django.db.models import Q
-import django.utils.timezone
-from initat.cluster.backbone.models import duration
 
 
 def print_tree(t, i=0):
@@ -48,15 +41,25 @@ def astdump(node, annotate_fields=True, include_attributes=False, indent='  '):
             if include_attributes and node._attributes:
                 fields.extend([(a, _format(getattr(node, a), level))
                                for a in node._attributes])
-            return ''.join([
-                node.__class__.__name__,
-                '(',
-                ', '.join(('%s=%s' % field for field in fields) if annotate_fields else (b for a, b in fields)),
-                ')'])
+            return ''.join(
+                [
+                    node.__class__.__name__,
+                    '(',
+                    ', '.join(
+                        (
+                            '%s=%s' % field for field in fields
+                        ) if annotate_fields else (b for a, b in fields)
+                    ),
+                    ')'
+                ]
+            )
         elif isinstance(node, list):
             lines = ['[']
-            lines.extend((indent * (level + 2) + _format(x, level + 2) + ','
-                          for x in node))
+            lines.extend(
+                (
+                    indent * (level + 2) + _format(x, level + 2) + ',' for x in node
+                )
+            )
             if len(lines) > 1:
                 lines.append(indent * (level + 1) + ']')
             else:

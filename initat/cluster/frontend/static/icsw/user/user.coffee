@@ -90,6 +90,9 @@ user_module = angular.module(
             @user = user[0]
             @build_luts()
 
+        is_authenticated: () =>
+            return @user.is_authenticated
+
         update_user: () =>
             _defer = $q.defer()
             if @user
@@ -138,7 +141,8 @@ user_module = angular.module(
                 @_store_dc_filter()
 
         _store_dc_filter: () =>
-            @set_json_var(@dc_var_name, angular.toJson(@__dc_filter))
+            if @is_authenticated()
+                @set_json_var(@dc_var_name, angular.toJson(@__dc_filter))
 
         build_luts: () =>
             # create luts (for vars)
@@ -156,7 +160,7 @@ user_module = angular.module(
             if @has_var(name)
                 return @var_lut[name]
             else
-                return def_val
+                return {name: name, value: def_val, $$default: true}
 
         delete_var: (name) =>
             _del = $q.defer()
@@ -213,7 +217,7 @@ user_module = angular.module(
                     new_var
                 ).then(
                     (nv) ->
-                        console.log "new var=", nv
+                        # console.log "new var=", nv
                         _wait.resolve(nv)
                 )
             _wait.promise.then(
@@ -257,22 +261,29 @@ user_module = angular.module(
 
         logout: () =>
             q = $q.defer()
-            @clear_result()
             icswSimpleAjaxCall(
                 {
                     url: ICSW_URLS.SESSION_LOGOUT
                     dataType: "json"
                 }
             ).then(
-                (json) ->
+                (json) =>
+                    @clear_result()
                     q.resolve(json)
             )
             return q.promise
 
         force_logout: () =>
             @cancel_pending_load()
-            $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_NOUSER"))
             return @logout()
+
+        get_load_signal: (result) =>
+            if result.is_authenticated()
+                # user is authenticated, send default signal
+                return @signal
+            else
+                # not authenticated, no signal to send
+                return null
 
         update: () =>
             result = @get_result()
@@ -285,7 +296,8 @@ user_module = angular.module(
         [
             ICSW_URLS.SESSION_GET_AUTHENTICATED_USER
         ]
-        "ICSW_USER_CHANGED"
+        "ICSW_USER_LOGGEDIN"
+        "ICSW_USER_LOGGEDOUT"
     )
 ]).service("icswUserGroupPermissionTree",
 [

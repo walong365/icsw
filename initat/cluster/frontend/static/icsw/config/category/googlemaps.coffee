@@ -23,31 +23,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
     ]
-).directive("icswConfigCategoryTreeGoogleMap",
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.config.category.tree.google.map")
-        scope: {
-            # locations are in fact proxylocations
-            locations: "=locations"
-            active_tab: "=activeTab"
-            maps_control: "=icswGoogleMapsFn"
-            maps_cb_fn: "=icswGoogleMapsCbFn"
-        }
-        controller: "icswConfigCategoryTreeGoogleMapCtrl"
-        link: (scope, element, attrs) ->
-            scope.set_map_mode(attrs["icswMapMode"])
-            scope.$on("$destroy", () ->
-                # console.log "gmd"
-            )
-    }
-# ]).service()
-]).service("reactT",
+).service("reactT",
 [
     "$q",
 (
@@ -271,12 +247,35 @@ angular.module(
         in_map: () ->
             return _in_map
     }
+]).directive("icswConfigCategoryTreeGoogleMap",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.config.category.tree.google.map")
+        scope: {
+            # locations are in fact proxylocations
+            locations: "=locations"
+            active_tab: "=activeTab"
+            maps_control: "=icswGoogleMapsFn"
+            maps_cb_fn: "=icswGoogleMapsCbFn"
+        }
+        controller: "icswConfigCategoryTreeGoogleMapCtrl"
+        link: (scope, element, attrs) ->
+            scope.set_map_mode(attrs["icswMapMode"])
+            scope.$on("$destroy", () ->
+                # console.log "gmd"
+            )
+    }
 ]).controller("icswConfigCategoryTreeGoogleMapCtrl",
 [
-    "$scope", "$templateCache", "uiGmapGoogleMapApi", "$timeout", "$rootScope", "ICSW_SIGNALS",
+    "$scope", "$templateCache", "$timeout", "$rootScope", "ICSW_SIGNALS", "icswGoogleMapConfig",
     "icswGoogleMapsLivestatusOverlay", "icswGoogleMapsMarkerOverlay", "uiGmapIsReady", "icswGoogleMapsHelper",
 (
-    $scope, $templateCache, uiGmapGoogleMapApi, $timeout, $rootScope, ICSW_SIGNALS,
+    $scope, $templateCache, $timeout, $rootScope, ICSW_SIGNALS, icswGoogleMapConfig,
     icswGoogleMapsLivestatusOverlay, icswGoogleMapsMarkerOverlay, uiGmapIsReady, icswGoogleMapsHelper,
 ) ->
 
@@ -366,6 +365,7 @@ angular.module(
         $scope.marker_list.length = 0
         marker_lut = {}
         # console.log "init markers", $scope.locations.length
+
         for _proxy_entry in $scope.locations
             _entry = _proxy_entry.location
             comment = _entry.name
@@ -412,7 +412,7 @@ angular.module(
         if $scope.struct.map_active and $scope.locations? and $scope.locations.length and not $scope.struct.maps_ready
             # console.log "Zoom"
             build_markers()
-            uiGmapGoogleMapApi.then(
+            icswGoogleMapConfig.init().then(
                 (maps) ->
                     $scope.struct.maps_ready = true
                     $scope.struct.google_maps = maps

@@ -70,8 +70,8 @@ angular.module(
                     time_frame = icswStatusHistorySettings.get_time_frame()
                     $q.all(
                         [
-                            status_utils_functions.get_device_data([scope.device], time_frame.date_gui, time_frame.duration_type)
-                            status_utils_functions.get_device_data([scope.device], time_frame.date_gui, time_frame.duration_type, true)
+                            status_utils_functions.get_device_data([scope.device], time_frame.date_gui, time_frame.duration_type, time_frame.db_ids)
+                            status_utils_functions.get_device_data([scope.device], time_frame.date_gui, time_frame.duration_type, time_frame.db_ids, true)
                         ]
                     ).then(
                         (new_data) ->
@@ -155,6 +155,7 @@ angular.module(
                         [scope.deviceid],
                         status_history_ctrl.time_frame.date_gui,
                         status_history_ctrl.time_frame.time_range,
+                        [],
                         cont,
                         merge_services=1)
 
@@ -215,19 +216,21 @@ angular.module(
     }
     # olive? "#808000"
 
-    get_device_data = (devices, start_date, timerange, line_graph_data=false) ->
+    get_device_data = (devices, start_date, timerange, db_ids, line_graph_data=false) ->
         query_data = {
             device_ids: angular.toJson((_dev.idx for _dev in devices))
             date: moment(start_date).unix()  # ask server in utc
             duration_type: timerange
         }
+        if db_ids.length
+            query_data.db_ids = angular.toJson(db_ids)
         if line_graph_data
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_LINE_GRAPH_DATA.slice(1))
         else
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_DATA.slice(1))
         return base.getList(query_data)
 
-    get_service_data = (devices, start_date, timerange, merge_services=0, line_graph_data=false) ->
+    get_service_data = (devices, start_date, timerange, db_ids, merge_services=0, line_graph_data=false) ->
         # merge_services: boolean as int
         # line_graph_data: boolean as int, get only line graph data
         query_data = {
@@ -236,6 +239,8 @@ angular.module(
             duration_type: timerange
             merge_services: merge_services
         }
+        if db_ids.length
+            query_data.db_ids = angular.toJson(db_ids)
         if line_graph_data
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_SERVICE_LINE_GRAPH_DATA.slice(1))
         else
@@ -399,7 +404,16 @@ angular.module(
                         _tooltip.hide()
                         _div.append(_tooltip)
                         # calculate data to show
+                        # total duration of data in milliseconds
                         total_duration = time_frame.end.diff(time_frame.start)
+                        # total duration of requested timeframe
+                        tf_duration = {
+                            day: 24 * 3600
+                            week: 7 * 24 * 3600
+                            month: time_frame.start.daysInMonth() * 24 * 3600
+                            year: 365 * 24 * 3600
+                            decade: 10 * 365 * 24 * 3600
+                        }[time_frame.duration_type] * 1000
 
                         pos_x = scope.side_margin
                         last_date = time_frame.start
@@ -437,7 +451,7 @@ angular.module(
                                 display_end = cur_date
 
                             duration = cur_date.diff(last_date)
-                            entry_width = scope.draw_width * duration / total_duration
+                            entry_width = scope.draw_width * duration / tf_duration
 
                             if index != 0
 

@@ -120,6 +120,7 @@ if DEBUG:
 SECRET_KEY = _cs["django.secret.key"]
 # create a somehow shorter key
 SECRET_KEY_SHORT = base64.b64encode(SECRET_KEY)[0:10]
+ICSW_GOOGLE_MAPS_KEY = _cs["google.maps.key"]
 
 _c_key = hashlib.new("md5")
 

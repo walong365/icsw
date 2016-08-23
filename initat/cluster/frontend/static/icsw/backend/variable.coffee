@@ -74,10 +74,8 @@ angular.module(
             total_local = local_list.length
             local_set = (entry for entry in local_list when entry.set).length
             # check for existing
-            console.log scope.idx, @scope_struct_lut
             if scope.idx of @scope_struct_lut
                 _struct = @scope_struct_lut[scope.idx]
-                console.log "update"
                 _struct.list.length = 0
                 for _entry in local_list
                     _struct.list.push(_entry)

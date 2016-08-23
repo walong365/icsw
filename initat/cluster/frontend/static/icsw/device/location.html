@@ -10,7 +10,7 @@
     </div> -->
     <div uib-alert class="alert-warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Available locations'.</div>
 
-    <div class="row">
+    <div class="row" ng-if="struct.device_list_ready">
         <div class="col-md-6">
             <h3>Location Tree</h3>
             <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.device_list_ready">
@@ -18,7 +18,12 @@
             </icsw-tools-ensure-device-selection>
         </div>
         <div class="col-md-6">
-            <icsw-config-category-tree-google-map locations="struct.locations" icsw-google-maps-fn="struct.google_maps_fn" icsw-google-maps-cb-fn="google_maps_cb_fn" icsw-map-mode="show"></icsw-config-category-tree-google-map>
+            <icsw-config-category-tree-google-map
+                locations="struct.locations"
+                icsw-google-maps-fn="struct.google_maps_fn"
+                icsw-google-maps-cb-fn="google_maps_cb_fn"
+                icsw-map-mode="show"
+            ></icsw-config-category-tree-google-map>
         </div>
     </div>
     <h3 ng-show="struct.active_loc">

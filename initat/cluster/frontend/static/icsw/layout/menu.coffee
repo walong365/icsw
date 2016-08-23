@@ -27,13 +27,13 @@ menu_module = angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService", "$rootScope",
-    "icswRouteHelper", "ICSW_SIGNALS", "$timeout",
+    "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService",
+    "$rootScope", "ICSW_SIGNALS",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
-    $q, icswUserService, blockUI, $state, icswSystemLicenseDataService, $rootScope,
-    icswRouterHelper, ICSW_SIGNALS, $timeout,
+    $q, icswUserService, blockUI, $state, icswSystemLicenseDataService,
+    $rootScope, ICSW_SIGNALS,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -63,7 +63,12 @@ menu_module = angular.module(
             $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
             $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
     )
-
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+        $scope.struct.current_user = icswUserService.get().user
+    )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
+        $scope.struct.current_user = undefined
+    )
     ### TF
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
         _cur_sel = icswActiveSelectionService.current()
@@ -127,73 +132,11 @@ menu_module = angular.module(
     #        $rootScope.$emit(ICSW_SIGNALS("ICSW_RENDER_MENUBAR"))
     # )
 
-    route_counter = 0
     # load license tree
     icswSystemLicenseDataService.load($scope.$id).then(
         (data) ->
     )
 
-    $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
-        to_main = if to_state.name.match(/^main/) then true else false
-        from_main = if from_state.name.match(/^main/) then true else false
-        console.log "$stateChangeStart from '#{from_state.name}' (#{from_main}) to '#{to_state.name}' (#{to_main})"
-        if to_main and not from_main
-            if to_state.icswData? and not to_state.icswData.$$allowed and $scope.struct.current_user?
-                console.error "target state not allowed", to_state.icswData.$$allowed, $scope.struct.current_user
-                event.preventDefault()
-        else if to_state.name == "login"
-            # logout if logged in
-            if icswUserService.user_present()
-                icswUserService.logout()
-            icswUserService.force_logout()
-            $rootScope.$broadcast ICSW_SIGNALS("ICSW_USER_NOUSER")
-            $scope.struct.current_user = undefined
-    )
-
-    $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
-        to_main = if to_state.name.match(/^main/) then true else false
-        from_main = if from_state.name.match(/^main/) then true else false
-        console.log "$stateChangeSuccess from '#{from_state.name}' (#{from_main}) to '#{to_state.name}' (#{to_main})"
-        route_counter++
-        if to_state.name == "logout"
-            blockUI.start("Logging out...")
-            icswUserService.logout().then(
-                (json) ->
-                    blockUI.stop()
-                    $rootScope.$broadcast ICSW_SIGNALS("ICSW_USER_NOUSER")
-                    $scope.struct.current_user = undefined
-            )
-        else if not from_main and to_main
-            $scope.struct.current_user = icswUserService.get().user
-            if $scope.struct.current_user?
-                $rootScope.$broadcast ICSW_SIGNALS("ICSW_USER_LOGGEDIN")
-            _helper = icswRouterHelper.get_struct()
-            # todo, unify rights checking
-            # console.log _helper.valid
-            # if $scope.struct.current_user? and $state.current.icswData?
-            #    if not $state.current.icswData.$$allowed
-            #        _to_state = "main.dashboard"
-            #        console.error "target state #{to_state.name} not allowed, going to #{_to_state}"
-            #        $state.go(_to_state)
-            # console.log to_params, $scope
-        else
-            # we allow one gentle transfer
-            if route_counter >= 2 and not icswSystemLicenseDataService.fx_mode()
-                # reduce flicker
-                $(document.body).hide()
-                $window.location.reload()
-    )
-    $scope.$on("$stateChangeError", (event, to_state, to_params, from_state, from_params, error) ->
-        console.error "error moving to state #{to_state.name} (#{to_state}), error is #{error}"
-        _to_login = true
-        if to_state.icswData?
-            if to_state.icswData.redirectToFromOnError
-                _to_login = false
-        if _to_login
-            $state.go("login")
-        else
-            $state.go(from_state, from_params)
-    )
     # $scope.device_selection = () ->
     #    console.log "SHOW_DIALOG"
     #     icswLayoutSelectionDialogService.show_dialog()
@@ -250,23 +193,8 @@ menu_module = angular.module(
                 scope.update_progress_bar()
             )
 
-            clickcounter = 0
-            logo_timer = undefined
-            scope.sglclick = ($event)->
-                if clickcounter > 0
-                    $timeout.cancel(logo_timer)
-                    clickcounter = 0
-                    icswLayoutSelectionDialogService.quick_dialog()
-
-                else if clickcounter == 0
-                    clickcounter += 1
-                    logo_timer = $timeout(
-                        ()->
-                            $state.go("main.dashboard")
-                            clickcounter = 0
-                            return
-                        250
-                        )
+            scope.go_mainboard = ($event)->
+                $state.go("main.dashboard")
 
             scope.update_progress_bar = () ->
                 icswSimpleAjaxCall(
@@ -346,11 +274,10 @@ menu_module = angular.module(
                 # reload every 30 seconds
                 @backg_timer = $timeout(reload, 30000)
             reload()
-            $rootScope.$on ICSW_SIGNALS("ICSW_USER_NOUSER"),
-                (event, toState, toParams, fromState, fromParams, options) ->
-                    if @backg_timer?
-                        $timeout.cancel @backg_timer
-                        return
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
+                if @backg_timer?
+                    $timeout.cancel(@backg_timer)
+            )
     }
 ]).factory("icswReactMenuFactory",
 [
@@ -369,10 +296,14 @@ menu_module = angular.module(
             state = @props.state
             data = state.icswData
             # console.log "D=", data
+            a_attrs = {
+                key: "a"
+                className: "dropdown-toggle cursorpointer"
+            }
             if data.menuEntry.href?
-                a_attrs = {href: data.menuEntry.href, key: "a"}
+                a_attrs.href = data.menuEntry.href
             else
-                a_attrs = {href: data.menuEntry.sref, key: "a"}
+                a_attrs.href = data.menuEntry.sref
             if data.menuEntry.labelClass
                 return li(
                     {key: "li"}
@@ -423,6 +354,8 @@ menu_module = angular.module(
                 _idx++
                 data = state.icswData
                 _key = data.key
+                if data.menuEntry.isHidden? and data.menuEntry.isHidden
+                    continue
                 if data.$$allowed
                     # console.log _key
                     if (data.menuEntry.preSpacer? and valid_entry) or _post_spacer
@@ -453,7 +386,7 @@ menu_module = angular.module(
                     [
                         a(
                             {
-                                className: "dropdown-toggle"
+                                className: "cursorpointer dropdown-toggle"
                                 # dataToggle is not working
                                 "data-toggle": "dropdown"
                                 key: "menu.head_" + key
@@ -600,125 +533,117 @@ menu_module = angular.module(
     $templateCache, icswUserService, $rootScope, $compile, ICSW_SIGNALS,
     $state,
 ) ->
-    restrict: "E"
-    link: (scope, el, attrs) ->
-        $rootScope.$on ICSW_SIGNALS("ICSW_USER_LOGGEDIN"),
-            (event, toState, toParams, fromState, fromParams, options) ->
-                if not attrs.$attr.loaded?
-                    attrs.$set("loaded")
-                    template = $compile(
-                        $templateCache.get("icsw.layout.submenubar")
-                    )(scope)
-                    el.html(template)
-        $rootScope.$on ICSW_SIGNALS("ICSW_USER_NOUSER"),
-            (event, toState, toParams, fromState, fromParams, options) ->
-                if attrs.$attr.loaded?
-                    delete attrs.$attr.loaded
-                    scope.$$childHead.$destroy()
-                    el.html("")
-]).directive("icswMenuSubDirective",
+    return {
+        restrict: "E"
+        controller: "icswLayoutSubMenubarCtrl"
+        template: $templateCache.get("icsw.layout.submenubar")
+        scope: true
+    }
+]).controller("icswLayoutSubMenubarCtrl"
 [
-    "icswLayoutSelectionDialogService", "$rootScope", "icswBreadcrumbs",
+    "$scope", "icswLayoutSelectionDialogService", "$rootScope", "icswBreadcrumbs",
     "icswUserService", "$state", "$q", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswDispatcherSettingTreeService", "icswAssetPackageTreeService",
     "icswActiveSelectionService",
 (
-    icswLayoutSelectionDialogService, $rootScope, icswBreadcrumbs,
+    $scope, icswLayoutSelectionDialogService, $rootScope, icswBreadcrumbs,
     icswUserService, $state, $q, icswDeviceTreeService, ICSW_SIGNALS
     icswDispatcherSettingTreeService, icswAssetPackageTreeService,
     icswActiveSelectionService
 ) ->
-    return {
-        restrict: "A"
-        link: (scope, el, attrs) ->
-            $rootScope.$on ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_VALID"), (event) ->
-                icswBreadcrumbs.setup()
-                scope.breadcrumb = icswBreadcrumbs.generate()
-            $rootScope.$on "$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
-                scope.breadcrumb = icswBreadcrumbs.generate()
-
-            scope.select_txt = "No devices selected"
-
-            scope.device_selection = ($event) ->
-                icswLayoutSelectionDialogService.quick_dialog("right")
-
-            $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-                _cur_sel = icswActiveSelectionService.current()
-                #sel_groups = _cur_sel.get_devsel_list()[3].length
-                sel_groups = 0
-                sel_devices = _cur_sel.get_devsel_list()[1].length
-                group_plural = if sel_groups == 1 then "group" else "groups"
-                device_plural = if sel_devices == 1 then "device" else "devices"
-                group_plural = if sel_groups == 1 then "group" else "groups"
-                device_plural = if sel_devices == 1 then "device" else "devices"
-                _list = []
-                if sel_devices
-                    _list.push("#{sel_devices} #{device_plural}")
-                if sel_groups
-                    _list.push("#{sel_groups} #{group_plural}")
-                if not _list.length
-                    _list.push("No devices")
-                scope.select_txt = _list.join(", ") + " selected"
-            )
-
-            scope.new_devsel = (devs) ->
-                # never called....
-                console.log "*", devs
-                console.log icswActiveSelectionService.current()
-                sel_groups = 0
-                sel_devices = 0
-                for dev in devs
-                    if dev.is_meta_device
-                        sel_devices++
-                    else
-                        sel_groups++
+    $scope.struct = {
+        current_user: undefined
+        # number of selected devices
+        num_selected: 0
+        # selection string
+        select_txt: "No devices selected"
+        # breadcrumb list
+        bc_list: []
     }
-]).factory('icswBreadcrumbs',
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+        $scope.struct.current_user = icswUserService.get().user
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
+        $scope.struct.current_user = undefined
+    )
+
+    $scope.device_selection = ($event) ->
+        icswLayoutSelectionDialogService.quick_dialog("right")
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), (event, bc_list) ->
+        $scope.struct.bc_list.length = 0
+        for entry in bc_list
+            $scope.struct.bc_list.push(entry)
+    )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+        _cur_sel = icswActiveSelectionService.current()
+        #sel_groups = _cur_sel.get_devsel_list()[3].length
+        sel_groups = 0
+        sel_devices = _cur_sel.get_devsel_list()[1].length
+        group_plural = if sel_groups == 1 then "group" else "groups"
+        device_plural = if sel_devices == 1 then "device" else "devices"
+        group_plural = if sel_groups == 1 then "group" else "groups"
+        device_plural = if sel_devices == 1 then "device" else "devices"
+        _list = []
+        if sel_devices
+            _list.push("#{sel_devices} #{device_plural}")
+        if sel_groups
+            _list.push("#{sel_groups} #{group_plural}")
+        $scope.struct.num_selected = _list.length
+        $scope.struct.select_txt = _list.join(", ")
+    )
+
+    $scope.new_devsel = (devs) ->
+        # never called....
+        console.log "*", devs
+        console.log icswActiveSelectionService.current()
+        sel_groups = 0
+        sel_devices = 0
+        for dev in devs
+            if dev.is_meta_device
+                sel_devices++
+            else
+                sel_groups++
+]).service('icswBreadcrumbs',
 [
-    "$state", "icswRouteHelper",
+    "$state", "icswRouteHelper", "$rootScope", "ICSW_SIGNALS",
 (
-    $state, icswRouteHelper,
+    $state, icswRouteHelper, $rootScope, ICSW_SIGNALS,
 ) ->
-    header_lut = {}
+    # list of breadcrumbs
+    bc_list = []
 
-    setup_luts = () ->
-        menu_headers = icswRouteHelper.get_struct().menu_header_states
-        for header in menu_headers
-            icswheader = header.icswData.menuHeader
-            header_lut[icswheader.key] = icswheader.name
+    add_state = (state) ->
+        if state.icswData?
+            _add = false
+            if state.icswData.menuEntry? and state.icswData.menuEntry.sref?
+                _add = true
+                _add_struct = {
+                    icon: state.icswData.menuEntry.icon
+                    sref: state.name
+                    name: state.icswData.menuEntry.name
+                }
+            else if state.icswData.pageTitle?
+                _add = true
+                _add_struct = {
+                    icon: ""
+                    sref: state.name
+                    name: state.icswData.pageTitle
+                }
+            if _add
+                _.remove(bc_list, (entry) -> return entry.sref == _add_struct.sref)
+                # state with menu entry
+                bc_list.push(_add_struct)
+                if bc_list.length > 6
+                    bc_list = bc_list.slice(1)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), bc_list)
 
-    _addBreadcrumb = (list, title, state, sref) ->
-        list.push
-            title: title
-            sref: sref
-            state: state
+            # console.log bc_list.length, (entry.name for entry in bc_list)
 
-    # generateOutput = (list) ->
-    #     return (entry.title for entry in list).join(" - ")
-
-    generateBreadcrumbs = (state) ->
-        if state.parent? and state.parent.name != ""
-            list = generateBreadcrumbs state.parent
-        else
-            list = []
-        if state.icswData? and (state.icswData.$$menuHeader or state.icswData.$$menuEntry)
-            # todo: move breadcrumb generation to menu XML code
-            if state.icswData.menuEntry?
-                _addBreadcrumb list, header_lut[state.icswData.menuEntry.menukey]
-                _addBreadcrumb(
-                    list
-                    state.icswData.menuEntry.name
-                    state.name
-                    state.icswData.menuEntry.sref
-                )
-        else if state.name and state.name == "main"
-            _addBreadcrumb list, "Home"
-        return list
-
-    {
-        generate: ->
-            return generateBreadcrumbs $state.$current
-        setup: ->
-            setup_luts()
+    return {
+        add_state: (state) ->
+            add_state(state)
     }
 ])

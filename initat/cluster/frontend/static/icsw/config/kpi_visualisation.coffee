@@ -117,20 +117,28 @@ angular.module(
 
                 scope.tree.size([draw_width, draw_height])
 
-                console.log scope.data
-                nodes = scope.tree.nodes(scope.data)
-                links = scope.tree.links(nodes)
+                # console.log scope.data
+                hr_data = d3.hierarchy(scope.data, (node) -> return node.origin.operands)
+                nodes = scope.tree(hr_data)
+                # links = hr_data.links()
+                # console.log "n,l", nodes, links
+                # links = scope.tree.links(nodes)
 
                 # fixed depth
-                nodes.forEach((d) -> d.y = d.depth * node_height)
+                #nodes.forEach(
+                #    (d) ->
+                #        d.y = d.depth * node_height
+                #)
 
                 my_translate = (x, y) -> return [x, draw_height - y]
 
-                diagonal = d3.svg.diagonal()
-                    .projection((d) -> return my_translate(d.x, d.y))
+                diagonal = (d) ->
+                    [sx, sy] = my_translate(d.x, d.y)
+                    [dx, dy] = my_translate(d.parent.x, d.parent.y)
+                    return "M#{sx},#{sy}C#{dx},#{sy} #{dx},#{dy} #{dx},#{dy}"
 
                 link = scope.svg.selectAll(".link")
-                    .data(links)
+                    .data(hr_data.descendants().slice(1))
 #
                 link.enter()
                     .append("g")
@@ -139,26 +147,106 @@ angular.module(
                     .attr("fill", "none")
                     .attr("stroke", "#ff8888")
                     .attr("stroke-width", "1.5px")
-                    .attr("d", diagonal);
+                    .attr("d", diagonal)
 
                 duration = 0.001  # milliseconds
 
                 link.transition()
                     .duration(duration)
                     .select("path")
-                    .attr("d", diagonal);
+                    .attr("d", diagonal)
 
                 link.exit().remove()
 
                 node = scope.svg.selectAll(".node")
-                    .data(nodes)
+                    .data(hr_data.descendants())
+                # console.log "n", node
+
+                _html = (node) ->
+                    d = node.data
+                    # console.log "html", d
+                    res = "<circle r=\"4\"></circle>"
+                    if d.hide_children and d.origin.type != 'initial'
+                        res += "<circle r=\"1.5\" fill=\"white\"></circle>"
+                    res += "{"
+                    cur_height = 3
+
+                    if d.depth == 0
+                        # result (we could also check for not having a parent)
+                        res += "<text style=\"font-size: 11px\" dx=\"-8\" dy=\"#{cur_height}\" text-anchor=\"end\">kpi = </text>"
+
+                    if d.origin.type == 'initial'
+                        res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> initial data (#{d.objects.length} objects) </text>"
+                    else
+                        concise = d.objects.length > 3 || d.objects.length == 0
+
+                        if concise
+                            res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> #{d.objects.length} objects </text>"
+                        else
+                            i = 0
+                            kpi_obj_height = cur_height
+                            for kpi_obj in d.objects
+                                if i > 2 # only 3 elems
+                                    res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{kpi_obj_height}\"> ... </text>"
+                                    break
+                                s = icswConfigKpiVisUtils.kpi_obj_to_string(kpi_obj)
+                                s = $filter('limit_text')(s, 17)
+                                res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{kpi_obj_height}\"> #{s} </text>"
+                                kpi_obj_height += 14
+                                i += 1
+
+                        # operation
+                        res += "<text style=\"font-size: 11px; font-style: italic;\" dx=\"0\" dy=\"-22\" text-anchor=\"middle\">"
+
+                        is_method = d.origin.type.match(/^[a-zA-Z_\-]*$/i)
+                        if is_method
+                            operation = "#{d.origin.type}(" + (k+"="+v for k, v of d.origin.arguments).join(", ")
+                            res += $filter('limit_text')(operation, 25) + ")"
+                        else  # is operator
+                            res += "#{d.origin.type}"
+
+                        res += "</text>"
+
+                    return res
 
                 node.enter()
                     .append("g")
                     .attr("class", "node")
                     .style("cursor", "pointer")
                     #.attr("transform", (d) -> return "translate(" + d.x + "," + d.y + ")")
-                    .attr("transform", (d) -> return "translate(" + my_translate(d.x, d.y).join(",") + ")")
+                    .attr("transform", (d) ->
+                        # console.log "*", d.x, d.y
+                        return "translate(" + my_translate(d.x, d.y).join(",") + ")"
+                    ).html(
+                        (d) ->
+                            return _html(d)
+                    ).on("mouseenter", (node) =>
+                        $timeout(
+                            () ->
+                                if scope._mouse_on_node == node.data
+                                    icswConfigKpiVisUtils.sort_kpi_set(node.data)
+                                    scope.kpi_set_to_show = node.data
+                            50
+                        )
+                        scope._mouse_on_node = node.data
+                    ).on("mouseleave", (node) =>
+                        scope._mouse_on_node = undefined
+                    ).on("click", (node) =>
+                        # not working right now ..
+                        if node.data.hide_children
+                            # unhide recursively
+                            unhide_rec = (node) ->
+                                node.hide_children = false
+                                for child in node.origin.operands
+                                    unhide_rec(child)
+
+                            unhide_rec(node.data)
+                        else
+                            # hide locally
+                            node.data.hide_children = true
+
+                        scope.redraw()
+                    )
 
                 node.transition()
                     .duration(duration)
@@ -177,93 +265,6 @@ angular.module(
                 #    #.style("text-anchor", (d) -> return if d.children then "end" else "start")
                 #    .style("text-anchor", (d) -> return "start")
 
-                node
-                    .html((d) ->
-                        res = "<circle r=\"4\"></circle>"
-                        if d.hide_children and d.origin.type != 'initial'
-                            res += "<circle r=\"1.5\" fill=\"white\"></circle>"
-                        res += "{"
-                        cur_height = 3
-
-                        if d.depth == 0
-                            # result (we could also check for not having a parent)
-                            res += "<text style=\"font-size: 11px\" dx=\"-8\" dy=\"#{cur_height}\" text-anchor=\"end\">kpi = </text>"
-
-                        if d.origin.type == 'initial'
-                            res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> initial data (#{d.objects.length} objects) </text>"
-                        else
-                            concise = d.objects.length > 3 || d.objects.length == 0
-
-                            if concise
-                                res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{cur_height}\"> #{d.objects.length} objects </text>"
-                            else
-                                i = 0
-                                kpi_obj_height = cur_height
-                                for kpi_obj in d.objects
-                                    if i > 2 # only 3 elems
-                                        res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{kpi_obj_height}\"> ... </text>"
-                                        break
-                                    s = icswConfigKpiVisUtils.kpi_obj_to_string(kpi_obj)
-                                    s = $filter('limit_text')(s, 17)
-                                    res += "<text style=\"font-size: 11px\" dx=\"8\" dy=\"#{kpi_obj_height}\"> #{s} </text>"
-                                    kpi_obj_height += 14
-                                    i += 1
-
-                            # operation
-                            res += "<text style=\"font-size: 11px; font-style: italic;\" dx=\"0\" dy=\"-22\" text-anchor=\"middle\">"
-
-                            is_method = d.origin.type.match(/^[a-zA-Z_\-]*$/i)
-                            if is_method
-                                operation = "#{d.origin.type}(" + (k+"="+v for k, v of d.origin.arguments).join(", ")
-                                res += $filter('limit_text')(operation, 25) + ")"
-                            else  # is operator
-                                res += "#{d.origin.type}"
-
-                            res += "</text>"
-
-                        return res
-                    )
-                    #.text((d) ->
-                    #    if d.objects.length > 3
-                    #        return "#{d.objects.length} objects"
-                    #    else
-                    #        return "{" + (d.host_name for d in d.objects).join("\n") + "}"
-                    #).each((d) ->
-                    #    for ch in d.objects
-                    #        d.append("text")
-                    #             .text((e) -> e)
-                    #)
-
-                node.on("click", scope.on_node_click)
-                node.on("mouseenter", scope.on_mouse_enter)
-                node.on("mouseleave", scope.on_mouse_leave)
-
-            scope.on_node_click = (node) ->
-                if node.hide_children
-                    # unhide recursively
-                    unhide_rec = (node) ->
-                        node.hide_children = false
-                        for child in node.origin.operands
-                            unhide_rec(child)
-
-                    unhide_rec(node)
-                else
-                    # hide locally
-                    node.hide_children = true
-
-                scope.redraw()
-            scope.on_mouse_enter = (node) ->
-                $timeout(
-                    () ->
-                        if scope._mouse_on_node == node
-                            icswConfigKpiVisUtils.sort_kpi_set(node)
-                            scope.kpi_set_to_show = node
-                    50
-                )
-                scope._mouse_on_node = node
-            scope.on_mouse_leave = (node) ->
-                # when mouse leaves single node
-                scope._mouse_on_node = undefined
             scope.on_mouse_leave_widget = () ->
                 # when mouse leaves full widget
                 # to hide set:
@@ -302,10 +303,6 @@ angular.module(
             scope.title = scope.title or "Kpi Set"
             scope.show_close = scope.show_close_attr()
             scope.body_height = scope.body_height_attr()
-            #scope.$watch(
-            #    () -> return scope._get_kpi_set()
-            #    (new_set) -> scope.kpi_set = new_set
-            #)
     }
 ]).directive("icswConfigKpiShowKpiObject",
 [

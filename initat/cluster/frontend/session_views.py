@@ -332,9 +332,15 @@ class session_login(View):
 
 class UserView(viewsets.ViewSet):
     def get_user(self, request):
+        context = {
+            "request": request
+        }
         if request.user and not request.user.is_anonymous:
             _user = request.user
+            context["is_authenticated"] = True
         else:
             _user = user()
-        serializer = user_serializer([_user], context={"request": request}, many=True)
+            context["is_authenticated"] = False
+        context["is_anonymous"] = not context["is_authenticated"]
+        serializer = user_serializer([_user], context=context, many=True)
         return Response(serializer.data)

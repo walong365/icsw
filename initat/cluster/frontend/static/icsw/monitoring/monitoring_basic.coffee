@@ -31,7 +31,7 @@ monitoring_basic_module = angular.module(
     $templateCache,
 ) ->
     return {
-        restrict:"EA"
+        restrict: "EA"
         template: $templateCache.get("icsw.monitoring.basic")
         controller: "icswMonitoringBasicCtrl"
     }
@@ -78,6 +78,19 @@ monitoring_basic_module = angular.module(
     icswRouteExtensionProvider.add_route("main.monitorb0", resolve_map("CACHED"))
     icswRouteExtensionProvider.add_route("main.monitorb1", resolve_map("DYNAMIC"))
     icswRouteExtensionProvider.add_route("main.monitorb2", resolve_map("ALWAYS"))
+]).directive("icswMonitoringSetup",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    console.log "ms"
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.monitoring.setup")
+        scope: true
+    }
+
 ]).service("icswMonitoringBasicTree",
 [
     "$q", "Restangular", "ICSW_URLS", "ICSW_SIGNALS", "icswTools",
@@ -114,7 +127,6 @@ monitoring_basic_module = angular.module(
         update: (args...) =>
             for [entry, _list] in _.zip(ELIST, args)
                 @["#{entry}_list"].length = 0
-                _list = []
                 for _el in _list
                     @["#{entry}_list"].push(_el)
             @build_luts()

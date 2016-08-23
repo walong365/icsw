@@ -1,49 +1,74 @@
-<script type="text/ng-template" id="icsw.device.info">
-    <uib-tabset active="active_tab">
-        <uib-tab select="activate('general')">
-            <uib-tab-heading>
-                General{{ addon_text }}
-            </uib-tab-heading>
-            <icsw-simple-device-info icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist"></icsw-simple-device-info>
-        </uib-tab>
-        <uib-tab ng-if="acl_read(null, 'backbone.device.change_network') && normal_sel" select="activate('network')">
-            <uib-tab-heading>
-                Network{{ addon_text_nmd }}
-            </uib-tab-heading>
-            <icsw-device-network-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist"></icsw-device-network-overview>
-        </uib-tab>
-        <uib-tab ng-if="acl_read(null, 'backbone.device.change_config')" select="activate('config')">
-            <uib-tab-heading>
-                Config{{ addon_text }}
-            </uib-tab-heading>
-            <icsw-device-configuration-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
-            </icsw-device-configuration-overview>
-            <!-- only valid for corvus -->
-            <icsw-device-configuration-var-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
-            </icsw-device-configuration-var-overview>
-        </uib-tab>
-         <uib-tab ng-if="acl_read(null, 'backbone.device.change_category') && normal_sel" select="activate('category')">
-            <uib-tab-heading>
-                Category{{ addon_text_nmd }}
-            </uib-tab-heading>
-            <icsw-device-category-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
-            </icsw-device-category-overview>
-        </uib-tab>
-         <uib-tab ng-if="acl_read(null, 'backbone.device.change_location') && normal_sel" select="activate('location')">
-            <uib-tab-heading>
-                Location{{ addon_text_nmd }}
-            </uib-tab-heading>
-            <icsw-device-location-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
-            </icsw-device-location-overview>
-        </uib-tab>
-        <uib-tab ng-if="acl_read(null, 'backbone.device.change_variables')" select="activate('device_variable')">
-            <uib-tab-heading>
-                Device Variable{{ addon_text }}
-            </uib-tab-heading>
-            <icsw-device-variable-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
-            </icsw-device-variable-overview>
-        </uib-tab>
-    </uib-tabset>
+<script type="text/ng-template" id="icsw.device.info.tab.general">
+    <uib-tab-heading>
+        General{{ addon_text }}
+    </uib-tab-heading>
+    <icsw-simple-device-info icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist"></icsw-simple-device-info>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.tab.network">
+    <uib-tab-heading>
+        Network{{ addon_text_nmd }}
+    </uib-tab-heading>
+    <icsw-device-network-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist"></icsw-device-network-overview>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.tab.config">
+    <uib-tab-heading>
+        Config{{ addon_text }}
+    </uib-tab-heading>
+    <icsw-device-configuration-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
+    </icsw-device-configuration-overview>
+    <!-- only valid for corvus -->
+    <icsw-device-configuration-var-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
+    </icsw-device-configuration-var-overview>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.tab.category">
+    <uib-tab-heading>
+        Category{{ addon_text_nmd }}
+    </uib-tab-heading>
+    <icsw-device-category-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
+    </icsw-device-category-overview>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.tab.location">
+    <uib-tab-heading>
+        Location{{ addon_text_nmd }}
+    </uib-tab-heading>
+    <icsw-device-location-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
+    </icsw-device-location-overview>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.tab.variable">
+    <uib-tab-heading>
+        Device Variable{{ addon_text }}
+    </uib-tab-heading>
+    <icsw-device-variable-overview icsw-sel-man="{{ popupmode }}" icsw-device-list="devicelist">
+    </icsw-device-variable-overview>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.tab.tab_setup">
+    <uib-tab select="activate('$$modify')">
+        <uib-tab-heading>
+            Modify <span class="fa fa-wrench"></span>
+        </uib-tab-heading>
+        <icsw-device-info-tab-modify></icsw-device-info-tab-modify>
+    </uib-tab>
+</script>
+
+<script type="text/ng-template" id="icsw.device.info.tab.modify">
+    <h3>
+        Please select active tabs
+    </h3>
+    <div ng-repeat="tab in struct.tab_list" class="form-group row">
+        <label class="control-label col-sm-offset-4 col-sm-2">
+            {{ tab.name }}
+        </label>
+        <div class="controls col-sm-2">
+            <icsw-tools-yes-no flag="tab.$$active"/>
+        </div>
+    </div>
+    <icsw-tools-button type="modify" size="sm" ng-click="modify_tabs($event)"></icsw-tools-button>
 </script>
 
 <script type="text/ng-template" id="icsw.deviceempty.info.form">
