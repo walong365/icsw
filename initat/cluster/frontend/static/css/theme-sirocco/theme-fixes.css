@@ -90,9 +90,9 @@ span.fancytree-expander {
     height:31px;
 }
 
-::-webkit-scrollbar-track { background-color: #999999; }
+::-webkit-scrollbar-track { background-color: #f0f0f0; }
 ::-webkit-scrollbar{ width: 13px; }
-::-webkit-scrollbar-thumb { background-color: #444444; -webkit-border-radius: 6px; border-radius: 6px; }
+::-webkit-scrollbar-thumb { background-color: #aaaaaa; -webkit-border-radius: 6px; border-radius: 6px; }
 
 .ip_address {
     font-family: monospace;
