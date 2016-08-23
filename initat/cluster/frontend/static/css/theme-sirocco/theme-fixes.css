@@ -199,12 +199,8 @@ table.rotateheaders th {
     float:left;
     padding-right:10px;
 }
-.submenu-bar .quickselect {
-    font-size: 15px;
-    font-weight: 600;
-    color: #666666;
-    list-style: outside none none;
-    margin: 2px 10px 0 0;
+.submenu-bar .label {
+    font-size: 100%;
 }
 .submenu-bar .quickselect a {
     color: #666666;
@@ -212,6 +208,6 @@ table.rotateheaders th {
 .navbar-fixed-top {
     border-width: 0;
 }
-icsw-dashboard-view > .panel-success {
-
+.label {
+    border-radius: 1px;
 }

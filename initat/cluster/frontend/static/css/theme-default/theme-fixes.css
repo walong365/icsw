@@ -48,7 +48,6 @@ icsw-tools-button{
 }
 .submenu-bar .sub-breadcrumb {
     font-size:11px;
-    font-weight:600;
     color:#555555;
     list-style: outside none none;
     margin-top: 7px;
@@ -63,10 +62,6 @@ icsw-tools-button{
     padding-right: 10px;
 }
 
-.submenu-bar .quickselect {
-    font-size:14px;
-    font-weight:600;
-    color:#444444;
-    list-style: outside none none;
-    margin: 7px 10px 0 0;
+.submenu-bar .label {
+    font-size: 100%;
 }
