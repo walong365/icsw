@@ -708,7 +708,7 @@ device_report_module = angular.module(
                     report_obj.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
 
                 if result.hasOwnProperty("xlsx")
-                    report_obj.report_download_name = "Report.xlsx"
+                    report_obj.report_download_name = "Report.zip"
                     blob = b64_to_blob(result.xlsx, 'application/zip')
                     report_obj.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
 

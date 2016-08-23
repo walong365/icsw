@@ -64,7 +64,7 @@ from django.utils import timezone
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 
-from initat.cluster.settings import FILE_ROOT
+from initat.cluster.settings import FILE_ROOT, REPORT_DATA_STORAGE_DIR
 
 pdfmetrics.registerFont(TTFont('Open-Sans', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "open-sans.regular.ttf")))
 pdfmetrics.registerFont(TTFont('Open-Sans-Bold', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "open-sans.bold.ttf")))
@@ -1398,17 +1398,20 @@ class PDFReportGenerator(object):
         output_buffer = BytesIO()
         output_pdf.write(output_buffer)
         self.buffer = output_buffer
-        self.progress = -1
 
         # create report history entry
         _user = user.objects.get(idx=self.general_settings["user_idx"])
         self.report_history.created_by_user = _user
         self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
         self.report_history.number_of_pages = output_pdf.getNumPages()
-        self.report_history.data = base64.b64encode(self.buffer.getvalue())
         self.report_history.size = len(self.buffer.getvalue())
         self.report_history.type = self.get_report_type()
+        self.report_history.generate_filename()
         self.report_history.save()
+
+        self.report_history.write_data(self.buffer.getvalue())
+
+        self.progress = -1
 
     def __generate_front_page(self):
         _buffer = BytesIO()
@@ -1854,10 +1857,11 @@ class XlsxReportGenerator(object):
         self.report_history.created_by_user = _user
         self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
         self.report_history.number_of_pages = 0
-        self.report_history.data = base64.b64encode(self.data)
         self.report_history.size = len(self.data)
         self.report_history.type = self.get_report_type()
+        self.report_history.generate_filename()
         self.report_history.save()
+        self.report_history.write_data(self.data)
 
         self.progress = -1
 
@@ -2049,7 +2053,8 @@ class GetReportData(View):
 
             report_history = ReportHistory.objects.get(idx=report_id)
             report_type = report_history.type
-            data_b64 = report_history.data
+            data = report_history.get_data()
+            data_b64 = base64.b64encode(data)
 
         return HttpResponse(
             json.dumps(

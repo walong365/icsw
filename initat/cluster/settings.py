@@ -199,6 +199,11 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
     except IOError:
         pass
 
+# where to store PDF Files
+REPORT_DATA_STORAGE_DIR = os.path.join(STATIC_ROOT, "ReportData")
+if not os.path.exists(REPORT_DATA_STORAGE_DIR):
+    os.mkdir(REPORT_DATA_STORAGE_DIR)
+
 # use X-Forwarded-Host header
 USE_X_FORWARDED_HOST = True
 
