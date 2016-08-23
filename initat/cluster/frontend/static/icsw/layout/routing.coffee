@@ -56,7 +56,7 @@ menu_module = angular.module(
             icswData: icswRouteExtensionProvider.create
                 pageTitle: "ICSW Main page"
             resolve:
-                user: ["$q", "icswUserService", "icswRouteHelper", ($q, icswUserService, icswRouteHelper) ->
+                user: ["$q", "icswUserService", "icswRouteHelper", "$state", ($q, icswUserService, icswRouteHelper, $state) ->
                     _defer = $q.defer()
                     icswUserService.load("router").then(
                         (user) ->
@@ -65,6 +65,7 @@ menu_module = angular.module(
                                 icswRouteHelper.check_rights(user)
                                 _defer.resolve(user)
                             else
+                                $state.go("login")
                                 _defer.reject(user)
                     )
                     return _defer.promise
