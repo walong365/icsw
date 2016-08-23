@@ -66,8 +66,8 @@ from reportlab.pdfbase.ttfonts import TTFont
 
 from initat.cluster.settings import FILE_ROOT
 
-pdfmetrics.registerFont(TTFont('Arial', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "arial.ttf")))
-pdfmetrics.registerFont(TTFont('Arial-Bold', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "arialbd.ttf")))
+pdfmetrics.registerFont(TTFont('Open-Sans', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "open-sans.regular.ttf")))
+pdfmetrics.registerFont(TTFont('Open-Sans-Bold', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "open-sans.bold.ttf")))
 
 logger = logging.getLogger(__name__)
 
@@ -377,6 +377,9 @@ class PDFReportGenerator(object):
         self.report_history.save()
         self.report_id = self.report_history.idx
 
+        self.standard_font = "Open-Sans"
+        self.bold_font = "Open-Sans-Bold"
+
     def __generate_section_number(self, *sections):
         root_section = self.sections
 
@@ -419,15 +422,15 @@ class PDFReportGenerator(object):
                                          width=self.logo_width,
                                          height=self.logo_height,
                                          getvalue=self.__get_logo_helper),
-                       Element((0, 0), ("Arial-Bold", 16), text=header)]
+                       Element((0, 0), (self.bold_font, 16), text=header)]
 
         detail_list = []
 
         position = 0
 
         for header_name, key, avail_width_percentage in header_names_left:
-            header_list.append(Element((position, 24), ("Arial", 12), text=header_name))
-            detail_list.append(Element((position, 0), ("Arial", 6), key=key))
+            header_list.append(Element((position, 24), (self.standard_font, 12), text=header_name))
+            detail_list.append(Element((position, 0), (self.standard_font, 6), key=key))
 
             position += available_width * (avail_width_percentage / 100.0)
 
@@ -442,7 +445,7 @@ class PDFReportGenerator(object):
                     wrap_idx = 0
 
                     for i in range(len(comp)):
-                        width = stringWidth(s[wrap_idx:i+1], "Arial", 6)
+                        width = stringWidth(s[wrap_idx:i+1], self.standard_font, 6)
                         if ((width / available_width) * 101.5) > avail_width_percentage:
                             wrap_idx = i
                             s_new += "\n"
@@ -458,8 +461,8 @@ class PDFReportGenerator(object):
         position = self.page_format[0] - (self.margin * 2)
 
         for header_name, key, avail_width_percentage in reversed(header_names_right):
-            header_list.append(Element((position, 24), ("Arial", 12), text=header_name, align="right"))
-            detail_list.append(Element((position, 0), ("Arial", 6), key=key, align="right"))
+            header_list.append(Element((position, 24), (self.standard_font, 12), text=header_name, align="right"))
+            detail_list.append(Element((position, 0), (self.standard_font, 6), key=key, align="right"))
 
             position -= available_width * (avail_width_percentage / 100.0)
 
@@ -474,7 +477,7 @@ class PDFReportGenerator(object):
                     wrap_idx = 0
 
                     for i in range(len(comp)):
-                        width = stringWidth(s[wrap_idx:i+1], "Arial", 6)
+                        width = stringWidth(s[wrap_idx:i+1], self.standard_font, 6)
                         if ((width / available_width) * 101.5) > avail_width_percentage:
                             wrap_idx = i
                             s_new += "\n"
@@ -507,7 +510,7 @@ class PDFReportGenerator(object):
             report.generate_bookmark("Device Overview")
 
             rpt = PollyReportsReport(data)
-            rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
+            rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
                                               getvalue=lambda x: x['group'],
                                               format=lambda x: "Group: {}".format(x)), ],
                                      getvalue=lambda x: x["group"])]
@@ -562,7 +565,7 @@ class PDFReportGenerator(object):
             report.generate_bookmark("Networks")
 
             rpt = PollyReportsReport(data)
-            rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
+            rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
                                               getvalue=lambda x: x['id'][0],
                                               format=lambda x: "Networks starting with: {}".format(x)), ],
                                      getvalue=lambda x: x["id"][0])]
@@ -619,8 +622,8 @@ class PDFReportGenerator(object):
 
         available_width = self.page_format[0] - (self.margin * 2)
 
-        paragraph_header = Paragraph('<font face="Arial-Bold" size="16">{} Overview for {}</font>'.format(
-            section_number, _device.name), style_sheet["BodyText"])
+        paragraph_header = Paragraph('<font face="{}" size="16">{} Overview for {}</font>'.format(
+            self.bold_font, section_number, _device.name), style_sheet["BodyText"])
 
         logo = Image(self.logo_buffer)
         logo.drawHeight = self.logo_height
@@ -820,7 +823,7 @@ class PDFReportGenerator(object):
                 rpt = PollyReportsReport(data)
 
                 if data:
-                    rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
+                    rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
                                                       getvalue=lambda x: x['update_status'],
                                                       format=lambda x: "Updates with status: {}".format(x)), ],
                                              getvalue=lambda x: x["update_status"]), ]
@@ -897,7 +900,7 @@ class PDFReportGenerator(object):
                 rpt = PollyReportsReport(data)
 
                 if data:
-                    rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
+                    rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
                                                       getvalue=lambda x: x['package_name'][0],
                                                       format=lambda x: "Packages starting with: {}".format(x)), ],
                                              getvalue=lambda x: x["package_name"][0]), ]
@@ -940,7 +943,7 @@ class PDFReportGenerator(object):
                 rpt = PollyReportsReport(data)
 
                 if data:
-                    rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
+                    rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
                                                       getvalue=lambda x: x['update_name'][0].upper(),
                                                       format=lambda x: "Updates starting with: {}".format(x)), ],
                                              getvalue=lambda x: x["update_name"][0].upper()), ]
@@ -1013,7 +1016,7 @@ class PDFReportGenerator(object):
                 rpt = PollyReportsReport(data)
 
                 if data:
-                    rpt.groupheaders = [Band([Element((0, 4), ("Arial-Bold", 10),
+                    rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
                                                       getvalue=lambda x: x['process_name'][0],
                                                       format=lambda x: "Processes starting with: {}".format(x)), ],
                                              getvalue=lambda x: x["process_name"][0]), ]
@@ -1253,7 +1256,7 @@ class PDFReportGenerator(object):
 
         t_body = Table(data, colWidths=(available_width * 0.10, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
-        p_h = Paragraph('<font face="Arial-Bold" size="16">{} Hardware Report for {}</font>'.format(section_number,
+        p_h = Paragraph('<font face="{}" size="16">{} Hardware Report for {}</font>'.format(self.bold_font, section_number,
             hardware_report_ar.device.name), style_sheet["BodyText"])
 
         logo = Image(self.logo_buffer)
@@ -1427,7 +1430,7 @@ class PDFReportGenerator(object):
 
         t_head = Table(data, colWidths=(available_width),
                        style=[('FONTSIZE', (0, 0), (-1, -1), 22),
-                              ('TEXTFONT', (0, 0), (-1, -1), 'Arial'),
+                              ('TEXTFONT', (0, 0), (-1, -1), self.standard_font),
                               ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                               ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                               ('LEFTPADDING', (0, 0), (-1, -1), 0),
@@ -1598,7 +1601,8 @@ class PDFReportGenerator(object):
     def __get_toc_pages(self, page_num_headings):
         style_sheet = getSampleStyleSheet()
 
-        paragraph_header = Paragraph('<font face="Arial-Bold" size="16">Contents</font>', style_sheet["BodyText"])
+        paragraph_header = Paragraph('<font face="{}" size="16">Contents</font>'.format(self.bold_font),
+                                     style_sheet["BodyText"])
 
         logo = Image(self.logo_buffer)
         logo.drawHeight = self.logo_height
@@ -1614,7 +1618,7 @@ class PDFReportGenerator(object):
 
         _buffer = BytesIO()
         can = Canvas(_buffer, pagesize=self.page_format)
-        can.setFont("Arial", 14)
+        can.setFont(self.standard_font, 14)
 
         width, heigth = self.page_format
 
@@ -1673,10 +1677,10 @@ class PDFReportGenerator(object):
 
                 can.drawString(25 + (25 * indent), heigth - (top_margin + (15 * vertical_x)), heading_str)
 
-                heading_str_width = stringWidth(heading_str, "Arial", 14)
+                heading_str_width = stringWidth(heading_str, self.standard_font, 14)
 
                 dots = "."
-                while (25 * indent) + heading_str_width + stringWidth(dots, "Arial", 14) < (width - 150):
+                while (25 * indent) + heading_str_width + stringWidth(dots, self.standard_font, 14) < (width - 150):
                     dots += "."
 
                 can.drawString(35 + (25 * indent) + heading_str_width, heigth - (top_margin + (15 * vertical_x)), dots)
@@ -1689,7 +1693,7 @@ class PDFReportGenerator(object):
                     vertical_x = 1
                     if number_of_entries_generated < number_of_entries:
                         can.showPage()
-                        can.setFont("Arial", 14)
+                        can.setFont(self.standard_font, 14)
                         t_head.wrapOn(can, 0, 0)
                         t_head.drawOn(can, 25, heigth - 50)
 
@@ -1714,7 +1718,7 @@ class PDFReportGenerator(object):
             if page_number >= toc_offset_num:
                 page_num_buffer = BytesIO()
                 can = Canvas(page_num_buffer, pagesize=self.page_format)
-                can.setFont("Arial", 8)
+                can.setFont(self.standard_font, 8)
 
                 creationdate_str = self.creation_date.strftime(ASSET_DATETIMEFORMAT)
                 str_to_draw = "Page: {} | ReportId: {} | ClusterId: {} | Generated: {}".format(page_number + 1,
@@ -1725,7 +1729,7 @@ class PDFReportGenerator(object):
                 # if (page_number - toc_offset_num) in page_num_prefix_dict:
                 #     str_to_draw = "({})".format(page_num_prefix_dict[page_number - toc_offset_num])
                 #
-                #     can.drawString(self.page_format[0] - self.margin - stringWidth(str_to_draw, "Arial", 14),
+                #     can.drawString(self.page_format[0] - self.margin - stringWidth(str_to_draw, self.standard_font, 14),
                 #                    25,
                 #                    str_to_draw)
 
