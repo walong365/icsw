@@ -30,10 +30,9 @@ from django.db.models import Q
 from django.utils import timezone
 from lxml import etree
 
-from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network
-from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType, \
-    AssetBatch, RunResult
-from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, DispatcherSettingScheduleEnum, \
+from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network, \
+    device_variable, AssetRun, RunStatus, AssetType, ScanType, \
+    AssetBatch, RunResult, DeviceDispatcherLink, DispatcherSettingScheduleEnum, \
     ScheduleItem, DispatchSetting, DiscoverySource
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
@@ -41,6 +40,9 @@ from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, net_tools, \
     ipvx_tools
 from .discovery_struct import ExtCom
+
+
+DEFAULT_NRPE_PORT = 5666
 
 
 class ScanBatch(object):
@@ -124,16 +126,16 @@ class BaseScanBatch(ScanBatch):
         # example: /opt/cluster/bin/nmap -sU -sS -p U:53,T:80 192.168.1.50
         _tcp_list, _udp_list = ([], [])
         _ref_lut = {}
+        print "***"
         for _com in ComCapability.objects.all():
+            print _com
             for _port in _com.port_spec.strip().split():
                 if _port.endswith(","):
                     _port = _port[:-1]
                 _num, _type = _port.split("/")
                 if _com.name == "NRPE":
-                    nrpe_ports = self.device.device_variable_set.filter(name="nrpe_port")
-                    if nrpe_ports:
-                        _num = nrpe_ports[0].value
-                        _port = _num + "/" + _type
+                    nrpe_port = device_variable.objects.get_device_variable_value(self.device, "NRPE_PORT", DEFAULT_NRPE_PORT)
+                    _port = "{:d}/{}".format(nrpe_port, _type)
                 if _type == "tcp":
                     _tcp_list.append(int(_num))
                 elif _type == "udp":
@@ -732,7 +734,6 @@ class PlannedRunsForDevice(object):
         self.device = device
         self.planned_runs = []
         self.ip = ip
-        self.nrpe_port = "5666"
         # numbers of jobs running
         self.num_running = 0
         self.to_delete = False
@@ -945,9 +946,7 @@ class Dispatcher(object):
                 self.discovery_process.get_route_to_devices([_dev])
                 self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
                 new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
-                nrpe_ports = _dev.device_variable_set.filter(name="nrpe_port")
-                if nrpe_ports:
-                    new_pr.nrpe_port = nrpe_ports[0].value
+                new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
 
                 self.__device_planned_runs[_dev.idx].append(new_pr)
 
