@@ -506,7 +506,7 @@ user_module = angular.module(
         return _fetch_dict[client]
 
     return {
-        "load": (client) ->
+        load: (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise
@@ -563,6 +563,10 @@ user_module = angular.module(
                 else
                     _fn = "#{user.login}"
                 user.$$long_name = _fn
+                if user.email
+                    user.$$user_email = "#{user.login} (#{user.email})"
+                else
+                    user.$$user_email = "#{user.login} (N/A)"
 
         # remove / delete calls
         delete_user: (user) =>

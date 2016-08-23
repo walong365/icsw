@@ -289,19 +289,19 @@ angular.module(
             _mv = sensor.mean_value
             none_action = (entry for entry in @base.sensor_action_list when entry.action == "none")[0].idx
             threshold = {
-                "name": "Threshold for #{sensor.mv_key}"
-                "lower_value": _mv - _mv / 10
-                "upper_value": _mv + _mv / 10
-                "lower_mail": true
-                "upper_mail": true
-                "lower_enabled": false
-                "upper_enabled": false
-                "notify_users": []
-                "create_user": @user.idx
-                "lower_sensor_action": none_action
-                "upper_sensor_action": none_action
-                "device_selection": undefined
-                "mv_value_entry": sensor.mvv_id
+                name: "Threshold for #{sensor.mv_key}"
+                lower_value: _mv - _mv / 10
+                upper_value: _mv + _mv / 10
+                lower_mail: true
+                upper_mail: true
+                lower_enabled: false
+                upper_enabled: false
+                notify_users: []
+                create_user: @user.idx
+                lower_sensor_action: none_action
+                upper_sensor_action: none_action
+                device_selection: undefined
+                mv_value_entry: sensor.mvv_id
             }
             return threshold
 
