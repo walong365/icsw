@@ -1593,8 +1593,10 @@ class PDFReportGenerator(object):
         elements.append(t_head)
         elements.append(Spacer(1, 30))
         elements.append(t_body)
-        elements.append(Spacer(1, 30))
-        elements.append(t_config)
+
+        if self._devices:
+            elements.append(Spacer(1, 30))
+            elements.append(t_config)
 
         doc.build(elements)
 
@@ -1800,8 +1802,9 @@ class PDFReportGenerator(object):
 
                 _device = device.objects.get(idx=device_idx)
 
-                new_permission_str = "{}: {} for ".format(index, permission_name, ac_to_str_dict[user_permission.level],
-                                                          _device.full_name)
+                new_permission_str = "{}: {} for {}".format(index, permission_name,
+                                                            ac_to_str_dict[user_permission.level],
+                                                            _device.full_name)
 
 
                 if permission_str == "N/A":
