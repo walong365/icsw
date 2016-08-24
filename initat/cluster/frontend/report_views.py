@@ -570,14 +570,14 @@ class PDFReportGenerator(object):
                                               format=lambda x: "Networks starting with: {}".format(x)), ],
                                      getvalue=lambda x: x["id"][0])]
 
-            header_names_left = [("Identifier", "id", 10.0),
-                            ("Network", "network", 10.0),
-                            ("Netmask", "netmask", 10.0),
-                            ("Broadcast", "broadcast", 10.0),
-                            ("Gateway", "gateway", 10.0),
-                            ('GW Priority', "gwprio", 10.0),
-                            ("#IPs", "num_ips", 10.0),
-                            ("Network Type", "network_type", 20.0)]
+            header_names_left = [("Identifier", "id", 12.5),
+                            ("Network", "network", 12.5),
+                            ("Netmask", "netmask", 12.5),
+                            ("Broadcast", "broadcast", 12.5),
+                            ("Gateway", "gateway", 12.5),
+                            ('GW Priority', "gwprio", 12.5),
+                            ("#IPs", "num_ips", 12.5),
+                            ("Network Type", "network_type", 12.5)]
 
             header_names_right = []
 
