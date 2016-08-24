@@ -51,6 +51,9 @@ class XMLWrapper(object):
         if logger:
             logger.log(log_level, log_str)
 
+    def clear_log_buffer(self):
+        self.log_buffer = []
+
     def info(self, log_str, logger=None):
         self.log(logging_tools.LOG_LEVEL_OK, log_str, logger)
 
@@ -150,7 +153,8 @@ class XMLWrapper(object):
         """
         num_errors, num_warnings = (
             len([True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_ERROR]),
-            len([True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_WARN]))
+            len([True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_WARN])
+        )
         return E.response(
             E.header(
                 E.messages(

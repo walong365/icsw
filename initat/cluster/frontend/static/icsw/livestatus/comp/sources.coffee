@@ -660,6 +660,8 @@ angular.module(
                     host_entries = []
                     mon_cat_counters = {}
                     device_cat_counters = {}
+                    # list of unknown hosts
+                    _unknown_hosts = (parseInt(_idx) for _idx in watched_devs)
                     if result[0].state == "fulfilled"
                         # fill service and host_entries, used cats
                         xml = result[0].value
@@ -667,7 +669,6 @@ angular.module(
                             service_entries = service_entries.concat(angular.fromJson($(node).text()))
                         $(xml).find("value[name='host_result']").each (idx, node) =>
                             host_entries = host_entries.concat(angular.fromJson($(node).text()))
-                        _unknown_hosts = (parseInt(_idx) for _idx in watched_devs)
                         # get all device cats
                         _dev_cat_pks = (_entry.idx for _entry in category_tree.list when _entry.full_name.match(/\/device\//))
                         for entry in host_entries
@@ -675,13 +676,6 @@ angular.module(
                             device_cat_counters = icswTools.merge_count_dict(device_cat_counters, _.countBy(entry.$$device_categories))
                             # for _dc in entry.$$
                             _.remove(_unknown_hosts, (_idx) -> return _idx == entry.$$icswDevice.idx)
-                        for _idx in _unknown_hosts
-                            if _idx of device_tree.all_lut
-                                dev = device_tree.all_lut[_idx]
-                                _um_entry = icswSaltMonitoringResultService.get_unmonitored_device_entry(dev)
-                                icswSaltMonitoringResultService.salt_host(_um_entry, device_tree, category_tree, _dev_cat_pks)
-                                device_cat_counters = icswTools.merge_count_dict(device_cat_counters, _.countBy(_um_entry.$$device_categories))
-                                host_entries.push(_um_entry)
                         srv_id = 0
                         for entry in service_entries
                             srv_id++
@@ -694,11 +688,18 @@ angular.module(
                             entry.$$host_mon_result = h_m_result
                             if entry.custom_variables and entry.custom_variables.cat_pks?
                                 mon_cat_counters = icswTools.merge_count_dict(mon_cat_counters, _.countBy(entry.custom_variables.cat_pks))
-                    else
-                        # invalidate results
-                        for dev_idx, watchers of watch_dict
-                            if dev_idx of device_tree.all_lut
-                                device_tree.all_lut[dev_idx].$$host_mon_result = undefined
+                    for _idx in _unknown_hosts
+                        if _idx of device_tree.all_lut
+                            dev = device_tree.all_lut[_idx]
+                            _um_entry = icswSaltMonitoringResultService.get_unmonitored_device_entry(dev)
+                            icswSaltMonitoringResultService.salt_host(_um_entry, device_tree, category_tree, _dev_cat_pks)
+                            device_cat_counters = icswTools.merge_count_dict(device_cat_counters, _.countBy(_um_entry.$$device_categories))
+                            host_entries.push(_um_entry)
+                    # else
+                    #    # invalidate results
+                    #    for dev_idx, watchers of watch_dict
+                    #        if dev_idx of device_tree.all_lut
+                    #            device_tree.all_lut[dev_idx].$$host_mon_result = undefined
                     for client, _result of result_dict
                         # signal clients even when no results were received
                         hosts_client = []
