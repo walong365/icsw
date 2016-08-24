@@ -55,6 +55,7 @@ from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 from initat.cluster.backbone.models.report import ReportHistory
 from initat.cluster.backbone.models import user, group
+from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
 
 from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
@@ -305,13 +306,110 @@ class DeviceReport(GenericReport):
         elif AssetType(assetrun.run_type) == AssetType.PRETTYWINHW:
             return self.report_settings["hardware_report_selected"]
 
-class PDFReportGenerator(object):
+
+class ReportGenerator(object):
+    def __init__(self, settings, _devices):
+        self.data = ""
+
+        # general settings stored under special key -1
+        self.general_settings = settings[-1]
+        self.device_settings = settings
+
+        self.devices = _devices
+        self.progress = 0
+        self.last_poll_time = None
+
+        self.report_history = ReportHistory()
+        self.report_history.save()
+        self.report_id = self.report_history.idx
+
+        self.creation_date = datetime.datetime.now()
+
+    def get_progress(self):
+        return self.progress
+
+    def get_report_data(self):
+        return self.data
+
+    def get_report_type(self):
+        pass
+
+    def _get_data_for_user_group_overview(self):
+        users = user.objects.all()
+        data = []
+
+        ac_to_str_dict = {
+            AC_READONLY: "Read-only",
+            AC_MODIFY: "Modify",
+            AC_CREATE: "Modify, Create",
+            AC_FULL: "Modify, Create, Delete"
+        }
+
+        for _user in users:
+            o = {
+                'login': _user.login,
+                'uid': _user.uid,
+                'firstname': _user.first_name,
+                'lastname': _user.last_name,
+                'email': _user.email,
+                'group': _user.group.groupname
+            }
+
+            secondary_groups_str = _user.group.groupname
+
+            for _group in _user.secondary_groups.all():
+                secondary_groups_str += ", {}".format(_group.groupname)
+
+            permission_str = "N/A"
+
+            index = 1
+            for user_permission in _user.user_permission_set.all():
+                permission_name = user_permission.csw_permission.name
+
+                new_permission_str = "{}. {}: {}".format(index, permission_name, ac_to_str_dict[user_permission.level])
+
+                if permission_str == "N/A":
+                    permission_str = new_permission_str
+                else:
+                    permission_str += "\n{}".format(new_permission_str)
+
+                index += 1
+
+            for user_object_permission in _user.user_object_permission_set.all():
+                permission_name = user_object_permission.csw_object_permission.csw_permission.name
+                device_idx = user_object_permission.csw_object_permission.object_pk
+
+                _device = device.objects.get(idx=device_idx)
+
+                new_permission_str = "{}: {} for {}".format(index, permission_name,
+                                                            ac_to_str_dict[user_permission.level],
+                                                            _device.full_name)
+
+                if permission_str == "N/A":
+                    permission_str = new_permission_str
+                else:
+                    permission_str += "\n{}".format(new_permission_str)
+
+                index += 1
+
+            o['secondary_groups'] = secondary_groups_str
+            o['permissions'] = permission_str
+
+            data.append(o)
+
+        return data
+
+
+class PDFReportGenerator(ReportGenerator):
     class Bookmark(object):
         def __init__(self, name, pagenum):
             self.name = name
             self.pagenum = pagenum
 
     def __init__(self, settings, _devices):
+        super(PDFReportGenerator, self).__init__(settings, _devices)
+
+        ## logo and styling options/settings
         system_device = None
         for _device in device.objects.all():
             if _device.is_cluster_device_group():
@@ -319,13 +417,6 @@ class PDFReportGenerator(object):
                 break
 
         report_logo = system_device.device_variable_set.filter(name="__REPORT_LOGO__")
-
-        self._devices = _devices
-
-        self.settings = settings
-        self.general_settings = settings[-1]
-        self.device_settings = settings
-        self.last_poll_time = None
         self.logo_width = None
         self.logo_height = None
         self.logo_buffer = BytesIO()
@@ -353,15 +444,11 @@ class PDFReportGenerator(object):
             logo = PILImage.new('RGB', (255, 255), "black")  # create a new black image
             logo.save(self.logo_buffer, format="BMP")
 
-        self.reports = []
-        self.device_reports = []
-        self.current_page_num = 0
-
-        self.progress = 0
-        self.buffer = None
-
         self.page_format = eval(self.general_settings["pdf_page_format"])
         self.margin = 36
+
+        self.standard_font = "Open-Sans"
+        self.bold_font = "Open-Sans-Bold"
 
         self.cluster_id = "Unknown"
         cluster_id_var = system_device.device_variable_set.filter(name="CLUSTER_ID")
@@ -369,16 +456,14 @@ class PDFReportGenerator(object):
             cluster_id_var = cluster_id_var[0]
             self.cluster_id = cluster_id_var.val_str
 
+        ## Storage dicts / lists
         self.sections = {}
+        self.reports = []
+        self.device_reports = []
+        self.current_page_num = 0
 
-        self.creation_date = datetime.datetime.now()
-
-        self.report_history = ReportHistory()
-        self.report_history.save()
-        self.report_id = self.report_history.idx
-
-        self.standard_font = "Open-Sans"
-        self.bold_font = "Open-Sans-Bold"
+    def get_report_type(self):
+        return "pdf"
 
     def __generate_section_number(self, *sections):
         root_section = self.sections
@@ -394,17 +479,6 @@ class PDFReportGenerator(object):
             root_section = root_section[section]
 
         return version_str[1:]
-
-    def get_progress(self):
-        return self.progress
-
-    def get_report_data(self):
-        if self.buffer:
-            return self.buffer.getvalue()
-        return ""
-
-    def get_report_type(self):
-        return "pdf"
 
     def __get_logo_helper(self, value):
         _tmp_file = tempfile.NamedTemporaryFile()
@@ -502,7 +576,7 @@ class PDFReportGenerator(object):
         _buffer = BytesIO()
         canvas = Canvas(_buffer, self.page_format)
 
-        data = _generate_hardware_info_data_dict(self._devices, self.general_settings["assetbatch_selection_mode"])
+        data = _generate_hardware_info_data_dict(self.devices, self.general_settings["assetbatch_selection_mode"])
 
         data = sorted(data, key=lambda k: k['group'])
         if data:
@@ -592,7 +666,7 @@ class PDFReportGenerator(object):
             self.reports.append(report)
             self.current_page_num += rpt.pagenumber
 
-    def generate_device_report(self, _device, report_settings):
+    def __generate_device_report(self, _device, report_settings):
         device_report = DeviceReport(_device, report_settings)
         self.device_reports.append(device_report)
 
@@ -1397,19 +1471,19 @@ class PDFReportGenerator(object):
 
         output_buffer = BytesIO()
         output_pdf.write(output_buffer)
-        self.buffer = output_buffer
+        self.data = output_buffer.getvalue()
 
         # create report history entry
         _user = user.objects.get(idx=self.general_settings["user_idx"])
         self.report_history.created_by_user = _user
         self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
         self.report_history.number_of_pages = output_pdf.getNumPages()
-        self.report_history.size = len(self.buffer.getvalue())
+        self.report_history.size = len(self.data)
         self.report_history.type = self.get_report_type()
         self.report_history.generate_filename()
         self.report_history.save()
 
-        self.report_history.write_data(self.buffer.getvalue())
+        self.report_history.write_data(self.data)
 
         self.progress = -1
 
@@ -1594,7 +1668,7 @@ class PDFReportGenerator(object):
         elements.append(Spacer(1, 30))
         elements.append(t_body)
 
-        if self._devices:
+        if self.devices:
             elements.append(Spacer(1, 30))
             elements.append(t_config)
 
@@ -1748,77 +1822,12 @@ class PDFReportGenerator(object):
         return output
 
     def __generate_user_group_overview_report(self):
-        from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
-
-        ac_to_str_dict = {
-            AC_READONLY: "Read-only",
-            AC_MODIFY: "Modify",
-            AC_CREATE: "Modify, Create",
-            AC_FULL: "Modify, Create, Delete"
-        }
-
         report = GenericReport()
 
         _buffer = BytesIO()
         canvas = Canvas(_buffer, (self.page_format))
 
-        users = user.objects.all()
-        data = []
-
-        for _user in users:
-            o = {
-                'login': _user.login,
-                'uid': _user.uid,
-                'firstname': _user.first_name,
-                'lastname': _user.last_name,
-                'email': _user.email,
-                'group': _user.group.groupname
-            }
-
-            secondary_groups_str = _user.group.groupname
-
-            for _group in _user.secondary_groups.all():
-                secondary_groups_str += ", {}".format(_group.groupname)
-
-
-            permission_str = "N/A"
-
-            index = 1
-            for user_permission in _user.user_permission_set.all():
-                permission_name = user_permission.csw_permission.name
-
-                new_permission_str = "{}. {}: {}".format(index, permission_name, ac_to_str_dict[user_permission.level])
-
-                if permission_str == "N/A":
-                    permission_str = new_permission_str
-                else:
-                    permission_str += "\n{}".format(new_permission_str)
-
-                index += 1
-
-            for user_object_permission in _user.user_object_permission_set.all():
-                permission_name = user_object_permission.csw_object_permission.csw_permission.name
-                device_idx = user_object_permission.csw_object_permission.object_pk
-
-                _device = device.objects.get(idx=device_idx)
-
-                new_permission_str = "{}: {} for {}".format(index, permission_name,
-                                                            ac_to_str_dict[user_permission.level],
-                                                            _device.full_name)
-
-
-                if permission_str == "N/A":
-                    permission_str = new_permission_str
-                else:
-                    permission_str += "\n{}".format(new_permission_str)
-
-                index += 1
-
-
-            o['secondary_groups'] = secondary_groups_str
-            o['permissions'] = permission_str
-
-            data.append(o)
+        data = self._get_data_for_user_group_overview()
 
         data = sorted(data, key=lambda k: (k['group'], k['login']))
         if data:
@@ -1864,7 +1873,7 @@ class PDFReportGenerator(object):
             self.__generate_user_group_overview_report()
 
         group_device_dict = {}
-        for _device in self._devices:
+        for _device in self.devices:
             _group_name = _device.device_group_name()
             if _group_name not in group_device_dict:
                 group_device_dict[_group_name] = []
@@ -1876,8 +1885,8 @@ class PDFReportGenerator(object):
             for _device in sorted(group_device_dict[_group_name], key=lambda _device: _device.full_name):
                 if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
                     return
-                self.generate_device_report(_device, self.device_settings[_device.idx])
-                self.progress = int((float(idx) / len(self._devices)) * 10)
+                self.__generate_device_report(_device, self.device_settings[_device.idx])
+                self.progress = int((float(idx) / len(self.devices)) * 10)
                 idx += 1
 
         self.progress = 10
@@ -1885,24 +1894,7 @@ class PDFReportGenerator(object):
         self.finalize_pdf()
 
 
-class XlsxReportGenerator(object):
-    def __init__(self, device_settings, _devices):
-        self.data = ""
-        self.device_settings = device_settings
-        # general settings stored under special key -1
-        self.general_settings = device_settings[-1]
-        self.devices = _devices
-        self.progress = 0
-
-        self.report_history = ReportHistory()
-        self.report_history.save()
-        self.report_id = self.report_history.idx
-
-        self.creation_date = datetime.datetime.now()
-
-    def get_report_data(self):
-        return self.data
-
+class XlsxReportGenerator(ReportGenerator):
     def get_report_type(self):
         return "xlsx"
 
@@ -1919,14 +1911,17 @@ class XlsxReportGenerator(object):
 
             workbooks.append((workbook, "Device_Overview"))
 
+        if self.general_settings['user_group_overview_module_selected']:
+            workbook = self.__generate_user_group_overview_report()
 
+            workbooks.append((workbook, "User_Group_Overview"))
 
         idx = 1
         for _device in self.devices:
             workbook = Workbook()
             workbook.remove_sheet(workbook.active)
 
-            self.generate_device_overview(_device, workbook)
+            self.__generate_device_overview(_device, workbook)
             device_report = DeviceReport(_device, self.device_settings[_device.idx])
 
             selected_runs = _select_assetruns_for_device(_device,
@@ -1976,7 +1971,42 @@ class XlsxReportGenerator(object):
 
         self.progress = -1
 
-    def generate_device_overview(self, _device, workbook):
+    def __generate_user_group_overview_report(self):
+        workbook = Workbook()
+        workbook.remove_sheet(workbook.active)
+
+        sheet = workbook.create_sheet()
+        sheet.title = "Network Overview"
+
+        header_row = ["Login",
+                      "UID",
+                      "First Name",
+                      "Last Name",
+                      "Email",
+                      "Groups",
+                      "Permissions",
+                      ]
+
+        sheet.append(header_row)
+
+        data = self._get_data_for_user_group_overview()
+
+        for entry in data:
+            row = [
+                entry['login'],
+                entry['uid'],
+                entry['firstname'],
+                entry['lastname'],
+                entry['email'],
+                entry['secondary_groups'],
+                entry['permissions']
+            ]
+
+            sheet.append(row)
+
+        return workbook
+
+    def __generate_device_overview(self, _device, workbook):
         sheet = workbook.create_sheet()
 
         _title = _device.full_name
