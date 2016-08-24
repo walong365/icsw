@@ -54,7 +54,7 @@ from initat.cluster.backbone.models import device, device_variable, AssetType, P
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 from initat.cluster.backbone.models.report import ReportHistory
-from initat.cluster.backbone.models import user
+from initat.cluster.backbone.models import user, group
 
 from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
@@ -1745,12 +1745,120 @@ class PDFReportGenerator(object):
 
         return output
 
+    def __generate_user_group_overview_report(self):
+        from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
+
+        ac_to_str_dict = {
+            AC_READONLY: "Read-only",
+            AC_MODIFY: "Modify",
+            AC_CREATE: "Modify, Create",
+            AC_FULL: "Modify, Create, Delete"
+        }
+
+        report = GenericReport()
+
+        _buffer = BytesIO()
+        canvas = Canvas(_buffer, (self.page_format))
+
+        users = user.objects.all()
+        data = []
+
+        for _user in users:
+            o = {
+                'login': _user.login,
+                'uid': _user.uid,
+                'firstname': _user.first_name,
+                'lastname': _user.last_name,
+                'email': _user.email,
+                'group': _user.group.groupname
+            }
+
+            secondary_groups_str = _user.group.groupname
+
+            for _group in _user.secondary_groups.all():
+                secondary_groups_str += ", {}".format(_group.groupname)
+
+
+            permission_str = "N/A"
+
+            index = 1
+            for user_permission in _user.user_permission_set.all():
+                permission_name = user_permission.csw_permission.name
+
+                new_permission_str = "{}. {}: {}".format(index, permission_name, ac_to_str_dict[user_permission.level])
+
+                if permission_str == "N/A":
+                    permission_str = new_permission_str
+                else:
+                    permission_str += "\n{}".format(new_permission_str)
+
+                index += 1
+
+            for user_object_permission in _user.user_object_permission_set.all():
+                permission_name = user_object_permission.csw_object_permission.csw_permission.name
+                device_idx = user_object_permission.csw_object_permission.object_pk
+
+                _device = device.objects.get(idx=device_idx)
+
+                new_permission_str = "{}: {} for ".format(index, permission_name, ac_to_str_dict[user_permission.level],
+                                                          _device.full_name)
+
+
+                if permission_str == "N/A":
+                    permission_str = new_permission_str
+                else:
+                    permission_str += "\n{}".format(new_permission_str)
+
+                index += 1
+
+
+            o['secondary_groups'] = secondary_groups_str
+            o['permissions'] = permission_str
+
+            data.append(o)
+
+        data = sorted(data, key=lambda k: (k['group'], k['login']))
+        if data:
+            section_number = self.__generate_section_number("General", "Users")
+            report.generate_bookmark("Users")
+
+            rpt = PollyReportsReport(data)
+            rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
+                                              getvalue=lambda x: x['group'],
+                                              format=lambda x: "Group: {}".format(x)), ],
+                                     getvalue=lambda x: x["group"])]
+
+            header_names_left = [("Login", "login", 13.0),
+                                 ("UID", "uid", 13.0),
+                                 ("First name", "firstname", 13.0),
+                                 ("Last name", "lastname", 13.0),
+                                 ("Email", "email", 13.0),
+                                 ("Groups", "secondary_groups", 13.0),
+                                 ("Permissions", "permissions", 20.0)]
+
+            header_names_right = []
+
+            self.__config_report_helper("{} Userlist".format(section_number),
+                                        header_names_left,
+                                        header_names_right, rpt, data)
+
+            rpt.generate(canvas)
+            canvas.save()
+            report.number_of_pages += rpt.pagenumber
+            report.add_to_report(_buffer)
+            self.reports.append(report)
+            self.current_page_num += rpt.pagenumber
+
+
     def generate_report(self):
         if self.general_settings["network_report_overview_module_selected"]:
             self.__generate_network_report()
 
         if self.general_settings["general_device_overview_module_selected"]:
             self.__generate_general_device_overview_report()
+
+        if self.general_settings["user_group_overview_module_selected"]:
+            self.__generate_user_group_overview_report()
 
         group_device_dict = {}
         for _device in self._devices:

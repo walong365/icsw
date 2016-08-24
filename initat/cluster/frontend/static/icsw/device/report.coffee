@@ -81,6 +81,7 @@ device_report_module = angular.module(
 
         network_report_overview_module_selected: false
         general_device_overview_module_selected: false
+        user_group_overview_module_selected: false
 
         pdf_page_format: "landscape(A4)"
 
@@ -283,6 +284,8 @@ device_report_module = angular.module(
             $scope.struct.network_report_overview_module_selected = !$scope.struct.network_report_overview_module_selected
         else if selector == 1
             $scope.struct.general_device_overview_module_selected = !$scope.struct.general_device_overview_module_selected
+        else if selector == 2
+            $scope.struct.user_group_overview_module_selected = !$scope.struct.user_group_overview_module_selected
 
     select_salt_obj = (obj, attribute, button_disabled_attribute) ->
         obj[attribute] = !obj[attribute]
@@ -411,6 +414,7 @@ device_report_module = angular.module(
             pk: -1
             network_report_overview_module_selected: $scope.struct.network_report_overview_module_selected
             general_device_overview_module_selected: $scope.struct.general_device_overview_module_selected
+            user_group_overview_module_selected: $scope.struct.user_group_overview_module_selected
             pdf_page_format: $scope.struct.pdf_page_format
             user_idx: $scope.struct.user.idx
             assetbatch_selection_mode: $scope.struct.assetbatch_selection_mode
