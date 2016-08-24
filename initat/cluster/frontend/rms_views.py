@@ -43,6 +43,7 @@ from django.views.generic import View
 from lxml.builder import E
 
 from initat.cluster.backbone.models import rms_job_run, device
+from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -341,7 +342,7 @@ class get_rms_jobinfo(View):
         _salt_addons(request)
         rms_info = _fetch_rms_info(request)
 
-        latest_possible_end_time = datetime.datetime.fromtimestamp(int(_post["jobinfo_jobsfrom"]))
+        latest_possible_end_time = cluster_timezone.localize(datetime.datetime.fromtimestamp(int(_post["jobinfo_jobsfrom"])))
         done_jobs = rms_job_run.objects.all().filter(
             Q(end_time__gt=latest_possible_end_time)
         ).select_related("rms_job")
