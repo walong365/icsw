@@ -47,7 +47,8 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
     get_vnc_enc
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
-from initat.cluster.backbone.signals import UserChanged, GroupChanged, VirtualDesktopUserSettingChanged
+from initat.cluster.backbone.signals import UserChanged, GroupChanged, VirtualDesktopUserSettingChanged, \
+    RoleChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
 
@@ -56,6 +57,9 @@ __all__ = [
     "csw_object_permission",
     "user",
     "group",
+    "Role",
+    "RolePermission",
+    "RoleObjectPermission",
     "user_device_login",
     "user_variable",
     "group_permission",
@@ -79,9 +83,28 @@ __all__ = [
 ]
 
 
+AC_MASK_READ = 0
+AC_MASK_MODIFY = 1
+AC_MASK_CREATE = 2
+AC_MASK_DELETE = 4
+
+AC_MASK_DICT = {
+    "AC_MASK_READ": AC_MASK_READ,
+    "AC_MASK_MODIFY": AC_MASK_MODIFY,
+    "AC_MASK_CREATE": AC_MASK_CREATE,
+    "AC_MASK_DELETE": AC_MASK_DELETE,
+}
+
+AC_READONLY = AC_MASK_READ
+AC_MODIFY = AC_MASK_READ | AC_MASK_MODIFY
+AC_CREATE = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE
+AC_FULL = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE | AC_MASK_DELETE
+
+
 # auth_cache structure
 class auth_cache(object):
     def __init__(self, auth_obj):
+        # auth_obj is a user or a group
         self.auth_obj = auth_obj
         self.model_name = self.auth_obj._meta.model_name
         self.cache_key = u"auth_{}_{:d}".format(
@@ -123,25 +146,28 @@ class auth_cache(object):
         # pprint.pprint(self.__model_perm_dict)
         # pprint.pprint(self.__perm_dict)
         # print self.__perm_dict.keys()
+        _q = RolePermission.objects
+        _q_obj = RoleObjectPermission.objects
+        if self.model_name == "user":
+            _q = _q.filter(Q(role__role_users=self.auth_obj))
+            _q_obj = _q_obj.filter(Q(role__role_users=self.auth_obj))
+        else:
+            _q = _q.filter(Q(role__role_groups=self.auth_obj))
+            _q_obj = _q_obj.filter(Q(role__role_groups=self.auth_obj))
         if self.has_all_perms:
             # set all perms
             for perm in csw_permission.objects.all().select_related("content_type"):
                 self.__perms[icsw_key(perm)] = AC_FULL
                 self.__model_perms[model_key(icsw_key(perm))] = AC_FULL
         else:
-            for perm in getattr(self.auth_obj, "{}_permission_set".format(self.model_name)).select_related("csw_permission__content_type"):
+            for perm in _q.select_related("csw_permission__content_type"):
                 _icsw_key = icsw_key(perm.csw_permission)
                 _model_key = model_key(_icsw_key)
                 self.__perms[_icsw_key] = perm.level
                 if _model_key not in self.__model_perms:
                     self.__model_perms[_model_key] = 0
                 self.__model_perms[_model_key] |= perm.level
-        for perm in getattr(
-            self.auth_obj,
-            "{}_object_permission_set".format(
-                self.model_name
-            )
-        ).select_related("csw_object_permission__csw_permission__content_type"):
+        for perm in _q_obj.select_related("csw_object_permission__csw_permission__content_type"):
             _icsw_key = icsw_key(perm.csw_object_permission.csw_permission)
             _model_key = model_key(_icsw_key)
             self.__obj_perms.setdefault(_icsw_key, {})[perm.csw_object_permission.object_pk] = perm.level
@@ -433,22 +459,61 @@ def user_permission_delete(sender, **kwargs):
         _cur_inst = kwargs["instance"]
         UserChanged.send(sender=_cur_inst, user=_cur_inst.user, cause="global_permission_delete")
 
-AC_MASK_READ = 0
-AC_MASK_MODIFY = 1
-AC_MASK_CREATE = 2
-AC_MASK_DELETE = 4
 
-AC_MASK_DICT = {
-    "AC_MASK_READ": AC_MASK_READ,
-    "AC_MASK_MODIFY": AC_MASK_MODIFY,
-    "AC_MASK_CREATE": AC_MASK_CREATE,
-    "AC_MASK_DELETE": AC_MASK_DELETE,
-}
+class RolePermission(models.Model):
+    idx = models.AutoField(primary_key=True)
+    role = models.ForeignKey("backbone.role")
+    csw_permission = models.ForeignKey(csw_permission)
+    level = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
 
-AC_READONLY = AC_MASK_READ
-AC_MODIFY = AC_MASK_READ | AC_MASK_MODIFY
-AC_CREATE = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE
-AC_FULL = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE | AC_MASK_DELETE
+    class Meta:
+        verbose_name = "Global permissions of Role"
+
+    def __unicode__(self):
+        return u"Permission {} for role {}".format(self.csw_permission, self.role)
+
+
+@receiver(signals.post_save, sender=RolePermission)
+def RolePermission_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        RoleChanged.send(sender=_cur_inst, user=_cur_inst.role, cause="global_permission_create")
+
+
+@receiver(signals.post_delete, sender=user_permission)
+def RolePermission_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        RoleChanged.send(sender=_cur_inst, user=_cur_inst.role, cause="global_permission_delete")
+
+
+class RoleObjectPermission(models.Model):
+    idx = models.AutoField(primary_key=True)
+    role = models.ForeignKey("backbone.role")
+    csw_object_permission = models.ForeignKey(csw_object_permission)
+    level = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Global Ooject permissions of Role"
+
+    def __unicode__(self):
+        return u"Object permission {} for role {}".format(self.csw_permission, self.role)
+
+
+@receiver(signals.post_save, sender=RoleObjectPermission)
+def RoleObjectPermission_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        RoleChanged.send(sender=_cur_inst, user=_cur_inst.role, cause="object_permission_create")
+
+
+@receiver(signals.post_delete, sender=user_permission)
+def RoleObjectPermission_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        RoleChanged.send(sender=_cur_inst, user=_cur_inst.role, cause="object_permission_delete")
 
 
 class user_object_permission(models.Model):
@@ -713,12 +778,11 @@ class user(models.Model):
     login_count = models.IntegerField(default=0)
     # login count (failed)
     login_fail_count = models.IntegerField(default=0)
-    # deprecated
-    permissions = models.ManyToManyField(csw_permission, related_name="db_user_permissions", blank=True)
-    object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_user_permissions", blank=True)
-    # new model
+    # old model
     perms = models.ManyToManyField(csw_permission, related_name="db_user_perms", blank=True, through=user_permission)
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_user_perms", blank=True, through=user_object_permission)
+    # new model, roles
+    roles = models.ManyToManyField("backbone.role", blank=True, related_name="role_users")
     is_superuser = models.BooleanField(default=False)
     db_is_auth_for_password = models.BooleanField(default=False)
     only_webfrontend = models.BooleanField(default=False)
@@ -1013,12 +1077,11 @@ class group(models.Model):
     allowed_device_groups = models.ManyToManyField("device_group", blank=True)
     # parent group
     parent_group = models.ForeignKey("self", null=True, blank=True)
-    # deprecated
-    permissions = models.ManyToManyField(csw_permission, related_name="db_group_permissions", blank=True)
-    object_permissions = models.ManyToManyField(csw_object_permission, related_name="db_group_permissions")
-    # new model
+    # old code
     perms = models.ManyToManyField(csw_permission, related_name="db_group_perms", blank=True, through=group_permission)
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_group_perms", blank=True, through=group_object_permission)
+    # new model, roles
+    roles = models.ManyToManyField("backbone.role", blank=True, related_name="role_groups")
 
     def has_perms(self, perms):
         # check if group has all of the perms
@@ -1450,3 +1513,24 @@ class UserLogEntry(models.Model):
     source = models.ForeignKey("LogSource")
     text = models.CharField(max_length=765, default="")
     date = models.DateTimeField(auto_now_add=True)
+
+
+class Role(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # creation user
+    create_user = models.ForeignKey("backbone.user", null=True)
+    # name
+    name = models.CharField(max_length=64, default="", unique=True)
+    # description
+    description = models.TextField(default="")
+    # permissions
+    perms = models.ManyToManyField(csw_permission, related_name="role_perms", blank=True, through=RolePermission)
+    # object permissions
+    object_perms = models.ManyToManyField(csw_object_permission, related_name="role_perms", blank=True, through=RoleObjectPermission)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return self.name
+
+    class Meta:
+        ordering = ("name",)

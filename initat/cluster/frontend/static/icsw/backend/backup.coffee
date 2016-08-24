@@ -335,7 +335,7 @@ angular.module(
                 "graph_setting_timeshift", "graph_setting_forecast",
             ]
 
-]).service("icswUserBackup", ["icswBackupDefinition", "icswUserGroupTools", (icswBackupDefinition, icswUserGroupTools) ->
+]).service("icswUserBackup", ["icswBackupDefinition", "icswUserGroupRoleTools", (icswBackupDefinition, icswUserGroupRoleTools) ->
 
     class icswUserBackupDefinition extends icswBackupDefinition
 
@@ -364,11 +364,11 @@ angular.module(
 
         _compare_perms: (a_list, b_list) =>
             return _.isEqual(
-                [icswUserGroupTools.get_perm_fp(a) for a in a_list]
-                [icswUserGroupTools.get_perm_fp(b) for b in b_list]
+                [icswUserGroupRoleTools.get_perm_fp(a) for a in a_list]
+                [icswUserGroupRoleTools.get_perm_fp(b) for b in b_list]
             )
 
-]).service("icswGroupBackup", ["icswBackupDefinition", "icswUserGroupTools", (icswBackupDefinition, icswUserGroupTools) ->
+]).service("icswGroupBackup", ["icswBackupDefinition", "icswUserGroupRoleTools", (icswBackupDefinition, icswUserGroupRoleTools) ->
 
     class icswGroupBackupDefinition extends icswBackupDefinition
 
@@ -394,8 +394,8 @@ angular.module(
 
         _compare_perms: (a_list, b_list) =>
             return _.isEqual(
-                [icswUserGroupTools.get_perm_fp(a) for a in a_list]
-                [icswUserGroupTools.get_perm_fp(b) for b in b_list]
+                [icswUserGroupRoleTools.get_perm_fp(a) for a in a_list]
+                [icswUserGroupRoleTools.get_perm_fp(b) for b in b_list]
             )
 
 ]).service("icswMonPeriodBackup", ["icswBackupDefinition", (icswBackupDefinition) ->

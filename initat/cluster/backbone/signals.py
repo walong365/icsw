@@ -1,3 +1,6 @@
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,10 +29,12 @@ __all__ = [
     "BootsettingsChanged",
     "VirtualDesktopUserSettingChanged",
     "SensorThresholdChanged",
+    "RoleChanged",
 ]
 
 UserChanged = django.dispatch.Signal(providing_args=["user", "cause"])
 GroupChanged = django.dispatch.Signal(providing_args=["group", "cause"])
+RoleChanged = django.dispatch.Signal(providing_args=["role", "cause"])
 # fired when the bootsettings of a device changes
 BootsettingsChanged = django.dispatch.Signal(providing_args=["device", "cause"])
 VirtualDesktopUserSettingChanged = django.dispatch.Signal(providing_args=["vdus", "cause"])

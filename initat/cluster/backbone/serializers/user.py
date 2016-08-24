@@ -26,11 +26,14 @@ from rest_framework import serializers
 from initat.cluster.backbone.models import group, user, csw_permission, group_permission, csw_object_permission, \
     group_object_permission, user_permission, user_object_permission, user_quota_setting, \
     group_quota_setting, user_scan_result, user_scan_run, virtual_desktop_protocol, virtual_desktop_user_setting, \
-    window_manager, UserLogEntry, user_variable
+    window_manager, UserLogEntry, user_variable, Role, RolePermission, RoleObjectPermission
 
 __all__ = [
     "csw_permission_serializer",
     "csw_object_permission_serializer",
+    "RoleSerializer",
+    "RolePermissionSerializer",
+    "RoleObjectPermissionSerializer",
     "user_serializer",
     "user_flat_serializer",
     "group_serializer",
@@ -66,6 +69,18 @@ class csw_permission_serializer(serializers.ModelSerializer):
 class csw_object_permission_serializer(serializers.ModelSerializer):
     class Meta:
         model = csw_object_permission
+
+
+class RolePermissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = RolePermission
+
+
+class RoleObjectPermissionSerializer(serializers.ModelSerializer):
+    csw_object_permission = csw_object_permission_serializer()
+
+    class Meta:
+        model = RoleObjectPermission
 
 
 class group_permission_serializer(serializers.ModelSerializer):
@@ -194,6 +209,14 @@ class group_serializer(serializers.ModelSerializer):
             "allowed_device_groups", "group_permission_set", "group_object_permission_set",
             "group_quota_setting_set",
         )
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    perms_set = RolePermissionSerializer(many=True, read_only=True)
+    object_perms_set = RoleObjectPermissionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Role
 
 
 class virtual_desktop_user_setting_serializer(serializers.ModelSerializer):

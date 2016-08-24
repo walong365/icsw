@@ -622,12 +622,12 @@ package_module = angular.module(
 ]).controller("icswPackageInstallSearchController",
 [
     "$scope", "$templateCache", "icswUserService", "ICSW_URLS", "icswSimpleAjaxCall", "Restangular",
-    "blockUI", "$rootScope", "ICSW_SIGNALS", "icswUserGroupTreeService",
+    "blockUI", "$rootScope", "ICSW_SIGNALS", "icswUserGroupRoleTreeService",
     "$timeout", "$q", "icswPackageInstallSearchTreeService",
     "icswToolsSimpleModalService", "icswComplexModalService", "$compile", "toaster",
 (
     $scope, $templateCache, icswUserService, ICSW_URLS, icswSimpleAjaxCall, Restangular,
-    blockUI, $rootScope, ICSW_SIGNALS, icswUserGroupTreeService,
+    blockUI, $rootScope, ICSW_SIGNALS, icswUserGroupRoleTreeService,
     $timeout, $q, icswPackageInstallSearchTreeService,
     icswToolsSimpleModalService, icswComplexModalService, $compile, toaster,
 ) ->
@@ -679,7 +679,7 @@ package_module = angular.module(
     load = (reload) ->
         _w_list = [
             icswUserService.load($scope.$id)
-            icswUserGroupTreeService.load($scope.$id)
+            icswUserGroupRoleTreeService.load($scope.$id)
         ]
         if reload
             _w_list.push(icswPackageInstallSearchTreeService.reload($scope.$id))

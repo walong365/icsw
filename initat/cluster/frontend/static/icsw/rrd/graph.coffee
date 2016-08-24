@@ -147,14 +147,14 @@ angular.module(
     "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTree", "icswSimpleAjaxCall",
     "icswParseXMLResponseService", "toaster", "icswCachingCall", "icswUserService",
     "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
-    "icswUserGroupTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
+    "icswUserGroupRoleTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
     "icswRRDGraphBasicSetting", "icswTimeFrameService", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTree, icswSimpleAjaxCall,
     icswParseXMLResponseService, toaster, icswCachingCall, icswUserService,
     icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
-    icswUserGroupTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
+    icswUserGroupRoleTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
     icswRRDGraphBasicSetting, icswTimeFrameService, ICSW_SIGNALS,
 ) ->
         moment().utc()
@@ -244,7 +244,7 @@ angular.module(
                 [
                     icswUserService.load($scope.$id)
                     icswDeviceTreeService.load($scope.$id)
-                    icswUserGroupTreeService.load($scope.$id),
+                    icswUserGroupRoleTreeService.load($scope.$id),
                     icswSavedSelectionService.load_selections($scope.$id),
                     icswRRDGraphUserSettingService.load($scope.$id),
                 ]

@@ -14,14 +14,16 @@
 </script>
 
 <script type="text/ng-template" id="icsw/main/user/tree.html">
-    <div ng-controller="icswUserGroupTreeCtrl">
+    <div ng-controller="icswUserGroupRoleTreeCtrl">
         <div ng-if="struct.error_string">
             <div uib-alert class="alert-warning">{{ struct.error_string }}</div>
         </div>
         <uib-tabset ng-if="struct.tree_loaded">
             <uib-tab>
                 <uib-tab-heading>
-                    User ({{ struct.user_group_tree.user_list.length }}) / Group ({{ struct.user_group_tree.group_list.length }}) Tree
+                    User ({{ struct.user_group_tree.user_list.length }}) /
+                    Group ({{ struct.user_group_tree.group_list.length }}) /
+                    Role ({{ struct.user_group_tree.role_list.length }}) Tree
                 </uib-tab-heading>
                 <div class="form-inline">
                     <input type="text" class="form-control" ng-model="struct.filterstr" placeholder="filter ..." ng-change="update_filter()"/>
@@ -42,8 +44,8 @@
                 <icsw-group-edit
                     icsw-group="edit_group"
                     icsw-permission-tree="struct.perm_tree"
-                    icsw-user-group-tree="struct.user_group_tree"
-                    icsw-user-group-settings-tree="struct.ugs_tree"
+                    icsw-user-group-role-tree="struct.user_group_tree"
+                    icsw-user-group-role-settings-tree="struct.ugs_tree"
                     icsw-device-tree="struct.device_tree"
                 ></icsw-group-edit>
             </uib-tab>
@@ -56,8 +58,8 @@
                 <icsw-user-edit
                     icsw-user="edit_user"
                     icsw-permission-tree="struct.perm_tree"
-                    icsw-user-group-tree="struct.user_group_tree"
-                    icsw-user-group-settings-tree="struct.ugs_tree"
+                    icsw-user-group-role-tree="struct.user_group_tree"
+                    icsw-user-group-role-settings-tree="struct.ugs_tree"
                     icsw-device-tree="struct.device_tree"
                 ></icsw-user-edit>
             </uib-tab>
@@ -664,7 +666,7 @@
                             <icsw-user-quota-settings
                                 icsw-object="user"
                                 icsw-object-type="'user'"
-                                icsw-user-group-settings-tree="settings_tree">
+                                icsw-user-group-role-settings-tree="settings_tree">
                             </icsw-user-quota-settings>
                         </div>
                     </div>
@@ -768,8 +770,8 @@
                     <div class="col-sm-12">
                         <icsw-user-virtual-desktop-settings
                             icsw-user="user"
-                            icsw-user-group-tree="tree"
-                            icsw-user-group-settings-tree="settings_tree"
+                            icsw-user-group-role-tree="tree"
+                            icsw-user-group-role-settings-tree="settings_tree"
                             icsw-device-tree="device_tree"
                         ></icsw-user-virtual-desktop-settings>
                     </div>
