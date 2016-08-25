@@ -478,14 +478,14 @@ class RolePermission(models.Model):
 def RolePermission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        RoleChanged.send(sender=_cur_inst, user=_cur_inst.role, cause="global_permission_create")
+        RoleChanged.send(sender=_cur_inst, role=_cur_inst.role, cause="global_permission_create")
 
 
 @receiver(signals.post_delete, sender=user_permission)
 def RolePermission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        RoleChanged.send(sender=_cur_inst, user=_cur_inst.role, cause="global_permission_delete")
+        RoleChanged.send(sender=_cur_inst, role=_cur_inst.role, cause="global_permission_delete")
 
 
 class RoleObjectPermission(models.Model):
@@ -506,14 +506,14 @@ class RoleObjectPermission(models.Model):
 def RoleObjectPermission_save(sender, **kwargs):
     if not kwargs["raw"] and "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        RoleChanged.send(sender=_cur_inst, user=_cur_inst.role, cause="object_permission_create")
+        RoleChanged.send(sender=_cur_inst, role=_cur_inst.role, cause="object_permission_create")
 
 
 @receiver(signals.post_delete, sender=user_permission)
 def RoleObjectPermission_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
-        RoleChanged.send(sender=_cur_inst, user=_cur_inst.role, cause="object_permission_delete")
+        RoleChanged.send(sender=_cur_inst, role=_cur_inst.role, cause="object_permission_delete")
 
 
 class user_object_permission(models.Model):
@@ -1517,12 +1517,14 @@ class UserLogEntry(models.Model):
 
 class Role(models.Model):
     idx = models.AutoField(primary_key=True)
+    # active
+    active = models.BooleanField(default=True)
     # creation user
     create_user = models.ForeignKey("backbone.user", null=True)
     # name
     name = models.CharField(max_length=64, default="", unique=True)
     # description
-    description = models.TextField(default="")
+    description = models.TextField(default="", blank=True)
     # permissions
     perms = models.ManyToManyField(csw_permission, related_name="role_perms", blank=True, through=RolePermission)
     # object permissions
@@ -1534,3 +1536,18 @@ class Role(models.Model):
 
     class Meta:
         ordering = ("name",)
+
+
+@receiver(signals.post_save, sender=Role)
+def Role_post_save(sender, **kwargs):
+    if not kwargs["raw"] and "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        RoleChanged.send(sender=_cur_inst, role=_cur_inst, cause="save")
+
+
+@receiver(signals.post_delete, sender=group)
+def Role_post_delete(sender, **kwargs):
+    if "instance" in kwargs:
+        _cur_inst = kwargs["instance"]
+        RoleChanged.send(sender=_cur_inst, role=_cur_inst, cause="delete")
+

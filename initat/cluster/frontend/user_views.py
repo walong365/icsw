@@ -42,7 +42,7 @@ from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, user_object_permission, device, License, device_variable
 from initat.cluster.backbone.models.functions import db_t2000_limit
-from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer, \
+from initat.cluster.backbone.serializers import RolePermissionSerializer, RoleObjectPermissionSerializer, \
     user_variable_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.license_views import login_required_rest
