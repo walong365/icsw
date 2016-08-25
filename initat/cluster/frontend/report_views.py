@@ -540,8 +540,22 @@ class PDFReportGenerator(ReportGenerator):
 
         position = 0
 
+        deeper_rule_position = False
+
         for header_name, key, avail_width_percentage in header_names_left:
-            header_list.append(Element((position, 24), (self.standard_font, 12), text=header_name))
+            s_new = ""
+            wrap_idx = 0
+
+            for i in range(len(header_name)):
+                width = stringWidth(header_name[wrap_idx:i + 1], self.standard_font, 12)
+                if ((width / available_width) * 101.5) > avail_width_percentage:
+                    wrap_idx = i
+                    s_new += "\n"
+                    deeper_rule_position = True
+                s_new += header_name[i]
+
+
+            header_list.append(Element((position, 24), (self.standard_font, 12), text=s_new))
             detail_list.append(Element((position, 0), (self.standard_font, 6), key=key))
 
             position += available_width * (avail_width_percentage / 100.0)
@@ -573,7 +587,18 @@ class PDFReportGenerator(ReportGenerator):
         position = self.page_format[0] - (self.margin * 2)
 
         for header_name, key, avail_width_percentage in reversed(header_names_right):
-            header_list.append(Element((position, 24), (self.standard_font, 12), text=header_name, align="right"))
+            s_new = ""
+            wrap_idx = 0
+
+            for i in range(len(header_name)):
+                width = stringWidth(header_name[wrap_idx:i + 1], self.standard_font, 12)
+                if ((width / available_width) * 101.5) > avail_width_percentage:
+                    wrap_idx = i
+                    s_new += "\n"
+                    deeper_rule_position = True
+                s_new += header_name[i]
+
+            header_list.append(Element((position, 24), (self.standard_font, 12), text=s_new, align="right"))
             detail_list.append(Element((position, 0), (self.standard_font, 6), key=key, align="right"))
 
             position -= available_width * (avail_width_percentage / 100.0)
@@ -602,7 +627,11 @@ class PDFReportGenerator(ReportGenerator):
 
                 _dict[key] = s_new_comps
 
-        header_list.append(Rule((0, 42), self.page_format[0] - (self.margin * 2), thickness=2))
+        rule_position = 42
+        if deeper_rule_position:
+            rule_position = 60
+
+        header_list.append(Rule((0, rule_position), self.page_format[0] - (self.margin * 2), thickness=2))
         detail_list.append(Rule((0, 0), self.page_format[0] - (self.margin * 2), thickness=0.1))
 
         rpt.pageheader = Band(header_list)
