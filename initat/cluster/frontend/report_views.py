@@ -338,13 +338,6 @@ class ReportGenerator(object):
         users = user.objects.all()
         data = []
 
-        ac_to_str_dict = {
-            AC_READONLY: "Read-only",
-            AC_MODIFY: "Modify",
-            AC_CREATE: "Modify, Create",
-            AC_FULL: "Modify, Create, Delete"
-        }
-
         for _user in users:
             o = {
                 'login': _user.login,
@@ -360,39 +353,14 @@ class ReportGenerator(object):
             for _group in _user.secondary_groups.all():
                 secondary_groups_str += ", {}".format(_group.groupname)
 
-            permission_str = "N/A"
+            roles_str = "N/A"
 
-            index = 1
-            for user_permission in _user.user_permission_set.all():
-                permission_name = user_permission.csw_permission.name
-
-                new_permission_str = "{}. {}: {}".format(index, permission_name, ac_to_str_dict[user_permission.level])
-
-                if permission_str == "N/A":
-                    permission_str = new_permission_str
+            for role in _user.roles.all():
+                if roles_str == "N/A":
+                    roles_str = role.name
                 else:
-                    permission_str += "\n{}".format(new_permission_str)
+                    roles_str = "{}, {}".format(roles_str, role.name)
 
-                index += 1
-
-            for user_object_permission in _user.user_object_permission_set.all():
-                permission_name = user_object_permission.csw_object_permission.csw_permission.name
-                object_pk = user_object_permission.csw_object_permission.object_pk
-
-                content_type = user_object_permission.csw_object_permission.csw_permission.content_type
-                object = content_type.get_object_for_this_type(pk=object_pk)
-
-
-                new_permission_str = "{}: {} for {}".format(index, permission_name,
-                                                            ac_to_str_dict[user_permission.level],
-                                                            str(object))
-
-                if permission_str == "N/A":
-                    permission_str = new_permission_str
-                else:
-                    permission_str += "\n{}".format(new_permission_str)
-
-                index += 1
 
             allowed_device_group_str = "All/Any"
             for allowed_device_group in _user.allowed_device_groups.all():
@@ -405,8 +373,65 @@ class ReportGenerator(object):
 
 
             o['secondary_groups'] = secondary_groups_str
-            o['permissions'] = permission_str
+            o['roles'] = roles_str
             o['allowed_device_groups'] = allowed_device_group_str
+
+            data.append(o)
+
+        return data
+
+    def _get_data_for_user_roles_overview(self):
+        from initat.cluster.backbone.models.user import Role
+
+        ac_to_str_dict = {
+            AC_READONLY: "Read-only",
+            AC_MODIFY: "Modify",
+            AC_CREATE: "Modify, Create",
+            AC_FULL: "Modify, Create, Delete"
+        }
+
+        data = []
+
+        for role in Role.objects.all():
+            o = {
+                'name': role.name,
+                'description': role.description if role.description else "N/A"
+            }
+
+            permission_str = "N/A"
+
+            index = 1
+            for role_permission in role.rolepermission_set.all():
+                permission_name = role_permission.csw_permission.name
+
+                new_permission_str = "{}. {} [{}]".format(index, permission_name, ac_to_str_dict[role_permission.level])
+
+                if permission_str == "N/A":
+                    permission_str = new_permission_str
+                else:
+                    permission_str += "\n{}".format(new_permission_str)
+
+                index += 1
+
+            for role_object_permission in role.roleobjectpermission_set.all():
+                permission_name = role_object_permission.csw_object_permission.csw_permission.name
+                object_pk = role_object_permission.csw_object_permission.object_pk
+
+                content_type = role_object_permission.csw_object_permission.csw_permission.content_type
+                object = content_type.get_object_for_this_type(pk=object_pk)
+
+
+                new_permission_str = "{}: {} for {} [{}]".format(index, permission_name, str(object),
+                                                                 ac_to_str_dict[role_object_permission.level])
+
+                if permission_str == "N/A":
+                    permission_str = new_permission_str
+                else:
+                    permission_str += "\n{}".format(new_permission_str)
+
+                index += 1
+
+            o['permission'] = permission_str
 
             data.append(o)
 
@@ -1886,7 +1911,7 @@ class PDFReportGenerator(ReportGenerator):
         data = sorted(data, key=lambda k: (k['group'], k['login']))
         if data:
             section_number = self.__generate_section_number("General", "Userlist")
-            report.generate_bookmark("Users")
+            report.generate_bookmark("Userlist")
 
             rpt = PollyReportsReport(data)
             rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
@@ -1894,18 +1919,55 @@ class PDFReportGenerator(ReportGenerator):
                                               format=lambda x: "Group: {}".format(x)), ],
                                      getvalue=lambda x: x["group"])]
 
-            header_names_left = [("Login", "login", 10.0),
-                                 ("UID", "uid", 10.0),
-                                 ("First name", "firstname", 10.0),
-                                 ("Last name", "lastname", 10.0),
-                                 ("Email", "email", 10.0),
-                                 ("Groups", "secondary_groups", 10.0),
-                                 ("Permissions", "permissions", 20.0),
-                                 ("Allowed Device Groups", "allowed_device_groups", 20.0)]
+            header_names_left = [("Login", "login", 11.0),
+                                 ("UID", "uid", 11.0),
+                                 ("First name", "firstname", 11.0),
+                                 ("Last name", "lastname", 11.0),
+                                 ("Email", "email", 11.0),
+                                 ("Groups", "secondary_groups", 11.0),
+                                 ("Roles", "roles", 11.0),
+                                 ("Allowed Device Groups", "allowed_device_groups", 23.0)]
 
             header_names_right = []
 
             self.__config_report_helper("{} Userlist".format(section_number),
+                                        header_names_left,
+                                        header_names_right, rpt, data)
+
+            rpt.generate(canvas)
+            canvas.save()
+            report.number_of_pages += rpt.pagenumber
+            report.add_to_report(_buffer)
+            self.reports.append(report)
+            self.current_page_num += rpt.pagenumber
+
+    def __generate_user_role_overview_report(self):
+        report = GenericReport()
+
+        _buffer = BytesIO()
+        canvas = Canvas(_buffer, (self.page_format))
+
+        data = self._get_data_for_user_roles_overview()
+
+        data = sorted(data, key=lambda k: (k['name']))
+        if data:
+            section_number = self.__generate_section_number("General", "Rolelist")
+            report.generate_bookmark("Rolelist")
+
+            rpt = PollyReportsReport(data)
+
+            rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
+                                              getvalue=lambda x: x['name'][0],
+                                              format=lambda x: "Roles starting with: {}".format(x)), ],
+                                     getvalue=lambda x: x["name"][0]), ]
+
+            header_names_left = [("Name", "name", 33.0),
+                                 ("Description", "description", 33.0),
+                                 ("Permissions", "permission", 34.0)]
+
+            header_names_right = []
+
+            self.__config_report_helper("{} Rolelist".format(section_number),
                                         header_names_left,
                                         header_names_right, rpt, data)
 
@@ -1926,6 +1988,7 @@ class PDFReportGenerator(ReportGenerator):
 
         if self.general_settings["user_group_overview_module_selected"]:
             self.__generate_user_group_overview_report()
+            self.__generate_user_role_overview_report()
 
         group_device_dict = {}
         for _device in self.devices:
@@ -2039,7 +2102,7 @@ class XlsxReportGenerator(ReportGenerator):
                       "Last Name",
                       "Email",
                       "Groups",
-                      "Permissions",
+                      "Roles",
                       "Allowed Device Groups"
                       ]
 
@@ -2055,7 +2118,7 @@ class XlsxReportGenerator(ReportGenerator):
                 entry['lastname'],
                 entry['email'],
                 entry['secondary_groups'],
-                entry['permissions'],
+                entry['roles'],
                 entry['allowed_device_groups']
             ]
 
