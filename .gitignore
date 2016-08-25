@@ -1,3 +1,7 @@
 *.pyc
 *.pyo
 *~
+initat/cluster/database_calls
+initat/cluster/frontend/templates/all_urls.html
+initat/cluster/node_modules/
+initat/cluster/work/
