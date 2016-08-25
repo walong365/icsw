@@ -846,9 +846,16 @@ user_module = angular.module(
 
         get_name : (t_entry) ->
             ug = t_entry.obj
+            _if = []
             if t_entry._node_type == "r"
                 _name = ug.name
-                _if = ["All roles"]
+                if t_entry._depth == 0
+                    _if = ["All roles"]
+                else
+                    if ug.rolepermission_set.length
+                        _if.push("#{ug.rolepermission_set.length} global rights")
+                    if ug.roleobjectpermission_set.length
+                        _if.push("#{ug.roleobjectpermission_set.length} object rights")
             else if t_entry._node_type == "g"
                 _name = ug.groupname
                 _if = ["gid #{ug.gid}"]
@@ -860,7 +867,10 @@ user_module = angular.module(
                     _if.push("#{ug.roles.length} roles")
             if ! ug.active
                 _if.push("inactive")
-            return "#{_name} (" + _if.join(", ") + ")"
+            _r_str = "#{_name}"
+            if _if.length
+                _r_str = "#{_r_str} (" + _if.join(", ") + ")"
+            return _r_str
 
         get_pre_view_element: (entry) ->
             _get_icon_class = (entry) ->
@@ -1100,7 +1110,12 @@ user_module = angular.module(
             _dt = $scope.struct.display_tree
             _dt.iter(
                 (entry, cur_re) ->
-                    cmp_name = if entry._node_type == "g" then entry.obj.groupname else entry.obj.login
+                    if entry._node_type == "r"
+                        cmp_name = entry.obj.name
+                    else if entry._node_type == "g"
+                        cmp_name = entry.obj.groupname
+                    else
+                        cmp_name = entry.obj.login
                     entry.active = if cmp_name.match(cur_re) then true else false
                 cur_re
             )
@@ -1186,6 +1201,7 @@ user_module = angular.module(
         new_role = {
             $$changed: true
             name: "DummyRole"
+            description: "new role"
             active: true
             rolepermission_set: []
             roleobjectpermission_set: []
@@ -1206,8 +1222,7 @@ user_module = angular.module(
             active: true
             homestart: "/home"
             group_quota_setting_set: []
-            group_permission_set: []
-            group_object_permission_set: []
+            roles: []
         }
         $scope.add_edit_object(new_group, "group")
 
@@ -1230,8 +1245,7 @@ user_module = angular.module(
             scan_depth: 2
             secondary_groups: []
             user_quota_setting_set: []
-            user_permission_set: []
-            user_object_permission_set: []
+            roles: []
         }
         $scope.add_edit_object(new_user, "user")
 
@@ -1830,6 +1844,7 @@ user_module = angular.module(
     $scope, icswDeviceTreeService, icswUserGroupRolePermissionTreeService, $q,
     icswUserGroupRoleTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
+    console.log "o=", $scope.object
     $scope.struct = {
         # device tree
         device_tree: undefined
@@ -1929,7 +1944,8 @@ user_module = angular.module(
             (done) ->
                 _role_idxs = []
                 if $scope.object_type == "role"
-                    _role_idxs.push($scope.object.idx)
+                    if $scope.object.idx? and $scope.object.idx
+                        _role_idxs.push($scope.object.idx)
                 else
                     for role in $scope.object.roles
                         _role_idxs.push(role)
