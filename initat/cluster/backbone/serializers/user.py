@@ -156,7 +156,7 @@ class user_serializer(serializers.ModelSerializer):
             "idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
             "secondary_groups",
-            "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
+            "aliases", "db_is_auth_for_password", "is_superuser",
             "home_dir_created", "user_quota_setting_set", "info", "scan_user_home", "scan_depth",
             "only_webfrontend", "home", "user_scan_run_set", "login_name", "create_rms_user",
             "user_variable_set", "session_id", "ui_theme_selection",
@@ -183,8 +183,7 @@ class group_serializer(serializers.ModelSerializer):
         fields = (
             "groupname", "active", "gid", "idx", "parent_group",
             "homestart", "tel", "title", "email", "pager", "comment",
-            "allowed_device_groups", "roles",
-            "group_quota_setting_set",
+            "roles", "group_quota_setting_set",
         )
 
 

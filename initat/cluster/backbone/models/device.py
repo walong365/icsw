@@ -728,6 +728,12 @@ class device_group(models.Model):
         ordering = ("-cluster_device_group", "name",)
         verbose_name = u"Device group"
 
+    class CSW_Meta:
+        permissions = (
+            # also referenced in migration 0983
+            ("access_device_group", "Access to Device Group", True),
+        )
+
     def __unicode__(self):
         return u"{}{}{}".format(
             self.name,

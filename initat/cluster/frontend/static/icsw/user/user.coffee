@@ -760,6 +760,7 @@ user_module = angular.module(
                             object["#{_perm_type}_set"].push(res_info.value)
                         else
                             _.remove(object["#{_perm_type}_set"], (entry) -> return entry.idx == info_obj.idx)
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
                     defer.resolve("done")
             )
             return defer.promise
@@ -820,7 +821,7 @@ user_module = angular.module(
         return _fetch_dict[client]
 
     return {
-        "load": (client) ->
+        load: (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise
@@ -1161,7 +1162,9 @@ user_module = angular.module(
         )
 
     $scope.$on(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), ($event, object, obj_type) ->
-        if obj_type == "group"
+        if obj_type == "role"
+            $scope.close_role(object)
+        else if obj_type == "group"
             $scope.close_group(object)
         else
             $scope.close_user(object)
@@ -1624,6 +1627,15 @@ user_module = angular.module(
                             group: ""
                         }
                     )
+            else if key == "backbone.device_group"
+                for entry in $scope.device_tree.group_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.name
+                            group: ""
+                        }
+                    )
             else
                 console.error "unknown OLP-key '#{key}'"
             $scope.obj_list_cache[key] = _list
@@ -1689,7 +1701,7 @@ user_module = angular.module(
         return icswUserGroupRoleTools.changed($scope.src_object)
 
     $scope.close = () ->
-        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, "role")
 
     $scope.delete = () ->
         # check for deletion of own user / group, TODO, FIXME
@@ -1873,6 +1885,15 @@ user_module = angular.module(
                         {
                             idx: entry.idx
                             name: entry.groupname
+                            group: ""
+                        }
+                    )
+            else if key == "backbone.device_group"
+                for entry in $scope.struct.device_tree.group_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.name
                             group: ""
                         }
                     )
