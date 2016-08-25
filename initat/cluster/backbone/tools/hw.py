@@ -73,12 +73,15 @@ class HardwareBase(object):
         for (prop_name, (xpath_expr, func)) in self.LSHW_ELEMENTS.items():
             try:
                 element = lshw_tree.xpath(xpath_expr)[0]
-                value = element.text
-                if func:
-                    value = func(value)
-                setattr(self, prop_name, value)
             except IndexError:
-                pass
+                continue
+            try:
+                value = element.text
+            except AttributeError:
+                value = element
+            if func:
+                value = func(value)
+            setattr(self, prop_name, value)
 
     def _populate_win32(self, win32_tree):
         for (prop_name, (dict_key, func)) in self.WIN32_ELEMENTS.items():
@@ -94,6 +97,7 @@ class HardwareCPU(HardwareBase):
         'vendor': ('vendor', None),
         'version': ('version', None),
         'serial': ('serial', None),
+        'number_of_cores': ("configuration/setting[@id='cores']/@value", int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394373%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
@@ -101,6 +105,7 @@ class HardwareCPU(HardwareBase):
         'vendor': ('Manufacturer', None),
         'version': ('Version', None),
         'serial': ('ProcessorId', None),
+        'number_of_cores': ('NumberOfCores', int),
     }
 
     def __init__(self, lshw_tree=None, win32_tree=None):
@@ -108,6 +113,7 @@ class HardwareCPU(HardwareBase):
         self.vendor = None
         self.version = None
         self.serial = None
+        self.number_of_cores = None
         super(HardwareCPU, self).__init__(lshw_tree, win32_tree)
 
 
