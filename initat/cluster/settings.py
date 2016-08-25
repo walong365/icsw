@@ -200,7 +200,7 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
         pass
 
 # where to store PDF Files
-REPORT_DATA_STORAGE_DIR = os.path.join(STATIC_ROOT, "ReportData")
+REPORT_DATA_STORAGE_DIR = os.path.join("/tmp/", ".icswReportData")
 if not os.path.exists(REPORT_DATA_STORAGE_DIR):
     os.mkdir(REPORT_DATA_STORAGE_DIR)
 
