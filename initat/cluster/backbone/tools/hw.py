@@ -95,7 +95,7 @@ class HardwareCPU(HardwareBase):
         'version': ('version', None),
         'serial': ('serial', None),
     }
-
+    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394373%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
         'product': ('Description', None),
         'vendor': ('Manufacturer', None),
@@ -115,6 +115,7 @@ class HardwareMemory(HardwareBase):
     LSHW_ELEMENTS = {
         'size': ('size', int),
     }
+    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394102(v=vs.85).aspx
     WIN32_ELEMENTS = {
         'size': ('TotalPhysicalMemory', int),
     }
@@ -125,6 +126,7 @@ class HardwareDisplay(HardwareBase):
         'description': ('description', None),
         'product': ('product', None),
     }
+    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394512%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
         'description': ('Description', None),
         'product': ('VideoProcessor', None),
@@ -146,6 +148,7 @@ class HardwareHdd(HardwareBase):
         'serial': ('serial', None),
         'size': ('size', int),
     }
+    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394132%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
         'description': ('Description', None),
         'product': ('Caption', None),
@@ -172,6 +175,7 @@ class HardwareNetwork(HardwareBase):
         'mac_address': ('serial', None),
         'speed': ('size', int),
     }
+    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394216(v=vs.85).aspx
     WIN32_ELEMENTS = {
         'description': ('Description', None),
         'product': ('Caption', None),
