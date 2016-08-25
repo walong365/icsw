@@ -335,7 +335,7 @@ angular.module(
                 "graph_setting_timeshift", "graph_setting_forecast",
             ]
 
-]).service("icswUserBackup", ["icswBackupDefinition", "icswUserGroupRoleTools", (icswBackupDefinition, icswUserGroupRoleTools) ->
+]).service("icswUserBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
     class icswUserBackupDefinition extends icswBackupDefinition
 
@@ -353,13 +353,26 @@ angular.module(
             ]
             @list_attributes = [
                 "allowed_device_groups", "secondary_groups",
-                "user_permission_set", "user_object_permission_set",
+                "roles",
             ]
 
-        compare_user_permission_set: (a_list, b_list) =>
+]).service("icswRoleBackup", ["icswBackupDefinition", "icswUserGroupRoleTools", (icswBackupDefinition, icswUserGroupRoleTools) ->
+
+    class icswRoleBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "idx", "active", "name", "description", "create_user,"
+            ]
+            @list_attributes = [
+                "rolepermission_set", "roleobjectpermission_set",
+            ]
+
+        compare_rolepermission_set: (a_list, b_list) =>
             return @_compare_perms(a_list, b_list)
 
-        compare_user_object_permission_set: (a_list, b_list) =>
+        compare_roleobjectpermission_set: (a_list, b_list) =>
             return @_compare_perms(a_list, b_list)
 
         _compare_perms: (a_list, b_list) =>
@@ -368,7 +381,7 @@ angular.module(
                 [icswUserGroupRoleTools.get_perm_fp(b) for b in b_list]
             )
 
-]).service("icswGroupBackup", ["icswBackupDefinition", "icswUserGroupRoleTools", (icswBackupDefinition, icswUserGroupRoleTools) ->
+]).service("icswGroupBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
     class icswGroupBackupDefinition extends icswBackupDefinition
 
@@ -383,20 +396,8 @@ angular.module(
             ]
             @list_attributes = [
                 "allowed_device_groups",
-                "group_permission_set", "group_object_permission_set",
+                "roles",
             ]
-
-        compare_group_permission_set: (a_list, b_list) =>
-            return @_compare_perms(a_list, b_list)
-
-        compare_group_object_permission_set: (a_list, b_list) =>
-            return @_compare_perms(a_list, b_list)
-
-        _compare_perms: (a_list, b_list) =>
-            return _.isEqual(
-                [icswUserGroupRoleTools.get_perm_fp(a) for a in a_list]
-                [icswUserGroupRoleTools.get_perm_fp(b) for b in b_list]
-            )
 
 ]).service("icswMonPeriodBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
