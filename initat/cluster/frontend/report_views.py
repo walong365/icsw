@@ -377,13 +377,15 @@ class ReportGenerator(object):
 
             for user_object_permission in _user.user_object_permission_set.all():
                 permission_name = user_object_permission.csw_object_permission.csw_permission.name
-                device_idx = user_object_permission.csw_object_permission.object_pk
+                object_pk = user_object_permission.csw_object_permission.object_pk
 
-                _device = device.objects.get(idx=device_idx)
+                content_type = user_object_permission.csw_object_permission.csw_permission.content_type
+                object = content_type.get_object_for_this_type(pk=object_pk)
+
 
                 new_permission_str = "{}: {} for {}".format(index, permission_name,
                                                             ac_to_str_dict[user_permission.level],
-                                                            _device.full_name)
+                                                            str(object))
 
                 if permission_str == "N/A":
                     permission_str = new_permission_str
@@ -392,8 +394,19 @@ class ReportGenerator(object):
 
                 index += 1
 
+            allowed_device_group_str = "All/Any"
+            for allowed_device_group in _user.allowed_device_groups.all():
+                new_allowed_device_group_str = "{}".format(allowed_device_group.name)
+
+                if allowed_device_group_str == "All/Any":
+                    allowed_device_group_str = new_allowed_device_group_str
+                else:
+                    allowed_device_group_str = "{}, {}".format(allowed_device_group_str, new_allowed_device_group_str)
+
+
             o['secondary_groups'] = secondary_groups_str
             o['permissions'] = permission_str
+            o['allowed_device_groups'] = allowed_device_group_str
 
             data.append(o)
 
@@ -1660,13 +1673,54 @@ class PDFReportGenerator(ReportGenerator):
 
         t_config = Table(config_data, colWidths=[available_width * (float(1) / len(header_row)) for _ in range(len(header_row))],
                          style=[('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                                ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                                ('RIGHTPADDING', (0, 0), (-1, -1), 0)]
+                                ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                                ('BOX', (0, 0), (-1, -1), 0.5, colors.black)
+                                ]
                          )
+
+        config_data = []
+        header_row = [Paragraph('Network Overview', style_sheet["BodyText"]),
+                      Paragraph('Device Overview', style_sheet["BodyText"]),
+                      Paragraph('User/Group Overview', style_sheet["BodyText"])]
+
+        row = []
+
+        if self.general_settings['network_report_overview_module_selected']:
+            row.append(Paragraph('On', style_sheet["green font"]))
+        else:
+            row.append(Paragraph('Off', style_sheet["red font"]))
+
+        if self.general_settings['general_device_overview_module_selected']:
+            row.append(Paragraph('On', style_sheet["green font"]))
+        else:
+            row.append(Paragraph('Off', style_sheet["red font"]))
+
+        if self.general_settings['user_group_overview_module_selected']:
+            row.append(Paragraph('On', style_sheet["green font"]))
+        else:
+            row.append(Paragraph('Off', style_sheet["red font"]))
+
+        config_data.append(header_row)
+        config_data.append(row)
+        t_config_2 = Table(config_data, colWidths=[available_width * (float(1) / len(header_row)) for _ in range(len(header_row))],
+                         style=[('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                                ('LEFTPADDING', (0, 0), (-1, -1), 2),
+                                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                                ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+                                ]
+                         )
+
 
         elements.append(t_head)
         elements.append(Spacer(1, 30))
         elements.append(t_body)
+        elements.append(Spacer(1, 30))
+        elements.append(t_config_2)
+
 
         if self.devices:
             elements.append(Spacer(1, 30))
@@ -1831,7 +1885,7 @@ class PDFReportGenerator(ReportGenerator):
 
         data = sorted(data, key=lambda k: (k['group'], k['login']))
         if data:
-            section_number = self.__generate_section_number("General", "Users")
+            section_number = self.__generate_section_number("General", "Userlist")
             report.generate_bookmark("Users")
 
             rpt = PollyReportsReport(data)
@@ -1840,13 +1894,14 @@ class PDFReportGenerator(ReportGenerator):
                                               format=lambda x: "Group: {}".format(x)), ],
                                      getvalue=lambda x: x["group"])]
 
-            header_names_left = [("Login", "login", 13.0),
-                                 ("UID", "uid", 13.0),
-                                 ("First name", "firstname", 13.0),
-                                 ("Last name", "lastname", 13.0),
-                                 ("Email", "email", 13.0),
-                                 ("Groups", "secondary_groups", 13.0),
-                                 ("Permissions", "permissions", 20.0)]
+            header_names_left = [("Login", "login", 10.0),
+                                 ("UID", "uid", 10.0),
+                                 ("First name", "firstname", 10.0),
+                                 ("Last name", "lastname", 10.0),
+                                 ("Email", "email", 10.0),
+                                 ("Groups", "secondary_groups", 10.0),
+                                 ("Permissions", "permissions", 20.0),
+                                 ("Allowed Device Groups", "allowed_device_groups", 20.0)]
 
             header_names_right = []
 
@@ -1985,6 +2040,7 @@ class XlsxReportGenerator(ReportGenerator):
                       "Email",
                       "Groups",
                       "Permissions",
+                      "Allowed Device Groups"
                       ]
 
         sheet.append(header_row)
@@ -1999,7 +2055,8 @@ class XlsxReportGenerator(ReportGenerator):
                 entry['lastname'],
                 entry['email'],
                 entry['secondary_groups'],
-                entry['permissions']
+                entry['permissions'],
+                entry['allowed_device_groups']
             ]
 
             sheet.append(row)
@@ -2402,7 +2459,7 @@ class ReportHistoryAvailable(View):
         return HttpResponse(
             json.dumps(
                 {
-                    'report_ids': sorted(report_ids),
+                    'report_ids': list(reversed(sorted(report_ids))),
                     'report_history': data
                 }
             )
@@ -2824,7 +2881,6 @@ def _generate_report(report_generator):
         traceback.print_exc(file=sys.stdout)
         print '-'*60
         logger.info("Report Generation failed, error was: {}".format(str(e)))
-        report_generator.buffer = BytesIO()
         report_generator.data = ""
         report_generator.progress = -1
 

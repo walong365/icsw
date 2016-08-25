@@ -63,29 +63,23 @@
                                         <th class="text-center">Network Overview</th>
                                         <th class="text-center">General Device Overview</th>
                                         <th class="text-center">User/Group Overview</th>
-                                        <th class="text-center">Dummy #3</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr>
-                                        <td width="25%">
+                                        <td width="33%">
                                             <div class="text-center">
                                                 <input type="button" ng-class="struct.network_report_overview_module_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_general_module(0)"/>
                                              </div>
                                         </td>
-                                        <td width="25%">
+                                        <td width="33%">
                                             <div class="text-center">
                                                 <input type="button" ng-class="struct.general_device_overview_module_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_general_module(1)"/>
                                              </div>
                                         </td>
-                                        <td width="25%">
+                                        <td width="33%">
                                             <div class="text-center">
                                                 <input type="button" ng-class="struct.user_group_overview_module_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_general_module(2)"/>
-                                             </div>
-                                        </td>
-                                        <td width="25%">
-                                            <div class="text-center">
-                                                <input type="button" ng-class="struct.network_report_overview_module_selected_3 && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select_general_module(0)"/>
                                              </div>
                                         </td>
                                     </tr>
@@ -127,13 +121,22 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th class="text-center" colspan=3 ng-click="select_device_modules()">Device Information Module</th>
+                                            <th class="text-center" colspan=3>Device Information Module</th>
 
                                         </tr>
                                         <tr>
                                             <th>Name</th>
-                                            <th ng-click="select_device_modules()">Selection</th>
+                                            <th>Selection</th>
                                             <th>Description</th>
+                                        </tr>
+                                        <tr>
+                                            <th>
+                                            </th>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_device_modules()" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                            <th>
+                                            </th>
                                         </tr>
                                     </thead>
 
@@ -152,14 +155,31 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th class="text-center" colspan=5 ng-click="select_software_information()">Software Information Modules</th>
+                                            <th class="text-center" colspan=5>Software Information Modules</th>
                                         </tr>
                                         <tr>
-                                            <th class="text-center" ng-click="select_column(0)">Installed Packages</th>
-                                            <th class="text-center" ng-click="select_column(1)">Available Licenses</th>
-                                            <th class="text-center" ng-click="select_column(2)">Installed Updates</th>
-                                            <th class="text-center" ng-click="select_column(3)">Available Updates</th>
-                                            <th class="text-center" ng-click="select_column(4)">Process Information</th>
+                                            <th class="text-center">Installed Packages</th>
+                                            <th class="text-center">Available Licenses</th>
+                                            <th class="text-center">Installed Updates</th>
+                                            <th class="text-center">Available Updates</th>
+                                            <th class="text-center">Process Information</th>
+                                        </tr>
+                                        <tr>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(0)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(1)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(2)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(3)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(4)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -203,13 +223,27 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th class="text-center" ng-click="select_hardware_information()" colspan=4>Hardware Information Modules</th>
+                                            <th class="text-center" colspan=4>Hardware Information Modules</th>
                                         </tr>
                                         <tr>
-                                            <th class="text-center" ng-click="select_column(5)">Hardware Report</th>
-                                            <th class="text-center" ng-click="select_column(6)">DMI Information</th>
-                                            <th class="text-center" ng-click="select_column(7)">PCI Information</th>
-                                            <th class="text-center" ng-click="select_column(8)">LSTOPO Information</th>
+                                            <th class="text-center">Hardware Report</th>
+                                            <th class="text-center">DMI Information</th>
+                                            <th class="text-center">PCI Information</th>
+                                            <th class="text-center">LSTOPO Information</th>
+                                        </tr>
+                                        <tr>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(5)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(6)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(7)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
+                                            <th>
+                                                <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(8)" value="Select" style="display: block; margin: 0 auto;"/>
+                                            </th>
                                         </tr>
                                     </thead>
 
@@ -306,6 +340,16 @@
                                 >
                                 <thead>
                                     <tr>
+                                        <td colspan="99">
+                                            <div
+                                                icsw-tools-pagination
+                                                st-items-by-page="10"
+                                                st-displayed-pages="11"
+                                                possible-items-by-page="10,20,50,100"
+                                            ></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
                                         <th>Report ID</th>
                                         <th>Generated by (user)</th>
                                         <th>Generated at (time)</th>
@@ -361,7 +405,7 @@
 <script type="text/ng-template" id="icsw.device.tree.meta.report.row">
     <td style="height:30px"><strong>{{ group.name }}</strong></td>
     <td style="height:30px">
-        <div class="btn-group btn-group-xs pull-right" ng-show="group.num_devices">
+        <div class="btn-group btn-group-xs" ng-show="group.num_devices">
             <input type="button" ng-class="get_dev_sel_class()" ng-click="change_dg_sel()" value="enabled"/>
         </div>
     </td>
