@@ -496,7 +496,7 @@ class RoleObjectPermission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "Global Ooject permissions of Role"
+        verbose_name = "Global Object permissions of Role"
 
     def __unicode__(self):
         return u"Object permission {} for role {}".format(self.csw_permission, self.role)
