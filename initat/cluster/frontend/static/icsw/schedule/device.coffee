@@ -329,12 +329,12 @@ monitoring_device_module = angular.module(
     "$scope", "icswDeviceTreeService", "$q", "icswMonitoringBasicTreeService", "icswComplexModalService",
     "$templateCache", "$compile", "icswDispatcherSettingBackup", "toaster", "blockUI", "Restangular",
     "ICSW_URLS", "icswConfigTreeService", "icswDispatcherSettingTreeService", "icswComCapabilityTreeService",
-    "icswToolsSimpleModalService", "icswUserService", "icswUserGroupTreeService",
+    "icswToolsSimpleModalService", "icswUserService", "icswUserGroupRoleTreeService",
 (
     $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
     $templateCache, $compile, icswDispatcherSettingBackup, toaster, blockUI, Restangular,
     ICSW_URLS, icswConfigTreeService, icswDispatcherSettingTreeService, icswComCapabilityTreeService,
-    icswToolsSimpleModalService, icswUserService, icswUserGroupTreeService,
+    icswToolsSimpleModalService, icswUserService, icswUserGroupRoleTreeService,
 ) ->
     $scope.struct = {
         # loading
@@ -354,7 +354,7 @@ monitoring_device_module = angular.module(
             [
                 icswDispatcherSettingTreeService.load($scope.$id)
                 icswUserService.load($scope.id)
-                icswUserGroupTreeService.load($scope.$id)
+                icswUserGroupRoleTreeService.load($scope.$id)
                 icswComCapabilityTreeService.load($scope.$id)
             ]
         ).then(
@@ -747,13 +747,13 @@ monitoring_device_module = angular.module(
     "$scope", "icswDeviceTreeService", "$q", "icswMonitoringBasicTreeService", "icswComplexModalService",
     "$templateCache", "$compile", "icswStaticAssetTemplateBackup", "toaster", "blockUI", "Restangular",
     "ICSW_URLS", "icswStaticAssetTemplateTreeService", "icswDispatcherSettingTreeService", "icswComCapabilityTreeService",
-    "icswToolsSimpleModalService", "icswUserService", "icswUserGroupTreeService", "icswStaticAssetFunctions",
+    "icswToolsSimpleModalService", "icswUserService", "icswUserGroupRoleTreeService", "icswStaticAssetFunctions",
     "icswStaticAssetTemplateFieldBackup", "$timeout",
 (
     $scope, icswDeviceTreeService, $q, icswMonitoringBasicTreeService, icswComplexModalService,
     $templateCache, $compile, icswStaticAssetTemplateBackup, toaster, blockUI, Restangular,
     ICSW_URLS, icswStaticAssetTemplateTreeService, icswDispatcherSettingTreeService, icswComCapabilityTreeService,
-    icswToolsSimpleModalService, icswUserService, icswUserGroupTreeService, icswStaticAssetFunctions,
+    icswToolsSimpleModalService, icswUserService, icswUserGroupRoleTreeService, icswStaticAssetFunctions,
     icswStaticAssetTemplateFieldBackup, $timeout,
 ) ->
     $scope.struct = {
@@ -772,7 +772,7 @@ monitoring_device_module = angular.module(
             [
                 icswStaticAssetTemplateTreeService.load($scope.$id)
                 icswUserService.load($scope.id)
-                icswUserGroupTreeService.load($scope.$id)
+                icswUserGroupRoleTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->

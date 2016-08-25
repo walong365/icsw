@@ -613,7 +613,7 @@ angular.module(
     "$q", "icswAcessLevelService", "$timeout", "$rootScope", "toaster",
     "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceTreeService",
     "icswActiveSelectionService", "icswConfigTreeService", "icswLogTreeService",
-    "icswKernelTreeService", "icswImageTreeService", "icswUserGroupTreeService",
+    "icswKernelTreeService", "icswImageTreeService", "icswUserGroupRoleTreeService",
     "icswPartitionTableTreeService", "icswNetworkTreeService", "icswBootStatusTreeService",
     "icswGlobalBootHelper", "icswDeviceTreeHelperService", "icswBootDisplayOption",
     "icswBootDisplayOptions", "blockUI", "icswComplexModalService", "icswUserService",
@@ -622,7 +622,7 @@ angular.module(
     $q, icswAcessLevelService, $timeout, $rootScope, toaster,
     icswTools, ICSW_URLS, icswSimpleAjaxCall, icswDeviceTreeService,
     icswActiveSelectionService, icswConfigTreeService, icswLogTreeService,
-    icswKernelTreeService, icswImageTreeService, icswUserGroupTreeService,
+    icswKernelTreeService, icswImageTreeService, icswUserGroupRoleTreeService,
     icswPartitionTableTreeService, icswNetworkTreeService, icswBootStatusTreeService,
     icswGlobalBootHelper, icswDeviceTreeHelperService, icswBootDisplayOption,
     icswBootDisplayOptions, blockUI, icswComplexModalService, icswUserService,
@@ -695,7 +695,7 @@ angular.module(
                 icswLogTreeService.load($scope.$id)
                 icswKernelTreeService.load($scope.$id)
                 icswImageTreeService.load($scope.$id)
-                icswUserGroupTreeService.load($scope.$id)
+                icswUserGroupRoleTreeService.load($scope.$id)
                 icswPartitionTableTreeService.load($scope.$id)
                 icswNetworkTreeService.load($scope.$id)
                 icswBootStatusTreeService.load($scope.$id)
@@ -1253,10 +1253,10 @@ angular.module(
     }
 ]).controller("icswBootMacBootlogCtrl",
 [
-    "$scope", "$timeout", "Restangular", "ICSW_URLS", "icswUserGroupTreeService", "blockUI",
+    "$scope", "$timeout", "Restangular", "ICSW_URLS", "icswUserGroupRoleTreeService", "blockUI",
     "icswSimpleAjaxCall", "$q", "icswDeviceTreeService",
 (
-    $scope, $timeout, Restangular, ICSW_URLS, icswUserGroupTreeService, blockUI,
+    $scope, $timeout, Restangular, ICSW_URLS, icswUserGroupRoleTreeService, blockUI,
     icswSimpleAjaxCall, $q, icswDeviceTreeService,
 ) ->
     $scope.struct = {
@@ -1360,7 +1360,7 @@ angular.module(
                         _order_by: "-pk"
                     }
                 )
-                icswUserGroupTreeService.load($scope.$id)
+                icswUserGroupRoleTreeService.load($scope.$id)
                 icswDeviceTreeService.load($scope.$id)
             ]
         ).then(

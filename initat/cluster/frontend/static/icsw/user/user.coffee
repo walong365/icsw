@@ -49,7 +49,7 @@ user_module = angular.module(
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.useraccount")
     icswRouteExtensionProvider.add_route("main.usertree")
-]).service("icswUserGroupTools", [() ->
+]).service("icswUserGroupRoleTools", [() ->
     return {
 
         # permission fingerprint
@@ -299,14 +299,14 @@ user_module = angular.module(
         "ICSW_USER_LOGGEDIN"
         "ICSW_USER_LOGGEDOUT"
     )
-]).service("icswUserGroupPermissionTree",
+]).service("icswUserGroupRolePermissionTree",
 [
     "$q",
 (
     $q,
 ) ->
     # permission list and objects
-    class icswUserGroupPermissionTree
+    class icswUserGroupRolePermissionTree
         constructor: (permission_list, object_level_list) ->
             @permission_list = []
             # special object list
@@ -354,13 +354,13 @@ user_module = angular.module(
                     info_str = "#{entry.name} (G)"
                 entry.info_string = info_str
 
-]).service("icswUserGroupPermissionTreeService",
+]).service("icswUserGroupRolePermissionTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
-    "icswTools", "icswUserGroupPermissionTree", "$rootScope", "ICSW_SIGNALS",
+    "icswTools", "icswUserGroupRolePermissionTree", "$rootScope", "ICSW_SIGNALS",
 (
     $q, Restangular, ICSW_URLS, $window, icswCachingCall,
-    icswTools, icswUserGroupPermissionTree, $rootScope, ICSW_SIGNALS,
+    icswTools, icswUserGroupRolePermissionTree, $rootScope, ICSW_SIGNALS,
 ) ->
     rest_map = [
         [
@@ -382,7 +382,7 @@ user_module = angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** user/group permission tree loaded ***"
-                _result = new icswUserGroupPermissionTree(data[0], data[1])
+                _result = new icswUserGroupRolePermissionTree(data[0], data[1])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
@@ -410,14 +410,14 @@ user_module = angular.module(
             else
                 return load_data(client).promise
     }
-]).service("icswUserGroupSettingsTree",
+]).service("icswUserGroupRoleSettingsTree",
 [
     "$q",
 (
     $q,
 ) ->
     # various settings for users and group
-    class icswUserGroupSettingsTree
+    class icswUserGroupRoleSettingsTree
         constructor: (
             home_export_list,
             quota_capable_blockdevice_list,
@@ -451,13 +451,13 @@ user_module = angular.module(
             @virtual_desktop_protocol_lut = _.keyBy(@virtual_desktop_protocol_list, "idx")
             @window_manager_lut = _.keyBy(@window_manager_list, "idx")
 
-]).service("icswUserGroupSettingsTreeService",
+]).service("icswUserGroupRoleSettingsTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
-    "icswTools", "icswUserGroupSettingsTree", "$rootScope", "ICSW_SIGNALS",
+    "icswTools", "icswUserGroupRoleSettingsTree", "$rootScope", "ICSW_SIGNALS",
 (
     $q, Restangular, ICSW_URLS, $window, icswCachingCall,
-    icswTools, icswUserGroupSettingsTree, $rootScope, ICSW_SIGNALS,
+    icswTools, icswUserGroupRoleSettingsTree, $rootScope, ICSW_SIGNALS,
 ) ->
     rest_map = [
         [
@@ -485,7 +485,7 @@ user_module = angular.module(
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** user/group settings tree loaded ***"
-                _result = new icswUserGroupSettingsTree(data[0], data[1], data[2], data[3])
+                _result = new icswUserGroupRoleSettingsTree(data[0], data[1], data[2], data[3])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
@@ -506,28 +506,32 @@ user_module = angular.module(
         return _fetch_dict[client]
 
     return {
-        "load": (client) ->
+        load: (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise
             else
                 return load_data(client).promise
     }
-]).service("icswUserGroupTree",
+]).service("icswUserGroupRoleTree",
 [
     "$q", "Restangular", "ICSW_URLS", "$rootScope", "ICSW_SIGNALS",
 (
     $q, Restangular, ICSW_URLS, $rootScope, ICSW_SIGNALS,
 ) ->
     # user / group tree representation
-    class icswUserGrouptree
-        constructor: (user_list, group_list, vdus_list) ->
+    class icswUserGroupRoletree
+        constructor: (user_list, group_list, role_list, vdus_list) ->
             @user_list =[]
             @group_list = []
+            @role_list = []
             @vdus_list = []
-            @update(user_list, group_list, vdus_list)
+            @update(user_list, group_list, role_list, vdus_list)
 
-        update: (user_list, group_list, vdus_list) =>
+        update: (user_list, group_list, role_list, vdus_list) =>
+            @role_list.length = 0
+            for role in role_list
+                @role_list.push(role)
             @user_list.length = 0
             @group_list.length = 0
             for user in user_list
@@ -546,9 +550,16 @@ user_module = angular.module(
             @user_lut = _.keyBy(@user_list, "idx")
             @group_lut = _.keyBy(@group_list, "idx")
             @vdus_lut = _.keyBy(@vdus_list, "idx")
+            @role_lut = _.keyBy(@role_list, "idx")
             @link()
 
         link: () =>
+            # link roles
+            for role in @role_list
+                for entry in role.rolepermission_set
+                    entry.$$role = role
+                for entry in role.roleobjectpermission_set
+                    entry.$$role = role
             # create usefull links
             for vdus in @vdus_list
                 @user_lut[vdus.user].vdus_list.push(vdus)
@@ -563,6 +574,10 @@ user_module = angular.module(
                 else
                     _fn = "#{user.login}"
                 user.$$long_name = _fn
+                if user.email
+                    user.$$user_email = "#{user.login} (#{user.email})"
+                else
+                    user.$$user_email = "#{user.login} (N/A)"
 
         # remove / delete calls
         delete_user: (user) =>
@@ -605,7 +620,7 @@ user_module = angular.module(
             )
             return defer.promise
 
-        # create calls for users and groups
+        # create calls for users and groups and roles
 
         create_user: (new_user) ->
             defer = $q.defer()
@@ -636,6 +651,23 @@ user_module = angular.module(
                     $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
 
                     defer.resolve(created_group)
+                (not_ok) =>
+                    defer.reject("not saved")
+            )
+            return defer.promise
+
+        create_role: (new_role) ->
+            defer = $q.defer()
+            _create_url = ICSW_URLS.REST_ROLE_LIST.slice(1)
+            Restangular.all(_create_url).post(new_role).then(
+                (created_role) =>
+                    @role_list.push(created_role)
+                    @build_luts()
+
+                    # send signal
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
+
+                    defer.resolve(created_role)
                 (not_ok) =>
                     defer.reject("not saved")
             )
@@ -677,20 +709,32 @@ user_module = angular.module(
             )
             return defer.promise
 
-        modify_user_permissions: (user, add_perms, rem_perms) ->
-            return @_modify_perms(user, add_perms, rem_perms, "user", "user_permission")
+        modify_role: (role) ->
+            defer = $q.defer()
+            _modify_url = ICSW_URLS.REST_ROLE_DETAIL.slice(1).slice(0, -2)
+            Restangular.restangularizeElement(null, role, _modify_url)
+            role.put().then(
+                (saved_role) =>
+                    @build_luts()
 
-        modify_user_object_permissions: (user, add_perms, rem_perms) ->
-            return @_modify_perms(user, add_perms, rem_perms, "user", "user_object_permission")
+                    # send signal
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
 
-        modify_group_permissions: (group, add_perms, rem_perms) ->
-            return @_modify_perms(group, add_perms, rem_perms, "group", "group_permission")
+                    defer.resolve("saved")
+                (not_ok) =>
+                    defer.reject("not saved")
+            )
+            return defer.promise
 
-        modify_group_object_permissions: (group, add_perms, rem_perms) ->
-            return @_modify_perms(group, add_perms, rem_perms, "group", "group_object_permission")
+        modify_role_permissions: (role, add_perms, rem_perms) ->
+            return @_modify_perms(role, add_perms, rem_perms, "role", "role_permission")
+
+        modify_role_object_permissions: (role, add_perms, rem_perms) ->
+            return @_modify_perms(role, add_perms, rem_perms, "role", "role_object_permission")
 
         _modify_perms: (object, add_perms, rem_perms, obj_type, perm_type) =>
             defer = $q.defer()
+            # only working for role
             _modify_url = ICSW_URLS["REST_" + _.toUpper(perm_type) + "_DETAIL"].slice(1).slice(0, -2)
             _create_url = ICSW_URLS["REST_" + _.toUpper(perm_type) + "_LIST"].slice(1)
             (Restangular.restangularizeElement(null, rem_perm, _modify_url) for rem_perm in rem_perms)
@@ -699,6 +743,7 @@ user_module = angular.module(
             _call_info = []
             for add_perm in add_perms
                 add_perm[obj_type] = object.idx
+                console.log add_perm
                 _calls.push(Restangular.all(_create_url).post(add_perm))
                 _call_info.push(["add", add_perm])
             for rem_perm in rem_perms
@@ -710,21 +755,22 @@ user_module = angular.module(
             ).then(
                 (data) ->
                     for [res_info, [info_str, info_obj]] in _.zip(data, _call_info)
+                        _perm_type = _.replace(_.replace(perm_type, "_", ""), "_", "")
                         if info_str == "add"
-                            object["#{perm_type}_set"].push(res_info.value)
+                            object["#{_perm_type}_set"].push(res_info.value)
                         else
-                            _.remove(object["#{perm_type}_set"], (entry) -> return entry.idx == info_obj.idx)
+                            _.remove(object["#{_perm_type}_set"], (entry) -> return entry.idx == info_obj.idx)
                     defer.resolve("done")
             )
             return defer.promise
 
-]).service("icswUserGroupTreeService",
+]).service("icswUserGroupRoleTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
-    "icswTools", "icswUserGroupTree", "$rootScope", "ICSW_SIGNALS",
+    "icswTools", "icswUserGroupRoleTree", "$rootScope", "ICSW_SIGNALS",
 (
     $q, Restangular, ICSW_URLS, $window, icswCachingCall,
-    icswTools, icswUserGroupTree, $rootScope, ICSW_SIGNALS,
+    icswTools, icswUserGroupRoleTree, $rootScope, ICSW_SIGNALS,
 ) ->
     rest_map = [
         [
@@ -732,6 +778,9 @@ user_module = angular.module(
         ]
         [
             ICSW_URLS.REST_GROUP_LIST, {}
+        ]
+        [
+            ICSW_URLS.REST_ROLE_LIST, {}
         ]
         [
             ICSW_URLS.REST_VIRTUAL_DESKTOP_USER_SETTING_LIST, {}
@@ -748,8 +797,8 @@ user_module = angular.module(
         _defer = $q.defer()
         $q.all(_wait_list).then(
             (data) ->
-                console.log "*** user/group tree loaded ***"
-                _result = new icswUserGroupTree(data[0], data[1], data[2])
+                console.log "*** user/group/role tree loaded ***"
+                _result = new icswUserGroupRoleTree(data[0], data[1], data[2], data[3])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients
@@ -778,14 +827,14 @@ user_module = angular.module(
             else
                 return load_data(client).promise
     }
-]).service("icswUserGroupDisplayTree",
+]).service("icswUserGroupRoleDisplayTree",
 [
     "icswReactTreeConfig",
 (
     icswReactTreeConfig
 ) ->
     {span} = React.DOM
-    class icswUserGroupDisplayTree extends icswReactTreeConfig
+    class icswUserGroupRoleDisplayTree extends icswReactTreeConfig
         constructor: (@scope, args) ->
             super(args)
             @init_feed()
@@ -796,19 +845,27 @@ user_module = angular.module(
 
         get_name : (t_entry) ->
             ug = t_entry.obj
-            if t_entry._node_type == "g"
+            if t_entry._node_type == "r"
+                _name = ug.name
+                _if = ["All roles"]
+            else if t_entry._node_type == "g"
                 _name = ug.groupname
                 _if = ["gid #{ug.gid}"]
             else
                 _name = ug.login
                 _if = ["uid #{ug.uid}"]
+            if ug.roles?
+                if ug.roles.length
+                    _if.push("#{ug.roles.length} roles")
             if ! ug.active
                 _if.push("inactive")
             return "#{_name} (" + _if.join(", ") + ")"
 
         get_pre_view_element: (entry) ->
             _get_icon_class = (entry) ->
-                if entry._node_type == "u"
+                if entry._node_type == "r"
+                    return "fa fa-bell"
+                else if entry._node_type == "u"
                     if entry.obj.is_superuser
                         return "fa fa-user-plus"
                     else
@@ -823,15 +880,16 @@ user_module = angular.module(
                 )
                 " "
             ]
-            if entry.obj.only_webfrontend
-                _span_list.push(
-                    span(
-                        {
-                            key: "pre"
-                            className: "fa fa-genderless fa-bw"
-                        }
+            if entry._node_type == "u"
+                if entry.obj.only_webfrontend
+                    _span_list.push(
+                        span(
+                            {
+                                key: "pre"
+                                className: "fa fa-genderless fa-bw"
+                            }
+                        )
                     )
-                )
             _span_list.push(" ")
             return _span_list
 
@@ -870,22 +928,22 @@ user_module = angular.module(
             if _dir.num_files_total
                 _info.push(@scope.icswTools.get_size_str(_dir.num_files_total, 1000, "") + " files")
             return "#{_dir.name} (" + _info.join(", ") + ")"
-]).controller("icswUserGroupTreeCtrl", [
-    "icswUserGroupTreeService", "$scope", "$compile", "$q", "icswUserGroupSettingsTreeService", "blockUI",
-    "icswUserGroupPermissionTreeService", "icswUserGroupDisplayTree", "$timeout", "icswDeviceTreeService",
-    "icswUserBackup", "icswGroupBackup", "icswUserGroupTools", "ICSW_SIGNALS", "icswToolsSimpleModalService",
-    "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope",
+]).controller("icswUserGroupRoleTreeCtrl", [
+    "icswUserGroupRoleTreeService", "$scope", "$compile", "$q", "icswUserGroupRoleSettingsTreeService", "blockUI",
+    "icswUserGroupRolePermissionTreeService", "icswUserGroupRoleDisplayTree", "$timeout", "icswDeviceTreeService",
+    "icswUserBackup", "icswGroupBackup", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService",
+    "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", "icswRoleBackup",
 (
-    icswUserGroupTreeService, $scope, $compile, $q, icswUserGroupSettingsTreeService, blockUI,
-    icswUserGroupPermissionTreeService, icswUserGroupDisplayTree, $timeout, icswDeviceTreeService,
-    icswUserBackup, icswGroupBackup, icswUserGroupTools, ICSW_SIGNALS, icswToolsSimpleModalService,
-    icswSimpleAjaxCall, ICSW_URLS, $rootScope,
+    icswUserGroupRoleTreeService, $scope, $compile, $q, icswUserGroupRoleSettingsTreeService, blockUI,
+    icswUserGroupRolePermissionTreeService, icswUserGroupRoleDisplayTree, $timeout, icswDeviceTreeService,
+    icswUserBackup, icswGroupBackup, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService,
+    icswSimpleAjaxCall, ICSW_URLS, $rootScope, icswRoleBackup,
 ) ->
     $scope.struct = {
         # any tree data valid
         tree_loaded: false
-        # user and group tree
-        user_group_tree: undefined
+        # user / group / role tree
+        ugr_tree: undefined
         # user and group settings
         ugs_tree: undefined
         # user and group permission tree
@@ -893,7 +951,7 @@ user_module = angular.module(
         # error string (info string
         error_string: ""
         # display tree
-        display_tree: new icswUserGroupDisplayTree(
+        display_tree: new icswUserGroupRoleDisplayTree(
             $scope
             {
                 show_selection_buttons: false
@@ -903,25 +961,27 @@ user_module = angular.module(
         )
         # filter string
         filterstr: ""
-        # edit groups and users
+        # edit roles, groups and users
+        edit_roles: []
         edit_groups: []
         edit_users: []
     }
 
     $scope.reload = () ->
         $scope.struct.error_string = "loading tree..."
+        $scope.struct.edit_roles.length = 0
         $scope.struct.edit_groups.length = 0
         $scope.struct.edit_users.length = 0
         $q.all(
             [
-                icswUserGroupTreeService.load($scope.$id)
-                icswUserGroupSettingsTreeService.load($scope.$id)
-                icswUserGroupPermissionTreeService.load($scope.$id)
+                icswUserGroupRoleTreeService.load($scope.$id)
+                icswUserGroupRoleSettingsTreeService.load($scope.$id)
+                icswUserGroupRolePermissionTreeService.load($scope.$id)
                 icswDeviceTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
-                $scope.struct.user_group_tree = data[0]
+                $scope.struct.ugr_tree = data[0]
                 $scope.struct.ugs_tree = data[1]
                 $scope.struct.perm_tree = data[2]
                 $scope.struct.device_tree = data[3]
@@ -951,11 +1011,33 @@ user_module = angular.module(
                             _list.push(_group)
                 return _list
 
-            _ugt = $scope.struct.user_group_tree
+            _ugt = $scope.struct.ugr_tree
             _dt = $scope.struct.display_tree
             # init tree
             _dt.clear_root_nodes()
             _dt.init_feed()
+            # add roles
+            role_entry = _dt.create_node(
+                folder: true
+                obj: {
+                    name: "Roles"
+                    active: true
+                    description: ""
+                }
+                expand: false
+                _node_type: "r"
+                always_folder: true
+            )
+            _dt.add_root_node(role_entry)
+            for entry in _ugt.role_list
+                t_entry = _dt.create_node(
+                    folder: false
+                    obj: entry
+                    expand: false
+                    _node_type: "r"
+                    always_folder: false
+                )
+                role_entry.add_child(t_entry)
             # groups to add later
             rest_list = []
             # add groups
@@ -1030,13 +1112,20 @@ user_module = angular.module(
     # edit object functions
 
     $scope.add_edit_object_from_tree = (treenode) ->
-        if treenode._node_type == "g"
+        if treenode._node_type == "r"
+            if treenode._depth
+                # do not edit top-level role
+                $scope.add_edit_object(treenode.obj, "role")
+        else if treenode._node_type == "g"
             $scope.add_edit_object(treenode.obj, "group")
         else
             $scope.add_edit_object(treenode.obj, "user")
 
     $scope.add_edit_object = (obj, obj_type) ->
-        if obj_type == "group"
+        if obj_type == "role"
+            ref_list = $scope.struct.edit_roles
+            bu_def = icswRoleBackup
+        else if obj_type == "group"
             ref_list = $scope.struct.edit_groups
             bu_def = icswGroupBackup
         else
@@ -1053,7 +1142,7 @@ user_module = angular.module(
     close_edit_object = (ref_obj, ref_list, obj_type) ->
         defer = $q.defer()
         # must use a timeout here to fix strange routing bug, FIXME, TODO
-        if icswUserGroupTools.changed(ref_obj)
+        if icswUserGroupRoleTools.changed(ref_obj)
             icswToolsSimpleModalService("Really close changed #{obj_type} ?").then(
                 (ok) ->
                     defer.resolve("close")
@@ -1078,6 +1167,9 @@ user_module = angular.module(
             $scope.close_user(object)
     )
 
+    $scope.close_role = (role_obj) ->
+        close_edit_object(role_obj, $scope.struct.edit_roles, "role")
+
     $scope.close_group = (group_obj) ->
         close_edit_object(group_obj, $scope.struct.edit_groups, "group")
 
@@ -1085,11 +1177,21 @@ user_module = angular.module(
         close_edit_object(user_obj, $scope.struct.edit_users, "user")
 
     $scope.changed = (object) ->
-        return icswUserGroupTools.changed(object)
+        return icswUserGroupRoleTools.changed(object)
+
+    $scope.create_role = () ->
+        new_role = {
+            $$changed: true
+            name: "DummyRole"
+            active: true
+            rolepermission_set: []
+            roleobjectpermission_set: []
+        }
+        $scope.add_edit_object(new_role, "role")
 
     $scope.create_group = () ->
         gid = 200
-        gids = (entry.gid for entry in $scope.struct.user_group_tree.group_list)
+        gids = (entry.gid for entry in $scope.struct.ugr_tree.group_list)
         for entry in $scope.struct.edit_groups
             gids.push(entry.gid)
         while gid in gids
@@ -1108,7 +1210,7 @@ user_module = angular.module(
 
     $scope.create_user = () ->
         uid = 200
-        uids = (entry.uid for entry in $scope.struct.user_group_tree.user_list)
+        uids = (entry.uid for entry in $scope.struct.ugr_tree.user_list)
         for entry in $scope.struct.edit_users
             uids.push(entry.uid)
         while uid in uids
@@ -1120,7 +1222,7 @@ user_module = angular.module(
             active: true
             db_is_auth_for_password: true
             password: ""
-            group: $scope.struct.user_group_tree.group_list[0].idx
+            group: $scope.struct.ugr_tree.group_list[0].idx
             shell: "/bin/bash"
             scan_depth: 2
             secondary_groups: []
@@ -1147,12 +1249,12 @@ user_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswUserService",
-    "icswUserGroupSettingsTreeService", "icswUserGroupPermissionTreeService",
+    "icswUserGroupRoleSettingsTreeService", "icswUserGroupRolePermissionTreeService",
     "icswUserGetPassword", "blockUI", "themes",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $timeout, $uibModal, ICSW_URLS, icswUserService,
-    icswUserGroupSettingsTreeService, icswUserGroupPermissionTreeService,
+    icswUserGroupRoleSettingsTreeService, icswUserGroupRolePermissionTreeService,
     icswUserGetPassword, blockUI, themes
 ) ->
     $scope.struct = {
@@ -1163,9 +1265,6 @@ user_module = angular.module(
     # for permission view, FIXME, ToDo
     $scope.perm_tree = undefined
 
-    $scope.get_perm = (perm) ->
-        return $scope.perm_tree.permission_lut[perm]
-
     $scope.update = () ->
         $scope.struct.data_valid = false
         $scope.struct.user = undefined
@@ -1175,8 +1274,8 @@ user_module = angular.module(
         $q.all(
             [
                 icswUserService.load()
-                icswUserGroupSettingsTreeService.load($scope.$id)
-                icswUserGroupPermissionTreeService.load($scope.$id)
+                icswUserGroupRoleSettingsTreeService.load($scope.$id)
+                icswUserGroupRolePermissionTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
@@ -1210,24 +1309,24 @@ user_module = angular.module(
 
     $scope.get_vdus = (idx) ->
     $scope.update()
-]).directive("icswUserEdit",
+]).directive("icswRoleEdit",
 [
     "$templateCache",
 (
-    $templateCache
+    $templateCache,
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.user.edit.form")
-        controller: "icswUserGroupEditCtrl"
+        template: $templateCache.get("icsw.role.edit.form")
+        controller: "icswRoleEditCtrl"
         scope:
-            user: "=icswUser"
-            tree: "=icswUserGroupTree"
+            role: "=icswRole"
+            tree: "=icswUserGroupRoleTree"
             perm_tree: "=icswPermissionTree"
             device_tree: "=icswDeviceTree"
-            settings_tree: "=icswUserGroupSettingsTree"
+            settings_tree: "=icswUserGroupRoleSettingsTree"
         link: (scope, element, attrs) ->
-            scope.set_type("user")
+            scope.set_type("role")
     }
 ]).directive("icswGroupEdit",
 [
@@ -1241,47 +1340,52 @@ user_module = angular.module(
         controller: "icswUserGroupEditCtrl"
         scope:
             group: "=icswGroup"
-            tree: "=icswUserGroupTree"
+            tree: "=icswUserGroupRoleTree"
             perm_tree: "=icswPermissionTree"
             device_tree: "=icswDeviceTree"
-            settings_tree: "=icswUserGroupSettingsTree"
+            settings_tree: "=icswUserGroupRoleSettingsTree"
         link: (scope, element, attrs) ->
             scope.set_type("group")
     }
+]).directive("icswUserEdit",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.user.edit.form")
+        controller: "icswUserGroupEditCtrl"
+        scope:
+            user: "=icswUser"
+            tree: "=icswUserGroupRoleTree"
+            perm_tree: "=icswPermissionTree"
+            device_tree: "=icswDeviceTree"
+            settings_tree: "=icswUserGroupRoleSettingsTree"
+        link: (scope, element, attrs) ->
+            scope.set_type("user")
+    }
 ]).controller("icswUserGroupEditCtrl",
 [
-    "$scope", "$q", "icswUserGroupTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
+    "$scope", "$q", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
     "blockUI",
 (
-    $scope, $q, icswUserGroupTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
+    $scope, $q, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
     blockUI,
 ) ->
 
     $scope.obj_list_cache = {}
     $scope.obj_lut_cache = {}
 
-    $scope.new_perm = {
-        permission: undefined
-        level: 0
-        object: undefined
-    }
-
     _set_permissions_from_src = () ->
         $scope.object = $scope.src_object.$$_ICSW_backup_data
-        if $scope.type == "user"
-            $scope.permission_set = $scope.object.user_permission_set
-            $scope.object_permission_set = $scope.object.user_object_permission_set
-        else
-            $scope.permission_set = $scope.object.group_permission_set
-            $scope.object_permission_set = $scope.object.group_object_permission_set
 
     $scope.set_type = (ug_type) ->
         $scope.type = ug_type
         if $scope.type == "user"
             # original
             $scope.src_object = $scope.user
-            # working object
-            _set_permissions_from_src()
             # check password
             if $scope.user.password.length
                 $scope.modify_ok = true
@@ -1290,8 +1394,8 @@ user_module = angular.module(
         else
             # original
             $scope.src_object = $scope.group
-            # working object
-            _set_permissions_from_src()
+        # working object
+        _set_permissions_from_src()
         if $scope.object.idx?
             $scope.create_mode = false
         else
@@ -1340,8 +1444,191 @@ user_module = angular.module(
             $scope.obj_lut_cache[key] = _.keyBy(_list, "idx")
         return $scope.obj_list_cache[key]
 
-    $scope.get_perm = (perm) ->
-        return $scope.perm_tree.permission_lut[perm]
+    $scope.object_list = () ->
+        if $scope.new_perm.permission
+            _list = []
+            # create cache
+            perm = $scope.perm_tree.permission_lut[$scope.new_perm.permission]
+            if perm.valid_for_object_level
+                return _object_list(perm.key)
+            else
+                return []
+        else
+            return []
+
+    # _enrich_permission = (perm) ->
+    #    if $scope.type == "user"
+    #        perm.user = $scope.user.idx
+    #    else
+    #        perm.group = $scope.group.idx
+
+    $scope.changed = () ->
+        return icswUserGroupRoleTools.changed($scope.src_object)
+
+    $scope.close = () ->
+        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+
+    $scope.delete = () ->
+        # check for deletion of own user / group, TODO, FIXME
+        icswToolsSimpleModalService("Really delete #{$scope.type} ?").then(
+            (doit) ->
+                blockUI.start("deleting #{$scope.type}")
+                defer = $q.defer()
+                $scope.tree["delete_#{$scope.type}"]($scope.object).then(
+                    (deleted) ->
+                        defer.resolve("ok")
+                    (not_del) ->
+                        defer.reject("not del")
+                )
+                defer.promise.then(
+                    (removed) ->
+                        blockUI.stop()
+                        $scope.src_object.$$ignore_changes = true
+                        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+                    (not_rem) ->
+                        blockUI.stop()
+                )
+        )
+
+    # create / modify functions
+    $scope.modify = () ->
+        # copy data to original object
+        bu_def = $scope.src_object.$$_ICSW_backup_def
+
+        # restore backup
+        bu_def.restore_backup($scope.src_object)
+
+        blockUI.start("updating #{$scope.type} object")
+        defer = $q.defer()
+
+        if $scope.create_mode
+            # create new object
+            $scope.tree["create_#{$scope.type}"]($scope.src_object).then(
+                (created) ->
+                    $scope.src_obejct = created
+                    defer.resolve("created")
+                (not_saved) ->
+                    defer.reject("not created")
+            )
+        else
+            $scope.tree["modify_#{$scope.type}"]($scope.src_object).then(
+                (saved) ->
+                    defer.resolve("saved")
+                (not_saved) ->
+                    defer.reject("not saved")
+            )
+        defer.promise.then(
+            (ok) ->
+                # create new backup
+                bu_def.create_backup($scope.src_object)
+                $scope.object = $scope.src_object.$$_ICSW_backup_data
+                _set_permissions_from_src()
+                if $scope.create_mode
+                    # close current tab
+                    $scope.src_object.$$ignore_changes = true
+                    $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+                blockUI.stop()
+            (not_ok) ->
+                # create new backup
+                bu_def.create_backup($scope.src_object)
+                $scope.object = $scope.src_object.$$_ICSW_backup_data
+                _set_permissions_from_src()
+                blockUI.stop()
+        )
+
+
+    # password functions
+
+    $scope.password_set = () ->
+        if $scope.object.password.length
+            return true
+        else
+            return false
+
+    $scope.change_password = () ->
+        icswUserGetPassword($scope, $scope.object).then(
+            (done) ->
+                if $scope.object.$$password_ok
+                    # copy if password is now set
+                    $scope.object.password = $scope.object.$$password
+                    $scope.modify_ok = true
+        )
+
+]).controller("icswRoleEditCtrl",
+[
+    "$scope", "$q", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
+    "blockUI",
+(
+    $scope, $q, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
+    blockUI,
+) ->
+
+    $scope.obj_list_cache = {}
+    $scope.obj_lut_cache = {}
+
+    $scope.new_perm = {
+        permission: undefined
+        level: 0
+        object: undefined
+    }
+
+    _set_permissions_from_src = () ->
+        $scope.object = $scope.src_object.$$_ICSW_backup_data
+        $scope.permission_set = $scope.object.rolepermission_set
+        $scope.object_permission_set = $scope.object.roleobjectpermission_set
+
+    $scope.set_type = (ug_type) ->
+        $scope.type = ug_type
+        $scope.src_object = $scope.role
+        _set_permissions_from_src()
+        $scope.modify_ok = true
+        if $scope.object.idx?
+            $scope.create_mode = false
+        else
+            $scope.create_mode = true
+
+    _object_list = (key) ->
+        if key not of $scope.obj_list_cache
+            _list = []
+            if key == "backbone.device"
+                for entry in $scope.device_tree.enabled_list
+                    if entry.is_meta_device
+                        if entry.is_cluster_device_group
+                            _name = "[CDG] " + entry.full_name.substr(8)
+                        else
+                            _name = "[MD] " + entry.full_name.substr(8)
+                    else
+                        _name = entry.full_name
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: _name
+                            group: "DeviceGroup " + $scope.device_tree.group_lut[entry.device_group].name
+                        }
+                    )
+            else if key == "backbone.user"
+                for entry in $scope.tree.user_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.login
+                            group: "Group " + $scope.tree.group_lut[entry.group].groupname
+                        }
+                    )
+            else if key == "backbone.group"
+                for entry in $scope.tree.group_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.groupname
+                            group: ""
+                        }
+                    )
+            else
+                console.error "unknown OLP-key '#{key}'"
+            $scope.obj_list_cache[key] = _list
+            $scope.obj_lut_cache[key] = _.keyBy(_list, "idx")
+        return $scope.obj_list_cache[key]
 
     $scope.object_list = () ->
         if $scope.new_perm.permission
@@ -1368,12 +1655,6 @@ user_module = angular.module(
         else
             return "PK #{_pk} not found for #{_perm.key}"
 
-    # _enrich_permission = (perm) ->
-    #    if $scope.type == "user"
-    #        perm.user = $scope.user.idx
-    #    else
-    #        perm.group = $scope.group.idx
-
     # create / add functions
     $scope.create_permission = () ->
         # add new global permission
@@ -1382,8 +1663,7 @@ user_module = angular.module(
             level: _np.level
             csw_permission: _np.permission
         }
-        # _enrich_permission(_new_p)
-        if icswUserGroupTools.get_perm_fp(_new_p) not in (icswUserGroupTools.get_perm_fp(_old_p) for _old_p in $scope.permission_set)
+        if icswUserGroupRoleTools.get_perm_fp(_new_p) not in (icswUserGroupRoleTools.get_perm_fp(_old_p) for _old_p in $scope.permission_set)
             $scope.permission_set.push(_new_p)
 
     $scope.create_object_permission = () ->
@@ -1396,18 +1676,18 @@ user_module = angular.module(
                 object_pk: _np.object
             }
         }
-        # _enrich_permission(_new_p)
-        if icswUserGroupTools.get_perm_fp(_new_p) not in (icswUserGroupTools.get_perm_fp(_old_p) for _old_p in $scope.object_permission_set)
+
+        if icswUserGroupRoleTools.get_perm_fp(_new_p) not in (icswUserGroupRoleTools.get_perm_fp(_old_p) for _old_p in $scope.object_permission_set)
             $scope.object_permission_set.push(_new_p)
 
     $scope.delete_permission = (perm) ->
-        _fp = icswUserGroupTools.get_perm_fp(perm)
-        _.remove($scope.permission_set, (entry) -> return _fp == icswUserGroupTools.get_perm_fp(entry))
-        _.remove($scope.object_permission_set, (entry) -> return _fp == icswUserGroupTools.get_perm_fp(entry))
+        _fp = icswUserGroupRoleTools.get_perm_fp(perm)
+        _.remove($scope.permission_set, (entry) -> return _fp == icswUserGroupRoleTools.get_perm_fp(entry))
+        _.remove($scope.object_permission_set, (entry) -> return _fp == icswUserGroupRoleTools.get_perm_fp(entry))
 
     $scope.changed = () ->
-        return icswUserGroupTools.changed($scope.src_object)
-    
+        return icswUserGroupRoleTools.changed($scope.src_object)
+
     $scope.close = () ->
         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
 
@@ -1432,25 +1712,25 @@ user_module = angular.module(
                         blockUI.stop()
                 )
         )
-        
+
     # create / modify functions
     $scope.modify = () ->
         # copy data to original object
         bu_def = $scope.src_object.$$_ICSW_backup_def
 
         # lists of permissions to delete / create
-        perm_name = "#{$scope.type}_permission_set"
-        cur_perms = (icswUserGroupTools.get_perm_fp(_perm) for _perm in $scope.src_object[perm_name])
-        new_perms = (icswUserGroupTools.get_perm_fp(_perm) for _perm in $scope.src_object.$$_ICSW_backup_data[perm_name])
-        perms_to_create = (entry for entry in $scope.src_object.$$_ICSW_backup_data[perm_name] when icswUserGroupTools.get_perm_fp(entry) not in cur_perms)
-        perms_to_remove = (entry for entry in $scope.src_object[perm_name] when icswUserGroupTools.get_perm_fp(entry) not in new_perms)
+        perm_name = "rolepermission_set"
+        cur_perms = (icswUserGroupRoleTools.get_perm_fp(_perm) for _perm in $scope.src_object[perm_name])
+        new_perms = (icswUserGroupRoleTools.get_perm_fp(_perm) for _perm in $scope.src_object.$$_ICSW_backup_data[perm_name])
+        perms_to_create = (entry for entry in $scope.src_object.$$_ICSW_backup_data[perm_name] when icswUserGroupRoleTools.get_perm_fp(entry) not in cur_perms)
+        perms_to_remove = (entry for entry in $scope.src_object[perm_name] when icswUserGroupRoleTools.get_perm_fp(entry) not in new_perms)
 
         # lists of object permissions to delete / create
-        obj_perm_name = "#{$scope.type}_object_permission_set"
-        cur_obj_perms = (icswUserGroupTools.get_perm_fp(_perm) for _perm in $scope.src_object[obj_perm_name])
-        new_obj_perms = (icswUserGroupTools.get_perm_fp(_perm) for _perm in $scope.src_object.$$_ICSW_backup_data[obj_perm_name])
-        obj_perms_to_create = (entry for entry in $scope.src_object.$$_ICSW_backup_data[obj_perm_name] when icswUserGroupTools.get_perm_fp(entry) not in cur_obj_perms)
-        obj_perms_to_remove = (entry for entry in $scope.src_object[obj_perm_name] when icswUserGroupTools.get_perm_fp(entry) not in new_obj_perms)
+        obj_perm_name = "roleobjectpermission_set"
+        cur_obj_perms = (icswUserGroupRoleTools.get_perm_fp(_perm) for _perm in $scope.src_object[obj_perm_name])
+        new_obj_perms = (icswUserGroupRoleTools.get_perm_fp(_perm) for _perm in $scope.src_object.$$_ICSW_backup_data[obj_perm_name])
+        obj_perms_to_create = (entry for entry in $scope.src_object.$$_ICSW_backup_data[obj_perm_name] when icswUserGroupRoleTools.get_perm_fp(entry) not in cur_obj_perms)
+        obj_perms_to_remove = (entry for entry in $scope.src_object[obj_perm_name] when icswUserGroupRoleTools.get_perm_fp(entry) not in new_obj_perms)
 
         # console.log perms_to_create, perms_to_remove
         # console.log obj_perms_to_create, obj_perms_to_remove
@@ -1511,25 +1791,8 @@ user_module = angular.module(
                 blockUI.stop()
         )
 
-        
-    # password functions
 
-    $scope.password_set = () ->
-        if $scope.object.password.length
-            return true
-        else
-            return false
-            
-    $scope.change_password = () ->
-        icswUserGetPassword($scope, $scope.object).then(
-            (done) ->
-                if $scope.object.$$password_ok
-                    # copy if password is now set
-                    $scope.object.password = $scope.object.$$password
-                    $scope.modify_ok = true
-        )
-
-]).directive("icswUserGroupPermissions",
+]).directive("icswUserGroupRolePermissions",
 [
     "$compile", "$templateCache",
 (
@@ -1537,8 +1800,152 @@ user_module = angular.module(
 ) ->
     return {
         restrict : "EA"
-        template : $templateCache.get("icsw.user.group.permissions")
+        template : $templateCache.get("icsw.user.group.role.permissions")
+        scope:
+            object_type: "@icswObjectType"
+            object: "=icswObject"
+            tree: "=icswUserGroupRoleTree"
+            perm_tree: "=icswPermissionTree"
+        controller: "icswUserGroupRolePermissionsCtrl"
+        link: (scope, element, attrs) ->
+            scope.start()
     }
+]).controller("icswUserGroupRolePermissionsCtrl",
+[
+    "$scope", "icswDeviceTreeService", "icswUserGroupRolePermissionTreeService", "$q",
+    "icswUserGroupRoleTreeService", "$rootScope", "ICSW_SIGNALS",
+(
+    $scope, icswDeviceTreeService, icswUserGroupRolePermissionTreeService, $q,
+    icswUserGroupRoleTreeService, $rootScope, ICSW_SIGNALS,
+) ->
+    $scope.struct = {
+        # device tree
+        device_tree: undefined
+        # permission tree
+        permission_tree: undefined
+        # user group role tree
+        ugr_tree: undefined
+        # roles to check
+        roles: []
+        # permissions
+        permissions: []
+        # object permission
+        object_permissions: []
+        # flag: any permissions defined
+        any_defined: false
+        # object list cache
+        obj_list_cache: {}
+        # object lut
+        obj_lut_cache: {}
+    }
+
+    _object_list = (key) ->
+        if key not of $scope.struct.obj_list_cache
+            _list = []
+            if key == "backbone.device"
+                for entry in $scope.struct.device_tree.enabled_list
+                    if entry.is_meta_device
+                        if entry.is_cluster_device_group
+                            _name = "[CDG] " + entry.full_name.substr(8)
+                        else
+                            _name = "[MD] " + entry.full_name.substr(8)
+                    else
+                        _name = entry.full_name
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: _name
+                            group: "DeviceGroup " + $scope.struct.device_tree.group_lut[entry.device_group].name
+                        }
+                    )
+            else if key == "backbone.user"
+                for entry in $scope.tree.user_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.login
+                            group: "Group " + $scope.struct.device_tree.group_lut[entry.group].groupname
+                        }
+                    )
+            else if key == "backbone.group"
+                for entry in $scope.tree.group_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.groupname
+                            group: ""
+                        }
+                    )
+            else
+                console.error "unknown OLP-key '#{key}'"
+            $scope.struct.obj_list_cache[key] = _list
+            $scope.struct.obj_lut_cache[key] = _.keyBy(_list, "idx")
+        return $scope.struct.obj_list_cache[key]
+
+    $scope.start = () ->
+        $scope.struct.roles.length = 0
+        $scope.struct.permissions.length = 0
+        $scope.struct.object_permissions.length = 0
+        $scope.struct.any_defined = false
+        _wait = $q.defer()
+        if not $scope.struct.device_tree?
+            $q.all(
+                [
+                    icswDeviceTreeService.load($scope.$id)
+                    icswUserGroupRolePermissionTreeService.load($scope.$id)
+                    icswUserGroupRoleTreeService.load($scope.$id)
+                ]
+            ).then(
+                (data) ->
+                    $scope.struct.device_tree = data[0]
+                    $scope.struct.permission_tree = data[1]
+                    $scope.struct.ugr_tree = data[2]
+                    _wait.resolve("done")
+            )
+        else
+            _wait.resolve("already there")
+        _wait.promise.then(
+            (done) ->
+                _role_idxs = []
+                if $scope.object_type == "role"
+                    _role_idxs.push($scope.object.idx)
+                else
+                    for role in $scope.object.roles
+                        _role_idxs.push(role)
+                for _role_idx in _role_idxs
+                    $scope.struct.roles.push($scope.struct.ugr_tree.role_lut[_role_idx])
+                for role in $scope.struct.roles
+                    for entry in role.rolepermission_set
+                        $scope.struct.permissions.push(entry)
+                        $scope.struct.any_defined = true
+                    for entry in role.roleobjectpermission_set
+                        $scope.struct.object_permissions.push(entry)
+                        $scope.struct.any_defined = true
+        )
+
+    $scope.get_perm = (perm) ->
+        return $scope.struct.permission_tree.permission_lut[perm]
+
+    $scope.get_perm_object = (perm) ->
+        _perm = $scope.get_perm(perm.csw_object_permission.csw_permission)
+        # console.log perm, _perm
+        if _perm.key not of $scope.struct.obj_lut_cache
+            # build cache
+            _object_list(_perm.key)
+        _lut = $scope.struct.obj_lut_cache[_perm.key]
+        _pk = perm.csw_object_permission.object_pk
+        if _pk of _lut
+            return _lut[_pk].name
+        else
+            return "PK #{_pk} not found for #{_perm.key}"
+
+    _remove_call = $rootScope.$on(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"), (event) ->
+        $scope.start()
+    )
+    $scope.$on("$destroy", () ->
+        _remove_call()
+    )
+
 ]).directive("icswUserQuotaSettings",
 [
     "$compile", "$templateCache", "icswTools",
@@ -1551,7 +1958,7 @@ user_module = angular.module(
         scope:
             object: "=icswObject"
             object_type: "=icswObjectType"
-            settings_tree: "=icswUserGroupSettingsTree"
+            settings_tree: "=icswUserGroupRoleSettingsTree"
         link: (scope, element, attrs) ->
             # console.log scope.object_type, scope.object
             scope.$watch("object", (new_val) ->
@@ -1797,9 +2204,9 @@ user_module = angular.module(
         template: $templateCache.get("icsw.user.vdu.settings")
         scope:
             user: "=icswUser"
-            tree: "=icswUserGroupTree"
+            tree: "=icswUserGroupRoleTree"
             device_tree: "=icswDeviceTree"
-            settings_tree: "=icswUserGroupSettingsTree"
+            settings_tree: "=icswUserGroupRoleSettingsTree"
         link: (scope, element, attrs) ->
 
             scope.available_screen_sizes = available_screen_sizes

@@ -23,22 +23,26 @@
 
 from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
-from initat.cluster.backbone.models import group, user, csw_permission, group_permission, csw_object_permission, \
-    group_object_permission, user_permission, user_object_permission, user_quota_setting, \
+
+from initat.cluster.backbone.models import group, user, csw_permission, csw_object_permission, \
+    user_quota_setting, \
     group_quota_setting, user_scan_result, user_scan_run, virtual_desktop_protocol, virtual_desktop_user_setting, \
-    window_manager, UserLogEntry, user_variable
+    window_manager, UserLogEntry, user_variable, Role, RolePermission, RoleObjectPermission
 
 __all__ = [
     "csw_permission_serializer",
     "csw_object_permission_serializer",
+    "RoleSerializer",
+    "RolePermissionSerializer",
+    "RoleObjectPermissionSerializer",
     "user_serializer",
     "user_flat_serializer",
     "group_serializer",
     "group_flat_serializer",
-    "group_permission_serializer",
-    "group_object_permission_serializer",
-    "user_permission_serializer",
-    "user_object_permission_serializer",
+    # "group_permission_serializer",
+    # "group_object_permission_serializer",
+    # "user_permission_serializer",
+    # "user_object_permission_serializer",
     "user_quota_setting_serializer",
     "group_quota_setting_serializer",
     "user_scan_run_serializer",
@@ -68,30 +72,22 @@ class csw_object_permission_serializer(serializers.ModelSerializer):
         model = csw_object_permission
 
 
-class group_permission_serializer(serializers.ModelSerializer):
+class RolePermissionSerializer(serializers.ModelSerializer):
     class Meta:
-        model = group_permission
+        model = RolePermission
 
 
-class group_object_permission_serializer(serializers.ModelSerializer):
-    # needed to resolve csw_permission
+class RoleObjectPermissionSerializer(serializers.ModelSerializer):
     csw_object_permission = csw_object_permission_serializer()
 
-    class Meta:
-        model = group_object_permission
-
-
-class user_permission_serializer(serializers.ModelSerializer):
-    class Meta:
-        model = user_permission
-
-
-class user_object_permission_serializer(serializers.ModelSerializer):
-    # needed to resolve csw_permission
-    csw_object_permission = csw_object_permission_serializer()
+    def create(self, validated_data):
+        _obj_perm = validated_data.pop("csw_object_permission")
+        _new_csw_obj = csw_object_permission.objects.create(**_obj_perm)
+        _new_role = RoleObjectPermission.objects.create(csw_object_permission=_new_csw_obj, **validated_data)
+        return _new_role
 
     class Meta:
-        model = user_object_permission
+        model = RoleObjectPermission
 
 
 class user_quota_setting_serializer(serializers.ModelSerializer):
@@ -124,8 +120,6 @@ class user_variable_serializer(serializers.ModelSerializer):
 
 class user_serializer(serializers.ModelSerializer):
     # object_perms = csw_object_permission_serializer(many=True, read_only=True)
-    user_permission_set = user_permission_serializer(many=True, read_only=True)
-    user_object_permission_set = user_object_permission_serializer(many=True, read_only=True)
     user_quota_setting_set = user_quota_setting_serializer(many=True, read_only=True)
     user_scan_run_set = user_scan_run_serializer(many=True, read_only=True)
     info = serializers.CharField(source="get_info", read_only=True)
@@ -161,12 +155,12 @@ class user_serializer(serializers.ModelSerializer):
         fields = (
             "idx", "login", "uid", "group", "first_name", "last_name", "shell",
             "title", "email", "pager", "comment", "tel", "password", "active", "export",
-            "secondary_groups", "user_permission_set", "user_object_permission_set",
+            "secondary_groups",
             "allowed_device_groups", "aliases", "db_is_auth_for_password", "is_superuser",
             "home_dir_created", "user_quota_setting_set", "info", "scan_user_home", "scan_depth",
             "only_webfrontend", "home", "user_scan_run_set", "login_name", "create_rms_user",
             "user_variable_set", "session_id", "ui_theme_selection",
-            "is_anonymous", "is_authenticated",
+            "is_anonymous", "is_authenticated", "roles",
         )
 
 
@@ -182,8 +176,6 @@ class group_flat_serializer(serializers.ModelSerializer):
 
 
 class group_serializer(serializers.ModelSerializer):
-    group_permission_set = group_permission_serializer(many=True, read_only=True)
-    group_object_permission_set = group_object_permission_serializer(many=True, read_only=True)
     group_quota_setting_set = group_quota_setting_serializer(many=True, read_only=True)
 
     class Meta:
@@ -191,8 +183,20 @@ class group_serializer(serializers.ModelSerializer):
         fields = (
             "groupname", "active", "gid", "idx", "parent_group",
             "homestart", "tel", "title", "email", "pager", "comment",
-            "allowed_device_groups", "group_permission_set", "group_object_permission_set",
+            "allowed_device_groups", "roles",
             "group_quota_setting_set",
+        )
+
+
+class RoleSerializer(serializers.ModelSerializer):
+    rolepermission_set = RolePermissionSerializer(many=True, read_only=True)
+    roleobjectpermission_set = RoleObjectPermissionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Role
+        fields = (
+            "idx", "name", "description", "active", "create_user",
+            "rolepermission_set", "roleobjectpermission_set",
         )
 
 

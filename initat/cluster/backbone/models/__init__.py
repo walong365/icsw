@@ -71,7 +71,8 @@ from initat.cluster.backbone.models.license import *
 from initat.cluster.backbone.models.status_history import *
 from initat.cluster.backbone.models.dispatch import *
 from initat.cluster.backbone.signals import UserChanged, GroupChanged, \
-    BootsettingsChanged, VirtualDesktopUserSettingChanged, SensorThresholdChanged
+    BootsettingsChanged, VirtualDesktopUserSettingChanged, SensorThresholdChanged, \
+    RoleChanged
 from initat.cluster.backbone.models.asset import *
 from initat.cluster.backbone.models.report import *
 import initat.cluster.backbone.models.model_history
@@ -102,6 +103,11 @@ def user_changed(*args, **kwargs):
 @receiver(GroupChanged)
 def group_changed(*args, **kwargs):
     _insert_bg_job("sync_users", kwargs["cause"], kwargs["group"])
+
+
+@receiver(RoleChanged)
+def role_changed(*args, **kwargs):
+    _insert_bg_job("sync_users", kwargs["cause"], kwargs["role"])
 
 
 @receiver(VirtualDesktopUserSettingChanged)

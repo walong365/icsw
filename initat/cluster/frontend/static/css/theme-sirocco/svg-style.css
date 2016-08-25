@@ -1,19 +1,35 @@
-.sb_lines { stroke: #313131; stroke-width: 0.5; }
+/* device colors */
+.svg_dev_up { fill: #92aa00; }
+.svg_dev_down { fill: #bb3d1e; }
+.svg_dev_unreach { fill: #ff0000; }
+.svg_dev_unknown { fill: #e2972d; }
+.svg_dev_notmonitored { fill: #aaaaaa; }
+
+/* service colors */
+.svg_srv_ok { fill: #92aa00; }
+.svg_srv_warn { fill: #e2972d; }
+.svg_srv_crit { fill: #bb3d1e; }
+.svg_srv_unknown { fill: #bb3d1e; }
+.svg_srv_notmonitored { fill: #aaaaaa; }
+
+/* others */
+.svg_plandown { fill: #4c9d83; }
+.svg_active { fill: #9999ff; }
+.svg_inactive { fill: #eeeeee; }
+.svg_white { fill: #ffffff; }
+.svg_danger { fill: #d90000; } /* prepare removal */
+
+.svg_txt_color { fill: #555555; }
+.default_text { fill: #555555; font-size: 12px; }
+
+.sb_lines { stroke: #ffffff; stroke-width: 0.5; }
+.svg_stroke { stroke: #aaaaaa; stroke-width: 0.5; }
 .pieSegment { stroke-width: 0.5; stroke-miterlimit: 2; stroke: #fff; }
-.default_text { fill: #dddddd; font-size: 12px; }
+.svg_sel { opacity: 0.7; }
+.svg_clicked { stroke-width: 2px !important; }
 
-.svg_ok { fill: #92aa00; }  /* sources.coffee */
-.svg_up { fill: #92aa00; }  /* status_history_utils.coffee */
-.svg_down { fill: #bb3d1e; }  /* ff0000 status_history_utils.coffee?? */
-.svg_warn { fill: #e2972d; }  /* sources.coffee *//* f0ad4e status_history_utils.coffee??*/
-.svg_crit { fill: #bb3d1e; } /* sources.coffee */
-.svg_danger { fill: #d90000; } /* sources.coffee */
-.svg_plandown { fill: #4c9d83; }   /* status_history_utils.coffee */
-.svg_unknown { fill: #666666; }  /* status_history_utils.coffee */
-.svg_undetermined { fill: #666666; }  /* status_history_utils.coffee */
-.svg_unreach { fill: #e2972d; }  /* status_history_utils.coffee */
+.svg_d3link { stroke: #888888; stroke-width: 2px; opacity: 1; }
+.svg_d3circle { stroke-width: 2px; stroke: #888888; fill: #aaaaaa; }
+.svg_d3circle_selected { stroke-width: 2px; stroke: #888888; fill: #bb3d1e; }
+.svg_d3text { stroke-width:1px; stroke:#ffffff; paint-order:stroke; text-anchor:middle; alignment-baseline:middle; fill:#111111; }
 
-.svg_d3link { stroke: #92aa00; stroke-width: 2px; opacity: 1; }
-.svg_d3circle { stroke-width: 2px; stroke: #92aa00; fill: #666666; }
-.svg_d3circle_selected { stroke-width: 2px; stroke: #92aa00; fill: #bb3d1e; }
-.svg_d3text { stroke-width:1px; stroke:#black; paint-order:stroke; text-anchor:middle; alignment-baseline:middle; fill:white; }

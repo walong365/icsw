@@ -51,7 +51,7 @@ from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
-from initat.tools import server_command
+from initat.tools import server_command, logging_tools
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -183,12 +183,14 @@ class get_node_status(View):
         if result:
             host_results = result.xpath(".//ns:host_result/text()", smart_strings=False)
             service_results = result.xpath(".//ns:service_result/text()", smart_strings=False)
-            if len(host_results) + len(service_results):
-
-                # log and lock access
-                any_locked = False
-                host_results_filtered = []
-                devices_used = set()
+            # if not len(host_results) and not len(service_results) and result.get_log_tuple()[1] >= logging_tools.LOG_LEVEL_ERROR:
+            #    # handle unreachable or not responding md-config-server, clear all logs to reduce error level
+            #    request.xml_response.clear_log_buffer()
+            # log and lock access
+            any_locked = False
+            host_results_filtered = []
+            devices_used = set()
+            if len(host_results):
                 for dev_res in json.loads(host_results[0]):
                     locked = False
                     for entry in dev_res['custom_variables'].split(","):
@@ -214,10 +216,11 @@ class get_node_status(View):
 
                     any_locked |= locked
 
-                LicenseUsage.log_usage(LicenseEnum.monitoring_dashboard, LicenseParameterTypeEnum.device, devices_used)
+            LicenseUsage.log_usage(LicenseEnum.monitoring_dashboard, LicenseParameterTypeEnum.device, devices_used)
 
-                service_results_filtered = []
-                services_used = collections.defaultdict(lambda: [])
+            service_results_filtered = []
+            services_used = collections.defaultdict(lambda: [])
+            if len(service_results):
                 for serv_res in json.loads(service_results[0]):
                     host_pk, service_pk, _ = host_service_id_util.parse_host_service_description(
                         serv_res['description'],
@@ -238,23 +241,20 @@ class get_node_status(View):
 
                     any_locked |= locked
 
-                LicenseUsage.log_usage(
-                    LicenseEnum.monitoring_dashboard,
-                    LicenseParameterTypeEnum.service,
-                    services_used
+            LicenseUsage.log_usage(
+                LicenseEnum.monitoring_dashboard,
+                LicenseParameterTypeEnum.service,
+                services_used
+            )
+
+            if any_locked:
+                request.xml_response.info(
+                    "Some entries are on the license lock list and therefore not displayed."
                 )
 
-                if any_locked:
-                    request.xml_response.info(
-                        "Some entries are on the license lock list and therefore not displayed."
-                    )
-
-                # simply copy json dump
-                request.xml_response["host_result"] = json.dumps(host_results_filtered)
-                request.xml_response["service_result"] = json.dumps(service_results_filtered)
-
-            else:
-                request.xml_response.error("no service or node_results", logger=logger)
+            # simply copy json dump
+            request.xml_response["host_result"] = json.dumps(host_results_filtered)
+            request.xml_response["service_result"] = json.dumps(service_results_filtered)
 
 
 class get_mon_vars(View):

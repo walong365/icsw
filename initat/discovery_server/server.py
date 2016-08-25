@@ -28,7 +28,7 @@ from initat.discovery_server.event_log.event_log_poller import EventLogPollerPro
 from initat.discovery_server.generate_assets_process import GenerateAssetsProcess
 from initat.snmp.process import snmp_process_container
 from initat.tools import cluster_location, configfile, logging_tools, process_tools, \
-    server_command, server_mixins, threading_tools
+    server_command, server_mixins, threading_tools, net_tools
 from initat.tools.server_mixins import RemoteCall
 from .config import global_config, IPC_SOCK_SNMP
 from .discovery import DiscoveryProcess
@@ -54,6 +54,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
         self.register_func("generate_assets", self._generate_assets)
+        self.register_func("send_msg", self.send_msg)
         db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
         self.__snmp_running = True
@@ -172,6 +173,27 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             simple_server_bind=True,
             pollin=self.remote_call,
         )
+        # dict for external connections
+        self.__ext_con_dict = {}
+
+    def send_msg(self, *args, **kwargs):
+        _from_name, _from_pid, run_idx, conn_str, srv_com = args
+        srv_com = server_command.srv_command(source=srv_com)
+        srv_com["discovery_run_idx"] = "{:d}".format(run_idx)
+        _new_con = net_tools.zmq_connection(
+            "ext_con_discovery_{:d}".format(run_idx),
+            context=self.zmq_context,
+            poller_base=self,
+            callback=self._ext_receive,
+        )
+        self.__ext_con_dict[run_idx] = _new_con
+        _new_con.add_connection(conn_str, srv_com)
+
+    def _ext_receive(self, *args):
+        srv_reply = args[0]
+        run_idx = int(srv_reply["*discovery_run_idx"])
+        del self.__ext_con_dict[run_idx]
+        self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):

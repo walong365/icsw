@@ -168,25 +168,38 @@ table.rotateheaders th {
     height: auto;
 }
 .submenu-bar {
-    display:block;
-    padding-left:10px;
-    background-color:#222222;
+    display: block;
+    padding-left: 10px;
+    background-color: #222222;
     margin-bottom: 17px;
     min-height: 25px;
-    vertical-align:10;
+    vertical-align: 10;
 }
 .submenu-bar .sub-breadcrumb {
-    font-size:12px;
-    font-weight:600;
-    color:#aaaaaa;
+    font-size: 12px;
+    font-weight: 500;
+    color: #aaaaaa;
+    list-style: outside none none;
     margin-top: 4px;
+    padding-left: 0;
+    margin-bottom: 0px;
+    width: 100%;
 }
-.submenu-bar .quickselect {
-    font-size:16px;
-    font-weight:600;
-    color:#aaaaaa;
-    margin: 2px 10px 0 0;
+.submenu-bar .sub-breadcrumb > li {
+    display: block;
+    position: relative;
+    float: left;
+    padding-right: 10px;
+}
+.submenu-bar .sub-breadcrumb > li a{
+    color: #ffffff;
+}
+.sub-breadcrumb .label {
+    font-size: 100%;
 }
 .navbar-fixed-top {
     border-width: 0;
+}
+.label {
+    border-radius: 1px;
 }

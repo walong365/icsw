@@ -147,14 +147,14 @@ angular.module(
     "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTree", "icswSimpleAjaxCall",
     "icswParseXMLResponseService", "toaster", "icswCachingCall", "icswUserService",
     "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
-    "icswUserGroupTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
+    "icswUserGroupRoleTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
     "icswRRDGraphBasicSetting", "icswTimeFrameService", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTree, icswSimpleAjaxCall,
     icswParseXMLResponseService, toaster, icswCachingCall, icswUserService,
     icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
-    icswUserGroupTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
+    icswUserGroupRoleTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
     icswRRDGraphBasicSetting, icswTimeFrameService, ICSW_SIGNALS,
 ) ->
         moment().utc()
@@ -244,7 +244,7 @@ angular.module(
                 [
                     icswUserService.load($scope.$id)
                     icswDeviceTreeService.load($scope.$id)
-                    icswUserGroupTreeService.load($scope.$id),
+                    icswUserGroupRoleTreeService.load($scope.$id),
                     icswSavedSelectionService.load_selections($scope.$id),
                     icswRRDGraphUserSettingService.load($scope.$id),
                 ]
@@ -406,6 +406,10 @@ angular.module(
                     cur_node._dev_pks = []
                     _vd.num_struct--
                     _vd.num_mve++
+                    # init number of sensors and mve with sensors defined
+                    cur_node.num_sensors = 0
+                    cur_node.entries_with_sensors = 0
+                    # console.log "trans", cur_node.build_info, cur_node.num_sensors
             else
                 cur_node = $scope.struct.g_tree.create_node(
                     {
@@ -416,6 +420,10 @@ angular.module(
                     }
                 )
                 cur_node.build_info = []
+                # init number of sensors
+                # console.log "*", cur_node.num_sensors
+                cur_node.num_sensors = 0
+                cur_node.entries_with_sensors = 0
                 _vd.num_mve++
                 lut[g_key] = cur_node
                 parent.add_child(cur_node, _child_sort)
@@ -425,9 +433,10 @@ angular.module(
                 cur_node._dev_pks.push($scope.mv_dev_pk)
             cur_node._node_type = "e"
             cur_node.build_info.push(entry.build_info)
-            cur_node.num_sensors = entry.num_sensors
-            if entry.num_sensors?
-                $scope.struct.vectordata.num_sensors += entry.num_sensors
+            cur_node.num_sensors += entry.num_sensors
+            if entry.num_sensors
+                cur_node.entries_with_sensors++
+            $scope.struct.vectordata.num_sensors += entry.num_sensors
             cur_node.folder = false
             cur_node.show_select = true
             cur_node._g_key = g_key
@@ -500,7 +509,7 @@ angular.module(
             $scope.struct.vectordata.num_mve_sel = $scope.cur_selected.length
 
         $scope.$on(ICSW_SIGNALS("_ICSW_RRD_CROPRANGE_SET"), (event, graph) ->
-            console.log "g", graph
+            # console.log "g", graph
             event.stopPropagation()
             if graph.crop_width > 600
                 $scope.timeframe.set_from_to_mom(graph.cts_start_mom, graph.cts_end_mom)
@@ -674,17 +683,31 @@ angular.module(
             @do_digest()
 
         get_pre_view_element: (entry) ->
+            _rv = []
             if entry._node_type == "e" and entry.num_sensors
-                return span(
-                    {
-                        key: "arrow"
-                        className: "fa fa-arrows-v"
-                    }
+                _rv.push(
+                    span(
+                        {
+                            key: "arrow"
+                            className: "fa fa-arrows-v"
+                        }
+                    )
                 )
-            else
-                return null
-            if entry.num_sensors
-                span.addClass("fa fa-arrows-v")
+                if entry.build_info.length > 1
+                    if entry.entries_with_sensors != entry.build_info.length
+                        _str = "#{entry.entries_with_sensors} / #{entry.build_info.length}"
+                    else
+                        _str = entry.build_info.length
+                    _rv.push(
+                        span(
+                            {
+                                key: "batch"
+                                className: "badge"
+                            }
+                            _str
+                        )
+                    )
+            return _rv
 
 ]).directive("icswRrdGraphList",
 [
@@ -1119,7 +1142,10 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     th_scope.threshold.notify_users = threshold.notify_users_obj
-                    th_scope.threshold.device_selection = threshold.device_selection_obj.idx
+                    if threshold.device_selection_obj
+                        th_scope.threshold.device_selection = threshold.device_selection_obj.idx
+                    else
+                        th_scope.threshold.device_selection = null
                     user_settings.create_threshold_entry(sensor, th_scope.threshold).then(
                         (created) ->
                             if !create

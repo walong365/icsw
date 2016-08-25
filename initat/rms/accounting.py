@@ -37,6 +37,7 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
     rms_project, rms_department, rms_pe, rms_queue, user, device, cluster_timezone, \
     RMSJobVariable
+from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.rms.config import global_config
 from initat.rms.functions import call_command
 from initat.tools import logging_tools, server_command, threading_tools, process_tools
@@ -138,7 +139,7 @@ class AccountingProcess(threading_tools.process_obj):
             Q(qacct_called=False) &
             Q(end_time=None) &
             Q(start_time=None) &
-            Q(start_time_py__lt=datetime.datetime.now() - datetime.timedelta(seconds=31 * 24 * 3600))
+            Q(start_time_py__lt=cluster_timezone.localize(datetime.datetime.now()) - datetime.timedelta(seconds=31 * 24 * 3600))
         )
         self.log("invalid runs found: {:d}".format(invalid_runs.count()))
         _missing_ids = rms_job_run.objects.filter(

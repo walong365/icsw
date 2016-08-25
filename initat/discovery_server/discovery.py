@@ -50,6 +50,7 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         self.register_func("base_scan", self._base_scan)
         self.register_func("wmi_scan", self._wmi_scan)
         self.register_func("nrpe_scan", self._nrpe_scan)
+        self.register_func("ext_con_result", self._ext_con_result)
         self._server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         self._config = config.objects.get(Q(pk=global_config["CONFIG_IDX"]))
         self.__run_idx = 0
@@ -93,6 +94,10 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         self._iterate(srv_com, "nrpe_scan", ActiveDeviceScanEnum.BASE)
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
         self._check_for_pending_jobs()
+
+    def _ext_con_result(self, *args, **kwargs):
+        run_idx, srv_reply = args
+        self.dispatcher.got_result(run_idx, server_command.srv_command(source=srv_reply))
 
     def _iterate(self, srv_com, c_name, scan_type_enum):
         total_result = ResultNode()
@@ -181,9 +186,9 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
     def _init_subsys(self):
         SNMPBatch.setup(self)
         ScanBatch.setup(self)
-        dispatcher = Dispatcher(self)
-        self.register_timer(dispatcher.dispatch_call, 1)
-        self.register_timer(dispatcher.schedule_call, 10)
+        self.dispatcher = Dispatcher(self)
+        self.register_timer(self.dispatcher.dispatch_call, 1)
+        self.register_timer(self.dispatcher.schedule_call, 10)
 
     def _snmp_basic_scan(self, *args, **kwargs):
         SNMPBatch(server_command.srv_command(source=args[0]))

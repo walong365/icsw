@@ -376,7 +376,8 @@ def get_vnc_enc(password):
 
 
 class ForkedPdb(pdb.Pdb):
-    """A Pdb subclass that may be used
+    """
+    A Pdb subclass that may be used
     from a forked multiprocessing child
 
     """

@@ -75,9 +75,9 @@ angular.module(
     }
 ]).directive("icswHistoryModelHistory",
 [
-    "icswHistoryDataService", "icswUserGroupTreeService",
+    "icswHistoryDataService", "icswUserGroupRoleTreeService",
 (
-    icswHistoryDataService, icswUserGroupTreeService,
+    icswHistoryDataService, icswUserGroupRoleTreeService,
 ) ->
     return {
         restrict: 'EA'
@@ -96,7 +96,7 @@ angular.module(
                 # user and group tree
                 user_group_tree: undefined
             }
-            icswUserGroupTreeService.load(scope.$id).then(
+            icswUserGroupRoleTreeService.load(scope.$id).then(
                 (tree) ->
                     scope.struct.user_group_tree = tree
             )

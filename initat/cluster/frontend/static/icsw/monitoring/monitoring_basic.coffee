@@ -807,10 +807,10 @@ monitoring_basic_module = angular.module(
     }
 ]).service('icswMonitoringBasicMonContactService',
 [
-    "ICSW_URLS", "icswMonitoringBasicTreeService", "$q", "Restangular", "icswUserGroupTreeService",
+    "ICSW_URLS", "icswMonitoringBasicTreeService", "$q", "Restangular", "icswUserGroupRoleTreeService",
     "icswToolsSimpleModalService", "icswMonContactBackup", "icswMonitoringUtilService",
 (
-    ICSW_URLS, icswMonitoringBasicTreeService, $q, Restangular, icswUserGroupTreeService,
+    ICSW_URLS, icswMonitoringBasicTreeService, $q, Restangular, icswUserGroupRoleTreeService,
     icswToolsSimpleModalService, icswMonContactBackup, icswMonitoringUtilService,
 ) ->
     basic_tree = undefined
@@ -822,7 +822,7 @@ monitoring_basic_module = angular.module(
             $q.all(
                 [
                     icswMonitoringBasicTreeService.load(scope.$id)
-                    icswUserGroupTreeService.load(scope.$id)
+                    icswUserGroupRoleTreeService.load(scope.$id)
                 ]
             ).then(
                 (data) ->
@@ -892,11 +892,11 @@ monitoring_basic_module = angular.module(
     }
 ]).service('icswMonitoringBasicMonContactgroupService',
 [
-    "ICSW_URLS", "icswMonitoringBasicTreeService", "$q", "Restangular", "icswUserGroupTreeService",
+    "ICSW_URLS", "icswMonitoringBasicTreeService", "$q", "Restangular", "icswUserGroupRoleTreeService",
     "icswToolsSimpleModalService", "icswMonContactgroupBackup", "icswMonitoringUtilService",
     "icswDeviceTreeService",
 (
-    ICSW_URLS, icswMonitoringBasicTreeService, $q, Restangular, icswUserGroupTreeService,
+    ICSW_URLS, icswMonitoringBasicTreeService, $q, Restangular, icswUserGroupRoleTreeService,
     icswToolsSimpleModalService, icswMonContactgroupBackup, icswMonitoringUtilService,
     icswDeviceTreeService,
 ) ->
@@ -909,7 +909,7 @@ monitoring_basic_module = angular.module(
             $q.all(
                 [
                     icswMonitoringBasicTreeService.load(scope.$id)
-                    icswUserGroupTreeService.load(scope.$id)
+                    icswUserGroupRoleTreeService.load(scope.$id)
                     icswDeviceTreeService.load(scope.$id)
                 ]
             ).then(

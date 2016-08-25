@@ -30,10 +30,9 @@ from django.db.models import Q
 from django.utils import timezone
 from lxml import etree
 
-from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network
-from initat.cluster.backbone.models.asset import AssetRun, RunStatus, AssetType, ScanType, \
-    AssetBatch, RunResult
-from initat.cluster.backbone.models.dispatch import DeviceDispatcherLink, DispatcherSettingScheduleEnum, \
+from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network, \
+    device_variable, AssetRun, RunStatus, AssetType, ScanType, \
+    AssetBatch, RunResult, DeviceDispatcherLink, DispatcherSettingScheduleEnum, \
     ScheduleItem, DispatchSetting, DiscoverySource
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
@@ -41,6 +40,9 @@ from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, net_tools, \
     ipvx_tools
 from .discovery_struct import ExtCom
+
+
+DEFAULT_NRPE_PORT = 5666
 
 
 class ScanBatch(object):
@@ -124,16 +126,16 @@ class BaseScanBatch(ScanBatch):
         # example: /opt/cluster/bin/nmap -sU -sS -p U:53,T:80 192.168.1.50
         _tcp_list, _udp_list = ([], [])
         _ref_lut = {}
+        print "***"
         for _com in ComCapability.objects.all():
+            print _com
             for _port in _com.port_spec.strip().split():
                 if _port.endswith(","):
                     _port = _port[:-1]
                 _num, _type = _port.split("/")
                 if _com.name == "NRPE":
-                    nrpe_ports = self.device.device_variable_set.filter(name="nrpe_port")
-                    if nrpe_ports:
-                        _num = nrpe_ports[0].value
-                        _port = _num + "/" + _type
+                    nrpe_port = device_variable.objects.get_device_variable_value(self.device, "NRPE_PORT", DEFAULT_NRPE_PORT)
+                    _port = "{:d}/{}".format(nrpe_port, _type)
                 if _type == "tcp":
                     _tcp_list.append(int(_num))
                 elif _type == "udp":
@@ -592,15 +594,26 @@ def get_time_inc_from_ds(ds):
 
 
 class PlannedRunState(object):
+    run_idx = 0
+
     def __init__(self, pdrf, run_db_obj, ext_com, timeout):
         # mirrors AssetRuns
         self.__pdrf = pdrf
+        # for external ref
+        self.run_idx = 0
         self.run_db_obj = run_db_obj
         self.ext_com = ext_com
         self.timeout = timeout
+        # state diagram: (started, running) :
+        # (False, False) -> (True, True) -> (True, False)
+        # started
         self.started = False
-        self.zmq_con_idx = 0
+        # is running
+        self.running = False
         self.is_zmq_connection = not isinstance(self.ext_com, ExtCom)
+        # zmq connection parameters
+        self.zmq_conn_str = None
+        self.zmq_command = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__pdrf.log(
@@ -608,17 +621,33 @@ class PlannedRunState(object):
             log_level
         )
 
+    def set_zmq_parameters(self, conn_str):
+        self.zmq_conn_str = conn_str
+        self.zmq_command = server_command.srv_command(command=self.ext_com)
+        self.log(
+            u"connection_str is {} ({})".format(
+                self.zmq_conn_str,
+                self.ext_com,
+            )
+        )
+
+    def get_send_parameters(self):
+        return self.run_idx, self.zmq_conn_str, unicode(self.zmq_command)
+
     def start(self):
         self.started = True
+        self.running = True
+        PlannedRunState.run_idx += 1
+        self.run_idx = PlannedRunState.run_idx
         _db_obj = self.run_db_obj
         _db_obj.start()
         if _db_obj.asset_batch.run_status != RunStatus.RUNNING:
             _db_obj.asset_batch.run_status = RunStatus.RUNNING
             _db_obj.asset_batch.save()
-        self.started = True
         self.__pdrf.num_running += 1
 
     def stop(self, result, error_string=""):
+        self.running = False
         self.run_db_obj.stop(result, error_string=error_string)
         self.__pdrf.remove_planned_run(self)
 
@@ -626,12 +655,18 @@ class PlannedRunState(object):
         self.stop(RunResult.FAILED, error_string=error_string)
         self.generate_assets()
 
-    def store_nrpe_result(self, result):
+    def store_nrpe_result(self, state, result):
         _db_obj = self.run_db_obj
         _stdout, _stderr = result
-        self.log("stdout has {:d} Bytes, stderr {:d} Bytes".format(len(_stdout), len(_stderr)))
+        self.log(
+            "stdout has {}, stderr has {} [{:d}]".format(
+                logging_tools.get_size_str(len(_stdout)),
+                logging_tools.get_size_str(len(_stderr)),
+                state,
+            )
+        )
         s = _stdout
-        if s is None:
+        if s is None or state != 0:
             _res = RunResult.FAILED
         else:
             _res = RunResult.SUCCESS
@@ -692,13 +727,14 @@ class PlannedRunState(object):
 
 
 class PlannedRunsForDevice(object):
+
     def __init__(self, disp, device, ip):
         # mirrors AssetBatch
         self.disp = disp
         self.device = device
         self.planned_runs = []
         self.ip = ip
-        self.nrpe_port = "5666"
+        # numbers of jobs running
         self.num_running = 0
         self.to_delete = False
         self.asset_batch = AssetBatch(
@@ -706,6 +742,7 @@ class PlannedRunsForDevice(object):
             run_start_time=timezone.now(),
             run_status=RunStatus.PLANNED,
         )
+        self.zmq_connections = []
 
     def start_feed(self, cmd_tuples):
         self.asset_batch.num_runs = len(cmd_tuples)
@@ -742,6 +779,7 @@ class PlannedRunsForDevice(object):
             # no more running, delete
             self.to_delete = True
 
+
 class NRPEScanTracker(object):
     def __init__(self, ip, _now):
         self.ip = ip
@@ -749,14 +787,22 @@ class NRPEScanTracker(object):
         self.scan_start_time = _now
 
     def __repr__(self):
-        return "ip:{} connections:{} scan_start_time:{}".format(self.ip, self.connections, self.scan_start_time)
+        return "ip:{} connections:{} scan_start_time:{}".format(
+            self.ip,
+            self.connections,
+            self.scan_start_time,
+        )
+
 
 class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
-        # self.device_asset_run_ext_coms = {}
-        # self.device_running_ext_coms = {}
+        # runs per device
         self.__device_planned_runs = {}
+        # lut for external connection commands (0MQ)
+        self.__ext_con_lut = {}
+        # lut for external background commands
+        self.__ext_bg_lut = {}
         self.log("init Dispatcher")
         # quasi-static constants
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
@@ -900,9 +946,7 @@ class Dispatcher(object):
                 self.discovery_process.get_route_to_devices([_dev])
                 self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
                 new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
-                nrpe_ports = _dev.device_variable_set.filter(name="nrpe_port")
-                if nrpe_ports:
-                    new_pr.nrpe_port = nrpe_ports[0].value
+                new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
 
                 self.__device_planned_runs[_dev.idx].append(new_pr)
 
@@ -926,7 +970,7 @@ class Dispatcher(object):
             timeout=120,
         )
 
-        # step 1: start commands
+        # step 1: init commands
 
         for _dev_idx, prfd_list in self.__device_planned_runs.iteritems():
             for prfd in prfd_list:
@@ -939,89 +983,76 @@ class Dispatcher(object):
                                     prfd.ip,
                                     self.__hm_port,
                                 )
-                                self.log(
-                                    u"connection_str for {} is {} ({})".format(
-                                        unicode(prfd.device),
-                                        conn_str,
-                                        prs.ext_com,
-                                    )
-                                )
+                                # set parameters
+                                prs.set_zmq_parameters(conn_str)
+                                self.discovery_process.send_pool_message("send_msg", *prs.get_send_parameters())
+                                self.__ext_con_lut[prs.run_idx] = prs
                                 # store zmq connection idx
-                                prs.zmq_con_idx = zmq_con.add_connection(
-                                    conn_str,
-                                    server_command.srv_command(command=prs.ext_com),
-                                    multi=True
-                                )
+                                # prs.zmq_con_idx = zmq_con.add_connection(
+                                #     conn_str,
+                                #     server_command.srv_command(command=prs.ext_com),
+                                #     multi=True
+                                # )
                             else:
                                 if prfd.ip in self.num_ext_coms_per_ip:
                                     scan_tracker = self.num_ext_coms_per_ip[prfd.ip]
                                     if scan_tracker.connections == 0:
                                         prs.start()
                                         prs.ext_com.run()
-                                        scan_tracker.connections = 1
+                                        self.__ext_bg_lut[prs.run_idx] = prs
+                                        scan_tracker.connections += 1
                                         scan_tracker.scan_start_time = _now
                                     else:
                                         if (_now - scan_tracker.scan_start_time).seconds > 240:
                                             scan_tracker.connections = 0
+                                        else:
+                                            # ???, FIXME, ToDo
+                                            pass
                                 else:
                                     prs.start()
                                     prs.ext_com.run()
                                     self.num_ext_coms_per_ip[prfd.ip] = NRPEScanTracker(prfd.ip, _now)
+                                    self.__ext_bg_lut[prs.run_idx] = prs
                 else:
                     prfd.cancel("no IP")
-
-        # step 2: check commands
-        # build list of running prfds
-        run_prfds = sum(
-            [
-                [_entry for _entry in prfd_list if _entry.num_running] for prfd_list in self.__device_planned_runs.itervalues()
-            ],
-            []
-        )
-        # start time of communication
-        s_time = time.time()
-        if zmq_con.num_connections:
-            #  print "SL"
-            zmq_res = zmq_con.loop()
-            e_time = time.time()
-            self.log(
-                "0MQ loop ({}) took {}".format(
-                    logging_tools.get_plural("connection", zmq_con.num_connections),
-                    logging_tools.get_diff_time_str(e_time - s_time),
-                )
-            )
-            # store result from 0MQ runs
-            for _idx, _result in enumerate(zmq_res):
-                for prfd in run_prfds:
-                    for prd in prfd.planned_runs:
-                        if prd.started and prd.zmq_con_idx == _idx:
-                            prd.store_zmq_result(_result)
-
-        # while num_ext_coms:
-        #     self.log("pending external commands: {:d}".format(num_ext_coms))
+        # check for finished ext coms
         cur_time = timezone.now()
-        for prfd in run_prfds:
-            for prd in prfd.planned_runs:
-                if prd.started and not prd.is_zmq_connection:
-                    if prd.ext_com.finished() is 0:
-                        _output = prd.ext_com.communicate()
-                        prd.store_nrpe_result(_output)
-                        self.num_ext_coms_per_ip[prfd.ip].connections = 0
+        _to_remove = set()
+        for key, prd in self.__ext_bg_lut.iteritems():
+            _ext_com_state = prd.ext_com.finished()
+            if _ext_com_state is not None:
+                _output = prd.ext_com.communicate()
+                prd.store_nrpe_result(_ext_com_state, _output)
+                self.num_ext_coms_per_ip[prfd.ip].connections -= 1
+                _to_remove.add(key)
+            else:
+                diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
+                if diff_time > prd.timeout:
+                    try:
+                        prd.ext_com.terminate()
+                    except:
+                        self.log(
+                            "error terminating external process (timeout): {}".format(
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                     else:
-                        diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
-                        if diff_time > prd.timeout:
-                            try:
-                                prd.ext_com.terminate()
-                            except:
-                                self.log("error terminating external process: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                            else:
-                                self.log("external command terminated due to timeout")
-                            prd.cancel("timeout")
-                            self.num_ext_coms_per_ip[prfd.ip].connections = 0
-            # if num_ext_coms:
-            #     time.sleep(2)
-            #  print "RES=", zmq_res
+                        self.log("external command terminated due to timeout")
+                    prd.cancel("timeout")
+                    self.num_ext_coms_per_ip[prfd.ip].connections -= 1
+                    _to_remove.add(key)
+        for _key in _to_remove:
+            del self.__ext_bg_lut[_key]
+        self._check_for_finished_runs()
 
+    def got_result(self, run_idx, srv_reply):
+        prs = self.__ext_con_lut[run_idx]
+        prs.store_zmq_result(srv_reply)
+        del self.__ext_con_lut[run_idx]
+        self._check_for_finished_runs()
+
+    def _check_for_finished_runs(self):
         # remove PlannedRuns which should be deleted
         _removed = 0
         for _dev_idx, pdrf_list in self.__device_planned_runs.iteritems():
@@ -1113,6 +1144,7 @@ class Dispatcher(object):
                 asset_batch=planned_run.asset_batch,
                 device=_device,
             )
+
             new_asset_run.save()
             _device.assetrun_set.add(new_asset_run)
 
@@ -1121,6 +1153,7 @@ class Dispatcher(object):
                 ext_com,
                 timeout
             )
+
 
 class _ScheduleItem(object):
     def __init__(self, device, source, planned_date):
