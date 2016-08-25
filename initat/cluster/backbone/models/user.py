@@ -1550,4 +1550,3 @@ def Role_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         RoleChanged.send(sender=_cur_inst, role=_cur_inst, cause="delete")
-
