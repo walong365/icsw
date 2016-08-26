@@ -2,7 +2,7 @@ class Hardware(object):
     def __init__(self, lshw_tree=None, win32_tree=None):
         self.cpus = []
         self.memory = None
-        self.displays = []
+        self.gpu = []
         self.hdds = []
         self.network_devices = []
 
@@ -18,7 +18,7 @@ class Hardware(object):
 
             for sub_tree in lshw_tree.xpath(
                     "//node[@id='display' and @class='display']"):
-                self.displays.append(HardwareDisplay(sub_tree))
+                self.gpu.append(HardwareGPU(sub_tree))
 
             for sub_tree in lshw_tree.xpath(
                     "//node[@id='disk' and @class='disk']"):
@@ -36,7 +36,7 @@ class Hardware(object):
                 win32_tree=win32_tree['Win32_ComputerSystem'][0])
 
             for sub_tree in win32_tree['Win32_VideoController']:
-                self.displays.append(HardwareDisplay(win32_tree=sub_tree))
+                self.gpu.append(HardwareGPU(win32_tree=sub_tree))
 
             for sub_tree in win32_tree['Win32_DiskDrive']:
                 self.hdds.append(HardwareHdd(win32_tree=sub_tree))
@@ -127,7 +127,7 @@ class HardwareMemory(HardwareBase):
     }
 
 
-class HardwareDisplay(HardwareBase):
+class HardwareGPU(HardwareBase):
     LSHW_ELEMENTS = {
         'description': ('description', None),
         'product': ('product', None),
@@ -143,7 +143,7 @@ class HardwareDisplay(HardwareBase):
         self.product = None
         self.vendor = None
         self.version = None
-        super(HardwareDisplay, self).__init__(lshw_tree, win32_tree)
+        super(HardwareGPU, self).__init__(lshw_tree, win32_tree)
 
 
 class HardwareHdd(HardwareBase):
