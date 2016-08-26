@@ -250,8 +250,8 @@ class GenericReport(object):
         self.number_of_pages = 0
         self.pdf_buffers = []
 
-    def generate_bookmark(self, name):
-        bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages)
+    def generate_bookmark(self, name, root=None):
+        bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages, root)
         self.bookmarks.append(bookmark)
         return bookmark
 
@@ -440,9 +440,10 @@ class ReportGenerator(object):
 
 class PDFReportGenerator(ReportGenerator):
     class Bookmark(object):
-        def __init__(self, name, pagenum):
+        def __init__(self, name, pagenum, root_bookmark):
             self.name = name
             self.pagenum = pagenum
+            self.root_bookmark = root_bookmark
 
     def __init__(self, settings, _devices):
         super(PDFReportGenerator, self).__init__(settings, _devices)
@@ -703,7 +704,7 @@ class PDFReportGenerator(ReportGenerator):
         data = sorted(data, key=lambda k: k['id'])
         if data:
             section_number = self.__generate_section_number("General", "Networks")
-            report.generate_bookmark("Networks")
+            bookmark = report.generate_bookmark("Networks")
 
             rpt = PollyReportsReport(data)
             rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
@@ -723,6 +724,49 @@ class PDFReportGenerator(ReportGenerator):
             header_names_right = []
 
             self.__config_report_helper("{} Network Overview".format(section_number),
+                                        header_names_left,
+                                        header_names_right, rpt, data)
+
+            rpt.generate(canvas)
+            canvas.save()
+            report.number_of_pages += rpt.pagenumber
+            report.add_to_report(_buffer)
+            self.reports.append(report)
+            self.current_page_num += rpt.pagenumber
+
+
+
+            for _network in networks:
+                self.__generate_sub_network_report(_network, bookmark)
+
+
+    def __generate_sub_network_report(self, _network, root_bookmark):
+        report = GenericReport()
+
+        _buffer = BytesIO()
+        canvas = Canvas(_buffer, (self.page_format))
+
+        data = []
+
+        o = {
+            'name': "fumulus",
+            'type': "humulus",
+        }
+        data.append(o)
+
+        data = sorted(data, key=lambda k: k['name'])
+        if data:
+            section_number = self.__generate_section_number("General", "Networks", _network.identifier)
+            report.generate_bookmark(_network.identifier, root_bookmark)
+
+            rpt = PollyReportsReport(data)
+
+            header_names_left = [("Name", "name", 50.),
+                            ("Type", "type", 50.0)]
+
+            header_names_right = []
+
+            self.__config_report_helper("{} {}".format(section_number, _network.identifier),
                                         header_names_left,
                                         header_names_right, rpt, data)
 
@@ -1442,7 +1486,9 @@ class PDFReportGenerator(ReportGenerator):
                 for _bookmark in _report.bookmarks:
                     if current_page_number + _bookmark.pagenum not in page_num_headings:
                         page_num_headings[current_page_number + _bookmark.pagenum] = []
-                    page_num_headings[current_page_number + _bookmark.pagenum].append((_bookmark.name, 1))
+
+                    bookmark_level = 1 if _bookmark.root_bookmark == None else 2
+                    page_num_headings[current_page_number + _bookmark.pagenum].append((_bookmark.name, bookmark_level))
 
                 for _buffer in _report.pdf_buffers:
                     sub_pdf = PdfFileReader(_buffer)
