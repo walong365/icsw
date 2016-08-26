@@ -539,24 +539,29 @@ class PDFReportGenerator(ReportGenerator):
         detail_list = []
 
         position = 0
+        rule_position = 42
 
-        deeper_rule_position = False
+        header_font_size = 12
+        normal_font_size = 6
+
+        if self.general_settings['pdf_page_format'] == "A4" or self.general_settings['pdf_page_format'] == "letter":
+            header_font_size = 8
+            rule_position = 36
 
         for header_name, key, avail_width_percentage in header_names_left:
             s_new = ""
             wrap_idx = 0
 
             for i in range(len(header_name)):
-                width = stringWidth(header_name[wrap_idx:i + 1], self.standard_font, 12)
+                width = stringWidth(header_name[wrap_idx:i + 1], self.standard_font, header_font_size)
                 if ((width / available_width) * 101.5) > avail_width_percentage:
                     wrap_idx = i
                     s_new += "\n"
-                    deeper_rule_position = True
                 s_new += header_name[i]
 
 
-            header_list.append(Element((position, 24), (self.standard_font, 12), text=s_new))
-            detail_list.append(Element((position, 0), (self.standard_font, 6), key=key))
+            header_list.append(Element((position, 24), (self.standard_font, header_font_size), text=s_new))
+            detail_list.append(Element((position, 0), (self.standard_font, normal_font_size), key=key))
 
             position += available_width * (avail_width_percentage / 100.0)
 
@@ -571,7 +576,7 @@ class PDFReportGenerator(ReportGenerator):
                     wrap_idx = 0
 
                     for i in range(len(comp)):
-                        width = stringWidth(s[wrap_idx:i+1], self.standard_font, 6)
+                        width = stringWidth(s[wrap_idx:i+1], self.standard_font, normal_font_size)
                         if ((width / available_width) * 101.5) > avail_width_percentage:
                             wrap_idx = i
                             s_new += "\n"
@@ -591,15 +596,14 @@ class PDFReportGenerator(ReportGenerator):
             wrap_idx = 0
 
             for i in range(len(header_name)):
-                width = stringWidth(header_name[wrap_idx:i + 1], self.standard_font, 12)
+                width = stringWidth(header_name[wrap_idx:i + 1], self.standard_font, header_font_size)
                 if ((width / available_width) * 101.5) > avail_width_percentage:
                     wrap_idx = i
                     s_new += "\n"
-                    deeper_rule_position = True
                 s_new += header_name[i]
 
-            header_list.append(Element((position, 24), (self.standard_font, 12), text=s_new, align="right"))
-            detail_list.append(Element((position, 0), (self.standard_font, 6), key=key, align="right"))
+            header_list.append(Element((position, 24), (self.standard_font, header_font_size), text=s_new, align="right"))
+            detail_list.append(Element((position, 0), (self.standard_font, normal_font_size), key=key, align="right"))
 
             position -= available_width * (avail_width_percentage / 100.0)
 
@@ -614,7 +618,7 @@ class PDFReportGenerator(ReportGenerator):
                     wrap_idx = 0
 
                     for i in range(len(comp)):
-                        width = stringWidth(s[wrap_idx:i+1], self.standard_font, 6)
+                        width = stringWidth(s[wrap_idx:i+1], self.standard_font, normal_font_size)
                         if ((width / available_width) * 101.5) > avail_width_percentage:
                             wrap_idx = i
                             s_new += "\n"
@@ -626,10 +630,6 @@ class PDFReportGenerator(ReportGenerator):
                         s_new_comps = s_new
 
                 _dict[key] = s_new_comps
-
-        rule_position = 42
-        if deeper_rule_position:
-            rule_position = 60
 
         header_list.append(Rule((0, rule_position), self.page_format[0] - (self.margin * 2), thickness=2))
         detail_list.append(Rule((0, 0), self.page_format[0] - (self.margin * 2), thickness=0.1))
