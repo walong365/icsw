@@ -239,20 +239,33 @@ class DBPrefetchMixin(object):
 
     def _user_prefetch(self):
         return [
-            "user_permission_set", "user_object_permission_set__csw_object_permission", "secondary_groups",
-            "allowed_device_groups", "user_quota_setting_set", "user_scan_run_set__user_scan_result_set",
+            "roles__perms__rolepermission_set__csw_permission",
+            "roles__object_perms__roleobjectpermission_set__csw_object_permission__csw_permission",
+            "user_quota_setting_set", "user_scan_run_set__user_scan_result_set", "secondary_groups",
+            "user_variable_set",
         ]
 
     def _group_related(self):
         return ["parent_group"]
 
     def _group_prefetch(self):
-        return ["group_permission_set", "group_object_permission_set", "group_object_permission_set__csw_object_permission", "allowed_device_groups"]
+        return [
+            "roles__perms__rolepermission_set__csw_permission",
+            "roles__object_perms__roleobjectpermission_set__csw_object_permission__csw_permission",
+            "group_quota_setting_set",
+        ]
+
+    def _role_prefetch(self):
+        return [
+            "rolepermission_set__csw_permission",
+            "roleobjectpermission_set__csw_object_permission__csw_permission",
+        ]
 
     def _config_prefetch(self):
         return [
             "categories", "config_str_set", "config_int_set", "config_blob_set",
-            "config_bool_set", "config_script_set", "mon_check_command_set__categories", "mon_check_command_set__exclude_devices",
+            "config_bool_set", "config_script_set", "mon_check_command_set__categories",
+            "mon_check_command_set__exclude_devices",
             "device_config_set"
         ]
 
@@ -676,7 +689,7 @@ class device_tree_list(
             )
             _q = _q.filter(meta_list | device_list)
             if not self.request.user.has_perm("backbone.device.all_devices"):
-                _q = _q.filter(Q(device_group__in=self.request.user.allowed_device_groups.all()))
+                _q = _q.filter(Q(device_group__in=self.request.user.get_allowed_object_list("backbone.device_group.access_device_group")))
         if "pks" in self.request.query_params:
             dev_keys = json.loads(self.request.query_params["pks"])
         else:

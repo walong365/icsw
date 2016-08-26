@@ -28,17 +28,46 @@
                     Group ({{ struct.ugr_tree.group_list.length }}) /
                     Role ({{ struct.ugr_tree.role_list.length }}) Tree
                 </uib-tab-heading>
-                <div class="form-inline">
-                    <input type="text" class="form-control" ng-model="struct.filterstr" placeholder="filter ..." ng-change="update_filter()"/>
-                    <icsw-tools-button type="create" value="create role" ng-click="create_role()"></icsw-tools-button>
-                    &nbsp;
-                    <icsw-tools-button type="create" value="create group" ng-click="create_group()"></icsw-tools-button>
-                    &nbsp;
-                    <icsw-tools-button type="create" value="create user" ng-click="create_user()"></icsw-tools-button>
-                    &nbsp;
-                    <icsw-tools-button type="submit" value="sync users" ng-click="sync_users()"></icsw-tools-button>
+                <div class="row">
+                    <div class="col-md-6 col-xs-6">
+                        <div class="form-inline">
+                            <input type="text" class="form-control" ng-model="struct.filterstr" placeholder="filter ..." ng-change="update_filter()"/>
+                            <div class="input-group">
+                                <div class="input-group-btn">
+                                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                                        Create <span class="caret"></span>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a ng-click="create_role()">
+                                                <span class="fa fa-bell fa-fw"></span>
+                                                Role
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a ng-click="create_group()">
+                                                <span class="fa fa-group fa-fw"></span>
+                                                Group
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a ng-click="create_user()">
+                                                <span class="fa fa-user fa-fw"></span>
+                                                User
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            &nbsp;
+                            <icsw-tools-button type="submit" value="sync users" ng-click="sync_users()"></icsw-tools-button>
+                        </div>
+                        <icsw-react-tree icsw-tree-config="struct.display_tree"></icsw-react-tree>
+                    </div>
+                    <div class="col-md-6 col-xs-6">
+                        Overview
+                    </div>
                 </div>
-                <icsw-react-tree icsw-tree-config="struct.display_tree"></icsw-react-tree>
             </uib-tab>
             <uib-tab ng-repeat="edit_role in struct.edit_roles">
                 <uib-tab-heading>
@@ -138,6 +167,7 @@
                             <td>
                                 <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default" data-toggle="button">Show viewer command line</button>
                                 <div class="well well-sm" ng-if="vdus.show_viewer_command_line">
+
                                     {{vdus.viewer_cmd_line}}
                                 </div>
                             </td>
@@ -731,19 +761,6 @@
                 </fieldset>
                 <fieldset>
                     <legend>Permissions</legend>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Allowed device groups
-                        </label>
-                        <div class="controls col-sm-8">
-                            <ui-select multiple="multiple" ng-model="object.allowed_device_groups" style="max-width:400px; min-width:240px;">
-                                <ui-select-match class="ui-select-match" placeholder="Select one or more device groups">{{ $item.name }}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.enabled_ns_group_list | props_filter:{name:$select.search}">
-                                    <div ng-bind-html="value.name | highlight: $select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                    </div>
                     <div class="col-sm-12">
                         <icsw-user-group-role-permissions
                             icsw-object-type="user"
@@ -877,19 +894,6 @@
                 </fieldset>
                 <fieldset>
                     <legend>Permissions</legend>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Allowed device groups
-                        </label>
-                        <div class="controls col-sm-8">
-                            <ui-select multiple="multiple" ng-model="object.allowed_device_groups" style="max-width:400px; min-width:240px;">
-                                <ui-select-match class="ui-select-match" placeholder="Select one or more device groups">{{ $item.name }}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.enabled_ns_group_list | props_filter:{name:$select.search}">
-                                    <div ng-bind-html="value.name | highlight: $select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                    </div>
                     <div class="col-sm-12">
                         <icsw-user-group-role-permissions
                             icsw-object-type="group"
@@ -950,19 +954,6 @@
             <uib-tab heading="Permissions">
                 <fieldset>
                     <legend>Permissions</legend>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Allowed device groups
-                        </label>
-                        <div class="controls col-sm-8">
-                            <ui-select multiple="multiple" ng-model="object.allowed_device_groups" style="max-width:400px; min-width:240px;">
-                                <ui-select-match class="ui-select-match" placeholder="Select one or more device groups">{{ $item.name }}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.enabled_ns_group_list | props_filter:{name:$select.search}">
-                                    <div ng-bind-html="value.name | highlight: $select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                    </div>
                     <div class="form-group">
                         <label class="control-label col-sm-2">
                             Permission

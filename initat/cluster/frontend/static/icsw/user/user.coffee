@@ -760,6 +760,7 @@ user_module = angular.module(
                             object["#{_perm_type}_set"].push(res_info.value)
                         else
                             _.remove(object["#{_perm_type}_set"], (entry) -> return entry.idx == info_obj.idx)
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
                     defer.resolve("done")
             )
             return defer.promise
@@ -820,7 +821,7 @@ user_module = angular.module(
         return _fetch_dict[client]
 
     return {
-        "load": (client) ->
+        load: (client) ->
             if load_called
                 # fetch when data is present (after sidebar)
                 return fetch_data(client).promise
@@ -845,9 +846,16 @@ user_module = angular.module(
 
         get_name : (t_entry) ->
             ug = t_entry.obj
+            _if = []
             if t_entry._node_type == "r"
                 _name = ug.name
-                _if = ["All roles"]
+                if t_entry._depth == 0
+                    _if = ["All roles"]
+                else
+                    if ug.rolepermission_set.length
+                        _if.push("#{ug.rolepermission_set.length} global rights")
+                    if ug.roleobjectpermission_set.length
+                        _if.push("#{ug.roleobjectpermission_set.length} object rights")
             else if t_entry._node_type == "g"
                 _name = ug.groupname
                 _if = ["gid #{ug.gid}"]
@@ -859,7 +867,10 @@ user_module = angular.module(
                     _if.push("#{ug.roles.length} roles")
             if ! ug.active
                 _if.push("inactive")
-            return "#{_name} (" + _if.join(", ") + ")"
+            _r_str = "#{_name}"
+            if _if.length
+                _r_str = "#{_r_str} (" + _if.join(", ") + ")"
+            return _r_str
 
         get_pre_view_element: (entry) ->
             _get_icon_class = (entry) ->
@@ -1099,7 +1110,12 @@ user_module = angular.module(
             _dt = $scope.struct.display_tree
             _dt.iter(
                 (entry, cur_re) ->
-                    cmp_name = if entry._node_type == "g" then entry.obj.groupname else entry.obj.login
+                    if entry._node_type == "r"
+                        cmp_name = entry.obj.name
+                    else if entry._node_type == "g"
+                        cmp_name = entry.obj.groupname
+                    else
+                        cmp_name = entry.obj.login
                     entry.active = if cmp_name.match(cur_re) then true else false
                 cur_re
             )
@@ -1161,7 +1177,9 @@ user_module = angular.module(
         )
 
     $scope.$on(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), ($event, object, obj_type) ->
-        if obj_type == "group"
+        if obj_type == "role"
+            $scope.close_role(object)
+        else if obj_type == "group"
             $scope.close_group(object)
         else
             $scope.close_user(object)
@@ -1183,6 +1201,7 @@ user_module = angular.module(
         new_role = {
             $$changed: true
             name: "DummyRole"
+            description: "new role"
             active: true
             rolepermission_set: []
             roleobjectpermission_set: []
@@ -1203,8 +1222,7 @@ user_module = angular.module(
             active: true
             homestart: "/home"
             group_quota_setting_set: []
-            group_permission_set: []
-            group_object_permission_set: []
+            roles: []
         }
         $scope.add_edit_object(new_group, "group")
 
@@ -1227,8 +1245,7 @@ user_module = angular.module(
             scan_depth: 2
             secondary_groups: []
             user_quota_setting_set: []
-            user_permission_set: []
-            user_object_permission_set: []
+            roles: []
         }
         $scope.add_edit_object(new_user, "user")
 
@@ -1624,6 +1641,15 @@ user_module = angular.module(
                             group: ""
                         }
                     )
+            else if key == "backbone.device_group"
+                for entry in $scope.device_tree.group_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.name
+                            group: ""
+                        }
+                    )
             else
                 console.error "unknown OLP-key '#{key}'"
             $scope.obj_list_cache[key] = _list
@@ -1689,7 +1715,7 @@ user_module = angular.module(
         return icswUserGroupRoleTools.changed($scope.src_object)
 
     $scope.close = () ->
-        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, "role")
 
     $scope.delete = () ->
         # check for deletion of own user / group, TODO, FIXME
@@ -1818,6 +1844,7 @@ user_module = angular.module(
     $scope, icswDeviceTreeService, icswUserGroupRolePermissionTreeService, $q,
     icswUserGroupRoleTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
+    console.log "o=", $scope.object
     $scope.struct = {
         # device tree
         device_tree: undefined
@@ -1876,6 +1903,15 @@ user_module = angular.module(
                             group: ""
                         }
                     )
+            else if key == "backbone.device_group"
+                for entry in $scope.struct.device_tree.group_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.name
+                            group: ""
+                        }
+                    )
             else
                 console.error "unknown OLP-key '#{key}'"
             $scope.struct.obj_list_cache[key] = _list
@@ -1908,7 +1944,8 @@ user_module = angular.module(
             (done) ->
                 _role_idxs = []
                 if $scope.object_type == "role"
-                    _role_idxs.push($scope.object.idx)
+                    if $scope.object.idx? and $scope.object.idx
+                        _role_idxs.push($scope.object.idx)
                 else
                     for role in $scope.object.roles
                         _role_idxs.push(role)

@@ -496,7 +496,7 @@ class RoleObjectPermission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = "Global Ooject permissions of Role"
+        verbose_name = "Global Object permissions of Role"
 
     def __unicode__(self):
         return u"Object permission {} for role {}".format(self.csw_permission, self.role)
@@ -1550,4 +1550,3 @@ def Role_post_delete(sender, **kwargs):
     if "instance" in kwargs:
         _cur_inst = kwargs["instance"]
         RoleChanged.send(sender=_cur_inst, role=_cur_inst, cause="delete")
-

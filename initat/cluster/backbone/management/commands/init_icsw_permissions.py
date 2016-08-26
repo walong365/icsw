@@ -74,10 +74,8 @@ class Command(BaseCommand):
                     logging_tools.form_entry(perm.name, header="Info"),
                     logging_tools.form_entry_center("G/O" if perm.valid_for_object_level else "G", header="Scope"),
                     logging_tools.form_entry(perm.created.strftime("%Y-%m-%d %H:%M:%S"), header="Created"),
-                    logging_tools.form_entry_right(perm.user_permission_set.all().count(), header="UserPerms"),
-                    logging_tools.form_entry_right(perm.csw_object_permission_set.all().count(), header="UserObjPerms"),
-                    logging_tools.form_entry_right(perm.group_permission_set.all().count(), header="GroupPerms"),
-                    logging_tools.form_entry_right(perm.csw_object_permission_set.all().count(), header="GroupObjPerms"),
+                    logging_tools.form_entry_right(perm.rolepermission_set.all().count(), header="RolePerms"),
+                    logging_tools.form_entry_right(perm.csw_object_permission_set.all().count(), header="RoleObjPerms"),
                 ]
             )
         print(
