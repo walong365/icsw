@@ -247,7 +247,7 @@
             <icsw-tools-button-static
                 type="create"
                 value="create new config"
-                ng-click="create($event)"
+                ng-click="create_or_edit($event, true, null)"
                 size="xs"
             ></icsw-tools-button-static>
             <!-- removed temporarily due to bug in CSW-576
@@ -274,10 +274,10 @@
                                     >
                                     </input>
                                     <div class="input-group-btn">
-                                        <input type="button" title="Add config name to search scope" ng-class="config_service.get_filter_class('name')" value="name" ng-click="config_service.change_filter_setting('name')"/>
-                                        <input type="button" title="Add script(s) to search scope" ng-class="config_service.get_filter_class('script')" value="script" ng-click="config_service.change_filter_setting('script')"/>
-                                        <input type="button" title="Add variable(s) to search scope" ng-class="config_service.get_filter_class('var')" value="var" ng-click="config_service.change_filter_setting('var')"/>
-                                        <input type="button" title="Add monitoring config(s) to search scope" ng-class="config_service.get_filter_class('mon')" value="mon" ng-click="config_service.change_filter_setting('mon')"/>
+                                        <input type="button" title="Add config name to search scope" ng-class="struct.filter_settings.$$name_class" value="name" ng-click="change_filter_setting($event, 'name')"/>
+                                        <input type="button" title="Add script(s) to search scope" ng-class="struct.filter_settings.$$script_class" value="script" ng-click="change_filter_setting($event, 'script')"/>
+                                        <input type="button" title="Add variable(s) to search scope" ng-class="struct.filter_settings.$$var_class" value="var" ng-click="change_filter_setting($event, 'var')"/>
+                                        <input type="button" title="Add monitoring config(s) to search scope" ng-class="struct.filter_settings.$$mon_class" value="mon" ng-click="change_filter_setting($event, 'mon')"/>
                                     </div>
                                 </div>
                             </div>
@@ -370,7 +370,7 @@
         <input type="button" ng-class="config.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="select" ng-click="toggle_config_select($event, config)"/>
     </td>
     <td>
-        <icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, config)" size="xs"/>
+        <icsw-tools-button-static type="modify" value="modify" ng-click="create_or_edit($event, false, config)" size="xs"/>
     </td>
     <td>
         <div class="btn-group">

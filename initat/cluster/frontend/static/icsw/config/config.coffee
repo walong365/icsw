@@ -144,14 +144,16 @@ config_module = angular.module(
     "icswToolsButtonConfigService", "icswConfigTreeService",
     "icswSimpleAjaxCall", "icswMonitoringBasicTreeService", "icswConfigScriptListService",
     "icswConfigMonCheckCommandListService", "icswConfigVarListService", "$rootScope",
-    "ICSW_SIGNALS", "icswToolsSimpleModalService",
+    "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswConfigBackup",
+    "icswComplexModalService",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS,
     icswToolsButtonConfigService, icswConfigTreeService,
     icswSimpleAjaxCall, icswMonitoringBasicTreeService, icswConfigScriptListService,
     icswConfigMonCheckCommandListService, icswConfigVarListService, $rootScope,
-    ICSW_SIGNALS, icswToolsSimpleModalService,
+    ICSW_SIGNALS, icswToolsSimpleModalService, icswConfigBackup,
+    icswComplexModalService,
 ) ->
     $scope.struct = {
         # data valid
@@ -162,6 +164,13 @@ config_module = angular.module(
         mon_tree: undefined
         # selected objects
         selected_objects: []
+        # filter settings
+        filter_settings: {
+            name: true
+            script: false
+            var: false
+            mon: false
+        }
     }
 
     config_tree = undefined
@@ -193,12 +202,6 @@ config_module = angular.module(
         config.search_str = s.join(" ")
         # console.log "cs=", config.search_str, s
 
-    _filter_settings = {
-        "name" : true
-        "script" : false
-        "var" : false
-        "mon" : false
-    }
     enrich_config = (config) ->
         create_extra_fields(config)
         update_filter_field(config)
@@ -234,25 +237,25 @@ config_module = angular.module(
                 config_bool_set: []
                 enabled: true
                 categories: []
-                config_catalog: (entry.idx for entry in config_tree.catalog_list)[0]
+                config_catalog: (entry.idx for entry in $scope.struct.config_tree.catalog_list)[0]
             }
         else
             dbu = new icswConfigBackup()
             dbu.create_backup(obj_or_parent)
-        sub_scope = scope.$new(false)
+        sub_scope = $scope.$new(true)
         sub_scope.edit_obj = obj_or_parent
         sub_scope.config_tree = config_tree
         # config hint names
 
-        sub_scope.config_hint_names = _.keys(config_tree.config_hint_name_lut)
+        sub_scope.config_hint_names = _.keys($scope.struct.config_tree.config_hint_name_lut)
 
         sub_scope.config_selected_vt = (item, model, label, edit_obj) ->
-            if item of config_tree.config_hint_name_lut
-                edit_opj.description = config_tree.config_hint_name_lut[item].config_description
+            if item of $scope.struct.config_tree.config_hint_name_lut
+                edit_opj.description = $scope.struct.config_tree.config_hint_name_lut[item].config_description
 
         sub_scope.show_config_help = () ->
-            if sub_scope.edit_obj.name of config_tree.config_hint_name_lut
-                return config_tree.config_hint_name_lut[sub_scope.edit_obj.name].help_text_html
+            if sub_scope.edit_obj.name of $scope.struct.config_tree.config_hint_name_lut
+                return $scope.struct.config_tree.config_hint_name_lut[sub_scope.edit_obj.name].help_text_html
             else
                 return ""
 
@@ -319,17 +322,21 @@ config_module = angular.module(
         config.$selected = !config.$selected
         config_tree.link()
 
-    $scope.get_filter_class = (name) ->
-        if _filter_settings[name]
-            return "btn btn-success"
-        else
-            return "btn btn-default"
+    _update_filter_settings = () ->
+        for _fltr in ["name", "script", "mon", "var"]
+            _cls = "$$#{_fltr}_class"
+            if $scope.struct.filter_settings[_fltr]
+                $scope.struct.filter_settings[_cls] = "btn btn-success"
+            else
+                $scope.struct.filter_settings[_cls] = "btn btn-default"
 
-    $scope.change_filter_setting = (name) ->
-        _filter_settings[name] = ! _filter_settings[name]
-        if not _.some(_filter_settings)
-            _filter_settings["name"] = true
-        # g_update_filter_field()
+    $scope.change_filter_setting = ($event, name) ->
+        $scope.struct.filter_settings[name] = !$scope.struct.filter_settings[name]
+        if not _.some(($scope.struct.filter_settings[_fltr] for _fltr in ["name", "script", "mon", "var"]))
+            $scope.struct.filter_settings.name = true
+        _update_filter_settings()
+
+    _update_filter_settings()
 
     #init_fn: (scope) ->
     #    scope.get_system_catalog = () ->
