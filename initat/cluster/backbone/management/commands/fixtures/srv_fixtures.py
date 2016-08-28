@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,11 +20,16 @@
 """ creates fixtures for cluster-server """
 
 from initat.cluster.backbone import factories
+from initat.cluster.backbone.models import config_catalog
+from django.db.models import Q
 
 
 def add_fixtures(**kwargs):
 
-    sys_cc = factories.ConfigCatalog(name="local", system_catalog=True)
+    try:
+        sys_cc = config_catalog.objects.get(Q(system_catalog=True))
+    except config_catalog.DoesNotExist:
+        sys_cc = factories.ConfigCatalog(name="local", system_catalog=True)
     for _name, _descr in [
         ("config_server", "enables node provisioning features"),
         ("discovery_server", "enables network discovery and inventory"),

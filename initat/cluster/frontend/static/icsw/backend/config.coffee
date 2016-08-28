@@ -89,76 +89,129 @@ config_module = angular.module(
             )
             @link()
 
+        _init_expansion_fields: (config) =>
+            if not config.$$script_expanded?
+                # expansion flags
+                config.$$script_expanded = false
+                config.$$var_expanded = false
+                config.$$mon_expanded = false
+                for _type in ["script", "var", "mon"]
+                    config["$$#{_type}_expanded"] = false
+                    @_set_config_expansion_class(config, _type)
+
+        _set_config_expansion_class: (config, type) =>
+            _num = config["#{type}_num"]
+            if _num
+                if config["$${type}_expanded"]
+                    config["$$#{type}_expansion_class"] = "glyphicon glyphicon-chevron-down"
+                    config["$$#{type}_expansion_label_class"] = "label label-success"
+                else
+                    config["$$#{type}_expansion_class"] = "glyphicon glyphicon-chevron-right"
+                    config["$$#{type}_expansion_label_class"] = "label label-primary"
+            else
+                config["$$#{type}_expansion_class"] = "glyphicon"
+                config["$$#{type}_expansion_label_class"] = ""
+
+        toggle_expand: (config, type) =>
+            _num = config["#{type}_num"]
+            if _num
+                config["$$#{type}_expanded"] = !config["$$#{type}_expanded"]
+            else
+                config["$$#{type}_expanded"] = false
+            @_set_config_expansion_class(config, type)
+
+        _set_config_line_fields: (config) =>
+            config.$$config_line_class = if config.enabled then "" else "danger"
+            if config.config_catalog of @catalog_lut
+                config.$$catalog_name = @catalog_lut[config.config_catalog].name
+            else
+                config.$$catalog_name = "???"
+            if config.categories.length
+                config.$$cat_info_str = "#{config.categories.length}"
+            else
+                config.$$cat_info_str = "-"
+            if config.$hint
+                config.$$config_help_text = config.$hint.help_text_short or "no short help"
+            else
+                config.$$config_help_text = "---"
+
+        _enrich_config: (config) =>
+            @_set_config_line_fields(config)
+            if not config.$selected?
+                config.$selected = false
+            if config.config_catalog
+                @catalog_lut[config.config_catalog].configs.push(config.idx)
+            else
+                # hm, config has no catalog ...
+                if not config.$$config_error_reported?
+                    config.$$config_error_reported = true
+                    console.error "*** Config #{config.name} has no valid config_catalog"
+            # device config set
+            config.$$usecount = config.device_config_set.length
+            # populate helper fields
+            config.script_sel = 0
+            config.var_sel = 0
+            config.mon_sel = 0
+            if config.var_list?
+                config.var_list.length = 0
+            else
+                config.var_list = []
+            for script in config.config_script_set
+                script.$$tree = @
+                if not script.$selected?
+                    script.$selected = false
+            for mon in config.mon_check_command_set
+                mon.$$tree = @
+                if not mon.$selected?
+                    mon.$selected = false
+            for vt in ["str", "int", "bool", "blob"]
+                for el in config["config_#{vt}_set"]
+                    el.$$tree = @
+                    if not el.$selected?
+                        el.$selected = false
+                    el.$var_type = vt
+                    config.var_list.push(el)
+            icswTools.order_in_place(
+                config.var_list
+                ["name"]
+                ["desc"]
+            )
+            config.var_num = config.var_list.length
+            config.var_sel = (true for entry in config.var_list when entry.$selected).length
+            config.script_num = config.config_script_set.length
+            config.script_sel = (true for entry in config.config_script_set when entry.$selected).length
+            config.mon_num = config.mon_check_command_set.length
+            config.mon_sel = (true for entry in config.mon_check_command_set when entry.$selected).length
+            config.mon_check_command_lut = _.keyBy(config.mon_check_command_set, "idx")
+            # build info strings for device-config
+            if @_multi_name_dict[config.name] > 1
+                _name = "#{config.name} [" + @catalog_lut[config.config_catalog].name + "]"
+                # flag, can be used in frontend
+                config.$mulitple_names = true
+            else
+                _name = "#{config.name}"
+                config.$mulitple_names = false
+            @_init_expansion_fields(config)
+            config.info_str = "#{_name} (#{config.var_num}, #{config.script_num}, #{config.mon_num})"
+            r_v = []
+            if config.server_config
+                r_v.push("S")
+            if config.system_config
+                r_v.push("Y")
+            config.config_type_str = r_v.join("/")
+
         link: () =>
             # hints
             # create links between elements
             # how often a config name is used
-            multi_name_dict = _.countBy((config.name for config in @list))
+            @_multi_name_dict = _.countBy((config.name for config in @list))
             for cat in @catalog_list
                 if cat.configs?
                     cat.configs.length = 0
                 else
                     cat.configs = []
             for config in @list
-                if not config.$selected?
-                    config.$selected = false
-                if config.config_catalog
-                    @catalog_lut[config.config_catalog].configs.push(config.idx)
-                else
-                    # hm, config has no catalog ...
-                    console.error "*** Config #{config.name} has no valid config_catalog"
-                # device config set
-                config.usecount = config.device_config_set.length
-                # populate helper fields
-                config.script_sel = 0
-                config.var_sel = 0
-                config.mon_sel = 0
-                if config.var_list?
-                    config.var_list.length = 0
-                else
-                    config.var_list = []
-                for script in config.config_script_set
-                    script.$$tree = @
-                    if not script.$selected?
-                        script.$selected = false
-                for mon in config.mon_check_command_set
-                    mon.$$tree = @
-                    if not mon.$selected?
-                        mon.$selected = false
-                for vt in ["str", "int", "bool", "blob"]
-                    for el in config["config_#{vt}_set"]
-                        el.$$tree = @
-                        if not el.$selected?
-                            el.$selected = false
-                        el.$var_type = vt
-                        config.var_list.push(el)
-                icswTools.order_in_place(
-                    config.var_list
-                    ["name"]
-                    ["desc"]
-                )
-                config.var_num = config.var_list.length
-                config.var_sel = (true for entry in config.var_list when entry.$selected).length
-                config.script_num = config.config_script_set.length
-                config.script_sel = (true for entry in config.config_script_set when entry.$selected).length
-                config.mon_num = config.mon_check_command_set.length
-                config.mon_sel = (true for entry in config.mon_check_command_set when entry.$selected).length
-                config.mon_check_command_lut = _.keyBy(config.mon_check_command_set, "idx")
-                # build info strings for device-config
-                if multi_name_dict[config.name] > 1
-                    _name = "#{config.name} [" + @catalog_lut[config.config_catalog].name + "]"
-                    # flag, can be used in frontend
-                    config.$mulitple_names = true
-                else
-                    _name = "#{config.name}"
-                    config.$mulitple_names = false
-                config.info_str = "#{_name} (#{config.var_num}, #{config.script_num}, #{config.mon_num})"
-                r_v = []
-                if config.server_config
-                    r_v.push("S")
-                if config.system_config
-                    r_v.push("Y")
-                config.config_type_str = r_v.join("/")
+                @_enrich_config(config)
             @$selected = (entry for entry in @list when entry.$selected).length
 
         update_category_tree: () =>

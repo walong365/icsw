@@ -144,40 +144,27 @@ config_module = angular.module(
     "icswToolsButtonConfigService", "icswConfigTreeService",
     "icswSimpleAjaxCall", "icswMonitoringBasicTreeService", "icswConfigScriptListService",
     "icswConfigMonCheckCommandListService", "icswConfigVarListService", "$rootScope",
-    "ICSW_SIGNALS",
+    "ICSW_SIGNALS", "icswToolsSimpleModalService",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS,
     icswToolsButtonConfigService, icswConfigTreeService,
     icswSimpleAjaxCall, icswMonitoringBasicTreeService, icswConfigScriptListService,
     icswConfigMonCheckCommandListService, icswConfigVarListService, $rootScope,
-    ICSW_SIGNALS
+    ICSW_SIGNALS, icswToolsSimpleModalService,
 ) ->
-    $scope.config_tree = undefined
-    $scope.mon_tree = undefined
-
     $scope.struct = {
+        # data valid
+        data_valid: undefined
+        # config tree
+        config_tree: undefined
+        # monitoring tree
+        mon_tree: undefined
         # selected objects
         selected_objects: []
     }
 
     config_tree = undefined
-
-    g_create_extra_fields = () ->
-        # add extra fields for display expansion
-        for entry in config_tree.list
-            create_extra_fields(entry)
-
-    create_extra_fields = (config) ->
-        config._cef = true
-        if not config._cef
-            config.script_expanded = false
-            config.var_expanded = false
-            config.mon_expanded = false
-        else
-            for _type in ["var", "script", "mon"]
-                if not config["#{_type}_num"]
-                    config["#{_type}_expanded"] = false
 
     g_update_filter_field = () ->
         for entry in config_tree.list
@@ -216,17 +203,22 @@ config_module = angular.module(
         create_extra_fields(config)
         update_filter_field(config)
 
-    $scope.fetch = () ->
-        defer = $q.defer()
-        icswConfigTreeService.load(scope.$id).then(
+    _fetch = () ->
+        $q.all(
+            [
+                icswConfigTreeService.load($scope.$id)
+                icswMonitoringBasicTreeService.load($scope.$id)
+            ]
+        ).then(
             (data) ->
-                config_tree = data
-                scope.config_tree = config_tree
-                g_create_extra_fields()
-                g_update_filter_field()
-                defer.resolve(config_tree.list)
+                $scope.struct.data_valid = true
+                $scope.struct.config_tree = data[0]
+                $scope.struct.mon_tree = data[1]
+                console.log "s=", $scope.struct.config_tree
+                # g_update_filter_field()
         )
-        return defer.promise
+
+    _fetch()
 
     $scope.create_or_edit = (event, create, obj_or_parent) ->
         if create
@@ -307,12 +299,16 @@ config_module = angular.module(
                 sub_scope.$destroy()
         )
 
-    $scope.delete =  (scope, event, conf) ->
+    $scope.delete =  ($event, conf) ->
         icswToolsSimpleModalService("Really delete Config #{conf.name} ?").then(
             () =>
-                config_tree.delete_config(conf).then(
+                blockUI.start("deleting config")
+                $scope.struct.config_tree.delete_config(conf).then(
                     () ->
+                        blockUI.stop()
                         console.log "conf deleted"
+                    () ->
+                        blockUI.stop()
                 )
         )
 
@@ -333,29 +329,15 @@ config_module = angular.module(
         _filter_settings[name] = ! _filter_settings[name]
         if not _.some(_filter_settings)
             _filter_settings["name"] = true
-        g_update_filter_field()
+        # g_update_filter_field()
 
     #init_fn: (scope) ->
     #    scope.get_system_catalog = () ->
     #        return (cat for cat in _catalogs when cat.system_catalog)
 
-    ensure_config_tree = () ->
-        defer = $q.defer()
-        if $scope.config_tree? and $scope.mon_tree?
-            defer.resolve("present")
-        else
-            $q.all(
-                [
-                    icswConfigTreeService.load($scope.$id)
-                    icswMonitoringBasicTreeService.load($scope.$id)
-                ]
-            ).then(
-                (data) ->
-                    $scope.config_tree = data[0]
-                    $scope.mon_tree = data[1]
-                    defer.resolve("loaded")
-            )
-        return defer.promise
+    $scope.toggle_config_select = ($event, config) ->
+        config.$selected = !config.$selected
+        $scope.struct.config_tree.link()
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_CONFIG_TREE_LOADED"), (event, tree) ->
         $scope.config_tree = tree
@@ -413,70 +395,16 @@ config_module = angular.module(
             $scope.struct.selected_objects.push(obj)
 
     $scope.create_mon_check_command = (event, config) ->
-        ensure_config_tree().then(
-            (data) ->
-                icswConfigMonCheckCommandListService.create_or_edit($scope, event, true, config, $scope.config_tree, $scope.mon_tree)
-        )
+        icswConfigMonCheckCommandListService.create_or_edit($scope, event, true, config, $scope.config_tree, $scope.mon_tree)
 
     $scope.create_var = (event, config, var_type) ->
-        ensure_config_tree().then(
-            (data) ->
-                icswConfigVarListService.create_or_edit($scope, event, true, config, $scope.config_tree, var_type)
-        )
+        icswConfigVarListService.create_or_edit($scope, event, true, config, $scope.config_tree, var_type)
 
     $scope.create_script = (event, config) ->
-        ensure_config_tree().then(
-            (data) ->
-                icswConfigScriptListService.create_or_edit($scope, event, true, config, $scope.config_tree)
-        )
+        icswConfigScriptListService.create_or_edit($scope, event, true, config, $scope.config_tree)
 
-]).controller("icswConfigLineCtrl",
-[
-    "$scope",
-(
-    $scope,
-) ->
-    $scope.get_config_catalog_name = (conf) ->
-        if conf.config_catalog of $scope.config_tree.catalog_lut
-            return $scope.config_tree.catalog_lut[conf.config_catalog].name
-        else
-            return "???"
-
-    $scope.get_expand_class = (config, _type) ->
-        if config["#{_type}_num"]
-            if config["#{_type}_expanded"]
-                return "glyphicon glyphicon-chevron-down"
-            else
-                return "glyphicon glyphicon-chevron-right"
-        else
-            return "glyphicon"
-
-    $scope.get_label_class = (entry, s_type) ->
-        num = entry["#{s_type}_num"]
-        sel = entry["#{s_type}_sel"]
-        if sel
-            return "label label-success"
-        else if num
-            return "label label-primary"
-        else
-            return ""
-
-    $scope.toggle_expand = (config, _type) ->
-        if config["#{_type}_num"]
-            config["#{_type}_expanded"] = not config["#{_type}_expanded"]
-
-    $scope.get_num_cats = (config) ->
-        return if config.categories.length then "#{config.categories.length}" else "-"
-
-    $scope.get_config_row_class = (config) ->
-        return if config.enabled then "" else "danger"
-
-    # hint related services
-    $scope.get_config_help_text = (config) ->
-        if config.$hint
-            return config.$hint.help_text_short or "no short help"
-        else
-            return "---"
+    $scope.toggle_expand = (config, type) ->
+        $scope.struct.config_tree.toggle_expand(config, type)
 
 ]).directive("icswConfigLine", ["$templateCache", ($templateCache) ->
     return {

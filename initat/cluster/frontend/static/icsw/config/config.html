@@ -212,7 +212,7 @@
             <thead>
                 <tr>
                     <th st-sort="name">name</th>
-                    <th>SysConfigs</th>
+                    <th>SysConfig</th>
                     <th st-sort="url">URL</th>
                     <th st-sort="author">Author</th>
                     <th>Version</th>
@@ -223,13 +223,17 @@
             <tbody>
                 <tr ng-repeat="catalog in entries_displayed">
                     <td>{{ catalog.name }}</td>
-                    <td>{{ catalog.system_catalog | yesno1 }}</td>
+                    <td class="text-center"><span ng-bind-html="catalog.system_catalog | yesno3"></span></td>
                     <td>{{ catalog.url }}</td>
                     <td>{{ catalog.author }}</td>
                     <td>{{ catalog.version }}</td>
-                    <td>{{ catalog.configs.length }}</td>
-                    <td><icsw-tools-button-static type="modify" value="modify" ng-click="create_or_edit($event, false, catalog)" size="xs"/></td>
-                    <td><icsw-tools-button-static type="delete" value="delete" ng-show="catalog.configs.length == 0" ng-click="delete($event, catalog)" size="xs"/></td>
+                    <td class="text-center">{{ catalog.configs.length }}</td>
+                    <td>
+                        <icsw-tools-button-static type="modify" value="modify" ng-click="create_or_edit($event, false, catalog)" size="xs"/>
+                    </td>
+                    <td>
+                        <icsw-tools-button-static type="delete" value="delete" ng-show="catalog.configs.length == 0" ng-click="delete($event, catalog)" size="xs"/>
+                    </td>
                 </tr>
             </tbody>
         </table>
@@ -237,21 +241,26 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.config.table">
-    <icsw-tools-rest-table-new target-list="configs" config-service="icswConfigListService">
-        <table st-table="configs_displayed" st-safe-src="configs" icsw-tools-table-leak-filtered="filtered"
-               class="table table-hover table-condensed table-striped" style="width:100%;">
-            <h2>
-                {{ config_tree.list.length }} configurations, {{ filtered.length }} shown, {{ config_tree.$selected }} selected
-                <icsw-tools-button-static
-                    type="create"
-                    value="create new config"
-                    ng-click="create($event)"
-                    size="xs"
-                ></icsw-tools-button-static>
-                <!-- removed temporarily due to bug in CSW-576
-                <icsw-config-download config-tree="config_tree"></icsw-config-download>
-                -->
-            </h2>
+    <div ng-if="struct.data_valid">
+        <h2>
+            {{ config_tree.list.length }} configurations, {{ filtered.length }} shown, {{ config_tree.$selected }} selected
+            <icsw-tools-button-static
+                type="create"
+                value="create new config"
+                ng-click="create($event)"
+                size="xs"
+            ></icsw-tools-button-static>
+            <!-- removed temporarily due to bug in CSW-576
+            <icsw-config-download config-tree="config_tree"></icsw-config-download>
+            -->
+        </h2>
+        <table
+            st-table="configs_displayed"
+            st-safe-src="struct.config_tree.list"
+            icsw-tools-table-leak-filtered="filtered"
+            class="table table-hover table-condensed table-striped"
+            style="width:100%;"
+        >
             <thead>
                 <tr>
                     <td colspan="99">
@@ -296,33 +305,33 @@
                     <th colspan="4">action</th>
                 </tr>
             </thead>
-            <tbody ng-controller="icswConfigLineCtrl">
-                <tr st-select-row icsw-config-line ng-repeat-start="config in configs_displayed" ng-class="get_config_row_class(config)">
+            <tbody>
+                <tr st-select-row icsw-config-line ng-repeat-start="config in configs_displayed" ng-class="config.$$config_line_class">
                 </tr>
-                <tr ng-if="config.var_expanded">
+                <tr ng-if="config.$$var_expanded">
                     <td colspan="14">
                         <icsw-config-var-table config="config" config-tree="config_tree"><</icsw-config-var-table>
                     </td>
                 </tr>
-                <tr ng-if="config.script_expanded">
+                <tr ng-if="config.$$script_expanded">
                     <td colspan="14">
                         <icsw-config-script-table config="config" config-tree="config_tree"></icsw-config-script-table>
                     </td>
                 </tr>
-                <tr ng-repeat-end ng-if="config.mon_expanded">
+                <tr ng-repeat-end ng-if="config.$$mon_expanded">
                     <td colspan="14">
                         <icsw-config-mon-table config="config" config-tree="config_tree"></icsw-config-mon-table>
                     </td>
                 </tr>
             </tbody>
         </table>
-    </icsw-tools-rest-table-new>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.config.line">
     <td>
         <span ng-show="config.$hint" class="pull-right">
-            <span class="glyphicon glyphicon-info-sign" title="{{ get_config_help_text(config) }}">
+            <span class="glyphicon glyphicon-info-sign" title="{{ config.$$config_help_text }}">
             </span>
         </span>
         {{ config.name }}
@@ -335,30 +344,30 @@
             --><span class="label" ng-class="config.system_config && 'label-success' || 'label-default'" uib-tooltip="is system config">Y</span>
         </div>
     </td>
-    <td>{{ get_config_catalog_name(config) }}</td>
+    <td>{{ config.$$catalog_name }}</td>
     <td class="text-center"><span ng-bind-html="config.enabled | yesno3"></span></td>
     <td>{{ config.description }}</td>
     <td class="text-center">
-        <span ng-class="get_label_class(config, 'var')" ng-click="toggle_expand(config, 'var')">
-            <span ng_class="get_expand_class(config, 'var')" />
+        <span ng-class="config.$$var_expansion_label_class" ng-click="toggle_expand(config, 'var')">
+            <span ng_class="config.$$var_expansion_class" />
             {{ config.var_num }} <span ng-show="config.var_sel"> / {{ config.var_sel }} </span>
         </span>
     </td>
     <td class="text-center">
-        <span ng-class="get_label_class(config, 'script')" ng-click="toggle_expand(config, 'script')">
-            <span ng_class="get_expand_class(config, 'script')" />
+        <span ng-class="config.$$script_expansion_label_class" ng-click="toggle_expand(config, 'script')">
+            <span ng_class="config.$$script_expansion_class" />
             {{ config.script_num }} <span ng-show="config.script_sel"> / {{ config.script_sel }} </span>
         </span>
     </td>
     <td class="text-center">
-        <span ng-class="get_label_class(config, 'mon')" ng-click="toggle_expand(config, 'mon')">
-            <span ng_class="get_expand_class(config, 'mon')" />
+        <span ng-class="config.$$mon_expansion_label_class" ng-click="toggle_expand(config, 'mon')">
+            <span ng_class="config.$$mon_expansion_class" />
             {{ config.mon_num }} <span ng-show="config.mon_sel"> / {{ config.mon_sel }} </span>
         </span>
     </td>
-    <td class="text-center">{{ get_num_cats(config) }}</td>
+    <td class="text-center">{{ config.$$cat_info_str }}</td>
     <td>
-        <input type="button" ng-class="config.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="select" ng-click="config_service.select(config)"/>
+        <input type="button" ng-class="config.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="select" ng-click="toggle_config_select($event, config)"/>
     </td>
     <td>
         <icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, config)" size="xs"/>
@@ -380,10 +389,10 @@
         </div>
     </td>
     <td class="text-center">
-        <span ng-if="config.usecount" class="text-warning">
-            refs: {{ config.usecount }}
+        <span ng-if="config.$$usecount" class="text-warning">
+            refs: {{ config.$$usecount }}
         </span>
-        <span ng-if="!config.usecount">
+        <span ng-if="!config.$$usecount">
             <icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, config)" size="xs"/>
         </span>
     </td>
