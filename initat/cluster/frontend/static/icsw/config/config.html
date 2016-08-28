@@ -2,6 +2,30 @@
     <icsw-config-config-overview></icsw-config-config-overview>
 </script>
 
+<script type="text/ng-template" id="icsw.config.config.overview">
+    <uib-tabset>
+        <uib-tab heading="Configurations">
+            <icsw-config-config-table></icsw-config-config-table>
+            <!-- removed temporarily due to CSW-576
+            <icsw-config-uploader></icsw-config-uploader>
+            -->
+            <icsw-config-generate-config icsw-sel-man="0"></icsw-config-generate-config>
+        </uib-tab>
+        <uib-tab heading="Monitoring categories">
+            <icsw-config-category-tree-edit mode="mon"></icsw-config-category-tree-edit>
+        </uib-tab>
+        <uib-tab heading="Configuration categories">
+            <icsw-config-category-tree-edit mode="config"></icsw-config-category-tree-edit>
+        </uib-tab>
+        <uib-tab heading="Configuration catalogs">
+            <icsw-config-catalog-table></icsw-config-catalog-table>
+        </uib-tab>
+        <uib-tab heading="Uploads ({{ config_tree.uploaded_configs.length }})" ng-if="config_tree.uploaded_configs.length">
+            <icsw-config-uploaded></icsw-config-uploaded>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
 <script type="text/ng-template" id="config.catalog.form">
     <form name="form_data" class="form-horizontal">
         <h2>Configuration catalog '{{ edit_obj.name }}'</h2>
@@ -131,30 +155,6 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="icsw.config.overview">
-    <uib-tabset>
-        <uib-tab heading="Configurations">
-            <icsw-config-config-table></icsw-config-config-table>
-            <!-- removed temporarily due to CSW-576
-            <icsw-config-uploader></icsw-config-uploader>
-            -->
-            <icsw-config-generate-config icsw-sel-man="0"></icsw-config-generate-config>
-        </uib-tab>
-        <uib-tab heading="Monitoring categories">
-            <icsw-config-category-tree-edit mode="mon"></icsw-config-category-tree-edit>
-        </uib-tab>
-        <uib-tab heading="Configuration categories">
-            <icsw-config-category-tree-edit mode="config"></icsw-config-category-tree-edit>
-        </uib-tab>
-        <uib-tab heading="Configuration catalogs">
-            <icsw-config-catalog-table></icsw-config-catalog-table>
-        </uib-tab>
-        <uib-tab heading="Uploads ({{ config_tree.uploaded_configs.length }})" ng-if="config_tree.uploaded_configs.length">
-            <icsw-config-uploaded></icsw-config-uploaded>
-        </uib-tab>
-    </uib-tabset>
-</script>
-
 <script type="text/ng-template" id="icsw.config.download">
     <icsw-tools-button type="download" value="download selected configs" ng-show="configTree.$selected" ng-click="download_selected()" size="xs"></icsw-tools-button>
 </script>
@@ -199,12 +199,16 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.catalog.table">
-    <icsw-tools-rest-table-new target-list="config_catalogs" config-service="icswConfigCatalogListService">
-        <h2>{{ config_catalogs.length }} catalogs,
-            <icsw-tools-button-static type="create" value="create new catalog" ng-click="create($event)" size="xs"></icsw-tools-button-static>
+    <div ng-if="struct.data_present">
+        <h2>{{ struct.config_tree.catalog_list.length }} catalogs,
+            <icsw-tools-button-static type="create" value="create new catalog" ng-click="create_or_edit($event, true, null)" size="xs"></icsw-tools-button-static>
         </h2>
-        <table st-table="entries_displayed" st-safe-src="config_catalogs"
-               class="table table-hover table-condensed table-striped" style="width:auto;">
+        <table
+            st-table="entries_displayed"
+            st-safe-src="struct.config_tree.catalog_list"
+            class="table table-hover table-condensed table-striped"
+            style="width:auto;"
+        >
             <thead>
                 <tr>
                     <th st-sort="name">name</th>
@@ -224,12 +228,12 @@
                     <td>{{ catalog.author }}</td>
                     <td>{{ catalog.version }}</td>
                     <td>{{ catalog.configs.length }}</td>
-                    <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, catalog)" size="xs"/></td>
+                    <td><icsw-tools-button-static type="modify" value="modify" ng-click="create_or_edit($event, false, catalog)" size="xs"/></td>
                     <td><icsw-tools-button-static type="delete" value="delete" ng-show="catalog.configs.length == 0" ng-click="delete($event, catalog)" size="xs"/></td>
                 </tr>
             </tbody>
         </table>
-    </icsw-tools-rest-table-new>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.config.config.table">
@@ -238,7 +242,12 @@
                class="table table-hover table-condensed table-striped" style="width:100%;">
             <h2>
                 {{ config_tree.list.length }} configurations, {{ filtered.length }} shown, {{ config_tree.$selected }} selected
-                <icsw-tools-button-static type="create" value="create new config" ng-click="create($event)" size="xs"></icsw-tools-button-static>
+                <icsw-tools-button-static
+                    type="create"
+                    value="create new config"
+                    ng-click="create($event)"
+                    size="xs"
+                ></icsw-tools-button-static>
                 <!-- removed temporarily due to bug in CSW-576
                 <icsw-config-download config-tree="config_tree"></icsw-config-download>
                 -->
@@ -249,13 +258,17 @@
                         <div class="row">
                             <div class="col-sm-3">
                                 <div class="input-group">
-                                    <input st-search="search_str" class="form-control" placeholder="filter">
+                                    <input
+                                        st-search="search_str"
+                                        class="form-control"
+                                        placeholder="filter"
+                                    >
                                     </input>
                                     <div class="input-group-btn">
-                                        <input type="button" ng-class="config_service.get_filter_class('name')" value="name" ng-click="config_service.change_filter_setting('name')"/>
-                                        <input type="button" ng-class="config_service.get_filter_class('script')" value="script" ng-click="config_service.change_filter_setting('script')"/>
-                                        <input type="button" ng-class="config_service.get_filter_class('var')" value="var" ng-click="config_service.change_filter_setting('var')"/>
-                                        <input type="button" ng-class="config_service.get_filter_class('mon')" value="mon" ng-click="config_service.change_filter_setting('mon')"/>
+                                        <input type="button" title="Add config name to search scope" ng-class="config_service.get_filter_class('name')" value="name" ng-click="config_service.change_filter_setting('name')"/>
+                                        <input type="button" title="Add script(s) to search scope" ng-class="config_service.get_filter_class('script')" value="script" ng-click="config_service.change_filter_setting('script')"/>
+                                        <input type="button" title="Add variable(s) to search scope" ng-class="config_service.get_filter_class('var')" value="var" ng-click="config_service.change_filter_setting('var')"/>
+                                        <input type="button" title="Add monitoring config(s) to search scope" ng-class="config_service.get_filter_class('mon')" value="mon" ng-click="config_service.change_filter_setting('mon')"/>
                                     </div>
                                 </div>
                             </div>
@@ -323,7 +336,7 @@
         </div>
     </td>
     <td>{{ get_config_catalog_name(config) }}</td>
-    <td class="text-center">{{ config.enabled | yesno1 }}</td>
+    <td class="text-center"><span ng-bind-html="config.enabled | yesno3"></span></td>
     <td>{{ config.description }}</td>
     <td class="text-center">
         <span ng-class="get_label_class(config, 'var')" ng-click="toggle_expand(config, 'var')">

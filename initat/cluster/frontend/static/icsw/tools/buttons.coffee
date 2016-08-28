@@ -313,9 +313,9 @@ visible-md visible-lg
 [
     "icswToolsButtonConfigService", "gettextCatalog",
 (
-    icswToolsButtonsConfigService, gettextCatalog
+    icswToolsButtonsConfigService, gettextCatalog,
 ) ->
-    # static button, doenst change its face during his lifetime
+    # static button, doesnt change its face during his lifetime
     return {
         restrict: "EA",
         template: '<button type="button" class="btn btn-default" ng-disabled="is_disabled">value</button>'

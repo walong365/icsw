@@ -25,99 +25,142 @@ config_module = angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.configoverview")
-]).service('icswConfigCatalogListService',
+]).directive("icswConfigConfigOverview", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.config.config.overview")
+        # controller: "icswConfigConfigCtrl"
+        scope: true
+    }
+]).directive("icswConfigCatalogTable", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.config.catalog.table")
+        scope: true
+        controller: "icswConfigCatalogTableCtrl"
+    }
+]).controller("icswConfigCatalogTableCtrl",
 [
     "icswConfigTreeService", "$q", "icswTools", "ICSW_URLS", "icswUserService",
     "icswComplexModalService", "icswConfigCatalogBackup", "$compile", "$templateCache",
-    "icswToolsSimpleModalService",
+    "icswToolsSimpleModalService", "$scope",
 (
     icswConfigTreeService, $q, icswTools, ICSW_URLS, icswUserService,
     icswComplexModalService, icswConfigCatalogBackup, $compile, $templateCache,
-    icswToolsSimpleModalService
+    icswToolsSimpleModalService, $scope,
 ) ->
-    config_tree = undefined
-    return {
-        fetch: (scope) ->
-            defer = $q.defer()
-            icswConfigTreeService.load(scope.$id).then(
-                (tree) ->
-                    config_tree = tree
-                    defer.resolve(tree.catalog_list)
-            )
-            return defer.promise
-
-        create_or_edit: (scope, event, create, obj_or_parent) ->
-            if create
-                obj_or_parent = {
-                    name: "new catalog"
-                    url: "http://localhost"
-                    author: icswUserService.get().user.login
-                }
-            else
-                dbu = new icswConfigCatalogBackup()
-                dbu.create_backup(obj_or_parent)
-            sub_scope = scope.$new(false)
-            sub_scope.edit_obj = obj_or_parent
-            icswComplexModalService(
-                {
-                    message: $compile($templateCache.get("config.catalog.form"))(sub_scope)
-                    title: "Config Catalog"
-                    css_class: "modal-wide"
-                    ok_label: if create then "Create" else "Modify"
-                    closable: true
-                    ok_callback: (modal) ->
-                        d = $q.defer()
-                        if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "", 0)
-                            d.reject("form not valid")
-                        else
-                            if create
-                                config_tree.create_config_catalog(sub_scope.edit_obj).then(
-                                    (ok) ->
-                                        d.resolve("created")
-                                    (notok) ->
-                                        d.reject("not created")
-                                )
-                            else
-                                sub_scope.edit_obj.put().then(
-                                    (ok) ->
-                                        config_tree.reorder()
-                                        d.resolve("updated")
-                                    (not_ok) ->
-                                        d.reject("not updated")
-                                )
-                        return d.promise
-                    cancel_callback: (modal) ->
-                        if not create
-                            dbu.restore_backup(obj_or_parent)
-                        d = $q.defer()
-                        d.resolve("cancel")
-                        return d.promise
-                }
-            ).then(
-                (fin) ->
-                    console.log "finish"
-                    sub_scope.$destroy()
-            )
-
-        delete: (scope, event, cc) ->
-            icswToolsSimpleModalService("Really delete ConfigCatalog #{cc.name} ?").then(
-                () =>
-                    config_tree.delete_config_catalog(cc).then(
-                        () ->
-                            console.log "cc deleted"
-                    )
-            )
-
+    $scope.struct = {
+        # data present
+        data_present: false
+        # config tree
+        config_tree: undefined
     }
-]).service('icswConfigListService',
+
+    _load = () ->
+        icswConfigTreeService.load($scope.$id).then(
+            (tree) ->
+                $scope.struct.config_tree = tree
+                $scope.struct.data_present = true
+        )
+
+    _load()
+
+    $scope.create_or_edit = (event, create, obj_or_parent) ->
+        if create
+            obj_or_parent = {
+                name: "new catalog"
+                url: "http://localhost"
+                author: icswUserService.get().user.login
+            }
+        else
+            dbu = new icswConfigCatalogBackup()
+            dbu.create_backup(obj_or_parent)
+        sub_scope = $scope.$new(true)
+        sub_scope.edit_obj = obj_or_parent
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("config.catalog.form"))(sub_scope)
+                title: "Config Catalog"
+                css_class: "modal-wide"
+                ok_label: if create then "Create" else "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        if create
+                            $scope.struct.config_tree.create_config_catalog(sub_scope.edit_obj).then(
+                                (ok) ->
+                                    d.resolve("created")
+                                (notok) ->
+                                    d.reject("not created")
+                            )
+                        else
+                            sub_scope.edit_obj.put().then(
+                                (ok) ->
+                                    $scope.struct.config_tree.reorder()
+                                    d.resolve("updated")
+                                (not_ok) ->
+                                    d.reject("not updated")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create
+                        dbu.restore_backup(obj_or_parent)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "finish"
+                sub_scope.$destroy()
+        )
+
+    $scope.delete = ($event, cc) ->
+        icswToolsSimpleModalService("Really delete ConfigCatalog #{cc.name} ?").then(
+            () =>
+                $scope.struct.config_tree.delete_config_catalog(cc).then(
+                    () ->
+                        console.log "cc deleted"
+                )
+        )
+]).directive("icswConfigConfigTable", ["$templateCache", ($templateCache) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.config.config.table")
+        scope: true
+        controller: "icswConfigConfigTableCtrl"
+        link: (scope, el, attr) ->
+            scope.select = (obj) ->
+                obj.isSelected = !obj.isSelected
+    }
+]).controller("icswConfigConfigTableCtrl",
 [
-    "icswConfigTreeService", "$q", "icswTools", "ICSW_URLS", "$compile",
-    "icswComplexModalService", "icswToolsSimpleModalService", "$templateCache", "icswConfigBackup",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
+    "$q", "$uibModal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS",
+    "icswToolsButtonConfigService", "icswConfigTreeService",
+    "icswSimpleAjaxCall", "icswMonitoringBasicTreeService", "icswConfigScriptListService",
+    "icswConfigMonCheckCommandListService", "icswConfigVarListService", "$rootScope",
+    "ICSW_SIGNALS",
 (
-    icswConfigTreeService, $q, icswTools, ICSW_URLS, $compile,
-    icswComplexModalService, icswToolsSimpleModalService, $templateCache, icswConfigBackup
+    $scope, $compile, $filter, $templateCache, Restangular,
+    $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS,
+    icswToolsButtonConfigService, icswConfigTreeService,
+    icswSimpleAjaxCall, icswMonitoringBasicTreeService, icswConfigScriptListService,
+    icswConfigMonCheckCommandListService, icswConfigVarListService, $rootScope,
+    ICSW_SIGNALS
 ) ->
+    $scope.config_tree = undefined
+    $scope.mon_tree = undefined
+
+    $scope.struct = {
+        # selected objects
+        selected_objects: []
+    }
+
     config_tree = undefined
 
     g_create_extra_fields = () ->
@@ -161,6 +204,7 @@ config_module = angular.module(
                     s.push(moncc[attr_name])
         # set search string
         config.search_str = s.join(" ")
+        # console.log "cs=", config.search_str, s
 
     _filter_settings = {
         "name" : true
@@ -172,149 +216,129 @@ config_module = angular.module(
         create_extra_fields(config)
         update_filter_field(config)
 
-    return {
-        fetch: (scope) ->
-            defer = $q.defer()
-            icswConfigTreeService.load(scope.$id).then(
-                (data) ->
-                    config_tree = data
-                    scope.config_tree = config_tree
-                    g_create_extra_fields()
-                    g_update_filter_field()
-                    defer.resolve(config_tree.list)
-            )
-            return defer.promise
+    $scope.fetch = () ->
+        defer = $q.defer()
+        icswConfigTreeService.load(scope.$id).then(
+            (data) ->
+                config_tree = data
+                scope.config_tree = config_tree
+                g_create_extra_fields()
+                g_update_filter_field()
+                defer.resolve(config_tree.list)
+        )
+        return defer.promise
 
-        create_or_edit: (scope, event, create, obj_or_parent) ->
-            if create
-                obj_or_parent = {
-                    name: "new config"
-                    description: ""
-                    priority: 0
-                    mon_check_command_set: []
-                    config_script_set: []
-                    config_str_set: []
-                    config_int_set: []
-                    config_blob_set: []
-                    config_bool_set: []
-                    enabled: true
-                    categories: []
-                    config_catalog: (entry.idx for entry in config_tree.catalog_list)[0]
-                }
+    $scope.create_or_edit = (event, create, obj_or_parent) ->
+        if create
+            obj_or_parent = {
+                name: "new config"
+                description: ""
+                priority: 0
+                mon_check_command_set: []
+                config_script_set: []
+                config_str_set: []
+                config_int_set: []
+                config_blob_set: []
+                config_bool_set: []
+                enabled: true
+                categories: []
+                config_catalog: (entry.idx for entry in config_tree.catalog_list)[0]
+            }
+        else
+            dbu = new icswConfigBackup()
+            dbu.create_backup(obj_or_parent)
+        sub_scope = scope.$new(false)
+        sub_scope.edit_obj = obj_or_parent
+        sub_scope.config_tree = config_tree
+        # config hint names
+
+        sub_scope.config_hint_names = _.keys(config_tree.config_hint_name_lut)
+
+        sub_scope.config_selected_vt = (item, model, label, edit_obj) ->
+            if item of config_tree.config_hint_name_lut
+                edit_opj.description = config_tree.config_hint_name_lut[item].config_description
+
+        sub_scope.show_config_help = () ->
+            if sub_scope.edit_obj.name of config_tree.config_hint_name_lut
+                return config_tree.config_hint_name_lut[sub_scope.edit_obj.name].help_text_html
             else
-                dbu = new icswConfigBackup()
-                dbu.create_backup(obj_or_parent)
-            sub_scope = scope.$new(false)
-            sub_scope.edit_obj = obj_or_parent
-            sub_scope.config_tree = config_tree
-            # config hint names
+                return ""
 
-            sub_scope.config_hint_names = _.keys(config_tree.config_hint_name_lut)
-
-            sub_scope.config_selected_vt = (item, model, label, edit_obj) ->
-                if item of config_tree.config_hint_name_lut
-                    edit_opj.description = config_tree.config_hint_name_lut[item].config_description
-
-            sub_scope.show_config_help = () ->
-                if sub_scope.edit_obj.name of config_tree.config_hint_name_lut
-                    return config_tree.config_hint_name_lut[sub_scope.edit_obj.name].help_text_html
-                else
-                    return ""
-
-            icswComplexModalService(
-                {
-                    message: $compile($templateCache.get("icsw.config.form"))(sub_scope)
-                    title: "Configuration"
-                    css_class: "modal-wide"
-                    ok_label: if create then "Create" else "Modify"
-                    closable: true
-                    ok_callback: (modal) ->
-                        d = $q.defer()
-                        if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "", 0)
-                            d.reject("form not valid")
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.config.form"))(sub_scope)
+                title: "Configuration"
+                css_class: "modal-wide"
+                ok_label: if create then "Create" else "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "", 0)
+                        d.reject("form not valid")
+                    else
+                        if create
+                            config_tree.create_config(sub_scope.edit_obj).then(
+                                (new_conf) ->
+                                    enrich_config(new_conf)
+                                    d.resolve("created")
+                                (notok) ->
+                                    d.reject("not created")
+                            )
                         else
-                            if create
-                                config_tree.create_config(sub_scope.edit_obj).then(
-                                    (new_conf) ->
-                                        enrich_config(new_conf)
-                                        d.resolve("created")
-                                    (notok) ->
-                                        d.reject("not created")
-                                )
-                            else
-                                sub_scope.edit_obj.put().then(
-                                    (ok) ->
-                                        config_tree.build_luts()
-                                        d.resolve("updated")
-                                    (not_ok) ->
-                                        d.reject("not updated")
-                                )
-                        return d.promise
-                    cancel_callback: (modal) ->
-                        if not create
-                            dbu.restore_backup(obj_or_parent)
-                        d = $q.defer()
-                        d.resolve("cancel")
-                        return d.promise
-                }
-            ).then(
-                (fin) ->
-                    console.log "finish"
-                    sub_scope.$destroy()
-            )
+                            sub_scope.edit_obj.put().then(
+                                (ok) ->
+                                    config_tree.build_luts()
+                                    d.resolve("updated")
+                                (not_ok) ->
+                                    d.reject("not updated")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create
+                        dbu.restore_backup(obj_or_parent)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "finish"
+                sub_scope.$destroy()
+        )
 
-        delete: (scope, event, conf) ->
-            icswToolsSimpleModalService("Really delete Config #{conf.name} ?").then(
-                () =>
-                    config_tree.delete_config(conf).then(
-                        () ->
-                            console.log "conf deleted"
-                    )
-            )
+    $scope.delete =  (scope, event, conf) ->
+        icswToolsSimpleModalService("Really delete Config #{conf.name} ?").then(
+            () =>
+                config_tree.delete_config(conf).then(
+                    () ->
+                        console.log "conf deleted"
+                )
+        )
 
-        update_config: (config) ->
-            create_extra_fields(config)
+    $scope.update_config = (config) ->
+        create_extra_fields(config)
 
-        select: (config) ->
-            config.$selected = !config.$selected
-            config_tree.link()
+    $scope.select = (config) ->
+        config.$selected = !config.$selected
+        config_tree.link()
 
-        get_filter_class: (name) ->
-            if _filter_settings[name]
-                return "btn btn-success"
-            else
-                return "btn btn-default"
+    $scope.get_filter_class = (name) ->
+        if _filter_settings[name]
+            return "btn btn-success"
+        else
+            return "btn btn-default"
 
-        change_filter_setting: (name) ->
-            _filter_settings[name] = ! _filter_settings[name]
-            if not _.some(_filter_settings)
-                _filter_settings["name"] = true
-            g_update_filter_field()
+    $scope.change_filter_setting = (name) ->
+        _filter_settings[name] = ! _filter_settings[name]
+        if not _.some(_filter_settings)
+            _filter_settings["name"] = true
+        g_update_filter_field()
 
-        init_fn: (scope) ->
-            scope.get_system_catalog = () ->
-                return (cat for cat in _catalogs when cat.system_catalog)
+    #init_fn: (scope) ->
+    #    scope.get_system_catalog = () ->
+    #        return (cat for cat in _catalogs when cat.system_catalog)
 
-    }
-]).controller("icswConfigConfigCtrl",
-[
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "$uibModal", "FileUploader", "$http", "blockUI", "icswTools", "ICSW_URLS",
-    "icswToolsButtonConfigService", "icswConfigTreeService", "icswConfigListService",
-    "icswSimpleAjaxCall", "icswMonitoringBasicTreeService", "icswConfigScriptListService",
-    "icswConfigMonCheckCommandListService", "icswConfigVarListService", "$rootScope",
-    "ICSW_SIGNALS",
-(
-    $scope, $compile, $filter, $templateCache, Restangular,
-    $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS,
-    icswToolsButtonConfigService, icswConfigTreeService, icswConfigListService,
-    icswSimpleAjaxCall, icswMonitoringBasicTreeService, icswConfigScriptListService,
-    icswConfigMonCheckCommandListService, icswConfigVarListService, $rootScope,
-    ICSW_SIGNALS
-) ->
-    $scope.config_tree = undefined
-    $scope.mon_tree = undefined
     ensure_config_tree = () ->
         defer = $q.defer()
         if $scope.config_tree? and $scope.mon_tree?
@@ -336,12 +360,11 @@ config_module = angular.module(
     $rootScope.$on(ICSW_SIGNALS("ICSW_CONFIG_TREE_LOADED"), (event, tree) ->
         $scope.config_tree = tree
     )
-    $scope.selected_objects = []
 
     $scope.delete_selected_objects = () ->
-        if confirm("really delete #{$scope.selected_objects.length} objects ?")
+        if confirm("really delete #{$scope.struct.selected_objects.length} objects ?")
             blockUI.start()
-            for obj in $scope.selected_objects
+            for obj in $scope.struct.selected_objects
                 conf = (entry for entry in $scope.entries when entry.idx == obj.config)[0]
                 if obj.object_type == "mon"
                     ref_f = conf.mon_check_command_set
@@ -356,36 +379,38 @@ config_module = angular.module(
             icswSimpleAjaxCall(
                 url: ICSW_URLS.CONFIG_DELETE_OBJECTS
                 data:
-                    obj_list: angular.toJson(([entry.object_type, entry.idx] for entry in $scope.selected_objects))
+                    obj_list: angular.toJson(([entry.object_type, entry.idx] for entry in $scope.tsruct.selected_objects))
             ).then(
                 (xml) ->
                     blockUI.stop()
                 (xml) ->
                     blockUI.stop()
             )
-            $scope.selected_objects = []
+            $scope.struct.selected_objects.length = 0
+
     $scope.unselect_objects = () ->
         # unselect all selected objects
         idx = 0
-        while $scope.selected_objects.length
-            prev_len = $scope.selected_objects.length
+        while $scope.struct.selected_objects.length
+            prev_len = $scope.struct.selected_objects.length
             idx++
-            entry = $scope.selected_objects[0]
-            $scope.unselect_object($scope.selected_objects[0])
+            entry = $scope.struct.selected_objects[0]
+            $scope.unselect_object($scope.struct.selected_objects[0])
             # unable to unselect, exit loop
-            if $scope.selected_objects.length == prev_len
-                console.log "problem unselect..."
+            if $scope.struct.selected_objects.length == prev_len
+                console.error "problem unselect..."
                 break
+
     $scope.unselect_object = (obj) ->
         obj._selected = false
-        $scope.selected_objects = (entry for entry in $scope.selected_objects when entry != obj)
+        $scope.struct.selected_objects = (entry for entry in $scope.struct.selected_objects when entry != obj)
 
     $scope.select_object = (obj) ->
         if obj._selected
             $scope.unselect_object(obj)
         else
             obj._selected = true
-            $scope.selected_objects.push(obj)
+            $scope.struct.selected_objects.push(obj)
 
     $scope.create_mon_check_command = (event, config) ->
         ensure_config_tree().then(
@@ -405,25 +430,6 @@ config_module = angular.module(
                 icswConfigScriptListService.create_or_edit($scope, event, true, config, $scope.config_tree)
         )
 
-]).directive("icswConfigConfigOverview", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.config.overview")
-        controller: "icswConfigConfigCtrl"
-    }
-]).directive("icswConfigCatalogTable", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.config.catalog.table")
-    }
-]).directive("icswConfigConfigTable", ["$templateCache", ($templateCache) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.config.config.table")
-        link: (scope, el, attr) ->
-            scope.select = (obj) ->
-                obj.isSelected = !obj.isSelected
-    }
 ]).controller("icswConfigLineCtrl",
 [
     "$scope",
@@ -479,10 +485,10 @@ config_module = angular.module(
     }
 ]).service('icswConfigVarListService',
 [
-    "icswConfigListService", "$q", "icswTools", "ICSW_URLS", "Restangular", "$compile",
+    "$q", "icswTools", "ICSW_URLS", "Restangular", "$compile",
     "icswComplexModalService", "icswToolsSimpleModalService", "$templateCache", "icswConfigVarBackup", "toaster",
 (
-    icswConfigListService, $q, icswTools, ICSW_URLS, Restangular, $compile,
+    $q, icswTools, ICSW_URLS, Restangular, $compile,
     icswComplexModalService, icswToolsSimpleModalService, $templateCache, icswConfigVarBackup, toaster
 ) ->
     # do NOT use local vars here because this is a service
@@ -612,10 +618,10 @@ config_module = angular.module(
     }
 ]).service('icswConfigScriptListService',
 [
-    "icswConfigListService", "$q", "icswTools", "ICSW_URLS", "Restangular", "$compile",
+    "$q", "icswTools", "ICSW_URLS", "Restangular", "$compile",
     "icswComplexModalService", "icswToolsSimpleModalService", "$templateCache", "icswConfigScriptBackup", "toaster",
 (
-    icswConfigListService, $q, icswTools, ICSW_URLS, Restangular, $compile,
+    $q, icswTools, ICSW_URLS, Restangular, $compile,
     icswComplexModalService, icswToolsSimpleModalService, $templateCache, icswConfigScriptBackup, toaster
 ) ->
     return {
@@ -739,12 +745,12 @@ config_module = angular.module(
     }
 ]).service('icswConfigMonCheckCommandListService',
 [
-    "icswSimpleAjaxCall", "icswConfigListService", "icswToolsSimpleModalService",
+    "icswSimpleAjaxCall", "icswToolsSimpleModalService",
     "icswTools", "Restangular", "ICSW_URLS",  "$q",
     "icswConfigTreeService", "icswMonitoringBasicTreeService", "icswMonCheckCommandBackup",
     "icswComplexModalService", "$compile", "$templateCache",
 (
-    icswSimpleAjaxCall, icswConfigListService, icswToolsSimpleModalService,
+    icswSimpleAjaxCall, icswToolsSimpleModalService,
     icswTools, Restangular, ICSW_URLS, $q,
     icswConfigTreeService, icswMonitoringBasicTreeService, icswMonCheckCommandBackup,
     icswComplexModalService, $compile, $templateCache

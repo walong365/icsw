@@ -481,7 +481,6 @@ angular.module(
         _check_rights()
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), (event, user) ->
-        console.log "SIG", event, user
         _user = user
         _check_rights()
     )
