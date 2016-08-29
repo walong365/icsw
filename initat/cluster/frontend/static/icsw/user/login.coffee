@@ -46,6 +46,7 @@ angular.module(
     initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
     icswToolsSimpleModalService, themeService,
 ) ->
+    $scope.all_loaded = false;
     $scope.initProduct = initProduct
     $scope.license_tree = undefined
     $scope.django_version = "---"
@@ -90,6 +91,12 @@ angular.module(
                 $scope.struct.fx_mode = icswSystemLicenseDataService.fx_mode()
                 $scope.struct.data_valid = true
                 # current user is still valid, force logout
+
+                # show loginform when we know which kind of product it is
+                angular.element(document).ready( () ->
+                    $scope.all_loaded = true;
+                )
+
                 if data[3].is_authenticated()
                     $state.go("logout")
                 if first_call
