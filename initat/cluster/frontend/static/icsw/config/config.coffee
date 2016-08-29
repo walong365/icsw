@@ -21,7 +21,8 @@
 config_module = angular.module(
     "icsw.config.config",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "angularFileUpload", "ui.select", "icsw.tools.button",
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
+        "restangular", "angularFileUpload", "ui.select", "icsw.tools.button",
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.configoverview")
@@ -166,47 +167,43 @@ config_module = angular.module(
         selected_objects: []
         # filter settings
         filter_settings: {
-            name: true
+            config: true
             script: false
             var: false
             mon: false
         }
+        # search string
+        search_str: ""
+        # open configs
+        open_configs: []
     }
 
-    config_tree = undefined
+    # filter related functions
 
-    g_update_filter_field = () ->
-        for entry in config_tree.list
-            update_filter_field(entry)
+    $scope.update_search = () ->
+        if $scope.struct.config_tree?
+            $scope.struct.config_tree.update_filtered_list($scope.struct.search_str, $scope.struct.filter_settings)
 
-    update_filter_field = (config) ->
-        # set the search field according to the filter settings
-        s = []
-        if _filter_settings.name
-            s.push(config.name)
-        # TODO, to be improved
-        if _filter_settings.script
-            for scr in config.config_script_set
-                for attr_name in ["name", "description", "value"]
-                    s.push(scr[attr_name])
-        if _filter_settings.var
-            for vart in ["str", "int", "blob", "bool"]
-                for cvar in config["config_#{vart}_set"]
-                    for attr_name in ["name", "description", "value"]
-                        s.push(cvar[attr_name])
-        if _filter_settings.mon
-            for moncc in config.mon_check_command_set
-                for attr_name in ["name", "description", "check_command"]
-                    s.push(moncc[attr_name])
-        # set search string
-        config.search_str = s.join(" ")
-        # console.log "cs=", config.search_str, s
+    _update_filter_settings = () ->
+        for _fltr in ["config", "script", "mon", "var"]
+            _cls = "$$#{_fltr}_class"
+            if $scope.struct.filter_settings[_fltr]
+                $scope.struct.filter_settings[_cls] = "btn btn-success"
+            else
+                $scope.struct.filter_settings[_cls] = "btn btn-default"
+        if $scope.struct.config_tree?
+            $scope.update_search()
 
-    enrich_config = (config) ->
-        create_extra_fields(config)
-        update_filter_field(config)
+    $scope.change_filter_setting = ($event, name) ->
+        $scope.struct.filter_settings[name] = !$scope.struct.filter_settings[name]
+        if not _.some(($scope.struct.filter_settings[_fltr] for _fltr in ["config", "script", "mon", "var"]))
+            $scope.struct.filter_settings.name = true
+        _update_filter_settings()
+
+    _update_filter_settings()
 
     _fetch = () ->
+        $scope.struct.open_configs.length = 0
         $q.all(
             [
                 icswConfigTreeService.load($scope.$id)
@@ -217,11 +214,16 @@ config_module = angular.module(
                 $scope.struct.data_valid = true
                 $scope.struct.config_tree = data[0]
                 $scope.struct.mon_tree = data[1]
-                console.log "s=", $scope.struct.config_tree
-                # g_update_filter_field()
+                # set filter fields
+                _update_filter_settings()
         )
 
     _fetch()
+
+    $scope.modify_config = ($event, config) =>
+        _used_idxs = (entry.idx for entry in $scope.struct.open_configs)
+        if config.idx not in _used_idxs
+            $scope.struct.open_configs.push(config)
 
     $scope.create_or_edit = (event, create, obj_or_parent) ->
         if create
@@ -244,7 +246,7 @@ config_module = angular.module(
             dbu.create_backup(obj_or_parent)
         sub_scope = $scope.$new(true)
         sub_scope.edit_obj = obj_or_parent
-        sub_scope.config_tree = config_tree
+        sub_scope.config_tree = $scope.struct.config_tree
         # config hint names
 
         sub_scope.config_hint_names = _.keys($scope.struct.config_tree.config_hint_name_lut)
@@ -275,7 +277,6 @@ config_module = angular.module(
                         if create
                             config_tree.create_config(sub_scope.edit_obj).then(
                                 (new_conf) ->
-                                    enrich_config(new_conf)
                                     d.resolve("created")
                                 (notok) ->
                                     d.reject("not created")
@@ -283,7 +284,7 @@ config_module = angular.module(
                         else
                             sub_scope.edit_obj.put().then(
                                 (ok) ->
-                                    config_tree.build_luts()
+                                    $scope.struct.config_tree.build_luts()
                                     d.resolve("updated")
                                 (not_ok) ->
                                     d.reject("not updated")
@@ -315,40 +316,9 @@ config_module = angular.module(
                 )
         )
 
-    $scope.update_config = (config) ->
-        create_extra_fields(config)
-
-    $scope.select = (config) ->
-        config.$selected = !config.$selected
-        config_tree.link()
-
-    _update_filter_settings = () ->
-        for _fltr in ["name", "script", "mon", "var"]
-            _cls = "$$#{_fltr}_class"
-            if $scope.struct.filter_settings[_fltr]
-                $scope.struct.filter_settings[_cls] = "btn btn-success"
-            else
-                $scope.struct.filter_settings[_cls] = "btn btn-default"
-
-    $scope.change_filter_setting = ($event, name) ->
-        $scope.struct.filter_settings[name] = !$scope.struct.filter_settings[name]
-        if not _.some(($scope.struct.filter_settings[_fltr] for _fltr in ["name", "script", "mon", "var"]))
-            $scope.struct.filter_settings.name = true
-        _update_filter_settings()
-
-    _update_filter_settings()
-
-    #init_fn: (scope) ->
-    #    scope.get_system_catalog = () ->
-    #        return (cat for cat in _catalogs when cat.system_catalog)
-
     $scope.toggle_config_select = ($event, config) ->
         config.$selected = !config.$selected
         $scope.struct.config_tree.link()
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_CONFIG_TREE_LOADED"), (event, tree) ->
-        $scope.config_tree = tree
-    )
 
     $scope.delete_selected_objects = () ->
         if confirm("really delete #{$scope.struct.selected_objects.length} objects ?")
@@ -412,6 +382,32 @@ config_module = angular.module(
 
     $scope.toggle_expand = (config, type) ->
         $scope.struct.config_tree.toggle_expand(config, type)
+
+]).directive("icswConfigModify",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.config.modify.form")
+        scope:
+            config_tree: "=icswConfigTree"
+            edit_obj: "=icswConfig"
+        controller: "icswConfigModifyCtrl"
+        link: (scope, element, attrs) ->
+            scope.start()
+    }
+]).controller("icswConfigModifyCtrl",
+[
+    "$q", "$scope",
+(
+    $q, $scope,
+) ->
+    $scope.start = () ->
+        console.log "S", $scope.edit_obj
+
 
 ]).directive("icswConfigLine", ["$templateCache", ($templateCache) ->
     return {
