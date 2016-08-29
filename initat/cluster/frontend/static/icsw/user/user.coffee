@@ -51,25 +51,12 @@ user_module = angular.module(
     icswRouteExtensionProvider.add_route("main.usertree")
 ]).service("icswUserGroupRoleTools", [() ->
     return {
-
         # permission fingerprint
         get_perm_fp: (perm) ->
             if perm.csw_object_permission?
                 return "#{perm.level}-#{perm.user}-#{perm.csw_object_permission.csw_permission}-#{perm.csw_object_permission.object_pk}"
             else
                 return "#{perm.level}-#{perm.user}-#{perm.csw_permission}"
-
-        # check if changed
-        changed: (object) ->
-            if object.$$ignore_changes?
-                return false
-            else if object.$$changed?
-                return true
-            else if object.$$_ICSW_backup_def?
-                # may be none during updates
-                return object.$$_ICSW_backup_def.changed(object)
-            else
-                return false
 
     }
 ]).service("icswUser", 
@@ -943,12 +930,12 @@ user_module = angular.module(
     "icswUserGroupRoleTreeService", "$scope", "$compile", "$q", "icswUserGroupRoleSettingsTreeService", "blockUI",
     "icswUserGroupRolePermissionTreeService", "icswUserGroupRoleDisplayTree", "$timeout", "icswDeviceTreeService",
     "icswUserBackup", "icswGroupBackup", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService",
-    "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", "icswRoleBackup",
+    "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", "icswRoleBackup", "icswBackupTools",
 (
     icswUserGroupRoleTreeService, $scope, $compile, $q, icswUserGroupRoleSettingsTreeService, blockUI,
     icswUserGroupRolePermissionTreeService, icswUserGroupRoleDisplayTree, $timeout, icswDeviceTreeService,
     icswUserBackup, icswGroupBackup, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService,
-    icswSimpleAjaxCall, ICSW_URLS, $rootScope, icswRoleBackup,
+    icswSimpleAjaxCall, ICSW_URLS, $rootScope, icswRoleBackup, icswBackupTools,
 ) ->
     $scope.struct = {
         # any tree data valid
@@ -1158,7 +1145,7 @@ user_module = angular.module(
     close_edit_object = (ref_obj, ref_list, obj_type) ->
         defer = $q.defer()
         # must use a timeout here to fix strange routing bug, FIXME, TODO
-        if icswUserGroupRoleTools.changed(ref_obj)
+        if icswBackupTools.changed(ref_obj)
             icswToolsSimpleModalService("Really close changed #{obj_type} ?").then(
                 (ok) ->
                     defer.resolve("close")
@@ -1195,7 +1182,7 @@ user_module = angular.module(
         close_edit_object(user_obj, $scope.struct.edit_users, "user")
 
     $scope.changed = (object) ->
-        return icswUserGroupRoleTools.changed(object)
+        return icswBackupTools.changed(object)
 
     $scope.create_role = () ->
         new_role = {
@@ -1386,10 +1373,10 @@ user_module = angular.module(
 ]).controller("icswUserGroupEditCtrl",
 [
     "$scope", "$q", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
-    "blockUI",
+    "blockUI", "icswBackupTools",
 (
     $scope, $q, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
-    blockUI,
+    blockUI, icswBackupTools,
 ) ->
 
     $scope.obj_list_cache = {}
@@ -1480,7 +1467,7 @@ user_module = angular.module(
     #        perm.group = $scope.group.idx
 
     $scope.changed = () ->
-        return icswUserGroupRoleTools.changed($scope.src_object)
+        return icswBackupTools.changed($scope.src_object)
 
     $scope.close = () ->
         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
@@ -1522,7 +1509,7 @@ user_module = angular.module(
             # create new object
             $scope.tree["create_#{$scope.type}"]($scope.src_object).then(
                 (created) ->
-                    $scope.src_obejct = created
+                    $scope.src_object = created
                     defer.resolve("created")
                 (not_saved) ->
                     defer.reject("not created")
@@ -1538,7 +1525,6 @@ user_module = angular.module(
             (ok) ->
                 # create new backup
                 bu_def.create_backup($scope.src_object)
-                $scope.object = $scope.src_object.$$_ICSW_backup_data
                 _set_permissions_from_src()
                 if $scope.create_mode
                     # close current tab
@@ -1548,7 +1534,6 @@ user_module = angular.module(
             (not_ok) ->
                 # create new backup
                 bu_def.create_backup($scope.src_object)
-                $scope.object = $scope.src_object.$$_ICSW_backup_data
                 _set_permissions_from_src()
                 blockUI.stop()
         )
@@ -1574,10 +1559,10 @@ user_module = angular.module(
 ]).controller("icswRoleEditCtrl",
 [
     "$scope", "$q", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
-    "blockUI",
+    "blockUI", "icswBackupTools",
 (
     $scope, $q, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
-    blockUI,
+    blockUI, icswBackupTools,
 ) ->
 
     $scope.obj_list_cache = {}
@@ -1712,7 +1697,7 @@ user_module = angular.module(
         _.remove($scope.object_permission_set, (entry) -> return _fp == icswUserGroupRoleTools.get_perm_fp(entry))
 
     $scope.changed = () ->
-        return icswUserGroupRoleTools.changed($scope.src_object)
+        return icswBackupTools.changed($scope.src_object)
 
     $scope.close = () ->
         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, "role")

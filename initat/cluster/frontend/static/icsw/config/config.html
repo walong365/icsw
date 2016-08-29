@@ -112,7 +112,7 @@
             <icsw-tools-button-static
                 type="create"
                 value="create new config"
-                ng-click="create_or_edit($event, true, null)"
+                ng-click="create_config($event)"
                 size="xs"
             ></icsw-tools-button-static>
             <!-- removed temporarily due to bug in CSW-576
@@ -174,7 +174,7 @@
                             <th class="text-center">script</th>
                             <th class="text-center">mon</th>
                             <th>cats</th>
-                            <th colspan="4">action</th>
+                            <th colspan="3">action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -186,6 +186,8 @@
             <uib-tab ng-repeat="config in struct.open_configs">
                 <uib-tab-heading>
                     {{ config.name }}
+                    <span class="label label-danger" ng-show="changed(config)">Changed</span>
+                    <icsw-tools-button size="xs" type="close" value="" ng-click="close_config($event, config)"></icsw-tools-button>
                 </uib-tab-heading>
                 <icsw-config-modify
                     icsw-config-tree="struct.config_tree"
@@ -197,7 +199,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.modify.form">
-    <form class="form-horizontal" name="form_data">
+    <form class="form-horizontal" name="form_data" ng-if="data_ready">
         <h2>Configuration '{{ edit_obj.name }}'</h2>
         <div class="row">
             <div class="col-md-6 col-xs-6">
@@ -275,7 +277,7 @@
                 </fieldset>
             </div>
             <div class="col-md-6 col-xs-6">
-                <fieldset>
+                <fieldset ng-if="!create_mode">
                     <legend>Categories</legend>
                     <icsw-config-category-tree-select
                         edit-obj="edit_obj"
@@ -285,26 +287,46 @@
                 </fieldset>
             </div>
         </div>
-        <uib-tabset>
-            <uib-tab>
-                <uib-tab-heading>
-                    Variables
-                </uib-tab-heading>
-                <icsw-config-var-table config="edit_obj" config-tree="config_tree"><</icsw-config-var-table>
-            </uib-tab>
-            <uib-tab>
-                <uib-tab-heading>
-                    Scripts
-                </uib-tab-heading>
-                <icsw-config-script-table config="edit_obj" config-tree="config_tree"></icsw-config-script-table>
-            </uib-tab>
-            <uib-tab>
-                <uib-tab-heading>
-                    Monitoring Checks
-                </uib-tab-heading>
-                <icsw-config-mon-table config="edit_obj" config-tree="config_tree"></icsw-config-mon-table>
-            </uib-tab>
-        </uib-tabset>
+        <fieldset>
+            <legend>Actions</legend>
+            <div class="form-actions">
+                <icsw-tools-button type="modify" ng-show="!create_mode && changed()" ng-click="modify()"></icsw-tools-button>
+                <icsw-tools-button type="create" ng-show="create_mode" ng-click="modify()"></icsw-tools-button>
+                &nbsp;
+                <icsw-tools-button type="close" ng-click="close()"></icsw-tools-button>
+                &nbsp;
+                <icsw-tools-button type="delete" ng-click="delete()"></icsw-tools-button>
+            </div>
+        </fieldset>
+        <fieldset ng-if="!create_mode">
+            <legend>Variables, Config Scripts and Monitoring check commands</legend>
+            <uib-tabset>
+                <uib-tab>
+                    <uib-tab-heading>
+                        <!-- we use config here because edit_obj is a shallow copy for undo -->
+                        Variables ({{ config.$$num_var }})
+                        <icsw-tools-button-static size="xs" type="create" value="str" ng-click="create_var($event, config, 'str')"></icsw-tools-button-static>
+                        <icsw-tools-button-static size="xs" type="create" value="int" ng-click="create_var($event, config, 'int')"></icsw-tools-button-static>
+                        <icsw-tools-button-static size="xs" type="create" value="bool" ng-click="create_var($event, config, 'bool')"></icsw-tools-button-static>
+                    </uib-tab-heading>
+                    <icsw-config-var-table config="config" config-tree="config_tree"><</icsw-config-var-table>
+                </uib-tab>
+                <uib-tab>
+                    <uib-tab-heading>
+                        Scripts ({{ config.$$num_script }})
+                        <icsw-tools-button-static size="xs" type="create" value="script" ng-click="create_script($event, config)"></icsw-tools-button-static>
+                    </uib-tab-heading>
+                    <icsw-config-script-table config="config" config-tree="config_tree"></icsw-config-script-table>
+                </uib-tab>
+                <uib-tab>
+                    <uib-tab-heading>
+                        Monitoring Checks ({{ config.$$num_mon }})
+                        <icsw-tools-button-static size="xs" type="create" value="MonCheck" ng-click="create_mon_check_command($event, config)"></icsw-tools-button-static>
+                    </uib-tab-heading>
+                    <icsw-config-mon-table config="config" config-tree="config_tree"></icsw-config-mon-table>
+                </uib-tab>
+            </uib-tabset>
+        </fieldset>
     </form>
 </script>
 
@@ -370,20 +392,17 @@
     <td class="text-center"><span ng-bind-html="config.enabled | yesno3"></span></td>
     <td>{{ config.description }}</td>
     <td class="text-center">
-        <span ng-class="config.$$var_expansion_label_class" ng-click="toggle_expand(config, 'var')">
-            <span ng_class="config.$$var_expansion_class" />
+        <span ng-class="config.$$var_label_class">
             {{ config.$$var_span_str }}
         </span>
     </td>
     <td class="text-center">
-        <span ng-class="config.$$script_expansion_label_class" ng-click="toggle_expand(config, 'script')">
-            <span ng_class="config.$$script_expansion_class" />
+        <span ng-class="config.$$script_label_class">
             {{ config.$$script_span_str }}
         </span>
     </td>
     <td class="text-center">
-        <span ng-class="config.$$mon_expansion_label_class" ng-click="toggle_expand(config, 'mon')">
-            <span ng_class="config.$$mon_expansion_class" />
+        <span ng-class="config.$$mon_label_class">
             {{ config.$$mon_span_str }}
         </span>
     </td>
@@ -392,23 +411,7 @@
         <input type="button" ng-class="config.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="select" ng-click="toggle_config_select($event, config)"/>
     </td>
     <td>
-        <icsw-tools-button-static type="modify" value="modify" ng-click="modify_config($event, config)" size="xs"/>
-    </td>
-    <td>
-        <div class="btn-group">
-            <button type="button" class="btn btn-success btn-xs dropdown-toggle" data-toggle="dropdown">
-                Create <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li ng-click="create_script($event, config)"><a>Script</a></li>
-                <li class="divider"></li>
-                <li ng-click="create_var($event, config, 'str')"><a>String var</a></li>
-                <li ng-click="create_var($event, config, 'int')"><a>Integer var</a></li>
-                <li ng-click="create_var($event, config, 'bool')"><a>Bool var</a></li>
-                <li class="divider"></li>
-                <li ng-click="create_mon_check_command($event, config)"><a>Check command</a></li>
-            </ul>
-        </div>
+        <icsw-tools-button-static ng-show="!config.$$_shown_in_tabs" type="modify" value="modify" ng-click="modify_config($event, config)" size="xs"/>
     </td>
     <td class="text-center">
         <span ng-if="config.$$usecount" class="text-warning">

@@ -104,24 +104,24 @@ config_module = angular.module(
                     config["$$#{_type}_expanded"] = false
                     @_set_config_expansion_class(config, _type)
 
-        _set_config_expansion_class: (config, type) =>
-            _num = config["#{type}_num"]
+        _set_config_class: (config, type) =>
+            _num = config["$$num_#{type}"]
             _sel= config["$$num_#{type}_found"]
             if not _sel?
                 # may be undefined during first run
                 _sel = 0
             if _num
-                if config["$$#{type}_expanded"]
-                    config["$$#{type}_expansion_class"] = "glyphicon glyphicon-chevron-down"
-                else
-                    config["$$#{type}_expansion_class"] = "glyphicon glyphicon-chevron-right"
+                # if config["$$#{type}_expanded"]
+                #     config["$$#{type}_expansion_class"] = "glyphicon glyphicon-chevron-down"
+                # else
+                #     config["$$#{type}_expansion_class"] = "glyphicon glyphicon-chevron-right"
                 if _sel
-                    config["$$#{type}_expansion_label_class"] = "label label-success"
+                    config["$$#{type}_label_class"] = "label label-success"
                 else
-                    config["$$#{type}_expansion_label_class"] = "label label-primary"
+                    config["$$#{type}_label_class"] = "label label-primary"
             else
-                config["$$#{type}_expansion_class"] = "glyphicon"
-                config["$$#{type}_expansion_label_class"] = ""
+                # config["$$#{type}_expansion_class"] = "glyphicon"
+                config["$$#{type}_label_class"] = ""
             if _sel
                 if _sel == _num
                     config["$$#{type}_span_str"] = "all #{_num}"
@@ -131,12 +131,12 @@ config_module = angular.module(
                 config["$$#{type}_span_str"] = "#{_num}"
 
         toggle_expand: (config, type) =>
-            _num = config["#{type}_num"]
+            _num = config["$$num_#{type}"]
             if _num
                 config["$$#{type}_expanded"] = !config["$$#{type}_expanded"]
             else
                 config["$$#{type}_expanded"] = false
-            @_set_config_expansion_class(config, type)
+            @_set_config_class(config, type)
 
         _set_config_line_fields: (config) =>
             config.$$config_line_class = if config.enabled then "" else "danger"
@@ -196,11 +196,11 @@ config_module = angular.module(
                 ["name"]
                 ["desc"]
             )
-            config.var_num = config.var_list.length
+            config.$$num_var = config.var_list.length
             config.var_sel = (true for entry in config.var_list when entry.$selected).length
-            config.script_num = config.config_script_set.length
+            config.$$num_script = config.config_script_set.length
             config.script_sel = (true for entry in config.config_script_set when entry.$selected).length
-            config.mon_num = config.mon_check_command_set.length
+            config.$$num_mon = config.mon_check_command_set.length
             config.mon_sel = (true for entry in config.mon_check_command_set when entry.$selected).length
             config.mon_check_command_lut = _.keyBy(config.mon_check_command_set, "idx")
             # build info strings for device-config
@@ -211,8 +211,8 @@ config_module = angular.module(
             else
                 _name = "#{config.name}"
                 config.$mulitple_names = false
-            @_init_expansion_fields(config)
-            config.info_str = "#{_name} (#{config.var_num}, #{config.script_num}, #{config.mon_num})"
+            # @_init_expansion_fields(config)
+            config.info_str = "#{_name} (#{config.$$num_var}, #{config.$$num_script}, #{config.$$num_mon})"
             r_v = []
             if config.server_config
                 r_v.push("S")
@@ -325,7 +325,7 @@ config_module = angular.module(
                     entry.$$num_var_found = 0
                     entry.$$num_mon_found = 0
                 for _type in ["script", "mon", "var"]
-                    @_set_config_expansion_class(entry, _type)
+                    @_set_config_class(entry, _type)
                 if entry.$$global_filter_match
                     @filtered_list.push(entry)
 
@@ -374,6 +374,21 @@ config_module = angular.module(
                     @_fetch_config(new_obj.idx, defer, "created config")
                 (not_ok) ->
                     defer.reject("config not created")
+            )
+            return defer.promise
+
+        modify_config: (config) ->
+            defer = $q.defer()
+            _modify_url = ICSW_URLS.REST_CONFIG_DETAIL.slice(1).slice(0, -2)
+            Restangular.restangularizeElement(null, config, _modify_url)
+            config.put().then(
+                (saved_config) =>
+                    console.log "ok"
+                    @build_luts()
+                    defer.resolve("saved")
+                (not_ok) =>
+                    console.log "nok"
+                    defer.reject("not saved")
             )
             return defer.promise
 
