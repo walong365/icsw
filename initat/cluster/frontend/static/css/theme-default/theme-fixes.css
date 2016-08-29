@@ -65,3 +65,7 @@ icsw-tools-button{
 .submenu-bar .label {
     font-size: 100%;
 }
+
+.cfp-hotkeys {
+    border-radius: 10px;
+}

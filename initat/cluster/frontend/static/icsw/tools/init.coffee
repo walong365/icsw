@@ -217,7 +217,7 @@ angular.module(
 ) ->
     hotkeysProvider.templateHeader = "<h1>ICSW Key help</h1>"
     hotkeysProvider.includeCheatSheet = true
-    hotkeysProvider.cheatSheetHotkey = "ctrl+h"
+    hotkeysProvider.cheatSheetHotkey = "F1"
 ]).config([
     "toasterConfig",
 (

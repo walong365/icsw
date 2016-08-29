@@ -86,17 +86,19 @@ menu_module = angular.module(
     icswBreadcrumbs, $state, $window,
 ) ->
     hotkeys.bindTo($scope).add(
-        combo: "s"
-        description: "Show device selection"
-        callback: () ->
-            icswLayoutSelectionDialogService.quick_dialog()
-    ).add(
-        combo: "ctrl+h"
-        description: "Show help"
+        # combo: "ctrl+h"
+        combo : "f1"
+        #description: "Show help"
+        helpVisible: false
         allowIn: ["INPUT", "SELECT", "TEXTAREA"]
         callback: (event) ->
             hotkeys.toggleCheatSheet()
             event.preventDefault()
+    ).add(
+        combo: "s"
+        description: "Show device selection"
+        callback: () ->
+            icswLayoutSelectionDialogService.quick_dialog()
     )
     $scope.struct = {
         current_user: undefined

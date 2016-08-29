@@ -199,6 +199,9 @@ table.rotateheaders th {
     float:left;
     padding-right:10px;
 }
+.submenu-bar .sub-breadcrumb > li a{
+    color: #555555;
+}
 .submenu-bar .label {
     font-size: 100%;
 }

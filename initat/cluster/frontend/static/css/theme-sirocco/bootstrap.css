@@ -6736,7 +6736,7 @@ button.close {
 }
 .modal-body,
 .modal-body label {
-  color: #ffffff;
+  color: #555555;
 }
 .bootstrap-dialog.type-primary .modal-header {
   background-color: #92aa00;
