@@ -293,9 +293,9 @@
                 <icsw-tools-button type="modify" ng-show="!create_mode && changed()" ng-click="modify()"></icsw-tools-button>
                 <icsw-tools-button type="create" ng-show="create_mode" ng-click="modify()"></icsw-tools-button>
                 &nbsp;
-                <icsw-tools-button type="close" ng-click="close()"></icsw-tools-button>
+                <icsw-tools-button type="close" ng-click="close_config()"></icsw-tools-button>
                 &nbsp;
-                <icsw-tools-button type="delete" ng-click="delete()"></icsw-tools-button>
+                <icsw-tools-button type="delete" ng-click="delete_config()"></icsw-tools-button>
             </div>
         </fieldset>
         <fieldset ng-if="!create_mode">
@@ -418,7 +418,7 @@
             usecount: {{ config.$$usecount }}
         </span>
         <span ng-if="!config.$$usecount">
-            <icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, config)" size="xs"/>
+            <icsw-tools-button-static type="delete" value="delete" ng-click="delete_config($event, config)" size="xs"/>
         </span>
     </td>
 </script>

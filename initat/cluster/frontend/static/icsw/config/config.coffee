@@ -250,77 +250,16 @@ config_module = angular.module(
         }
         $scope.modify_config($event, new_config)
 
-    $scope.create_or_edit = (event, create, obj_or_parent) ->
-        if create
-            obj_or_parent = "?"
-        else
-            dbu = new icswConfigBackup()
-            dbu.create_backup(obj_or_parent)
-        sub_scope = $scope.$new(true)
-        sub_scope.edit_obj = obj_or_parent
-        sub_scope.config_tree = $scope.struct.config_tree
-        # config hint names
-
-        sub_scope.config_hint_names = _.keys($scope.struct.config_tree.config_hint_name_lut)
-
-        sub_scope.config_selected_vt = (item, model, label, edit_obj) ->
-            if item of $scope.struct.config_tree.config_hint_name_lut
-                edit_opj.description = $scope.struct.config_tree.config_hint_name_lut[item].config_description
-
-        sub_scope.show_config_help = () ->
-            if sub_scope.edit_obj.name of $scope.struct.config_tree.config_hint_name_lut
-                return $scope.struct.config_tree.config_hint_name_lut[sub_scope.edit_obj.name].help_text_html
-            else
-                return ""
-
-        icswComplexModalService(
-            {
-                message: $compile($templateCache.get("icsw.config.form"))(sub_scope)
-                title: "Configuration"
-                css_class: "modal-wide"
-                ok_label: if create then "Create" else "Modify"
-                closable: true
-                ok_callback: (modal) ->
-                    d = $q.defer()
-                    if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
-                        d.reject("form not valid")
-                    else
-                        if create
-                            config_tree.create_config(sub_scope.edit_obj).then(
-                                (new_conf) ->
-                                    d.resolve("created")
-                                (notok) ->
-                                    d.reject("not created")
-                            )
-                        else
-                            sub_scope.edit_obj.put().then(
-                                (ok) ->
-                                    $scope.struct.config_tree.build_luts()
-                                    d.resolve("updated")
-                                (not_ok) ->
-                                    d.reject("not updated")
-                            )
-                    return d.promise
-                cancel_callback: (modal) ->
-                    if not create
-                        dbu.restore_backup(obj_or_parent)
-                    d = $q.defer()
-                    d.resolve("cancel")
-                    return d.promise
-            }
-        ).then(
-            (fin) ->
-                console.log "finish"
-                sub_scope.$destroy()
-        )
-
-    $scope.delete =  ($event, conf) ->
+    $scope.delete_config = ($event, conf) ->
         icswToolsSimpleModalService("Really delete Config #{conf.name} ?").then(
             () =>
                 blockUI.start("deleting config")
                 $scope.struct.config_tree.delete_config(conf).then(
                     () ->
+                        if conf.$$_shown_in_tabs
+                            # remove vom tabs
+                            conf.$$ignore_changes = true
+                            $scope.close_config($event, conf)
                         blockUI.stop()
                         console.log "conf deleted"
                     () ->
@@ -384,8 +323,11 @@ config_module = angular.module(
             $scope.struct.selected_objects.push(obj)
 
     $scope.$on(ICSW_SIGNALS("_ICSW_CLOSE_CONFIG"), ($event, config) ->
-        console.log "icc", config
         $scope.close_config($event, config)
+    )
+
+    $scope.$on(ICSW_SIGNALS("_ICSW_DELETE_CONFIG"), ($event, config) ->
+        $scope.delete_config($event, config)
     )
 
     $scope.close_config = ($event, config) ->
@@ -460,8 +402,11 @@ config_module = angular.module(
     $scope.changed = () ->
         return icswBackupTools.changed($scope.config)
 
-    $scope.close = () ->
+    $scope.close_config = () ->
         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_CONFIG"), $scope.config)
+
+    $scope.delete_config = () ->
+        $scope.$emit(ICSW_SIGNALS("_ICSW_DELETE_CONFIG"), $scope.config)
 
     $scope.modify = () ->
         # copy data to original object
