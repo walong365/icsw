@@ -217,7 +217,7 @@ angular.module(
 ) ->
     hotkeysProvider.templateHeader = "<h1>ICSW Key help</h1>"
     hotkeysProvider.includeCheatSheet = true
-    hotkeysProvider.cheatSheetHotkey = "ctrl+h"
+    hotkeysProvider.cheatSheetHotkey = "F1"
 ]).config([
     "toasterConfig",
 (
@@ -481,7 +481,6 @@ angular.module(
         _check_rights()
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), (event, user) ->
-        console.log "SIG", event, user
         _user = user
         _check_rights()
     )

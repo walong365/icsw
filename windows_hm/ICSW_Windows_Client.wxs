@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
-<?define ProductVersion = "0.0.10"?>
+<?define ProductVersion = "0.0.11"?>
 <?define ProductUpgradeCode = "77EA450B-4B37-478C-919B-D0D62F2ED7C5"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
    <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" 
             Name="ICSW Windows Client" Version="$(var.ProductVersion)" Manufacturer="init.at" Language="1033">
-      <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" InstallScope="perMachine"/>
+      <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" InstallScope="perMachine" InstallPrivileges="elevated"/>
       <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
       <Icon Id="ProductIcon" SourceFile="corvus.ico"/>
       <Property Id="ARPPRODUCTICON" Value="ProductIcon"/>
@@ -43,10 +43,10 @@
       <UI Id="MyWixUI_InstallDir">
           <UIRef Id="WixUI_InstallDir" />
 
-          <DialogRef Id="UserRegistrationDlg" />
+          <DialogRef Id="HostEditingDlg" />
 
-          <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="UserRegistrationDlg" Order="2">LicenseAccepted = "1"</Publish>
-          <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="UserRegistrationDlg">1</Publish>
+          <Publish Dialog="LicenseAgreementDlg" Control="Next" Event="NewDialog" Value="HostEditingDlg" Order="2">LicenseAccepted = "1"</Publish>
+          <Publish Dialog="InstallDirDlg" Control="Back" Event="NewDialog" Value="HostEditingDlg">1</Publish>
       </UI>
       <UIRef Id="WixUI_ErrorProgressText" />
       
@@ -68,7 +68,7 @@
 	     <ComponentRef Id="nsclientIni" />
          <ComponentGroupRef Id="NscpFiles"/>	 
       </Feature>
-      <Property Id="HOSTNAMES" Value="127.0.0.1" />
+      <Property Id="HOSTNAMES" Value="*" />
       <Property Id="PORTNAMES" Value="5666" />
       <Property Id="SERVICENAME" Value="ICSW_Monitoring_Service" />      
    </Product>

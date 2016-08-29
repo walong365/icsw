@@ -60,12 +60,15 @@ class Command(BaseCommand):
             help="Use Django's base manager to dump all models stored in the database, "
                  "including those that would otherwise be filtered or modified by a custom manager."
         )
+        parser.add_argument(
+            "app_labels", nargs="+", help="apps to backup"
+        )
         # parser.add_argument(
         #     '-t', '--traceback', action='store_true', default=True,
         # )
 
-    def handle(self, *app_labels, **options):
-
+    def handle(self, **options):
+        app_labels = options["app_labels"]
         _format = options.get('format')
         indent = options.get('indent')
         using = options.get('database')
