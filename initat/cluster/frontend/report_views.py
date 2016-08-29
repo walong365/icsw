@@ -245,25 +245,42 @@ class RowCollector(object):
 
 
 class GenericReport(object):
-    def __init__(self):
-        self.bookmarks = []
+    def __init__(self, name):
         self.number_of_pages = 0
         self.pdf_buffers = []
+        self.section_number = 0
+        self.name = name
+        self.root_report = None
+        self.children = []
 
-    def generate_bookmark(self, name, root=None):
-        bookmark = PDFReportGenerator.Bookmark(name, self.number_of_pages, root)
-        self.bookmarks.append(bookmark)
-        return bookmark
+    def add_child(self, report):
+        report.root_report = self
+        free_section_number = 0
+        for child in self.children:
+            if child.section_number > free_section_number:
+                free_section_number = child.section_number
 
-    def add_to_report(self, _buffer):
+        free_section_number += 1
+
+        report.section_number = free_section_number
+
+        self.children.append(report)
+
+    def get_section_number(self):
+        if self.root_report:
+            return self.root_report.get_section_number() + ".{}".format(self.section_number)
+        else:
+            return "{}".format(self.section_number)
+
+    def add_buffer_to_report(self, _buffer):
         self.pdf_buffers.append(_buffer)
 
     def increase_page_count(self, canvas, doc):
         self.number_of_pages += 1
 
 class DeviceReport(GenericReport):
-    def __init__(self, _device, report_settings):
-        super(DeviceReport, self).__init__()
+    def __init__(self, _device, report_settings, name):
+        super(DeviceReport, self).__init__(name)
 
         self.device = _device
 
@@ -439,12 +456,6 @@ class ReportGenerator(object):
 
 
 class PDFReportGenerator(ReportGenerator):
-    class Bookmark(object):
-        def __init__(self, name, pagenum, root_bookmark):
-            self.name = name
-            self.pagenum = pagenum
-            self.root_bookmark = root_bookmark
-
     def __init__(self, settings, _devices):
         super(PDFReportGenerator, self).__init__(settings, _devices)
 
@@ -496,28 +507,12 @@ class PDFReportGenerator(ReportGenerator):
             self.cluster_id = cluster_id_var.val_str
 
         ## Storage dicts / lists
-        self.sections = {}
-        self.reports = []
-        self.device_reports = []
         self.current_page_num = 0
+
+        self.reports = []
 
     def get_report_type(self):
         return "pdf"
-
-    def __generate_section_number(self, *sections):
-        root_section = self.sections
-
-        version_str = ""
-
-        for section in sections:
-            if section not in root_section:
-                root_section[section] = {}
-
-            version_str += ".{}".format(len(root_section))
-
-            root_section = root_section[section]
-
-        return version_str[1:]
 
     def __get_logo_helper(self, value):
         _tmp_file = tempfile.NamedTemporaryFile()
@@ -638,9 +633,7 @@ class PDFReportGenerator(ReportGenerator):
         rpt.pageheader = Band(header_list)
         rpt.detailband = Band(detail_list)
 
-    def __generate_general_device_overview_report(self):
-        report = GenericReport()
-
+    def __generate_general_device_overview_report(self, root_report):
         _buffer = BytesIO()
         canvas = Canvas(_buffer, self.page_format)
 
@@ -648,8 +641,10 @@ class PDFReportGenerator(ReportGenerator):
 
         data = sorted(data, key=lambda k: k['group'])
         if data:
-            section_number = self.__generate_section_number("General", "Device Overview")
-            report.generate_bookmark("Device Overview")
+            report = GenericReport("Device Overview")
+            root_report.add_child(report)
+
+            section_number = report.get_section_number()
 
             rpt = PollyReportsReport(data)
             rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
@@ -672,14 +667,11 @@ class PDFReportGenerator(ReportGenerator):
             rpt.generate(canvas)
             canvas.save()
             report.number_of_pages += rpt.pagenumber
-            report.add_to_report(_buffer)
-            self.reports.append(report)
+            report.add_buffer_to_report(_buffer)
             self.current_page_num += rpt.pagenumber
 
-    def __generate_network_report(self):
+    def __generate_network_report(self, root_report):
         from initat.cluster.backbone.models import network
-
-        report = GenericReport()
 
         _buffer = BytesIO()
         canvas = Canvas(_buffer, (self.page_format))
@@ -703,8 +695,10 @@ class PDFReportGenerator(ReportGenerator):
 
         data = sorted(data, key=lambda k: k['id'])
         if data:
-            section_number = self.__generate_section_number("General", "Networks")
-            bookmark = report.generate_bookmark("Networks")
+            report = GenericReport("Networks")
+            root_report.add_child(report)
+
+            section_number = report.get_section_number()
 
             rpt = PollyReportsReport(data)
             rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
@@ -730,19 +724,14 @@ class PDFReportGenerator(ReportGenerator):
             rpt.generate(canvas)
             canvas.save()
             report.number_of_pages += rpt.pagenumber
-            report.add_to_report(_buffer)
-            self.reports.append(report)
+            report.add_buffer_to_report(_buffer)
             self.current_page_num += rpt.pagenumber
 
-
-
             for _network in networks:
-                self.__generate_sub_network_report(_network, bookmark)
+                self.__generate_sub_network_report(_network, report)
 
 
-    def __generate_sub_network_report(self, _network, root_bookmark):
-        report = GenericReport()
-
+    def __generate_sub_network_report(self, _network, root_report):
         _buffer = BytesIO()
         canvas = Canvas(_buffer, (self.page_format))
 
@@ -756,8 +745,9 @@ class PDFReportGenerator(ReportGenerator):
 
         data = sorted(data, key=lambda k: k['name'])
         if data:
-            section_number = self.__generate_section_number("General", "Networks", _network.identifier)
-            report.generate_bookmark(_network.identifier, root_bookmark)
+            report = GenericReport(_network.identifier)
+            root_report.add_child(report)
+            section_number = report.get_section_number()
 
             rpt = PollyReportsReport(data)
 
@@ -773,26 +763,22 @@ class PDFReportGenerator(ReportGenerator):
             rpt.generate(canvas)
             canvas.save()
             report.number_of_pages += rpt.pagenumber
-            report.add_to_report(_buffer)
-            self.reports.append(report)
+            report.add_buffer_to_report(_buffer)
             self.current_page_num += rpt.pagenumber
 
-    def __generate_device_report(self, _device, report_settings):
-        device_report = DeviceReport(_device, report_settings)
-        self.device_reports.append(device_report)
+    def __generate_device_report(self, _device, report_settings, root_report):
+        device_report = DeviceReport(_device, report_settings, _device.full_name)
+        root_report.add_child(device_report)
 
         # create generic overview page
-        self.generate_overview_page(device_report)
+        self.__generate_device_overview_report(_device, report_settings, device_report)
+        self.__generate_device_assetrun_reports(_device, report_settings, device_report)
 
-        selected_runs = _select_assetruns_for_device(_device, self.general_settings["assetbatch_selection_mode"])
+    def __generate_device_overview_report(self, _device, report_settings, root_report):
+        report = DeviceReport(_device, report_settings, "Overview")
+        root_report.add_child(report)
 
-        self.generate_report_for_assetruns(selected_runs, device_report)
-
-    def generate_overview_page(self, report):
-        _device = report.device
-
-        section_number = self.__generate_section_number("Device Reports", _device.device_group_name(), _device.full_name, "Overview")
-        report.generate_bookmark("Overview")
+        section_number = report.get_section_number()
 
         _buffer = BytesIO()
         doc = SimpleDocTemplate(_buffer,
@@ -948,14 +934,10 @@ class PDFReportGenerator(ReportGenerator):
         elements.append(t_body)
 
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
-        report.add_to_report(_buffer)
+        report.add_buffer_to_report(_buffer)
 
-    def generate_report_for_assetruns(self, assetruns, report):
-        _buffer = BytesIO()
-
-        _device = report.device
-
-        canvas = Canvas(_buffer, self.page_format)
+    def __generate_device_assetrun_reports(self, _device, report_settings, root_report):
+        assetruns = _select_assetruns_for_device(_device, self.general_settings["assetbatch_selection_mode"])
 
         row_collector = RowCollector()
 
@@ -986,6 +968,10 @@ class PDFReportGenerator(ReportGenerator):
 
 
         for idx in sorted_runs:
+            _buffer = BytesIO()
+
+            canvas = Canvas(_buffer, self.page_format)
+
             ar = sorted_runs[idx]
 
             row_collector.reset()
@@ -993,17 +979,19 @@ class PDFReportGenerator(ReportGenerator):
             generate_csv_entry_for_assetrun(ar, row_collector.collect)
 
             if AssetType(ar.run_type) == AssetType.UPDATE:
-                if not report.report_settings['installed_updates_selected']:
-                    continue
-
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_status'])
 
                 heading = "System Updates" # "Installed Updates"
 
-                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, heading)
-                report.generate_bookmark(heading)
+                report = DeviceReport(_device, report_settings, heading)
+                if not report.report_settings['installed_updates_selected']:
+                    continue
+
+                root_report.add_child(report)
+
+                section_number = report.get_section_number()
+
 
                 rpt = PollyReportsReport(data)
 
@@ -1031,16 +1019,17 @@ class PDFReportGenerator(ReportGenerator):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.LICENSE:
-                if not report.report_settings['licenses_selected']:
-                    continue
-
                 data = row_collector.rows_dict[1:]
 
                 heading = "Active Licenses" # "Available Licenses"
 
-                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, heading)
-                report.generate_bookmark(heading)
+                report = DeviceReport(_device, report_settings, heading)
+                if not report.report_settings['licenses_selected']:
+                    continue
+
+                root_report.add_child(report)
+
+                section_number = report.get_section_number()
 
                 rpt = PollyReportsReport(data)
 
@@ -1062,9 +1051,6 @@ class PDFReportGenerator(ReportGenerator):
                 report.number_of_pages += rpt.pagenumber
 
             elif AssetType(ar.run_type) == AssetType.PACKAGE:
-                if not report.report_settings['packages_selected']:
-                    continue
-
                 from initat.cluster.backbone.models import asset
 
                 try:
@@ -1075,9 +1061,14 @@ class PDFReportGenerator(ReportGenerator):
 
                 heading = "Installed Software" # "Installed Packages"
 
-                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, heading)
-                report.generate_bookmark(heading)
+                report = DeviceReport(_device, report_settings, heading)
+                if not report.report_settings['packages_selected']:
+                    continue
+
+                root_report.add_child(report)
+
+                section_number = report.get_section_number()
+
 
                 data = [package.get_as_row() for package in packages]
                 data = sorted(data, key=lambda k: k['package_name'])
@@ -1120,10 +1111,10 @@ class PDFReportGenerator(ReportGenerator):
 
                 heading = "Updates ready for install" # "Available Updates"
 
-                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, heading)
+                report = DeviceReport(_device, report_settings, heading)
+                root_report.add_child(report)
 
-                report.generate_bookmark(heading)
+                section_number = report.get_section_number()
 
                 rpt = PollyReportsReport(data)
 
@@ -1160,9 +1151,10 @@ class PDFReportGenerator(ReportGenerator):
 
                 heading = "Lstopo Information"
 
-                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, heading)
-                report.generate_bookmark(heading)
+                report = DeviceReport(_device, report_settings, heading)
+                root_report.add_child(report)
+
+                section_number = report.get_section_number()
 
                 rpt = PollyReportsReport(data)
 
@@ -1194,9 +1186,10 @@ class PDFReportGenerator(ReportGenerator):
 
                 heading = "Process Information"
 
-                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, heading)
-                report.generate_bookmark(heading)
+                report = DeviceReport(_device, report_settings, heading)
+                root_report.add_child(report)
+
+                section_number = report.get_section_number()
 
                 rpt = PollyReportsReport(data)
 
@@ -1230,9 +1223,10 @@ class PDFReportGenerator(ReportGenerator):
 
                 data = row_collector.rows_dict[1:]
 
-                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, heading)
-                report.generate_bookmark(heading)
+                report = DeviceReport(_device, report_settings, heading)
+                root_report.add_child(report)
+
+                section_number = report.get_section_number()
 
                 rpt = PollyReportsReport(data)
 
@@ -1267,9 +1261,10 @@ class PDFReportGenerator(ReportGenerator):
 
                 heading = "PCI Details"
 
-                section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                                _device.full_name, heading)
-                report.generate_bookmark(heading)
+                report = DeviceReport(_device, report_settings, heading)
+                root_report.add_child(report)
+
+                section_number = report.get_section_number()
 
                 rpt = PollyReportsReport(data)
 
@@ -1311,18 +1306,18 @@ class PDFReportGenerator(ReportGenerator):
                 hardware_report_ar = ar
                 continue
 
-        canvas.save()
-        report.add_to_report(_buffer)
+            canvas.save()
+            report.add_buffer_to_report(_buffer)
 
         if hardware_report_ar:
-            self.generate_hardware_report(hardware_report_ar, report)
+            self.__generate_hardware_report(hardware_report_ar, _device, report_settings, root_report)
 
-    def generate_hardware_report(self, hardware_report_ar, report):
-        _device = report.device
+    def __generate_hardware_report(self, hardware_report_ar, _device, report_settings, root_report):
+        report = DeviceReport(_device, report_settings, "Hardware Report")
+        root_report.add_child(report)
 
-        section_number = self.__generate_section_number("Device Reports", _device.device_group_name(),
-                                                        _device.full_name, "Hardware Report")
-        report.generate_bookmark("Hardware Report".format(section_number))
+        section_number = report.get_section_number()
+
 
         _buffer = BytesIO()
         doc = SimpleDocTemplate(_buffer,
@@ -1458,74 +1453,48 @@ class PDFReportGenerator(ReportGenerator):
 
         doc.build(elements, onFirstPage=report.increase_page_count, onLaterPages=report.increase_page_count)
 
-        report.add_to_report(_buffer)
+        report.add_buffer_to_report(_buffer)
 
     def finalize_pdf(self):
         output_buffer = BytesIO()
         output_pdf = PdfFileWriter()
 
-        # Sort reports by device group name
-        group_report_dict = {}
-        for _report in self.device_reports:
-            _group_name = _report.device.device_group_name()
-            if _group_name not in group_report_dict:
-                group_report_dict[_group_name] = []
-
-            group_report_dict[_group_name].append(_report)
-
         current_page_number = 0
         page_num_headings = {}
 
-        # 1. Pass: Generate pdf, structure is group_name -> device -> report (except for general reports)
-        # generate table of contents and bookmark Headings to page number mapping
-        if self.reports:
-            page_num_headings[current_page_number] = []
-            page_num_headings[current_page_number].append(("General Reports", 0))
+        queue = []
 
-            for _report in self.reports:
-                for _bookmark in _report.bookmarks:
-                    if current_page_number + _bookmark.pagenum not in page_num_headings:
-                        page_num_headings[current_page_number + _bookmark.pagenum] = []
+        def __append_to_queue(report):
+            queue.append(report)
+            for child in report.children:
+                __append_to_queue(child)
 
-                    bookmark_level = 1 if _bookmark.root_bookmark == None else 2
-                    page_num_headings[current_page_number + _bookmark.pagenum].append((_bookmark.name, bookmark_level))
+        for _report in self.reports:
+            __append_to_queue(_report)
 
-                for _buffer in _report.pdf_buffers:
-                    sub_pdf = PdfFileReader(_buffer)
-                    [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
-                current_page_number += _report.number_of_pages
+        for _report in queue:
+            _report.bookmark = None
+            if current_page_number not in page_num_headings:
+                page_num_headings[current_page_number] = []
 
-        if self.device_reports:
-            page_num_headings[current_page_number] = []
-            page_num_headings[current_page_number].append(("Device Reports", 0))
+            ident_level = 0
+            root = _report.root_report
 
-            for _group_name in group_report_dict:
-                if current_page_number not in page_num_headings:
-                    page_num_headings[current_page_number] = []
-                page_num_headings[current_page_number].append((_group_name, 1))
+            while root:
+                ident_level += 1
 
-                _device_reports = {}
-                for _report in group_report_dict[_group_name]:
-                    if _report.device not in _device_reports:
-                        _device_reports[_report.device] = []
-                    _device_reports[_report.device].append(_report)
+                root = root.root_report
 
-                for _device in sorted(_device_reports, key=lambda _device: _device.full_name):
-                    if current_page_number not in page_num_headings:
-                        page_num_headings[current_page_number] = []
-                    page_num_headings[current_page_number].append((_device.full_name, 2))
-                    for _report in _device_reports[_device]:
-                        for _buffer in _report.pdf_buffers:
-                            sub_pdf = PdfFileReader(_buffer)
-                            [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
+            page_num_headings[current_page_number].append((_report.name, ident_level))
 
-                        for _bookmark in _report.bookmarks:
-                            if not (current_page_number + _bookmark.pagenum) in page_num_headings:
-                                page_num_headings[(current_page_number + _bookmark.pagenum)] = []
-                            page_num_headings[(current_page_number + _bookmark.pagenum)].append((_bookmark.name, 3))
+            for _buffer in _report.pdf_buffers:
+                sub_pdf = PdfFileReader(_buffer)
+                [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
 
-                        current_page_number += _report.number_of_pages
+            current_page_number += _report.number_of_pages
 
+
+        # generate toc pages, prepend to pdf
         toc_buffer, page_num_prefix_dict = self.__get_toc_pages(page_num_headings)
         toc_pdf = PdfFileReader(toc_buffer)
         toc_pdf_page_num = toc_pdf.getNumPages()
@@ -1533,6 +1502,8 @@ class PDFReportGenerator(ReportGenerator):
         for i in reversed(range(toc_pdf_page_num)):
             output_pdf.insertPage(toc_pdf.getPage(i))
 
+
+        # generate front page, prepend to pdf
         frontpage_buffer = self.__generate_front_page()
         frontpage_pdf = PdfFileReader(frontpage_buffer)
         frontpage_page_num = frontpage_pdf.getNumPages()
@@ -1542,45 +1513,19 @@ class PDFReportGenerator(ReportGenerator):
 
         number_of_pre_content_sites = frontpage_page_num + toc_pdf_page_num
 
-        # 2. Pass: Add page numbers
+        # Add page numbers
         output_pdf.write(output_buffer)
         output_pdf = self.__add_page_numbers(output_buffer, number_of_pre_content_sites, page_num_prefix_dict)
         self.progress = 100
 
-        # 3. Pass: Generate Bookmarks
+        # Generate Bookmarks
         current_page_number = number_of_pre_content_sites
 
-        if self.reports:
-            general_reports_bookmark = output_pdf.addBookmark("General Reports", current_page_number)
-
-            for _report in self.reports:
-                for _bookmark in _report.bookmarks:
-                    output_pdf.addBookmark(_bookmark.name, current_page_number + _bookmark.pagenum,
-                                           parent=general_reports_bookmark)
-                current_page_number += _report.number_of_pages
-
-        if self.device_reports:
-            device_reports_bookmark = output_pdf.addBookmark("Device Reports", current_page_number)
-            for _group_name in group_report_dict:
-                group_bookmark = output_pdf.addBookmark(_group_name, current_page_number,
-                                                        parent=device_reports_bookmark)
-
-                _device_reports = {}
-
-                for _report in group_report_dict[_group_name]:
-                    if _report.device not in _device_reports:
-                        _device_reports[_report.device] = []
-                    _device_reports[_report.device].append(_report)
-
-                for _device in sorted(_device_reports, key=lambda _device: _device.full_name):
-                    device_bookmark = output_pdf.addBookmark(_device.full_name, current_page_number,
-                                                             parent=group_bookmark)
-
-                    for _report in _device_reports[_device]:
-                        for _bookmark in _report.bookmarks:
-                            output_pdf.addBookmark(_bookmark.name, current_page_number + _bookmark.pagenum,
-                                                   parent=device_bookmark)
-                        current_page_number += _report.number_of_pages
+        for _report in queue:
+            _report.bookmark = output_pdf.addBookmark("{} {}".format(_report.get_section_number(), _report.name),
+                                                      current_page_number,
+                                                      parent=_report.root_report.bookmark if _report.root_report else None)
+            current_page_number += _report.number_of_pages
 
         output_buffer = BytesIO()
         output_pdf.write(output_buffer)
@@ -1975,9 +1920,7 @@ class PDFReportGenerator(ReportGenerator):
 
         return output
 
-    def __generate_user_group_overview_report(self):
-        report = GenericReport()
-
+    def __generate_user_group_overview_report(self, root_report):
         _buffer = BytesIO()
         canvas = Canvas(_buffer, (self.page_format))
 
@@ -1985,8 +1928,9 @@ class PDFReportGenerator(ReportGenerator):
 
         data = sorted(data, key=lambda k: (k['group'], k['login']))
         if data:
-            section_number = self.__generate_section_number("General", "Userlist")
-            report.generate_bookmark("Userlist")
+            report = GenericReport("Userlist")
+            root_report.add_child(report)
+            section_number = report.get_section_number()
 
             rpt = PollyReportsReport(data)
             rpt.groupheaders = [Band([Element((0, 4), (self.bold_font, 10),
@@ -2012,13 +1956,10 @@ class PDFReportGenerator(ReportGenerator):
             rpt.generate(canvas)
             canvas.save()
             report.number_of_pages += rpt.pagenumber
-            report.add_to_report(_buffer)
-            self.reports.append(report)
+            report.add_buffer_to_report(_buffer)
             self.current_page_num += rpt.pagenumber
 
-    def __generate_user_role_overview_report(self):
-        report = GenericReport()
-
+    def __generate_user_role_overview_report(self, root_report):
         _buffer = BytesIO()
         canvas = Canvas(_buffer, (self.page_format))
 
@@ -2026,8 +1967,9 @@ class PDFReportGenerator(ReportGenerator):
 
         data = sorted(data, key=lambda k: (k['name']))
         if data:
-            section_number = self.__generate_section_number("General", "Rolelist")
-            report.generate_bookmark("Rolelist")
+            report = GenericReport("Rolelist")
+            root_report.add_child(report)
+            section_number = report.get_section_number()
 
             rpt = PollyReportsReport(data)
 
@@ -2049,38 +1991,57 @@ class PDFReportGenerator(ReportGenerator):
             rpt.generate(canvas)
             canvas.save()
             report.number_of_pages += rpt.pagenumber
-            report.add_to_report(_buffer)
-            self.reports.append(report)
+            report.add_buffer_to_report(_buffer)
             self.current_page_num += rpt.pagenumber
 
 
     def generate_report(self):
-        if self.general_settings["network_report_overview_module_selected"]:
-            self.__generate_network_report()
+        if self.general_settings["network_report_overview_module_selected"] or \
+            self.general_settings["general_device_overview_module_selected"] or \
+            self.general_settings["user_group_overview_module_selected"]:
 
-        if self.general_settings["general_device_overview_module_selected"]:
-            self.__generate_general_device_overview_report()
+            report = GenericReport("General Reports")
+            report.section_number = 1
 
-        if self.general_settings["user_group_overview_module_selected"]:
-            self.__generate_user_group_overview_report()
-            self.__generate_user_role_overview_report()
+            self.reports.append(report)
 
-        group_device_dict = {}
-        for _device in self.devices:
-            _group_name = _device.device_group_name()
-            if _group_name not in group_device_dict:
-                group_device_dict[_group_name] = []
+            if self.general_settings["network_report_overview_module_selected"]:
+                self.__generate_network_report(report)
 
-            group_device_dict[_group_name].append(_device)
+            if self.general_settings["general_device_overview_module_selected"]:
+                self.__generate_general_device_overview_report(report)
 
-        idx = 1
-        for _group_name in group_device_dict:
-            for _device in sorted(group_device_dict[_group_name], key=lambda _device: _device.full_name):
-                if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
-                    return
-                self.__generate_device_report(_device, self.device_settings[_device.idx])
-                self.progress = int((float(idx) / len(self.devices)) * 10)
-                idx += 1
+            if self.general_settings["user_group_overview_module_selected"]:
+                self.__generate_user_group_overview_report(report)
+                self.__generate_user_role_overview_report(report)
+
+        if self.devices:
+            device_report = GenericReport("Device Reports")
+            device_report.section_number = 1
+            if self.reports:
+                device_report.section_number = 2
+
+            self.reports.append(device_report)
+
+            group_device_dict = {}
+            for _device in self.devices:
+                _group_name = _device.device_group_name()
+                if _group_name not in group_device_dict:
+                    group_device_dict[_group_name] = []
+
+                group_device_dict[_group_name].append(_device)
+
+            idx = 1
+            for _group_name in group_device_dict:
+                group_report = GenericReport(_group_name)
+                device_report.add_child(group_report)
+
+                for _device in sorted(group_device_dict[_group_name], key=lambda _device: _device.full_name):
+                    if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
+                        return
+                    self.__generate_device_report(_device, self.device_settings[_device.idx], group_report)
+                    self.progress = int((float(idx) / len(self.devices)) * 10)
+                    idx += 1
 
         self.progress = 10
 
@@ -2115,7 +2076,7 @@ class XlsxReportGenerator(ReportGenerator):
             workbook.remove_sheet(workbook.active)
 
             self.__generate_device_overview(_device, workbook)
-            device_report = DeviceReport(_device, self.device_settings[_device.idx])
+            device_report = DeviceReport(_device, self.device_settings[_device.idx], _device.full_name)
 
             selected_runs = _select_assetruns_for_device(_device,
                                                          self.general_settings["assetbatch_selection_mode"])
