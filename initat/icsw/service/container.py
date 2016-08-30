@@ -75,8 +75,7 @@ else:
         License = None
     else:
         if db_tools and db_tools.is_reachable():
-            import django
-            django.setup()
+            # import django
             from initat.tools import config_tools
             try:
                 from initat.cluster.backbone.models import License, LicenseState
