@@ -47,6 +47,10 @@ angular.module(
             ret_obj.css_class = "btn-danger"
             ret_obj.button_value = gettextCatalog.getString("delete")
             ret_obj.icon_class = "fa fa-trash"
+        else if type == "clear"
+            ret_obj.css_class = "btn-warning"
+            ret_obj.button_value = gettextCatalog.getString("clear")
+            ret_obj.icon_class = "fa fa-times"
         else if type == "reload"
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = gettextCatalog.getString("reload")

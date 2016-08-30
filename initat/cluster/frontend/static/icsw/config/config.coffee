@@ -174,6 +174,8 @@ config_module = angular.module(
         search_str: ""
         # open configs
         open_configs: []
+        # active tab
+        active_tab: 0
     }
 
     # filter related functions
@@ -218,7 +220,8 @@ config_module = angular.module(
 
     _fetch()
 
-    $scope.modify_config = ($event, config) =>
+    $scope.modify_config = ($event, config, jump_to) =>
+        $event.stopPropagation()
         _used_idxs = (entry.idx for entry in $scope.struct.open_configs)
         if config.idx not in _used_idxs
             _add = true
@@ -229,6 +232,12 @@ config_module = angular.module(
             bu_obj.create_backup(config)
             config.$$_shown_in_tabs = true
             $scope.struct.open_configs.push(config)
+            if jump_to
+                $timeout(
+                    () ->
+                        $scope.struct.active_tab = $scope.struct.open_configs.length
+                    100
+                )
 
     $scope.create_config = ($event) =>
         new_config = {
@@ -248,9 +257,10 @@ config_module = angular.module(
             categories: []
             config_catalog: (entry.idx for entry in $scope.struct.config_tree.catalog_list)[0]
         }
-        $scope.modify_config($event, new_config)
+        $scope.modify_config($event, new_config, false)
 
     $scope.delete_config = ($event, conf) ->
+        $event.stopPropagation()
         icswToolsSimpleModalService("Really delete Config #{conf.name} ?").then(
             () =>
                 blockUI.start("deleting config")
@@ -267,9 +277,19 @@ config_module = angular.module(
                 )
         )
 
+    $scope.clear_selection = ($event) =>
+        for entry in $scope.struct.config_tree.list
+            entry.$selected = false
+        $scope.struct.config_tree.link()
+
     $scope.toggle_config_select = ($event, config) ->
         config.$selected = !config.$selected
         $scope.struct.config_tree.link()
+
+    $scope.modify_selection = ($event, config) ->
+        for config in $scope.struct.config_tree.list
+            if config.$selected
+                $scope.modify_config($event, config)
 
     $scope.delete_selected_objects = () ->
         if confirm("really delete #{$scope.struct.selected_objects.length} objects ?")
@@ -343,12 +363,12 @@ config_module = angular.module(
             defer.resolve("not changed")
         defer.promise.then(
             (close) ->
-                config.$$_shown_in_tabs = false
                 $timeout(
                     () ->
                         _removed = _.remove($scope.struct.open_configs, (entry) -> return config.idx == entry.idx)
                         if not _removed.length
                             # not found, must have been new config (entry.idx == undefined)
+                            config.$$_shown_in_tabs = false
                             _removed = _.remove($scope.struct.open_configs, (entry) -> return not entry.idx?)
                     100
                 )
@@ -377,25 +397,36 @@ config_module = angular.module(
 ]).controller("icswConfigModifyCtrl",
 [
     "$q", "$scope", "icswBackupTools", "ICSW_SIGNALS", "blockUI",
-    "icswConfigScriptListService",
-    "icswConfigMonCheckCommandListService", "icswConfigVarListService",
+    "icswConfigScriptListService", "icswConfigMonCheckCommandListService", "icswConfigVarListService",
+    "icswMonitoringBasicTreeService",
 (
     $q, $scope, icswBackupTools, ICSW_SIGNALS, blockUI,
-    icswConfigScriptListService,
-    icswConfigMonCheckCommandListService, icswConfigVarListService,
+    icswConfigScriptListService, icswConfigMonCheckCommandListService, icswConfigVarListService,
+    icswMonitoringBasicTreeService,
 ) ->
     _set_object_from_src = () ->
         $scope.edit_obj = $scope.config.$$_ICSW_backup_data
 
+    $scope.struct = {
+        # data is there
+        data_ready: false
+        # monitoring tree
+        mon_tree: undefined
+    }
+
     $scope.data_ready = false
 
     $scope.start_edit = () ->
-        $scope.data_ready = true
+        $scope.struct.data_ready = true
         if $scope.config.idx?
             $scope.create_mode = false
         else
             $scope.create_mode = true
         _set_object_from_src()
+        icswMonitoringBasicTreeService.load($scope.$id).then(
+            (data) ->
+                $scope.struct.mon_tree = data
+        )
         # console.log $scope.edit_obj
         # console.log "S", $scope.edit_obj
 
@@ -453,7 +484,7 @@ config_module = angular.module(
         )
 
     $scope.create_mon_check_command = (event, config) ->
-        icswConfigMonCheckCommandListService.create_or_edit($scope, event, true, config, $scope.config_tree, $scope.mon_tree)
+        icswConfigMonCheckCommandListService.create_or_edit($scope, event, true, config, $scope.config_tree, $scope.struct.mon_tree)
 
     $scope.create_var = (event, config, var_type) ->
         icswConfigVarListService.create_or_edit($scope, event, true, config, $scope.config_tree, var_type)
