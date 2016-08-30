@@ -54,8 +54,9 @@ from initat.cluster.backbone.models import device, device_variable, AssetType, P
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 from initat.cluster.backbone.models.report import ReportHistory
-from initat.cluster.backbone.models import user, group
+from initat.cluster.backbone.models import user
 from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
+from initat.cluster.backbone.models import network
 
 from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
@@ -454,6 +455,37 @@ class ReportGenerator(object):
 
         return data
 
+    def _get_data_for_network_report(self):
+        data = []
+        for _network in network.objects.all():
+            o = {
+                'id': _network.identifier,
+                'network': _network.network,
+                'netmask': _network.netmask,
+                'broadcast': _network.broadcast,
+                'gateway': _network.gateway,
+                'gwprio': _network.gw_pri,
+                'num_ips': _network.num_ip(),
+                'network_type': _network.network_type.description
+            }
+
+            data.append(o)
+
+        return data
+
+    def _get_data_for_sub_network_report(self, _network):
+        data = []
+        for net_ip in _network.net_ip_set.all():
+            o = {
+                'ip': net_ip.ip,
+                'netdevname': net_ip.netdevice.devname,
+                'devname': net_ip.netdevice.device.full_name
+            }
+
+            data.append(o)
+
+        return data
+
 
 class PDFReportGenerator(ReportGenerator):
     def __init__(self, settings, _devices):
@@ -510,9 +542,6 @@ class PDFReportGenerator(ReportGenerator):
         self.current_page_num = 0
 
         self.reports = []
-
-    def get_report_type(self):
-        return "pdf"
 
     def __get_logo_helper(self, value):
         _tmp_file = tempfile.NamedTemporaryFile()
@@ -671,27 +700,10 @@ class PDFReportGenerator(ReportGenerator):
             self.current_page_num += rpt.pagenumber
 
     def __generate_network_report(self, root_report):
-        from initat.cluster.backbone.models import network
-
         _buffer = BytesIO()
         canvas = Canvas(_buffer, (self.page_format))
 
-        networks = network.objects.all()
-        data = []
-
-        for _network in networks:
-            o = {
-                'id': _network.identifier,
-                'network': _network.network,
-                'netmask': _network.netmask,
-                'broadcast': _network.broadcast,
-                'gateway': _network.gateway,
-                'gwprio': _network.gw_pri,
-                'num_ips': _network.num_ip(),
-                'network_type': _network.network_type.description
-            }
-
-            data.append(o)
+        data = self._get_data_for_network_report()
 
         data = sorted(data, key=lambda k: k['id'])
         if data:
@@ -727,7 +739,7 @@ class PDFReportGenerator(ReportGenerator):
             report.add_buffer_to_report(_buffer)
             self.current_page_num += rpt.pagenumber
 
-            for _network in networks:
+            for _network in network.objects.all():
                 self.__generate_sub_network_report(_network, report)
 
 
@@ -735,15 +747,9 @@ class PDFReportGenerator(ReportGenerator):
         _buffer = BytesIO()
         canvas = Canvas(_buffer, (self.page_format))
 
-        data = []
+        data = self._get_data_for_sub_network_report(_network)
 
-        o = {
-            'name': "fumulus",
-            'type': "humulus",
-        }
-        data.append(o)
-
-        data = sorted(data, key=lambda k: k['name'])
+        data = sorted(data, key=lambda k: k['ip'])
         if data:
             report = GenericReport(_network.identifier)
             root_report.add_child(report)
@@ -751,12 +757,13 @@ class PDFReportGenerator(ReportGenerator):
 
             rpt = PollyReportsReport(data)
 
-            header_names_left = [("Name", "name", 50.),
-                            ("Type", "type", 50.0)]
+            header_names_left = [("IP", "ip", 33.0),
+                                 ("Net-Device", "netdevname", 33.0),
+                                 ("Device", "devname", 34.0)]
 
             header_names_right = []
 
-            self.__config_report_helper("{} {}".format(section_number, _network.identifier),
+            self.__config_report_helper("{} Network: {}".format(section_number, _network.identifier),
                                         header_names_left,
                                         header_names_right, rpt, data)
 
@@ -1455,96 +1462,6 @@ class PDFReportGenerator(ReportGenerator):
 
         report.add_buffer_to_report(_buffer)
 
-    def finalize_pdf(self):
-        output_buffer = BytesIO()
-        output_pdf = PdfFileWriter()
-
-        current_page_number = 0
-        page_num_headings = {}
-
-        queue = []
-
-        def __append_to_queue(report):
-            queue.append(report)
-            for child in report.children:
-                __append_to_queue(child)
-
-        for _report in self.reports:
-            __append_to_queue(_report)
-
-        for _report in queue:
-            _report.bookmark = None
-            if current_page_number not in page_num_headings:
-                page_num_headings[current_page_number] = []
-
-            ident_level = 0
-            root = _report.root_report
-
-            while root:
-                ident_level += 1
-
-                root = root.root_report
-
-            page_num_headings[current_page_number].append((_report.name, ident_level))
-
-            for _buffer in _report.pdf_buffers:
-                sub_pdf = PdfFileReader(_buffer)
-                [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
-
-            current_page_number += _report.number_of_pages
-
-
-        # generate toc pages, prepend to pdf
-        toc_buffer, page_num_prefix_dict = self.__get_toc_pages(page_num_headings)
-        toc_pdf = PdfFileReader(toc_buffer)
-        toc_pdf_page_num = toc_pdf.getNumPages()
-
-        for i in reversed(range(toc_pdf_page_num)):
-            output_pdf.insertPage(toc_pdf.getPage(i))
-
-
-        # generate front page, prepend to pdf
-        frontpage_buffer = self.__generate_front_page()
-        frontpage_pdf = PdfFileReader(frontpage_buffer)
-        frontpage_page_num = frontpage_pdf.getNumPages()
-
-        for i in reversed(range(frontpage_page_num)):
-            output_pdf.insertPage(frontpage_pdf.getPage(i))
-
-        number_of_pre_content_sites = frontpage_page_num + toc_pdf_page_num
-
-        # Add page numbers
-        output_pdf.write(output_buffer)
-        output_pdf = self.__add_page_numbers(output_buffer, number_of_pre_content_sites, page_num_prefix_dict)
-        self.progress = 100
-
-        # Generate Bookmarks
-        current_page_number = number_of_pre_content_sites
-
-        for _report in queue:
-            _report.bookmark = output_pdf.addBookmark("{} {}".format(_report.get_section_number(), _report.name),
-                                                      current_page_number,
-                                                      parent=_report.root_report.bookmark if _report.root_report else None)
-            current_page_number += _report.number_of_pages
-
-        output_buffer = BytesIO()
-        output_pdf.write(output_buffer)
-        self.data = output_buffer.getvalue()
-
-        # create report history entry
-        _user = user.objects.get(idx=self.general_settings["user_idx"])
-        self.report_history.created_by_user = _user
-        self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
-        self.report_history.number_of_pages = output_pdf.getNumPages()
-        self.report_history.size = len(self.data)
-        self.report_history.type = self.get_report_type()
-        self.report_history.generate_filename()
-        self.report_history.save()
-
-        self.report_history.write_data(self.data)
-
-        self.progress = -1
-
     def __generate_front_page(self):
         _buffer = BytesIO()
         doc = SimpleDocTemplate(_buffer,
@@ -1776,7 +1693,7 @@ class PDFReportGenerator(ReportGenerator):
         return _buffer
 
 
-    def __get_toc_pages(self, page_num_headings):
+    def __get_toc_pages(self, queue):
         style_sheet = getSampleStyleSheet()
 
         paragraph_header = Paragraph('<font face="{}" size="16">Contents</font>'.format(self.bold_font),
@@ -1807,79 +1724,52 @@ class PDFReportGenerator(ReportGenerator):
         vertical_x = 1
         num_pages = 1
 
-        for page_num in sorted(page_num_headings.keys()):
-            for _, _ in page_num_headings[page_num]:
-                vertical_x += 1
-                if vertical_x > vertical_x_limit:
-                    vertical_x = 1
-                    num_pages += 1
+        for _ in queue:
+            vertical_x += 1
+            if vertical_x > vertical_x_limit:
+                vertical_x = 1
+                num_pages += 1
 
         vertical_x = 1
-        prefix_0 = 1
-        prefix_1 = 1
-        prefix_2 = 1
-        prefix_3 = 1
 
         top_margin = 75
 
-        number_of_entries = 0
-        number_of_entries_generated = 0
-        for page_num in page_num_headings.keys():
-            number_of_entries += len(page_num_headings[page_num])
+        current_page_num = num_pages
+        for _report in queue:
+            section_number = _report.get_section_number()
 
-        page_num_prefix_dict = {}
+            indent = len(section_number.split(".")) - 1
 
-        for page_num in sorted(page_num_headings.keys()):
-            for heading, indent in page_num_headings[page_num]:
-                if indent == 0:
-                    prefix_1 = 1
-                    prefix_2 = 1
+            heading_str = "{} {}".format(section_number, _report.name)
 
-                    prefix = "{}.".format(prefix_0)
-                    prefix_0 += 1
-                elif indent == 1:
-                    prefix_2 = 1
-                    prefix = "{}.{}".format(prefix_0 - 1, prefix_1)
-                    prefix_1 += 1
-                elif indent == 2:
-                    prefix_3 = 1
-                    prefix = "{}.{}.{}".format(prefix_0 - 1, prefix_1 - 1, prefix_2)
-                    prefix_2 += 1
-                else:
-                    prefix = "{}.{}.{}.{}".format(prefix_0 - 1, prefix_1 - 1, prefix_2 - 1, prefix_3)
-                    prefix_3 += 1
+            can.drawString(25 + (25 * indent), heigth - (top_margin + (15 * vertical_x)), heading_str)
 
-                page_num_prefix_dict[page_num] = prefix
+            heading_str_width = stringWidth(heading_str, self.standard_font, 14)
 
-                heading_str = "{} {}".format(prefix, heading)
+            dots = "."
+            while (25 * indent) + heading_str_width + stringWidth(dots, self.standard_font, 14) < (width - 150):
+                dots += "."
 
-                can.drawString(25 + (25 * indent), heigth - (top_margin + (15 * vertical_x)), heading_str)
+            can.drawString(35 + (25 * indent) + heading_str_width, heigth - (top_margin + (15 * vertical_x)), dots)
 
-                heading_str_width = stringWidth(heading_str, self.standard_font, 14)
+            can.drawString(width - 75, heigth - (top_margin + (15 * vertical_x)),
+                           "{}".format(current_page_num + num_pages))
 
-                dots = "."
-                while (25 * indent) + heading_str_width + stringWidth(dots, self.standard_font, 14) < (width - 150):
-                    dots += "."
+            current_page_num += _report.number_of_pages
 
-                can.drawString(35 + (25 * indent) + heading_str_width, heigth - (top_margin + (15 * vertical_x)), dots)
-
-                can.drawString(width - 75, heigth - (top_margin + (15 * vertical_x)),
-                               "{}".format(page_num + num_pages + 1))
-                vertical_x += 1
-                number_of_entries_generated += 1
-                if vertical_x > vertical_x_limit:
-                    vertical_x = 1
-                    if number_of_entries_generated < number_of_entries:
-                        can.showPage()
-                        can.setFont(self.standard_font, 14)
-                        t_head.wrapOn(can, 0, 0)
-                        t_head.drawOn(can, 25, heigth - 50)
+            vertical_x += 1
+            if vertical_x > vertical_x_limit:
+                vertical_x = 1
+                can.showPage()
+                can.setFont(self.standard_font, 14)
+                t_head.wrapOn(can, 0, 0)
+                t_head.drawOn(can, 25, heigth - 50)
 
         can.save()
 
-        return _buffer, page_num_prefix_dict
+        return _buffer
 
-    def __add_page_numbers(self, pdf_buffer, toc_offset_num, page_num_prefix_dict):
+    def __add_page_numbers(self, pdf_buffer, toc_offset_num):
         output = PdfFileWriter()
         existing_pdf = PdfFileReader(pdf_buffer)
         num_pages = existing_pdf.getNumPages()
@@ -1903,13 +1793,6 @@ class PDFReportGenerator(ReportGenerator):
                                                                                                self.report_id,
                                                                                                self.cluster_id, creationdate_str)
                 can.drawString(25, 15, str_to_draw)
-
-                # if (page_number - toc_offset_num) in page_num_prefix_dict:
-                #     str_to_draw = "({})".format(page_num_prefix_dict[page_number - toc_offset_num])
-                #
-                #     can.drawString(self.page_format[0] - self.margin - stringWidth(str_to_draw, self.standard_font, 14),
-                #                    25,
-                #                    str_to_draw)
 
                 can.save()
                 page_num_buffer.seek(0)
@@ -2047,6 +1930,81 @@ class PDFReportGenerator(ReportGenerator):
 
         self.finalize_pdf()
 
+    def finalize_pdf(self):
+        output_buffer = BytesIO()
+        output_pdf = PdfFileWriter()
+
+        queue = []
+
+        def __append_to_queue(report):
+            queue.append(report)
+            for child in report.children:
+                __append_to_queue(child)
+
+        for _report in self.reports:
+            __append_to_queue(_report)
+
+        for _report in queue:
+            _report.bookmark = None
+
+            for _buffer in _report.pdf_buffers:
+                sub_pdf = PdfFileReader(_buffer)
+                [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
+
+        # generate toc pages, prepend to pdf
+        toc_buffer = self.__get_toc_pages(queue)
+        toc_pdf = PdfFileReader(toc_buffer)
+        toc_pdf_page_num = toc_pdf.getNumPages()
+
+        for i in reversed(range(toc_pdf_page_num)):
+            output_pdf.insertPage(toc_pdf.getPage(i))
+
+
+        # generate front page, prepend to pdf
+        frontpage_buffer = self.__generate_front_page()
+        frontpage_pdf = PdfFileReader(frontpage_buffer)
+        frontpage_page_num = frontpage_pdf.getNumPages()
+
+        for i in reversed(range(frontpage_page_num)):
+            output_pdf.insertPage(frontpage_pdf.getPage(i))
+
+        number_of_pre_content_sites = frontpage_page_num + toc_pdf_page_num
+
+        # Add page numbers
+        output_pdf.write(output_buffer)
+        output_pdf = self.__add_page_numbers(output_buffer, number_of_pre_content_sites)
+        self.progress = 100
+
+        # Generate Bookmarks
+        current_page_number = number_of_pre_content_sites
+
+        for _report in queue:
+            _report.bookmark = output_pdf.addBookmark("{} {}".format(_report.get_section_number(), _report.name),
+                                                      current_page_number,
+                                                      parent=_report.root_report.bookmark if _report.root_report else None)
+            current_page_number += _report.number_of_pages
+
+        output_buffer = BytesIO()
+        output_pdf.write(output_buffer)
+        self.data = output_buffer.getvalue()
+
+        # create report history entry
+        _user = user.objects.get(idx=self.general_settings["user_idx"])
+        self.report_history.created_by_user = _user
+        self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
+        self.report_history.number_of_pages = output_pdf.getNumPages()
+        self.report_history.size = len(self.data)
+        self.report_history.type = self.get_report_type()
+        self.report_history.generate_filename()
+        self.report_history.save()
+
+        self.report_history.write_data(self.data)
+
+        self.progress = -1
+
+    def get_report_type(self):
+        return "pdf"
+
 
 class XlsxReportGenerator(ReportGenerator):
     def get_report_type(self):
@@ -2129,8 +2087,9 @@ class XlsxReportGenerator(ReportGenerator):
         workbook = Workbook()
         workbook.remove_sheet(workbook.active)
 
+        # user overview
         sheet = workbook.create_sheet()
-        sheet.title = "Network Overview"
+        sheet.title = "Userlist"
 
         header_row = ["Login",
                       "UID",
@@ -2156,6 +2115,28 @@ class XlsxReportGenerator(ReportGenerator):
                 entry['secondary_groups'],
                 entry['roles'],
                 entry['allowed_device_groups']
+            ]
+
+            sheet.append(row)
+
+        # role overview
+        sheet = workbook.create_sheet()
+        sheet.title = "Rolelist"
+
+        header_row = ["Name",
+                      "Description",
+                      "Permission",
+                      ]
+
+        sheet.append(header_row)
+
+        data = self._get_data_for_user_roles_overview()
+
+        for entry in data:
+            row = [
+                entry['name'],
+                entry['description'],
+                entry['permission']
             ]
 
             sheet.append(row)
@@ -2263,6 +2244,27 @@ class XlsxReportGenerator(ReportGenerator):
                 ]
 
                 sheet.append(row)
+
+            for _network in networks:
+                sheet = workbook.create_sheet()
+                sheet.title = _network.identifier
+
+                header_row = ["IP",
+                              "Net-Device",
+                              "Device"]
+
+                sheet.append(header_row)
+
+                data = self._get_data_for_sub_network_report(_network)
+
+                for entry in data:
+                    row = [
+                        entry['ip'],
+                        entry['netdevname'],
+                        entry['devname']
+                    ]
+
+                    sheet.append(row)
 
         return workbook
 
