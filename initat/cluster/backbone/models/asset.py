@@ -932,7 +932,6 @@ class AssetRun(models.Model):
     # interpret error
     interpret_error_string = models.TextField(default="")
     asset_batch = models.ForeignKey("AssetBatch", null=True)
-    device = models.ForeignKey("backbone.device", null=True)
     # run index in current batch
     batch_index = models.IntegerField(default=0)
     raw_result_str = models.TextField(null=True)
