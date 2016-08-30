@@ -6,7 +6,7 @@ class Hardware(object):
         self.hdds = []
         self.network_devices = []
 
-        if lshw_tree:
+        if lshw_tree is not None:
             for sub_tree in lshw_tree.xpath(
                     "//node[@id='cpu' and @class='processor']"):
                 self.cpus.append(HardwareCPU(sub_tree))

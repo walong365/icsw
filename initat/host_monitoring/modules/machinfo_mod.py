@@ -48,6 +48,7 @@ class _general(hm_classes.hm_module):
     def base_init(self):
         self.dmi_bin = process_tools.find_file("dmidecode")
         self.lstopo_ng_bin = process_tools.find_file("lstopo-no-graphics")
+        self.lshw_bin = process_tools.find_file("lshw")
 
     def init_module(self):
         self.local_lvm_info = partition_tools.lvm_struct("bin")
@@ -73,6 +74,11 @@ class _general(hm_classes.hm_module):
     def _lstopo_int(self):
         _lstopo_stat, _lstopo_result = commands.getstatusoutput("{} --of xml".format(self.lstopo_ng_bin))
         return server_command.compress(_lstopo_result)
+
+    def _lshw_int(self):
+        (_lshw_stat, _lshw_result) = commands.getstatusoutput(
+            "{} -xml".format(self.lshw_bin))
+        return server_command.compress(_lshw_result)
 
     def _dmiinfo_int(self):
         # _dmi_stat, _dmi_result = commands.getstatusoutput(self.dmi_bin)
@@ -2418,6 +2424,16 @@ class lstopo_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         dump = etree.fromstring(server_command.decompress(srv_com["*lstopo_dump"]))
         return limits.nag_STATE_OK, "received lstopo output"
+
+
+class lshw_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        srv_com["lshw_dump"] = self.module._lshw_int()
+
+    def interpret(self, srv_com, cur_ns):
+        dump = etree.fromstring(server_command.decompress(
+                srv_com["*lshw_dump"]))
+        return limits.nag_STATE_OK, "received lshw output"
 
 
 class dmiinfo_command(hm_classes.hm_command):

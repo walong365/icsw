@@ -452,7 +452,7 @@ class AssetType(IntEnum):
     HARDWARE = 2  # lstopo
     LICENSE = 3
     UPDATE = 4
-    SOFTWARE_VERSION = 5
+    LSHW = 5
     PROCESS = 6
     PENDING_UPDATE = 7
     DMI = 8
@@ -1037,6 +1037,7 @@ class AssetBatch(models.Model):
             self.run_time = int((self.run_end_time - self.run_start_time).seconds)
             self.run_status = RunStatus.ENDED
             self.run_result = max([_res.run_result for _res in self.assetrun_set.all()])
+            self._set_assets_from_raw_results()
         self.save()
 
     def __repr__(self):
@@ -1047,26 +1048,35 @@ class AssetBatch(models.Model):
             unicode(self.device)
         )
 
-    def _set_assets_from_raw_results(self, tree):
+    def _set_assets_from_raw_results(self):
         """Set the batch level hardware information (.cpus, .memory_modules
         etc.) from the acquired asset runs."""
-        hw = None
-        try:
-            run = self.assetrun_set.filter(
-                run_type=AssetType.PRETTYWINHW).get()
-        except AssetRun.DoesNotExist:
-            pass
-        else:
-            blob = run.raw_result_str
-            if blob.startswith("b'"):
-                blob = blob[2:-2]
-            raw_data = bz2.decompress(base64.b64decode(blob))
-            win32_tree = json.loads(raw_data)
-            hw = Hardware(win32_tree=win32_tree)
+        runs = [
+            ("win32_tree", AssetType.PRETTYWINHW, json.loads),
+            ("lshw_tree", AssetType.LSHW, etree.fromstring),
+            ]
 
-        if not hw:
-            # no suitable hardware information run found
+        # search for relevant asset runs and Base64 decode and unzip the result
+        run_results = {}
+        for (arg_name, asset_type, parser) in runs:
+            parsed = None
+            try:
+                run = self.assetrun_set.filter(run_type=asset_type).get()
+            except AssetRun.DoesNotExist:
+                pass
+            else:
+                blob = run.raw_result_str
+                if blob.startswith("b'"):
+                    blob = blob[2:-2]
+                raw_data = bz2.decompress(base64.b64decode(blob))
+                # parse raw_data
+                parsed = parser(raw_data)
+            run_results[arg_name] = parsed
+
+        # check if we have the necessary asset runs
+        if not ('win32_tree' in run_results or 'lshw_tree' in run_results):
             return
+        hw = Hardware(**run_results)
 
         self.cpus.all().delete()
         for cpu in hw.cpus:
