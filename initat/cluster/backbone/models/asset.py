@@ -964,22 +964,6 @@ class AssetRun(models.Model):
             self.raw_result_interpreted = True
             self.save()
 
-    def get_asset_changeset(self, other_asset_run):
-        # self.generate_assets()
-        # other_asset_run.generate_assets()
-        # this_assets = [_asset.getAssetInstance() for _asset in self.asset_set.all()]
-        # other_assets = [_asset.getAssetInstance() for _asset in other_asset_run.asset_set.all()]
-        this_assets = self.generate_assets_no_save()
-        other_assets = other_asset_run.generate_assets_no_save()
-
-        return set(this_assets).difference(other_assets)
-
-    def diff_to_prev_run(self):
-        if self.run_index == 0:
-            return []
-
-        return self.get_asset_changeset(self.device.assetrun_set.get(run_index=self.run_index - 1))
-
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
