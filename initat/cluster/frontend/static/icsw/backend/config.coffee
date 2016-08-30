@@ -56,29 +56,47 @@ config_module = angular.module(
             console.log("ConfigTree.build_luts() took " + icswTools.get_diff_time_ms(_end - _start))
 
         resolve_hints: () =>
-            soft_hint_list = []
+            @soft_hint_list = []
             @config_hint_name_lut = {}
+            @config_hint_names = []
             for config in @list
                 config.$hint = null
             for entry in @hint_list
                 @config_hint_name_lut[entry.config_name] = entry
+                @config_hint_names.push(entry.config_name)
                 if not entry.exact_match
-                    soft_hint_list.push(entry)
+                    @soft_hint_list.push(entry)
                     entry.$cur_re = new RegExp(entry.config_name)
                 entry.var_lut = _.keyBy(entry.config_var_hint_set, "var_name")
             # make soft matches
             for config in @list
-                if config.name of @config_hint_name_lut
-                    config.$hint = @config_hint_name_lut[config.name]
+                @_check_config_hint(config)
+
+        _check_config_hint: (config) =>
+            if config.name of @config_hint_name_lut
+                config.$hint = @config_hint_name_lut[config.name]
+            else
+                found_names = _.sortBy(
+                    (entry.config_name for entry in @soft_hint_list when entry.$cur_re.test(config.name))
+                    (_str) -> return -_str.length
+                )
+                if found_names.length
+                    config.$hint = @config_hint_name_lut[found_names[0]]
                 else
-                    found_names = _.sortBy(
-                        (entry.config_name for entry in soft_hint_list when entry.$cur_re.test(config.name))
-                        (_str) -> return -_str.length
-                    )
-                    if found_names.length
-                        config.$hint = @config_hint_name_lut[found_names[0]]
-                    else
-                        config.$hint = null
+                    config.$hint = null
+            @_set_config_line_fields(config)
+
+        # typeahead match
+        config_selected_vt: ($item, $model, $label, config) =>
+            if $item of @config_hint_name_lut
+                # set hint
+                config.$hint = @config_hint_name_lut[$item]
+                # update fiels
+                @_set_config_line_fields(config)
+
+        check_config_hint: (config) =>
+            console.log config.name
+            @_check_config_hint(config)
 
         reorder: () =>
             # sort
@@ -144,6 +162,7 @@ config_module = angular.module(
                 config.$$catalog_name = @catalog_lut[config.config_catalog].name
             else
                 config.$$catalog_name = "???"
+            # console.log "C", config
             if config.categories.length
                 config.$$cat_info_str = "#{config.categories.length}"
             else

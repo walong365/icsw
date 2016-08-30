@@ -215,11 +215,12 @@
                                 maxlength="192"
                                 name="name"
                                 ng-model="edit_obj.name"
-                                required="True"
                                 type="text"
-                                uib-typeahead="hint for hint in config_hint_names | filter:$viewValue"
-                                uib-typeahead-min-length="1"
-                                uib-typeahead-on-select="config_selected_vt($item, $model, $label, edit_obj)"
+                                autocomplete="off"
+                                uib-typeahead="hint for hint in config_tree.config_hint_names | filter:$viewValue"
+                                typeahead-min-length="1"
+                                typeahead-on-select="config_tree.config_selected_vt($item, $model, $label, config)"
+                                ng-blur="config_tree.check_config_hint(edit_obj)"
                             />
                         </div>
                     </div>
@@ -232,7 +233,7 @@
                         </div>
                     </div>
                 </fieldset>
-                <div ng-bind-html="edit_obj.$$config_help_html"></div>
+                <div ng-bind-html="config.$$config_help_html"></div>
                 <fieldset>
                     <legend>other settings</legend>
                     <div class="form-group">
@@ -455,7 +456,7 @@
                     <th st-sort="name">Name</th>
                     <th st-sort="value">value</th>
                     <th st-sort="description">description</th>
-                    <th>type</th>
+                    <th class="text-center">type</th>
                     <th colspan="2">Action</th>
                 </tr>
             </thead>
@@ -470,7 +471,7 @@
                     </td>
                     <td>{{ config_service.get_value(obj) }}</td>
                     <td>{{ obj.description }}</td>
-                    <td class="text-center">{{ obj.v_type }}</td>
+                    <td class="text-center">{{ obj.$var_type }}</td>
                     <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/>
                     <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"/></td>
                     <td><icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"/></td>
@@ -934,9 +935,9 @@
     </form>
 </script>
 
-<script type="text/ng-template" id="icsw.config.str.form">
+<script type="text/ng-template" id="icsw.config.strintbool.form">
     <form class="form-horizontal" name="form_data">
-        <h2>String variable '{{ edit_obj.name }}'</h2>
+        <h2>{{ long_var_type_name }} variable '{{ edit_obj.name }}'</h2>
         <uib-tabset>
             <uib-tab heading="Settings">
                 <fieldset>
@@ -945,8 +946,20 @@
                         <label class="control-label col-sm-3 requiredField">
                             Name<span class="asteriskField">*</span>
                         </label>
+                        {{ config_var_hints }}
                         <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" uib-typeahead="hint for hint in config_var_hints | filter:$viewValue"/>
+                            <input
+                                class="textinput textInput form-control"
+                                maxlength="192"
+                                name="name"
+                                ng-model="edit_obj.name"
+                                required="True"
+                                type="text"
+                                autocomplete="off"
+                                uib-typeahead="hint for hint in config_var_hints | filter:$viewValue"
+                                typeahead-on-select="var_selected($item, $model, $label)"
+                                ng-blur="name_blur()"
+                            />
                         </div>
                     </div>
                     <div class="form-group">
@@ -961,96 +974,26 @@
                         <label class="control-label col-sm-3">
                             Value
                         </label>
-                        <div class="controls col-sm-7">
+                        <div class="controls col-sm-7" ng-if="var_type == 'str'">
                             <textarea class="textarea form-control" cols="40" name="value" ng-model="edit_obj.value" rows="10"></textarea>
                         </div>
-                    </div>
-                </fieldset>
-                <div ng-bind-html="show_config_var_help()"></div>
-            </uib-tab>
-            <uib-tab heading="History" ng-if="!create">
-                <icsw-history-model-history style="config" icsw-model="'config_str'" icsw-object-id="edit_obj.idx"></icsw-history-model-history>
-            </uib-tab>
-        </uib-tabset>
-    </form>
-</script>
-
-<script type="text/ng-template" id="icsw.config.int.form">
-    <form class="form-horizontal" name="form_data">
-        <h2>Integer variable '{{ edit_obj.name }}'</h2>
-        <uib-tabset>
-            <uib-tab heading="Settings">
-                <fieldset>
-                    <legend>Basic settings</legend>
-                    <div class="form-group  ng-class:form_error('name')">
-                        <label class="control-label col-sm-3 requiredField">
-                            Name<span class="asteriskField">*</span>
-                        </label>
-                        <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" uib-typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"/>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
-                            Description<span class="asteriskField">*</span>
-                        </label>
-                        <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="765" name="description" ng-model="edit_obj.description" required="True" type="text"/>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-3">
-                            Value
-                        </label>
-                        <div class="controls col-sm-7">
+                        <div class="controls col-sm-7" ng-if="var_type == 'int'">
                             <input class="numberinput form-control" name="value" ng-model="edit_obj.value" type="number"/>
                         </div>
-                    </div>
-                </fieldset>
-                <div ng-bind-html="show_config_var_help()"></div>
-            </uib-tab>
-            <uib-tab heading="History" ng-if="!create">
-                <icsw-history-model-history style="config" icsw-model="'config_int'" icsw-object-id="edit_obj.idx"></icsw-history-model-history>
-            </uib-tab>
-        </uib-tabset>
-    </form>
-</script>
-
-<script type="text/ng-template" id="icsw.config.bool.form">
-    <form class="form-horizontal" name="form_data">
-        <h2>Boolean variable '{{ edit_obj.name }}'</h2>
-        <uib-tabset>
-            <uib-tab heading="Settings">
-                <fieldset>
-                    <legend>Basic settings</legend>
-                    <div class="form-group  ng-class:form_error('name')">
-                        <label class="control-label col-sm-3 requiredField">
-                            Name<span class="asteriskField">*</span>
-                        </label>
-                        <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text" uib-typeahead="hint for hint in get_config_var_hints(_config) | filter:$viewValue"/>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
-                            Description<span class="asteriskField">*</span>
-                        </label>
-                        <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="765" name="description" ng-model="edit_obj.description" required="True" type="text"/>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-3">Value</label>
-                        <div class="controls col-sm-7">
-                            <input type="button" ng-class='edit_obj.value &amp;&amp; "btn btn-sm btn-success" || "btn btn-sm btn-default"' ng-click="edit_obj.value = 1 - edit_obj.value" ng-value='edit_obj.value &amp;&amp; "true" || "false"'/>
+                        <div class="controls col-sm-7" ng-if="var_type == 'bool'">
+                            <input
+                                type="button"
+                                ng-class='edit_obj.value && "btn btn-sm btn-success" || "btn btn-sm btn-default"'
+                                ng-click="edit_obj.value = 1 - edit_obj.value"
+                                ng-value='edit_obj.value && "true" || "false"'
+                            />
                         </div>
                     </div>
                 </fieldset>
-                <div ng-bind-html="show_config_var_help()"></div>
+                <div ng-bind-html="edit_obj.$$var_help_html"></div>
             </uib-tab>
             <uib-tab heading="History" ng-if="!create">
-                <icsw-history-model-history style="config" icsw-model="'config_bool'" icsw-object-id="edit_obj.idx">
-                </icsw-history-model-history>
+                <icsw-history-model-history style="config" icsw-model="model_name" icsw-object-id="edit_obj.idx"></icsw-history-model-history>
             </uib-tab>
         </uib-tabset>
     </form>

@@ -475,6 +475,15 @@ config_module = angular.module(
     icswComplexModalService, icswToolsSimpleModalService, $templateCache, icswConfigVarBackup, toaster
 ) ->
     # do NOT use local vars here because this is a service
+    get_var_help_text = (config, c_var) ->
+        if config.$hint
+            if c_var.name of config.$hint.var_lut
+                return config.$hint.var_lut[c_var.name].help_text_short or ""
+            else
+                return ""
+        else
+            return ""
+
     return {
         fetch: (scope) ->
             defer = $q.defer()
@@ -494,13 +503,7 @@ config_module = angular.module(
                 return false
 
         get_var_help_text: (config, c_var) ->
-            if config.$hint
-                if c_var.name of config.$hint.var_lut
-                    return config.$hint.var_lut[c_var.name].help_text_short or ""
-                else
-                    return ""
-            else
-                return ""
+            return get_var_help_text(config, c_var)
 
         select: (obj) ->
             obj.$selected = !obj.$selected
@@ -524,12 +527,19 @@ config_module = angular.module(
             else
                 var_type = obj_or_parent.$var_type
                 config_tree = scope.configTree
-                console.log "tree=", config_tree
+                # console.log "tree=", config_tree
                 dbu = new icswConfigVarBackup()
                 dbu.create_backup(obj_or_parent)
             sub_scope = scope.$new(false)
             sub_scope.create = create
             sub_scope.edit_obj = obj_or_parent
+            sub_scope.var_type = var_type
+            sub_scope.model_name = "config_#{var_type}"
+            sub_scope.long_var_type_name = {
+                int: "Integer"
+                str: "String"
+                bool: "Boolean"
+            }[var_type]
 
             # config hint names
             if scope.config.$hint
@@ -537,9 +547,18 @@ config_module = angular.module(
             else
                 sub_scope.config_var_hints = []
 
+            sub_scope.edit_obj.$$var_help_html = get_var_help_text(scope.config, sub_scope.edit_obj)
+
+            # hint functions
+            sub_scope.var_selected = ($item, $model, $label) ->
+                sub_scope.edit_obj.$$var_help_html = get_var_help_text(scope.config, sub_scope.edit_obj)
+
+            name_blur = () ->
+                sub_scope.edit_obj.$$var_help_html = get_var_help_text(scope.config, sub_scope.edit_obj)
+
             icswComplexModalService(
                 {
-                    message: $compile($templateCache.get("icsw.config.#{var_type}.form"))(sub_scope)
+                    message: $compile($templateCache.get("icsw.config.strintbool.form"))(sub_scope)
                     title: "ConfigVariable (#{var_type})"
                     css_class: "modal-wide"
                     ok_label: if create then "Create" else "Modify"
