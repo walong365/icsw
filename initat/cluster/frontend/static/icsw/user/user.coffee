@@ -51,25 +51,12 @@ user_module = angular.module(
     icswRouteExtensionProvider.add_route("main.usertree")
 ]).service("icswUserGroupRoleTools", [() ->
     return {
-
         # permission fingerprint
         get_perm_fp: (perm) ->
             if perm.csw_object_permission?
                 return "#{perm.level}-#{perm.user}-#{perm.csw_object_permission.csw_permission}-#{perm.csw_object_permission.object_pk}"
             else
                 return "#{perm.level}-#{perm.user}-#{perm.csw_permission}"
-
-        # check if changed
-        changed: (object) ->
-            if object.$$ignore_changes?
-                return false
-            else if object.$$changed?
-                return true
-            else if object.$$_ICSW_backup_def?
-                # may be none during updates
-                return object.$$_ICSW_backup_def.changed(object)
-            else
-                return false
 
     }
 ]).service("icswUser", 
@@ -943,12 +930,12 @@ user_module = angular.module(
     "icswUserGroupRoleTreeService", "$scope", "$compile", "$q", "icswUserGroupRoleSettingsTreeService", "blockUI",
     "icswUserGroupRolePermissionTreeService", "icswUserGroupRoleDisplayTree", "$timeout", "icswDeviceTreeService",
     "icswUserBackup", "icswGroupBackup", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService",
-    "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", "icswRoleBackup",
+    "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope", "icswRoleBackup", "icswBackupTools",
 (
     icswUserGroupRoleTreeService, $scope, $compile, $q, icswUserGroupRoleSettingsTreeService, blockUI,
     icswUserGroupRolePermissionTreeService, icswUserGroupRoleDisplayTree, $timeout, icswDeviceTreeService,
     icswUserBackup, icswGroupBackup, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService,
-    icswSimpleAjaxCall, ICSW_URLS, $rootScope, icswRoleBackup,
+    icswSimpleAjaxCall, ICSW_URLS, $rootScope, icswRoleBackup, icswBackupTools,
 ) ->
     $scope.struct = {
         # any tree data valid
@@ -1158,7 +1145,7 @@ user_module = angular.module(
     close_edit_object = (ref_obj, ref_list, obj_type) ->
         defer = $q.defer()
         # must use a timeout here to fix strange routing bug, FIXME, TODO
-        if icswUserGroupRoleTools.changed(ref_obj)
+        if icswBackupTools.changed(ref_obj)
             icswToolsSimpleModalService("Really close changed #{obj_type} ?").then(
                 (ok) ->
                     defer.resolve("close")
@@ -1195,7 +1182,7 @@ user_module = angular.module(
         close_edit_object(user_obj, $scope.struct.edit_users, "user")
 
     $scope.changed = (object) ->
-        return icswUserGroupRoleTools.changed(object)
+        return icswBackupTools.changed(object)
 
     $scope.create_role = () ->
         new_role = {
@@ -1386,10 +1373,10 @@ user_module = angular.module(
 ]).controller("icswUserGroupEditCtrl",
 [
     "$scope", "$q", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
-    "blockUI",
+    "blockUI", "icswBackupTools",
 (
     $scope, $q, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
-    blockUI,
+    blockUI, icswBackupTools,
 ) ->
 
     $scope.obj_list_cache = {}
@@ -1480,7 +1467,7 @@ user_module = angular.module(
     #        perm.group = $scope.group.idx
 
     $scope.changed = () ->
-        return icswUserGroupRoleTools.changed($scope.src_object)
+        return icswBackupTools.changed($scope.src_object)
 
     $scope.close = () ->
         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
@@ -1522,7 +1509,7 @@ user_module = angular.module(
             # create new object
             $scope.tree["create_#{$scope.type}"]($scope.src_object).then(
                 (created) ->
-                    $scope.src_obejct = created
+                    $scope.src_object = created
                     defer.resolve("created")
                 (not_saved) ->
                     defer.reject("not created")
@@ -1538,7 +1525,6 @@ user_module = angular.module(
             (ok) ->
                 # create new backup
                 bu_def.create_backup($scope.src_object)
-                $scope.object = $scope.src_object.$$_ICSW_backup_data
                 _set_permissions_from_src()
                 if $scope.create_mode
                     # close current tab
@@ -1548,7 +1534,6 @@ user_module = angular.module(
             (not_ok) ->
                 # create new backup
                 bu_def.create_backup($scope.src_object)
-                $scope.object = $scope.src_object.$$_ICSW_backup_data
                 _set_permissions_from_src()
                 blockUI.stop()
         )
@@ -1574,10 +1559,10 @@ user_module = angular.module(
 ]).controller("icswRoleEditCtrl",
 [
     "$scope", "$q", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
-    "blockUI",
+    "blockUI", "icswBackupTools",
 (
     $scope, $q, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
-    blockUI,
+    blockUI, icswBackupTools,
 ) ->
 
     $scope.obj_list_cache = {}
@@ -1712,7 +1697,7 @@ user_module = angular.module(
         _.remove($scope.object_permission_set, (entry) -> return _fp == icswUserGroupRoleTools.get_perm_fp(entry))
 
     $scope.changed = () ->
-        return icswUserGroupRoleTools.changed($scope.src_object)
+        return icswBackupTools.changed($scope.src_object)
 
     $scope.close = () ->
         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, "role")
@@ -2370,6 +2355,203 @@ user_module = angular.module(
 
                 scope._edit_obj.start_automatically = vdus.is_running
     }
+]).service("icswChordGraphReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    {div, g, svg} = React.DOM
+
+    class icswChord
+        constructor: (d3) ->
+            @d3 = d3
+
+        create: (element, matrix) =>
+            @element = element
+            @d3_element = @d3.select(element)
+            # remove waiting text
+            @d3_element.text("")
+            # parameters
+            diameter = 600
+            outer_radius = diameter / 2
+            inner_radius = outer_radius * 0.8
+
+            return
+            # chord code
+            svg = @d3_element.append("svg").attr("width", diameter).attr("height", diameter).append("g").attr("transform", "translate(#{outer_radius},#{outer_radius})")
+            chord = @d3.chord().padAngle(0.05)
+            console.log "c=", chord(matrix)
+            arc = @d3.arc().innerRadius(inner_radius).outerRadius(outer_radius)
+            ribbon = @d3.ribbon().radius(inner_radius)
+            color = @d3.scaleOrdinal().domain(d3.range(4)).range(["#000000", "#FFDD89", "#957244", "#F26223"])
+            g = svg.datum(chord(matrix))
+            group = g.append("g").selectAll("g").data(
+                (chords) -> return chords.groups
+            ).enter().append("g")
+            group.append("path").style("fill", (d) =>
+                return color(d.index)
+            ).style("stroke", (d) =>
+                return @d3.rgb(color(d.index)).darker()
+            ).attr("d", arc)
+            #g.append("g").attr("fill-opacity", 0.65).selectAll("path").data(
+            #    (chords) -> return chords
+            #).enter().append("path").attr("d", ribbon).style("fill", (d) ->
+            #    return color(d.target.index)
+            #).style("stroke", (d) =>
+            #    return @d3.rgb(color(d.target.index)).darker()
+            #)
+            return
+            # stratify code
+            root = @d3.stratify().id((d) -> return d.name).parentId((d) -> return d.parent)([{name: "a", parent: "c"}, {name: "c", parent: ""}, {name: "e", parent: "c"}, {name: "d", parent: "c"}])
+            # console.log root
+            cluster = @d3.cluster().size([360, inner_radius])
+            cluster(root)
+            # bundle = @d3.hierarchy.node.path()
+            #line = @d3.svg.line.radial().interpolate("bundle").tension(0.6).radius(
+            #    (d) ->
+            #        return d.y
+            #).angle(
+            #    (d) ->
+            #        return d.x / 180 * Math.PI
+            #)
+            project = (x, y) ->
+                angle = (x - 90) / 180 * Math.PI
+                radius = y
+                return [_.round(radius * Math.cos(angle), 2), _.round(radius * Math.sin(angle), 2)]
+
+            g = @d3_element.append("svg").attr("width", diameter).attr("height", diameter).append("g").attr("transform", "translate(#{outer_radius},#{outer_radius})")
+            link = g.selectAll(".link").data(root.descendants().slice(1)).enter().append("path").attr("class", "svg_d3link").attr(
+                "d"
+                (d) ->
+                    # return "M" + project(d.x, d.y) + "C" + project(d.x, (d.y + d.parent.y) / 2) + " " + project(d.parent.x, (d.y + d.parent.y) / 2) + " " + project(d.parent.x, d.parent.y)
+                    return "M" + project(d.x, d.y) + "L" + project(d.parent.x, d.parent.y)
+            )
+            node = g.selectAll(".node").data(root.descendants()).enter().append("g").attr(
+                "class"
+                (d) ->
+                    return "node" + if d.children? then " node--internal" else " node--leaf"
+            ).attr(
+                "transform"
+                (d) ->
+                    return "translate(" + project(d.x, d.y) + ")"
+            )
+            node.append("circle").attr("r", 2.5)
+
+    return React.createClass(
+        propTypes: {
+            # User / Group / Role tree
+            ugr_tree: React.PropTypes.object
+            # d3js
+            d3js: React.PropTypes.object
+        }
+
+        componentDidMount: () ->
+            # build element list
+            _ugr = @props.ugr_tree
+            _idx = 0
+            for role in _ugr.role_list
+                role.$$_idx = _idx
+                _idx++
+            for group in _ugr.group_list
+                group.$$_idx = _idx
+                _idx++
+            for user in _ugr.user_list
+                user.$$_idx = _idx
+                _idx++
+            _mat = ((0 for x in [1.._idx]) for y in [1.._idx])
+            # populate mat
+            for _g in _ugr.group_list
+                _obj_idx = _g.$$_idx
+                for role in _g.roles
+                    _role_idx = _ugr.role_lut[role].$$_idx
+                    _mat[_role_idx][_obj_idx] = 1
+                    _mat[_obj_idx][_role_idx] = 1
+            for _u in _ugr.user_list
+                _obj_idx = _u.$$_idx
+                for role in _u.roles
+                    _role_idx = _ugr.role_lut[role].$$_idx
+                    _mat[_role_idx][_obj_idx] = 1
+                    _mat[_obj_idx][_role_idx] = 1
+            @chord = new icswChord(@props.d3js)
+            el = ReactDOM.findDOMNode(@)
+            @chord.create(
+                el
+                _mat
+            )
+
+        render: () ->
+            return div(
+                {
+                    key: "top"
+                }
+                "waiting..."
+            )
+    )
+]).directive("icswRoleChord",
+[
+    "$q", "icswChordGraphReact",
+(
+    $q, icswChordGraphReact,
+) ->
+    return {
+        restrict: "EA"
+        controller: "icswRoleChordCtrl"
+        scope: true
+        link: (scope, element, attrs) ->
+            scope.set_element(element[0])
+    }
+]).controller("icswRoleChordCtrl",
+[
+    "$scope", "icswUserGroupRoleTreeService", "$q", "icswChordGraphReact",
+    "d3_service",
+(
+    $scope, icswUserGroupRoleTreeService, $q, icswChordGraphReact,
+    d3_service,
+) ->
+    $scope.struct = {
+        # user group role tree
+        ugr_tree: undefined
+        # data is valid
+        data_valid: false
+        # react element
+        react_el: undefined
+        # dom element
+        dom_element: undefined
+    }
+
+    _link = (d3) ->
+        $scope.struct.react_el = ReactDOM.render(
+            React.createElement(
+                icswChordGraphReact
+                {
+                    ugr_tree: $scope.struct.ugr_tree
+                    d3js: d3
+                }
+            )
+            $scope.struct.dom_element
+            $scope.$on("$destroy", () -> ReactDOM.unmountComponentAtNode($scope.struct.dom_element))
+        )
+
+    _load = () ->
+        # invalidate data
+        $scope.struct.data_valid = false
+        $q.all(
+            [
+                icswUserGroupRoleTreeService.load($scope.$id)
+                d3_service.d3()
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.ugr_tree = data[0]
+                $scope.struct.data_valid = true
+                _link(data[1])
+        )
+
+    $scope.set_element = (el) ->
+        $scope.struct.dom_element = el
+        _load()
+
 ])
 
 virtual_desktop_utils = {

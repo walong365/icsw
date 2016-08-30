@@ -217,7 +217,7 @@ angular.module(
 ) ->
     hotkeysProvider.templateHeader = "<h1>ICSW Key help</h1>"
     hotkeysProvider.includeCheatSheet = true
-    hotkeysProvider.cheatSheetHotkey = "ctrl+h"
+    hotkeysProvider.cheatSheetHotkey = "F1"
 ]).config([
     "toasterConfig",
 (
@@ -481,7 +481,6 @@ angular.module(
         _check_rights()
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), (event, user) ->
-        console.log "SIG", event, user
         _user = user
         _check_rights()
     )
@@ -665,6 +664,8 @@ angular.module(
         _ICSW_RMS_UPDATE_DATA: "_icsw.rms.update.data"
         _ICSW_RRD_CROPRANGE_SET: "_icsw.rrd.croprange.set"
         _ICSW_DEVICE_TABS_CHANGED: "_icsw.device.tabs.changed"
+        _ICSW_CLOSE_CONFIG: "_icsw.close.config"
+        _ICSW_DELETE_CONFIG: "_icsw.delete.config"
     }
     return (name) ->
         if name not of _dict

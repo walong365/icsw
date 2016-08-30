@@ -80,12 +80,6 @@ span.fancytree-expander {
 .fa { /* chrome fix */
     font-family: FontAwesome,Arial,Helvetica,sans-serif;
 }
-.nav-tabs {
-    margin-top: 7px;
-}
-.nav-tabs > li > a {
-    height:31px;
-}
 
 ::-webkit-scrollbar-track { background-color: #999999; }
 ::-webkit-scrollbar{ width: 13px; }
@@ -101,9 +95,6 @@ span.fancytree-expander {
     background-color: #444444;
 }
 
-.panel-success {
-    border-color: #555555;
-}
 .alert h1, .alert h2, .alert h3, .alert h4, .alert h5 {
     color: #ffffff;
 }
@@ -115,11 +106,6 @@ pre {
     width: auto;
     display: inline;
 }
-.panel-success > .panel-heading {
-    background-color: #555555;
-    border-color: #555555;
-    color: #ffffff;
- }
 
 table.rotateheaders th {
     background-color: #313131;
@@ -202,4 +188,10 @@ table.rotateheaders th {
 }
 .label {
     border-radius: 1px;
+}
+.cfp-hotkeys {
+    background-color: rgba(245, 245, 245, 0.9);
+}
+.cfp-hotkeys h1 {
+    color: #313131;
 }

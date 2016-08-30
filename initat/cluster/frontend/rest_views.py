@@ -25,6 +25,7 @@
 from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
+from django.core.exceptions import ValidationError
 from django.db.models import Q
 from initat.cluster.backbone import serializers as model_serializers
 from initat.cluster.backbone.models.functions import can_delete_obj
@@ -380,11 +381,31 @@ class list_view(mixins.ListModelMixin,
 
     @rest_logging
     def post(self, request, *args, **kwargs):
-        resp = self.create(request, *args, **kwargs)
+        new_obj = self.serializer_class(data=request.data)
+        if not new_obj.is_valid():
+            raise ValidationError(
+                "cannot create new object: {}".format(
+                    ", ".join(
+                        [
+                            "{}: {}".format(
+                                _key,
+                                ", ".join(_value),
+                            ) for _key, _value in new_obj.errors.iteritems()
+                        ]
+                    )
+                )
+            )
+        _obj = new_obj.save()
+        resp = Response(new_obj.data)
         silent = int(request.GET.get('silent', 0))
         if not silent and resp.status_code in [200, 201, 202, 203]:
             # TODO, FIXME, get name (or unicode representation) of new object
-            resp.data["_messages"] = [u"created '{}'".format(unicode(self.model._meta.object_name))]
+            resp.data["_messages"] = [
+                u"created new {} '{}'".format(
+                    unicode(self.model._meta.object_name),
+                    unicode(_obj),
+                )
+            ]
         return resp
 
     @rest_logging

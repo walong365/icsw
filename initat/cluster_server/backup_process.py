@@ -23,7 +23,6 @@ import os
 import stat
 import subprocess
 import time
-from optparse import OptionParser
 
 from django.conf import settings
 
@@ -89,7 +88,12 @@ class backup_process(threading_tools.process_obj):
             s_time = time.time()
             bu_call(bu_dir)
             e_time = time.time()
-            self.log("{} backup finished in {}".format(bu_type, logging_tools.get_diff_time_str(e_time - s_time)))
+            self.log(
+                "{} backup finished in {}".format(
+                    bu_type,
+                    logging_tools.get_diff_time_str(e_time - s_time)
+                )
+            )
         self._exit_process()
 
     def _normal_backup(self, bu_dir):
@@ -97,31 +101,33 @@ class backup_process(threading_tools.process_obj):
         bu_name = datetime.datetime.now().strftime("db_bu_django_%Y%m%d_%H:%M:%S")
         full_path = os.path.join(
             bu_dir,
-            bu_name)
+            bu_name,
+        )
         self.log("storing backup in {}".format(full_path))
         buf_com = dumpdataslow.Command()
         buf_com.stdout = dummy_file(full_path, "wb")
-        opts, args = OptionParser(option_list=buf_com.option_list).parse_args(
+        # get argument parser
+        _ap = buf_com.create_parser("dumpdataslow", buf_com)
+        _args = [
+            "-a",
+            "--format",
+            "xml",
+            "--traceback",
+        ] + sum(
             [
-                "-a",
-                "--format",
-                "xml",
-                "--traceback",
-            ] + sum(
-                [
-                    ["-e", _ignore] for _ignore in self.get_ignore_list()
-                ],
-                []
-            ) + [
-                "auth",
-                "contenttypes",
-                "sessions",
-                "sites",
-                "admin",
-                "backbone",
-            ]
-        )
-        buf_com.handle(*args, **vars(opts))
+                ["-e", _ignore] for _ignore in self.get_ignore_list()
+            ],
+            []
+        ) + [
+            "auth",
+            "contenttypes",
+            "sessions",
+            "sites",
+            "admin",
+            "backbone",
+        ]
+        opts = _ap.parse_args(_args)
+        buf_com.handle(**vars(opts))
         buf_com.stdout.close()
         file("{}.bz2".format(full_path), "wb").write(bz2.compress(file(full_path, "r").read()))
         os.unlink(full_path)
