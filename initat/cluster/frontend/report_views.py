@@ -65,11 +65,27 @@ from django.utils import timezone
 
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from reportlab.lib.units import cm, mm, inch, pica
+from reportlab.lib.colors import HexColor
 
 from initat.cluster.settings import FILE_ROOT, REPORT_DATA_STORAGE_DIR
 
 pdfmetrics.registerFont(TTFont('Open-Sans', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "open-sans.regular.ttf")))
 pdfmetrics.registerFont(TTFont('Open-Sans-Bold', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "open-sans.bold.ttf")))
+
+pdfmetrics.registerFont(TTFont('SourceSansPro-Black', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Black.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-BlackIt', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-BlackIt.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-Bold', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Bold.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-BoldIt', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-BoldIt.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-ExtraLight', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-ExtraLight.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-ExtraLightIt', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-ExtraLightIt.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-It', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-It.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-Light', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Light.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-LightIt', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-LightIt.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-Regular', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Regular.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-Semibold', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Semibold.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-SemiboldIt', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-SemiboldIt.ttf")))
 
 logger = logging.getLogger(__name__)
 
@@ -538,10 +554,30 @@ class PDFReportGenerator(ReportGenerator):
             cluster_id_var = cluster_id_var[0]
             self.cluster_id = cluster_id_var.val_str
 
+        self.cluster_name = "Unknown"
+        cluster_name_var = system_device.device_variable_set.filter(name="CLUSTER_NAME")
+        if cluster_name_var:
+            cluster_name_var = cluster_name_var[0]
+            self.cluster_name = cluster_name_var.val_str
+
+
         ## Storage dicts / lists
         self.current_page_num = 0
 
         self.reports = []
+
+    def __scale_logo(self, drawheight_max = None, drawwidth_max = None):
+        im = PILImage.open(self.logo_buffer)
+        logo_width = im.size[0]
+        logo_height = im.size[1]
+
+        ratio = float(logo_width) / float(logo_height)
+
+        while (drawwidth_max and logo_width > drawwidth_max) or (drawheight_max and logo_height > drawheight_max):
+            logo_width -= ratio * 1
+            logo_height -= 1
+
+        return (logo_width, logo_height)
 
     def __get_logo_helper(self, value):
         _tmp_file = tempfile.NamedTemporaryFile()
@@ -1462,7 +1498,7 @@ class PDFReportGenerator(ReportGenerator):
 
         report.add_buffer_to_report(_buffer)
 
-    def __generate_front_page(self):
+    def __generate_front_page(self, number_of_pages):
         _buffer = BytesIO()
         doc = SimpleDocTemplate(_buffer,
                                 pagesize=self.page_format,
@@ -1475,18 +1511,92 @@ class PDFReportGenerator(ReportGenerator):
         style_sheet = getSampleStyleSheet()
         style_sheet.add(ParagraphStyle(name='red font', textColor=colors.red))
         style_sheet.add(ParagraphStyle(name='green font', textColor=colors.green))
+        style_sheet.add(ParagraphStyle(name="heading_1",
+                                       fontName="SourceSansPro-Regular",
+                                       fontSize=36,
+                                       alignment=TA_CENTER))
+        style_sheet.add(ParagraphStyle(name="heading_2",
+                                       fontName="SourceSansPro-Regular",
+                                       fontSize=14,
+                                       alignment=TA_CENTER))
+        style_sheet.add(ParagraphStyle(name="heading_3",
+                                       fontName="SourceSansPro-Regular",
+                                       fontSize=16,
+                                       alignment=TA_CENTER))
+        style_sheet.add(ParagraphStyle(name="heading_4",
+                                       fontName="SourceSansPro-Regular",
+                                       fontSize=11,
+                                       alignment=TA_CENTER))
+
 
         available_width = self.page_format[0] - (self.margin * 2)
 
-        data = [["Report #{}".format(self.report_id)]]
+        data = []
 
-        t_head = Table(data, colWidths=(available_width),
-                       style=[('FONTSIZE', (0, 0), (-1, -1), 22),
-                              ('TEXTFONT', (0, 0), (-1, -1), self.standard_font),
-                              ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                              ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                              ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                              ('RIGHTPADDING', (0, 0), (-1, -1), 0)])
+        data.append([Paragraph("Asset report", style_sheet['heading_1'])])
+        data.append([Paragraph("Report #{}".format(self.report_id), style_sheet['heading_2'])])
+
+        h, w = self.__scale_logo(drawheight_max=23 * mm)
+
+        logo = Image(self.logo_buffer)
+        logo.drawHeight = w
+        logo.drawWidth = h
+
+        data.append([logo])
+
+        data.append([Paragraph("{}".format(self.cluster_name), style_sheet['heading_3'])])
+        data.append([Paragraph("This report consists of {} pages".format(number_of_pages), style_sheet['heading_4'])])
+
+        data.append([Paragraph("General Content:", style_sheet['heading_2'])])
+
+        general_content_str = "N/A"
+
+        if self.general_settings['network_report_overview_module_selected']:
+            var = "Network Overview"
+            if general_content_str == "N/A":
+                general_content_str = var
+            else:
+                general_content_str = "{}, {}".format(general_content_str, var)
+
+        if self.general_settings['general_device_overview_module_selected']:
+            var = "Device Overview"
+            if general_content_str == "N/A":
+                general_content_str = var
+            else:
+                general_content_str = "{}, {}".format(general_content_str, var)
+
+        if self.general_settings['user_group_overview_module_selected']:
+            var = "User/Group Overview"
+            if general_content_str == "N/A":
+                general_content_str = var
+            else:
+                general_content_str = "{}, {}".format(general_content_str, var)
+
+        data.append([Paragraph(general_content_str, style_sheet['heading_4'])])
+
+        selected_devices_str = "N/A"
+
+        data.append([Paragraph("{} Devices:".format(len(self.devices)), style_sheet['heading_2'])])
+
+        for _device in self.devices:
+            var = _device.full_name
+            if selected_devices_str == "N/A":
+                selected_devices_str = var
+            else:
+                selected_devices_str = "{}, {}".format(selected_devices_str, var)
+
+        data.append([Paragraph(selected_devices_str, style_sheet['heading_4'])])
+
+
+        t_head = Table(data, colWidths=(available_width), rowHeights=(70, 45, 150, 15, 20, 50, 16, 50, 16),
+                       style=[
+                           ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                           ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                           ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                           ('BOX', (0, 6), (0, 6), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 8), (0, 8), 0.35, HexColor(0xBDBDBD))
+                       ]
+                       )
 
         # body content
         _user = user.objects.get(idx=self.general_settings["user_idx"])
@@ -1678,15 +1788,15 @@ class PDFReportGenerator(ReportGenerator):
 
 
         elements.append(t_head)
-        elements.append(Spacer(1, 30))
-        elements.append(t_body)
-        elements.append(Spacer(1, 30))
-        elements.append(t_config_2)
+        # elements.append(Spacer(1, 30))
+        # elements.append(t_body)
+        # elements.append(Spacer(1, 30))
+        # elements.append(t_config_2)
 
 
-        if self.devices:
-            elements.append(Spacer(1, 30))
-            elements.append(t_config)
+        # if self.devices:
+        #     elements.append(Spacer(1, 30))
+        #     elements.append(t_config)
 
         doc.build(elements)
 
@@ -1695,9 +1805,12 @@ class PDFReportGenerator(ReportGenerator):
 
     def __get_toc_pages(self, queue):
         style_sheet = getSampleStyleSheet()
+        style_sheet.add(ParagraphStyle(name="heading_1",
+                                       fontName="SourceSansPro-Regular",
+                                       fontSize=16,
+                                       alignment=TA_LEFT))
 
-        paragraph_header = Paragraph('<font face="{}" size="16">Contents</font>'.format(self.bold_font),
-                                     style_sheet["BodyText"])
+        paragraph_header = Paragraph('Contents'.format(self.bold_font), style_sheet["heading_1"])
 
         logo = Image(self.logo_buffer)
         logo.drawHeight = self.logo_height
@@ -1707,9 +1820,14 @@ class PDFReportGenerator(ReportGenerator):
 
         available_width = self.page_format[0] - (self.margin * 2)
 
-        t_head = Table(data,
+        t_head = Table(data, rowHeights=(200),
                        colWidths=(available_width - self.logo_width, None),
-                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+                       style=[('GRID', (0, 0), (-1, -1), 0.5, colors.black),
+                              ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
+                              ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                              ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                              ]
+                       )
 
         _buffer = BytesIO()
         can = Canvas(_buffer, pagesize=self.page_format)
@@ -1744,7 +1862,7 @@ class PDFReportGenerator(ReportGenerator):
 
             can.drawString(25 + (25 * indent), heigth - (top_margin + (15 * vertical_x)), heading_str)
 
-            heading_str_width = stringWidth(heading_str, self.standard_font, 14)
+            heading_str_width = stringWidth(heading_str, "Source", 10)
 
             dots = "."
             while (25 * indent) + heading_str_width + stringWidth(dots, self.standard_font, 14) < (width - 150):
@@ -1961,7 +2079,7 @@ class PDFReportGenerator(ReportGenerator):
 
 
         # generate front page, prepend to pdf
-        frontpage_buffer = self.__generate_front_page()
+        frontpage_buffer = self.__generate_front_page(output_pdf.getNumPages())
         frontpage_pdf = PdfFileReader(frontpage_buffer)
         frontpage_page_num = frontpage_pdf.getNumPages()
 
