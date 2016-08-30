@@ -645,6 +645,7 @@ config_module = angular.module(
                     priority: 0
                     name: "new script"
                     description: "New Script"
+                    enabled: true
                     value: "# config script (" + moment().format() + ")\n#\n"
                 }
             else
