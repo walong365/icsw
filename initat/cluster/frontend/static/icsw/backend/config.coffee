@@ -33,9 +33,11 @@ config_module = angular.module(
     class icswConfigTree
         constructor: (@list, @catalog_list, @hint_list, @cat_tree) ->
             @uploaded_configs = []
+            @filtered_list = []
             @build_luts()
 
         build_luts: () =>
+            _start = new Date().getTime()
             # new entries added
             @lut = _.keyBy(@list, "idx")
             @catalog_lut = _.keyBy(@catalog_list, "idx")
@@ -48,32 +50,53 @@ config_module = angular.module(
                     @mcc_lut[mcc.idx] = mcc
             @resolve_hints()
             @reorder()
+            @update_filtered_list()
             @update_category_tree()
+            _end = new Date().getTime()
+            console.log("ConfigTree.build_luts() took " + icswTools.get_diff_time_ms(_end - _start))
 
         resolve_hints: () =>
-            soft_hint_list = []
+            @soft_hint_list = []
             @config_hint_name_lut = {}
+            @config_hint_names = []
             for config in @list
                 config.$hint = null
             for entry in @hint_list
                 @config_hint_name_lut[entry.config_name] = entry
+                @config_hint_names.push(entry.config_name)
                 if not entry.exact_match
-                    soft_hint_list.push(entry)
+                    @soft_hint_list.push(entry)
                     entry.$cur_re = new RegExp(entry.config_name)
                 entry.var_lut = _.keyBy(entry.config_var_hint_set, "var_name")
             # make soft matches
             for config in @list
-                if config.name of @config_hint_name_lut
-                    config.$hint = @config_hint_name_lut[config.name]
+                @_check_config_hint(config)
+
+        _check_config_hint: (config) =>
+            if config.name of @config_hint_name_lut
+                config.$hint = @config_hint_name_lut[config.name]
+            else
+                found_names = _.sortBy(
+                    (entry.config_name for entry in @soft_hint_list when entry.$cur_re.test(config.name))
+                    (_str) -> return -_str.length
+                )
+                if found_names.length
+                    config.$hint = @config_hint_name_lut[found_names[0]]
                 else
-                    found_names = _.sortBy(
-                        (entry.config_name for entry in soft_hint_list when entry.$cur_re.test(config.name))
-                        (_str) -> return -_str.length
-                    )
-                    if found_names.length
-                        config.$hint = @config_hint_name_lut[found_names[0]]
-                    else
-                        config.$hint = null
+                    config.$hint = null
+            @_set_config_line_fields(config)
+
+        # typeahead match
+        config_selected_vt: ($item, $model, $label, config) =>
+            if $item of @config_hint_name_lut
+                # set hint
+                config.$hint = @config_hint_name_lut[$item]
+                # update fiels
+                @_set_config_line_fields(config)
+
+        check_config_hint: (config) =>
+            console.log config.name
+            @_check_config_hint(config)
 
         reorder: () =>
             # sort
@@ -99,26 +122,39 @@ config_module = angular.module(
                     config["$$#{_type}_expanded"] = false
                     @_set_config_expansion_class(config, _type)
 
-        _set_config_expansion_class: (config, type) =>
-            _num = config["#{type}_num"]
+        _set_config_class: (config, type) =>
+            _num = config["$$num_#{type}"]
+            _sel= config["$$num_#{type}_found"]
+            if not _sel?
+                # may be undefined during first run
+                _sel = 0
             if _num
-                if config["$${type}_expanded"]
-                    config["$$#{type}_expansion_class"] = "glyphicon glyphicon-chevron-down"
-                    config["$$#{type}_expansion_label_class"] = "label label-success"
+                # if config["$$#{type}_expanded"]
+                #     config["$$#{type}_expansion_class"] = "glyphicon glyphicon-chevron-down"
+                # else
+                #     config["$$#{type}_expansion_class"] = "glyphicon glyphicon-chevron-right"
+                if _sel
+                    config["$$#{type}_label_class"] = "label label-success"
                 else
-                    config["$$#{type}_expansion_class"] = "glyphicon glyphicon-chevron-right"
-                    config["$$#{type}_expansion_label_class"] = "label label-primary"
+                    config["$$#{type}_label_class"] = "label label-primary"
             else
-                config["$$#{type}_expansion_class"] = "glyphicon"
-                config["$$#{type}_expansion_label_class"] = ""
+                # config["$$#{type}_expansion_class"] = "glyphicon"
+                config["$$#{type}_label_class"] = ""
+            if _sel
+                if _sel == _num
+                    config["$$#{type}_span_str"] = "all #{_num}"
+                else
+                    config["$$#{type}_span_str"] = "#{_sel} of #{_num}"
+            else
+                config["$$#{type}_span_str"] = "#{_num}"
 
         toggle_expand: (config, type) =>
-            _num = config["#{type}_num"]
+            _num = config["$$num_#{type}"]
             if _num
                 config["$$#{type}_expanded"] = !config["$$#{type}_expanded"]
             else
                 config["$$#{type}_expanded"] = false
-            @_set_config_expansion_class(config, type)
+            @_set_config_class(config, type)
 
         _set_config_line_fields: (config) =>
             config.$$config_line_class = if config.enabled then "" else "danger"
@@ -126,14 +162,17 @@ config_module = angular.module(
                 config.$$catalog_name = @catalog_lut[config.config_catalog].name
             else
                 config.$$catalog_name = "???"
+            # console.log "C", config
             if config.categories.length
                 config.$$cat_info_str = "#{config.categories.length}"
             else
                 config.$$cat_info_str = "-"
             if config.$hint
                 config.$$config_help_text = config.$hint.help_text_short or "no short help"
+                config.$$config_help_html = config.$hint.help_text_html or "<p/>"
             else
                 config.$$config_help_text = "---"
+                config.$$config_help_html = "<span>No help text</span>"
 
         _enrich_config: (config) =>
             @_set_config_line_fields(config)
@@ -176,11 +215,11 @@ config_module = angular.module(
                 ["name"]
                 ["desc"]
             )
-            config.var_num = config.var_list.length
+            config.$$num_var = config.var_list.length
             config.var_sel = (true for entry in config.var_list when entry.$selected).length
-            config.script_num = config.config_script_set.length
+            config.$$num_script = config.config_script_set.length
             config.script_sel = (true for entry in config.config_script_set when entry.$selected).length
-            config.mon_num = config.mon_check_command_set.length
+            config.$$num_mon = config.mon_check_command_set.length
             config.mon_sel = (true for entry in config.mon_check_command_set when entry.$selected).length
             config.mon_check_command_lut = _.keyBy(config.mon_check_command_set, "idx")
             # build info strings for device-config
@@ -191,8 +230,8 @@ config_module = angular.module(
             else
                 _name = "#{config.name}"
                 config.$mulitple_names = false
-            @_init_expansion_fields(config)
-            config.info_str = "#{_name} (#{config.var_num}, #{config.script_num}, #{config.mon_num})"
+            # @_init_expansion_fields(config)
+            config.info_str = "#{_name} (#{config.$$num_var}, #{config.$$num_script}, #{config.$$num_mon})"
             r_v = []
             if config.server_config
                 r_v.push("S")
@@ -212,7 +251,102 @@ config_module = angular.module(
                     cat.configs = []
             for config in @list
                 @_enrich_config(config)
+            @_populate_filter_fields()
             @$selected = (entry for entry in @list when entry.$selected).length
+
+        # filter functions
+        _populate_filter_fields: () =>
+            for entry in @list
+                entry.$$filter_set = true
+                s = []
+                for scr in entry.config_script_set
+                    _local_s = []
+                    for attr_name in ["name", "description", "value"]
+                        _local_s.push(scr[attr_name])
+                    scr.$$filter_string = _local_s.join(" ")
+                    s.push(scr.$$filter_string)
+                for vart in ["str", "int", "blob", "bool"]
+                    for cvar in entry["config_#{vart}_set"]
+                        _local_s = []
+                        for attr_name in ["name", "description", "value"]
+                            _local_s.push(cvar[attr_name])
+                        cvar.$$filter_string = _local_s.join(" ")
+                        s.push(cvar.$$filter_string)
+                for moncc in entry.mon_check_command_set
+                    _local_s = []
+                    for attr_name in ["name", "description", "check_command"]
+                        _local_s.push(moncc[attr_name])
+                    moncc.$$filter_string = _local_s.join(" ")
+                    s.push(moncc.$$filter_string)
+                # config search field
+                _local_s = []
+                for attr_name in ["name", "description"]
+                    _local_s.push(entry[attr_name])
+                entry.$$filter_string = _local_s.join(" ")
+                s.push(entry.$$filter_string)
+                # needed ?
+                entry.$$global_filter_string = s.join(" ")
+
+        update_filtered_list: (search_str, filter_settings) =>
+            if not search_str?
+                search_str = ""
+            # console.log "f", search_str, filter_settings
+            try
+                search_re = new RegExp(search_str)
+            catch error
+                search_re = new RegExp("")
+            if search_str == ""
+                # default for empty search string
+                filter_settings = {config: true, mon: false, script: false, var: false}
+            @filtered_list.length = 0
+            for entry in @list
+                if entry.$$filter_set?
+                    # search_str defined due some filtering
+                    [_num_script_found, _num_mon_found, _num_var_found] = [0, 0, 0]
+                    for scr in entry.config_script_set
+                        if filter_settings.script
+                            scr.$$filter_match = if scr.$$filter_string.match(search_re) then true else false
+                            if scr.$$filter_match
+                                _num_script_found++
+                        else
+                            scr.$$filter_match = false
+                    for mon in entry.mon_check_command_set
+                        if filter_settings.mon
+                            mon.$$filter_match = if mon.$$filter_string.match(search_re) then true else false
+                            if mon.$$filter_match
+                                _num_mon_found++
+                        else
+                            mon.$$filter_match = false
+                    for vart in ["str", "int", "blob", "bool"]
+                        for cvar in entry["config_#{vart}_set"]
+                            if filter_settings.var
+                                cvar.$$filter_match = if cvar.$$filter_string.match(search_re) then true else false
+                                if cvar.$$filter_match
+                                    _num_var_found++
+                            else
+                                cvar.$$filter_match = false
+                    entry.$$num_script_found = _num_script_found
+                    entry.$$num_var_found = _num_var_found
+                    entry.$$num_mon_found = _num_mon_found
+                    if filter_settings.config
+                        entry.$$filter_match = if entry.$$filter_string.match(search_re) then true else false
+                    else
+                        entry.$$filter_match = false
+                    _sub_found = if _num_script_found + _num_var_found + _num_mon_found > 0 then true else false
+                    # console.log _sub_found, entry.$$filter_match
+                    entry.$$global_filter_match = _sub_found or entry.$$filter_match
+                    #if entry.$$global_filter_match
+                    #    console.log entry.$$filter_match, _num_script_found, _num_mon_found, _num_var_found
+                else
+                    entry.$$filter_match = true
+                    entry.$$global_filter_match = true
+                    entry.$$num_script_found = 0
+                    entry.$$num_var_found = 0
+                    entry.$$num_mon_found = 0
+                for _type in ["script", "mon", "var"]
+                    @_set_config_class(entry, _type)
+                if entry.$$global_filter_match
+                    @filtered_list.push(entry)
 
         update_category_tree: () =>
             @cat_tree.feed_config_tree(@)
@@ -259,6 +393,21 @@ config_module = angular.module(
                     @_fetch_config(new_obj.idx, defer, "created config")
                 (not_ok) ->
                     defer.reject("config not created")
+            )
+            return defer.promise
+
+        modify_config: (config) ->
+            defer = $q.defer()
+            _modify_url = ICSW_URLS.REST_CONFIG_DETAIL.slice(1).slice(0, -2)
+            Restangular.restangularizeElement(null, config, _modify_url)
+            config.put().then(
+                (saved_config) =>
+                    console.log "ok"
+                    @build_luts()
+                    defer.resolve("saved")
+                (not_ok) =>
+                    console.log "nok"
+                    defer.reject("not saved")
             )
             return defer.promise
 

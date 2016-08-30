@@ -308,7 +308,9 @@ class auth_cache(object):
 
     def _fill_dg_lut(self, dev):
         if dev.pk not in self.__dg_lut:
-            for dev_pk, md_pk in dev._default_manager.filter(Q(device_group=dev.device_group_id)).values_list("pk", "device_group__device"):
+            from django.apps import apps
+            device = apps.get_model("backbone", "device")
+            for dev_pk, md_pk in device._default_manager.filter(Q(device_group=dev.device_group_id)).values_list("pk", "device_group__device"):
                 self.__dg_lut[dev_pk] = md_pk
 
     def get_global_permissions(self):

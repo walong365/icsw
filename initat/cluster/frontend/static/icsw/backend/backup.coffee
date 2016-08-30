@@ -29,7 +29,21 @@ angular.module(
         "icsw.device.info", "icsw.user",
         "icsw.backend.devicetree",
     ]
-).service("icswBackupDefinition", ["icswBaseMixinClass", (icswBaseMixinClass) ->
+).service("icswBackupTools", [() ->
+    return {
+        # check if changed
+        changed: (object) ->
+            if object.$$ignore_changes?
+                return false
+            else if object.$$changed?
+                return true
+            else if object.$$_ICSW_backup_def?
+                # may be none during updates
+                return object.$$_ICSW_backup_def.changed(object)
+            else
+                return false
+    }
+]).service("icswBackupDefinition", ["icswBaseMixinClass", (icswBaseMixinClass) ->
 
     class backup_def extends icswBaseMixinClass
         constructor: () ->
