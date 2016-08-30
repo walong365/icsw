@@ -1186,7 +1186,9 @@ class AssetRun(models.Model):
         if self.run_index == 0:
             return []
 
-        return self.get_asset_changeset(self.device.assetrun_set.get(run_index=self.run_index - 1))
+        return self.get_asset_changeset(
+            self.device.assetrun_set.get(run_index=self.run_index-1)
+        )
 
 
 class AssetBatch(models.Model):
@@ -1436,7 +1438,7 @@ class StaticAssetTemplateField(models.Model):
 
     class Meta:
         unique_together = [
-            ("static_asset_template", "name")
+            ("static_asset_template", "name"),
         ]
         ordering = ["ordering"]
 

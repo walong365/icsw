@@ -651,7 +651,7 @@ class cd_connection(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} (via {}) {}".format(
+        return u"{} (via {}) {}".format(
             unicode(self.parent),
             self.connection_info,
             unicode(self.child)
