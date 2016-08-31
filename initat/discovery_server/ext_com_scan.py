@@ -1079,18 +1079,16 @@ class Dispatcher(object):
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command, timeout) in enumerate(cmd_tuples):
             _device = schedule_item.device
-            asset_run_len = len(_device.assetrun_set.all())
+            run_index = len(planned_run.asset_batch.assetrun_set.all())
             new_asset_run = AssetRun(
-                run_index=asset_run_len,
+                run_index=run_index,
                 run_type=runtype,
                 run_status=RunStatus.PLANNED,
                 scan_type=ScanType.HM,
                 batch_index=_idx,
                 asset_batch=planned_run.asset_batch,
-                device=_device,
             )
             new_asset_run.save()
-            _device.assetrun_set.add(new_asset_run)
 
             planned_run.add_planned_run(
                 new_asset_run,
@@ -1126,20 +1124,16 @@ class Dispatcher(object):
 
             _device = schedule_item.device
 
-            asset_run_len = len(_device.assetrun_set.all())
-
+            run_index = len(planned_run.asset_batch.assetrun_set.all())
             new_asset_run = AssetRun(
-                run_index=asset_run_len,
+                run_index=run_index,
                 run_type=runtype,
                 run_status=RunStatus.PLANNED,
                 scan_type=ScanType.NRPE,
                 batch_index=_idx,
                 asset_batch=planned_run.asset_batch,
-                device=_device,
             )
-
             new_asset_run.save()
-            _device.assetrun_set.add(new_asset_run)
 
             planned_run.add_planned_run(
                 new_asset_run,

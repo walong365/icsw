@@ -869,7 +869,7 @@ class DeviceLogEntry(models.Model):
     user = models.ForeignKey("user", null=True)
     level = models.ForeignKey("LogLevel")
     text = models.CharField(max_length=765, default="")
-    date = models.DateTimeField(auto_now_add=True)
+    date = models.DateTimeField(auto_now_add=True) #
 
     @staticmethod
     def new(**kwargs):
