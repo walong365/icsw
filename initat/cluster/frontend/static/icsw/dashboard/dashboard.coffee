@@ -185,7 +185,7 @@ dashboard_module = angular.module(
 [
     "$templateCache",
 (
-    $templateCache,
+    $templateCache
 ) ->
     return {
         restrict: "EA"
@@ -726,6 +726,50 @@ dashboard_module = angular.module(
 ) ->
     $scope.quicklink_states = icswRouteHelper.get_struct().quicklink_states
     # console.log route_struct
+
+]).directive("watchWindowSize",
+[
+    "$window",
+(
+    $window
+) ->
+    link : (scope, el, attr) ->
+        # NOT INTEGRATED YET!
+        # for SVG fullscreen
+        $el = el[0]
+        w = angular.element($window)
+        scope.getWindowHeight = () ->
+           w.height()
+        scope.$watch(scope.getWindowHeight, (newValue, oldValue) ->
+            if newValue != oldValue
+                offset = $el.getBoundingClientRect().top
+                elementheight = newValue - offset - 16
+                el.css("height", "#{elementheight}px")
+        )
+
+]).directive("icswCheckElementheight",
+[() ->
+    link : (scope, el, attr) ->
+        $el = el[0]
+        header_height = 25
+        if el.children().length == 2
+            panel_body = el.children()[1]
+            angular.element(document).ready(() ->
+                header_height = $(el.children()[0])[0].offsetHeight
+            )
+        else
+            el.css("overflow", "auto")
+
+        scope.gettotal_height = () ->
+            $el.offsetHeight
+        scope.get_header_height = () ->
+            $(el.children()[0])[0].offsetHeight
+
+        scope.$watch(scope.gettotal_height, (newValue, oldValue) ->
+            if newValue != oldValue
+                header_height = scope.get_header_height()
+                $(panel_body).css("height", newValue - header_height - 2)
+            )
 ])
 
 virtual_desktop_utils = {
