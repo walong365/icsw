@@ -157,7 +157,7 @@ config_module = angular.module(
             @_set_config_class(config, type)
 
         _set_config_line_fields: (config) =>
-            config.$$config_line_class = if config.enabled then "" else "danger"
+            config.$$config_line_class = if config.$selected then "info" else ""
             if config.config_catalog of @catalog_lut
                 config.$$catalog_name = @catalog_lut[config.config_catalog].name
             else

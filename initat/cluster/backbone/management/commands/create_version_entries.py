@@ -25,25 +25,39 @@ from django.core.management.base import BaseCommand
 from django.db.models import Q
 
 from initat.cluster.backbone.models import ICSWVersion, VERSION_NAME_LIST
+from initat.cluster.backbone.version_functions import get_database_version, get_models_version
 from initat.constants import VERSION_CS_NAME
 from initat.tools import config_store
 
 
 class Command(BaseCommand):
     help = "Create Database version entries after an migration run."
-    args = ''
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--modify",
+            action="store_true",
+            default=False,
+            help="Modify ConfigStore (usefull for Quickfixes in production environments)"
+        )
 
     def handle(self, **options):
-        main()
+        main(options)
 
 
-def main():
+def main(options):
     if not ICSWVersion.objects.all().count():
         insert_idx = 0
     else:
         insert_idx = max(ICSWVersion.objects.all().values_list("insert_idx", flat=True))
     insert_idx += 1
     _vers = config_store.ConfigStore(VERSION_CS_NAME, quiet=True)
+    if options["modify"]:
+        print("Renewing version info in ConfigStore")
+        _vers["database"] = get_database_version()
+        _vers["models"] = get_models_version()
+        print _vers.file_name
+        _vers.write()
     print(
         "Creating {:d} version entries with idx {:d} ...".format(
             len(VERSION_NAME_LIST),

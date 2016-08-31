@@ -93,8 +93,9 @@ angular.module(
                 # current user is still valid, force logout
 
                 # show loginform when we know which kind of product it is
-                angular.element(document).ready( () ->
-                    $scope.all_loaded = true;
+                angular.element(document).ready(
+                    () ->
+                        $scope.all_loaded = true;
                 )
 
                 if data[3].is_authenticated()

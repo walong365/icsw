@@ -96,7 +96,7 @@ device_asset_module = angular.module(
             [2, "Hardware", ""]
             [3, "License", ""]
             [4, "Update", ""]
-            [5, "Software version", ""]
+            [5, "LSHW", ""]
             [6, "Process", ""]
             [7, "Pending update", ""]
             [8, "DMI", ""],

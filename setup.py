@@ -56,6 +56,7 @@ setup(
         "initat.rms",
         "initat.cluster",
         "initat.cluster.backbone",
+        "initat.cluster.backbone.tools",
         "initat.cluster.backbone.0800_models",
         "initat.cluster.backbone.models",
         "initat.cluster.backbone.exceptions",

@@ -32,6 +32,7 @@ from enum import IntEnum
 from lxml import etree
 
 from initat.tools import server_command, pci_database, dmi_tools
+from initat.cluster.backbone.tools.hw import Hardware
 
 
 ########################################################################################################################
@@ -40,6 +41,7 @@ from initat.tools import server_command, pci_database, dmi_tools
 
 
 def get_base_assets_from_raw_result(asset_run,):
+    asset_batch = asset_run.asset_batch
     blob = asset_run.raw_result_str
     runtype = asset_run.run_type
     scantype = asset_run.scan_type
@@ -118,7 +120,7 @@ def get_base_assets_from_raw_result(asset_run,):
                     ap.save()
                     apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
                     apv.save()
-                asset_run.packages.add(apv)
+                asset_batch.packages.add(apv)
 
         elif runtype == AssetType.HARDWARE:
             if scantype == ScanType.NRPE:
@@ -235,10 +237,6 @@ def get_base_assets_from_raw_result(asset_run,):
             elif scantype == ScanType.HM:
                 # todo implement me (--> what do we want to gather/display here?)
                 pass
-
-        elif runtype == AssetType.SOFTWARE_VERSION:
-            # todo implement me
-            pass
 
         elif runtype == AssetType.PROCESS:
             if scantype == ScanType.NRPE:
@@ -395,201 +393,6 @@ def get_base_assets_from_raw_result(asset_run,):
                         )
                     value.save()
 
-        elif runtype == AssetType.PRETTYWINHW:
-            if blob.startswith("b'"):
-                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-            else:
-                _data = bz2.decompress(base64.b64decode(blob))
-
-            _data = json.loads(_data)
-
-            memory_data = _data['memory']
-            cpu_data = _data['cpu']
-            gpu_data = _data['gpu']
-            hdd_data = _data['hdd']
-            logical_data = _data['logical']
-            display_data = _data['monitor']
-
-            for memory_entry in memory_data:
-                banklabel = memory_entry['banklabel']
-                formfactor = memory_entry['formfactor']
-                memorytype = memory_entry['memorytype']
-                manufacturer = memory_entry['manufacturer']
-                capacity = int(memory_entry['capacity'])
-
-                memory_modules = AssetHWMemoryEntry.objects.filter(
-                    banklabel=banklabel,
-                    formfactor=formfactor,
-                    memorytype=memorytype,
-                    manufacturer=manufacturer,
-                    capacity=capacity)
-
-                assert(len(memory_modules) < 2)
-
-                if memory_modules:
-                    memory_module = memory_modules[0]
-                else:
-                    memory_module = AssetHWMemoryEntry(
-                        banklabel=banklabel,
-                        formfactor=formfactor,
-                        memorytype=memorytype,
-                        manufacturer=manufacturer,
-                        capacity=capacity
-                    )
-                    memory_module.save()
-
-                asset_run.memory_modules.add(memory_module)
-                asset_run.memory_count += 1
-
-            for cpu_entry in cpu_data:
-                cpuname = cpu_entry['name']
-                numberofcores = int(cpu_entry['numberofcores'])
-
-                cpus = AssetHWCPUEntry.objects.filter(
-                    cpuname=cpuname,
-                    numberofcores=numberofcores
-                )
-
-                assert(len(cpus) < 2)
-
-                if cpus:
-                    cpu = cpus[0]
-                else:
-                    cpu = AssetHWCPUEntry(
-                        cpuname=cpuname,
-                        numberofcores=numberofcores
-                    )
-                    cpu.save()
-
-                asset_run.cpus.add(cpu)
-                asset_run.cpu_count += 1
-
-            for gpu_entry in gpu_data:
-                gpuname = gpu_entry['name']
-                driverversion = gpu_entry['driverversion']
-
-                gpus = AssetHWGPUEntry.objects.filter(
-                    gpuname=gpuname,
-                    driverversion=driverversion
-                )
-
-                assert (len(gpus) < 2)
-
-                if gpus:
-                    gpu = gpus[0]
-                else:
-                    gpu = AssetHWGPUEntry(
-                        gpuname=gpuname,
-                        driverversion=driverversion
-                    )
-                    gpu.save()
-
-                asset_run.gpus.add(gpu)
-
-            for hdd_entry in hdd_data:
-                name = hdd_entry['name']
-                serialnumber = hdd_entry["serialnumber"]
-                size = hdd_entry['size']
-                if size:
-                    size = int(size)
-                else:
-                    size = None
-
-                hdds = AssetHWHDDEntry.objects.filter(
-                    name=name,
-                    serialnumber=serialnumber,
-                    size=size
-                )
-
-                assert (len(hdds) < 2)
-
-                if hdds:
-                    hdd = hdds[0]
-                else:
-                    hdd = AssetHWHDDEntry(
-                        name=name,
-                        serialnumber=serialnumber,
-                        size=size
-                    )
-                    hdd.save()
-
-                asset_run.hdds.add(hdd)
-
-            for logical_entry in logical_data:
-                name = logical_entry['name']
-                size = logical_entry['size']
-                free = logical_entry['free']
-
-                if size:
-                    size = int(size)
-                else:
-                    size = None
-
-                if free:
-                    free = int(free)
-                else:
-                    free = None
-
-                partitions = AssetHWLogicalEntry.objects.filter(
-                    name=name,
-                    size=size,
-                    free=free
-                )
-
-                assert (len(partitions) < 2)
-
-                if partitions:
-                    partition = partitions[0]
-                else:
-                    partition = AssetHWLogicalEntry(
-                        name=name,
-                        size=size,
-                        free=free
-                    )
-                    partition.save()
-
-                asset_run.partitions.add(partition)
-
-            for display_entry in display_data:
-                xpixels = display_entry['xpixels']
-                ypixels = display_entry['ypixels']
-                manufacturer = display_entry['manufacturer']
-                type = display_entry['type']
-                name = display_entry['name']
-
-                if xpixels:
-                    xpixels = int(xpixels)
-                else:
-                    xpixels = None
-
-                if ypixels:
-                    ypixels = int(ypixels)
-                else:
-                    ypixels = None
-
-                displays = AssetHWDisplayEntry.objects.filter(
-                    xpixels=xpixels,
-                    ypixels=ypixels,
-                    manufacturer=manufacturer,
-                    type=type,
-                    name=name
-                )
-
-                assert (len(displays) < 2)
-
-                if displays:
-                    display = displays[0]
-                else:
-                    display = AssetHWDisplayEntry(
-                        xpixels=xpixels,
-                        ypixels=ypixels,
-                        manufacturer=manufacturer,
-                        type=type,
-                        name=name
-                    )
-                    display.save()
-
-                asset_run.displays.add(display)
 
 ########################################################################################################################
 # Base Asset Classes
@@ -645,7 +448,7 @@ class AssetType(IntEnum):
     HARDWARE = 2  # lstopo
     LICENSE = 3
     UPDATE = 4
-    SOFTWARE_VERSION = 5
+    LSHW = 5
     PROCESS = 6
     PENDING_UPDATE = 7
     DMI = 8
@@ -1125,28 +928,56 @@ class AssetRun(models.Model):
     # interpret error
     interpret_error_string = models.TextField(default="")
     asset_batch = models.ForeignKey("AssetBatch", null=True)
-    device = models.ForeignKey("backbone.device", null=True)
     # run index in current batch
     batch_index = models.IntegerField(default=0)
-
     raw_result_str = models.TextField(null=True)
-
     raw_result_interpreted = models.BooleanField(default=False)
-
     scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
-    # link to packageversions
-    packages = models.ManyToManyField(AssetPackageVersion)
     created = models.DateTimeField(auto_now_add=True)
 
-    memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
-    memory_count = models.IntegerField(default=0)
-    cpus = models.ManyToManyField(AssetHWCPUEntry)
-    cpu_count = models.IntegerField(default=0)
-    gpus = models.ManyToManyField(AssetHWGPUEntry)
-    hdds = models.ManyToManyField(AssetHWHDDEntry)
-    partitions = models.ManyToManyField(AssetHWLogicalEntry)
-    displays = models.ManyToManyField(AssetHWDisplayEntry)
+    @property
+    def cpus(self):
+        return self.asset_batch.cpus.all()
+
+    @property
+    def gpus(self):
+        return self.asset_batch.gpus.all()
+    @property
+    def hdds(self):
+        return self.asset_batch.hdds.all()
+
+    @property
+    def partitions(self):
+        return self.asset_batch.partitions.all()
+
+    @property
+    def displays(self):
+        return self.asset_batch.displays.all()
+
+    @property
+    def memory_modules(self):
+        return self.asset_batch.memory_modules.all()
+
+    @property
+    def cpu_count(self):
+        return len(self.asset_batch.cpus.all())
+
+    @property
+    def memory_count(self):
+        return len(self.asset_batch.memory_modules.all())
+
+    @property
+    def packages(self):
+        # _packages = []
+        # for apv in self.asset_batch.packages.all():
+        #     _packages.append(apv.asset_package)
+        # return _packages
+        return [package.idx for package in self.asset_batch.packages.all()]
+
+    @property
+    def device(self):
+        return self.asset_batch.device.idx
 
     def start(self):
         self.run_status = RunStatus.RUNNING
@@ -1171,22 +1002,6 @@ class AssetRun(models.Model):
             get_base_assets_from_raw_result(self)
             self.raw_result_interpreted = True
             self.save()
-
-    def get_asset_changeset(self, other_asset_run):
-        # self.generate_assets()
-        # other_asset_run.generate_assets()
-        # this_assets = [_asset.getAssetInstance() for _asset in self.asset_set.all()]
-        # other_assets = [_asset.getAssetInstance() for _asset in other_asset_run.asset_set.all()]
-        this_assets = self.generate_assets_no_save()
-        other_assets = other_asset_run.generate_assets_no_save()
-
-        return set(this_assets).difference(other_assets)
-
-    def diff_to_prev_run(self):
-        if self.run_index == 0:
-            return []
-
-        return self.get_asset_changeset(self.device.assetrun_set.get(run_index=self.run_index - 1))
 
 
 class AssetBatch(models.Model):
@@ -1217,6 +1032,14 @@ class AssetBatch(models.Model):
     device = models.ForeignKey("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
+    # fields generated from raw entries
+    packages = models.ManyToManyField(AssetPackageVersion)
+    cpus = models.ManyToManyField(AssetHWCPUEntry)
+    memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
+    gpus = models.ManyToManyField(AssetHWGPUEntry)
+    hdds = models.ManyToManyField(AssetHWHDDEntry)
+    partitions = models.ManyToManyField(AssetHWLogicalEntry)
+    displays = models.ManyToManyField(AssetHWDisplayEntry)
 
     def completed(self):
         for assetrun in self.assetrun_set.all():
@@ -1236,6 +1059,7 @@ class AssetBatch(models.Model):
             self.run_time = int((self.run_end_time - self.run_start_time).seconds)
             self.run_status = RunStatus.ENDED
             self.run_result = max([_res.run_result for _res in self.assetrun_set.all()])
+            self._set_assets_from_raw_results()
         self.save()
 
     def __repr__(self):
@@ -1245,6 +1069,62 @@ class AssetBatch(models.Model):
         return "AssetBatch for device '{}'".format(
             unicode(self.device)
         )
+
+    def _set_assets_from_raw_results(self):
+        """Set the batch level hardware information (.cpus, .memory_modules
+        etc.) from the acquired asset runs."""
+        runs = [
+            ("win32_tree", AssetType.PRETTYWINHW, json.loads),
+            ("lshw_tree", AssetType.LSHW, etree.fromstring),
+            ]
+
+        # search for relevant asset runs and Base64 decode and unzip the result
+        run_results = {}
+        for (arg_name, asset_type, parser) in runs:
+            parsed = None
+            try:
+                run = self.assetrun_set.filter(run_type=asset_type).get()
+            except AssetRun.DoesNotExist:
+                pass
+            else:
+                blob = run.raw_result_str
+                if blob.startswith("b'"):
+                    blob = blob[2:-2]
+                raw_data = bz2.decompress(base64.b64decode(blob))
+                # parse raw_data
+                parsed = parser(raw_data)
+            run_results[arg_name] = parsed
+
+        # check if we have the necessary asset runs
+        if not ('win32_tree' in run_results or 'lshw_tree' in run_results):
+            return
+        hw = Hardware(**run_results)
+
+        self.cpus.all().delete()
+        for cpu in hw.cpus:
+            new_cpu = AssetHWCPUEntry(cpuname=cpu.product,
+                numberofcores=cpu.number_of_cores)
+            new_cpu.save()
+            self.cpus.add(new_cpu)
+
+        # TODO: Set memory_modules.
+
+        self.gpus.all().delete()
+        for gpus in hw.gpus:
+            new_gpu = AssetHWGPUEntry(gpuname=gpus.description)
+            new_gpu.save()
+            self.gpus.add(new_gpu)
+
+        self.hdds.all().delete()
+        for hdd in hw.hdds:
+            new_hdd = AssetHWHDDEntry(name=hdd.description,
+                serialnumber=hdd.serial, size=hdd.size)
+            new_hdd.save()
+            self.hdds.add(new_hdd)
+
+        # TODO: Set partitions.
+
+        # TODO: Set displays.
 
 
 class DeviceInventory(models.Model):
@@ -1436,7 +1316,7 @@ class StaticAssetTemplateField(models.Model):
 
     class Meta:
         unique_together = [
-            ("static_asset_template", "name")
+            ("static_asset_template", "name"),
         ]
         ordering = ["ordering"]
 

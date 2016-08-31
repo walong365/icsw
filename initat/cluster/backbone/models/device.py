@@ -651,7 +651,7 @@ class cd_connection(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} (via {}) {}".format(
+        return u"{} (via {}) {}".format(
             unicode(self.parent),
             self.connection_info,
             unicode(self.child)
@@ -869,7 +869,7 @@ class DeviceLogEntry(models.Model):
     user = models.ForeignKey("user", null=True)
     level = models.ForeignKey("LogLevel")
     text = models.CharField(max_length=765, default="")
-    date = models.DateTimeField(auto_now_add=True)
+    date = models.DateTimeField(auto_now_add=True) #
 
     @staticmethod
     def new(**kwargs):

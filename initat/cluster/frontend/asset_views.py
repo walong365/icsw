@@ -83,7 +83,7 @@ class get_devices_for_asset(View):
         return HttpResponse(
             json.dumps(
                 {
-                    'devices': list(set([ar.device.pk for ar in apv.assetrun_set.all()]))
+                    'devices': list(set([ar.asset_batch.device.pk for ar in apv.assetrun_set.all()]))
                 }
             ),
             content_type="application/json"
@@ -194,14 +194,6 @@ class get_assets_for_asset_run(View):
                     }
                 )
             )
-        elif ar.run_type == AssetType.SOFTWARE_VERSION:
-            return HttpResponse(
-                json.dumps(
-                    {
-                        'assets': [str(basv) for basv in ar.generate_assets_no_save()]
-                    }
-                )
-            )
         elif ar.run_type == AssetType.PROCESS:
             return HttpResponse(
                 json.dumps(
@@ -254,33 +246,50 @@ class ScheduledRunViewSet(viewsets.ViewSet):
 class AssetRunsViewSet(viewsets.ViewSet):
     def list_all(self, request):
         if "pks" in request.query_params:
-            queryset = AssetRun.objects.filter(
-                Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
-            )
+           queryset = AssetRun.objects.filter(
+               Q(asset_batch__device__in=json.loads(request.query_params.getlist("pks")[0]))
+           )
         else:
             queryset = AssetRun.objects.all()
-        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=2)))
+
+        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=30)))
+
         queryset = queryset.order_by(
             # should be created, FIXME later
             "-idx",
-            "-run_start_time",
-        ).annotate(
-            num_packages=Count("packages"),
-            num_hardware=Count("assethardwareentry"),
-            num_processes=Count("assetprocessentry"),
-            num_licenses=Count("assetlicenseentry"),
-            num_updates=Sum(Case(When(assetupdateentry__installed=True, then=1), output_field=IntegerField(), default=0)),
-            num_pending_updates=Sum(Case(When(assetupdateentry__installed=False, then=1), output_field=IntegerField(), default=0)),
-            num_pci_entries=Count("assetpcientry"),
-            num_asset_handles=Count("assetdmihead__assetdmihandle"),
-            num_hw_entries=Sum("cpu_count") + Sum("memory_count")
-        )
+            "-run_start_time")
+        # ).annotate(
+        #     num_packages=Count("asset_batch__packages"),
+        #     num_hardware=Count("assethardwareentry"),
+        #     num_processes=Count("assetprocessentry"),
+        #     num_licenses=Count("assetlicenseentry"),
+        #     num_updates=Sum(Case(When(assetupdateentry__installed=True, then=1), output_field=IntegerField(), default=0)),
+        #     num_pending_updates=Sum(Case(When(assetupdateentry__installed=False, then=1), output_field=IntegerField(), default=0)),
+        #     num_pci_entries=Count("assetpcientry"),
+        #     num_asset_handles=Count("assetdmihead__assetdmihandle"),
+        #     num_hw_entries=Sum("asset_batch__cpus")
+        # )
+
+        for ar in queryset:
+            ar.num_packages = len(ar.asset_batch.packages.all())
+            ar.num_hardware = len(ar.assethardwareentry_set.all())
+            ar.num_processes = len(ar.assetprocessentry_set.all())
+            ar.num_licenses = len(ar.assetlicenseentry_set.all())
+            ar.num_updates = len(ar.assetupdateentry_set.all())
+            ar.num_pending_updates = len(ar.assetupdateentry_set.all())
+            ar.num_pci_entries = len(ar.assetpcientry_set.all())
+            ar.num_asset_handles = 0
+            for dmihead in ar.assetdmihead_set.all():
+                ar.num_asset_handles += len(dmihead.assetdmihandle_set.all())
+            ar.num_hw_entries = len(ar.asset_batch.cpus.all())
+
         serializer = AssetRunOverviewSerializer(queryset, many=True)
+
         return Response(serializer.data)
 
     def get_details(self, request):
         queryset = AssetRun.objects.prefetch_related(
-            "packages",
+            "asset_batch__packages",
             "assethardwareentry_set",
             "assetprocessentry_set",
             "assetupdateentry_set",
@@ -494,7 +503,7 @@ class export_scheduled_runs_to_csv(View):
 
         writer = csv.writer(tmpfile)
 
-        schedule_items = ScheduleItem.objects.select_related("device", "dispatch_setting").all()
+        schedule_items = ScheduleItem.objects.select_related("dispatch_setting").all()
 
         base_header = [
             'Device Name',
