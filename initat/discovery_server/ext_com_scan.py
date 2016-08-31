@@ -677,6 +677,7 @@ class PlannedRunState(object):
     def store_zmq_result(self, result):
         _db_obj = self.run_db_obj
         s, _error_string = (None, "")
+
         if result is not None:
             try:
                 if _db_obj.run_type == AssetType.PACKAGE:
@@ -703,6 +704,9 @@ class PlannedRunState(object):
                 elif _db_obj.run_type == AssetType.PCI:
                     if "pci_dump" in result:
                         s = result["pci_dump"].text
+                elif _db_obj.run_type == AssetType.LSHW:
+                    if "lshw_dump" in result:
+                        s = result["lshw_dump"].text
                 else:
                     raise ValueError("Unknown ScanType {}".format(_db_obj.run_type))
             except:
@@ -1064,27 +1068,16 @@ class Dispatcher(object):
 
     def _do_hm_scan(self, schedule_item, planned_run):
         cmd_tuples = [
-            (AssetType.PACKAGE, "rpmlist"),
-            (AssetType.HARDWARE, "lstopo"),
-            (AssetType.PROCESS, "proclist"),
-            (AssetType.PENDING_UPDATE, "updatelist"),
-            (AssetType.DMI, "dmiinfo"),
-            (AssetType.PCI, "pciinfo"),
+            (AssetType.PACKAGE, "rpmlist", 30),
+            (AssetType.HARDWARE, "lstopo", 15),
+            (AssetType.PROCESS, "proclist", 15),
+            (AssetType.PENDING_UPDATE, "updatelist", 60),
+            (AssetType.DMI, "dmiinfo", 15),
+            (AssetType.PCI, "pciinfo", 15),
+            (AssetType.LSHW, "lshw", 15)
         ]
         planned_run.start_feed(cmd_tuples)
-        for _idx, (runtype, _command) in enumerate(cmd_tuples):
-            if runtype == AssetType.PACKAGE:
-                timeout = 30
-            elif runtype == AssetType.HARDWARE:
-                timeout = 15
-            elif runtype == AssetType.PROCESS:
-                timeout = 15
-            elif runtype == AssetType.PENDING_UPDATE:
-                timeout = 60
-            else:
-                # default
-                timeout = 60
-
+        for _idx, (runtype, _command, timeout) in enumerate(cmd_tuples):
             _device = schedule_item.device
             asset_run_len = len(_device.assetrun_set.all())
             new_asset_run = AssetRun(

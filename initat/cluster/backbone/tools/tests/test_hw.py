@@ -12,11 +12,13 @@ class TestHardware(unittest.TestCase):
         lshw_tree = etree.parse(open(os.path.join(self.BASE_PATH, 'lshw.xml')))
         hw = Hardware(lshw_tree=lshw_tree)
         self._common_test(hw)
+        self.assertEqual(hw.cpus[0].number_of_cores, 4)
 
     def test_win32(self):
         win32_tree = json.load(
             open(os.path.join(self.BASE_PATH, 'win32.json')))
         hw = Hardware(win32_tree=win32_tree)
+        self.assertEqual(hw.cpus[0].number_of_cores, 1)
         self._common_test(hw)
 
     def _common_test(self, hw):

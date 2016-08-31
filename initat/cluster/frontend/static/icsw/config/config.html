@@ -115,12 +115,26 @@
                 ng-click="create_config($event)"
                 size="xs"
             ></icsw-tools-button-static>
+            <icsw-tools-button-static
+                ng-show="struct.config_tree.$selected"
+                type="clear"
+                value="clear selection"
+                ng-click="clear_selection($event)"
+                size="xs"
+            ></icsw-tools-button-static>
+            <icsw-tools-button-static
+                ng-show="struct.config_tree.$selected"
+                type="modify"
+                value="modify selection"
+                ng-click="modify_selection($event)"
+                size="xs"
+            ></icsw-tools-button-static>
             <!-- removed temporarily due to bug in CSW-576
             <icsw-config-download config-tree="config_tree"></icsw-config-download>
             -->
         </h2>
-        <uib-tabset>
-            <uib-tab>
+        <uib-tabset active="struct.active_tab">
+            <uib-tab index="0">
                 <uib-tab-heading>
                     Config List
                 </uib-tab-heading>
@@ -174,16 +188,16 @@
                             <th class="text-center">script</th>
                             <th class="text-center">mon</th>
                             <th>cats</th>
-                            <th colspan="3">action</th>
+                            <th colspan="2">action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr icsw-config-line ng-repeat="config in configs_displayed" ng-class="config.$$config_line_class">
+                        <tr icsw-config-line ng-repeat="config in configs_displayed" ng-class="config.$$config_line_class" ng-click="toggle_config_select($event, config)">
                         </tr>
                     </tbody>
                 </table>
             </uib-tab>
-            <uib-tab ng-repeat="config in struct.open_configs">
+            <uib-tab ng-repeat="config in struct.open_configs" index="$index + 1">
                 <uib-tab-heading>
                     {{ config.name }}
                     <span class="label label-danger" ng-show="changed(config)">Changed</span>
@@ -199,7 +213,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.modify.form">
-    <form class="form-horizontal" name="form_data" ng-if="data_ready">
+    <form class="form-horizontal" name="form_data" ng-if="struct.data_ready">
         <h2>Configuration '{{ edit_obj.name }}'</h2>
         <div class="row">
             <div class="col-md-6 col-xs-6">
@@ -322,7 +336,13 @@
                 <uib-tab>
                     <uib-tab-heading>
                         Monitoring Checks ({{ config.$$num_mon }})
-                        <icsw-tools-button-static size="xs" type="create" value="MonCheck" ng-click="create_mon_check_command($event, config)"></icsw-tools-button-static>
+                        <icsw-tools-button-static
+                            ng-if="struct.mon_tree"
+                            size="xs"
+                            type="create"
+                            value="MonCheck"
+                            ng-click="create_mon_check_command($event, config)"
+                        ></icsw-tools-button-static>
                     </uib-tab-heading>
                     <icsw-config-mon-table config="config" config-tree="config_tree"></icsw-config-mon-table>
                 </uib-tab>
@@ -384,13 +404,14 @@
     <td class="text-right">{{ config.priority }}</td>
     <td class="text-center">
         <div class="label-group">
-            <!-- tooltips not working right now -->
-            <span class="label" ng-class="config.server_config && 'label-success' || 'label-default'" uib-tooltip="is server config" >S</span><!--
+            <span class="label" ng-class="config.server_config && 'label-success' || 'label-default'" uib-tooltip="is server config">S</span><!--
             --><span class="label" ng-class="config.system_config && 'label-success' || 'label-default'" uib-tooltip="is system config">Y</span>
         </div>
     </td>
     <td>{{ config.$$catalog_name }}</td>
-    <td class="text-center"><span ng-bind-html="config.enabled | yesno3"></span></td>
+    <td class="text-center">
+        <span ng-bind-html="config.enabled | yesno4"></span>
+    </td>
     <td>{{ config.description }}</td>
     <td class="text-center">
         <span ng-class="config.$$var_label_class">
@@ -409,10 +430,7 @@
     </td>
     <td class="text-center">{{ config.$$cat_info_str }}</td>
     <td>
-        <input type="button" ng-class="config.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="select" ng-click="toggle_config_select($event, config)"/>
-    </td>
-    <td>
-        <icsw-tools-button-static ng-show="!config.$$_shown_in_tabs" type="modify" value="modify" ng-click="modify_config($event, config)" size="xs"/>
+        <icsw-tools-button-static type="modify" value="modify" ng-click="modify_config($event, config, true)" size="xs"/>
     </td>
     <td class="text-center">
         <span ng-if="config.$$usecount" class="text-warning">
