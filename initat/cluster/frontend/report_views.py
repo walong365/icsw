@@ -1379,7 +1379,7 @@ class PDFReportGenerator(ReportGenerator):
         available_width = self.page_format[0] - (self.margin * 2)
 
         data = [["Name", "Cores"]]
-        for cpu in hardware_report_ar.cpus.all():
+        for cpu in hardware_report_ar.asset_batch.cpus.all():
             data.append([Paragraph(str(cpu.cpuname), style_sheet["BodyText"]),
                          Paragraph(str(cpu.numberofcores), style_sheet["BodyText"])])
 
@@ -1392,7 +1392,7 @@ class PDFReportGenerator(ReportGenerator):
                            ('BOX', (0, 0), (-1, -1), 2, colors.black)])
 
         data = [["Name", "Driver Version"]]
-        for gpu in hardware_report_ar.gpus.all():
+        for gpu in hardware_report_ar.asset_batch.gpus.all():
             data.append([Paragraph(str(gpu.gpuname), style_sheet["BodyText"]),
                          Paragraph(str(gpu.driverversion), style_sheet["BodyText"])])
 
@@ -1405,7 +1405,7 @@ class PDFReportGenerator(ReportGenerator):
                            ])
 
         data = [["Name", "Serialnumber", "Size"]]
-        for hdd in hardware_report_ar.hdds.all():
+        for hdd in hardware_report_ar.asset_batch.hdds.all():
             data.append([Paragraph(str(hdd.name), style_sheet["BodyText"]),
                          Paragraph(str(hdd.serialnumber), style_sheet["courier"]),
                          Paragraph(sizeof_fmt(hdd.size), style_sheet["BodyText"])])
@@ -1420,7 +1420,7 @@ class PDFReportGenerator(ReportGenerator):
                            ])
 
         data = [["Name", "Size", "Free", "Graph"]]
-        for partition in hardware_report_ar.partitions.all():
+        for partition in hardware_report_ar.asset_batch.partitions.all():
             d = Drawing(10, 10)
             r = Rect(0, 0, 130, 12)
             r.fillColor = colors.red
@@ -1452,7 +1452,7 @@ class PDFReportGenerator(ReportGenerator):
                            ])
 
         data = [["Banklabel", "Formfactor", "Memorytype", "Manufacturer", "Capacity"]]
-        for memory_module in hardware_report_ar.memory_modules.all():
+        for memory_module in hardware_report_ar.asset_batch.memory_modules.all():
 
             data.append([Paragraph(str(memory_module.banklabel), style_sheet["BodyText"]),
                          Paragraph(str(memory_module.get_name_of_form_factor()), style_sheet["BodyText"]),
@@ -1480,7 +1480,7 @@ class PDFReportGenerator(ReportGenerator):
         t_body = Table(data, colWidths=(available_width * 0.10, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
         p_h = Paragraph('<font face="{}" size="16">{} Hardware Report for {}</font>'.format(self.bold_font, section_number,
-            hardware_report_ar.device.name), style_sheet["BodyText"])
+            hardware_report_ar.asset_batch.device.name), style_sheet["BodyText"])
 
         logo = Image(self.logo_buffer)
         logo.drawHeight = self.logo_height
@@ -1862,7 +1862,7 @@ class PDFReportGenerator(ReportGenerator):
 
             can.drawString(25 + (25 * indent), heigth - (top_margin + (15 * vertical_x)), heading_str)
 
-            heading_str_width = stringWidth(heading_str, "Source", 10)
+            heading_str_width = stringWidth(heading_str, self.standard_font, 10)
 
             dots = "."
             while (25 * indent) + heading_str_width + stringWidth(dots, self.standard_font, 14) < (width - 150):
@@ -2760,7 +2760,6 @@ def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
     selected_asset_runs = []
 
     asset_batch_selection_mode = int(asset_batch_selection_mode)
-    assert (asset_batch_selection_mode <= 2 and asset_batch_selection_mode >= -1)
 
     # search latest assetbatch and generate
     if _device.assetbatch_set.all():
@@ -2830,7 +2829,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
                 str(ar.run_start_time),
                 str(ar.run_end_time),
                 ar_run_time,
-                str(ar.device.full_name),
+                str(ar.asset_batch.device.full_name),
                 RunStatus(ar.run_status).name,
                 RunResult(ar.run_result).name]
 
@@ -3038,42 +3037,42 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
         row_writer_func(base_header)
 
-        for cpu in ar.cpus.all():
+        for cpu in ar.asset_batch.cpus.all():
             row = base_row[:]
 
             row.append(str(cpu))
 
             row_writer_func(row)
 
-        for memorymodule in ar.memory_modules.all():
+        for memorymodule in ar.asset_batch.memory_modules.all():
             row = base_row[:]
 
             row.append(str(memorymodule))
 
             row_writer_func(row)
 
-        for gpu in ar.gpus.all():
+        for gpu in ar.asset_batch.gpus.all():
             row = base_row[:]
 
             row.append(str(gpu))
 
             row_writer_func(row)
 
-        for hdd in ar.hdds.all():
+        for hdd in ar.asset_batch.hdds.all():
             row = base_row[:]
 
             row.append(str(hdd))
 
             row_writer_func(row)
 
-        for partition in ar.partitions.all():
+        for partition in ar.asset_batch.partitions.all():
             row = base_row[:]
 
             row.append(str(partition))
 
             row_writer_func(row)
 
-        for display in ar.displays.all():
+        for display in ar.asset_batch.displays.all():
             row = base_row[:]
 
             row.append(str(display))
@@ -3118,31 +3117,31 @@ def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
 
         for assetrun in selected_runs:
             if AssetType(assetrun.run_type) == AssetType.PRETTYWINHW:
-                for cpu in assetrun.cpus.all():
+                for cpu in assetrun.asset_batch.cpus.all():
                     if cpu_str != "N/A":
                         cpu_str += "\n{}".format(str(cpu))
                     else:
                         cpu_str = str(cpu)
 
-                for gpu in assetrun.gpus.all():
+                for gpu in assetrun.asset_batch.gpus.all():
                     if gpu_str != "N/A":
                         gpu_str += "\n{}".format(str(gpu))
                     else:
                         gpu_str = str(gpu)
 
-                for hdd in assetrun.hdds.all():
+                for hdd in assetrun.asset_batch.hdds.all():
                     if hdd_str != "N/A":
                         hdd_str += "\n{}".format(str(hdd))
                     else:
                         hdd_str = str(hdd)
 
-                for partition in assetrun.partitions.all():
+                for partition in assetrun.asset_batch.partitions.all():
                     if partition_str != "N/A":
                         partition_str += "\n{}".format(str(partition))
                     else:
                         partition_str = str(partition)
 
-                for memory_module in assetrun.memory_modules.all():
+                for memory_module in assetrun.asset_batch.memory_modules.all():
                     if memory_str != "N/A":
                         memory_str += "\n{}".format(str(memory_module))
                     else:
