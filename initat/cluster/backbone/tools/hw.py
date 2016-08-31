@@ -23,6 +23,13 @@ class Hardware(object):
             self.memory = HardwareMemory(sub_tree)
 
             for sub_tree in lshw_tree.xpath(
+                    "//node[@id='memory' and @class='memory']/node"):
+                memory_module = MemoryModule(sub_tree)
+                # don't add empty slots
+                if memory_module.capacity:
+                    self.memory_modules.append(memory_module)
+
+            for sub_tree in lshw_tree.xpath(
                     "//node[@id='display' and @class='display']"):
                 self.gpus.append(HardwareGPU(sub_tree))
 
@@ -42,6 +49,9 @@ class Hardware(object):
 
             self.memory = HardwareMemory(
                 win32_tree=win32_tree['Win32_ComputerSystem'][0])
+
+            for sub_tree in win32_tree['Win32_PhysicalMemory']:
+                self.memory_modules.append(MemoryModule(win32_tree=sub_tree))
 
             for sub_tree in win32_tree['Win32_VideoController']:
                 self.gpus.append(HardwareGPU(win32_tree=sub_tree))
@@ -136,6 +146,31 @@ class HardwareMemory(HardwareBase):
     WIN32_ELEMENTS = {
         'size': ('TotalPhysicalMemory', int),
     }
+
+
+class MemoryModule(HardwareBase):
+    LSHW_ELEMENTS = {
+        'manufacturer': ('vendor', str),
+        'capacity': ('size', int),
+        'serial': ('serial', str),
+        'bank_label': ('slot', str),
+    }
+    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394197(v=vs.85).aspxq
+    WIN32_ELEMENTS = {
+        'manufacturer': ('Manufacturer', str),
+        'capacity': ('Capacity', int),
+        'serial': ('SerialNumber', str),
+        'bank_label': ('DeviceLocator', str),
+    }
+
+    def __init__(self, lshw_tree=None, win32_tree=None):
+        self.manufacturer = None
+        self.capacity = None
+        self.serial = None
+        self.bank_label = None
+        super(MemoryModule, self).__init__(
+            lshw_tree=lshw_tree, win32_tree=win32_tree
+        )
 
 
 class HardwareGPU(HardwareBase):

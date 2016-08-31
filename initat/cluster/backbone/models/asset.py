@@ -1087,7 +1087,15 @@ class AssetBatch(models.Model):
             new_cpu.save()
             self.cpus.add(new_cpu)
 
-        # TODO: Set memory_modules.
+        self.memory_modules.all().delete()
+        for memory_module in hw.memory_modules:
+            new_memory_module = AssetHWMemoryEntry(
+                banklabel=memory_module.bank_label,
+                manufacturer=memory_module.manufacturer,
+                capacity=memory_module.capacity,
+            )
+            new_memory_module.save()
+            self.memory_modules.add(new_memory_module)
 
         self.gpus.all().delete()
         for gpus in hw.gpus:
@@ -1097,8 +1105,11 @@ class AssetBatch(models.Model):
 
         self.hdds.all().delete()
         for hdd in hw.hdds:
-            new_hdd = AssetHWHDDEntry(name=hdd.description,
-                serialnumber=hdd.serial, size=hdd.size)
+            new_hdd = AssetHWHDDEntry(
+                name=hdd.description,
+                serialnumber=hdd.serial,
+                size=hdd.size,
+            )
             new_hdd.save()
             self.hdds.add(new_hdd)
 
