@@ -672,6 +672,24 @@ class AssetHWDisplayEntry(models.Model):
         )
 
 
+class AssetHWNetworkDevice(models.Model):
+    idx = models.AutoField(primary_key=True)
+    manufacturer = models.TextField(null=True)
+    product_name = models.TextField(null=True)
+    device_name = models.TextField(null=True)
+    speed = models.IntegerField(null=True)
+    mac_address = models.TextField(null=True)
+
+    def __unicode__(self):
+        return "AssetHWNetworkDevice[Manufacturer:{}|Product Name:{}|"\
+            "Device Name:{}|Speed:{}]".format(
+                self.manufacturer,
+                self.product_name,
+                self.device_name,
+                self.speed,
+            )
+
+
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField()
@@ -999,6 +1017,7 @@ class AssetBatch(models.Model):
     memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
     gpus = models.ManyToManyField(AssetHWGPUEntry)
     hdds = models.ManyToManyField(AssetHWHDDEntry)
+    network_devices = models.ManyToManyField(AssetHWNetworkDevice)
     partitions = models.ManyToManyField(AssetHWLogicalEntry)
     displays = models.ManyToManyField(AssetHWDisplayEntry)
 
@@ -1083,6 +1102,17 @@ class AssetBatch(models.Model):
             new_hdd.save()
             self.hdds.add(new_hdd)
 
+        self.network_devices.all().delete()
+        for network_device in hw.network_devices:
+            new_network_device = AssetHWNetworkDevice(
+                manufacturer=network_device.manufacturer,
+                product_name=network_device.product,
+                device_name=network_device.device_name,
+                speed=network_device.speed,
+                mac_address=network_device.mac_address
+                )
+            new_network_device.save()
+            self.network_devices.add(new_network_device)
         # TODO: Set partitions.
 
         # TODO: Set displays.
