@@ -238,10 +238,6 @@ def get_base_assets_from_raw_result(asset_run,):
                 # todo implement me (--> what do we want to gather/display here?)
                 pass
 
-        elif runtype == AssetType.SOFTWARE_VERSION:
-            # todo implement me
-            pass
-
         elif runtype == AssetType.PROCESS:
             if scantype == ScanType.NRPE:
                 if blob.startswith("b'"):
@@ -939,6 +935,49 @@ class AssetRun(models.Model):
     scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
     created = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def cpus(self):
+        return self.asset_batch.cpus.all()
+
+    @property
+    def gpus(self):
+        return self.asset_batch.gpus.all()
+    @property
+    def hdds(self):
+        return self.asset_batch.hdds.all()
+
+    @property
+    def partitions(self):
+        return self.asset_batch.partitions.all()
+
+    @property
+    def displays(self):
+        return self.asset_batch.displays.all()
+
+    @property
+    def memory_modules(self):
+        return self.asset_batch.memory_modules.all()
+
+    @property
+    def cpu_count(self):
+        return len(self.asset_batch.cpus.all())
+
+    @property
+    def memory_count(self):
+        return len(self.asset_batch.memory_modules.all())
+
+    @property
+    def packages(self):
+        # _packages = []
+        # for apv in self.asset_batch.packages.all():
+        #     _packages.append(apv.asset_package)
+        # return _packages
+        return [package.idx for package in self.asset_batch.packages.all()]
+
+    @property
+    def device(self):
+        return self.asset_batch.device.idx
 
     def start(self):
         self.run_status = RunStatus.RUNNING

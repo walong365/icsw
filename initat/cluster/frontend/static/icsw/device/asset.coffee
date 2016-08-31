@@ -254,6 +254,9 @@ device_asset_module = angular.module(
         else if obj.run_type == 10
             # easy/win hw entries
             obj.$$num_results = obj.num_hw_entries
+        else if obj.run_type == 5
+            # easy/win hw entries
+            obj.$$num_results = obj.num_hw_entries
         else
             obj.$$num_results = 0
         if obj.run_start_time
@@ -645,11 +648,15 @@ device_asset_module = angular.module(
 
     # resolve functions
     resolve_package_assets = (tree, vers_list) ->
+        console.log(vers_list)
+        console.log(tree)
         _res = _.orderBy(
             (tree.version_lut[idx] for idx in vers_list)
             ["$$package.name"]
             ["asc"]
         )
+
+        console.log(_res)
         return _res
 
     resolve_hardware_assets = (in_list) ->
@@ -747,6 +754,8 @@ device_asset_module = angular.module(
                         _done.resolve(data[0].assetlicenseentry_set)
                     else if assetrun.run_type == 4
                         _done.resolve(resolve_installed_updates(data[0].assetupdateentry_set))
+                    else if assetrun.run_type == 5
+                        _done.resolve(resolve_hw_entries(assetrun, data))
                     else if assetrun.run_type == 7
                         _done.resolve(resolve_pending_updates(data[0].assetupdateentry_set))
                     else if assetrun.run_type == 6
@@ -756,7 +765,6 @@ device_asset_module = angular.module(
                     else if assetrun.run_type == 9
                         _done.resolve(resolve_pci_entries(data[0].assetpcientry_set))
                     else if assetrun.run_type == 10
-                        console.log "data_object: ", data
                         _done.resolve(resolve_hw_entries(assetrun, data))
                     else
                         _done.resolve([])
@@ -836,6 +844,8 @@ device_asset_module = angular.module(
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.licenses"))(scope)
             else if scope.asset_run.run_type == 4
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.installed.updates"))(scope)
+            else if scope.asset_run.run_type == 5
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.hw_entry"))(scope)
             else if scope.asset_run.run_type == 6
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.process"))(scope)
             else if scope.asset_run.run_type == 7
