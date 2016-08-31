@@ -1,7 +1,13 @@
+
+def format_mac_address(mac_address):
+    return mac_address.upper()
+
+
 class Hardware(object):
     def __init__(self, lshw_tree=None, win32_tree=None):
         self.cpus = []
         self.memory = None
+        self.memory_modules = []
         self.gpus = []
         self.hdds = []
         self.network_devices = []
@@ -26,7 +32,9 @@ class Hardware(object):
 
             for sub_tree in lshw_tree.xpath(
                     "//node[@id='network' and @class='network']"):
-                self.network_devices.append(HardwareNetwork(sub_tree))
+                self.network_devices.append(
+                    HardwareNetwork(sub_tree)
+                    )
 
         if win32_tree:
             for sub_tree in win32_tree['Win32_Processor']:
@@ -42,8 +50,9 @@ class Hardware(object):
                 self.hdds.append(HardwareHdd(win32_tree=sub_tree))
 
             for sub_tree in win32_tree['Win32_NetworkAdapter']:
-                self.network_devices.append(
-                    HardwareNetwork(win32_tree=sub_tree))
+                if sub_tree['PhysicalAdapter']:
+                    self.network_devices.append(
+                        HardwareNetwork(win32_tree=sub_tree))
 
 
 class HardwareBase(object):
@@ -56,6 +65,8 @@ class HardwareBase(object):
         # Sanity check: The lshw and Win32 dict must define the same keys.
         if not set(self.LSHW_ELEMENTS) == set(self.WIN32_ELEMENTS):
             raise AssertionError
+
+        self._tree = lshw_tree if lshw_tree is not None else win32_tree
 
         if lshw_tree is not None:
             self._populate_lshw(lshw_tree)
@@ -93,24 +104,24 @@ class HardwareBase(object):
 
 class HardwareCPU(HardwareBase):
     LSHW_ELEMENTS = {
-        'product': ('product', None),
-        'vendor': ('vendor', None),
-        'version': ('version', None),
-        'serial': ('serial', None),
+        'product': ('product', str),
+        'manufacturer': ('vendor', str),
+        'version': ('version', str),
+        'serial': ('serial', str),
         'number_of_cores': ("configuration/setting[@id='cores']/@value", int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394373%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'product': ('Description', None),
-        'vendor': ('Manufacturer', None),
-        'version': ('Version', None),
-        'serial': ('ProcessorId', None),
+        'product': ('Description', str),
+        'manufacturer': ('Manufacturer', str),
+        'version': ('Version', str),
+        'serial': ('ProcessorId', str),
         'number_of_cores': ('NumberOfCores', int),
     }
 
     def __init__(self, lshw_tree=None, win32_tree=None):
         self.product = None
-        self.vendor = None
+        self.manufacturer = None
         self.version = None
         self.serial = None
         self.number_of_cores = None
@@ -129,37 +140,35 @@ class HardwareMemory(HardwareBase):
 
 class HardwareGPU(HardwareBase):
     LSHW_ELEMENTS = {
-        'description': ('description', None),
-        'product': ('product', None),
+        'description': ('description', str),
+        'product': ('product', str),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394512%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'description': ('Description', None),
-        'product': ('VideoProcessor', None),
+        'description': ('Description', str),
+        'product': ('VideoProcessor', str),
     }
 
     def __init__(self, lshw_tree=None, win32_tree=None):
         self.description = None
         self.product = None
-        self.vendor = None
-        self.version = None
         super(HardwareGPU, self).__init__(lshw_tree, win32_tree)
 
 
 class HardwareHdd(HardwareBase):
     LSHW_ELEMENTS = {
-        'description': ('description', None),
-        'product': ('product', None),
-        'device_name': ('logicalname', None),
-        'serial': ('serial', None),
+        'description': ('description', str),
+        'product': ('product', str),
+        'device_name': ('logicalname', str),
+        'serial': ('serial', str),
         'size': ('size', int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394132%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'description': ('Description', None),
-        'product': ('Caption', None),
-        'device_name': ('DeviceID', None),
-        'serial': ('SerialNumber', None),
+        'description': ('Description', str),
+        'product': ('Caption', str),
+        'device_name': ('DeviceID', str),
+        'serial': ('SerialNumber', str),
         'size': ('Size', int),
     }
 
@@ -174,28 +183,25 @@ class HardwareHdd(HardwareBase):
 
 class HardwareNetwork(HardwareBase):
     LSHW_ELEMENTS = {
-        'description': ('description', None),
-        'product': ('product', None),
-        'vendor': ('vendor', None),
-        'device_name': ('logicalname', None),
-        'mac_address': ('serial', None),
+        'product': ('product', str),
+        'manufacturer': ('vendor', str),
+        'device_name': ('logicalname', str),
+        'mac_address': ('serial', format_mac_address),
         'speed': ('size', int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394216(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'description': ('Description', None),
-        'product': ('Caption', None),
-        'vendor': ('Manufacturer', None),
-        'device_name': ('DeviceID', None),
-        'mac_address': ('MACAddress', None),
+        'product': ('ProductName', str),
+        'manufacturer': ('Manufacturer', str),
+        'device_name': ('DeviceID', str),
+        'mac_address': ('MACAddress', str),
         'speed': ('Speed', int),
     }
 
     def __init__(self, lshw_tree=None, win32_tree=None):
-        self.description = None
         self.product = None
-        self.vendor = None
-        self.version = None
+        self.manufacturer = None
+        self.device_name = None
         self.mac_address = None
         self.speed = None  # bit/s
         super(HardwareNetwork, self).__init__(lshw_tree, win32_tree)
