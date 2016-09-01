@@ -20,12 +20,14 @@
 """ creates all defined fixtures """
 
 
-from . import srv_fixtures, graph_fixtures, dispatch_fixtures, \
-    static_asset_fixtures
+from . import device_class_fixtures, srv_fixtures, graph_fixtures, dispatch_fixtures, \
+    static_asset_fixtures, device_variable_fixtures
 
 
 def add_fixtures(**kwargs):
+    device_class_fixtures.add_fixtures(**kwargs)
     srv_fixtures.add_fixtures(**kwargs)
     graph_fixtures.add_fixtures(**kwargs)
     dispatch_fixtures.add_fixtures(**kwargs)
     static_asset_fixtures.add_fixtures(**kwargs)
+    device_variable_fixtures.add_fixtures(**kwargs)

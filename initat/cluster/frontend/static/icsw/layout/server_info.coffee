@@ -22,16 +22,9 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "restangular"
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.serverinfo",
-          {
-              url: "/serverinfo",
-              templateUrl: "icsw/main/serverinfo.html"
-              icswData:
-                  pageTitle: "Server info"
-          }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.serverinfo")
+    icswRouteExtensionProvider.add_route("main.statelist")
 ]).controller("icswServerInfoOverviewCtrl",
 [
     "$scope", "$timeout", "icswAcessLevelService", "blockUI", "$window", "ICSW_URLS",
@@ -52,6 +45,8 @@ angular.module(
         server_info_list: []
         # local device
         local_device: "---"
+        # local device is ok
+        local_device_ok: false
         # routing information
         routing_info: {}
         # current timeout object
@@ -67,7 +62,12 @@ angular.module(
             if new_val
                 _ri = icswAcessLevelService.get_routing_info()
                 $scope.struct.routing_info = _ri.routing
-                $scope.struct.local_device = _ri.local_device
+                if _ri.local_device
+                    $scope.struct.local_device_ok = true
+                    $scope.struct.local_device = _ri.local_device
+                else
+                    $scope.struct.local_device_ok = false
+                    $scope.struct.local_device = _ri.internal_dict._server_info_str
                 $scope.struct.unroutable_configs = _ri.unroutable_configs
                 $scope.struct.unroutable_config_names =  []
                 for key, v of _ri.unroutable_configs
@@ -345,4 +345,38 @@ angular.module(
         template: $templateCache.get("icsw.layout.server.info.overview")
         controller: "icswServerInfoOverviewCtrl"
     }
+]).directive("icswInternalStateList",
+[
+    "$templateCache", "$compile",
+(
+    $templateCache, $compile
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.internal.state.list")
+        controller: "icswInternalStateListCtrl"
+    }
+]).controller("icswInternalStateListCtrl",
+[
+    "$scope", "$timeout", "icswAcessLevelService", "blockUI", "$window", "ICSW_URLS",
+    "icswLayoutServerInfoService", "icswSimpleAjaxCall", "$state", "icswRouteHelper",
+(
+    $scope, $timeout, icswAcessLevelService, blockUI, $window, ICSW_URLS,
+    icswLayoutServerInfoService, icswSimpleAjaxCall, $state, icswRouteHelper,
+) ->
+    _struct = icswRouteHelper.get_struct()
+    
+    $scope.struct = {
+        state_list: _struct.icsw_states 
+    }
+
+    $scope.get_header_class = (state) ->
+        return "fa #{state.icswData.menuHeader.icon}"
+
+    $scope.get_entry_class = (state) ->
+        return "fa #{state.icswData.menuEntry.icon}"
+
+    $scope.go = ($event, state) ->
+        $state.go(state)
+
 ])

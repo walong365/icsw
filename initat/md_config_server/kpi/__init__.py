@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -19,13 +19,14 @@
 #
 
 import json
-# noinspection PyUnresolvedReferences
-import pprint
 import traceback
+
 import django.utils.timezone
+
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import Kpi, License
+from initat.md_config_server.config.objects import global_config
 from initat.md_config_server.kpi.kpi_data import KpiData
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiSet, KpiGlobals
 from initat.tools import logging_tools, process_tools, server_command, threading_tools
@@ -41,7 +42,7 @@ class KpiEvaluationError(Exception):
 class KpiProcess(threading_tools.process_obj):
 
     def process_init(self):
-        from initat.md_config_server.config.objects import global_config
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -178,7 +179,7 @@ class KpiProcess(threading_tools.process_obj):
         kpi_serialized = json.loads(srv_com['kpi_serialized'].text)
         kpi_idx = kpi_serialized.get('idx', None)
         kpi_db = Kpi.objects.get(pk=kpi_idx) if kpi_idx is not None else Kpi()
-        field_names = frozenset(Kpi._meta.get_all_field_names())
+        field_names = frozenset([_f.name for _f in Kpi._meta.get_fields()])
         for k, v in kpi_serialized.iteritems():
             if k in field_names:
                 setattr(kpi_db, k, v)

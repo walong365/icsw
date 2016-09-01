@@ -26,8 +26,8 @@ python-modules-base        (diverse tools)
 
 - Benutzer anlegen
 
-/usr/local/cluster/bin/add_cluster_users.sh (für SUSE)
-/usr/local/cluster/bin/add_cluster_users.sh -g 81 (für RedHat)
+/usr/local/cluster/bin/add_cluster_users.sh (fï¿½r SUSE)
+/usr/local/cluster/bin/add_cluster_users.sh -g 81 (fï¿½r RedHat)
 
 - MySQL starten
 
@@ -68,7 +68,7 @@ Test:
 
 collclient.py get_mvector
 
-Logs in /var/log/cluster/logging-server/<NODE-NAME>
+Logs in /var/log/icsw/logging-server/<NODE-NAME>
 
 - webserver:
 
@@ -83,8 +83,8 @@ z.B.:
 
 /etc/init.d/httpd start
 
-www-root via system-config-httpd auf /srv/www/htdocs ändern
-/usr/local/cluster/etc/mysql.cf für user apache und gruppe idg lesbar machen
+www-root via system-config-httpd auf /srv/www/htdocs ï¿½ndern
+/usr/local/cluster/etc/mysql.cf fï¿½r user apache und gruppe idg lesbar machen
 /etc/httpd/init_webfrontend.conf nach /etc/httpd/conf.d/ kopieren
 
 via webfrontend einloggen
@@ -93,14 +93,14 @@ Grundsetup von einem bestehenden ClusterServer (S1) einspielen
 
 S1: dump_config.sh <DATEI>.bz2 
 S1: scp
-S2: load_config.sh <DATEI>.bz2 -f -i (mysql_session.sh muß im aktuellen Suchpfad zu finden sein)
+S2: load_config.sh <DATEI>.bz2 -f -i (mysql_session.sh muï¿½ im aktuellen Suchpfad zu finden sein)
 S2: old_config_to_new.py (konvertiert altes Format ins neue)
 
 DeviceGroups und Devices anlegen
 
-Capabilities vergeben (für Initialserver: server, base, rebuild_hopcount, mother_server, rrd_server)
+Capabilities vergeben (fï¿½r Initialserver: server, base, rebuild_hopcount, mother_server, rrd_server)
 
-*** Wichtig: Wann immer Servercapabilities geändert werden muß man sich neu am Frontend anmelden
+*** Wichtig: Wann immer Servercapabilities geï¿½ndert werden muï¿½ man sich neu am Frontend anmelden
 
 - Server tools
 
@@ -119,10 +119,10 @@ python-modules-rrd
 
 GridEngine kompilieren
 
-RHES4: wenn JAVA_HOME/JAVA_INCL nicht gesetzt sind führt das dazu daß im Include-Pfad /usr/include/linux vorkommt was
-wiederum dazu führt daß die SGE nicht kompiliert werden kann
+RHES4: wenn JAVA_HOME/JAVA_INCL nicht gesetzt sind fï¿½hrt das dazu daï¿½ im Include-Pfad /usr/include/linux vorkommt was
+wiederum dazu fï¿½hrt daï¿½ die SGE nicht kompiliert werden kann
 
-benötigt werden (für RH4):
+benï¿½tigt werden (fï¿½r RH4):
 
 fontconfig-devel-2.2.3-7.i386.rpm
 xorg-x11-deprecated-libs-devel-6.8.1-23.EL.i386.rpm
@@ -167,7 +167,7 @@ touch bin/lx26-x86/qtcsh
 
 ./inst_sge -m
 
-eventuell nicht vorhandene binaries in ./util/install_modules/inst_common.sh löschen.
+eventuell nicht vorhandene binaries in ./util/install_modules/inst_common.sh lï¿½schen.
 
 rms-tools mit --force nachinstallieren
 
@@ -192,7 +192,7 @@ initrds generieren:
 
 populate_ramdisk.py -i -m tg3 /tftpboot/kernels/2.6.9-5.ELsmp/
 
-(ignoriert fehlende Dateien und fügt den tg3-Treiber zu stage1 hinzu)
+(ignoriert fehlende Dateien und fï¿½gt den tg3-Treiber zu stage1 hinzu)
 
 Cluster-Server mit Netzwerken in Production und boot-net eintragen
 

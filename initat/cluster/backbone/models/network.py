@@ -2,7 +2,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -22,13 +22,13 @@
 
 import logging
 import re
-from enum import Enum
 
 from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
+from enum import Enum
 
 from initat.cluster.backbone.exceptions import NoMatchingNetworkFoundError, \
     NoMatchingNetworkDeviceTypeFoundError
@@ -936,6 +936,44 @@ def network_type_pre_save(sender, **kwargs):
         # raise ValidationError("test validation error")
         if not(cur_inst.identifier.strip()):
             raise ValidationError("identifer must not be empty")
+
+# new peer models, not in use right now
+
+"""
+class NetworkPeerType(models.Model):
+    # network peer type model
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(max_length=128, unique=True, default="")
+    description = models.CharField(max_length=255, default="")
+    # is a physical peertype
+    physical = models.BooleanField(default=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class NetworkPeer(models.Model):
+    # new network peer information model
+    idx = models.AutoField(primary_key=True)
+    source_netdevice = models.ForeignKey("backbone.netdevice", related_name="network_peer_source")
+    source_spec = models.CharField(default="", max_length=128, verbose_name="source spec", blank=True)
+    dest_netdevice = models.ForeignKey("backbone.netdevice", related_name="network_peer_dest")
+    dest_spec = models.CharField(default="", max_length=128, verbose_name="destination spec", blank=True)
+    # need at least penalty 1
+    penalty = models.IntegerField(default=1, verbose_name="cost")
+    # true for peers created via SNMP or another automatic process
+    autocreated = models.BooleanField(default=False)
+    # create user
+    create_user = models.ForeignKey("backbone.user", null=True)
+    info = models.CharField(default="", max_length=256, blank=True)
+    peer_type = models.ForeignKey("backbone.NetworkPeerType")
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return u"{} [{:d}] {}".format(
+            self.source_netdevice.devname,
+            self.penalty,
+            self.dest_netdevice.devname
+        )
+"""
 
 
 class peer_information(models.Model):

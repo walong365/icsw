@@ -393,34 +393,38 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             len(new_libs)
         )
     )
-    print "Starting creating of directory-history under '{}' ...".format(temp_dir)
+    print "starting creation of directorytree under '{}' ...".format(temp_dir)
     for orig_dir in [norm_path("/{}".format(x)) for x in dir_list if x]:
         path_parts = [_part for _part in orig_dir.split("/") if _part]
         path_walk = [
-            "{}".format(path_parts.pop(0))
+            "/{}".format(path_parts.pop(0))
         ]
         for pp in path_parts:
-            path_walk.append("{}/{}".format(path_walk[-1], pp))
+            path_walk.append(os.path.join(path_walk[-1], pp))
         # sys.exit(0)
         for orig_path in path_walk:
+            # do NOT use os.path.join here
             target_dir = norm_path("{}/{}".format(temp_dir, orig_path))
             if verbose > 2:
-                print "Checking directory {} (after eliminate_symlinks: {})".format(orig_path, eliminate_symlinks(temp_dir, target_dir))
+                print "checking directory {} (after eliminate_symlinks: {})".format(
+                    orig_path,
+                    eliminate_symlinks(temp_dir, target_dir)
+                )
             if not os.path.isdir(eliminate_symlinks(temp_dir, target_dir)):
                 if os.path.islink(orig_path):
                     link_target = os.readlink(orig_path)
                     if os.path.islink(target_dir):
                         # fixme, check target
                         if verbose > 1:
-                            print "Link from {} to {} already exists".format(orig_path, link_target)
+                            print "link from {} to {} already exists".format(orig_path, link_target)
                     else:
                         # create a link
                         if verbose > 1:
-                            print "Generating link from {} to {}".format(orig_path, link_target)
+                            print "generating link from {} to {}".format(orig_path, link_target)
                         os.symlink(link_target, target_dir)
                     if not os.path.isdir(os.path.join(temp_dir, link_target)):
                         if verbose > 1:
-                            print "Creating directory {}".format(link_target)
+                            print "creating directory {}".format(link_target)
                         os.makedirs(os.path.join(temp_dir, link_target))
                 else:
                     if verbose > 1:
@@ -708,7 +712,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     if ld_stat:
         ld_stat, _out = commands.getstatusoutput("chroot {} /usr/sbin/ldconfig".format(temp_dir))
         if ld_stat:
-            print "Error calling {/usr}/sbin/ldconfig: {}".format(_out)
+            print "Error calling {{/usr}}/sbin/ldconfig: {}".format(_out)
             sev_dict["E"] += 1
         else:
             os.unlink("{}/usr/sbin/ldconfig".format(temp_dir))

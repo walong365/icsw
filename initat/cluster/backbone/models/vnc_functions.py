@@ -1,8 +1,8 @@
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -376,7 +376,8 @@ def get_vnc_enc(password):
 
 
 class ForkedPdb(pdb.Pdb):
-    """A Pdb subclass that may be used
+    """
+    A Pdb subclass that may be used
     from a forked multiprocessing child
 
     """

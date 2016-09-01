@@ -24,20 +24,8 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "smart-table",
         "icsw.tools.table", "icsw.tools", "icsw.tools.button", "icsw.tools.dialog",
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.devtree", {
-            url: "/devtree"
-            templateUrl: "icsw/main/device/tree.html"
-            icswData:
-                pageTitle: "Device tree"
-                rights: ["user.modify_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-list"
-                    ordering: 15
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.devtree")
 ]).directive("icswDeviceTreeOverview",
 [
     "$templateCache",
@@ -94,6 +82,7 @@ angular.module(
     ]
     $scope.column_list = [
         ['name', 'Name'],
+        ["class", "Class"]
         ['description', 'Description'],
         ['enabled', 'Enabled'],
         ['type', 'Type'],
@@ -123,7 +112,8 @@ angular.module(
         $scope.struct.trigger_redraw++
         console.log "length / filtered length: #{$scope.struct.device_tree.all_list.length} / #{$scope.entries_filtered.length}"
 
-    icswActiveSelectionService.register_receiver()
+    # hm, not needed ?
+    # icswActiveSelectionService.register_receiver()
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
         # console.log "icsw_overview_emit_selection received"
@@ -198,6 +188,8 @@ angular.module(
             flap_detection_enabled: true
             name: "dev"
             comment: "new device"
+            device_class: (entry for entry in $scope.struct.device_tree.device_class_tree.list when entry.default_system_class)[0].idx
+            categories: []
         }
         if parent_obj
             new_obj.device_group = parent_obj.idx
@@ -258,9 +250,11 @@ angular.module(
 
     $scope.edit_many = ($event) ->
         $scope._array_name = "device_many"
+        # todo, elect most used entry
         edit_obj = {
             many_form: true
             device_group: (entry.idx for entry in $scope.struct.device_tree.group_list when entry.cluster_device_group == false)[0]
+            device_class: (entry.idx for entry in $scope.struct.device_tree.device_class_tree.list when entry.default_system_class)[0]
             domain_tree_node: (entry.idx for entry in $scope.struct.domain_tree when entry.depth == 0)[0]
             root_passwd: ""
         }
@@ -273,7 +267,7 @@ angular.module(
             to_delete_list
             "device"
             (arg) ->
-                console.log "after man device delete", arg
+                console.log "after many device delete", arg
                 if arg?
                     $scope.handle_device_delete(arg.del_pks)
         )
@@ -333,20 +327,10 @@ angular.module(
                                 )
                         else
                             if single_instance
-                                sub_scope.edit_obj.put().then(
+                                $scope.struct.device_tree.update_device(sub_scope.edit_obj).then(
                                     (data) ->
-                                        # ToDo, FIXME, handle change (test?), move to DeviceTreeService
-                                        console.log "data", data
-                                        if sub_scope.edit_obj.root_passwd
-                                            # ToDo, FIXME, to be improved
-                                            sub_scope.edit_obj.root_passwd_set = true
                                         d.resolve("save")
-                                        # update device ordering in tree
-                                        $scope.struct.device_tree.reorder()
                                     (reject) ->
-                                        # ToDo, FIXME, handle rest (test?)
-                                        # two possibilites: restore and continue or reject, right now we use the second path
-                                        # dbu.restore_backup(obj)
                                         d.reject("not saved")
                                 )
                             else
@@ -406,6 +390,7 @@ angular.module(
                 st_attrs['boot_master'] = ""
                 st_attrs['name'] = group.name
                 st_attrs['description'] = group.description
+                st_attrs["class"] = $scope.struct.device_tree.device_class_tree.lut[obj.device_class].name
                 if $scope.struct.device_tree.get_meta_device(obj).is_cluster_device_group
                     st_attrs['enabled'] = null
                     st_attrs['type'] = null
@@ -421,6 +406,7 @@ angular.module(
                 st_attrs['tln'] = $scope.struct.domain_tree.show_dtn(obj)
                 st_attrs['rrd_store'] = obj.store_rrd_data
                 st_attrs['passwd'] = obj.root_passwd_set
+                st_attrs["class"] = $scope.struct.device_tree.device_class_tree.lut[obj.device_class].name
                 if obj.monitor_server
                     if obj.monitor_server of $scope.struct.monitor_server_lut
                         st_attrs['mon_master'] = $scope.struct.monitor_server_lut[obj.monitor_server].$$full_name_with_type
@@ -463,7 +449,7 @@ angular.module(
                 if sel.device_is_selected(device)
                     return "btn btn-xs btn-success"
                 else
-                    return "btn btn-xs"
+                    return "btn btn-xs btn-default"
             scope.toggle_dev_sel = () ->
                 sel.toggle_selection(device)
             scope.change_dg_sel = (flag) ->

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2016 Gregor Kaufmann, init.at
+# Copyright (C) 2016 Gregor Kaufmann, Andreas Lang-Nevyjel init.at
 #
 # this file is part of icsw-server
 #
@@ -22,157 +22,456 @@ import base64
 import bz2
 import datetime
 import json
-import pickle
-import uuid
 
-from django.utils import timezone
-import django.utils.timezone
+from django.db.models import signals, CASCADE
+from django.dispatch import receiver
 from django.db import models
+from django.db.models import Q
+from django.utils import timezone, dateparse
 from enum import IntEnum
 from lxml import etree
 
-from initat.tools import server_command
+from initat.tools import server_command, pci_database, dmi_tools
+from initat.cluster.backbone.tools.hw import Hardware
 
 
 ########################################################################################################################
 # Functions
 ########################################################################################################################
 
+def sizeof_fmt(num, suffix='B'):
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
 
-def get_base_assets_from_raw_result(asset_run, blob, runtype, scantype):
+def get_packages_for_ar(asset_run):
+    blob = asset_run.raw_result_str
+    runtype = asset_run.run_type
+    scantype = asset_run.scan_type
+
     assets = []
 
-    if not blob:
-        return assets
-
-    if runtype == AssetType.PACKAGE:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            for (name, version, size, date) in l:
-                if size == "Unknown":
-                    size = 0
-                assets.append(
-                    BaseAssetPackage(
-                        name,
-                        version=version,
-                        size=size,
-                        install_date=date,
-                        package_type=PackageTypeEnum.WINDOWS
-                    )
-                )
-        elif scantype == ScanType.HM:
-            try:
-                package_dict = server_command.decompress(blob, pickle=True)
-            except:
-                raise
-            else:
-                for package_name in package_dict:
-                    for versions_dict in package_dict[package_name]:
-                        assets.append(
-                            BaseAssetPackage(
-                                package_name,
-                                version=versions_dict['version'],
-                                size=versions_dict['size'],
-                                release=versions_dict['release'],
-                                package_type=PackageTypeEnum.LINUX
-                            )
+    if blob:
+        if runtype == AssetType.PACKAGE:
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
+                for (name, version, size, date) in l:
+                    if size == "Unknown":
+                        size = 0
+                    assets.append(
+                        BaseAssetPackage(
+                            name,
+                            version=version,
+                            size=size,
+                            install_date=date,
+                            package_type=PackageTypeEnum.WINDOWS
                         )
-    elif runtype == AssetType.HARDWARE:
-        if scantype == ScanType.NRPE:
-            s = blob[2:-4].encode('ascii')
-        elif scantype == ScanType.HM:
-            s = bz2.decompress(base64.b64decode(blob))
-        else:
-            s = blob
+                    )
+            elif scantype == ScanType.HM:
+                try:
+                    package_dict = server_command.decompress(blob, pickle=True)
+                except:
+                    raise
+                else:
+                    for package_name in package_dict:
+                        for versions_dict in package_dict[package_name]:
+                            installtimestamp = None
+                            if 'installtimestamp' in versions_dict:
+                                installtimestamp = versions_dict['installtimestamp']
 
-        root = etree.fromstring(s)
-        assert (root.tag == "topology")
+                            assets.append(
+                                BaseAssetPackage(
+                                    package_name,
+                                    version=versions_dict['version'],
+                                    size=versions_dict['size'],
+                                    release=versions_dict['release'],
+                                    install_date=installtimestamp,
+                                    package_type=PackageTypeEnum.LINUX
+                                )
+                            )
 
-        # lookup for structural entries
-        _struct_lut = {}
-        _root_tree = root.getroottree()
-        struct_el = None
-        for element in root.iter():
-            if element.tag in ["topology", "object"]:
-                # structural entry
-                struct_el = AssetHardwareEntry(
-                    type=element.tag,
-                    attributes=json.dumps({key: value for key, value in element.attrib.iteritems()}),
+    return assets
+
+def get_base_assets_from_raw_result(asset_run,):
+    asset_batch = asset_run.asset_batch
+    blob = asset_run.raw_result_str
+    runtype = asset_run.run_type
+    scantype = asset_run.scan_type
+    if blob:
+        if runtype == AssetType.PACKAGE:
+            assets = []
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
+                for (name, version, size, date) in l:
+                    if size == "Unknown":
+                        size = 0
+                    assets.append(
+                        BaseAssetPackage(
+                            name,
+                            version=version,
+                            size=size,
+                            install_date=date,
+                            package_type=PackageTypeEnum.WINDOWS
+                        )
+                    )
+            elif scantype == ScanType.HM:
+                try:
+                    package_dict = server_command.decompress(blob, pickle=True)
+                except:
+                    raise
+                else:
+                    for package_name in package_dict:
+                        for versions_dict in package_dict[package_name]:
+                            installtimestamp = None
+                            if 'installtimestamp' in versions_dict:
+                                installtimestamp = versions_dict['installtimestamp']
+                            assets.append(
+                                BaseAssetPackage(
+                                    package_name,
+                                    version=versions_dict['version'],
+                                    size=versions_dict['size'],
+                                    release=versions_dict['release'],
+                                    install_date=installtimestamp,
+                                    package_type=PackageTypeEnum.LINUX
+                                )
+                            )
+            # lookup cache
+            lu_cache = {}
+            for idx, ba in enumerate(assets):
+                if idx % 100 == 0:
+                    lu_cache = {
+                        _p.name: _p for _p in AssetPackage.objects.filter(
+                            Q(name__in=[_x.name for _x in assets[idx:idx + 100]]) &
+                            Q(package_type=ba.package_type)
+                        ).prefetch_related(
+                            "assetpackageversion_set"
+                        )
+                    }
+                name = ba.name
+                version = ba.version if ba.version else ""
+                release = ba.release if ba.release else ""
+                size = ba.size if ba.size else 0
+                package_type = ba.package_type
+
+                # kwfilterdict['name'] = ba.name
+                # kwfilterdict['version'] = ba.version
+                # kwfilterdict['release'] = ba.release
+                if name in lu_cache:
+                    ap = lu_cache[ba.name]
+
+                    versions = ap.assetpackageversion_set.filter(version=version, release=release, size=size)
+                    assert (len(versions) < 2)
+
+                    if versions:
+                        apv = versions[0]
+                    else:
+                        apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
+                        apv.save()
+                else:
+                    ap = AssetPackage(name=name, package_type=package_type)
+                    ap.save()
+                    apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
+                    apv.save()
+                asset_batch.packages.add(apv)
+
+                install_time = ba.get_install_time_as_datetime()
+
+                if install_time:
+                    apv_install_times = AssetPackageVersionInstallTime.objects.filter(package_version=apv, install_time=install_time)
+                    if not apv_install_times:
+                        apv_install_time = AssetPackageVersionInstallTime(package_version=apv, install_time=install_time)
+                        apv_install_time.save()
+                    else:
+                        assert (len(apv_install_times) < 2)
+                        apv_install_time = apv_install_times[0]
+
+                    asset_run.packages_install_times.add(apv_install_time)
+
+        elif runtype == AssetType.HARDWARE:
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    s = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    s = bz2.decompress(base64.b64decode(blob))
+            elif scantype == ScanType.HM:
+                s = bz2.decompress(base64.b64decode(blob))
+            else:
+                s = blob
+
+            root = etree.fromstring(s)
+            assert (root.tag == "topology")
+
+            # lookup for structural entries
+            _struct_lut = {}
+            _root_tree = root.getroottree()
+            struct_el = None
+            for element in root.iter():
+                if element.tag in ["topology", "object"]:
+                    # structural entry
+                    struct_el = AssetHardwareEntry(
+                        type=element.tag,
+                        attributes=json.dumps({key: value for key, value in element.attrib.iteritems()}),
+                        asset_run=asset_run,
+                    )
+                    # get local path
+                    _path = _root_tree.getpath(element)
+                    _struct_lut[_path] = struct_el
+                    struct_el._info_dict = {}
+                    if element.getparent() is not None:
+                        # parent_path
+                        _parent = _struct_lut[_root_tree.getpath(element.getparent())]
+                        struct_el.parent = _parent
+                        struct_el.depth = _parent.depth + 1
+
+                    struct_el.save()
+                else:
+                    _struct_el = _struct_lut[_root_tree.getpath(element.getparent())]
+                    _struct_el._info_dict.setdefault(element.tag, []).append(
+                        json.dumps(
+                            {key: value for key, value in element.attrib.iteritems()}
+                        )
+                    )
+            for _path, _el in _struct_lut.iteritems():
+                _el.info_list = json.dumps(_el._info_dict)
+                _el.save()
+
+        elif runtype == AssetType.LICENSE:
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
+                for (name, licensekey) in l:
+                    new_lic = AssetLicenseEntry(
+                        name=name,
+                        license_key=licensekey,
+                        asset_run=asset_run,
+                    )
+                    new_lic.save()
+            elif scantype == ScanType.HM:
+                # todo implement me (--> what do we want to gather/display here?)
+                pass
+
+        elif runtype == AssetType.PENDING_UPDATE:
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
+                for (name, optional) in l:
+                    new_pup = AssetUpdateEntry(
+                        name=name,
+                        installed=False,
+                        asset_run=asset_run,
+                        optional=optional,
+                    )
+                    new_pup.save()
+
+            elif scantype == ScanType.HM:
+                l = server_command.decompress(blob, pickle=True)
+                for (name, version) in l:
+                    new_pup = AssetUpdateEntry(
+                        name=name,
+                        installed=False,
+                        asset_run=asset_run,
+                        # by definition linux updates are optional
+                        optional=True,
+                        new_version=version,
+                    )
+                    new_pup.save()
+
+        elif runtype == AssetType.UPDATE:
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
+                for (name, up_date, status) in l:
+                    new_up = AssetUpdateEntry(
+                        name=name,
+                        install_date=dateparse.parse_datetime(up_date),
+                        status=status,
+                        installed=True,
+                        asset_run=asset_run,
+                        optional=False,
+                    )
+                    new_up.save()
+            elif scantype == ScanType.HM:
+                # todo implement me (--> what do we want to gather/display here?)
+                pass
+
+        elif runtype == AssetType.PROCESS:
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
+                process_dict = {int(pid): {"name": name} for name, pid in l}
+            elif scantype == ScanType.HM:
+                process_dict = eval(bz2.decompress(base64.b64decode(blob)))
+            for pid, stuff in process_dict.iteritems():
+                new_proc = AssetProcessEntry(
+                    pid=pid,
+                    name=stuff["name"],
                     asset_run=asset_run,
                 )
-                # get local path
-                _path = _root_tree.getpath(element)
-                _struct_lut[_path] = struct_el
-                struct_el._info_dict = {}
-                if element.getparent() is not None:
-                    # parent_path
-                    _parent = _struct_lut[_root_tree.getpath(element.getparent())]
-                    struct_el.parent = _parent
-                    struct_el.depth = _parent.depth + 1
+                new_proc.save()
 
-                struct_el.save()
-            else:
-                _struct_el = _struct_lut[_root_tree.getpath(element.getparent())]
-                _struct_el._info_dict.setdefault(element.tag, []).append(
-                    json.dumps(
-                        {key: value for key, value in element.attrib.iteritems()}
+        elif runtype == AssetType.PCI:
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+
+                info_dicts = []
+
+                info_dict = {}
+                for line in _data.decode().split("\r\n"):
+                    if len(line) == 0:
+                        if len(info_dict) > 0:
+                            info_dicts.append(info_dict)
+                            info_dict = {}
+                    if line.startswith("Slot:"):
+                        info_dict['slot'] = line.split("\t", 1)[1]
+
+                        comps = info_dict['slot'].split(":")
+                        bus = comps[0]
+
+                        comps = comps[1].split(".")
+                        slot = comps[0]
+                        func = comps[1]
+
+                        info_dict['bus'] = bus
+                        info_dict['slot'] = slot
+                        info_dict['func'] = func
+                    elif line.startswith("Class:"):
+                        info_dict['class'] = line.split("\t", 1)[1]
+                    elif line.startswith("Vendor:"):
+                        info_dict['vendor'] = line.split("\t", 1)[1]
+                    elif line.startswith("Device:"):
+                        info_dict['device'] = line.split("\t", 1)[1]
+                    elif line.startswith("SVendor:"):
+                        info_dict['svendor'] = line.split("\t", 1)[1]
+                    elif line.startswith("SDevice:"):
+                        info_dict['sdevice'] = line.split("\t", 1)[1]
+                    elif line.startswith("Rev:"):
+                        info_dict['rev'] = line.split("\t", 1)[1]
+
+                for info_dict in info_dicts:
+                    new_pci = AssetPCIEntry(
+                        asset_run=asset_run,
+                        domain=0,
+                        bus=int(info_dict['bus'], 16) if 'bus' in info_dict else 0,
+                        slot=int(info_dict['slot'], 16) if 'slot' in info_dict else 0,
+                        func=int(info_dict['func'], 16) if 'func' in info_dict else 0,
+                        pci_class=0,
+                        subclass=0,
+                        device=0,
+                        vendor=0,
+                        revision=int(info_dict['rev'], 16) if 'rev' in info_dict else 0,
+                        pci_classname=info_dict['class'],
+                        subclassname=info_dict['class'],
+                        devicename=info_dict['device'],
+                        vendorname=info_dict['vendor'],
                     )
+                    new_pci.save()
+
+            elif scantype == ScanType.HM:
+                s = pci_database.pci_struct_to_xml(
+                    pci_database.decompress_pci_info(blob)
                 )
-        for _path, _el in _struct_lut.iteritems():
-            _el.info_list = json.dumps(_el._info_dict)
-            _el.save()
+                for func in s.findall(".//func"):
+                    _slot = func.getparent()
+                    _bus = _slot.getparent()
+                    _domain = _bus.getparent()
+                    new_pci = AssetPCIEntry(
+                        asset_run=asset_run,
+                        domain=int(_domain.get("id")),
+                        bus=int(_domain.get("id")),
+                        slot=int(_slot.get("id")),
+                        func=int(func.get("id")),
+                        pci_class=int(func.get("class"), 16),
+                        subclass=int(func.get("subclass"), 16),
+                        device=int(func.get("device"), 16),
+                        vendor=int(func.get("vendor"), 16),
+                        revision=int(func.get("revision"), 16),
+                        pci_classname=func.get("classname"),
+                        subclassname=func.get("subclassname"),
+                        devicename=func.get("devicename"),
+                        vendorname=func.get("vendorname"),
+                    )
+                    new_pci.save()
 
-    elif runtype == AssetType.LICENSE:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            for (name, licensekey) in l:
-                assets.append(BaseAssetLicense(name, license_key=licensekey))
-        elif scantype == ScanType.HM:
-            # todo implement me (--> what do we want to gather/display here?)
-            pass
+        elif runtype == AssetType.DMI:
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
 
-    elif runtype == AssetType.UPDATE:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            for (name, date, status) in l:
-                assets.append(BaseAssetUpdate(name, install_date=date, status=status))
-        elif scantype == ScanType.HM:
-            # todo implement me (--> what do we want to gather/display here?)
-            pass
+                _lines = []
 
-    elif runtype == AssetType.SOFTWARE_VERSION:
-        # todo implement me
-        pass
+                for line in _data.decode().split("\r\n"):
+                    _lines.append(line)
+                    if line == "End Of Table":
+                        break
 
-    elif runtype == AssetType.PROCESS:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            process_dict = {int(pid): {"name": name} for name, pid in l}
-        elif scantype == ScanType.HM:
-            process_dict = eval(bz2.decompress(base64.b64decode(blob)))
-        for pid, stuff in process_dict.iteritems():
-            new_proc = AssetProcessEntry(
-                pid=pid,
-                name=stuff["name"],
+                _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(_lines))
+            elif scantype == ScanType.HM:
+                _xml = dmi_tools.decompress_dmi_info(blob)
+            head = AssetDMIHead(
                 asset_run=asset_run,
+                version=_xml.get("version"),
+                size=int(_xml.get("size")),
             )
-            new_proc.save()
+            head.save()
+            for _handle in _xml.findall(".//handle"):
+                handle = AssetDMIHandle(
+                    dmihead=head,
+                    handle=int(_handle.get("handle")),
+                    dmi_type=int(_handle.get("dmi_type")),
+                    length=int(_handle.get("length")),
+                    header=_handle.get("header"),
+                )
+                handle.save()
+                for _value in _handle.findall(".//value"):
+                    if len(_value):
+                        value = AssetDMIValue(
+                            dmihandle=handle,
+                            key=_value.get("key"),
+                            single_value=False,
+                            value=json.dumps([_el.text for _el in _value]),
+                            num_values=len(_value),
+                        )
+                    else:
+                        value = AssetDMIValue(
+                            dmihandle=handle,
+                            key=_value.get("key"),
+                            single_value=True,
+                            value=_value.text or "",
+                            num_values=1,
+                        )
+                    value.save()
 
-    elif runtype == AssetType.PENDING_UPDATE:
-        if scantype == ScanType.NRPE:
-            l = json.loads(blob)
-            for (name, optional) in l:
-                assets.append(BaseAssetPendingUpdate(name, optional=optional))
-        elif scantype == ScanType.HM:
-            l = pickle.loads(bz2.decompress(base64.b64decode(blob)))
-            for (name, version) in l:
-                assets.append(BaseAssetPendingUpdate(name, version=version))
-    return assets
 
 ########################################################################################################################
 # Base Asset Classes
 ########################################################################################################################
-
 
 class BaseAssetPackage(object):
     def __init__(self, name, version=None, release=None, size=None, install_date=None, package_type=None):
@@ -182,6 +481,80 @@ class BaseAssetPackage(object):
         self.size = size
         self.install_date = install_date
         self.package_type = package_type
+
+    def get_install_time_as_datetime(self):
+        if self.package_type == PackageTypeEnum.LINUX:
+            try:
+                return datetime.datetime.fromtimestamp(int(self.install_date))
+            except:
+                pass
+
+            return None
+        else:
+            try:
+                year = self.install_date[0:4]
+                month = self.install_date[4:6]
+                day = self.install_date[6:8]
+
+                return datetime.datetime(year=int(year), month=int(month), day=int(day), hour=12)
+            except:
+                pass
+
+            return None
+
+    def get_as_row(self):
+        _name = self.name
+        _version = self.version if self.version else "N/A"
+        _release = self.release if self.release else "N/A"
+
+        if self.package_type == PackageTypeEnum.LINUX:
+            if self.size:
+                try:
+                    _size = sizeof_fmt(self.size)
+                except:
+                    _size = "N/A"
+            else:
+                _size = "N/A"
+
+            if self.install_date:
+                try:
+                    _install_date = datetime.datetime.fromtimestamp(int(self.install_date)).\
+                        strftime(ASSET_DATETIMEFORMAT)
+                except:
+                    _install_date = "N/A"
+            else:
+                _install_date = "N/A"
+        else:
+            if self.size:
+                try:
+                    _size = sizeof_fmt(int(self.size) * 1024)
+                except:
+                    _size = "N/A"
+            else:
+                _size = "N/A"
+
+            _install_date = self.install_date if self.install_date else "N/A"
+            if _install_date == "Unknown":
+                _install_date = "N/A"
+
+            if _install_date != "N/A":
+                try:
+                    year = _install_date[0:4]
+                    month = _install_date[4:6]
+                    day = _install_date[6:8]
+
+                    _install_date = datetime.datetime(year=int(year), month=int(month), day=int(day)).\
+                        strftime(ASSET_DATETIMEFORMAT)
+                except:
+                    _install_date = "N/A"
+
+        o = {}
+        o['package_name'] = _name
+        o['package_version'] = _version
+        o['package_release'] = _release
+        o['package_size'] = _size
+        o['package_install_date'] = _install_date
+        return o
 
     def __repr__(self):
         s = "Name: %s" % self.name
@@ -213,92 +586,24 @@ class BaseAssetPackage(object):
     def __hash__(self):
         return hash((self.name, self.version, self.release, self.size, self.install_date, self.package_type))
 
-
-class BaseAssetLicense(object):
-    def __init__(self, name, license_key):
-        self.name = name
-        self.license_key = license_key
-
-    def __repr__(self):
-        s = "Name: %s Key: %s" % (self.name, self.license_key)
-
-        return s
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.license_key == other.license_key
-
-    def __hash__(self):
-        return hash((self.type, self.license_key))
-
-
-class BaseAssetUpdate(object):
-    def __init__(self, name, install_date=None, status=None):
-        self.name = name
-        self.install_date = install_date
-        self.status = status
-
-    def __repr__(self):
-        s = "Name: %s" % self.name
-        if self.install_date:
-            s += " InstallDate: %s" % self.install_date
-        if self.status:
-            s += " InstallStatus: %s" % self.status
-
-        return s
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.install_date == other.install_date \
-            and self.status == other.status
-
-    def __hash__(self):
-        return hash((self.name, self.install_date, self.status))
-
-
-class BaseAssetSoftwareVersion(object):
-    pass
-
-
-class BaseAssetPendingUpdate(object):
-    def __init__(self, name, version=None, optional=None):
-        self.name = name
-        self.version = version
-        self.optional = optional
-
-    def __repr__(self):
-        s = "Name: %s" % self.name
-        if self.version:
-            s += " Version: %s" % self.version
-        if self.optional:
-            s += " Optional: %s" % self.optional
-
-        return s
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.version == other.version \
-            and self.optional == other.optional
-
-    def __hash__(self):
-        return hash((self.name, self.version, self.optional))
-
 ########################################################################################################################
-# Enums
+# Enums / Globals
 ########################################################################################################################
+
+ASSET_DATETIMEFORMAT = "%a %d. %b %Y %H:%M:%S"
 
 
 class AssetType(IntEnum):
     PACKAGE = 1
-    HARDWARE = 2
+    HARDWARE = 2  # lstopo
     LICENSE = 3
     UPDATE = 4
-    SOFTWARE_VERSION = 5
+    LSHW = 5
     PROCESS = 6
     PENDING_UPDATE = 7
+    DMI = 8
+    PCI = 9
+    PRETTYWINHW = 10
 
 
 class ScanType(IntEnum):
@@ -325,10 +630,197 @@ class PackageTypeEnum(IntEnum):
     WINDOWS = 1
     LINUX = 2
 
+
+memory_entry_form_factors = {
+    0: "Unknown",
+    1: "Other",
+    2: "SIP",
+    3: "DIP",
+    4: "ZIP",
+    5: "SOJ",
+    6: "Proprietary",
+    7: "SIMM",
+    8: "DIMM",
+    9: "TSOP",
+    10: "PGA",
+    11: "RIMM",
+    12: "SODIMM",
+    13: "SRIMM",
+    14: "SMD",
+    15: "SSMP",
+    16: "QFP",
+    17: "TQFP",
+    18: "SOIC",
+    19: "LCC",
+    20: "PLCC",
+    21: "BGA",
+    22: "FPBGA",
+    23: "LGA"
+}
+
+memory_entry_memory_types = {
+    0: "Unknown",
+    1: "Other",
+    2: "DRAM",
+    3: "Synchronous DRAM",
+    4: "Cache DRAM",
+    5: "EDO",
+    6: "EDRAM",
+    7: "VRAM",
+    8: "SRAM",
+    9: "RAM",
+    10: "ROM",
+    11: "FLASH",
+    12: "EEPROM",
+    13: "FEPROM",
+    14: "EPROM",
+    15: "CDRAM",
+    16: "3DRAM",
+    17: "SDRAM",
+    18: "SGRAM",
+    19: "RDRAM",
+    20: "DDR",
+    21: "DDR2",
+    22: "DDR2 FB-DIMM",
+    24: "DDR3",
+    25: "FBD2"
+}
+
 ########################################################################################################################
 # (Django Database) Classes
 ########################################################################################################################
 
+
+class AssetHWMemoryEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    # i.e slot 0 / slot A
+    banklabel = models.TextField(null=True)
+    # dimm type
+    formfactor = models.TextField(null=True)
+    # i.e ddr/ddr2 if known
+    memorytype = models.TextField(null=True)
+
+    manufacturer = models.TextField(null=True)
+
+    capacity = models.BigIntegerField(null=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "BankLabel:{} FormFactor:{} Memorytype:{} Manufacturer:{} Capacity:{}".format(
+            self.banklabel,
+            self.get_name_of_form_factor(),
+            self.get_name_of_memory_type(),
+            self.manufacturer,
+            sizeof_fmt(self.capacity)
+        )
+
+    def get_name_of_form_factor(self):
+        if self.formfactor:
+            try:
+                return memory_entry_form_factors[int(self.formfactor)]
+            except ValueError:
+                return "Unknown"
+            except KeyError:
+                return self.formfactor
+
+        return "Unknown"
+
+    def get_name_of_memory_type(self):
+        if self.memorytype:
+            try:
+                return memory_entry_memory_types[int(self.memorytype)]
+            except ValueError:
+                return "Unknown"
+            except KeyError:
+                return self.memorytype
+
+        return "Unknown"
+
+
+class AssetHWCPUEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    cpuname = models.TextField(null=True)
+
+    numberofcores = models.IntegerField(null=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "{} [Cores:{}]".format(self.cpuname, self.numberofcores)
+
+
+class AssetHWGPUEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    gpuname = models.TextField(null=True)
+
+    driverversion = models.TextField(null=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "{} [Version:{}]".format(self.gpuname, self.driverversion)
+
+
+class AssetHWHDDEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    name = models.TextField(null=True)
+
+    serialnumber = models.TextField(null=True)
+
+    size = models.BigIntegerField(null=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "{} [Serialnumber:{} Size:{}]".format(self.name, self.serialnumber, sizeof_fmt(self.size))
+
+
+class AssetHWLogicalEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    name = models.TextField(null=True)
+
+    size = models.BigIntegerField(null=True)
+
+    free = models.BigIntegerField(null=True)
+
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "{} [Size:{} Free:{}]".format(self.name, sizeof_fmt(self.size), sizeof_fmt(self.free))
+
+
+class AssetHWDisplayEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    name = models.TextField(null=True)
+
+    type = models.TextField(null=True)
+
+    xpixels = models.IntegerField(null=True)
+
+    ypixels = models.IntegerField(null=True)
+
+    manufacturer = models.TextField(null=True)
+
+    def __unicode__(self):
+        return "{} [Type:{} xpixels:{} ypixels:{} manufacturer:{}]".format(
+            self.name,
+            self.type,
+            self.xpixels,
+            self.ypixels,
+            self.manufacturer
+        )
+
+class AssetPackageVersionInstallTime(models.Model):
+    idx = models.AutoField(primary_key=True)
+    package_version = models.ForeignKey("backbone.AssetPackageVersion")
+    install_time = models.DateTimeField(null=True)
 
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -409,6 +901,55 @@ class AssetHardwareEntry(models.Model):
         ordering = ("idx",)
 
 
+class AssetLicenseEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # name
+    name = models.CharField(default="", max_length=255)
+    # license key
+    license_key = models.CharField(default="", max_length=255)
+    # assetrun
+    asset_run = models.ForeignKey("backbone.AssetRun")
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetLicense name={}".format(self.name)
+
+    class Meta:
+        ordering = ("name",)
+
+
+class AssetUpdateEntry(models.Model):
+    # also for pendingUpdates
+    idx = models.AutoField(primary_key=True)
+    # name
+    name = models.CharField(default="", max_length=255)
+    # version / release
+    version = models.CharField(default="", max_length=255)
+    release = models.CharField(default="", max_length=255)
+    # vendor ?
+    # KnowledgeBase idx
+    kb_idx = models.IntegerField(default=0)
+    # install date
+    install_date = models.DateTimeField(null=True)
+    # status, now as string
+    status = models.CharField(default="", max_length=128)
+    # assetrun
+    asset_run = models.ForeignKey("backbone.AssetRun")
+    # optional
+    optional = models.BooleanField(default=True)
+    # installed
+    installed = models.BooleanField(default=False)
+    # new version (for RPMs)
+    new_version = models.CharField(default="", max_length=64)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetUpdate name={}".format(self.name)
+
+    class Meta:
+        ordering = ("name",)
+
+
 class AssetProcessEntry(models.Model):
     idx = models.AutoField(primary_key=True)
     # assetrun
@@ -424,6 +965,94 @@ class AssetProcessEntry(models.Model):
 
     class Meta:
         ordering = ("pid",)
+
+
+class AssetPCIEntry(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # assetrun
+    asset_run = models.ForeignKey("backbone.AssetRun")
+    # Domain / Bus / Slot / Func
+    domain = models.IntegerField(default=0)
+    bus = models.IntegerField(default=0)
+    slot = models.IntegerField(default=0)
+    func = models.IntegerField(default=0)
+    # ids
+    pci_class = models.IntegerField(default=0)
+    subclass = models.IntegerField(default=0)
+    device = models.IntegerField(default=0)
+    vendor = models.IntegerField(default=0)
+    revision = models.IntegerField(default=0)
+    # Name(s)
+    pci_classname = models.CharField(default="", max_length=255)
+    subclassname = models.CharField(default="", max_length=255)
+    devicename = models.CharField(default="", max_length=255)
+    vendorname = models.CharField(default="", max_length=255)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetPCIEntry {:04x}:{:02x}:{:02x}.{:x} {}".format(
+            self.domain,
+            self.bus,
+            self.slot,
+            self.func,
+            self.devicename,
+        )
+
+    class Meta:
+        ordering = ("domain", "bus", "slot", "func",)
+
+
+class AssetDMIHead(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # assetrun
+    asset_run = models.ForeignKey("backbone.AssetRun")
+    version = models.CharField(default="", max_length=63)
+    size = models.IntegerField(default=0)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetDMIHead"
+
+
+class AssetDMIHandle(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # dmi_head
+    dmihead = models.ForeignKey("backbone.AssetDMIHead")
+    # handle id
+    handle = models.IntegerField(default=0)
+    # type
+    dmi_type = models.IntegerField(default=0)
+    # header string
+    header = models.CharField(default="", max_length=128)
+    # length
+    length = models.IntegerField(default=0)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetDMIHandle {:d}: {}".format(
+            self.handle,
+            self.header,
+        )
+
+
+class AssetDMIValue(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # dmi_handle
+    dmihandle = models.ForeignKey("backbone.AssetDMIHandle")
+    # key
+    key = models.CharField(default="", max_length=128)
+    # is single valued
+    single_value = models.BooleanField(default=True)
+    # number of values, 1 or more
+    num_values = models.IntegerField(default=1)
+    # value for single_valued else json encoded
+    value = models.TextField(default="")
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "AssetDMIValue {}".format(
+            self.key,
+        )
 
 
 class AssetRun(models.Model):
@@ -444,131 +1073,95 @@ class AssetRun(models.Model):
     )
     run_start_time = models.DateTimeField(null=True, blank=True)
     run_end_time = models.DateTimeField(null=True, blank=True)
-    # runtime in seconds
+    # runtime in seconds (for communication)
     run_duration = models.IntegerField(default=0)
+    # time needed to generate assets in db
+    generate_duration = models.FloatField(default=0.0)
+    # error string
+    error_string = models.TextField(default="")
+    # interpret error
+    interpret_error_string = models.TextField(default="")
     asset_batch = models.ForeignKey("AssetBatch", null=True)
-    device = models.ForeignKey("backbone.device", null=True)
     # run index in current batch
     batch_index = models.IntegerField(default=0)
-
     raw_result_str = models.TextField(null=True)
-
     raw_result_interpreted = models.BooleanField(default=False)
-
     scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
     # link to packageversions
     packages = models.ManyToManyField(AssetPackageVersion)
+    packages_install_times = models.ManyToManyField(AssetPackageVersionInstallTime)
     created = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def cpus(self):
+        return self.asset_batch.cpus.all()
+
+    @property
+    def gpus(self):
+        return self.asset_batch.gpus.all()
+    @property
+    def hdds(self):
+        return self.asset_batch.hdds.all()
+
+    @property
+    def partitions(self):
+        return self.asset_batch.partitions.all()
+
+    @property
+    def displays(self):
+        return self.asset_batch.displays.all()
+
+    @property
+    def memory_modules(self):
+        return self.asset_batch.memory_modules.all()
+
+    @property
+    def cpu_count(self):
+        return len(self.asset_batch.cpus.all())
+
+    @property
+    def memory_count(self):
+        return len(self.asset_batch.memory_modules.all())
+
+    @property
+    def packages(self):
+        # _packages = []
+        # for apv in self.asset_batch.packages.all():
+        #     _packages.append(apv.asset_package)
+        # return _packages
+        return [package.idx for package in self.asset_batch.packages.all()]
+
+    @property
+    def device(self):
+        return self.asset_batch.device.idx
+
+    def start(self):
+        self.run_status = RunStatus.RUNNING
+        self.run_start_time = timezone.now()
+        self.save()
+
+    def stop(self, result, error_string=""):
+        self.run_result = result
+        self.run_status = RunStatus.ENDED
+        self.error_string = error_string
+        if self.run_start_time:
+            self.run_end_time = timezone.now()
+            self.run_duration = int((self.run_end_time - self.run_start_time).seconds)
+        else:
+            # no start time hence no end time
+            self.run_duration = 0
+        self.save()
+        self.asset_batch.run_done(self)
+
     def generate_assets(self):
-        if self.raw_result_interpreted or not self.raw_result_str:
-            return get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
-        self.raw_result_interpreted = True
+        if not self.raw_result_interpreted:
+            get_base_assets_from_raw_result(self)
+            self.raw_result_interpreted = True
+            self.save()
 
-        base_assets = get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
-        for _base_asset in base_assets:
-            _package_dump = pickle.dumps(_base_asset)
-            self.asset_set.create(type=self.run_type, value=_package_dump)
-
-        self.save()
-        return base_assets
-
-    def generate_assets_no_save(self):
-        print "ASSETS_NO_SAVE no longer supported"
-        return []
-        l = get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
-        l.sort()
-        return l
-
-    def generate_assets_new(self):
-        base_assets = get_base_assets_from_raw_result(self, self.raw_result_str, self.run_type, self.scan_type)
-        for ba in base_assets:
-            kwfilterdict = {}
-            if self.run_type == AssetType.PACKAGE:
-                name = ba.name
-                version = ba.version if ba.version else ""
-                release = ba.release if ba.release else ""
-                size = ba.size if ba.size else 0
-                package_type = ba.package_type
-
-                # kwfilterdict['name'] = ba.name
-                # kwfilterdict['version'] = ba.version
-                # kwfilterdict['release'] = ba.release
-                aps = AssetPackage.objects.filter(name=name, package_type=package_type)
-                assert (len(aps) < 2)
-
-                if aps:
-                    ap = aps[0]
-
-                    versions = ap.assetpackageversion_set.filter(version=version, release=release, size=size)
-                    assert (len(versions) < 2)
-
-                    if versions:
-                        apv = versions[0]
-                    else:
-                        apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
-                        apv.save()
-
-                    self.packages.add(apv)
-                else:
-                    ap = AssetPackage(name=name, package_type=package_type)
-                    ap.save()
-                    apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
-                    apv.save()
-                    self.packages.add(apv)
-
-            # elif self.run_type == AssetType.HARDWARE:
-            #     # todo implement me
-            #     break
-            # elif self.run_type == AssetType.LICENSE:
-            #     # todo implement me
-            #     break
-            # elif self.run_type == AssetType.UPDATE:
-            #     # todo implement me
-            #     break
-            # elif self.run_type == AssetType.SOFTWARE_VERSION:
-            #     # todo implement me
-            #     break
-            # elif self.run_type == AssetType.PROCESS:
-            #     # todo implement me
-            #     break
-            # elif self.run_type == AssetType.PENDING_UPDATE:
-            #     # todo implement me
-            #     break
-            # else:
-            #     break
-            #
-            # assets = AssetPackage.objects.filter(**kwfilterdict)
-            # assert(len(assets) < 2)
-            #
-            # if assets:
-            #     asset = assets[0]
-            #     if self.packages.filter(**kwfilterdict):
-            #         continue
-            # else:
-            #     asset = AssetPackage(**kwfilterdict)
-            #     asset.save()
-            #
-            # self.packages.add(asset)
-
-        self.save()
-
-    def get_asset_changeset(self, other_asset_run):
-        # self.generate_assets()
-        # other_asset_run.generate_assets()
-        # this_assets = [_asset.getAssetInstance() for _asset in self.asset_set.all()]
-        # other_assets = [_asset.getAssetInstance() for _asset in other_asset_run.asset_set.all()]
-        this_assets = self.generate_assets_no_save()
-        other_assets = other_asset_run.generate_assets_no_save()
-
-        return set(this_assets).difference(other_assets)
-
-    def diff_to_prev_run(self):
-        if self.run_index == 0:
-            return []
-
-        return self.get_asset_changeset(self.device.assetrun_set.get(run_index=self.run_index - 1))
+    def has_data(self):
+        return RunResult(self.run_result) == RunResult.SUCCESS
 
 
 class AssetBatch(models.Model):
@@ -599,6 +1192,14 @@ class AssetBatch(models.Model):
     device = models.ForeignKey("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
+    # fields generated from raw entries
+    packages = models.ManyToManyField(AssetPackageVersion)
+    cpus = models.ManyToManyField(AssetHWCPUEntry)
+    memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
+    gpus = models.ManyToManyField(AssetHWGPUEntry)
+    hdds = models.ManyToManyField(AssetHWHDDEntry)
+    partitions = models.ManyToManyField(AssetHWLogicalEntry)
+    displays = models.ManyToManyField(AssetHWDisplayEntry)
 
     def completed(self):
         for assetrun in self.assetrun_set.all():
@@ -618,6 +1219,7 @@ class AssetBatch(models.Model):
             self.run_time = int((self.run_end_time - self.run_start_time).seconds)
             self.run_status = RunStatus.ENDED
             self.run_result = max([_res.run_result for _res in self.assetrun_set.all()])
+            self._set_assets_from_raw_results()
         self.save()
 
     def __repr__(self):
@@ -627,6 +1229,62 @@ class AssetBatch(models.Model):
         return "AssetBatch for device '{}'".format(
             unicode(self.device)
         )
+
+    def _set_assets_from_raw_results(self):
+        """Set the batch level hardware information (.cpus, .memory_modules
+        etc.) from the acquired asset runs."""
+        runs = [
+            ("win32_tree", AssetType.PRETTYWINHW, json.loads),
+            ("lshw_tree", AssetType.LSHW, etree.fromstring),
+            ]
+
+        # search for relevant asset runs and Base64 decode and unzip the result
+        run_results = {}
+        for (arg_name, asset_type, parser) in runs:
+            parsed = None
+            try:
+                run = self.assetrun_set.filter(run_type=asset_type).get()
+            except AssetRun.DoesNotExist:
+                pass
+            else:
+                blob = run.raw_result_str
+                if blob.startswith("b'"):
+                    blob = blob[2:-2]
+                raw_data = bz2.decompress(base64.b64decode(blob))
+                # parse raw_data
+                parsed = parser(raw_data)
+            run_results[arg_name] = parsed
+
+        # check if we have the necessary asset runs
+        if not ('win32_tree' in run_results or 'lshw_tree' in run_results):
+            return
+        hw = Hardware(**run_results)
+
+        self.cpus.all().delete()
+        for cpu in hw.cpus:
+            new_cpu = AssetHWCPUEntry(cpuname=cpu.product,
+                numberofcores=cpu.number_of_cores)
+            new_cpu.save()
+            self.cpus.add(new_cpu)
+
+        # TODO: Set memory_modules.
+
+        self.gpus.all().delete()
+        for gpus in hw.gpus:
+            new_gpu = AssetHWGPUEntry(gpuname=gpus.description)
+            new_gpu.save()
+            self.gpus.add(new_gpu)
+
+        self.hdds.all().delete()
+        for hdd in hw.hdds:
+            new_hdd = AssetHWHDDEntry(name=hdd.description,
+                serialnumber=hdd.serial, size=hdd.size)
+            new_hdd.save()
+            self.hdds.add(new_hdd)
+
+        # TODO: Set partitions.
+
+        # TODO: Set displays.
 
 
 class DeviceInventory(models.Model):
@@ -659,8 +1317,11 @@ class StaticAssetType(IntEnum):
 
 class StaticAssetTemplateFieldType(IntEnum):
     INTEGER = 1
+    # oneline
     STRING = 2
     DATE = 3
+    # textarea
+    TEXT = 4
 
 
 # static assets
@@ -671,12 +1332,50 @@ class StaticAssetTemplate(models.Model):
     type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetType])
     # name of Template
     name = models.CharField(max_length=128, unique=True)
+    # description
+    description = models.TextField(default="", blank=True)
     # system template (not deleteable)
     system_template = models.BooleanField(default=False)
+    # parent template (for copy operations)
+    parent_template = models.ForeignKey("backbone.StaticAssetTemplate", null=True)
     # link to creation user
     user = models.ForeignKey("backbone.user", null=True)
+    # enabled
+    enabled = models.BooleanField(default=True)
     # created
     date = models.DateTimeField(auto_now_add=True)
+
+    def check_ordering(self):
+        # check ordering of elements
+        _dict = {}
+        for entry in self.staticassettemplatefield_set.all():
+            _dict.setdefault(entry.ordering, []).append(entry)
+        if any([len(_value) > 1 for _value in _dict.itervalues()]):
+            # reorder
+            for _idx, _entry in enumerate(self.staticassettemplatefield_set.all().order_by("ordering")):
+                _entry.ordering = _idx
+                _entry.save(update_fields=["ordering"])
+
+    def copy(self, new_obj, create_user):
+        nt = StaticAssetTemplate(
+            type=self.type,
+            name=new_obj["name"],
+            description=new_obj["description"],
+            system_template=False,
+            parent_template=self,
+            user=create_user,
+            enabled=self.enabled,
+        )
+        nt.save()
+        for _field in self.staticassettemplatefield_set.all():
+            nt.staticassettemplatefield_set.add(_field.copy(nt, create_user))
+            print _field
+        return nt
+
+    class CSW_Meta:
+        permissions = (
+            ("setup", "Change StaticAsset templates", False),
+        )
 
 
 class StaticAssetTemplateField(models.Model):
@@ -686,38 +1385,133 @@ class StaticAssetTemplateField(models.Model):
     # name
     name = models.CharField(max_length=64, default="")
     # description
-    field_description = models.TextField(default="")
+    field_description = models.TextField(default="", blank=True)
     field_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetTemplateFieldType])
     # is optional
     optional = models.BooleanField(default=True)
     # is consumable (for integer fields)
     consumable = models.BooleanField(default=False)
+    # consumable values, should be start > warn > critical
+    consumable_start_value = models.IntegerField(default=0)
+    consumable_warn_value = models.IntegerField(default=0)
+    consumable_critical_value = models.IntegerField(default=0)
+    # date check
+    date_check = models.BooleanField(default=False)
+    # date warning limits in days
+    date_warn_value = models.IntegerField(default=60)
+    date_critical_value = models.IntegerField(default=30)
+    # field is fixed (cannot be altered)
+    fixed = models.BooleanField(default=False)
     # default value
     default_value_str = models.CharField(default="", blank=True, max_length=255)
     default_value_int = models.IntegerField(default=0)
     default_value_date = models.DateField(default=timezone.now)
+    default_value_text = models.TextField(default="", blank=True)
     # bounds, for input checking
     has_bounds = models.BooleanField(default=False)
     value_int_lower_bound = models.IntegerField(default=0)
     value_int_upper_bound = models.IntegerField(default=0)
-    # monitor flag, only for datefiles
+    # monitor flag, only for datefields and / or consumable (...?)
     monitor = models.BooleanField(default=False)
+    # hidden, used for linking (...?)
+    hidden = models.BooleanField(default=False)
+    # show_in_overview
+    show_in_overview = models.BooleanField(default=False)
+    # ordering, starting from 0 to #fields - 1
+    ordering = models.IntegerField(default=0)
     # created
     date = models.DateTimeField(auto_now_add=True)
 
+    def copy(self, new_template, create_user):
+        nf = StaticAssetTemplateField(
+            static_asset_template=new_template,
+            name=self.name,
+            field_description=self.field_description,
+            field_type=self.field_type,
+            optional=self.optional,
+            consumable=self.consumable,
+            default_value_str=self.default_value_str,
+            default_value_int=self.default_value_int,
+            default_value_date=self.default_value_date,
+            default_value_text=self.default_value_text,
+            has_bounds=self.has_bounds,
+            value_int_lower_bound=self.value_int_lower_bound,
+            value_int_upper_bound=self.value_int_upper_bound,
+            monitor=self.monitor,
+            fixed=self.fixed,
+            hidden=self.hidden,
+            show_in_overview=self.show_in_overview,
+            consumable_start_value=self.consumable_start_value,
+            consumable_warn_value=self.consumable_warn_value,
+            consumable_critical_value=self.consumable_critical_value,
+            date_warn_value=self.date_warn_value,
+            date_critical_value=self.date_critical_value,
+            date_check=self.date_check,
+        )
+        nf.save()
+        return nf
+
+    def get_attr_name(self):
+        if self.field_type == StaticAssetTemplateFieldType.INTEGER.value:
+            return ("value_int", "int")
+        elif self.field_type == StaticAssetTemplateFieldType.STRING.value:
+            return ("value_str", "str")
+        elif self.field_type == StaticAssetTemplateFieldType.DATE.value:
+            return ("value_date", "date")
+        elif self.field_type == StaticAssetTemplateFieldType.TEXT.value:
+            return ("value_text", "text")
+        else:
+            raise ValueError("wrong field type {}".format(self.field_type))
+
+    def create_field_value(self, asset):
+        new_f = StaticAssetFieldValue(
+            static_asset=asset,
+            static_asset_template_field=self,
+            change_user=asset.create_user,
+        )
+        _local, _short = self.get_attr_name()
+        setattr(new_f, _local, getattr(self, "default_{}".format(_local)))
+        new_f.save()
+        return new_f
+
     class Meta:
         unique_together = [
-            ("static_asset_template", "name")
+            ("static_asset_template", "name"),
         ]
+        ordering = ["ordering"]
+
+
+@receiver(signals.post_save, sender=StaticAssetTemplateField)
+def StaticAssetTemplateField_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.optional:
+            # get all staticassets where this field is not set
+            _missing_assets = StaticAsset.objects.filter(
+                Q(static_asset_template=cur_inst.static_asset_template)
+            ).exclude(
+                Q(staticassetfieldvalue__static_asset_template_field=cur_inst)
+            )
+            if _missing_assets.count():
+                # add fields
+                for _asset in _missing_assets:
+                    cur_inst.create_field_value(_asset)
 
 
 class StaticAsset(models.Model):
+    # used for linking
     idx = models.AutoField(primary_key=True)
     # template
     static_asset_template = models.ForeignKey("backbone.StaticAssetTemplate")
+    # create user
+    create_user = models.ForeignKey("backbone.user", null=True)
     # device
     device = models.ForeignKey("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
+
+    def add_fields(self):
+        for _f in self.static_asset_template.staticassettemplatefield_set.all():
+            _f.create_field_value(self)
 
 
 class StaticAssetFieldValue(models.Model):
@@ -727,9 +1521,66 @@ class StaticAssetFieldValue(models.Model):
     # field
     static_asset_template_field = models.ForeignKey("backbone.StaticAssetTemplateField")
     # change user
-    user = models.ForeignKey("backbone.user")
+    change_user = models.ForeignKey("backbone.user")
     # value
     value_str = models.CharField(null=True, blank=True, max_length=255, default=None)
     value_int = models.IntegerField(null=True, blank=True, default=None)
     value_date = models.DateField(null=True, blank=True, default=None)
+    value_text = models.TextField(null=True, blank=True, default=None)
     date = models.DateTimeField(auto_now_add=True)
+
+    def check_new_value(self, in_dict, xml_response):
+        _field = self.static_asset_template_field
+        _local, _short = _field.get_attr_name()
+        _value = in_dict[_short]
+        _errors = []
+        if not _field.fixed:
+            if _short == "int":
+                # check for lower / upper bounds
+                if _field.has_bounds:
+                    if _value < _field.value_int_lower_bound:
+                        _errors.append(
+                            "value {:d} is below lower bound {:d}".format(
+                                _value,
+                                _field.value_int_lower_bound,
+                            )
+                        )
+                    if _value > _field.value_int_upper_bound:
+                        _errors.append(
+                            "value {:d} is above upper bound {:d}".format(
+                                _value,
+                                _field.value_int_upper_bound,
+                            )
+                        )
+        if _errors:
+            xml_response.error(
+                "Field {}: {}".format(
+                    _field.name,
+                    ", ".join(_errors)
+                )
+            )
+            return False
+        else:
+            return True
+
+    def set_new_value(self, in_dict, user):
+        _field = self.static_asset_template_field
+        _local, _short = _field.get_attr_name()
+        if not _field.fixed:
+            # ignore changes to fixed values
+            if _short == "date":
+                # cast date
+                setattr(self, _local, datetime.datetime.strptime(in_dict[_short], "%d.%m.%Y").date())
+            else:
+                setattr(self, _local, in_dict[_short])
+            self.change_user = user
+            self.save()
+
+def sizeof_fmt(num, suffix='B'):
+    if num is None:
+        return "N/A"
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)

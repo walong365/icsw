@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,12 +19,12 @@
 #
 """ discovery-server, host monitoring functions """
 
+import commands
+import tempfile
 import time
 
 from django.db import transaction
 from django.db.models import Q
-import tempfile
-import commands
 from lxml import etree
 
 from initat.cluster.backbone.exceptions import NoMatchingNetworkDeviceTypeFoundError, \
@@ -33,8 +33,8 @@ from initat.cluster.backbone.models import partition, partition_disc, \
     partition_table, partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, \
     netdevice_speed, peer_information, DeviceLogEntry, DeviceInventory
 from initat.cluster.backbone.models.functions import get_related_models
-from initat.snmp.snmp_struct import ResultNode
 from initat.icsw.service.instance import InstanceXML
+from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, net_tools, partition_tools, \
     process_tools, server_command, dmi_tools, pci_database
 from .config import global_config
@@ -417,7 +417,6 @@ class HostMonitoringMixin(object):
                         logging_tools.get_plural("logical volume", len(lvm_info.lv_dict.get("lv", {}).keys()))
                     )
                 )
-        self.clear_scan(scan_dev)
         return res_node
 
     def _interpret_lstopo(self, lstopo_dump):
@@ -530,7 +529,6 @@ class HostMonitoringMixin(object):
                 )
 
         res_node.ok("system scanned")
-        self.clear_scan(scan_dev)
         return res_node
 
     def scan_network_info(self, dev_com, scan_dev):
@@ -686,5 +684,4 @@ class HostMonitoringMixin(object):
             res_node.ok("{} taken".format(logging_tools.get_plural("netdevice", num_taken)))
         if num_ignored:
             res_node.ok("{} ignored".format(logging_tools.get_plural("netdevice", num_ignored)))
-        self.clear_scan(scan_dev)
         return res_node

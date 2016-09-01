@@ -1,6 +1,6 @@
 # Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of cluster-backbone-sql
+# this file is part of icsw-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -423,6 +423,8 @@ class mon_check_command(models.Model):
         permissions = (
             ("setup_monitoring", "Change monitoring settings", False),
             ("show_monitoring_dashboard", "Show monitoring dashboard", False),
+            ("create_config", "Create monitoring config", False),
+            ("redirect_to_icinga", "Redirect to Icinga backend", False),
         )
         fk_ignore_list = [
             "mon_icinga_log_raw_service_alert_data",

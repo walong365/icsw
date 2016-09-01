@@ -4,7 +4,7 @@
         <icsw-tools-button ng-if="show_copy_button" type="modify" size="xs" value="Copy networks" ng-click="copy_network()"></icsw-tools-button>
     </h3>
     <uib-accordion close-others="no">
-        <uib-accordion-group is-open="device_open">
+        <div uib-accordion-group class="panel-default" is-open="device_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': device_open, 'glyphicon-chevron-right': !device_open}"></i>
                 {{ devices.length }} devices
@@ -26,8 +26,8 @@
                     <tr icsw-device-network-device-row ng-repeat="ndip_obj in devices"></tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
-        <uib-accordion-group is-open="netdevice_open">
+        </div>
+        <div uib-accordion-group class="panel-default" is-open="netdevice_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
                 {{ local_helper_obj.netdevice_list.length }} netdevices
@@ -61,8 +61,12 @@
                     </tr>
                     <tr>
                         <td colspan="99">
-                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                 possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                            <div
+                                icsw-tools-pagination
+                                st-items-by-page="10"
+                                st-displayed-pages="11"
+                                possible-items-by-page="10,20,50,100,200,500,1000"
+                            ></div>
                         </td>
                     </tr>
                 </thead>
@@ -70,8 +74,8 @@
                     <tr icsw-device-network-netdevice-row ng-repeat="ndip_obj in display_entries"></tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
-        <uib-accordion-group is-open="netip_open">
+        </div>
+        <div uib-accordion-group class="panel-default" is-open="netip_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
                 {{ local_helper_obj.net_ip_list.length }} IPs
@@ -92,8 +96,8 @@
                     <tr icsw-device-network-ip-row ng-repeat="ndip_obj in local_helper_obj.net_ip_list"></tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
-        <uib-accordion-group is-open="peer_open">
+        </div>
+        <div uib-accordion-group class="panel-default" is-open="peer_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': peer_open, 'glyphicon-chevron-right': !peer_open}"></i>
                 {{ local_helper_obj.peer_list.length }} peer connections
@@ -118,7 +122,7 @@
                     <tr icsw-device-network-peer-row ng-repeat="ndip_obj in local_helper_obj.peer_list track by $index"></tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
+        </div>
     </uib-accordion>
 </script>
 
@@ -143,12 +147,12 @@
         {{ ndip_obj.full_name }}
     </td>
     <td>
-        <icsw-device-com-capabilities device="ndip_obj"></icsw-device-com-capabilities>
+        <icsw-device-com-capabilities icsw-device="ndip_obj"></icsw-device-com-capabilities>
     </td>
     <td>
         <input
             type="button"
-            class="btn btn-xs"
+            class="btn btn-xs btn-default"
             ng-class="get_bootdevice_info_class(ndip_obj)"
             ng-show="ndip_obj.num_boot_ips"
             ng-value="get_boot_value(ndip_obj)"
@@ -234,16 +238,23 @@
     <td ng-show="show_column.status" ng-class="get_snmp_ao_status_class(ndip_obj)">{{ get_snmp_ao_status(ndip_obj) }}</td>
     <td ng-show="show_column.desired" class="text-center">{{ get_desired_status(ndip_obj) }}</td>
     <td>
-        <button type="button" class="btn btn-xs btn-success"
-         uib-tooltip-placement="right"
-         uib-tooltip-html="build_netdevice_tooltip(ndip_obj)">
-             <span class="glyphicon glyphicon-info-sign"></span>
-         </button>
+        <button
+            type="button"
+            class="btn btn-xs btn-success"
+            tooltip-placement="right"
+            uib-tooltip-html="build_netdevice_tooltip(ndip_obj)"
+        >
+            <span class="glyphicon glyphicon-info-sign"></span>
+        </button>
     </td>
     <td>
         <div ng-show="no_scan_running(ndip_obj)">
-            <icsw-tools-button type="modify" ng-click="edit_netdevice(ndip_obj, $event, false)" size="xs"
-                    ng-show="acl_modify(obj, 'backbone.device.change_network')"></icsw-tools-button>
+            <icsw-tools-button
+                type="modify"
+                ng-click="edit_netdevice(ndip_obj, $event, false)"
+                size="xs"
+                ng-show="acl_modify(obj, 'backbone.device.change_network')"
+            ></icsw-tools-button>
         </div>
     </td>
     <td>
@@ -325,12 +336,14 @@
 <script type="text/ng-template" id="icsw.device.network.total">
     <uib-tabset icsw-tools-add-acl-functions>
         <uib-tab heading="Device settings">
-            <icsw-device-network-overview icsw-sel-man="0" icsw-sel-man-sel-mode="d" show-copy-button="1">
+            <icsw-device-network-overview icsw-sel-man="0" show-copy-button="1">
             </icsw-device-network-overview>
         </uib-tab>
 
-        <uib-tab heading="Network topology">
-            <icsw-device-network-topology icsw-sel-man="0"></icsw-device-network-topology>
+         <uib-tab heading="Network topology">
+            <div>
+                <icsw-device-livestatus icsw-livestatus-view="'nettop'"></icsw-device-livestatus>
+            </div>
         </uib-tab>
         <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')" select="select_tab('cluster')">
             <div ng-controller="icswDeviceNetworkClusterCtrl">
@@ -477,12 +490,12 @@
                 <tr ng-repeat="obj in entries_displayed">
                     <td>{{ obj.identifier }}</td>
                     <td ng-show="show_column.network" style="font-family:monospace;">
-                        <span style="background-color:#ededed;" ng-bind-html="obj.network | ip_fixed_width"></span> /
-                        <span style="background-color:#ededed;" ng-bind-html="obj.netmask | ip_fixed_width"></span> /
-                        <span style="background-color:#ededed;" ng-bind-html="obj.broadcast | ip_fixed_width"></span>
+                        <span class="ip_address" ng-bind-html="obj.network | ip_fixed_width"></span> /
+                        <span class="ip_address" ng-bind-html="obj.netmask | ip_fixed_width"></span> /
+                        <span class="ip_address" ng-bind-html="obj.broadcast | ip_fixed_width"></span>
                     </td>
                     <td ng-show="show_column.gateway" style="font-family:monospace;">
-                        <span style="background-color:#ededed;" ng-bind-html="obj.gateway | ip_fixed_width"></span>
+                        <span class="ip_address" ng-bind-html="obj.gateway | ip_fixed_width"></span>
                     </td>
                     <td ng-show="show_column.gateway" class="text-center">
                         <span class="badge">{{ obj.gw_pri }}</span>
@@ -490,8 +503,8 @@
                     <td ng-show="show_column.autorange" style="font-family:monospace;">
                         <span ng-switch="config_service.autorange_set(obj)">
                             <span ng-switch-when="true">
-                                <span style="background-color:#ededed;" ng-bind-html="obj.start_range | ip_fixed_width"></span> -
-                                <span style="background-color:#ededed;" ng-bind-html="obj.end_range | ip_fixed_width"></span>
+                                <span class="ip_address" ng-bind-html="obj.start_range | ip_fixed_width"></span> -
+                                <span class="ip_address" ng-bind-html="obj.end_range | ip_fixed_width"></span>
                             </span>
                             <span ng-switch-default>
                                 ----
@@ -1294,7 +1307,7 @@
                         <input ng-repeat="ip in ip_dict[name]" type="button" class="btn btn-sm btn-primary" value="{{ ip }}" ng-click="set_ip(ip)"></input>
                     </li>
                     <li class="list-group-item">
-                        IP: <input ng-model="scan_settings.manual_address"/>
+                        IP: <input ng-model="scan_settings.manual_address" class="form-control form-control-inline" />
                     </li>
                 </ul>
             </div>
@@ -1414,8 +1427,8 @@
                 </fieldset>
             </uib-tab>
         </uib-tabset>
-        <uib-alert type="warning" ng-show="!scan_settings.manual_address">
+        <div uib-alert class="alert-warning" ng-show="!scan_settings.manual_address">
             Please enter or select an IP address
-        </uib-alert>
+        </div>
     </form>
 </script>

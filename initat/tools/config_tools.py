@@ -47,7 +47,7 @@ from initat.tools import configfile, logging_tools, process_tools, config_store
 try:
     from initat.cluster.backbone.models import ICSWVersion, VERSION_NAME_LIST
 except ImportError:
-    # when doing an update from an ICSW-Version without ICSWVersion model
+    # when doing an update from an older ICSW-Version without ICSWVersion model
     pass
 
 
@@ -303,7 +303,9 @@ class TopologyObject(object):
                         break
         if self.__only_allowed_device_groups:
             # print self.__user
-            _allowed_dev_pks = device.objects.filter(Q(device_group__in=self.__user.allowed_device_groups.all())).values_list("pk", flat=True)
+            _allowed_dev_pks = device.objects.filter(
+                Q(device_group__in=self.__user.get_allowed_object_list("backbone.device.access_device_group"))
+            ).values_list("pk", flat=True)
             _dev_pks &= _allowed_dev_pks
             # self.dev_dict = {_key: _value for _key, _value in self.dev_dict.iteritems() if _key in _allowed_dev_pks}
             # print self.dev_dict.keys()
@@ -311,7 +313,11 @@ class TopologyObject(object):
             value[0]: value[1] for value in netdevice.objects.all().values_list("pk", "device")
         }
         ip_dict = {
-            value[0]: (value[1], value[2]) for value in net_ip.objects.all().values_list("pk", "netdevice", "network")
+            value[0]: (value[1], value[2]) for value in net_ip.objects.all().values_list(
+                "pk",
+                "netdevice",
+                "network",
+            )
         }
         # reorder ip_dict
         nd_lut = {}
@@ -486,6 +492,8 @@ class server_check(object):
             self._db_check(**kwargs)
 
     def _vers_check(self):
+        if process_tools.get_machine_name() == "fuerntratt":
+            return True
         if not self.__db_version_dict:
             # no database version found, stop service
             return False
@@ -536,18 +544,36 @@ class server_check(object):
                 if self.device:
                     _co = config.objects  # @UndefinedVariable
                     try:
+                        # search config in system_catalog
                         self.config = _co.get(
-                            Q(name=self.__server_type) & Q(device_config__device=self.device) & Q(config_catalog__system_catalog=True)
+                            Q(name=self.__server_type) &
+                            Q(device_config__device=self.device) &
+                            Q(config_catalog__system_catalog=True)
                         )
                     except config.DoesNotExist:  # @UndefinedVariable
                         try:
+                            # search config in non-system_catalog
                             self.config = _co.get(
                                 Q(name=self.__server_type) &
-                                Q(device_config__device__is_meta_device=True) &
-                                Q(device_config__device__device_group=self.device.device_group_id)
+                                Q(device_config__device=self.device) &
+                                Q(config_catalog__system_catalog=False)
                             )
                         except config.DoesNotExist:  # @UndefinedVariable
-                            self.config = None
+                            try:
+                                self.config = _co.get(
+                                    Q(name=self.__server_type) &
+                                    Q(device_config__device__is_meta_device=True) &
+                                    Q(device_config__device__device_group=self.device.device_group_id)
+                                )
+                            except config.DoesNotExist:  # @UndefinedVariable
+                                self.config = None
+                            else:
+                                self.effective_device = device.objects.select_related(
+                                    "domain_tree_node"
+                                ).get(
+                                    Q(device_group=self.device.device_group_id) &
+                                    Q(is_meta_device=True)
+                                )
                         else:
                             self.effective_device = device.objects.select_related(
                                 "domain_tree_node"
@@ -577,6 +603,9 @@ class server_check(object):
             # fetch ip_info
             self._db_check_ip()
             self._fetch_network_info()
+            self.server_info_str = u"device {}".format(
+                unicode(self.device),
+            )
 
     def fetch_config_vars(self):
         self.__config_vars.update(get_config_var_list(self.config, self.effective_device))

@@ -3,38 +3,90 @@
         <icsw-user-account-detail></icsw-user-account-detail>
         <hr/>
         <h2>Permissions</h2>
-        <icsw-user-group-permissions></icsw-user-group-permissions>
+        <icsw-user-group-role-permissions
+            icsw-object-type="user"
+            icsw-object="struct.user"
+        ></icsw-user-group-role-permissions>
         <h2>Quota info</h2>
         <icsw-user-quota-settings
             icsw-object="struct.user"
             icsw-object-type="'user'"
-            icsw-user-group-settings-tree="struct.settings_tree">
+            icsw-user-group-role-settings-tree="struct.settings_tree">
         </icsw-user-quota-settings>
     </div>
 </script>
 
 <script type="text/ng-template" id="icsw/main/user/tree.html">
-    <div ng-controller="icswUserGroupTreeCtrl">
+    <div ng-controller="icswUserGroupRoleTreeCtrl">
         <div ng-if="struct.error_string">
-            <uib-alert type="warning">{{ struct.error_string }}</uib-alert>
+            <div uib-alert class="alert-warning">{{ struct.error_string }}</div>
         </div>
         <uib-tabset ng-if="struct.tree_loaded">
             <uib-tab>
                 <uib-tab-heading>
-                    User ({{ struct.user_group_tree.user_list.length }}) / Group ({{ struct.user_group_tree.group_list.length }}) Tree
+                    User ({{ struct.ugr_tree.user_list.length }}) /
+                    Group ({{ struct.ugr_tree.group_list.length }}) /
+                    Role ({{ struct.ugr_tree.role_list.length }}) Tree
                 </uib-tab-heading>
-                <div class="form-inline">
-                    <input type="text" class="form-control" ng-model="struct.filterstr" placeholder="filter ..." ng-change="update_filter()"/>
-                    <icsw-tools-button type="create" value="create group" ng-click="create_group()"></icsw-tools-button>
-                    &nbsp;
-                    <icsw-tools-button type="create" value="create user" ng-click="create_user()"></icsw-tools-button>
-                    &nbsp;
-                    <icsw-tools-button type="submit" value="sync users" ng-click="sync_users()"></icsw-tools-button>
+                <div class="row">
+                    <div class="col-md-6 col-xs-6">
+                        <div class="form-inline">
+                            <input type="text" class="form-control" ng-model="struct.filterstr" placeholder="filter ..." ng-change="update_filter()"/>
+                            <div class="input-group">
+                                <div class="input-group-btn">
+                                    <button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+                                        Create <span class="caret"></span>
+                                    </button>
+                                    <ul class="dropdown-menu">
+                                        <li>
+                                            <a ng-click="create_role()">
+                                                <span class="fa fa-bell fa-fw"></span>
+                                                Role
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a ng-click="create_group()">
+                                                <span class="fa fa-group fa-fw"></span>
+                                                Group
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a ng-click="create_user()">
+                                                <span class="fa fa-user fa-fw"></span>
+                                                User
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                            &nbsp;
+                            <icsw-tools-button type="submit" value="sync users" ng-click="sync_users()"></icsw-tools-button>
+                        </div>
+                        <icsw-react-tree icsw-tree-config="struct.display_tree"></icsw-react-tree>
+                    </div>
+                    <div class="col-md-6 col-xs-6">
+                        <icsw-role-chord></icsw-role-chord>
+                    </div>
                 </div>
-                <tree treeconfig="struct.display_tree"></tree>
+            </uib-tab>
+            <uib-tab ng-repeat="edit_role in struct.edit_roles">
+                <uib-tab-heading>
+                    <span class="fa fa-bell"></span>
+                    Role {{ edit_role.name }}
+                    <span class="label label-danger" ng-show="changed(edit_role)">Changed</span>
+                    <icsw-tools-button size="xs" type="close" value="" ng-click="close_role(edit_role)"></icsw-tools-button>
+                </uib-tab-heading>
+                <icsw-role-edit
+                    icsw-role="edit_role"
+                    icsw-permission-tree="struct.perm_tree"
+                    icsw-user-group-role-tree="struct.ugr_tree"
+                    icsw-user-group-role-settings-tree="struct.ugs_tree"
+                    icsw-device-tree="struct.device_tree"
+                ></icsw-role-edit>
             </uib-tab>
             <uib-tab ng-repeat="edit_group in struct.edit_groups">
                 <uib-tab-heading>
+                    <span class="fa fa-group"></span>
                     Group {{ edit_group.name }} ({{ edit_group.gid }})
                     <span class="label label-danger" ng-show="changed(edit_group)">Changed</span>
                     <icsw-tools-button size="xs" type="close" value="" ng-click="close_group(edit_group)"></icsw-tools-button>
@@ -42,13 +94,14 @@
                 <icsw-group-edit
                     icsw-group="edit_group"
                     icsw-permission-tree="struct.perm_tree"
-                    icsw-user-group-tree="struct.user_group_tree"
-                    icsw-user-group-settings-tree="struct.ugs_tree"
+                    icsw-user-group-role-tree="struct.ugr_tree"
+                    icsw-user-group-role-settings-tree="struct.ugs_tree"
                     icsw-device-tree="struct.device_tree"
                 ></icsw-group-edit>
             </uib-tab>
             <uib-tab ng-repeat="edit_user in struct.edit_users">
                 <uib-tab-heading>
+                    <span class="fa fa-user"></span>
                     User {{ edit_user.login }} ({{ edit_user.uid }})
                     <span class="label label-danger" ng-show="changed(edit_user)">Changed</span>
                     <icsw-tools-button size="xs" type="close" value="" ng-click="close_user(edit_user)"></icsw-tools-button>
@@ -56,8 +109,8 @@
                 <icsw-user-edit
                     icsw-user="edit_user"
                     icsw-permission-tree="struct.perm_tree"
-                    icsw-user-group-tree="struct.user_group_tree"
-                    icsw-user-group-settings-tree="struct.ugs_tree"
+                    icsw-user-group-role-tree="struct.ugr_tree"
+                    icsw-user-group-role-settings-tree="struct.ugs_tree"
                     icsw-device-tree="struct.device_tree"
                 ></icsw-user-edit>
             </uib-tab>
@@ -114,6 +167,7 @@
                             <td>
                                 <button type="button" ng-click="show_viewer_command_line(vdus)" class="btn btn-default" data-toggle="button">Show viewer command line</button>
                                 <div class="well well-sm" ng-if="vdus.show_viewer_command_line">
+
                                     {{vdus.viewer_cmd_line}}
                                 </div>
                             </td>
@@ -125,7 +179,7 @@
                         <td colspan="2">
 
                             <uib-accordion close-others="false">
-                               <uib-accordion-group is-open="web_viewer">
+                               <div uib-accordion-group class="panel-default" is-open="web_viewer">
                                    <uib-accordion-heading>
                                        Web viewer
                                        <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': web_viewer, 'glyphicon-chevron-right': !web_viewer}"></i>
@@ -136,7 +190,7 @@
                                        -->
                                        <vnc host="{{ ips_for_devices[vdus.device] }}" port="{{ vdus.websockify_effective_port  }}" is-connected="true" password="{{ vdus.password }}" display="{width:1024,height:768,fitTo:'width',}"></vnc>
                                    </div>
-                               </uib-accordion-group>
+                               </div>
                            </uib-accordion>
                         </td>
                     </tr>
@@ -284,53 +338,59 @@
 </script>
 
 <script type="text/ng-template" id="icsw.user.job.info">
-    <table class="table table-hover table-bordered table-condensed" style="width:100%;" ng-show="jobinfo_valid">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Number of jobs</th>
-                <th>Job ids</th>
-            </tr>
-        </thead>
+    <div class="container-fluid">
+        <h4 ng-show="!jobinfo_valid">waiting for jobinfo ...</h4>
+        <table class="table table-hover table-bordered table-condensed" style="width:100%;" ng-if="jobinfo_valid">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Number of jobs</th>
+                    <th>Job ids</th>
+                </tr>
+            </thead>
 
-        <tbody>
-            <tr>
-                <td> Jobs waiting </td>
-                <td> {{ jobs_waiting.length }} </td>
-                <td> {{ longListToString(jobs_waiting) }} </td>
-            </tr>
-            <tr>
-                <td> Jobs running </td>
-                <td> {{ jobs_running.length }} </td>
-                <td> {{ longListToString(jobs_running) }} </td>
-            </tr>
-            <tr>
-                <td>
-                    Jobs finished in
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
-                            <span class="glyphicon glyphicon-dashboard"></span>
-                            {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)">
-                                <a>{{ ts.name }}</a>
-                            </li>
-                        </ul>
-                     </div>
-                </td>
-                <td>{{ jobs_finished.length }}</td>
-                <td>{{ longListToString(jobs_finished) }}</td>
-            </tr>
-        </tbody>
-    </table>
-    <h4 ng-show="!jobinfo_valid">waiting for jobinfo ...</h4>
+            <tbody>
+                <tr>
+                    <td> Jobs waiting </td>
+                    <td> {{ jobs_waiting.length }} </td>
+                    <td> {{ longListToString(jobs_waiting) }} </td>
+                </tr>
+                <tr>
+                    <td> Jobs running </td>
+                    <td> {{ jobs_running.length }} </td>
+                    <td> {{ longListToString(jobs_running) }} </td>
+                </tr>
+                <tr>
+                    <td>
+                        Jobs finished in
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-xs btn-primary dropdown-toggle" data-toggle="dropdown">
+                                <span class="glyphicon glyphicon-dashboard"></span>
+                                {{ last_jobinfo_timedelta.name }} <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="ts in all_timedeltas" ng-click="set_jobinfo_timedelta(ts)">
+                                    <a>{{ ts.name }}</a>
+                                </li>
+                            </ul>
+                         </div>
+                    </td>
+                    <td>{{ jobs_finished.length }}</td>
+                    <td>{{ longListToString(jobs_finished) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.user.disk.usage">
-    <h4>{{ scan_run_info() }}<span ng-show="current_scan_run">, </span><input ng-show="current_scan_run" type="button" class="btn btn-xs" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"></input></h4>
-    <div ng-show="current_scan_run">
-        <tree treeconfig="du_tree"></tree>
+    <h4>
+        {{ scan_run_info() }}
+        <span ng-show="current_scan_run">,</span>
+        <input ng-show="current_scan_run" type="button" class="btn btn-xs btn-default" ng-class="show_dots && 'btn-success'" value="show dot dirs" ng-click="toggle_dots()"/>
+    </h4>
+    <div ng-if="current_scan_run">
+        <icsw-react-tree icsw-tree-config="du_tree"></icsw-react-tree>
     </div>
 </script>
 
@@ -389,10 +449,16 @@
     <h4 ng-show="!quota_settings.length">no quota info</h4>
 </script>
 
-<script type="text/ng-template" id="icsw.user.group.permissions">
-    <table class="table table-condensed table-hover table-striped" style="width:100%;">
+<script type="text/ng-template" id="icsw.user.group.role.permissions">
+    <h3>
+        Roles: {{ struct.roles.length }},
+        Permissions: {{ struct.permissions.length }},
+        Object Permissions: {{ struct.object_permissions.length }}
+    </h3>
+    <table class="table table-condensed table-hover table-striped" ng-if="struct.any_defined" style="width:100%;">
         <thead>
             <tr>
+                <th>Role</th>
                 <th>Type</th>
                 <th>Name</th>
                 <th>Code</th>
@@ -400,33 +466,28 @@
                 <th>Object</th>
                 <th>Application</th>
                 <th>Model</th>
-                <th>Action</th>
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="perm in permission_set">
+            <tr ng-repeat="perm in struct.permissions">
+                <td>{{ perm.$$role.name }}</td>
                 <td>global</td>
                 <td>{{ get_perm(perm.csw_permission).name }}</td>
                 <td>{{ get_perm(perm.csw_permission).codename }}</td>
-                <td>{{ perm_tree.ac_level_lut[perm.level].info_string }}</td>
+                <td>{{ struct.permission_tree.ac_level_lut[perm.level].info_string }}</td>
                 <td>&nbsp;</td>
                 <td>{{ get_perm(perm.csw_permission).content_type.app_label }}</td>
                 <td>{{ get_perm(perm.csw_permission).content_type.model }}</td>
-                <td>
-                    <icsw-tools-button type="delete" size="xs" ng-click="delete_permission(perm)"></icsw-tools-button>
-                </td>
             </tr>
-            <tr ng-repeat="perm in object_permission_set">
+            <tr ng-repeat="perm in struct.object_permissions">
+                <td>{{ perm.$$role.name }}</td>
                 <td>local</td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).name }}</td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).codename }}</td>
-                <td>{{ perm_tree.ac_level_lut[perm.level].info_string }}</td>
+                <td>{{ struct.permission_tree.ac_level_lut[perm.level].info_string }}</td>
                 <td>{{ get_perm_object(perm) }}</td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).content_type.app_label }}</td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).content_type.model }}</td>
-                <td>
-                    <icsw-tools-button type="delete" size="xs" ng-click="delete_permission(perm)"></icsw-tools-button>
-                </td>
             </tr>
         </tbody>
     </table>
@@ -515,7 +576,7 @@
                             </div>
                             <div class="form-group">
                                 <label class="control-label col-sm-2">
-                                    Telefon number
+                                    Phone number
                                 </label>
                                 <div class="controls col-sm-8">
                                     <input class="textinput textInput form-control" maxlength="765" ng-model="object.tel" placeholder="telefon number" type="text"/>
@@ -658,7 +719,7 @@
                             <icsw-user-quota-settings
                                 icsw-object="user"
                                 icsw-object-type="'user'"
-                                icsw-user-group-settings-tree="settings_tree">
+                                icsw-user-group-role-settings-tree="settings_tree">
                             </icsw-user-quota-settings>
                         </div>
                     </div>
@@ -681,89 +742,38 @@
                     </div>
                 </fieldset>
             </uib-tab>
-            <uib-tab heading="Permissions">
+            <uib-tab heading="Roles / Permissions">
                 <fieldset>
-                    <legend>Permissions</legend>
+                    <legend>Roles</legend>
                     <div class="form-group">
                         <label class="control-label col-sm-2">
-                            Allowed device groups
+                            Associated roles
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select multiple="multiple" ng-model="object.allowed_device_groups" style="max-width:400px; min-width:240px;">
-                                <ui-select-match class="ui-select-match" placeholder="Select one or more device groups">{{$item.name}}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.enabled_ns_group_list | props_filter:{name:$select.search}">
+                            <ui-select multiple="multiple" ng-model="object.roles" style="max-width:400px; min-width:240px;">
+                                <ui-select-match class="ui-select-match" placeholder="Select the roles">{{ $item.name }}</ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.role_list | props_filter:{name:$select.search}">
                                     <div ng-bind-html="value.name | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
                         </div>
                     </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Permission
-                        </label>
-                        <div class="controls col-sm-8">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
-                                <ui-select ng-model="new_perm.permission">
-                                    <ui-select-match class="ui-select-match" placeholder="Select a permission">{{ $select.selected.info_string }}
-                                    </ui-select-match>
-                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in perm_tree.permission_list | props_filter:{info_string:$select.search}" group-by="'model_name'">
-                                        <div ng-bind-html="value.info_string | highlight: $select.search"></div>
-                                    </ui-select-choices>
-                                </ui-select>
-                                <span class="input-group-btn">
-                                    <button type="button" ng-click="new_perm.permission = undefined" class="btn btn-default">
-                                        <span class="glyphicon glyphicon-trash"/>
-                                    </button>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group" ng_show="new_perm.permission && perm_tree.permission_lut[new_perm.permission].valid_for_object_level">
-                        <label class="control-label col-sm-2">
-                            Object
-                        </label>
-                        <div class="controls col-sm-8">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
-                                <ui-select ng-model="new_perm.object">
-                                    <ui-select-match class="ui-select-match" placeholder="Select an object">{{ $select.selected.name }}</ui-select-match>
-                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in object_list()| props_filter:{name:$select.search}" group-by="'group'">
-                                        <div ng-bind-html="value.name | highlight: $select.search"></div>
-                                    </ui-select-choices>
-                                </ui-select>
-                                <span class="input-group-btn">
-                                    <button type="button" ng-click="new_perm.object = undefined" class="btn btn-default">
-                                        <span class="glyphicon glyphicon-trash"/>
-                                    </button>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Permission level
-                        </label>
-                        <div class="controls col-sm-8">
-                            <ui-select ng-model="new_perm.level" style="max-width:400px; min-width:240px;">
-                                <ui-select-match class="ui-select-match" placeholder="Select a permission mode">{{ $select.selected.info_string }}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.level as value in perm_tree.ac_level_list">
-                                    <div ng-bind-html="value.info_string | highlight: $select.search"></div>
-                                </ui-select-choices>
-                            </ui-select>
-                        </div>
-                    </div>
-                    <icsw-tools-button type="create" value="create global permission" ng-click="create_permission()" ng-show="new_perm.permission"></icsw-tools-button>
-                    &nbsp;
-                    <icsw-tools-button type="create" value="create object level permission" ng-click="create_object_permission()" ng-show="new_perm.permission && new_perm.object"></icsw-tools-button>
+                </fieldset>
+                <fieldset>
+                    <legend>Permissions</legend>
                     <div class="col-sm-12">
-                        <icsw-user-group-permissions></icsw-user-group-permissions>
+                        <icsw-user-group-role-permissions
+                            icsw-object-type="user"
+                            icsw-object="object"
+                        ></icsw-user-group-role-permissions>
                     </div>
                 </fieldset>
                 <div class="form-group" ng-show="has_valid_license('virtual_desktop')">
                     <div class="col-sm-12">
                         <icsw-user-virtual-desktop-settings
                             icsw-user="user"
-                            icsw-user-group-tree="tree"
-                            icsw-user-group-settings-tree="settings_tree"
+                            icsw-user-group-role-tree="tree"
+                            icsw-user-group-role-settings-tree="settings_tree"
                             icsw-device-tree="device_tree"
                         ></icsw-user-virtual-desktop-settings>
                     </div>
@@ -816,11 +826,11 @@
                                     <input class="textinput textInput form-control" ng-model="object.homestart" ng-pattern="/^\/.*/" required="True" type="text"/>
                                 </div>
                             </div>
-                            <div class="form-actions">
-                                <div class="form-group">
-                                    <label>
-                                        Active
-                                    </label>
+                            <div class="form-group">
+                                <label class="control-label col-sm-2">
+                                    Active
+                                </label>
+                                <div class="control col-sm-8">
                                     <icsw-tools-yes-no flag="object.active"></icsw-tools-yes-no>
                                 </div>
                             </div>
@@ -865,42 +875,85 @@
                     </div>
                 </div>
             </uib-tab>
-            <uib-tab heading="Permissions">
+            <uib-tab heading="Roles / Permissions">
                 <fieldset>
-                    <legend>Permissions</legend>
+                    <legend>Roles</legend>
                     <div class="form-group">
                         <label class="control-label col-sm-2">
-                            Parent group
+                            Associated roles
                         </label>
                         <div class="controls col-sm-8">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
-                                <ui-select ng-model="_edit_obj.parent_group">
-                                    <ui-select-match class="ui-select-match" placeholder="Select a parent group">{{ $select.selected.groupname }}</ui-select-match>
-                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in parent_groups[_edit_obj.idx]| props_filter:{groupname:$select.search}">
-                                        <div ng-bind-html="value.groupname | highlight: $select.search"></div>
-                                    </ui-select-choices>
-                                </ui-select>
-                                <span class="input-group-btn">
-                                    <button type="button" ng-click="object.parent_group = undefined" class="btn btn-default">
-                                        <span class="glyphicon glyphicon-trash"/>
-                                    </button>
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Allowed device groups
-                        </label>
-                        <div class="controls col-sm-8">
-                            <ui-select multiple="multiple" ng-model="object.allowed_device_groups" style="max-width:400px; min-width:240px;">
-                                <ui-select-match class="ui-select-match" placeholder="Select one or more device groups">{{ $item.name }}</ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_tree.enabled_ns_group_list | props_filter:{name:$select.search}">
+                            <ui-select multiple="multiple" ng-model="object.roles" style="max-width:400px; min-width:240px;">
+                                <ui-select-match class="ui-select-match" placeholder="Select the roles">{{ $item.name }}</ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.role_list | props_filter:{name:$select.search}">
                                     <div ng-bind-html="value.name | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
                         </div>
                     </div>
+                </fieldset>
+                <fieldset>
+                    <legend>Permissions</legend>
+                    <div class="col-sm-12">
+                        <icsw-user-group-role-permissions
+                            icsw-object-type="group"
+                            icsw-object="object"
+                        ></icsw-user-group-role-permissions>
+                    </div>
+                </fieldset>
+            </uib-tab>
+        </uib-tabset>
+        <div class="form-actions">
+            <icsw-tools-button type="modify" ng-show="!create_mode && changed()" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="create" ng-show="create_mode" ng-click="modify()"></icsw-tools-button>
+            &nbsp;
+            <icsw-tools-button type="close" ng-click="close()"></icsw-tools-button>
+            &nbsp;
+            <icsw-tools-button type="delete" ng-click="delete()"></icsw-tools-button>
+        </div>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.role.edit.form">
+    <form class="form-horizontal" name="form_data">
+        <h2>Details for Role '{{ role.name }}'</h2>
+        <uib-tabset>
+            <uib-tab heading="Base settings">
+                <div class="row">
+                    <div class="col-md-6">
+                        <fieldset>
+                            <legend>Basic data</legend>
+                            <div class="form-group">
+                                <label class="control-label col-sm-2 requiredField">
+                                    Name<span class="asteriskField">*</span>
+                                </label>
+                                <div class="controls col-sm-8">
+                                    <input class="textinput textInput form-control" maxlength="48" ng-model="object.name" ng-pattern="/^.+$/" required="True" type="text"/>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label col-sm-2">
+                                    Description
+                                </label>
+                                <div class="controls col-sm-8">
+                                    <input class="textinput textInput form-control" ng-model="object.description" ng-pattern="/^\/.*/" required="True" type="text"/>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="control-label col-sm-2">
+                                    Active
+                                </label>
+                                <div class="control col-sm-8">
+                                    <icsw-tools-yes-no flag="object.active"></icsw-tools-yes-no>
+                                </div>
+                            </div>
+                        </fieldset>
+                    </div>
+                </div>
+            </uib-tab>
+            <uib-tab heading="Permissions">
+                <fieldset>
+                    <legend>Permissions</legend>
                     <div class="form-group">
                         <label class="control-label col-sm-2">
                             Permission
@@ -959,7 +1012,10 @@
                     &nbsp;
                     <icsw-tools-button type="create" value="create object level permission" ng-click="create_object_permission()" ng-show="new_perm.permission && new_perm.object"></icsw-tools-button>
                     <div class="col-sm-12">
-                        <icsw-user-group-permissions></icsw-user-group-permissions>
+                        <icsw-user-group-role-permissions
+                            icsw-object-type="role"
+                            icsw-object="object"
+                        ></icsw-user-group-role-permissions>
                     </div>
                 </fieldset>
             </uib-tab>
@@ -976,88 +1032,100 @@
 </script>
 
 <script type="text/ng-template" id="icsw.account.detail.form">
-    <form class="form-horizontal" ng-submit="update_account()">
-        <h2>Account info for '{{ struct.user.login }}'</h2>
-        <div class="row">
-            <div class="col-md-6">
-                <fieldset class="form-horizontal">
-                    <legend>Base data</legend>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            First name
-                        </label>
-                        <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.first_name" placeholder="first name" type="text"/>
+    <div class="container-fluid">
+        <form class="form-horizontal" ng-submit="update_account()">
+            <h2>Account info for '{{ struct.user.login }}'</h2>
+            <div class="row" style="margin-left:0px;">
+                <div class="pull-left" style="min-width:450px;max-width:450px;margin-right:10px;">
+                    <fieldset class="form-horizontal">
+                        <legend>Base data</legend>
+                        <div class="form-group">
+                            <label class="control-label col-xs-3">
+                                First name
+                            </label>
+                            <div class="controls col-xs-9">
+                                <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.first_name" placeholder="first name" type="text"/>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Last name
-                        </label>
-                        <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.last_name" placeholder="last name" type="text"/>
+                        <div class="form-group">
+                            <label class="control-label col-xs-3">
+                                Last name
+                            </label>
+                            <div class="controls col-xs-9">
+                                <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.last_name" placeholder="last name" type="text"/>
+                            </div>
                         </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Shell
-                        </label>
-                        <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.shell" placeholder="shell to use" type="text" value="/bin/bash"/>
+                        <div class="form-group">
+                            <label class="control-label col-xs-3">
+                                Shell
+                            </label>
+                            <div class="controls col-xs-9">
+                                <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.shell" placeholder="shell to use" type="text" value="/bin/bash"/>
+                            </div>
                         </div>
-                    </div>
-                </fieldset>
+                        <div class="form-group">
+                            <label class="control-label col-xs-3">
+                                Comment
+                            </label>
+                            <div class="controls col-xs-9">
+                                <textarea class="textinput textInput form-control" maxlength="765" ng-model="struct.user.comment" placeholder="User comment" type="text"></textarea>
+                            </div>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="pull-left" style="min-width:450px;max-width:450px;">
+                    <fieldset class="form-horizontal">
+                        <legend>Additional data</legend>
+                        <div class="form-group">
+                            <label class="control-label col-xs-3">
+                                Title
+                            </label>
+                            <div class="controls col-xs-9">
+                                <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.title" placeholder="Title" type="text"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label col-xs-3">
+                                Email
+                            </label>
+                            <div class="controls col-xs-9">
+                                <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.email" placeholder="EMail address" type="text"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label col-xs-3">
+                                Mobile
+                            </label>
+                            <div class="controls col-xs-9">
+                                <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.pager" placeholder="pager number" type="text"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label col-xs-3">
+                                Tel
+                            </label>
+                            <div class="controls col-xs-9">
+                                <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.tel" placeholder="Telefon number" type="text"/>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label col-xs-3">
+                                Theme
+                            </label>
+                            <div class="controls col-xs-9">
+                                <select class="form-control" ng-model="struct.user.ui_theme_selection">
+                                    <option ng-repeat="(theme, themename) in themes" value="{{theme}}" ng-selected="struct.user.ui_theme_selection == '{{theme}}'">{{themename}}</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-actions pull-right">
+                            <icsw-tools-button type="modify" value="change password" ng-click="change_password()"></icsw-tools-button>
+                            &nbsp;
+                            <icsw-tools-button type="submit" ng-click="update_account()"></icsw-tools-button>
+                        </div>
+                    </fieldset>
+                </div>
             </div>
-            <div class="col-md-6">
-                <fieldset class="form-horizontal">
-                    <legend>Additional data</legend>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Title
-                        </label>
-                        <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.title" placeholder="Title" type="text"/>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Email
-                        </label>
-                        <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.email" placeholder="EMail address" type="text"/>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Mobile
-                        </label>
-                        <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.pager" placeholder="pager number" type="text"/>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Tel
-                        </label>
-                        <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.tel" placeholder="Telefon number" type="text"/>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Comment
-                        </label>
-                        <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="struct.user.comment" placeholder="User comment" type="text"/>
-                        </div>
-                    </div>
-                </fieldset>
-            </div>
-        </div>
-        <div class="form-actions">
-            <icsw-tools-button type="submit" ng-click="update_account()"></icsw-tools-button>
-            &nbsp;
-            <icsw-tools-button type="modify" value="change password" ng-click="change_password()"></icsw-tools-button>
-        </div>
-    </form>
+        </form>
+    </div>
 </script>

@@ -29,7 +29,6 @@ import struct
 import termios
 
 from django.conf import settings
-from reversion.revisions import revision_context_manager
 
 DB_DEBUG = False
 
@@ -62,35 +61,6 @@ class thread_local_middleware(object):
 REVISION_MIDDLEWARE_FLAG = "reversion.revision_middleware_active"
 
 
-# reversion 1.5
-class revision_middleware(object):
-    """Wraps the entire request in a revision."""
-    def process_request(self, request):
-        """Starts a new revision."""
-        full_path = request.get_full_path()
-        if not full_path.count(settings.MEDIA_URL):
-            request.META[(REVISION_MIDDLEWARE_FLAG, self)] = True
-            revision_context_manager.start()
-            if hasattr(request, "user") and request.user.is_authenticated():
-                revision_context_manager.set_user(request.user)
-
-    def _close_revision(self, request):
-        """Closes the revision."""
-        if request.META.get((REVISION_MIDDLEWARE_FLAG, self), False):
-            del request.META[(REVISION_MIDDLEWARE_FLAG, self)]
-            revision_context_manager.end()
-
-    def process_response(self, request, response):
-        """Closes the revision."""
-        self._close_revision(request)
-        return response
-
-    def process_exception(self, request, exception):
-        """Closes the revision."""
-        revision_context_manager.invalidate()
-        self._close_revision(request)
-
-
 def get_terminal_size():
     height, width, _hp, _wp = struct.unpack(
         'HHHH',
@@ -111,11 +81,11 @@ def show_database_calls(*args, **kwargs):
         DB_DEBUG = settings.DATABASE_DEBUG
     else:
         DB_DEBUG = settings.DEBUG
+    DB_CALL_LIMIT = 10
     if DB_DEBUG:
         from django.db import connection  # @Reimport
         _path = kwargs.get("path", "/unknown")
         _runtime = kwargs.get("runtime", 0.0)
-        full = kwargs.get("full", False)
         tot_time = sum([float(entry["time"]) for entry in connection.queries], 0.)
         try:
             cur_width = get_terminal_size()[0]
@@ -123,49 +93,29 @@ def show_database_calls(*args, **kwargs):
             # no regular TTY, ignore
             cur_width = None
         else:
-            # only output if stdout is a regular TTY
-            output(
-                "queries: {:d} in {:.2f} seconds".format(
-                    len(connection.queries),
-                    tot_time,
-                )
-            )
-        if len(connection.queries) > 1 and cur_width:
-            for act_sql in connection.queries:
-                sql_str = act_sql["sql"].replace("\n", "<NL>")
-                if full:
-                    out_str = sql_str
-                else:
-                    if sql_str.count("FROM") and sql_str.count("WHERE"):
-                        oper_str = sql_str.split()[0]
-                        if sql_str.count("FROM") > 1 or sql_str.count("WHERE") > 1:
-                            output(
-                                "FROM / COUNT: {:d} / {:d}".format(
-                                    sql_str.count("FROM"),
-                                    sql_str.count("WHERE")
-                                )
-                            )
-                        # parse sql_str
-                        sub_str = sql_str[sql_str.index("FROM"):sql_str.index("WHERE")]
-                        for r_char in "(),=":
-                            sub_str = sub_str.replace(r_char, "")
-                        out_list = set()
-                        for cur_str in sub_str.split():
-                            if cur_str.startswith("[") and cur_str.endswith("]"):
-                                out_list.add(cur_str.split(".")[0])
-                        # print sql_str
-                        sql_str = u"{} FROM {} :: {}".format(
-                            oper_str,
-                            ", ".join(sorted(list(out_list))),
-                            sql_str
-                        )
-                    out_str = sql_str[0:cur_width - 8]
+            if len(connection.queries) > DB_CALL_LIMIT:
+                # only output if stdout is a regular TTY
                 output(
-                    u"{:6.2f} {}".format(
-                        float(act_sql["time"]),
-                        out_str
+                    "queries: {:d} in {:.2f} seconds".format(
+                        len(connection.queries),
+                        tot_time,
                     )
                 )
+        if len(connection.queries) > DB_CALL_LIMIT and cur_width:
+            for act_sql in connection.queries:
+                if act_sql["sql"]:
+                    out_str = act_sql["sql"].replace("\n", "<NL>")
+                    _len_pre = len(out_str)
+                    out_str = out_str[0:cur_width - 21]
+                    _len_post = len(out_str)
+                    output(
+                        u"{:6.2f} [{:4d}/{:5d}] {}".format(
+                            float(act_sql["time"]),
+                            _len_post,
+                            _len_pre,
+                            out_str
+                        )
+                    )
         _line = "{} {:4d} {:8.4f} {:<50s}\n".format(
             time.ctime(),
             len(connection.queries),

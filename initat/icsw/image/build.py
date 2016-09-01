@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2005,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2005,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -467,7 +467,8 @@ class ServerProcess(threading_tools.process_pool):
         for clean_dir in [
             "/var/lib/meta-server",
             "/etc/zypp/repos.d",
-            "/var/log/cluster/logging-server",
+            "/var/log/cluster/logging-server", # old location
+            "/var/log/icsw/logging-server", # new location
             "/tmp",
         ]:
             t_dir = os.path.join(self.__system_dir, clean_dir[1:])

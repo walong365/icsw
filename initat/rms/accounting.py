@@ -37,6 +37,7 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
     rms_project, rms_department, rms_pe, rms_queue, user, device, cluster_timezone, \
     RMSJobVariable
+from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.rms.config import global_config
 from initat.rms.functions import call_command
 from initat.tools import logging_tools, server_command, threading_tools, process_tools
@@ -51,6 +52,7 @@ _OBJ_DICT = {
 
 class AccountingProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -137,7 +139,7 @@ class AccountingProcess(threading_tools.process_obj):
             Q(qacct_called=False) &
             Q(end_time=None) &
             Q(start_time=None) &
-            Q(start_time_py__lt=datetime.datetime.now() - datetime.timedelta(seconds=31 * 24 * 3600))
+            Q(start_time_py__lt=cluster_timezone.localize(datetime.datetime.now()) - datetime.timedelta(seconds=31 * 24 * 3600))
         )
         self.log("invalid runs found: {:d}".format(invalid_runs.count()))
         _missing_ids = rms_job_run.objects.filter(
@@ -249,7 +251,7 @@ class AccountingProcess(threading_tools.process_obj):
                 )
             _found, _matched = (None, None)
         else:
-            _found, _matched = self._interpret_qacct(cur_out)
+            _found, _matched = self._interpret_qacct(cur_out, kwargs.get("mult", 1))
             log_lines[0] = "{} (needed {:d}, found {:d}, matched {:d})".format(
                 log_lines[0],
                 kwargs.get("mult", 1),
@@ -268,14 +270,16 @@ class AccountingProcess(threading_tools.process_obj):
             )
         )
 
-    def _interpret_qacct(self, cur_out):
+    def _interpret_qacct(self, cur_out, needed):
         _found, _matched = (0, 0)
+        _dict_list = []
         _dict = {}
         for _line in cur_out.split("\n"):
             if _line.startswith("==="):
                 if "jobnumber" in _dict:
                     _found += 1
                     _matched += self._feed_qacct(_dict)
+                    _dict_list.append(_dict)
                 _dict = {}
             else:
                 if _line.strip():
@@ -293,10 +297,28 @@ class AccountingProcess(threading_tools.process_obj):
         if "jobnumber" in _dict:
             _found += 1
             _matched += self._feed_qacct(_dict)
+            _dict_list.append(_dict)
+        if needed == _found and not _matched:
+            # print _dict_list[0]
+            _to_del = rms_job_run.objects.filter(
+                Q(rms_job__jobid=_dict_list[0]["jobnumber"]) &
+                Q(rms_job__taskid=_dict_list[0]["taskid"])
+            )
+            self.log(
+                "    all matches found, removing old rms_job_run entries ({:d})".format(
+                    _to_del.count()
+                )
+            )
+            _to_del.delete()
+            _matched = 0
+            for _dict in _dict_list:
+                _matched += self._feed_qacct(_dict, force=True)
         return _found, _matched
 
-    def _feed_qacct(self, in_dict):
+    def _feed_qacct(self, in_dict, force=True):
+        # force = True when all missing entries are found
         _matched = 0
+        # _dbg = in_dict["jobnumber"] == 18703
         if not in_dict["start_time"] or not in_dict["end_time"]:
             # start or end time not set, forget it (crippled entry)
             return _matched
@@ -349,8 +371,7 @@ class AccountingProcess(threading_tools.process_obj):
             # self.log("got {:d} ({})".format(_cur_job_run.idx, _cur_job_run.qacct_called))
             if _cur_job_run.qacct_called:
                 if _cur_job_run.start_time and _cur_job_run.end_time:
-                    if _cur_job_run.start_time == in_dict["start_time"] and \
-                            _cur_job_run.end_time == in_dict["end_time"]:
+                    if _cur_job_run.start_time == in_dict["start_time"] and _cur_job_run.end_time == in_dict["end_time"]:
                         # pure duplicate
                         # self.log("dup")
                         _cur_job_run = None
@@ -509,6 +530,8 @@ class AccountingProcess(threading_tools.process_obj):
                 _latest_run = _job.close_job_run()
                 if _latest_run:
                     self.log("closed job_run {} (ext)".format(unicode(_latest_run)))
+                self.send_pool_message("job_ended", _job.jobid, _job.taskid)
+
         else:
             _pe = self._get_object("rms_pe", _config["pe"])
             _job = self._get_job(

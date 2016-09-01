@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2013-2015 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2013-2016 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of collectd-init
 #
@@ -274,11 +274,11 @@ class KeyListCom(BaseCom):
                     cur_mv = mvect_entry(key_el.attrib.pop("name"), info="", **key_el.attrib)
                     _list.append((host.attrib["name"], cur_mv))
                     max_num_keys = max(max_num_keys, cur_mv.num_keys)
-            for h_name, entry in _list:
+            for k_num, (h_name, entry) in enumerate(_list):
                 out_f.append(
                     [
                         logging_tools.form_entry(h_name, header="device")
-                    ] + entry.get_form_entry(num_key, max_num_keys)
+                    ] + entry.get_form_entry(k_num, max_num_keys)
                 )
             print unicode(out_f)
         else:

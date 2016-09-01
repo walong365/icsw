@@ -40,7 +40,7 @@ def client_code(global_config):
             print "{:<30s} {:<20s} {}".format(com, mod.split(".")[-1], _str)
     conn_str = "tcp://{}:{:d}".format(
         global_config["HOST"],
-        global_config["COM_PORT"]
+        global_config["COMMAND_PORT"]
     )
     arg_stuff = global_config.get_argument_stuff()
     arg_list = arg_stuff["arg_list"]
@@ -49,7 +49,7 @@ def client_code(global_config):
         srv_com = server_command.srv_command(command=com_name)
         for src_key, dst_key in [
             ("HOST", "host"),
-            ("COM_PORT", "port")
+            ("COMMAND_PORT", "port")
         ]:
             srv_com[dst_key] = global_config[src_key]
         com_struct = modules.command_dict[com_name]
@@ -77,7 +77,7 @@ def client_code(global_config):
                 immediate=True,
             )
             if result:
-                if global_config["COM_PORT"] == InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True):
+                if global_config["COMMAND_PORT"] == InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True):
                     error_result = result.xpath(".//ns:result[@state != '0']", smart_strings=False)
                     if error_result:
                         error_result = error_result[0]

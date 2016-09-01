@@ -4,143 +4,148 @@
 
 
 <script type="text/ng-template" id="icsw.device.asset.overview">
-    <uib-alert type="warning" ng-show="!struct.data_loaded">Fetching data from server ...</uib-alert>
+    <div class="container-fluid">
+        <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching data from server ...</div>
 
-    <div ng-if="struct.data_loaded">
-        <h1>Asset System Overview</h1>
+        <div ng-if="struct.data_loaded">
+            <h1>
+                Asset System Overview
+                <span ng-show="struct.reloading" class="text-warning">Updating data from server...</span>
+            </h1>
 
-        <uib-tabset>
-            <uib-tab>
-                <uib-tab-heading>
-                    <span>Overview</span>
-                </uib-tab-heading>
-                <h2>Overview of Runs and Packages</h2>
-                <uib-tabset>
-                    <uib-tab>
-                        <uib-tab-heading>
-                            <span>Scheduled Runs ({{ struct.schedule_items.length }})</span>
-                        </uib-tab-heading>
-                        <icsw-asset-scheduled-runs-table>
-                        </icsw-asset-scheduled-runs-table>
-                    </uib-tab>
-                    <uib-tab>
-                        <uib-tab-heading>
-                            <span>AssetRuns ({{ struct.asset_runs.length }})</span>
-                        </uib-tab-heading>
-                        <icsw-asset-asset-runs-table
-                            icsw-asset-run-list="struct.asset_runs"
-                        ></icsw-asset-asset-runs-table>
-                        <div ng-if="struct.show_changeset">
-                            <h2>
-                                <span>
-                                    Asset Changes
-                                </span>
-                            </h2>
+            <uib-tabset>
+                <uib-tab>
+                    <uib-tab-heading>
+                        <span>Overview</span>
+                    </uib-tab-heading>
+                    <h2>Overview of Runs and Packages</h2>
+                    <uib-tabset>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                <span>Scheduled Runs ({{ struct.schedule_items.length }})</span>
+                            </uib-tab-heading>
+                            <icsw-asset-scheduled-runs-table>
+                            </icsw-asset-scheduled-runs-table>
+                        </uib-tab>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                <span>AssetRuns ({{ struct.asset_runs.length }})</span>
+                            </uib-tab-heading>
+                            <icsw-asset-asset-runs-table
+                                icsw-asset-run-list="struct.asset_runs"
+                            ></icsw-asset-asset-runs-table>
+                            <div ng-if="struct.show_changeset">
+                                <h2>
+                                    <span>
+                                        Asset Changes
+                                    </span>
+                                </h2>
 
-                            <div ng-if="struct.added_changeset.length > 0">
-                                <span>
-                                    Added:
-                                </span>
-                                <ul>
-                                    <li ng-repeat="obj in struct.added_changeset track by $index">
-                                       {{ obj }}
-                                    </li>
-                                </ul>
+                                <div ng-if="struct.added_changeset.length > 0">
+                                    <span>
+                                        Added:
+                                    </span>
+                                    <ul>
+                                        <li ng-repeat="obj in struct.added_changeset track by $index">
+                                           {{ obj }}
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div ng-if="struct.added_changeset.length == 0">
+                                    <span>
+                                        Added: nothing
+                                    </span>
+                                </div>
+
+                                <div ng-if="struct.removed_changeset.length > 0">
+                                    <span>
+                                        Removed:
+                                    </span>
+                                    <ul>
+                                        <li ng-repeat="obj in struct.removed_changeset track by $index">
+                                            {{ obj }}
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div ng-if="struct.removed_changeset.length == 0">
+                                    <span>
+                                        Removed: nothing
+                                    </span>
+                                </div>
                             </div>
-                            <div ng-if="struct.added_changeset.length == 0">
-                                <span>
-                                    Added: nothing
-                                </span>
-                            </div>
+                        </uib-tab>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                <span>Known Packages ({{ struct.package_tree.list.length }})</span>
+                            </uib-tab-heading>
 
-                            <div ng-if="struct.removed_changeset.length > 0">
-                                <span>
-                                    Removed:
-                                </span>
-                                <ul>
-                                    <li ng-repeat="obj in struct.removed_changeset track by $index">
-                                        {{ obj }}
-                                    </li>
-                                </ul>
-                            </div>
-                            <div ng-if="struct.removed_changeset.length == 0">
-                                <span>
-                                    Removed: nothing
-                                </span>
-                            </div>
-                        </div>
-                    </uib-tab>
-                    <uib-tab>
-                        <uib-tab-heading>
-                            <span>Known Packages ({{ struct.package_tree.list.length }})</span>
-                        </uib-tab-heading>
-
-                        <icsw-asset-known-packages
-                            icsw-asset-package-tree="struct.package_tree"
-                        ></icsw-asset-known-packages>
-                    </uib-tab>
-                </uib-tabset>
-            </uib-tab>
+                            <icsw-asset-known-packages
+                                icsw-asset-package-tree="struct.package_tree"
+                            ></icsw-asset-known-packages>
+                        </uib-tab>
+                    </uib-tabset>
+                </uib-tab>
 
 
-            <uib-tab ng-repeat="dev in struct.devices">
-                <uib-tab-heading>
-                    {{ dev.full_name }}
-                </uib-tab-heading>
+                <uib-tab ng-repeat="dev in struct.devices">
+                    <uib-tab-heading>
+                        {{ dev.full_name }}
+                    </uib-tab-heading>
 
-                <h3>
-                    <span ng-show="dev.assetrun_set.length">
-                        AssetRun Overview for {{ dev.full_name }}
-                    </span>
-                    <span ng-show="!dev.assetrun_set.length">
-                        No AssetRuns for this device.
-                    </span>
-                    <span ng-show="struct.num_selected">
-                        , diff ({{ struct.num_selected }} selected)
-                        <icsw-tools-button ng-if="struct.num_selected == 2" type="reload" size="xs" ng-click="assetchangeset(dev)" value="Asset Changeset"/>
-                    </span>
-                </h3>
-
-
-                <button type="button" class="btn btn-xs btn-warning" data-style="slide-left" ladda="dev.$$asset_run" ng-click="run_now($event, dev)">Run now</button>
-
-                <icsw-asset-asset-runs-table
-                    icsw-asset-run-list="dev.assetrun_set"
-                ></icsw-asset-asset-runs-table>
-                <div ng-if="dev.show_changeset">
-                    <h2>
-                        <span>
-                            Asset Changes
+                    <h3>
+                        <span ng-show="dev.assetrun_set.length">
+                            AssetRun Overview for device '{{ dev.full_name }}' (group {{ dev.device_group_name }})
                         </span>
-                    </h2>
+                        <span ng-show="!dev.assetrun_set.length">
+                            No AssetRuns for this device.
+                        </span>
+                        <span ng-show="struct.num_selected">
+                            , diff ({{ struct.num_selected }} selected)
+                            <icsw-tools-button ng-if="struct.num_selected == 2" type="reload" size="xs" ng-click="assetchangeset(dev)" value="Asset Changeset"/>
+                        </span>
+                    </h3>
 
-                    <span>
-                        Added:
-                    </span>
-                   <ul>
-                       <li ng-repeat="obj in dev.added_changeset">
-                           {{ obj }}
-                       </li>
-                   </ul>
 
-                    <span>
-                        Removed:
-                    </span>
-                    <ul>
-                        <li ng-repeat="obj in dev.removed_changeset">
-                            {{ obj }}
-                        </li>
-                    </ul>
-                </div>
+                    <button type="button" class="btn btn-xs btn-warning" data-style="slide-left" ladda="dev.$$asset_run" ng-click="run_now($event, dev)">Run now</button>
 
-            </uib-tab>
-        </uib-tabset>
+                    <icsw-asset-asset-runs-table
+                        icsw-asset-run-list="dev.assetrun_set"
+                    ></icsw-asset-asset-runs-table>
+                    <div ng-if="dev.show_changeset">
+                        <h2>
+                            <span>
+                                Asset Changes
+                            </span>
+                        </h2>
+
+                        <span>
+                            Added:
+                        </span>
+                       <ul>
+                           <li ng-repeat="obj in dev.added_changeset">
+                               {{ obj }}
+                           </li>
+                       </ul>
+
+                        <span>
+                            Removed:
+                        </span>
+                        <ul>
+                            <li ng-repeat="obj in dev.removed_changeset">
+                                {{ obj }}
+                            </li>
+                        </ul>
+                    </div>
+
+                </uib-tab>
+            </uib-tabset>
+        </div>
     </div>
 </script>
 
 <script type="text/ng-template" id="icsw.asset.scheduled.runs.table">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         ng-show="struct.schedule_items.length > 0"
         st-table="scheduleitems_shown"
@@ -152,7 +157,7 @@
                 <th st-sort="planned_time">Planned Time</th>
                 <th st-sort="ds_name">Dispatch Setting Name</th>
                 <th>
-                    <button type="button" ng-csv="filterSchedArrayForCsvExport(scheduleitems_shown)" csv-header="['Device', 'Planned Time', 'Dispatch Setting Name']" filename="test.csv">Export to CSV</button>
+                    <icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs">Export to CSV</icsw-tools-button>
                 </th>
             </tr>
             <tr>
@@ -200,70 +205,77 @@
     </h3>
 
     <table
-        class="table table-condensed table-hover table-striped"
-        style="width:auto;"
+        class="table table-condensed table-striped"
         ng-show="asset_run_list.length > 0"
         st-table="assetruns_shown"
         st-safe-src="asset_run_list"
         st-set-filter="assetRunFilter"
     >
         <thead>
-            <tr>
-                <th st-sort="$$run_type">Asset Type</th>
-                <th st-sort="asset_batch">Batch ID</th>
-                <th st-sort="$$run_start_day">start Day</th>
-                <th st-sort="$$run_start_hour">Start Hour</th>
-                <th st-sort="$$run_end_day">End Day</th>
-                <th st-sort="$$run_end_hour">End Hour</th>
-                <th st-sort="run_duration">Run Time</th>
-                <th st-sort="device.$$full_name">Device</th>
-                <th st-sort="$$run_status">Status</th>
-                <th st-sort="$$run_result">Result</th>
-                <th>#Assets</th>
-                <th colspan="2">Action</th>
-                <th><button type="button" ng-csv="filterAssetRunArrayForCsvExport(assetruns_shown)" csv-header="['Run Type', 'Run Start', 'Run End', 'Device', 'Asset']" filename="test.csv">Export to CSV</button></th>
-            </tr>
-            <tr>
-                <th colspan="1">
-                    <input st-search="$$run_type" placeholder="filter by run type" class="input-sm form-control" type="search"/>
-                </th>
-                <th></th>
-                <th colspan="1">
-                    <input st-search="$$run_start_day" placeholder="start day" class="input-sm form-control icsw-input-100px" type="search"/>
-                </th>
-                <th colspan="1">
-                    <input st-search="$$run_start_hour" placeholder="start time" class="input-sm form-control icsw-input-100px" type="search"/>
-                </th>
-                <th colspan="1">
-                    <input st-search="$$run_end_day" placeholder="end day" class="input-sm form-control icsw-input-100px" type="search"/>
-                </th>
-                <th colspan="1">
-                    <input st-search="$$run_end_hour" placeholder="end time" class="input-sm form-control icsw-input-100px" type="search"/>
-                </th>
-                <th colspan="1">
-                    <input st-search="run_duration" placeholder="duration" class="input-sm form-control icsw-input-50px" type="search"/>
-                </th>
-                <th colspan="1">
-                    <input st-search="$$device.full_name" placeholder="filter by device_name" class="input-sm form-control" type="search"/>
-                </th>
-                <th colspan="1">
-                    <input st-search="$$run_status" placeholder="filter by run status" class="input-sm form-control" type="search"/>
-                </th>
-                <th colspan="1">
-                    <input st-search="$$run_result" placeholder="filter by run result" class="input-sm form-control" type="search"/>
-                </th>
-                <th colspan="4">&nbsp;</th>
-            </tr>
-            <tr>
+        <tr>
                 <td colspan="99">
-                    <div
+                    <icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs" class="pull-xs-left">Export to CSV</icsw-tools-button>
+                    <icsw-tools-button  type="modify" value="Download .xlsx" ng-click="downloadXlsx()" size="xs" class="pull-xs-left">Export to CSV</icsw-tools-button>
+                    <icsw-tools-button  type="modify" value="Download .pdf" ng-click="downloadPdf()" size="xs" class="pull-xs-left">Export to PDF</icsw-tools-button>
+                    <span
                         icsw-tools-pagination
-                        st-items-by-page="10"
+                        st-items-by-page="20"
                         st-displayed-pages="11"
                         possible-items-by-page="10,20,50,100"
-                    ></div>
+                        class="pull-xs-left"
+                    ></span>
                 </td>
             </tr>
+            <tr>
+                <th st-sort="$$run_type">Asset Type</th>
+                <th st-sort="asset_batch" class="text-center">Batch ID</th>
+                <th st-sort="$$run_start_day" class="text-right">start Day</th>
+                <th st-sort="$$run_start_hour" class="text-right">Start Hour</th>
+                <th st-sort="$$run_end_day" class="text-right">End Day</th>
+                <th st-sort="$$run_end_hour" class="text-right">End Hour</th>
+                <th st-sort="run_duration" class="text-right">Run Time</th>
+                <th st-sort="device.$$full_name">Device</th>
+                <th st-sort="$$run_status" class="text-center">Status</th>
+                <th st-sort="$$run_result" class="text-center">Result</th>
+                <th class="text-right">Error</th>
+                <th class="text-right">#Assets</th>
+                <th colspan="2">Actions</th>
+            </tr>
+            <tr>
+                <th>
+                    <input st-search="$$run_type" placeholder="filter by asset type" class="input-sm form-control" type="search"/>
+                </th>
+                <th></th>
+                <th class="text-right">
+                    <input st-search="$$run_start_day" placeholder="start day" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
+                </th>
+                <th class="text-right">
+                    <input st-search="$$run_start_hour" placeholder="start time" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
+                </th>
+                <th class="text-right">
+                    <input st-search="$$run_end_day" placeholder="end day" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
+                </th>
+                <th class="text-right">
+                    <input st-search="$$run_end_hour" placeholder="end time" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
+                </th>
+                <th class="text-right">
+                    <input st-search="run_duration" placeholder="duration" class="input-sm form-control icsw-input-50px" type="search" style="display:inline-block;"/>
+                </th>
+                <th class="text-right">
+                    <input st-search="$$device.full_name" placeholder="filter by device_name" class="input-sm form-control" type="search"/>
+                </th>
+                <th>
+                    <input st-search="$$run_status" placeholder="filter by run status" class="input-sm form-control" type="search"/>
+                </th>
+                <th>
+                    <input st-search="$$run_result" placeholder="filter by run result" class="input-sm form-control" type="search"/>
+                </th>
+                <th>
+                    &nbsp;
+                </th>
+                <th colspan="2">&nbsp;</th>
+            </tr>
+
         </thead>
         <tbody>
             <tr ng-class="{'success': assetrun.$$selected}" ng-repeat-start="assetrun in assetruns_shown track by $index">
@@ -271,17 +283,18 @@
                 <td class="text-center">
                     <span class="label label-success">{{ assetrun.asset_batch }}</span>
                 </td>
-                <td class="text-center">{{ assetrun.$$run_start_day }}</td>
-                <td class="text-center">{{ assetrun.$$run_start_hour }}</td>
-                <td class="text-center">{{ assetrun.$$run_end_day }}</td>
-                <td class="text-center">{{ assetrun.$$run_end_hour }}</td>
+                <td class="text-right">{{ assetrun.$$run_start_day }}</td>
+                <td class="text-right">{{ assetrun.$$run_start_hour }}</td>
+                <td class="text-right">{{ assetrun.$$run_end_day }}</td>
+                <td class="text-right">{{ assetrun.$$run_end_hour }}</td>
                 <td class="text-right">{{ assetrun.run_duration }}</td>
-                <td class="text-center">{{ assetrun.$$device.full_name }}</td>
+                <td class="text-left">{{ assetrun.$$device.full_name }}</td>
                 <td class="text-center" ng-class="assetrun.$$run_status_class">{{ assetrun.$$run_status }}</td>
                 <td class="text-center" ng-class="assetrun.$$run_result_class">{{ assetrun.$$run_result }}</td>
+                <td ng-class="assetrun.$$error_class">{{ assetrun.$$error_class }} {{ assetrun.error_string }} {{ assetrun.interpret_error_string }}</td>
                 <td class="text-right">{{ assetrun.$$num_results }}</td>
                 <td>
-                    <icsw-tools-button ng-if="assetrun.$$num_results" size="xs" type="show" is-show="assetrun.$$expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
+                    <icsw-tools-button ng-if="assetrun.$$num_results" size="xs" type="show" is-show="!assetrun.$$expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
                 </td>
                 <td>
                     <icsw-tools-button type="modify" size="xs" value="select" ng-click="select_assetrun($event, assetrun)"></icsw-tools-button>
@@ -292,65 +305,6 @@
                     <icsw-asset-run-details
                         icsw-asset-run="assetrun"
                     ></icsw-asset-run-details>
-                    <!--
-                    <table
-                        class="table table-condensed table-hover table-bordered"
-                        style="width:auto;"
-                        st-safe-src="assetrun.assets"
-                        st-table="assets_shown"
-                        st-set-filter="assetRunFilter"
-                    >
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Hardware'">
-                            <th>Type</th>
-                            <th>Info Dict</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Hardware'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset[0] }}</td>
-                            <td>{{ asset[1] }}</td>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'License'">
-                            <th>Name</th>
-                            <th>License Key</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'License'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset[0] }}</td>
-                            <td>{{ asset[1] }}</td>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Update'">
-                            <th>Name</th>
-                            <th>Install Date</th>
-                            <th>Install Status</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Update'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset[0] }}</td>
-                            <td>{{ asset[1] }}</td>
-                            <td>{{ asset[2] }}</td>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Software version'">
-                            <th>Name</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Software version'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset }}</td>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Process'">
-                            <th>Name</th>
-                            <th>Pid</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Process'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset[0] }}</td>
-                            <td>{{ asset[1] }}</td>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Pending update'">
-                            <th>Name</th>
-                            <th>Version</th>
-                            <th>Optional</th>
-                        </tr>
-                        <tr ng-if="resolve_asset_type(assetrun.run_type) == 'Pending update'" ng-repeat="asset in assets_shown track by $index">
-                            <td>{{ asset[0] }}</td>
-                            <td>{{ asset[1] }}</td>
-                            <td>{{ asset[2] }}</td>
-                        </tr>
-                    </table> -->
                 </td>
             </tr>
         </tbody>
@@ -363,7 +317,7 @@
     </h3>
 
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped"
         style="width:auto;"
         ng-if="package_tree.list.length > 0"
         st-table="packages_shown"
@@ -371,22 +325,6 @@
         st-set-filter="packageFilter"
     >
         <thead>
-            <tr>
-                <th st-sort="name">Name</th>
-                <th st-sort="$$package_type">Package Type</th>
-                <th st-sort="$$num_versions">#Versions</th>
-                <th st-sort="$$created">Created</th>
-                <th><button type="button" ng-csv="filterPackageArrayForCsvExport(packages_shown)" csv-header="['Package Name', 'Package Type', 'Version', 'Release', 'Size']" filename="test.csv">Export to CSV</button></th>
-            </tr>
-            <tr>
-                <th colspan="1">
-                    <input st-search="name" placeholder="filter by name" class="input-sm form-control" type="search"/>
-                </th>
-                <th colspan="1">
-                    <input st-search="$$package_type" placeholder="filter by package type" class="input-sm form-control" type="search"/>
-                </th>
-                <th colspan="2"></th>
-            </tr>
             <tr>
                 <td colspan="99">
                     <div
@@ -397,6 +335,23 @@
                     ></div>
                 </td>
             </tr>
+            <tr>
+                <th st-sort="name">Name</th>
+                <th st-sort="$$package_type">Package Type</th>
+                <th st-sort="$$num_versions" class="text-right">#Versions</th>
+                <th st-sort="$$created" class="text-right">Created</th>
+                <th><icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs">Export to CSV</icsw-tools-button></th>
+            </tr>
+            <tr>
+                <th colspan="1">
+                    <input st-search="name" placeholder="filter by name" class="input-sm form-control" type="search"/>
+                </th>
+                <th colspan="1">
+                    <input st-search="$$package_type" placeholder="filter by package type" class="input-sm form-control" type="search"/>
+                </th>
+                <th colspan="3">&nbsp;</th>
+            </tr>
+
         </thead>
         <tbody>
             <tr ng-repeat-start="package in packages_shown">
@@ -405,15 +360,14 @@
                 <td class="text-center">{{ package.$$num_versions }}</td>
                 <td>{{ package.$$created }}</td>
                 <td>
-                    <icsw-tools-button size="xs" type="show" is-show="package.$$expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
+                    <icsw-tools-button size="xs" type="show" is-show="!package.$$expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
                 </td>
             </tr>
 
             <tr ng-repeat-end ng-if="package.$$expanded">
                 <td colspan="99">
                     <table
-                        class="table table-condensed table-hover table-bordered"
-                        style="width:auto;"
+                        class="table table-condensed table-striped simple-border "
                         st-safe-src="package.assetpackageversion_set"
                         st-table="package.$$versions_shown"
                     >
@@ -431,8 +385,8 @@
                             <th>Version</th>
                             <th>Release</th>
                             <th>Comment</th>
-                            <th>Size</th>
-                            <th>Created</th>
+                            <th class="text-right">Size</th>
+                            <th class="text-right">Created</th>
                             <th></th>
                         </tr>
                         <tr ng-repeat="obj in package.$$versions_shown">
@@ -440,7 +394,7 @@
                             <td>{{ obj.release }}</td>
                             <td>{{ obj.info }}</td>
                             <td class="text-right">{{ obj.$$size }}</td>
-                            <td class="text-center">{{ obj.$$created }}</td>
+                            <td class="text-right">{{ obj.$$created }}</td>
                             <td>
                                 <icsw-tools-button ng-if="false" type="reload" size="xs" ng-click="select_devices($event, obj)" value="Select Devices"/>
                             </td>
@@ -453,12 +407,12 @@
 </script>
 
 <script type="text/ng-template" id="icsw.asset.details.na">
-    <uib-alert type="warning">Not Implemented (AssetType is {{ asset_run.$$run_type }})</uib-alert>
+    <div uib-alert class="alert-warning">Not Implemented (AssetType is {{ asset_run.$$run_type }})</div>
 </script>
 
 <script type="text/ng-template" id="icsw.asset.details.package">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets"
         st-table="assets_shown"
@@ -479,17 +433,17 @@
                 <th st-sort="version">Version</th>
                 <th st-sort="release">Release</th>
                 <th st-sort="size">Size</th>
-                <th st-sort="$$created">Install Date</th>
+                <th st-sort="$$package.install_time">Installation Time</th>
                 <th st-sort="$$package.$$package_type">Package Type</th>
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="vers in assets_shown">
+            <tr ng-repeat="vers in assets_shown track by $index">
                 <td>{{ vers.$$package.name }}</td>
                 <td class="text-right">{{ vers.version }}</td>
                 <td>{{ vers.release }}</td>
                 <td class="text-right">{{ vers.$$size }}</td>
-                <td>{{ vers.$$created }}</td>
+                <td>{{ vers.$$install_time }}</td>
                 <td class="text-right">{{ vers.$$package.$$package_type }}</td>
             </tr>
         </tbody>
@@ -498,7 +452,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.hardware">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets"
         st-table="assets_shown"
@@ -534,7 +488,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.process">
     <table
-        class="table table-condensed table-hover table-striped"
+        class="table table-condensed table-striped simple-border"
         style="width:auto;"
         st-safe-src="asset_run.$$assets"
         st-table="assets_shown"
@@ -559,6 +513,406 @@
             <tr ng-repeat="proc in assets_shown">
                 <td>{{ proc.pid }}</td>
                 <td>{{ proc.name }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.asset.details.licenses">
+    <table
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$assets"
+        st-table="assets_shown"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="name">Name</th>
+                <th st-sort="license_key">License key</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="lic in assets_shown">
+                <td>{{ lic.name }}</td>
+                <td>{{ lic.license_key }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.asset.details.installed.updates">
+    <table
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$assets"
+        st-table="assets_shown"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="name">Name</th>
+                <th>Installdate</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="up in assets_shown">
+                <td>{{ up.name }}</td>
+                <td>{{ up.install_date }}</td>
+                <td>{{ up.status }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.asset.details.pending.updates">
+    <table
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$assets"
+        st-table="assets_shown"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="name">Name</th>
+                <th>Version</th>
+                <th>Optional</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="up in assets_shown">
+                <td>{{ up.name }}</td>
+                <td>{{ up.new_version }}</td>
+                <td>{{ up.optional }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.asset.details.pcientries">
+    <table
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$assets"
+        st-table="assets_shown"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="domain">Domain</th>
+                <th st-sort="bus">Bus</th>
+                <th st-sort="slot">Slot</th>
+                <th st-sort="func">Func</th>
+                <th>Position</th>
+                <th>Subclass</th>
+                <th>Vendor</th>
+                <th>Device</th>
+                <th>Revision</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="pci in assets_shown">
+                <td class="text-right">{{ pci.domain }}</td>
+                <td class="text-right">{{ pci.bus }}</td>
+                <td class="text-right">{{ pci.slot }}</td>
+                <td class="text-right">{{ pci.func }}</td>
+                <td class="text-right">{{ pci.$$position }}</td>
+                <td>{{ pci.subclassname }}</td>
+                <td>{{ pci.vendorname }}</td>
+                <td>{{ pci.devicename }}</td>
+                <td class="text-center">{{ pci.revision }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.asset.details.dmihandles">
+    <h3>
+        DMI Version {{ asset_run.$$assets.version }} (size: {{ asset_run.$$assets.size }})
+    </h3>
+    <table
+        ng-if="asset_run.$$assets"
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$assets.assetdmihandle_set"
+        st-table="assets_shown"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th class="text-right" st-sort="handle">handle</th>
+                <th class="text-right" st-sort="dmi_type">Type</th>
+                <th>Header</th>
+                <th class="text-right">#Values</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="handle in assets_shown">
+                <td class="text-right">{{ handle.handle }}</td>
+                <td class="text-right">{{ handle.dmi_type }}</td>
+                <td>{{ handle.header }}</td>
+                <td class="text-center">{{ handle.length }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+<script type="text/ng-template" id="icsw.asset.details.hw_entry">
+    <h3>
+        Installed Memory Module(s)
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$memory_entries"
+        st-table="assets_shown_memory_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Banklabel</th>
+                <th>Formfactor</th>
+                <th>Memorytype</th>
+                <th>Manufacturer</th>
+                <th>Capacity</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown_memory_entries">
+                <td>{{ node.banklabel }}</td>
+                <td>{{ node.formfactorname }}</td>
+                <td>{{ node.memorytypename }}</td>
+                <td>{{ node.manufacturer }}</td>
+                <td>{{ node.$$capacity }} MiB</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>
+        Installed Cpu(s)
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$cpu_entries"
+        st-table="assets_shown_cpu_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>CPU Name/Type</th>
+                <th># Cores</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown_cpu_entries">
+                <td>{{ node.cpuname }}</td>
+                <td>{{ node.numberofcores }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>
+        Installed GPU(s)
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$gpu_entries"
+        st-table="assets_shown_gpu_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>GPU Name/Type</th>
+                <th>Driver Version</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown_gpu_entries">
+                <td>{{ node.gpuname }}</td>
+                <td>{{ node.driverversion }}</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>
+        Installed Harddrive(s)
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$hdd_entries"
+        st-table="assets_shown_hdd_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>HDD Name/Type</th>
+                <th>Serialnumber</th>
+                <th>Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown_hdd_entries">
+                <td>{{ node.name }}</td>
+                <td>{{ node.serialnumber }}</td>
+                <td>{{ node.$$size }} GiB</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>
+        Partition Overview
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$partition_entries"
+        st-table="assets_shown_partition_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Name</th>
+                <th>Size</th>
+                <th>Free</th>
+                <th>Free %</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown_partition_entries">
+                <td>{{ node.name }}</td>
+                <td>{{ node.$$size }} GiB</td>
+                <td>{{ node.$$free }} GiB</td>
+                <td>{{ node.$$percentage_free }} %</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h3>
+        Installed Display(s)
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        style="width:auto;"
+        st-safe-src="asset_run.$$display_entries"
+        st-table="assets_shown_display_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Name</th>
+                <th>Type</th>
+                <th>Manufacturer</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="node in assets_shown_display_entries">
+                <td>{{ node.name }}</td>
+                <td>{{ node.type }}</td>
+                <td>{{ node.manufacturer }}</td>
             </tr>
         </tbody>
     </table>

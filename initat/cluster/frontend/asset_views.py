@@ -20,27 +20,43 @@
 
 """ asset views """
 
+import csv
 import datetime
 import json
+import logging
+import tempfile
+import base64
 
 import pytz
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from initat.cluster.backbone.models.functions import can_delete_obj, get_change_reset_list
+from django.db.models import Q, Count, Case, When, IntegerField, Sum
 from django.http import HttpResponse
-from django.db.models import Q, Count
 from django.utils import timezone
-
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework.generics import RetrieveAPIView, ListAPIView
+from rest_framework import viewsets, status
 from rest_framework.response import Response
-from rest_framework import viewsets
-from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models.asset import AssetPackage, AssetRun, AssetPackageVersion, \
-    AssetType
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
+
+from initat.cluster.frontend.report_views import PDFReportGenerator, generate_csv_entry_for_assetrun
+from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
+    AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
+    AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
-    AssetPackageSerializer, AssetRunOverviewSerializer, AssetProcessEntrySerializer
-from initat.cluster.frontend.rest_views import rest_logging
+    AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
+    StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer
+
+try:
+    from openpyxl import Workbook
+    from openpyxl.writer.excel import save_virtual_workbook
+except ImportError:
+    Workbook = None
+
+
+logger = logging.getLogger(__name__)
 
 
 class run_assetrun_for_device_now(View):
@@ -65,7 +81,14 @@ class get_devices_for_asset(View):
     def post(self, request, *args, **kwargs):
         apv = AssetPackageVersion.objects.get(pk=int(request.POST['pk']))
 
-        return HttpResponse(json.dumps({'devices': list(set([ar.device.pk for ar in apv.assetrun_set.all()]))}), content_type="application/json")
+        return HttpResponse(
+            json.dumps(
+                {
+                    'devices': list(set([ar.asset_batch.device.pk for ar in apv.assetrun_set.all()]))
+                }
+            ),
+            content_type="application/json"
+        )
 
 
 class get_assetrun_diffs(View):
@@ -172,14 +195,6 @@ class get_assets_for_asset_run(View):
                     }
                 )
             )
-        elif ar.run_type == AssetType.SOFTWARE_VERSION:
-            return HttpResponse(
-                json.dumps(
-                    {
-                        'assets': [str(basv) for basv in ar.generate_assets_no_save()]
-                    }
-                )
-            )
         elif ar.run_type == AssetType.PROCESS:
             return HttpResponse(
                 json.dumps(
@@ -232,29 +247,56 @@ class ScheduledRunViewSet(viewsets.ViewSet):
 class AssetRunsViewSet(viewsets.ViewSet):
     def list_all(self, request):
         if "pks" in request.query_params:
-            queryset = AssetRun.objects.filter(
-                Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
-            )
+           queryset = AssetRun.objects.filter(
+               Q(asset_batch__device__in=json.loads(request.query_params.getlist("pks")[0]))
+           )
         else:
             queryset = AssetRun.objects.all()
-        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=2)))
+
+        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=30)))
+
         queryset = queryset.order_by(
             # should be created, FIXME later
             "-idx",
-            "-run_start_time",
-        ).annotate(
-            num_packages=Count("packages"),
-            num_hardware=Count("assethardwareentry"),
-            num_processes=Count("assetprocessentry"),
-        )
+            "-run_start_time")
+        # ).annotate(
+        #     num_packages=Count("asset_batch__packages"),
+        #     num_hardware=Count("assethardwareentry"),
+        #     num_processes=Count("assetprocessentry"),
+        #     num_licenses=Count("assetlicenseentry"),
+        #     num_updates=Sum(Case(When(assetupdateentry__installed=True, then=1), output_field=IntegerField(), default=0)),
+        #     num_pending_updates=Sum(Case(When(assetupdateentry__installed=False, then=1), output_field=IntegerField(), default=0)),
+        #     num_pci_entries=Count("assetpcientry"),
+        #     num_asset_handles=Count("assetdmihead__assetdmihandle"),
+        #     num_hw_entries=Sum("asset_batch__cpus")
+        # )
+
+        for ar in queryset:
+            ar.num_packages = len(ar.asset_batch.packages.all())
+            ar.num_hardware = len(ar.assethardwareentry_set.all())
+            ar.num_processes = len(ar.assetprocessentry_set.all())
+            ar.num_licenses = len(ar.assetlicenseentry_set.all())
+            ar.num_updates = len(ar.assetupdateentry_set.all())
+            ar.num_pending_updates = len(ar.assetupdateentry_set.all())
+            ar.num_pci_entries = len(ar.assetpcientry_set.all())
+            ar.num_asset_handles = 0
+            for dmihead in ar.assetdmihead_set.all():
+                ar.num_asset_handles += len(dmihead.assetdmihandle_set.all())
+            ar.num_hw_entries = len(ar.asset_batch.cpus.all())
+
         serializer = AssetRunOverviewSerializer(queryset, many=True)
+
         return Response(serializer.data)
 
     def get_details(self, request):
         queryset = AssetRun.objects.prefetch_related(
-            "packages",
+            "asset_batch__packages",
             "assethardwareentry_set",
             "assetprocessentry_set",
+            "assetupdateentry_set",
+            "assetlicenseentry_set",
+            "assetpcientry_set",
+            "assetdmihead_set__assetdmihandle_set__assetdmivalue_set",
         ).filter(
             Q(pk=request.query_params["pk"])
         )
@@ -263,6 +305,7 @@ class AssetRunsViewSet(viewsets.ViewSet):
 
 
 class AssetPackageViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
     def get_all(self, request):
         queryset = AssetPackage.objects.all().prefetch_related(
             "assetpackageversion_set"
@@ -272,3 +315,337 @@ class AssetPackageViewSet(viewsets.ViewSet):
         )
         serializer = AssetPackageSerializer(queryset, many=True)
         return Response(serializer.data)
+
+
+class StaticAssetTemplateViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
+    def get_all(self, request):
+        queryset = StaticAssetTemplate.objects.all().prefetch_related(
+            "staticassettemplatefield_set"
+        )
+        [_template.check_ordering() for _template in queryset]
+        serializer = StaticAssetTemplateSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @method_decorator(login_required)
+    def get_refs(self, request):
+        queryset = StaticAsset.objects.all().prefetch_related(
+            "device__domain_tree_node"
+        )
+        _data = []
+        for _entry in queryset:
+            _template_idx = _entry.static_asset_template_id
+            _full_name = _entry.device.full_name
+            _data.append({"static_asset_template": _template_idx, "device_name": _full_name})
+        return Response(StaticAssetTemplateRefsSerializer(_data, many=True).data)
+
+    @method_decorator(login_required)
+    def reorder_fields(self, request):
+        field_1 = StaticAssetTemplateField.objects.get(Q(pk=request.data["field1"]))
+        field_2 = StaticAssetTemplateField.objects.get(Q(pk=request.data["field2"]))
+        _swap = field_1.ordering
+        field_1.ordering = field_2.ordering
+        field_2.ordering = _swap
+        field_1.save(update_fields=["ordering"])
+        field_2.save(update_fields=["ordering"])
+        return Response({"msg": "done"})
+
+    @method_decorator(login_required)
+    def create_template(self, request):
+        new_obj = StaticAssetTemplateSerializer(data=request.data)
+        if new_obj.is_valid():
+            new_obj.save()
+        else:
+            raise ValidationError("New Template is not valid: {}".format(new_obj.errors))
+        return Response(new_obj.data)
+
+    @method_decorator(login_required)
+    def delete_template(self, request, *args, **kwargs):
+        cur_obj = StaticAssetTemplate.objects.get(Q(pk=kwargs["pk"]))
+        can_delete_answer = can_delete_obj(cur_obj)
+        if can_delete_answer:
+            cur_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise ValueError(can_delete_answer.msg)
+
+    @method_decorator(login_required)
+    def create_field(self, request):
+        new_obj = StaticAssetTemplateFieldSerializer(data=request.data)
+        if new_obj.is_valid():
+            new_obj.save()
+        else:
+            raise ValidationError("New TemplateField is not valid: {}".format(new_obj.errors))
+        return Response(new_obj.data)
+
+    @method_decorator(login_required())
+    def delete_field(self, request, **kwargs):
+        cur_obj = StaticAssetTemplateField.objects.get(Q(pk=kwargs["pk"]))
+        can_delete_answer = can_delete_obj(cur_obj)
+        if can_delete_answer:
+            cur_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+            # it makes no sense to return something meaningful because the DestroyModelMixin returns
+            # a 204 status on successful deletion
+            # print "****", "del"
+            # print unicode(cur_obj), resp.data
+            # if not resp.data:
+            #    resp.data = {}
+            # resp.data["_messages"] = [u"deleted '%s'" % (unicode(cur_obj))]
+            # return resp
+        else:
+            raise ValueError(can_delete_answer.msg)
+
+    @method_decorator(login_required())
+    def store_field(self, request, **kwargs):
+        _prev_field = StaticAssetTemplateField.objects.get(Q(pk=kwargs["pk"]))
+        # print _prev_var
+        _cur_ser = StaticAssetTemplateFieldSerializer(
+            StaticAssetTemplateField.objects.get(Q(pk=kwargs["pk"])),
+            data=request.data
+        )
+        # print "*" * 20
+        # print _cur_ser.device_variable_type
+        if _cur_ser.is_valid():
+            _new_field = _cur_ser.save()
+        else:
+            # todo, fixme
+            raise ValidationError("Validation error: {}".format(str(_cur_ser.errors)))
+        resp = _cur_ser.data
+        c_list, r_list = get_change_reset_list(_prev_field, _new_field, request.data)
+        resp = Response(resp)
+        # print c_list, r_list
+        resp.data["_change_list"] = c_list
+        resp.data["_reset_list"] = r_list
+        return resp
+
+
+class copy_static_template(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        src_obj = StaticAssetTemplate.objects.get(Q(pk=request.POST["src_idx"]))
+        create_user = user.objects.get(Q(pk=request.POST["user_idx"]))
+        new_obj = json.loads(request.POST["new_obj"])
+        new_template = src_obj.copy(new_obj, create_user)
+        serializer = StaticAssetTemplateSerializer(new_template)
+        return HttpResponse(
+            json.dumps(serializer.data),
+            content_type="application/json"
+        )
+
+
+class export_assetruns_to_csv(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        tmpfile = tempfile.SpooledTemporaryFile()
+
+        writer = csv.writer(tmpfile)
+
+        ar = AssetRun.objects.get(idx=int(request.POST["pk"]))
+
+        generate_csv_entry_for_assetrun(ar, writer.writerow)
+
+        tmpfile.seek(0)
+        s = tmpfile.read()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'csv': s
+                }
+            )
+        )
+
+
+class export_packages_to_csv(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        tmpfile = tempfile.SpooledTemporaryFile()
+
+        writer = csv.writer(tmpfile)
+
+        apv = AssetPackageVersion.objects.select_related("asset_package").all()
+
+        base_header = ['Name',
+                       'Package Type',
+                       'Version',
+                       'Release',
+                       'Size']
+
+        writer.writerow(base_header)
+
+        for version in apv:
+            row = []
+
+            row.append(version.asset_package.name)
+            row.append(PackageTypeEnum(version.asset_package.package_type).name)
+            row.append(version.version)
+            row.append(version.release)
+            row.append(version.size)
+
+            writer.writerow(row)
+
+        tmpfile.seek(0)
+        s = tmpfile.read()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'csv': s
+                }
+            )
+        )
+
+
+class export_scheduled_runs_to_csv(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        tmpfile = tempfile.SpooledTemporaryFile()
+
+        writer = csv.writer(tmpfile)
+
+        schedule_items = ScheduleItem.objects.select_related("dispatch_setting").all()
+
+        base_header = [
+            'Device Name',
+            'Planned Time',
+            'Dispatch Setting Name'
+        ]
+
+        writer.writerow(base_header)
+
+        for schedule_item in schedule_items:
+            row = []
+
+            row.append(schedule_item.device.full_name)
+            row.append(schedule_item.planned_date)
+            row.append(schedule_item.dispatch_setting.name)
+
+            writer.writerow(row)
+
+        tmpfile.seek(0)
+        s = tmpfile.read()
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'csv': s
+                }
+            )
+        )
+
+
+class export_assetbatch_to_xlsx(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
+
+        assetruns = ab.assetrun_set.all()
+
+        workbook = Workbook()
+        workbook.remove_sheet(workbook.active)
+
+        for ar in assetruns:
+            sheet = workbook.create_sheet()
+            sheet.title = AssetType(ar.run_type).name
+
+            generate_csv_entry_for_assetrun(ar, sheet.append)
+
+        s = save_virtual_workbook(workbook)
+
+        new_s = base64.b64encode(s)
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'xlsx': new_s
+                }
+            )
+        )
+
+class export_assetbatch_to_pdf(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
+
+        settings_dict = {
+            "packages_selected": True,
+            "licenses_selected": True,
+            "installed_updates_selected": True,
+            "avail_updates_selected": True,
+            "hardware_report_selected": True
+        }
+
+        pdf_report_generator = PDFReportGenerator()
+        pdf_report_generator.generate_device_report(ab.device, settings_dict)
+        pdf_report_generator.finalize_pdf()
+        pdf_b64 = base64.b64encode(pdf_report_generator.buffer.getvalue())
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'pdf': pdf_b64
+                }
+            )
+        )
+
+
+class DeviceStaticAssetViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
+    def create_asset(self, request):
+        new_asset = StaticAssetSerializer(data=request.data)
+        if new_asset.is_valid():
+            asset = new_asset.save()
+            asset.add_fields()
+            return Response(StaticAssetSerializer(asset).data)
+        else:
+            raise ValidationError(
+                "cannot create new StaticAsset"
+            )
+
+    @method_decorator(login_required)
+    def delete_asset(self, request, **kwargs):
+        StaticAsset.objects.get(Q(idx=kwargs["pk"])).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    @method_decorator(login_required())
+    def delete_field(self, request, **kwargs):
+        cur_obj = StaticAssetFieldValue.objects.get(Q(pk=kwargs["pk"]))
+        can_delete_answer = can_delete_obj(cur_obj)
+        if can_delete_answer:
+            cur_obj.delete()
+            return Response(status=status.HTTP_204_NO_CONTENT)
+        else:
+            raise ValueError(can_delete_answer.msg)
+
+    @method_decorator(login_required)
+    def add_unused(self, request, **kwargs):
+        _asset = StaticAsset.objects.get(Q(pk=request.data["asset"]))
+        for _field in StaticAssetTemplateField.objects.filter(Q(pk__in=request.data["fields"])):
+            _field.create_field_value(_asset)
+        return Response({"msg": "added"})
+
+
+class device_asset_post(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request, *args, **kwargs):
+        _lut = {_value["idx"]: _value for _value in json.loads(request.POST["asset_data"])}
+        # import pprint
+        # pprint.pprint(_lut)
+        _field_list = StaticAssetFieldValue.objects.filter(
+            Q(pk__in=_lut.keys())
+        ).select_related(
+            "static_asset_template_field"
+        )
+        _all_ok = all(
+            [
+                _field.check_new_value(_lut[_field.pk], request.xml_response) for _field in _field_list
+            ]
+        )
+        if _all_ok:
+            [
+                _field.set_new_value(_lut[_field.pk], request.user) for _field in _field_list
+            ]
+        else:
+            request.xml_response.error("validation problem")

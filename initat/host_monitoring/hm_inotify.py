@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,17 +20,18 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" host-monitoring, inotify thread """
+""" host-monitoring, inotify process """
 
 import fnmatch
 import os
 import stat
 import time
 
+import zmq
+
 from initat.host_monitoring.config import global_config
 from initat.tools import inotify_tools, logging_tools, process_tools, server_command, \
     threading_tools, uuid_tools
-import zmq
 
 
 class HMFileWatcher(object):
@@ -409,6 +410,7 @@ class HMFileWatcher(object):
 
 class HMInotifyProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], context=self.zmq_context)
         self.__watcher = inotify_tools.InotifyWatcher()
         # was INOTIFY_IDLE_TIMEOUT in global_config, now static

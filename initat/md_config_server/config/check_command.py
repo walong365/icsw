@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -42,7 +42,7 @@ class check_command(object):
         self.mccs_id = kwargs.pop("mccs_id", 0)
         self.template = template
         self.exclude_devices = [cur_dev.pk for cur_dev in exclude_devices] or []
-        self.servicegroup_names = kwargs.get("servicegroup_names", [TOP_MONITORING_CATEGORY])
+        self.servicegroup_names = kwargs.get("servicegroup_names", ["/{}".format(TOP_MONITORING_CATEGORY)])
         self.servicegroup_pks = kwargs.get("servicegroup_pks", [])
         self.check_command_pk = kwargs.get("check_command_pk", None)
         self.special_command_pk = kwargs.get("special_command_pk", None)

@@ -29,6 +29,7 @@ cache = require("gulp-memory-cache")
 rev = require("gulp-rev")
 coffee = require("gulp-coffee")
 cssnano = require("gulp-cssnano")
+cssimport = require("gulp-cssimport")
 htmlmin = require("gulp-htmlmin")
 gzip = require("gulp-gzip")
 ng_annotate = require('gulp-ng-annotate')
@@ -49,6 +50,33 @@ wait = require("gulp-wait")
 strip_debug = require("gulp-strip-debug")
 fs = require("fs")
 plumber = require("gulp-plumber")
+preprocess = require("gulp-preprocess")
+
+
+use_theme = "default"
+
+themes = {
+    default : [
+        "frontend/static/css/theme-default/bootstrap-dialog.css",
+        "frontend/static/css/theme-default/bootstrap.css",
+        "frontend/static/css/icsw_src.css",
+        "frontend/static/css/theme-default/theme-fixes.css"
+    ]
+    cora : [
+        "frontend/static/css/theme-cora/bootstrap.css",
+        "frontend/static/css/icsw_src.css",
+        "frontend/static/css/theme-cora/theme-fixes.css"
+    ]
+    sirocco : [
+        "frontend/static/css/theme-sirocco/bootstrap.css",
+        "frontend/static/css/icsw_src.css",
+        "frontend/static/css/theme-sirocco/theme-fixes.css"
+    ]
+}
+
+svg_style_default = "frontend/static/css/theme-default/svg-style.css"
+svg_style_cora = "frontend/static/css/theme-cora/svg-style.css"
+svg_style_sirocco = "frontend/static/css/theme-sirocco/svg-style.css"
 
 class SourceMap
     constructor: (@name, @dest, @sources, @type, @static) ->
@@ -63,24 +91,43 @@ sources = {
         "icsw.css"
         [
             "frontend/static/css/ui.fancytree.css",
-            "frontend/static/css/codemirror.css",
-            "frontend/static/css/bootstrap.css",
             # "frontend/static/css/luna.css",
-            "frontend/static/css/jquery.Jcrop.min.css",
+            "frontend/static/css/cropper.css",
             "frontend/static/css/angular-datetimepicker.css",
             "frontend/static/css/angular-block-ui.css",
             "frontend/static/css/select.css",
             "frontend/static/css/ladda-themeless.min.css",
             "frontend/static/css/smart-table.css",
-            "frontend/static/css/font-awesome.min.css",
+            "frontend/static/css/font-awesome.min.css",  #before theme
             "frontend/static/css/toaster.css",
-            "frontend/static/css/bootstrap-dialog.css",
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/hotkeys.css",
-            "frontend/static/css/icsw_src.css",
+            # yamm3 mega menu, not used right now
+            # "frontend/static/css/yamm.css",
             # not needed right now, not working with tree-code
             # "frontend/static/css/awesome-bootstrap-checkbox.css",
         ]
+        "css"
+        true
+    )
+    css_theme_default: new SourceMap(
+        "css_theme_default"
+        "theme_default.css"
+        themes["default"]
+        "css"
+        true
+    )
+    css_theme_cora: new SourceMap(
+        "css_theme_cora"
+        "theme_cora.css"
+        themes["cora"]
+        "css"
+        true
+    )
+    css_theme_sirocco: new SourceMap(
+        "css_theme_sirocco"
+        "theme_sirocco.css"
+        themes["sirocco"]
         "css"
         true
     )
@@ -88,8 +135,12 @@ sources = {
         "js_query_new"
         "parta.js"
         [
-            "frontend/static/js/modernizr-2.8.1.min.js",
-            "frontend/static/js/jquery-2.2.3.min.js",
+            # no longer needed ... ?
+            # "frontend/static/js/modernizr-2.8.1.min.js",
+            "frontend/static/js/jquery-3.1.0.min.js",
+            # ace editor
+            "frontend/static/js/ace-noconflict.js",
+            "frontend/static/js/mode-python.js",
         ]
         "js"
         true
@@ -99,15 +150,18 @@ sources = {
         "partb.js"
         [
             # angular
-            "frontend/static/js/angular-1.5.5.js",
+            "frontend/static/js/angular-1.5.8.js",
             "frontend/static/js/lodash.js",
-            "frontend/static/js/bluebird.js",
-            "frontend/static/js/codemirror/codemirror.js",
+            # no longer needed ... ?
+            # "frontend/static/js/bluebird.js",
             "frontend/static/js/bootstrap.js",
             "frontend/static/js/jquery.color.js",
             "frontend/static/js/jquery.blockUI.js",
+            # datetime manipulation done right
             "frontend/static/js/moment-with-locales.js",
-            "frontend/static/js/jquery.Jcrop.min.js",
+            # recurring moment handling, not needed right now
+            # "frontend/static/js/moment-recur.js",
+            "frontend/static/js/cropper.js",
             "frontend/static/js/spin.js",
             "frontend/static/js/ladda.js",
             "frontend/static/js/angular-ladda.js",
@@ -117,11 +171,13 @@ sources = {
             "frontend/static/js/webfrontend_translation.js",
             "frontend/static/js/angular-gridster.js",
             "frontend/static/js/angular-promise-extras.js",
-            "frontend/static/js/react-15.0.2.js",
-            "frontend/static/js/react-dom-15.0.2.js",
+            "frontend/static/js/react-15.3.1.js",
+            "frontend/static/js/react-dom-15.3.1.js",
             # not needed ?
-            "frontend/static/js/react-draggable.js",
+            # "frontend/static/js/react-draggable.js",
             "frontend/static/js/hotkeys.js",
+            # ace editor
+            "frontend/static/js/ui-ace.js",
         ]
         "js"
         true
@@ -130,10 +186,6 @@ sources = {
         "js_extra1"
         "partc.js"
         [
-            "frontend/static/js/codemirror/addon/selection/active-line.js",
-            "frontend/static/js/codemirror/mode/python/python.js",
-            "frontend/static/js/codemirror/mode/xml/xml.js",
-            "frontend/static/js/codemirror/mode/shell/shell.js",
             # "frontend/static/js/jquery-ui-timepicker-addon.js",
             "frontend/static/js/angular-route.min.js",
             "frontend/static/js/angular-resource.min.js",
@@ -144,14 +196,10 @@ sources = {
             "frontend/static/js/restangular.min.js",
             "frontend/static/js/angular-block-ui.js",
             "frontend/static/js/select.js",
-            "frontend/static/js/ui-bootstrap-tpls-1.3.2.min.js",
+            "frontend/static/js/ui-bootstrap-tpls-2.1.3.min.js",
             "frontend/static/js/angular-ui-router.js",
-            # must use minified version, otherwise the minifier destroys injection info
-            "frontend/static/js/ui-codemirror.js",
             "frontend/static/js/datetime-picker.js",
             "frontend/static/js/datetime-picker.tpls.js",
-            # "frontend/static/js/angular-strap.min.js",
-            # "frontend/static/js/angular-strap.tpl.min.js",
             "frontend/static/js/angular-noVNC.js",
             "frontend/static/js/FileSaver.js",
             "frontend/static/js/mousewheel.js",
@@ -159,7 +207,9 @@ sources = {
             "frontend/static/js/angular-simple-logger.js",
             "frontend/static/js/angular-google-maps.min.js",
             "frontend/static/js/bootstrap-dialog.js",
+            # should be removed, use CSV export only via server-side calls
             "frontend/static/js/ng-csv.min.js",
+            "frontend/static/js/sprintf.js",
         ]
         "js"
         true
@@ -232,6 +282,11 @@ create_task = (key) ->
         ).pipe(
             changed(COMPILE_DIR)
         ).pipe(
+            gulpif(
+                (_is_coffee or _is_js or _is_html),
+                preprocess({context: {DEBUG: not _is_prod}})
+            )
+        ).pipe(
             gulpif(_is_coffee and ! options.production, sourcemaps.init())
         ).pipe(
             gulpif(
@@ -249,7 +304,7 @@ create_task = (key) ->
         ).pipe(
             gulpif(
                 # remove console.log calls when in production
-                (_is_coffee or _is_js) and options.production, strip_debug()
+                _is_prod and (_is_coffee or _is_js), strip_debug()
             )
         ).pipe(
             gulpif(
@@ -327,14 +382,14 @@ gulp.task("inject-urls-to-app", (cb) ->
     )
 )
 
-gulp.task("inject-addons-to-app", (cb) ->
-    # modify app.js with additional modules
+gulp.task("inject-menu-and-js-to-app", (cb) ->
+    # add menus and addon related code to app.js
     return gulp.src(
         "#{DEPLOY_DIR}/app.js",
         {read: false}
     ).pipe(
         run(
-            "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/app.js --modify",
+            "./manage.py inject_addons --srcfile=#{DEPLOY_DIR}/app.js --modify --with-addons=#{options.addons}",
             {verbosity: 0}
         )
     )
@@ -344,7 +399,8 @@ gulp.task("inject-addons-to-app", (cb) ->
 gulp.task("deploy-css", () ->
     _is_prod = options.production
     return gulp.src(
-        ["#{COMPILE_DIR}/*.css"],
+        ["#{COMPILE_DIR}/*.css",
+         "!#{COMPILE_DIR}/theme_*.css"],
     # ).pipe(
     #     gzip()
     ).pipe(
@@ -352,7 +408,7 @@ gulp.task("deploy-css", () ->
     ).pipe(
         gulp.dest(DEPLOY_DIR + "/static/")
     ).pipe(
-        rev.manifest(merge: true)
+        rev.manifest(DEPLOY_DIR + '/rev-manifest.json', { merge: true, base: DEPLOY_DIR })
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     )
@@ -369,7 +425,7 @@ gulp.task("deploy-js", () ->
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     ).pipe(
-        rev.manifest(merge: true)
+        rev.manifest(DEPLOY_DIR + '/rev-manifest.json', { merge: true, base: DEPLOY_DIR })
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     )
@@ -386,7 +442,7 @@ gulp.task("deploy-html", () ->
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     ).pipe(
-        rev.manifest(merge: true)
+        rev.manifest(DEPLOY_DIR + '/rev-manifest.json', { merge: true, base: DEPLOY_DIR })
     ).pipe(
         gulp.dest(DEPLOY_DIR)
     )
@@ -427,7 +483,8 @@ gulp.task("deploy-d3", () ->
 
 gulp.task("deploy-images", () ->
     return gulp.src(
-        [
+        [   
+            "frontend/static/images/*.jpg"
             "frontend/static/images/product/*.png"
             "frontend/static/css/*.gif"
         ]
@@ -436,7 +493,32 @@ gulp.task("deploy-images", () ->
     )
 )
 
-gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3"))
+gulp.task("deploy-svgcss-default", () ->
+    return gulp.src(svg_style_default)
+        .pipe(rename("svgstyle_default.css"))
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
+    )
+)
+gulp.task("deploy-svgcss-cora", () ->
+    return gulp.src(svg_style_cora)
+        .pipe(rename("svgstyle_cora.css"))
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
+    )
+)
+gulp.task("deploy-svgcss-sirocco", () ->
+    return gulp.src(svg_style_sirocco)
+        .pipe(rename("svgstyle_sirocco.css"))
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/")
+    )
+)
+
+gulp.task("deploy-themes", () ->
+    gulp.src("#{COMPILE_DIR}/theme_*.css")
+        .pipe(gulp.dest(DEPLOY_DIR + "/static/"))
+)
+
+gulp.task("deploy-media", gulp.parallel("deploy-fonts", "deploy-images", "deploy-d3",
+    "deploy-svgcss-default", "deploy-svgcss-cora", "deploy-svgcss-sirocco"))
 
 gulp.task("transform-main", (cb) ->
     return gulp.src(
@@ -449,6 +531,8 @@ gulp.task("transform-main", (cb) ->
                     "!ext_*.js",
                     "!app.js",
                     "static/*.css",
+                    "!static/theme_*.css",
+                    "!static/svgstyle_*css",
                     "*.html",
                     "!main.html",
                 ]
@@ -505,7 +589,7 @@ gulp.task("fix-main-import-path", (cb) ->
         {read: false}
     ).pipe(
         run(
-            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --cleanup-path --modify",
+            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --cleanup-path --modify --with-addons=#{options.addons}",
             {verbosity: 0}
         )
     )
@@ -518,14 +602,20 @@ gulp.task("inject-addons-to-main", (cb) ->
         {read: false}
     ).pipe(
         run(
-            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify",
+            "./manage.py inject_addons --srcfile=#{COMPILE_DIR}/main.html --modify --with-addons=#{options.addons}",
             {verbosity: 0}
         )
     )
 )
 
+gulp.task("import_css", () ->
+    gulp.src("#{COMPILE_DIR}/main.html")
+        .pipe(cssimport({}))
+        .pipe(gulp.dest(COMPILE_DIR))
+)
+
 gulp.task("copy-main", (cb) ->
-    # add addon-javascript to main.htmlk
+    # add addon-javascript to main.html
     gulp.src(
         "#{COMPILE_DIR}/main.html",
     ).pipe(
@@ -545,15 +635,15 @@ gulp.task("reload-main", (cb) ->
 
 
 if options.addons
-    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-addons-to-app"))
-    gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html", "deploy-addons"))
-    gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path"))
+    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-menu-and-js-to-app"))
+    gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-addons", "deploy-themes"))
+    gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "inject-addons-to-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "inject-addons-to-main", "copy-main", "reload-main"))
 else
-    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app"))
-    gulp.task("deploy-all", gulp.parallel("deploy-css", "deploy-js", "deploy-html"))
-    gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path"))
+    gulp.task("modify-app-js", gulp.series("create-all-urls", "inject-urls-to-app", "inject-menu-and-js-to-app"))
+    gulp.task("deploy-all", gulp.series("deploy-css", "deploy-js", "deploy-html", "deploy-themes"))
+    gulp.task("setup-main", gulp.series("modify-app-js", "transform-main", "fix-main-import-path", "import_css"))
     gulp.task("deploy-and-transform-all", gulp.series("deploy-all", "setup-main", "copy-main"))
     gulp.task("rebuild-after-watch", gulp.series("deploy-all", "transform-main", "fix-main-import-path", "copy-main", "reload-main"))
 
@@ -563,8 +653,8 @@ else
 gulp.task("watch", (cb) ->
     gulp.watch(
         [
-            "frontend/static/icsw/*/*.coffee",
-            "frontend/static/icsw/*/*.html",
+            "frontend/static/icsw/**/*.coffee",
+            "frontend/static/icsw/**/*.html",
             # addons
             "addons/licadmin/initat/cluster/work/icsw/*.js",
             "addons/licadmin/initat/cluster/work/icsw/*.html",
@@ -634,7 +724,7 @@ gulp.task(
             "staticbuild",
         ),
         "dynamicbuild",
-        "deploy-and-transform-all",
+        "deploy-and-transform-all"
     )
 )
 

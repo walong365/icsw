@@ -18,17 +18,16 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-# tree component
-# should be rewritten in ReactJS
+# tree component using ReactJS
 
 angular.module(
     "icsw.tools.reacttree",
     []
 ).factory("icswReactTreeDrawNode",
 [
-    "$q",
+    "$q", "$timeout",
 (
-    $q,
+    $q, $timeout,
 ) ->
     {div, input, span, ul, li} = React.DOM
     icswReactTreeDrawNode = React.createClass(
@@ -115,7 +114,8 @@ angular.module(
                             key: "selbutton"
                             className: "fancytree-checkbox"
                             type: "checkbox"
-                            checked: if _tn.selected then "checked" else null
+                            # defaultChecked: if _tn.selected then "checked" else null
+                            checked: if _tn.selected then "checked" else ""
                             disabled: if _tn.disable_select or _tc.disable_select then "disabled" else null
                             style: {marginLeft: "2px"}
                             onClick: (event) =>
@@ -150,52 +150,96 @@ angular.module(
                         )
                     )
                 )
-                if _tn._depth == 0 and _tn.children.length and _tc.show_tree_expand_buttons
-                    # add full selectin buttons
-                    _top_spans = [
-                        input(
-                            {
-                                key: "selbie"
-                                type: "button"
-                                className: "btn btn-success"
-                                value: "e"
-                                title: "expand tree"
-                            }
-                        )
-                    ]
-                    if _tn.show_select
-                        _top_spans.push(
-                            input(
-                                {
-                                    key: "selbis"
-                                    type: "button"
-                                    className: "btn btn-primary"
-                                    value: "s"
-                                    title: "expand selected"
-                                }
-                            )
-                        )
+            if _tn._depth == 0 and _tn.children.length and _tc.show_tree_expand_buttons
+                # add full selectin buttons
+                _top_spans = [
+                    input(
+                        {
+                            key: "selbie"
+                            type: "button"
+                            className: "btn btn-success"
+                            value: "e"
+                            title: "expand tree"
+                            onClick: () =>
+                                # expand tree
+                                @props.tree_config.expand_all()
+                        }
+                    )
+                ]
+                if _tn.show_select
                     _top_spans.push(
                         input(
                             {
-                                key: "selbic"
+                                key: "selbis"
                                 type: "button"
-                                className: "btn btn-warning"
-                                value: "c"
-                                title: "collapse tree"
+                                className: "btn btn-primary"
+                                value: "s"
+                                title: "expand selected"
+                                onClick: () =>
+                                    # show only selected
+                                    @props.tree_config.show_selected(false)
                             }
                         )
                     )
+                _top_spans.push(
+                    input(
+                        {
+                            key: "selbic"
+                            type: "button"
+                            className: "btn btn-warning"
+                            value: "c"
+                            title: "collapse tree"
+                            onClick: () =>
+                                # collapse tree
+                                @props.tree_config.collapse_all()
+                        }
+                    )
+                )
 
-                    _main_spans.push(
-                        div(
-                            {
-                                key: "selb0"
-                                className: "btn-group btn-group-xs"
-                            }
-                            _top_spans
-                        )
+                _main_spans.push(
+                    div(
+                        {
+                            key: "selb0"
+                            className: "btn-group btn-group-xs"
+                        }
+                        _top_spans
                     )
+                )
+            if _tn._depth == 0 and _tc.search_field
+                if not _tc.$$search_focus?
+                    _tc.$$search_focus = false
+                    _tc.$$search_string = ""
+                _input_to = undefined
+                _main_spans.push(
+                    input(
+                        {
+                            type: "text"
+                            key: "sfield"
+                            defaultValue: _tc.$$search_string
+                            autoFocus: if _tc.$$search_focus then "1" else null
+                            onChange: (event) =>
+                                if _input_to?
+                                    $timeout.cancel(_input_to)
+                                cur_val = event.target.value
+                                # store search string
+                                _tc.$$search_string = cur_val
+                                _input_to = $timeout(
+                                    () =>
+                                        console.log "search", cur_val
+                                        _tc.do_search(cur_val)
+                                    10
+                                )
+                            onFocus: (event) =>
+                                _tc.$$search_focus = true
+                                # focus event
+                                # console.log "F"
+                            onBlur: (event) =>
+                                _tc.$$search_focus = false
+                                # blur (unfocus) event
+                                # console.log "B"
+                        }
+                    )
+                )
             _name_span_list = [
                 _tc.get_pre_view_element(_tn)
                 span(
@@ -245,8 +289,13 @@ angular.module(
                             _tc.handle_click(event, _tn)
                             @force_redraw()
                             @props.parent_cb()
-                        onDblClick: (event) =>
-                            _tc.handle_dbl_click(event, _tn)
+                        onContextMenu: (event) =>
+                            _tc.handle_context_menu(event, _tn)
+                            @force_redraw()
+                            @props.parent_cb()
+                        # onDoubleClick: (event) =>
+                        #    console.log "DBL"
+                        #    _tc.handle_dbl_click(event, _tn)
                     }
                     _name_span_list
                 )
@@ -293,8 +342,7 @@ angular.module(
     $q, icswReactTreeDrawNode,
 ) ->
     # display of livestatus filter
-    react_dom = ReactDOM
-    {div, h4, select, option, p, input, span, ul} = React.DOM
+    {span, ul} = React.DOM
 
     return React.createClass(
         propTypes: {
@@ -325,7 +373,7 @@ angular.module(
             @props.tree_config.component_will_unmount()
 
         top_callback: () ->
-            console.log "top_cb called"
+            # console.log "top_cb called"
 
         render: () ->
             _tc = @props.tree_config
@@ -385,7 +433,7 @@ angular.module(
             for key, value of args
                 if key of @
                     @[key] = value
-                else if key.substring(0, 1) == "_"
+                else if key.substring(0, 1) in ["_", "$"]
                     @[key] = value
                 else if key in @_config.extra_args
                     @[key] = value
@@ -526,6 +574,8 @@ angular.module(
             @show_total_descendants = true
             # only one element can be selected
             @single_select = false
+            # search field
+            @search_field = false
             # extra args for nodes
             @extra_args = []
             @root_nodes = []
@@ -632,7 +682,6 @@ angular.module(
                     _doit.resolve("ok")
                 _doit.promise.then(
                     (ok) =>
-                        console.log "change"
                         node.set_selected(!node.selected)
                         if node.selected and @single_select
                             # remove all other selections
@@ -747,6 +796,19 @@ angular.module(
                     show = entry.selected
             return entry.set_expand(show)
 
+        # collapse / expand tree
+        collapse_all: () =>
+            (@_expcol_subtree(entry, false) for entry in @root_nodes)
+            @new_generation()
+
+        expand_all: () =>
+            (@_expcol_subtree(entry, true) for entry in @root_nodes)
+            @new_generation()
+
+        _expcol_subtree: (entry, flag) =>
+            (@_expcol_subtree(sub_entry, flag) for sub_entry in entry.children)
+            entry.set_expand(flag)
+
         show_active: (keep=true) =>
             # make all selected nodes visible
             (@_show_active(entry, keep) for entry in @root_nodes)
@@ -762,6 +824,36 @@ angular.module(
                 else
                     show = entry.active
             return entry.set_expand(show)
+
+        # search function
+        do_search: (s_string) =>
+            _get_sel_fp = () =>
+                # generate fingerprint
+                return @get_selected(
+                    (node) ->
+                        if node.selected
+                            return ["#{node.obj.idx}"]
+                        else
+                            return []
+                ).join(".")
+            if s_string.length
+                _cur_sel = _get_sel_fp()
+                cur_re = new RegExp(s_string, "i")
+                @iter(
+                    (entry) =>
+                        entry.set_selected(@node_search(entry, cur_re))
+                )
+                @show_selected(keep=false)
+                if _cur_sel != _get_sel_fp()
+                    @selection_changed_by_search(undefined)
+            else
+                # show top-level nodes (at least)
+                @iter(
+                    (entry) =>
+                        if entry._depth < 2
+                            entry.set_expand(true)
+                )
+                @new_generation()
 
         # clear all active nodes
         clear_active: () =>
@@ -807,15 +899,29 @@ angular.module(
         get_post_view_element: (entry) =>
             return null
 
+        node_search: (entry, s_re) =>
+            console.warn "node_search called with RE '#{s_re}' for #{entry}"
+            return true
+
         # selection changed callback
         selection_changed: (entry) =>
             console.warn "selection_changed not implemented for #{@name}"
 
+        # selection changed (by search string entry) callback
+        selection_changed_by_search: (entry) =>
+            console.warn "selection_changed_by_search not implemented for #{@name}"
+
+        handle_click: (event, entry) =>
+            console.warn "click not implemented"
+
+        handle_context_menu: (event, entry) =>
+            console.warn "context_menu not implemented"
+
 ]).directive("icswReactTree",
 [
-    "icswReactTreeDrawContainer", "icswReactTreeConfig",
+    "icswReactTreeDrawContainer", "icswReactTreeConfig", "$injector",
 (
-    icswReactTreeDrawContainer, icswReactTreeConfig,
+    icswReactTreeDrawContainer, icswReactTreeConfig, $injector,
 ) ->
     return {
         restrict: "E"

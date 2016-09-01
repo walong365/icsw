@@ -29,7 +29,7 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.tools import cluster_location, logging_tools, process_tools, server_command, \
-    server_mixins, threading_tools, uuid_tools, configfile
+    server_mixins, threading_tools, uuid_tools
 from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 from .backup_process import backup_process
 from .capabilities import capability_process
@@ -133,18 +133,14 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
     def process_start(self, src_process, src_pid):
         mult = 3
         process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=1)
         if self.__msi_block:
             self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
-            self.__msi_block.add_actual_pid(configfile.get_manager_pid(), mult=1, process_name="manager")
             self.__msi_block.save_block()
 
     def process_exit(self, src_process, src_pid):
         process_tools.remove_pids(self.__pid_name, src_pid)
-        process_tools.remove_pids(self.__pid_name, configfile.get_manager_pid(), mult=1)
         if self.__msi_block:
             self.__msi_block.remove_actual_pid(src_pid)
-            self.__msi_block.remove_actual_pid(configfile.get_manager_pid(), mult=1)
             self.__msi_block.save_block()
         if src_process == "backup_process" and global_config["BACKUP_DATABASE"]:
             self.log("backup process finished, exiting")
@@ -152,12 +148,10 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
         if not global_config["COMMAND"]:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("cluster-server")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
             msi_block.kill_pids = True
             msi_block.save_block()
         else:

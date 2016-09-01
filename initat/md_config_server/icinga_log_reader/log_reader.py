@@ -91,6 +91,7 @@ class icinga_log_reader(threading_tools.process_obj):
 
     #
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -109,7 +110,7 @@ class icinga_log_reader(threading_tools.process_obj):
         self.__log_template.close()
 
     def update(self):
-        '''Called periodically. Only method to be called from outside of this class'''
+        """ Called periodically. Only method to be called from outside of this class """
         if global_config["ENABLE_ICINGA_LOG_PARSING"]:
             self._historic_service_map = {
                 description.replace(" ", "_").lower(): pk for (pk, description) in mon_check_command.objects.all().values_list('pk', 'description')

@@ -23,7 +23,12 @@
 angular.module(
     "icsw.tools.button",
     []
-).service('icswToolsButtonConfigService', ['gettextCatalog', (gettextCatalog) ->
+).service('icswToolsButtonConfigService',
+[
+    'gettextCatalog',
+(
+    gettextCatalog
+) ->
     get_config_for_button_type = (type) ->
         ret_obj = {}
         if type == "modify"
@@ -42,10 +47,18 @@ angular.module(
             ret_obj.css_class = "btn-danger"
             ret_obj.button_value = gettextCatalog.getString("delete")
             ret_obj.icon_class = "fa fa-trash"
+        else if type == "clear"
+            ret_obj.css_class = "btn-warning"
+            ret_obj.button_value = gettextCatalog.getString("clear")
+            ret_obj.icon_class = "fa fa-times"
         else if type == "reload"
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = gettextCatalog.getString("reload")
             ret_obj.icon_class = "fa fa-refresh"
+        else if type == "copy"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = "copy"
+            ret_obj.icon_class = "fa fa-copy"
         else if type == "stop"
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = gettextCatalog.getString("stop")
@@ -72,10 +85,17 @@ angular.module(
             ret_obj.css_class = "btn-danger"
             ret_obj.button_value = "disable"
             ret_obj.icon_class = "fa fa-ban"
+        else if type == "underscore"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = ""
+            ret_obj.icon_class = "fa fa-minus"
         else if type == "close"
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = "close"
             ret_obj.icon_class = "fa fa-close"
+        else if type == "info"
+            ret_obj.css_class = "btn-info"
+            ret_obj.icon_class = "fa fa-search"
         else if type == "display"
             ret_obj.css_class = "btn-info"
             ret_obj.icon_class = "fa fa-search"
@@ -105,6 +125,10 @@ angular.module(
             ret_obj.css_class = "btn-success"
             ret_obj.button_value = "save"
             ret_obj.icon_class = "fa fa-save"
+        else if type == "goto"
+            ret_obj.css_class = "btn-success"
+            ret_obj.button_value = "go"
+            ret_obj.icon_class = "fa fa-angle-double-right"
         else if type == "select_devices"
             ret_obj.css_class = "btn-primary"
             ret_obj.button_value = "select devices"
@@ -139,22 +163,28 @@ angular.module(
     return {
         restict: "EA"
         template: """
-<button class="btn btn-xs form-control" ng-class="get_class()" style="width:100px;" ng-click="change_value($event)">{{ get_value() }}</button>
+<button class="btn btn-xs form-control" ng-class="get_class()" style="width:100px;" ng-click="change_value($event)"> {{ get_value() }} </button>
 """
         scope:
             flag: "="
+            callback: "=icswCallback"
         link: (scope, element, attrs) ->
+            _yes_value = if attrs.icswYes? then attrs.icswYes else "yes"
+            _no_value = if attrs.icswNo? then attrs.icswNo else "no"
             if attrs.disabled?
                 _disabled = true
             else
                 _disabled = false
+
             scope.change_value = ($event) ->
                 if not _disabled
                     scope.flag = !scope.flag
+                if attrs.icswCallback?
+                    scope.callback($event)
                 $event.preventDefault()
 
             scope.get_value = () ->
-                return if scope.flag then "yes" else "no"
+                return if scope.flag then _yes_value else _no_value
 
             scope.get_class = () ->
                 return if scope.flag then "btn-success" else "btn-default"
@@ -163,11 +193,13 @@ angular.module(
     return {
         restict: "EA"
         template: """
-<button class="btn btn-xs" ng-class="get_class()" style="width:50px;" ng-click="change_value($event)">{{ get_value() }}</button>
+<button class="btn btn-xs btn-default" ng-class="get_class()" style="width:50px;" ng-click="change_value($event)">{{ get_value() }}</button>
 """
         scope:
             flag: "="
         link: (scope, element, attrs) ->
+            _yes_value = if attrs.icswYes? then attrs.icswYes else "yes"
+            _no_value = if attrs.icswNo? then attrs.icswNo else "no"
             scope.change_value = ($event) ->
                 if not attrs.ngClick?
                     # ngClick not defined in attributes
@@ -175,12 +207,17 @@ angular.module(
                 $event.preventDefault()
 
             scope.get_value = () ->
-                return if scope.flag then "yes" else "no"
+                return if scope.flag then _yes_value else _no_value
 
             scope.get_class = () ->
                 return if scope.flag then "btn-success" else "btn-default"
     }
-]).directive('icswToolsButton', ["icswToolsButtonConfigService", "gettextCatalog", (icswToolsButtonsConfigService, gettextCatalog) ->
+]).directive('icswToolsButton',
+[
+    "icswToolsButtonConfigService", "gettextCatalog",
+(
+    icswToolsButtonsConfigService, gettextCatalog
+) ->
     return {
         restrict: "EA",
         template: """
@@ -200,6 +237,7 @@ visible-md visible-lg
             disabled: '&'
             isEnable: '&'
             isLock: '&'
+            icsw_value: "=icswValue"
         link: (scope, element, attrs) ->
 
             # attrs:
@@ -214,7 +252,13 @@ visible-md visible-lg
             b_type = attrs.type
             angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(b_type))
 
-            if attrs.value?
+            if attrs.icswValue?
+                scope.$watch(
+                    "icsw_value"
+                    (new_val) ->
+                        scope.button_value = new_val
+                )
+            else if attrs.value?
                 scope.button_value = attrs.value
 
             if attrs.buttonType?
@@ -269,11 +313,16 @@ visible-md visible-lg
                             scope.icon_class = "fa fa-lock"
                 )
     }
-]).directive('icswToolsButtonStatic', ["icswToolsButtonConfigService", "gettextCatalog", (icswToolsButtonsConfigService, gettextCatalog) ->
-    # static button, doenst change its face during his lifetime
+]).directive('icswToolsButtonStatic',
+[
+    "icswToolsButtonConfigService", "gettextCatalog",
+(
+    icswToolsButtonsConfigService, gettextCatalog,
+) ->
+    # static button, doesnt change its face during his lifetime
     return {
         restrict: "EA",
-        template: '<button type="button" class="btn" ng-disabled="is_disabled">value</button>'
+        template: '<button type="button" class="btn btn-default" ng-disabled="is_disabled">value</button>'
         link: (scope, element, attrs) ->
             # attrs:
             # - type (mandatory): "modify", "create", "delete", "reload", "show", "clear_selection", "download"

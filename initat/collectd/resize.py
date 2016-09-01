@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -31,6 +31,7 @@ from .rsync import RSyncMixin
 
 class resize_process(threading_tools.process_obj, server_mixins.OperationalErrorMixin, RSyncMixin):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],

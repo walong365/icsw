@@ -80,9 +80,7 @@ class DTNode(object):
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list
-    help = ("Migration old device naming scheme to new domain-tree bases naming scheme.")
-    args = ''
+    help = "Migration old device naming scheme to new domain-tree bases naming scheme."
 
     def handle(self, **options):
         main()

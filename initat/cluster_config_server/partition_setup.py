@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -149,7 +149,7 @@ class partition_setup(object):
             else:
                 raise ValueError("Partition-table %s is not valid" % (pt_name))
         else:
-            raise ValueError("Found no partition-info")
+            raise ValueError("Partition setup has no partitions on physical discs")
 
     def create_part_files(self, pinfo_dir):
         if self.fspart_dict:

@@ -10,8 +10,8 @@
 # npm install -g "gulpjs/gulp-cli#4.0"
 
 # as user:
-# npm uninstall gulp --save-dev
-# npm install "gulpjs/gulp#4.0" --save-dev
+# /opt/cluster/bin/npm uninstall gulp --save-dev
+# /opt/cluster/bin/npm install gulpjs/gulp#4.0 --save-dev
 
 /opt/cluster/bin/npm install --save-dev "gulpjs/gulp#4.0" gulp-rev gulp-concat gulp-uglify \
     gulp-if gulp-ng-annotate coffee-script del gulp-coffee gulp-sourcemaps \
@@ -19,4 +19,4 @@
     gulp-webserver connect-modrewrite http-proxy-middleware gulp-run \
     gulp-changed gulp-remember gulp-cache gulp-bg gulp-rename gulp-clean-dest del \
     gulp-wait gulp-strip-debug gulp-cached gulp-remember gulp-memory-cache \
-    gulp-plumber
+    gulp-plumber gulp-connect gulp-preprocess gulp-cjsx

@@ -138,6 +138,10 @@ class ConfigCheckObject(object):
                             configfile.int_c_var(sql_info.device.pk, database=False, source="instance")
                         ),
                         (
+                            "CONFIG_IDX",
+                            configfile.int_c_var(sql_info.config.pk, database=False, source="instance")
+                        ),
+                        (
                             "EFFECTIVE_DEVICE_IDX",
                             configfile.int_c_var(sql_info.effective_device.pk, database=False, source="instance")
                         ),
@@ -155,6 +159,15 @@ class ConfigCheckObject(object):
                     ]
                 )
         self.global_config.add_config_entries(_opts)
+
+    # property functions to access device and config
+    @property
+    def server(self):
+        return self.__sql_info.device
+
+    @property
+    def config(self):
+        return self.__sql_info.config
 
     def close(self):
         if not self.__native_logging:
@@ -237,14 +250,6 @@ class ServerStatusMixin(object):
         _status = msi_block.check_block()
         _proc_info_dict = self.get_info_dict()
         # add configfile manager
-        _mpid = configfile.get_manager_pid()
-        if _mpid is not None:
-            # salt proc_info_dict
-            _proc_info_dict[_mpid] = {
-                "name": "manager",
-                "pid": _mpid,
-                "alive": True
-            }
         if spc is not None:
             spc.salt_proc_info_dict(_proc_info_dict)
         _pid_info = msi_block.pid_check_string(_proc_info_dict)
@@ -737,13 +742,96 @@ class RemoteCallSignature(object):
             instance.send_to_process(self.target_process, effective_target_func_name, unicode(_result), src_id=src_id)
 
 
-class RemoteServerAddress(object):
+class RemoteServerAddressBase(object):
     def __init__(self, mixin, srv_type):
         self.mixin = mixin
         self.srv_type = srv_type
-        self._address, self._uuid, self._port = (None, None, None)
-        self.log("init for {}".format(self.srv_type))
         self._connected = False
+        self.__latest_router_error = None
+        self._address = None
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.mixin.log("[RSAb {}] {}".format(self.srv_type, what), log_level)
+
+    @property
+    def valid(self):
+        return True if self._address else False
+
+    @property
+    def connected(self):
+        return self._connected
+
+    @property
+    def connection_string(self):
+        return "tcp://{}:{:d}".format(self._address, self._port)
+
+    def connect(self):
+        if not self._connected:
+            _conn_str = self.connection_string
+            try:
+                self.mixin.strs_com_socket.connect(self.connection_string)
+            except:
+                self.log(
+                    "error connecting to {}: {}".format(
+                        _conn_str,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+            else:
+                self.log(
+                    "connected to {}".format(_conn_str),
+                )
+                self._connected = True
+                self._last_error = None
+                self._first_send = True
+
+    def send(self, send_obj):
+        cur_time = time.time()
+        if self._last_error and abs(self._last_error - cur_time) < 10:
+            # last send error only 10 seconds ago, fail silently
+            pass
+        else:
+            _loop, _idx, _error = (True, 0, True)
+            while _loop and _idx < 5:
+                _idx += 1
+                _loop = False
+                # time.sleep(1)
+                try:
+                    self.mixin.strs_com_socket.send_unicode(self._uuid, zmq.DONTWAIT | zmq.SNDMORE)
+                    self.mixin.strs_com_socket.send_unicode(unicode(send_obj), zmq.DONTWAIT)
+                except zmq.error.ZMQError as e:
+                    self.log(
+                        "cannot send to {}: {}".format(
+                            self.connection_string,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
+                    if e.errno == 113:
+                        _loop = True
+                        time.sleep(0.1)
+                    self._last_error = cur_time
+                else:
+                    self._last_error = None
+                    _error = False
+                    break
+
+            if _idx > 1 or self._first_send:
+                _rf = []
+                if _idx > 1:
+                    _rf.append("after {:d} tries".format(_idx))
+                if self._first_send:
+                    _rf.append("for the first time")
+                self.log("sent {}".format(", ".join(_rf)), logging_tools.LOG_LEVEL_WARN)
+            self._first_send = False
+
+
+class RemoteServerAddress(RemoteServerAddressBase):
+    def __init__(self, mixin, srv_type):
+        RemoteServerAddressBase.__init__(self, mixin, srv_type)
+        self._uuid, self._port = (None, None)
+        self.log("init for {}".format(self.srv_type))
         self.__latest_router_error = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -782,78 +870,29 @@ class RemoteServerAddress(object):
                     self.log("not found in router".format(self.srv_type), logging_tools.LOG_LEVEL_ERROR)
                     self.__latest_router_error = cur_time
 
-    @property
-    def valid(self):
-        return True if self._address else False
 
-    @property
-    def connected(self):
-        return self._connected
+class RemoteServerAddressIP(RemoteServerAddressBase):
+    def __init__(self, mixin, srv_type):
+        RemoteServerAddressBase.__init__(self, mixin, srv_type)
+        self._uuid, self._port = (None, None)
+        self.log("init")
+        self.__latest_router_error = None
 
-    @property
-    def connection_string(self):
-        return "tcp://{}:{:d}".format(self._address, self._port)
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.mixin.log("[RSAIP {}] {}".format(self.srv_type, what), log_level)
 
-    def connect(self):
-        if not self._connected:
-            _conn_str = self.connection_string
-            try:
-                self.mixin.strs_com_socket.connect(self.connection_string)
-            except:
-                self.log(
-                    "error connecting to {}: {}".format(
-                        _conn_str,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
+    def check_for_address(self, instance, addr):
+        if not self.valid:
+            self._uuid = instance.get_uuid_postfix(self.srv_type)
+            self._address = addr
+            self._port = instance.get_port_dict(self.srv_type, command=True)
+            self.log(
+                "set address to {} (port {:d}, COM-UUID {})".format(
+                    self._address,
+                    self._port,
+                    self._uuid,
                 )
-            else:
-                self.log(
-                    "connected to {}".format(_conn_str),
-                )
-                self._connected = True
-                self._last_error = None
-                self._first_send = True
-
-    def send(self, send_str):
-        cur_time = time.time()
-        if self._last_error and abs(self._last_error - cur_time) < 10:
-            # last send error only 10 seconds ago, fail silently
-            pass
-        else:
-            _loop, _idx, _error = (True, 0, True)
-            while _loop and _idx < 5:
-                _idx += 1
-                _loop = False
-                # time.sleep(1)
-                try:
-                    self.mixin.strs_com_socket.send_unicode(self._uuid, zmq.DONTWAIT | zmq.SNDMORE)
-                    self.mixin.strs_com_socket.send_unicode(unicode(send_str), zmq.DONTWAIT)
-                except zmq.error.ZMQError as e:
-                    self.log(
-                        "cannot send to {}: {}".format(
-                            self.connection_string,
-                            process_tools.get_except_info()
-                        ),
-                        logging_tools.LOG_LEVEL_CRITICAL
-                    )
-                    if e.errno == 113:
-                        _loop = True
-                        time.sleep(0.1)
-                    self._last_error = cur_time
-                else:
-                    self._last_error = None
-                    _error = False
-                    break
-
-            if _idx > 1 or self._first_send:
-                _rf = []
-                if _idx > 1:
-                    _rf.append("after {:d} tries".format(_idx))
-                if self._first_send:
-                    _rf.append("for the first time")
-                self.log("sent {}".format(", ".join(_rf)), logging_tools.LOG_LEVEL_WARN)
-            self._first_send = False
+            )
 
 
 class SendToRemoteServerMixin(threading_tools.ICSWAutoInit):
@@ -867,7 +906,7 @@ class SendToRemoteServerMixin(threading_tools.ICSWAutoInit):
     def strs_com_socket(self):
         return getattr(self, self.STRS_SOCKET_NAME)
 
-    def send_to_remote_server(self, srv_type, send_str):
+    def send_to_remote_server(self, srv_type, send_obj):
         from initat.cluster.backbone import routing
         if self.__target_dict is None:
             from initat.cluster.backbone import db_tools
@@ -878,10 +917,24 @@ class SendToRemoteServerMixin(threading_tools.ICSWAutoInit):
             self.__target_dict[srv_type] = RemoteServerAddress(self, srv_type)
         _rsa = self.__target_dict[srv_type]
         _rsa.check_for_address(self.__strs_router)
-        if _rsa.valid:
-            _rsa.connect()
-            if _rsa.connected:
-                _rsa.send(send_str)
+        return self.send_to_remote_server_int(_rsa, send_obj)
+
+    def send_to_remote_server_ip(self, srv_addr, srv_type, send_obj):
+        if self.__target_dict is None:
+            from initat.icsw.service.instance import InstanceXML
+            self.__target_dict = {}
+            self.__strs_instance = InstanceXML(quiet=True)
+        if srv_type not in self.__target_dict:
+            self.__target_dict[srv_type] = RemoteServerAddressIP(self, srv_type)
+        _rsa = self.__target_dict[srv_type]
+        _rsa.check_for_address(self.__strs_instance, srv_addr)
+        return self.send_to_remote_server_int(_rsa, send_obj)
+
+    def send_to_remote_server_int(self, rsa, send_obj):
+        if rsa.valid:
+            rsa.connect()
+            if rsa.connected:
+                rsa.send(send_obj)
             else:
                 self.log("unable to send, not connected", logging_tools.LOG_LEVEL_WARN)
         else:

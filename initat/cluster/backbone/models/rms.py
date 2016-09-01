@@ -1,8 +1,8 @@
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -27,8 +27,8 @@ import time
 from django.db import models
 from django.db.models import signals
 from django.dispatch import receiver
-from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
 
+from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
 
 __all__ = [
     "rms_job",
@@ -55,7 +55,7 @@ __all__ = [
     "ext_license_usage_coarse",
     "RMSJobVariable",
     "RMSJobVariableAction",
-    "RMSJobVariableActionRun"
+    "RMSJobVariableActionRun",
 ]
 
 
@@ -173,16 +173,6 @@ class rms_job_run(models.Model):
     # data set via qacct ?
     qacct_called = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
-
-    def rms_pe_info(self):
-        # used by serializer and rrd-grapher.initat.graph"
-        return [
-            {
-                "device": _pe_info.device_id,
-                "hostname": _pe_info.hostname,
-                "slots": _pe_info.slots,
-            } for _pe_info in self.rms_pe_info_set.all()
-        ]
 
     def get_queue_time(self):
         return time.mktime(cluster_timezone.normalize(self.queue_time).timetuple()) if self.queue_time else ""

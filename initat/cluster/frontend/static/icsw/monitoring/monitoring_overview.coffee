@@ -22,23 +22,10 @@ monitoring_overview_module = angular.module(
     "icsw.monitoring.overview",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "smart-table",
-        "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.device.livestatus"
+        "icsw.tools.table", "icsw.tools.status_history_utils", "icsw.livestatus.livestatus"
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.monitorov", {
-            url: "/monitorov"
-            template: "<icsw-monitoring-list-overview icsw-sel-man='0'></icsw-monitoring-list-overview>"
-            icswData:
-                pageTitle: "Monitoring List"
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Monitoring list"
-                    icon: "fa-list"
-                    ordering: 0
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.monitorov")
 ]).directive("icswMonitoringListOverview",
 [
     "$templateCache",
@@ -155,12 +142,12 @@ monitoring_overview_module = angular.module(
             _devs = $scope.struct.devices
             $q.all(
                 [
-                    status_utils_functions.get_device_data(_devs, $scope.yesterday, 'day')
-                    status_utils_functions.get_device_data(_devs, $scope.last_week, 'week')
-                    status_utils_functions.get_device_data(_devs, $scope.last_month, 'month')
-                    status_utils_functions.get_service_data(_devs, $scope.yesterday, 'day', merge_services=1)  #, historic_cont("service_data_yesterday"), merge_services=1)
-                    status_utils_functions.get_service_data(_devs, $scope.last_week, 'week', merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
-                    status_utils_functions.get_service_data(_devs, $scope.last_month, 'month', merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
+                    status_utils_functions.get_device_data(_devs, $scope.yesterday, 'day', [])
+                    status_utils_functions.get_device_data(_devs, $scope.last_week, 'week', [])
+                    status_utils_functions.get_device_data(_devs, $scope.last_month, 'month', [])
+                    status_utils_functions.get_service_data(_devs, $scope.yesterday, 'day', [], merge_services=1)  #, historic_cont("service_data_yesterday"), merge_services=1)
+                    status_utils_functions.get_service_data(_devs, $scope.last_week, 'week', [], merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
+                    status_utils_functions.get_service_data(_devs, $scope.last_month, 'month', [], merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
                 ]
             ).then(
                 (data) ->

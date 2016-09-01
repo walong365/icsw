@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,44 +27,79 @@ menu_module = angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
-    "$q", "icswUserService", "blockUI", "$state", "icswUserLicenseDataService",
+    "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService",
+    "$rootScope", "ICSW_SIGNALS", "$timeout",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
-    $q, icswUserService, blockUI, $state, icswUserLicenseDataService,
+    $q, icswUserService, blockUI, $state, icswSystemLicenseDataService,
+    $rootScope, ICSW_SIGNALS, $timeout,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
     $scope.initProduct = initProduct
-    # flag: show navbar
-    $scope.show_navbar = false
-    $scope.CURRENT_USER = undefined
+    $scope.struct = {
+        # current user
+        current_user: undefined
+        # selection string
+        selection_string: "N/A"
+        # focus search field
+        focus_search: false
+        # typeahead is loading
+        typeahead_loading: false
+        # search-strings
+        search_string: ""
+    }
     $scope.HANDBOOK_PDF_PRESENT = false
     $scope.HANDBOOK_CHUNKS_PRESENT = false
     $scope.HANDBOOK_PAGE = "---"
     icswAcessLevelService.install($scope)
+
+    # typeahead functions
+    $scope.get_selections = (view_value) ->
+        console.log "gs", view_value
+        defer = $q.defer()
+        $scope.struct.typeahead_loading = true
+        $timeout(
+            () ->
+                $scope.struct.typeahead_loading = false
+                defer.resolve(["a", "b", "aqweqe", "123"])
+            1000
+        )
+        return defer.promise
+
     $q.all(
         [
             icswSimpleAjaxCall(
                 {
-                    url: ICSW_URLS.MAIN_GET_DOCU_INFO,
+                    url: ICSW_URLS.MAIN_GET_DOCU_INFO
                     dataType: "json"
                 }
-            ),
-            icswUserService.load(),
+            )
+            icswUserService.load($scope.$id)
         ]
     ).then(
         (data) ->
             $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
             $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
     )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+        $scope.struct.current_user = icswUserService.get().user
+        $scope.struct.focus_search = true
+    )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
+        $scope.struct.current_user = undefined
+    )
 
     $scope.get_progress_style = (obj) ->
-        return {"width" : "#{obj.value}%"}
+        return {width: "#{obj.value}%"}
 
     $scope.redirect_to_init = () ->
         window.location = "http://www.initat.org"
         return false
+
+    $scope.device_selection = ($event) ->
+        icswLayoutSelectionDialogService.quick_dialog("right")
 
     $scope.handbook_url = "/"
     $scope.handbook_url_valid = false
@@ -74,7 +109,7 @@ menu_module = angular.module(
         (new_val) ->
             if new_val.name?
                 $scope.handbook_url_valid = true
-                $scope.handbook_url = "/cluster/doc/#{new_val.name.toLowerCase()}_handbook.pdf"
+                $scope.handbook_url = "/icsw/docu/handbook/#{new_val.name.toLowerCase()}_handbook.pdf"
         true
     )
 
@@ -86,92 +121,53 @@ menu_module = angular.module(
     #        $rootScope.$emit(ICSW_SIGNALS("ICSW_RENDER_MENUBAR"))
     # )
 
-    $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params) ->
-        to_main = if to_state.name.match(/^main/) then true else false
-        from_main = if from_state.name.match(/^main/) then true else false
-        console.log "state_cs", to_state.name, to_main, from_state.name, from_main
-        if to_main and not from_main
-            true
-        else if to_state.name == "login"
-            # logout if logged in
-            if icswUserService.user_present()
-                icswUserService.logout()
-            icswUserService.force_logout()
-            $scope.CURRENT_USER = undefined
-            $scope.show_navbar = false
-    )
-    route_counter = 0
     # load license tree
-    icswUserLicenseDataService.load($scope.$id).then(
+    icswSystemLicenseDataService.load($scope.$id).then(
         (data) ->
     )
 
-    $scope.$on("$stateChangeSuccess", (event, to_state, to_params, from_state, from_params) ->
-        to_main = if to_state.name.match(/^main/) then true else false
-        from_main = if from_state.name.match(/^main/) then true else false
-        console.log "success", to_state.name, to_main, from_state.name, from_main
-        route_counter++
-        if to_state.name == "logout"
-            blockUI.start("Logging out...")
-            icswUserService.logout().then(
-                (json) ->
-                    blockUI.stop()
-                    $scope.CURRENT_USER = undefined
-                    $scope.show_navbar = false
-            )
-        else if not from_main and to_main
-            $scope.CURRENT_USER = icswUserService.get()
-            $scope.show_navbar = true
-            # console.log to_params, $scope
-        else
-            # we allow one gentle transfer
-            if route_counter >= 2 and not icswUserLicenseDataService.fx_mode()
-                # reduce flicker
-                $(document.body).hide()
-                $window.location.reload()
-
-    )
-    $scope.$on("$stateChangeError", (event, to_state, to_params, from_state, from_params) ->
-        console.error "error moving to #{to_state.name}", to_state
-        _to_login = true
-        if to_state.icswData?
-            if to_state.icswData.redirect_to_from_on_error?
-                _to_login = false
-        if _to_login
-            $state.go("login")
-        else
-            $state.go(from_state, from_params)
-    )
     # $scope.device_selection = () ->
     #    console.log "SHOW_DIALOG"
     #     icswLayoutSelectionDialogService.show_dialog()
-]).directive("icswLayoutMenubar", ["$templateCache", ($templateCache) ->
+
+    # apply selected theme if theme is set in session
+]).directive("icswLayoutMenubar",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.layout.menubar")
     }
-]).service("icswMenuProgressService", ["ICSW_SIGNALS", "$rootScope", (ICSW_SIGNALS, $rootScope) ->
+]).service("icswMenuProgressService",
+[
+    "ICSW_SIGNALS", "$rootScope",
+(
+    ICSW_SIGNALS, $rootScope
+) ->
     _settings = {
         # progress bar counter
-        "rebuilding": 0
+        rebuilding: 0
     }
     return {
-        "set_rebuilding": (count) ->
+        set_rebuilding: (count) ->
             if count != _settings.rebuilding
                 _settings.rebuilding = count
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), _settings)
-        "get_rebuilding": () ->
+        get_rebuilding: () ->
             return _settings.rebuilding
     }
 ]).directive("icswMenuProgressBars",
 [
     "$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct",
     "icswMenuProgressService", "icswLayoutSelectionDialogService", "ICSW_SIGNALS",
-    "$rootScope",
+    "$rootScope", "$state",
 (
     $templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct,
     icswMenuProgressService, icswLayoutSelectionDialogService, ICSW_SIGNALS,
-    $rootScope,
+    $rootScope, $state
 ) ->
     return {
         restrict: "EA"
@@ -182,11 +178,13 @@ menu_module = angular.module(
             scope.num_gauges = 0
             scope.progress_iters = 0
             scope.cur_gauges = {}
-            scope.device_quickselection = (onoff) ->
-                icswLayoutSelectionDialogService.quick_dialog(onoff)
             $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
                 scope.update_progress_bar()
             )
+
+            scope.go_mainboard = ($event)->
+                $state.go("main.dashboard")
+
             scope.update_progress_bar = () ->
                 icswSimpleAjaxCall(
                     {
@@ -218,7 +216,15 @@ menu_module = angular.module(
                             icswMenuProgressService.set_rebuilding(0)
                 )
     }
-]).directive("icswBackgroundJobInfo", ["$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", "$state", ($templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state) ->
+]).directive("icswBackgroundJobInfo",
+[
+    "$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", "$state",
+    "$rootScope", "ICSW_SIGNALS",
+(
+    $templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state,
+    $rootScope, ICSW_SIGNALS
+) ->
+    @backg_timer = null
     return {
         restrict: "EA"
         template: '<button type="button" ng-click="redirect_to_bgj_info()" title="number of background jobs"></button>'
@@ -255,28 +261,39 @@ menu_module = angular.module(
                             el.hide()
                 )
                 # reload every 30 seconds
-                $timeout(reload, 30000)
+                @backg_timer = $timeout(reload, 30000)
             reload()
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
+                if @backg_timer?
+                    $timeout.cancel(@backg_timer)
+            )
     }
 ]).factory("icswReactMenuFactory",
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
-    "icswMenuProgressService", "$state",
+    "icswMenuProgressService", "$state", "icswRouteHelper",
 (
     icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
-    icswMenuProgressService, $state
+    icswMenuProgressService, $state, icswRouteHelper,
 ) ->
     # console.log icswAcessLevelService
-    {input, ul, li, a, span, h4} = React.DOM
+    {input, ul, li, a, span, h4, div} = React.DOM
     react_dom = ReactDOM
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
-            if @props.href?
-                a_attrs = {href: @props.href, key: "a"}
+            state = @props.state
+            data = state.icswData
+            # console.log "D=", data
+            a_attrs = {
+                key: "a"
+                className: "dropdown-toggle cursorpointer"
+            }
+            if data.menuEntry.href?
+                a_attrs.href = data.menuEntry.href
             else
-                a_attrs = {href: @props.sref, key: "a"}
-            if @props.labelClass
+                a_attrs.href = data.menuEntry.sref
+            if data.menuEntry.labelClass
                 return li(
                     {key: "li"}
                     [
@@ -284,14 +301,14 @@ menu_module = angular.module(
                             a_attrs
                             [
                                 span(
-                                    {className: "label #{@props.labelClass}", key: "spanl"}
+                                    {className: "label #{data.menuEntry.labelClass}", key: "spanl"}
                                     [
                                         span(
-                                            {className: "fa #{@props.icon} fa_icsw", key: "span"}
+                                            {className: "fa #{data.menuEntry.icon} fa_icsw", key: "span"}
                                         )
                                     ]
                                 )
-                                " #{@props.name}"
+                                " #{data.menuEntry.name}"
                             ]
                         )
                     ]
@@ -304,9 +321,9 @@ menu_module = angular.module(
                             a_attrs
                             [
                                 span(
-                                    {className: "fa #{@props.icon} fa_icsw", key: "span"}
+                                    {className: "fa #{data.menuEntry.icon} fa_icsw", key: "span"}
                                 )
-                                " #{@props.name}"
+                                " #{data.menuEntry.name}"
                             ]
                         )
                     ]
@@ -321,63 +338,71 @@ menu_module = angular.module(
             # _idx = 0
             # flag for last entry was a valid one
             valid_entry = false
-            for entry in @props.entries
+            _post_spacer = false
+            for state in @props.entries
                 _idx++
-                _key = "item#{_idx}"
-                if entry.name? and not entry.disable?
-                    _add = true
-                    if entry.rights?
-                        if angular.isFunction(entry.rights)
-                            if @props.user?
-                                _add = entry.rights(@props.user, @props.acls)
-                            else
-                                _add = false
-                        else
-                            _add = icswAcessLevelService.has_all_menu_permissions(entry.rights)
-                    if entry.licenses? and _add
-                        _add = icswAcessLevelService.has_all_valid_licenses(entry.licenses)
-                        if not _add
-                            console.warn "license(s) #{entry.licenses} missing"
-                    if entry.service_types? and _add
-                        _add = icswAcessLevelService.has_all_service_types(entry.service_types)
-                        if not _add
-                            console.warn "service_type(s) #{entry.service_types} missing"
-                    if _add
-                        # console.log _key
-                        if entry.preSpacer and valid_entry
-                            _items.push(
-                                li({className: "divider", key: _key + "_pre"})
-                            )
-    
-                        if angular.isFunction(entry.name)
-                            _items.push(
-                                React.createElement(entry.name, {key: _key})
-                            )
-                        else
-                            _items.push(
-                                React.createElement(menu_line, entry, {key: _key})
-                            )
-                        valid_entry = true
-                        if entry.postSpacer and valid_entry
-                            _items.push(
-                                li({className: "divider", key: _key +  "_post"})
-                            )
-                            valid_entry = false
+                data = state.icswData
+                _key = data.key
+                if data.menuEntry.isHidden? and data.menuEntry.isHidden
+                    continue
+                if data.$$allowed
+                    # console.log _key
+                    if (data.menuEntry.preSpacer? and valid_entry) or _post_spacer
+                        _items.push(
+                            li({className: "divider", key: _key + "_pre"})
+                        )
+                    if angular.isFunction(state.name)
+                        _items.push(
+                            React.createElement(state.name, {key: _key})
+                        )
+                    else
+                        _items.push(
+                            React.createElement(menu_line, {key: _key, state: state})
+                        )
+                    valid_entry = true
+                    if data.menuEntry.postSpacer?
+                        _post_spacer = true
+                    else
+                        _post_spacer = false
             if _items.length
-    
+                state = @props.state
+                header = state.icswData.menuHeader
+                key= "mh_#{state.icswData.key}"
                 _res = li(
-                    {key: "menu"}
-                    a(
-                        {className: "dropdown-toggle", "data-toggle": "dropdown",key: "menu.head"}
-                        [
-                            span({className: "fa #{@props.icon} fa-lg fa_top", key: "span"})
-                            span({key: "text#{_idx}"}, @props.name)
-                        ]
-                    )
-                    ul(
-                        {className: "dropdown-menu", key: "ul"}
-                        _items
-                    )
+                    {
+                        key: "menu_" + key
+                    }
+                    [
+                        a(
+                            {
+                                className: "cursorpointer dropdown-toggle"
+                                # dataToggle is not working
+                                "data-toggle": "dropdown"
+                                key: "menu.head_" + key
+                            }
+                            [
+                                span(
+                                    {
+                                        className: "fa #{header.icon} fa-lg fa_top"
+                                        key: "span_" + key
+                                    }
+                                )
+                                span(
+                                    {
+                                        key: "text_" + key
+                                    }
+                                    header.name
+                                )
+                            ]
+                        )
+                        ul(
+                            {
+                                className: "dropdown-menu"
+                                key: "ul_" + key
+                            }
+                            _items
+                        )
+                    ]
                 )
             else
                 _res = null
@@ -385,56 +410,25 @@ menu_module = angular.module(
     )
     
     class MenuHeader
-        constructor: (@key, @name, @icon, @ordering) ->
+        constructor: (@state) ->
             @entries = []
 
         add_entry: (entry) =>
             @entries.push(entry)
 
-        get_react: (user, acls) =>
+        get_react: () =>
             # order entries
             return React.createElement(
                 menu_header
                 {
-                    key: @key
-                    name: @name
-                    icon: @icon
-                    entries: (_entry.get_react() for _entry in _.orderBy(@entries, "ordering"))
-                    user: user
-                    acls: acls
+                    key: @state.icswData.key + "_top"
+                    state: @state
+                    entries: _.orderBy(@entries, "icswData.menuEntry.ordering")
                 }
             )
     
-    class MenuEntry
-        constructor: (@name, @rights, @licenses, @service_types, @icon, @ordering, @sref, @preSpacer, @postSpacer, @labelClass) ->
-
-        get_react: () =>
-            return {
-                name: @name
-                rights: @rights
-                icon: @icon
-                sref: @sref
-                licenses: @licenses
-                service_types: @service_types
-                preSpacer: @preSpacer
-                postSpacer: @postSpacer
-                labelClass: @labelClass
-            }
-    
     menu_comp = React.createClass(
         displayName: "menubar"
-        propTypes: {
-            user: React.PropTypes.object
-            acls: React.PropTypes.object
-        }
-        getInitialState: () ->
-            return {
-                user: @props.user
-                acls: @props.acls
-            }
-
-        set_user: (user) ->
-            @setState({user: user})
 
         update_dimensions: () ->
             @setState(
@@ -443,6 +437,14 @@ menu_module = angular.module(
                     height: $(window).height()
                 }
             )
+        getInitialState: () ->
+            return {
+                counter: 0
+            }
+
+        force_redraw: () ->
+            @setState({counter: @state.counter + 1})
+
         componentWillMount: () ->
             # register eventhandler
             $(window).on("resize", @update_dimensions)
@@ -451,64 +453,34 @@ menu_module = angular.module(
             # remove eventhandler
             $(window).off("resize", @update_dimensions)
     
-        componentDidMount: () ->
-            mb_height = $(react_dom.findDOMNode(@)).parents("nav").height()
-            # console.log "fMENUBAR_HEIGHT=", mb_height
-            $("body").css("padding-top", mb_height + 1)
-
-        componentDidUpdate: () ->
-            mb_height = $(react_dom.findDOMNode(@)).parents("nav").height()
-            # console.log "uMENUBAR_HEIGHT=", mb_height
-            $("body").css("padding-top", mb_height + 1)
-
         render: () ->
-            menus = []
-            valid_state_names = []
-            for state in $state.get()
-                if state.icswData?
-                    if state.icswData.menuEntry?
-                        valid_state_names.push(state.name)
-                    if state.icswData.menuHeader?
-                        _hdr = state.icswData.menuHeader
-                        menus.push(
-                            new MenuHeader(
-                                _hdr.key
-                                _hdr.name
-                                _hdr.icon
-                                _hdr.ordering
-                            )
-                        )
+            _menu_struct = icswRouteHelper.get_struct()
+            # may not be valid
+            # console.log "mv", _menu_struct.valid
+            if _menu_struct.valid
+                menus = (new MenuHeader(state) for state in _menu_struct.menu_header_states)
+                # console.log menus.length
+                for state in _menu_struct.menu_states
+                    # find menu
+                    menu = (entry for entry in menus when entry.state.icswData.menuHeader.key == state.icswData.menuEntry.menukey)
+                    if menu.length
+                        menu[0].add_entry(state)
+                    else
+                        console.error("No menu with name #{state.icswData.menuEntry.menukey} found (#{state.icswData.pageTitle})")
+                        console.log "Menus known:", (entry.state.icswData.menuHeader.key for entry in menus).join(", ")
 
-            for state in ($state.get(_name) for _name in valid_state_names)
-                # find menu
-                _entry = state.icswData.menuEntry
-                menu = (entry for entry in menus when entry.key == _entry.menukey)
-                if menu.length
+            else
+                menus = []
 
-                    menu[0].add_entry(
-                        new MenuEntry(
-                            _entry.name or state.icswData.pageTitle
-                            state.icswData.rights
-                            state.icswData.licenses
-                            state.icswData.service_types
-                            _entry.icon
-                            _entry.ordering
-                            $state.href(state)
-                            _entry.preSpacer?
-                            _entry.postSpacer?
-                            if _entry.labelClass? then _entry.labelClass else ""
-                        )
-                    )
-                else
-                    console.error("No menu with name #{_entry.menukey} found")
-            # todo: check for service_type
-            user = @state.user
-            acls = @state.acls
-            if user?
-                extra_menus = (menu.get_react(user, acls) for menu in _.orderBy(menus, "ordering"))
+            if menus.length
                 _res = ul(
-                    {key: "topmenu", className: "nav navbar-nav"}
-                    extra_menus
+                    {
+                        key: "topmenu"
+                        className: "nav navbar-nav"
+                    }
+                    (
+                        menu.get_react() for menu in _.orderBy(menus, "state.icswData.menuHeader.ordering")
+                    )
                 )
             else
                 _res = null
@@ -526,48 +498,141 @@ menu_module = angular.module(
     return {
         restrict: "EA"
         replace: true
-        scope:
-            user: "="
+        scope: true
         link: (scope, el, attrs) ->
-            _user = undefined
-            _acls = undefined
-            _element = undefined
-            _render = () ->
-                if _acls
-                    if not _element?
-                        _element = ReactDOM.render(
-                            React.createElement(
-                                icswReactMenuFactory
-                                {
-                                    user: _user
-                                    acls: _acls
-                                }
-                            )
-                            el[0]
-                        )
-                    else
-                        # console.log _element, "E"
-                        _element.set_user(_user)
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_CHANGED"), (event, user) ->
-                # console.log "uc", user
-                _user = user
-                # console.log "user_render"
-                _render()
+            _element = ReactDOM.render(
+                React.createElement(
+                    icswReactMenuFactory
+                )
+                el[0]
             )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_ACLS_CHANGED"), (event, acls) ->
-                # console.log "ac", acls
-                _acls = acls
-                # console.log "acls_render"
-                _render()
+            $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"), (event) ->
+                _element.force_redraw()
             )
             $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
-                # console.log "mps", settings
-                _render()
+                console.log "mps", settings
+                # _render()
             )
-            # $rootScope.$on(ICSW_SIGNALS("ICSW_RENDER_MENUBAR"), (event, settings) ->
-            #     # console.log "mps", settings
-            #     _render()
-            # )
+    }
+]).directive("icswLayoutSubMenubar",
+[
+    "$templateCache", "icswUserService", "$rootScope", "$compile", "ICSW_SIGNALS",
+    "$state",
+(
+    $templateCache, icswUserService, $rootScope, $compile, ICSW_SIGNALS,
+    $state,
+) ->
+    return {
+        restrict: "E"
+        controller: "icswLayoutSubMenubarCtrl"
+        template: $templateCache.get("icsw.layout.submenubar")
+        scope: true
+    }
+]).controller("icswLayoutSubMenubarCtrl"
+[
+    "$scope", "icswLayoutSelectionDialogService", "$rootScope", "icswBreadcrumbs",
+    "icswUserService", "$state", "$q", "icswDeviceTreeService", "ICSW_SIGNALS",
+    "icswDispatcherSettingTreeService", "icswAssetPackageTreeService",
+    "icswActiveSelectionService",
+(
+    $scope, icswLayoutSelectionDialogService, $rootScope, icswBreadcrumbs,
+    icswUserService, $state, $q, icswDeviceTreeService, ICSW_SIGNALS
+    icswDispatcherSettingTreeService, icswAssetPackageTreeService,
+    icswActiveSelectionService
+) ->
+    $scope.struct = {
+        current_user: undefined
+        # number of selected devices
+        num_selected: 0
+        # selection string
+        select_txt: "No devices selected"
+        # breadcrumb list
+        bc_list: []
+    }
 
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+        $scope.struct.current_user = icswUserService.get().user
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
+        $scope.struct.current_user = undefined
+    )
+
+    $scope.device_selection = ($event) ->
+        icswLayoutSelectionDialogService.quick_dialog("right")
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), (event, bc_list) ->
+        $scope.struct.bc_list.length = 0
+        for entry in bc_list
+            $scope.struct.bc_list.push(entry)
+    )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+        _cur_sel = icswActiveSelectionService.current()
+        #sel_groups = _cur_sel.get_devsel_list()[3].length
+        sel_groups = 0
+        sel_devices = _cur_sel.get_devsel_list()[1].length
+        group_plural = if sel_groups == 1 then "group" else "groups"
+        device_plural = if sel_devices == 1 then "device" else "devices"
+        group_plural = if sel_groups == 1 then "group" else "groups"
+        device_plural = if sel_devices == 1 then "device" else "devices"
+        _list = []
+        if sel_devices
+            _list.push("#{sel_devices} #{device_plural}")
+        if sel_groups
+            _list.push("#{sel_groups} #{group_plural}")
+        $scope.struct.num_selected = _list.length
+        $scope.struct.select_txt = _list.join(", ")
+    )
+
+    $scope.new_devsel = (devs) ->
+        # never called....
+        console.log "*", devs
+        console.log icswActiveSelectionService.current()
+        sel_groups = 0
+        sel_devices = 0
+        for dev in devs
+            if dev.is_meta_device
+                sel_devices++
+            else
+                sel_groups++
+]).service('icswBreadcrumbs',
+[
+    "$state", "icswRouteHelper", "$rootScope", "ICSW_SIGNALS",
+(
+    $state, icswRouteHelper, $rootScope, ICSW_SIGNALS,
+) ->
+    # list of breadcrumbs
+    bc_list = []
+
+    add_state = (state) ->
+        if state.icswData?
+            _add = false
+            if state.icswData.menuEntry? and state.icswData.menuEntry.sref?
+                _add = true
+                _add_struct = {
+                    icon: state.icswData.menuEntry.icon
+                    sref: state.name
+                    name: state.icswData.menuEntry.name
+                }
+            else if state.icswData.pageTitle?
+                _add = true
+                _add_struct = {
+                    icon: ""
+                    sref: state.name
+                    name: state.icswData.pageTitle
+                }
+            if _add
+                _.remove(bc_list, (entry) -> return entry.sref == _add_struct.sref)
+                # state with menu entry
+                bc_list.push(_add_struct)
+                if bc_list.length > 6
+                    bc_list = bc_list.slice(1)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), bc_list)
+
+            # console.log bc_list.length, (entry.name for entry in bc_list)
+
+    return {
+        add_state: (state) ->
+            add_state(state)
     }
 ])

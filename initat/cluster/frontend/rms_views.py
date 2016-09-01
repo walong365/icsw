@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -28,8 +28,11 @@ import logging
 import sys
 import threading
 import time
+import re
 from collections import namedtuple
 
+import memcache
+from initat.icsw.service.instance import InstanceXML
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
@@ -39,7 +42,8 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
 
-from initat.cluster.backbone.models import user_variable, rms_job_run
+from initat.cluster.backbone.models import rms_job_run, device
+from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.serializers import rms_job_run_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -58,10 +62,14 @@ RMS_ADDONS = [
     sys.modules[key].modify_rms() for key in RMS_ADDON_KEYS if key.split(".")[-1] not in ["base"]
 ]
 
+# memcached port and address
+MC_PORT = InstanceXML(quiet=True).get_port_dict("memcached", command=True)
+MC_ADDRESS = "127.0.0.1"
+
 logger = logging.getLogger("cluster.rms")
 
 if sge_tools:
-    class ThreadLockedSGEInfo(sge_tools.sge_info):
+    class ThreadLockedSGEInfo(sge_tools.SGEInfo):
         # sge_info object with thread lock layer
         def __init__(self):
             self._init = False
@@ -78,7 +86,7 @@ if sge_tools:
                     _srv_address = _routing.get_server_address(_srv_type)
                 else:
                     _srv_address = "127.0.0.1"
-                sge_tools.sge_info.__init__(
+                sge_tools.SGEInfo.__init__(
                     self,
                     server=_srv_address,
                     source="server",
@@ -94,8 +102,8 @@ if sge_tools:
             self.ensure_init()
             self.lock.acquire()
             try:
-                sge_tools.sge_info.update(self)
-                sge_tools.sge_info.build_luts(self)
+                sge_tools.SGEInfo.update(self)
+                sge_tools.SGEInfo.build_luts(self)
             finally:
                 self.lock.release()
 else:
@@ -107,11 +115,11 @@ my_sge_info = ThreadLockedSGEInfo()
 
 
 def get_job_options(request):
-    return sge_tools.get_empty_job_options(compress_nodelist=False)
+    return sge_tools.get_empty_job_options(compress_nodelist=False, queue_details=True)
 
 
 def get_node_options(request):
-    return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True)
+    return sge_tools.get_empty_node_options(merge_node_queue=True, show_type=True, show_seq=True, show_memory=True)
 
 
 class get_header_dict(View):
@@ -201,43 +209,10 @@ def _fetch_rms_info(request):
         return namedtuple("RmsInfo", ["run_job_list", "wait_job_list"])([], [])
 
 
-class get_rms_json(View):
+class get_rms_done_json(View):
     @method_decorator(login_required)
     def post(self, request):
         _post = request.POST
-        my_sge_info.update()
-        _salt_addons(request)
-        rms_info = _fetch_rms_info(request)
-
-        # print etree.tostring(run_job_list, pretty_print=True)
-        node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
-        if RMS_ADDONS:
-            for change_obj in RMS_ADDONS:
-                change_obj.modify_nodes(my_sge_info, node_list)
-        fc_dict = {}
-        cur_time = time.time()
-        for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
-            file_contents = file_el.findall(".//file_content")
-            if len(file_contents):
-                cur_fcd = []
-                for cur_fc in file_contents:
-                    file_name = cur_fc.attrib["name"]
-                    content = cache.get(cur_fc.attrib["cache_uuid"])
-                    if content is not None:
-                        lines = content.replace(r"\r\n", r"\n").split("\n")
-                        content = "\n".join(reversed(lines))
-                        cur_fcd.append(
-                            (
-                                file_name,
-                                content,
-                                len(content),
-                                int(cur_fc.attrib.get("last_update", cur_time)),
-                                min(10, len(lines) + 1)
-                            )
-                        )
-                fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
-        # todo: add jobvars to running (waiting for rescheduled ?) list
-        # print dir(rms_info.run_job_list)
         done_jobs = rms_job_run.objects.all().exclude(
             Q(end_time=None)
         ).prefetch_related(
@@ -258,11 +233,103 @@ class get_rms_json(View):
         _done_ser = rms_job_run_serializer(done_jobs, many=True).data
         # pprint.pprint(_done_ser)
         json_resp = {
+            "done_table": _done_ser,
+        }
+        return HttpResponse(json.dumps(json_resp), content_type="application/json")
+
+
+class get_rms_current_json(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        _post = request.POST
+        my_sge_info.update()
+        _salt_addons(request)
+        rms_info = _fetch_rms_info(request)
+
+        # print etree.tostring(run_job_list, pretty_print=True)
+        node_list = sge_tools.build_node_list(my_sge_info, get_node_options(request))
+        if RMS_ADDONS:
+            for change_obj in RMS_ADDONS:
+                change_obj.modify_nodes(my_sge_info, node_list)
+
+        # load values
+        # get name of all hosts
+        _host_names = node_list.xpath(".//node/host/text()")
+        # memcache client
+        _mcc = memcache.Client(["{}:{:d}".format(MC_ADDRESS, MC_PORT)])
+        h_dict_raw = _mcc.get("cc_hc_list")
+        if h_dict_raw:
+            h_dict = json.loads(h_dict_raw)
+        else:
+            h_dict = {}
+        # required keys
+        req_keys = re.compile("^(load\.(1|5|15)$)|(mem\.(avail|free|used)\..*)$")
+        # resolve to full host names / dev_pks / uuids
+        _dev_dict = {
+            _name: {
+                "uuid": _uuid,
+                "values": {},
+                # core id -> job list
+                "pinning": {},
+                "idx": _idx,
+            } for _name, _uuid, _idx in device.objects.filter(
+                Q(name__in=_host_names)
+            ).values_list("name", "uuid", "idx")
+        }
+        # reverse lut (idx -> name)
+        _rev_lut = {_value["idx"]: _key for _key, _value in _dev_dict.iteritems()}
+        for _name, _struct in _dev_dict.iteritems():
+            if _struct["uuid"] in h_dict:
+                _value_list = json.loads(_mcc.get("cc_hc_{}".format(_struct["uuid"])))
+                for _list in _value_list:
+                    if req_keys.match(_list[1]):
+                        _struct["values"][_list[1]] = _list[5] * _list[7]
+
+        fc_dict = {}
+        cur_time = time.time()
+        for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
+            file_contents = file_el.findall(".//file_content")
+            if len(file_contents):
+                cur_fcd = []
+                for cur_fc in file_contents:
+                    file_name = cur_fc.attrib["name"]
+                    content = cache.get(cur_fc.attrib["cache_uuid"])
+                    if content is not None:
+                        lines = content.replace(r"\r\n", r"\n").split("\n")
+                        content = "\n".join(reversed(lines))
+                        cur_fcd.append(
+                            (
+                                file_name,
+                                content,
+                                len(content),
+                                int(cur_fc.attrib.get("last_update", cur_time)),
+                                min(10, len(lines) + 1),
+                            )
+                        )
+                fc_dict[file_el.attrib["full_id"]] = list(reversed(sorted(cur_fcd, cmp=lambda x, y: cmp(x[3], y[3]))))
+        for job_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
+            job_id = job_el.attrib["full_id"]
+            pinning_el = job_el.find(".//pinning_info")
+            if pinning_el is not None and pinning_el.text:
+                # device_id -> process_id -> core_id
+                _pd = json.loads(pinning_el.text)
+                for _node_idx, _pin_dict in _pd.iteritems():
+                    if int(_node_idx) in _rev_lut:
+                        _dn = _rev_lut[int(_node_idx)]
+                        for _proc_id, _core_id in _pin_dict.iteritems():
+                            _dev_dict[_dn]["pinning"].setdefault(_core_id, []).append(job_id)
+        # pprint.pprint(pinning_dict)
+        # todo: add jobvars to running (waiting for rescheduled ?) list
+        # print dir(rms_info.run_job_list)
+        # pprint.pprint(_done_ser)
+        json_resp = {
             "run_table": _sort_list(rms_info.run_job_list, _post),
             "wait_table": _sort_list(rms_info.wait_job_list, _post),
             "node_table": _sort_list(node_list, _post),
-            "done_table": _done_ser,
+            "sched_conf": sge_tools.build_scheduler_info(my_sge_info),
             "files": fc_dict,
+            "fstree": sge_tools.build_fstree_info(my_sge_info),
+            "node_values": _dev_dict,
         }
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
@@ -275,7 +342,7 @@ class get_rms_jobinfo(View):
         _salt_addons(request)
         rms_info = _fetch_rms_info(request)
 
-        latest_possible_end_time = datetime.datetime.fromtimestamp(int(_post["jobinfo_jobsfrom"]))
+        latest_possible_end_time = cluster_timezone.localize(datetime.datetime.fromtimestamp(int(_post["jobinfo_jobsfrom"])))
         done_jobs = rms_job_run.objects.all().filter(
             Q(end_time__gt=latest_possible_end_time)
         ).select_related("rms_job")
@@ -433,58 +500,6 @@ class get_file_content(View):
                 ),
                 logger
             )
-
-
-class set_user_setting(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        if "user_vars" not in request.session:
-            request.session["user_vars"] = {}
-        user_vars = request.session["user_vars"]
-        _post = request.POST
-        data = json.loads(_post["data"])
-        var_name = "_rms_wf_{}".format(data["table"])
-        if var_name in user_vars:
-            cur_dis = user_vars[var_name].value.split(",")
-        else:
-            cur_dis = []
-        row = data["row"]
-        _save = False
-        if data["enabled"] and row in cur_dis:
-            cur_dis.remove(row)
-            _save = True
-        elif not data["enabled"] and row not in cur_dis:
-            cur_dis.append(row)
-            _save = True
-        if _save:
-            try:
-                user_vars[var_name] = user_variable.objects.get(Q(name=var_name) & Q(user=request.user))
-            except user_variable.DoesNotExist:
-                user_vars[var_name] = user_variable.objects.create(
-                    user=request.user,
-                    name=var_name,
-                    value=",".join(cur_dis)
-                )
-            else:
-                user_vars[var_name].value = ",".join(cur_dis)
-                user_vars[var_name].save()
-            request.session.save()
-        json_resp = {}
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
-
-
-class get_user_setting(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        user_vars = request.session.get("user_vars", {})
-        json_resp = {}
-        for t_name in ["running", "waiting", "node"]:
-            var_name = "_rms_wf_%s" % (t_name)
-            if var_name in user_vars:
-                json_resp[t_name] = user_vars[var_name].value.split(",")
-            else:
-                json_resp[t_name] = []
-        return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 
 class change_job_priority(View):

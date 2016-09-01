@@ -13,7 +13,7 @@
     <h3>Create a new Device</h3>
     <form class="form-horizontal" name="form_data" novalidate ng-if="data_ready">
         <uib-accordion ng-cloak close-others="false">
-            <uib-accordion-group heading="Base data" is-open="base_open">
+            <div uib-accordion-group class="panel-default" heading="Base data" is-open="base_open">
                 <!-- {{ form_data || json }} {{form_data.$valid}} -->
                 <div class="form-group">
                     <label class="control-label col-md-5">
@@ -46,7 +46,7 @@
                     <div class="controls col-md-6" ng-class="form_data.ip.$invalid && 'has-error'">
                         <div class="form-inline">
                             <input name="ip" class="form-control" ng-model="device_data.ip" required ng-pattern="/^(\d+)\.(\d+)\.(\d)+\.(\d+)$/" placeholder="IP Address"/>
-                            <button class="btn btn-primary btn-sm" ng-show="!resolve_pending && device_data.full_name" ng-click="resolve_name()">Resolve</button>
+                            <button class="btn btn-primary" ng-show="!resolve_pending && device_data.full_name" ng-click="resolve_name()">Resolve</button>
                             <span ng-show="resolve_pending" class="glyphicon glyphicon-refresh"></span>
                         </div>
                         <span ng-show="form_data.ip.$invalid" class="text-danger">
@@ -75,8 +75,8 @@
                     <label class="control-label col-md-5">Monitor host via</label>
                     <div class="controls col-md-6">
                         <div class="btn-group btn-sn">
-                            <button ng-class="device_data.resolve_via_ip && 'btn btn-success' || 'btn'" ng-click="device_data.resolve_via_ip=true">IP</button>
-                            <button ng-class="device_data.resolve_via_ip && 'btn' || 'btn btn-success'" ng-click="device_data.resolve_via_ip=false">Name</button>
+                            <button ng-class="device_data.resolve_via_ip && 'btn btn-success' || 'btn btn-default'" ng-click="device_data.resolve_via_ip=true">IP</button>
+                            <button ng-class="device_data.resolve_via_ip && 'btn btn-default' || 'btn btn-success'" ng-click="device_data.resolve_via_ip=false">Name</button>
                         </div>
                     </div>
                 </div>
@@ -111,11 +111,12 @@
                     <label class="control-label col-md-5">Create</label>
                     <div class="controls col-md-6" ng-class="form_data.comment.$invalid && 'has-error'">
                         <icsw-tools-button type="create" ng-show="form_data.$valid" value="create device" ng-click="create_device()"/>
+                        <span ng-show="!form_data.$valid" class="text-danger">Formular data is not valid (some fields missing... ?)</span>
                     </div>
                 </div>
-            </uib-accordion-group>
-            <uib-accordion-group heading="Optional data">
-            </uib-accordion-group>
+            </div>
+            <div uib-accordion-group class="panel-default" heading="Optional data">
+            </div>
         </uib-accordion>
     </form>
 </script>

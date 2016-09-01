@@ -1,4 +1,4 @@
-# Copyright (c) 2008-2009,2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2008-2009,2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -143,7 +143,10 @@ class CPUStruct(object):
 
 
 class ProcStruct(object):
-    __slots__ = ("pid", "act_mask", "single_cpu_num", "stat", "usage", "name", "cpu_container")
+    __slots__ = (
+        "pid", "act_mask", "single_cpu_num", "stat", "usage", "name", "cpu_container",
+        "job_id", "task_id",
+    )
 
     def __init__(self, cpu_c, p_struct):  # pid, stat=None, name="not set"):
         self.cpu_container = cpu_c
@@ -154,6 +157,9 @@ class ProcStruct(object):
         self.stat = {"u": _cpu_t.user, "s": _cpu_t.system}
         self.usage = {}
         self.read_mask()
+        # job and task id
+        self.job_id = None
+        self.task_id = None
 
     def feed(self, p_struct, diff_time):
         try:
@@ -173,6 +179,14 @@ class ProcStruct(object):
 
     def clear_usage(self):
         self.usage = {}
+
+    def set_job_info(self, job_id, task_id):
+        self.job_id = job_id
+        self.task_id = task_id
+
+    @property
+    def has_job_info(self):
+        return True if self.job_id else False
 
     @property
     def mask_set(self):

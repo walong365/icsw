@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,7 +28,7 @@ import time
 from initat.host_monitoring.config import global_config
 from initat.tools import logging_tools, process_tools, threading_tools
 
-CACHE_TIMEOUT = 10
+CACHE_TIMEOUT = 20
 
 
 class CacheEntry(object):
@@ -46,6 +46,7 @@ class CacheEntry(object):
 
 class ResolveProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
         # log.startLoggingWithObserver(my_observer, setStdout=False)
         self.__debug = global_config["DEBUG"]

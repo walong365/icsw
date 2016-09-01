@@ -1,55 +1,63 @@
 <script type="text/ng-template" id="icsw.tools.paginator">
-    <span class="form-inline">
-        <span ng-if="pages.length > 0">
-            <div class="form-group">
-                <!-- small pager -->
-                <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages < 11"  style="margin-top:0px; margin-bottom:0px;">
-                    <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}">
-                        <a ng-click="selectPage(pag_num)">{{ pag_num }}</a>
-                    </li>
-                </ul>
-                <!-- large pager with back/forward buttons -->
-                <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages > 10"  style="margin-top:0px; margin-bottom:0px;">
-                    <li ng-class="{disabled: currentPage == 1}">
-                        <a ng-click="selectPage(currentPage-1)">&laquo;</a>
-                    </li>
-                    <li ng-class="{disabled: currentPage == numPages}">
-                        <a ng-click="selectPage(currentPage+1)">&raquo;</a>
-                    </li>
-                    <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}">
-                        <a ng-click="selectPage(pag_num)">{{ pag_num }}</a>
-                    </li>
-                </ul>
-            </div>
-            <span ng-if="numPages > 5">
-                <select class="form-control input-sm" ng-model="currentPage" ng-change="selectPage(currentPage)"
-                    ng-options="idx as get_range_info(idx, stItemsByPage, numPages) for idx in [] | range:numPages"
-                >
-                </select>
+    <span class="form-inline table-paging-tools">
+        <span class="table-pager-block">
+            <span ng-if="pages.length > 0">
+                <div class="form-group table-pager">
+                    <!-- small pager -->
+                    <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages < 11">
+                        <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}">
+                            <a ng-click="selectPage(pag_num)">{{ pag_num }}</a>
+                        </li>
+                    </ul>
+                    <!-- large pager with back/forward buttons -->
+                    <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages > 10">
+                        <li ng-class="{disabled: currentPage == 1}">
+                            <a ng-click="selectPage(currentPage-1)">&laquo;</a>
+                        </li>
+                        <li ng-class="{disabled: currentPage == numPages}">
+                            <a ng-click="selectPage(currentPage+1)">&raquo;</a>
+                        </li>
+                        <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}">
+                            <a ng-click="selectPage(pag_num)">{{ pag_num }}</a>
+                        </li>
+                    </ul>
+                </div>
+                <span ng-if="numPages > 5">
+                    <select class="form-control input-sm" ng-model="currentPage" ng-change="selectPage(currentPage)"
+                        ng-options="idx as get_range_info(idx, stItemsByPage, numPages) for idx in [] | range:numPages"
+                    >
+                    </select>
+                </span>
+
+                <span ng-if="numPages < 6 && !noNumberOfElements">
+                    {{ 'showing entries' | translate }}
+                    <span ng-if="table_controller.getFilteredCollection().length == 0">0</span>
+                    <span ng-if="table_controller.getFilteredCollection().length > 0">{{ ((currentPage-1)  * stItemsByPage) + 1 }}</span>
+                    {{ 'to' | translate }}
+                    {{ Math.min(currentPage * stItemsByPage, table_controller.getFilteredCollection().length) }}
+                </span>
             </span>
-            <span ng-if="numPages > 1">, </span>
-            <span ng-if="numPages < 6 && !noNumberOfElements">
-                {{'showing entries' | translate}}
-                <span ng-if="table_controller.getFilteredCollection().length == 0">0</span>
-                <span ng-if="table_controller.getFilteredCollection().length > 0">{{ ((currentPage-1)  * stItemsByPage) + 1 }}</span>
-                {{'to'|translate}}
-                {{ Math.min(currentPage  * stItemsByPage, table_controller.getFilteredCollection().length) }},
+            <span ng-if="pages.length == 0">
+                {{ 'no entries to show' | translate }}
             </span>
         </span>
-        <span ng-if="pages.length == 0">
-            {{'no entries to show' | translate}},
+
+        <span class="table-entry-block">
+            <span> <!-- ng-show= pagSettings.conf.modify_epp -->
+                {{ 'show' | translate }}
+                <div class="form-group">
+                    <select class="form-control input-sm" ng-model="stItemsByPage" ng-options="value as value for value in possibleItemsByPage"></select>
+                </div> {{ 'per page' | translate }}
+            </span>
         </span>
-        <span> <!-- ng-show= pagSettings.conf.modify_epp -->
-            {{'show' | translate}}
-            <div class="form-group">
-                <select class="form-control input-sm" ng-model="stItemsByPage" ng-options="value as value for value in possibleItemsByPage"></select>
-            </div> {{'per page' | translate}},
-        </span>
-        <span ng-if="table_controller.getNumberOfSelectedEntries()">
-            {{ table_controller.getNumberOfSelectedEntries() }} {{'selected entries'|translate}}
-        </span>
-        <span ng-if="selected_elements">
-            {{ selected_elements }} {{'elements selected'|translate}}
+
+        <span class="table-selected-block">
+            <span ng-if="table_controller.getNumberOfSelectedEntries()">
+                {{ table_controller.getNumberOfSelectedEntries() }} {{ 'selected entries' | translate }}
+            </span>
+            <span ng-if="selected_elements">
+                {{ selected_elements }} {{ 'elements selected' | translate }}
+            </span>
         </span>
     </span>
 </script>

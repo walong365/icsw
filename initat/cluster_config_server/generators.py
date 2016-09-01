@@ -19,20 +19,21 @@
 #
 """ cluster-config-server, config generators """
 
-from lxml import etree  # @UnresolvedImport
 import base64
 import commands
 import os
 import re
 import tempfile
 
+import networkx
 from django.db.models import Q
+from lxml import etree
+from lxml.builder import E
+
 from initat.cluster.backbone.models import device_variable, domain_tree_node, netdevice
 from initat.cluster_config_server.config import global_config, GATEWAY_THRESHOLD
 from initat.cluster_config_server.partition_setup import partition_setup
-from lxml.builder import E  # @UnresolvedImport
 from initat.tools import logging_tools, config_store, uuid_tools
-import networkx
 
 
 def do_uuid(conf):

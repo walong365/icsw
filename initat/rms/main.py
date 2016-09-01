@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -86,6 +86,8 @@ def main():
             ("SGE_ARCH", configfile.str_c_var(sge_dict["SGE_ARCH"])),
             ("SGE_ROOT", configfile.str_c_var(sge_dict["SGE_ROOT"])),
             ("SGE_CELL", configfile.str_c_var(sge_dict["SGE_CELL"])),
+            ("FAIRSHARE_TREE_NODE_TEMPLATE", configfile.str_c_var("/{project}/{user}")),
+            ("FAIRSHARE_TREE_DEFAULT_SHARES", configfile.int_c_var(1000)),
             ("TRACE_FAIRSHARE", configfile.bool_c_var(False)),
             ("CLEAR_ITERATIONS", configfile.int_c_var(1)),
             ("CHECK_ACCOUNTING_TIMEOUT", configfile.int_c_var(300)),
@@ -98,6 +100,5 @@ def main():
     # check modify_sge_global flag and set filesystem flag accordingly
     sge_license_tools.handle_license_policy(global_config["LICENSE_BASE"], global_config["MODIFY_SGE_GLOBAL"])
     ServerProcess().loop()
-    configfile.terminate_manager()
     # exit
     os._exit(0)

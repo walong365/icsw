@@ -22,32 +22,15 @@ angular.module(
     "icsw.discovery.event_log",
     [
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.eventlog", {
-            url: "/eventlog"
-            template: '<icsw-discovery-event-log icsw-sel-man="0" icsw-sel-man-mode="d"></icsw-discovery-event-log>'
-            icswData:
-                pageTitle: "Syslog, WMI- und IPMI-Event logs"
-                licenses: ["discovery_server"]
-                rights: ["device.discovery_server"]
-                menuHeader:
-                    key: "stat"
-                    name: "Status"
-                    icon: "fa-line-chart"
-                    ordering: 50
-                menuEntry:
-                    menukey: "stat"
-                    name: "Syslog, WMI- and IPMI-Event logs"
-                    icon: "fa-list-alt"
-                    ordering: 100
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.eventlog")
 ]).controller("icswDiscoveryEventCtrl",
 [
     "$scope", 'Restangular', 'ICSW_URLS', '$timeout', '$q', 'icswSimpleAjaxCall', 'toaster',
+    "icswTimeFrameService",
 (
-    $scope, Restangular, ICSW_URLS, $timeout, $q, icswSimpleAjaxCall, toaster
+    $scope, Restangular, ICSW_URLS, $timeout, $q, icswSimpleAjaxCall, toaster,
+    icswTimeFrameService,
 ) ->
     # this special pk is translated to mean all devices
 
@@ -104,7 +87,7 @@ angular.module(
         entries_is_loading: false
         entries_reload_observable: 0
         # timeframe from rrd-graph-timeframe
-        timeframe: undefined
+        timeframe: new icswTimeFrameService()
     }
 
     $scope.new_devsel = (sel) ->

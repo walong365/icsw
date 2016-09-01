@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2009,2011-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2011-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -21,17 +21,17 @@
 
 """ container for service checks """
 
+import netifaces
 import os
+import signal
 import stat
 import subprocess
-import signal
-import netifaces
 
-from lxml.builder import E
 import psutil
+from lxml.builder import E
 
-from initat.tools import logging_tools, process_tools, config_store
 from initat.constants import VERSION_CS_NAME, INITAT_BASE
+from initat.tools import logging_tools, process_tools, config_store, threading_tools
 from .constants import *
 
 
@@ -161,6 +161,9 @@ class Service(object):
                 for _conf_name in _conf_names:
                     try:
                         _cr = config_tools.server_check(server_type=_conf_name)
+                    except (threading_tools.int_error, threading_tools.term_error):
+                        self.log("got int or term error, reraising", logging_tools.LOG_LEVEL_ERROR)
+                        raise
                     except:
                         config_tools.close_db_connection()
                         try:
@@ -482,6 +485,7 @@ class Service(object):
             try:
                 _cmdline = _value.cmdline()
             except:
+                # can be ignored
                 pass
             else:
                 if _cmdline:
@@ -706,6 +710,10 @@ class MetaService(Service):
         signal.signal(signal.SIGINT, signal.SIG_IGN)
         arg_list = self._generate_py_arg_list(debug=True)
         arg_list.append("--debug")
+        if "--debug-flag" in debug_args:
+            # move debug flag to arg_list
+            arg_list.append("--debug-flag")
+            debug_args.remove("--debug-flag")
         if debug_args:
             arg_list.append("--")
             arg_list.extend(debug_args)

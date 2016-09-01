@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,7 +19,6 @@
 #
 """ server command structure definitions """
 
-from lxml import etree  # @UnresolvedImport
 import base64
 import bz2
 import datetime
@@ -28,7 +27,9 @@ import os
 import pickle
 import re
 
-from lxml.builder import ElementMaker  # @UnresolvedImport
+from lxml import etree
+from lxml.builder import ElementMaker
+
 from initat.tools import logging_tools
 
 XML_NS = "http://www.initat.org/lxml/ns"
@@ -96,7 +97,9 @@ def log_level_to_srv_reply(log_level):
 
 
 def srv_reply_state_is_valid(srv_reply_state):
-    return srv_reply_state in [SRV_REPLY_STATE_CRITICAL, SRV_REPLY_STATE_ERROR, SRV_REPLY_STATE_OK, SRV_REPLY_STATE_WARN]
+    return srv_reply_state in [
+        SRV_REPLY_STATE_CRITICAL, SRV_REPLY_STATE_ERROR, SRV_REPLY_STATE_OK, SRV_REPLY_STATE_WARN
+    ]
 
 
 def compress(in_str, **kwargs):

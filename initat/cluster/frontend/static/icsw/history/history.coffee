@@ -20,21 +20,8 @@
 angular.module(
     "icsw.history",
     []
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.history", {
-            url: "/history"
-            template: "<icsw-history-overview></icsw-history-overview>"
-            icswData:
-                pageTitle: "Database history"
-                rights: ["user.snapshots"]
-                menuEntry:
-                    menukey: "sys"
-                    name: "History"
-                    icon: "fa-history"
-                    ordering: 10
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.history")
 ]).directive("icswHistoryOverview",
 [
     'icswHistoryDataService',
@@ -88,9 +75,9 @@ angular.module(
     }
 ]).directive("icswHistoryModelHistory",
 [
-    "icswHistoryDataService", "icswUserGroupTreeService",
+    "icswHistoryDataService", "icswUserGroupRoleTreeService",
 (
-    icswHistoryDataService, icswUserGroupTreeService,
+    icswHistoryDataService, icswUserGroupRoleTreeService,
 ) ->
     return {
         restrict: 'EA'
@@ -109,7 +96,7 @@ angular.module(
                 # user and group tree
                 user_group_tree: undefined
             }
-            icswUserGroupTreeService.load(scope.$id).then(
+            icswUserGroupRoleTreeService.load(scope.$id).then(
                 (tree) ->
                     scope.struct.user_group_tree = tree
             )

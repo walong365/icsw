@@ -2,7 +2,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -32,7 +32,8 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     window_manager, snmp_network_type, snmp_scheme, snmp_scheme_vendor, snmp_scheme_tl_oid, \
     ComCapability, SensorAction, config_catalog, GraphSettingSize, GraphSettingTimeshift, \
     GraphSettingForecast, GraphTimeFrame, DispatcherSettingSchedule, DispatcherSetting, \
-    StaticAssetTemplate, StaticAssetTemplateField
+    StaticAssetTemplate, StaticAssetTemplateField, dvs_allowed_name, device_variable_scope, \
+    DeviceClass
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -507,7 +508,7 @@ class SensorActionFactory(factory.django.DjangoModelFactory):
 
     @factory.post_generation
     def hard_control(self, create, extracted, **kwargs):
-        extracted = extracted or ""
+        extracted = extracted or False
         if self.hard_control != extracted:
             self.hard_control = extracted
             self.save()
@@ -554,8 +555,103 @@ class StaticAssetTemplateFactory(factory.django.DjangoModelFactory):
         model = StaticAssetTemplate
         django_get_or_create = ("name", "system_template")
 
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.description != extracted:
+            self.description = extracted
+            self.save()
+
 
 class StaticAssetTemplateFieldFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = StaticAssetTemplateField
         django_get_or_create = ("name", "static_asset_template")
+
+
+class device_variable_scope_factory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = device_variable_scope
+        django_get_or_create = ("name",)
+
+    @factory.post_generation
+    def prefix(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.prefix != extracted:
+            self.prefix = extracted
+            self.save()
+
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.description != extracted:
+            self.description = extracted
+            self.save()
+
+    @factory.post_generation
+    def priority(self, create, extracted, **kwargs):
+        extracted = extracted or 0
+        if self.priority != extracted:
+            self.priority = extracted
+            self.save()
+
+
+class DVSAllowedNameFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = dvs_allowed_name
+        django_get_or_create = ("name", "device_variable_scope",)
+
+    @factory.post_generation
+    def unique(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.unique != extracted:
+            self.unique = extracted
+            self.save()
+
+    @factory.post_generation
+    def editable(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.editable != extracted:
+            self.editable = extracted
+            self.save()
+
+    @factory.post_generation
+    def forced_type(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.forced_type != extracted:
+            self.forced_type = extracted
+            self.save()
+
+    @factory.post_generation
+    def group(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.group != extracted:
+            self.group = extracted
+            self.save()
+
+
+class DeviceClassFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = DeviceClass
+        django_get_or_create = ("name",)
+
+    @factory.post_generation
+    def description(self, create, extracted, **kwargs):
+        extracted = extracted or ""
+        if self.description != extracted:
+            self.description = extracted
+            self.save()
+
+    @factory.post_generation
+    def limitations(self, create, extracted, **kwargs):
+        extracted = extracted or None
+        if self.limitations != extracted:
+            self.limitations = extracted
+            self.save()
+
+    @factory.post_generation
+    def system_class(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.system_class != extracted:
+            self.system_class = extracted
+            self.save()

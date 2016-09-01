@@ -44,7 +44,7 @@ ul.dynatree-container span.ip_ok {
 
 
 th.rotate {
-  height: 140px;
+  height: 150px;
   white-space: nowrap;
 }
 
@@ -59,30 +59,7 @@ th.rotate > div > span {
   border-bottom: 1px solid #ccc;
   padding: 5px 10px;
 }
-
-.CodeMirror {
-    border-top: 1px solid black;
-    border-bottom: 1px solid black;
-    height: auto;
-}
-
-.CodeMirror-scroll {
-    overflow-y: hidden;
-    overflow-x: auto;
-    max-height: 600px;
-}
-
-.CodeMirror-activeline-background {
-    background: #ffff00 !important;
-}
-
-/*
-// workaround for missing code mirror indention (this bug does not seem to occur currently)  // BM 20150616
-.CodeMirror pre {
-    padding-left: 35px !important;
-}
-*/
-
+/* not used
 circle.fixed {
     fill : #ffaaaa ;
     stroke : #5555ff ;
@@ -94,7 +71,7 @@ circle.fixed {
 }
 .connect_line_hidden {
     stroke-width : 0 ;
-}
+} */
 .angular-google-map-container { height: 480px; }
 
 /* modal changes */
@@ -152,7 +129,7 @@ del {
     border-radius: 2px;
     background: rgba(255, 255, 255, 1);
     color: #444;
-    font-size: 14px;
+    font-size: 12px;
     text-shadow: 0 1px 0 #fff;
     // text-transform: uppercase;
     text-align: center;
@@ -191,3 +168,76 @@ del {
     width: 50px;
 }
 
+.ace_editor {
+    height: 200px;
+}
+.input-group .form-control-inline,
+.form-control-inline {
+    min-width: 0;
+    width: auto;
+    display: inline;
+}
+icsw-login-page .container-fluid {
+    max-width: 400px;
+    padding-top: 15px;
+    margin-top:3%;
+    }
+ul.fancytree-container {
+    font-family: Arial,Helvetica,sans-serif,FontAwesome;
+}
+.fancytree-container > li .fancytree-folder >.btn-group {
+    margin-left: 5px;
+    margin-top: -6px;
+}
+.fancytree-title > .label,
+.fancytree-title > span > .label{
+    margin-left:6px;
+    padding: 0.2em 0.6em 0.1em;
+}
+.fancytree-checkbox{
+    margin-top:2px;
+}
+.label-group>.label:first-child {
+	border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    margin-right: 0;
+    border-right: 1px solid #cccccc;
+}
+.label-group>.label:not(.label:first-child):not(.label:last-child)   {
+    border-radius: 0;
+    margin-right: 0;
+    margin-left: 0;
+    border-right: 1px solid #cccccc;
+ }
+.label-group>.label:last-child {
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    margin-left: 0;
+}
+.ui-select-match > .ui-select-toggle > i.caret { right: 2px; }
+.ui-select-match > .ui-select-toggle > .ui-select-match-text { margin-right: 6px;}
+
+.input-group-addon-button {
+    padding: 0 4px;
+}
+.cursorpointer {
+    cursor: pointer;
+}
+.cfp-hotkeys-container {
+    background-color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+}
+.cfp-hotkeys {
+    background-color: rgba(245, 245, 245, 0.8);
+    border: 1px solid #cccccc;
+    display: inline-block;
+    min-height: 180px;
+    margin-top: 150px;
+    text-align: center;
+    vertical-align: middle;
+    width: 400px;
+}
+.cfp-hotkeys table {
+    background-color: transparent;
+    margin: 10px;
+}

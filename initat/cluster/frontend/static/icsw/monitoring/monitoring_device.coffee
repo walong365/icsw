@@ -23,24 +23,11 @@ monitoring_device_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button"
     ]
-).config(["$stateProvider",
+).config(["icswRouteExtensionProvider",
 (
-    $stateProvider
+    icswRouteExtensionProvider,
 ) ->
-    $stateProvider.state(
-        "main.monitordevice", {
-            url: "/monitordevice"
-            template: "<icsw-monitoring-device icsw-sel-man='0'></icsw-monitoring-device>"
-            icswData:
-                pageTitle: "Monitoring Device settings"
-                rights: ["mon_check_command.setup_monitoring", "device.change_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Device settings"
-                    icon: "fa-laptop"
-                    ordering: 10
-        }
-    )
+    icswRouteExtensionProvider.add_route("main.monitordevice")
 ]).directive('icswMonitoringDevice',
 [
     "ICSW_URLS", "Restangular",

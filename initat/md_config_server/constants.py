@@ -38,7 +38,6 @@ NAG_HOST_DOWN = 1
 NAG_HOST_UNREACHABLE = 2
 
 # default port
-SERVER_COM_PORT = 8010
 TEMPLATE_NAME = "t"
 
 # maps to transfer for single_build

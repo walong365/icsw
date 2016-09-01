@@ -24,14 +24,18 @@
         <uib-tabset>
             <uib-tab heading="Basic">
                 <uib-accordion close-others="false">
-                    <uib-accordion-group heading="Basic properties" is-open="true">
+                    <div uib-accordion-group class="panel-default" heading="Basic properties" is-open="true">
                         <form class="form-horizontal">
                             <div class="form-group">
                                 <label class="control-label col-sm-2">Name:</label>
 
                                 <div class="controls col-sm-6">
-                                    <input class="form-control" ng-model="cur_edit_kpi.name" type="text"
-                                           placeholder="name"/>
+                                    <input
+                                        class="form-control"
+                                        ng-model="cur_edit_kpi.name"
+                                        type="text"
+                                        placeholder="name"
+                                    />
                                 </div>
                             </div>
                             <div class="form-group">
@@ -72,7 +76,7 @@
                                 </label>
                             </div>
                         </form>
-                    </uib-accordion-group>
+                    </div>
                 </uib-accordion>
             </uib-tab>
             <uib-tab heading="Data source" select="on_data_source_tab_selected()">
@@ -84,10 +88,10 @@
             <uib-tab heading="KPI calculation">
 
                 <uib-accordion close-others="false">
-                    <uib-accordion-group heading="Formula" is-open="true">
-                        <textarea ui-codemirror="editorOptions" ng-model="cur_edit_kpi.formula"></textarea>
-                    </uib-accordion-group>
-                    <uib-accordion-group heading="Evaluation" is-open="true" ng-show="true">
+                    <div uib-accordion-group class="panel-default" heading="Formula" is-open="true">
+                        <div ui-ace="ace_options" ng-model="cur_edit_kpi.formula"></div>
+                    </div>
+                    <div uib-accordion-group class="panel-default" heading="Evaluation" is-open="true" ng-show="true">
                         <icsw-tools-button type="reload" value="recalculate" ng-click="calculate_kpi()" ></icsw-tools-button>
 
                         <div ng-if="kpi_result.loading" ladda="kpi_result.loading"></div>
@@ -97,10 +101,10 @@
 
                             <div ng-show="kpi_result.kpi_error_report">
                                 <br />
-                                <uib-alert type="danger" ng-bind-html="kpi_result.kpi_error_report"></uib-alert>
+                                <div uib-alert class="alert-danger" ng-bind-html="kpi_result.kpi_error_report"></div>
                             </div>
                         </div>
-                    </uib-accordion-group>
+                    </div>
             </uib-tab>
         </uib-tabset>
 
@@ -113,19 +117,19 @@
 
 <script type="text/ng-template" id="icsw.config.kpi.dev_mon_selection">
     <uib-accordion close-others="false">
-        <uib-accordion-group heading="Select device and monitoring categories" is-open="true">
+        <div uib-accordion-group class="panel-default" heading="Select device and monitoring categories" is-open="true">
             <div class="row">
                 <div class="col-md-6">
                     Device categories
-                    <tree treeconfig="device_category_tree" max-height="350"></tree>
+                    <icsw-react-tree icsw-tree-config="device_category_tree" max-height="350"></icsw-react-tree>
                 </div>
                 <div class="col-md-6">
                     Monitoring categories
-                    <tree treeconfig="monitoring_category_tree" max-height="350"></tree>
+                    <icsw-react-tree icsw-tree-config="monitoring_category_tree" max-height="350"></icsw-react-tree>
                 </div>
             </div>
             <button class="btn btn-default btn-xs" ng-click="show_all_selected_categories()">Show all categories selected below</button>
-        </uib-accordion-group>
+        </div>
     </uib-accordion>
 </script>
 
@@ -133,7 +137,7 @@
 <script type="text/ng-template" id="icsw.config.kpi.dev_mon_linker">
 
     <uib-accordion close-others="false">
-        <uib-accordion-group heading="Select which monitoring categories apply to which device categories" is-open="true">
+        <div uib-accordion-group class="panel-default" heading="Select which monitoring categories apply to which device categories" is-open="true">
 
             <div class="alert alert-warning"
                  ng-show="cur_edit_kpi.available_device_categories.length == 0 && cur_edit_kpi.available_monitoring_categories.length == 0">
@@ -156,35 +160,37 @@
                 <tr>
                     <td></td>
                     <th ng-repeat="mon_cat in cur_edit_kpi.available_monitoring_categories | orderBy:get_cat_name">
-                        {{get_cat_name(mon_cat)}}
+                        {{ get_cat_name(mon_cat) }}
                     </th>
                 </tr>
                 <tr ng-repeat="dev_cat in cur_edit_kpi.available_device_categories | orderBy:get_cat_name">
-                    <th>{{get_cat_name(dev_cat)}}</th>
+                    <th>{{ get_cat_name(dev_cat) }}</th>
                     <td ng-repeat="mon_cat in cur_edit_kpi.available_monitoring_categories | orderBy:get_cat_name"
-                        icsw-tools-td-checkbox is-checked="is_checked(dev_cat, mon_cat)"
-                        on-click="toggle_dev_mon_cat(dev_cat, mon_cat)">
-                    </td>
+                        icsw-tools-td-checkbox
+                        is-checked="is_checked(dev_cat, mon_cat)"
+                        on-click="toggle_dev_mon_cat(dev_cat, mon_cat)"
+                    ></td>
                 </tr>
             </table>
 
             <icsw-config-kpi-show-kpi-set
-                    kpi-set="selected_cats_kpi_set" title="Hosts and services of selected categories"
-                    show-close="0"
-                    body-height="300"
-                    ></icsw-config-kpi-show-kpi-set>
+                kpi-set="selected_cats_kpi_set"
+                title="Hosts and services of selected categories"
+                show-close="0"
+                body-height="300"
+            ></icsw-config-kpi-show-kpi-set>
 
-        </uib-accordion-group>
+        </div>
     </uib-accordion>
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.configuration_table">
 
     <div ng-show="kpi.length == 0">
-        <uib-alert type="info">
+        <div uib-alert type="info">
             No KPIs defined.
             <span ng-show="acl_create(null, 'backbone.kpi.kpi')">Please define one using the 'create' button.</span>
-        </uib-alert>
+        </div>
     </div>
     <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed table-striped" style="width: auto" ng-show="kpi.length>0">
         <tr>
@@ -222,9 +228,9 @@
 
 <script type="text/ng-template" id="icsw.config.kpi.evaluation_table">
     <div ng-show="kpi.length == 0">
-        <uib-alert type="info">
+        <div uib-alert type="info">
             No KPIs defined.
-        </uib-alert>
+        </div>
     </div>
     <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed icsw-table-striped-2-by-2" style="width: 1250px" ng-show="kpi.length>0">
         <tr>

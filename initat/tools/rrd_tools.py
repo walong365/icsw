@@ -26,7 +26,7 @@ import subprocess
 import tempfile
 import time
 
-from lxml import etree  # @UnresolvedImport
+from lxml import etree
 from lxml.builder import E
 
 from initat.tools import logging_tools

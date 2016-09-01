@@ -3,7 +3,7 @@
 chdir=%(django_app_dir)
 pythonpath=%(django_app_dir)
 pidfile=/var/run/django.%(django_app).pid
-daemonize=/var/log/cluster/django-%(django_app).log
+daemonize=/var/log/icsw/django-%(django_app).log
 
 env=NODE_PATH=/opt/cluster/lib/node_modules:/opt/cluster/lib/node_modules/npm/node_modules
 env=DJANGO_SETTINGS_MODULE=settings

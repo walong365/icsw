@@ -1,0 +1,71 @@
+.btn {
+    padding: 5.8px 12px;
+    /*normalize buttons which may include fa-class*/
+    line-height: 1.42857;
+}
+.btn-xs, .btn-group-xs > .btn {
+    padding: 1px 5px;
+}
+.btn-sm, .btn-group-sm > .btn {
+    padding: 3px 5px;
+}
+.glyphicon {
+    font-size: 87%;
+}
+.fa { /* chrome fix */
+    font-family: FontAwesome,Arial,Helvetica,sans-serif;
+    font-size: 11px;
+   line-height: 1.42857;
+}
+icsw-tools-button{
+    line-height: 1;
+}
+.simple-border {
+    border: 1px solid #ddd;
+}
+.fa-lg {
+    font-size: 1.33333em;
+    line-height: 0.75em;
+    vertical-align: -15%;
+}
+.table-pager-block {
+    margin-right:10px;
+}
+.table-pager {
+    height:29px;
+    margin-top:2px;
+}
+.table-pager .pagination {
+    margin: 0;
+}
+.submenu-bar {
+    display:block;
+    padding-left:10px;
+    background-color:#f0f0f0;
+    margin-bottom: 17px;
+    min-height: 30px;
+    vertical-align:10;
+}
+.submenu-bar .sub-breadcrumb {
+    font-size:11px;
+    color:#555555;
+    list-style: outside none none;
+    margin-top: 7px;
+    padding-left: 0;
+    margin-bottom: 0px;
+    width: 100%;
+}
+.submenu-bar .sub-breadcrumb > li {
+    display: block;
+    position: relative;
+    float:left;
+    padding-right: 10px;
+}
+
+.submenu-bar .label {
+    font-size: 100%;
+}
+
+.cfp-hotkeys {
+    border-radius: 10px;
+}

@@ -1,6 +1,34 @@
+<script type="text/ng-template" id="icsw/monitoring/setup">
+    <icsw-monitoring-setup></icsw-monitoring-setup>
+    <uib-tabset>
+        <uib-tab>
+            <uib-tab-heading>
+                Basic Setup
+            </uib-tab-heading>
+            <icsw-monitoring-basic></icsw-monitoring-basic>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                Cluster Setup
+            </uib-tab-heading>
+            <icsw-monitoring-cluster></icsw-monitoring-cluster>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                Escalation Setup
+            </uib-tab-heading>
+            <icsw-monitoring-escalation></icsw-monitoring-escalation>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
+<script type="text/ng-template" id="icsw.monitoring.setup">
+    <h3>Monitoring Setup</h3>
+</script>
+
 <script type="text/ng-template" id="icsw.monitoring.basic">
 
-    <uib-alert type="warning" ng-show="!struct.tree_valid">Loading tree...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="!struct.tree_valid">Loading tree...</div>
     <uib-tabset ng-show="struct.tree_valid">
         <uib-tab heading="Periods">
             <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicPeriodService">
@@ -9,7 +37,7 @@
                     <icsw-tools-button type="create" size="xs" value="create new" ng-click="create($event, null)"></icsw-tools-button>
                 </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                       class="table table-condensed table-striped" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">
@@ -61,7 +89,7 @@
                     <icsw-tools-button type="create" size="xs" value="create new" ng-click="create($event, null)"></icsw-tools-button>
                 </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                       class="table table-condensed table-striped" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">
@@ -112,7 +140,7 @@
                     </icsw-tools-button>
                 </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                       class="table table-condensed table-striped" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">
@@ -128,11 +156,11 @@
                         <tr>
                             <th st-sort="name" st-sort-default="true">Name</th>
                             <th st-sort="volatile">volatile</th>
-                            <th st-sort="nsc_period">Service:</th>
+                            <th st-sort="getters.nsc_period">Service:</th>
                             <th st-sort="max_attempts">att</th>
                             <th st-sort="check_interval">check</th>
                             <th st-sort="retry_interval">retry</th>
-                            <th st-sort="nsn_period">Notify:</th>
+                            <th st-sort="getters.nsn_period">Notify:</th>
                             <th st-sort="ninterval">interval</th>
                             <th st-sort="nrecovery">rec</th>
                             <th st-sort="ncritical">crit</th>
@@ -196,7 +224,7 @@
                     </icsw-tools-button>
                 </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                       class="table table-condensed table-striped" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">
@@ -273,7 +301,7 @@
                     <icsw-tools-button type="create" size="xs" value="create new" ng-click="create($event, null)"></icsw-tools-button>
                 </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                       class="table table-condensed table-striped" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">
@@ -315,7 +343,7 @@
                         ng-click="create($event)" size="xs"></icsw-tools-button>
                 </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                       class="table table-condensed table-striped" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">
@@ -329,7 +357,7 @@
                             </td>
                         </tr>
                         <tr>
-                            <th st-sort="user" st-sort-default="true">User</th>
+                            <th st-sort="loginname" st-sort-default="ascending">User</th>
                             <th st-sort="snperiod">Service:</th>
                             <th st-sort="snrecovery">rec</th>
                             <th st-sort="sncritical">crit</th>
@@ -350,7 +378,7 @@
                     </thead>
                     <tbody>
                         <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ user_group_tree.user_lut[obj.user].login }}</td>
+                            <td>{{ obj.loginname }}</td>
                             <td>{{ basic_tree.mon_period_lut[obj.snperiod].name }}</td>
                             <td>{{ obj.snrecovery | yesno1 }}</td>
                             <td>{{ obj.sncritical | yesno1 }}</td>
@@ -381,7 +409,7 @@
                     <icsw-tools-button size="xs" type="create" value="create new" ng-click="create($event)"></icsw-tools-button>
                 </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-condensed table-hover table-striped" style="width:auto;">
+                       class="table table-condensed table-striped" style="width:auto;">
                     <thead>
                         <tr>
                             <td colspan="99">

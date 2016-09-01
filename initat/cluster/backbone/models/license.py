@@ -1,9 +1,9 @@
 
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -20,19 +20,23 @@
 #
 # -*- coding: utf-8 -*-
 #
-""" database definitions for licenses """
+
+""" database definitions for license management """
+
 import collections
 import logging
 import operator
 
-from dateutil import relativedelta
-from django.db.models import signals, Q, Count
-from django.db import models, transaction, IntegrityError
-from django.dispatch import receiver
 import enum
+from dateutil import relativedelta
+from django.db import models, transaction, IntegrityError
+from django.db.models import signals, Q, Count
+from django.dispatch import receiver
+
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models.rms import ext_license
+from initat.tools.server_command import XML_NS
 
 __all__ = [
     "LicenseState",
@@ -287,7 +291,7 @@ class LicenseUsage(object):
         from initat.cluster.backbone.models import ext_license
         return lic.pk if isinstance(lic, ext_license) else int(lic)
 
-    # NOTE: keep in sync with js
+    # NOTE: keep in sync with js, see system/license.coffee line 222
     GRACE_PERIOD = relativedelta.relativedelta(weeks=2)
 
     @staticmethod
@@ -319,8 +323,7 @@ class LicenseUsage(object):
                 # check if devices are still present
                 dev_pks_missing_dev_present = device.objects.filter(pk__in=dev_pks_missing).values_list("pk", flat=True)
                 entries_to_add = [
-                    LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params)
-                    for dev_pk in dev_pks_missing_dev_present
+                    LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params) for dev_pk in dev_pks_missing_dev_present
                 ]
                 LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
 
@@ -328,15 +331,22 @@ class LicenseUsage(object):
                 if value and any(value.itervalues()):  # not empty
                     dev_serv_filter = reduce(
                         operator.ior,
-                        (Q(device_id=LicenseUsage.device_to_pk(dev), service_id=LicenseUsage.service_to_pk(serv))
-                         for dev, serv_list in value.iteritems()
-                         for serv in serv_list
-                         )
+                        (
+                            Q(
+                                device_id=LicenseUsage.device_to_pk(dev),
+                                service_id=LicenseUsage.service_to_pk(serv)
+                            )
+                            for dev, serv_list in value.iteritems()
+                            for serv in serv_list
+                        )
                     ) & Q(**common_params)
 
-                    present_entries =\
-                        frozenset(LicenseUsageDeviceService.objects.filter(dev_serv_filter).values_list("device_id",
-                                                                                                        "service_id"))
+                    present_entries = frozenset(
+                        LicenseUsageDeviceService.objects.filter(dev_serv_filter).values_list(
+                            "device_id",
+                            "service_id"
+                        )
+                    )
                     existing_dev_pks = frozenset(device.objects.all().values_list("pk", flat=True))
                     existing_serv_pks = frozenset(mon_check_command.objects.all().values_list("pk", flat=True))
                     entries_to_add = []
@@ -348,15 +358,20 @@ class LicenseUsage(object):
                                 if serv_id in existing_serv_pks:
                                     if (dev_id, serv_id) not in present_entries:
                                         entries_to_add.append(
-                                            LicenseUsageDeviceService(device_id=dev_id, service_id=serv_id,
-                                                                      **common_params)
+                                            LicenseUsageDeviceService(
+                                                device_id=dev_id,
+                                                service_id=serv_id,
+                                                **common_params
+                                            )
                                         )
 
                     LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
             elif param_type == LicenseParameterTypeEnum.ext_license:
                 try:
-                    LicenseUsageExtLicense.objects.get_or_create(ext_license_id=LicenseUsage._ext_license_to_pk(value),
-                                                                 **common_params)
+                    LicenseUsageExtLicense.objects.get_or_create(
+                        ext_license_id=LicenseUsage._ext_license_to_pk(value),
+                        **common_params
+                    )
                 except IntegrityError:
                     pass
             elif param_type == LicenseParameterTypeEnum.user:
@@ -495,10 +510,12 @@ class LicenseLockListExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
 ########################################
 # XML
 
-ICSW_XML_NS = "http://www.initat.org/lxml/ns"
+ICSW_XML_NS = XML_NS
 ICSW_XML_NS_NAME = "icsw"
 
-ICSW_XML_NS_MAP = {ICSW_XML_NS_NAME: ICSW_XML_NS}
+ICSW_XML_NS_MAP = {
+    ICSW_XML_NS_NAME: ICSW_XML_NS
+}
 
 
 LIC_FILE_RELAX_NG_DEFINITION = """

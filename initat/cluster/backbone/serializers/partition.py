@@ -2,7 +2,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -19,7 +19,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-""" model serializers """
+""" model serializers for partition setup """
 
 from rest_framework import serializers
 
@@ -95,6 +95,18 @@ class partition_table_serializer(serializers.ModelSerializer):
     lvm_lv_set = lvm_lv_serializer(many=True)
     lvm_vg_set = lvm_vg_serializer(many=True)
     device = serializers.SerializerMethodField()
+
+    def create(self, obj):
+        name = obj['name']
+        enabled = obj['enabled']
+        nodeboot = obj['nodeboot']
+        description = obj['description'] if 'description' in obj else ""
+        return partition_table.objects.create(
+            name=name,
+            enabled=enabled,
+            nodeboot=nodeboot,
+            description=description,
+        )
 
     def get_device(self, obj):
         if self.context and "device" in self.context:

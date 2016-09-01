@@ -1,8 +1,8 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -29,6 +29,7 @@ import hashlib
 import logging
 
 from django.db.models import Q
+
 from initat.cluster.backbone.models import user
 
 logger = logging.getLogger("cluster.auth")

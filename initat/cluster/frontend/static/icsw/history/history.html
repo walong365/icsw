@@ -61,9 +61,9 @@
                             </icsw-tools-button>
                         </div>
                         <div ng-show="onRevert._revision_applied == entry">
-                            <uib-alert type="info">
+                            <div uib-alert type="info">
                                 Data is reverted to this version in dialog. Click on 'Submit' if you want to save it.
-                            </uib-alert>
+                            </div>
                         </div>
                     </div>
                     <div ng-repeat="(k, v) in entry.changes" ng-if="!entry.changes.full_dump">
@@ -94,12 +94,9 @@
                                     {{ format_value(v) }}
                                 </td>
                             </tr>
-
                         </table>
                     </div>
-
                 </td>
-
             </tr>
         </tbody>
     </table>

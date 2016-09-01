@@ -7,7 +7,6 @@
              More info: h5bp.com/i/378 -->
         <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
 
-        <!-- TODO: set title in angular -->
         <title icsw-update-title>ICSW&reg;</title>
         <meta http-equiv="Cache-Control" content="max-age=28800, must-revalidate" />
         <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -25,16 +24,22 @@
         <!-- ICSWAPPS:JAVASCRIPT:END -->
         <!-- inject:app:js -->
         <!-- endinject -->
-
+        <link icsw-layout-main-theme rel="stylesheet" href="static/theme_default.css"/>
+        <style icsw-layout-svg-style></style>
     </head>
-    <body>
+    <body style="padding-top: 80px;">
         <!-- inject:content:html -->
         <!-- endinject -->
         <!-- ICSWAPPS:HTML:START -->
         <!-- ICSWAPPS:HTML:END -->
+        <!-- menubar -->
         <icsw-layout-menubar></icsw-layout-menubar>
+        <icsw-layout-sub-menubar></icsw-layout-sub-menubar>
+        <!-- for block-ui -->
         <div block-ui="main" class="block-ui-main"></div>
+        <!-- for toaster -->
         <toaster-container></toaster-container>
+        <!-- view -->
         <div ui-view></div>
     </body>
 </html>

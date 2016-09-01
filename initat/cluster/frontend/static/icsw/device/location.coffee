@@ -135,7 +135,13 @@ angular.module(
                             }
                         )
                         " "
-                        if cat.locked then span({key: "lock", className: "fa fa-lock", title: "is locked"}) else null
+                        if cat.locked then span(
+                            {
+                                key: "lock"
+                                className: "fa fa-lock"
+                                title: "is locked"
+                            }
+                        ) else null
                     ]
                 )
             else
@@ -162,17 +168,17 @@ angular.module(
     "$scope", "$q", "icswAcessLevelService", "icswDeviceTreeService",
     "icswCategoryTreeService", "$rootScope", "ICSW_SIGNALS", "blockUI",
     "icswDeviceLocationTreeService", "ICSW_URLS", "icswSimpleAjaxCall",
-    "icswToolsSimpleModalService";
+    "icswToolsSimpleModalService", "icswCategoryLocationHelper",
 (
     $scope, $q, icswAcessLevelService, icswDeviceTreeService,
     icswCategoryTreeService, $rootScope, ICSW_SIGNALS, blockUI,
     icswDeviceLocationTreeService, ICSW_URLS, icswSimpleAjaxCall,
-    icswToolsSimpleModalService,
+    icswToolsSimpleModalService, icswCategoryLocationHelper,
 ) ->
     icswAcessLevelService.install($scope)
+    my_proxy = icswCategoryLocationHelper.get_location_proxy()
     $scope.struct = {
         device_list_ready: false
-        multi_device_mode: false
         loc_tree: new icswDeviceLocationTreeService(
             $scope
             {
@@ -223,7 +229,6 @@ angular.module(
                 for dev in devs
                     if not dev.is_meta_device
                         $scope.struct.devices.push(dev)
-                $scope.struct.multi_device_mode = if $scope.struct.devices.length > 1 then true else false
                 $scope.struct.device_tree = device_tree
                 # emit signal
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"))
@@ -233,18 +238,28 @@ angular.module(
         # console.log "gfx", new_val
     )
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
-        $scope.rebuild_dnt()
-    )
+    _dereg = [
+        $rootScope.$on(ICSW_SIGNALS("ICSW_LOCATION_SETTINGS_CHANGED"), (event) ->
+            $scope.rebuild_dnt()
+        )
+        $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
+            $scope.rebuild_dnt()
+        )
+    ]
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
-        $scope.rebuild_dnt()
+    $scope.$on("$destroy", () ->
+        (_dr() for _dr in _dereg)
     )
 
     $scope.rebuild_dnt = () ->
+        if not $scope.struct.device_list_ready
+            # not initialised
+            return
         _ct = $scope.struct.loc_tree
         # build location list for google-maps
-        $scope.struct.tree.build_location_list($scope.struct.locations)
+        _list = []
+        $scope.struct.tree.build_location_list(_list)
+        $scope.struct.locations = (my_proxy.get(entry) for entry in _list)
         _ct.change_select = true
         for dev in $scope.struct.devices
             # check all devices and disable change button when not all devices are in allowed list
@@ -388,7 +403,7 @@ angular.module(
                 _lost_f.push("#{_dml_lost_physical} physical")
             if _dml_lost_structural
                 _lost_f.push("#{_dml_lost_structural} structural")
-            _header =  "Modify will result in the lost of #{_lost_f.join(' and ')} placements on #{_gfx_lost} maps, continue ?"
+            _header =  "The outcome of this Modify will be the lost of #{_lost_f.join(' and ')} placements on #{_gfx_lost} maps, continue ?"
             icswToolsSimpleModalService(
                 _header
             ).then(
@@ -408,7 +423,7 @@ angular.module(
         icswSimpleAjaxCall(
             url: ICSW_URLS.BASE_CHANGE_CATEGORY
             data:
-                dev_pks: angular.toJson(dev_pks)
+                obj_pks: angular.toJson(dev_pks)
                 cat_pks: angular.toJson([loc.idx])
                 set: if t_entry.selected then "1" else "0"
         ).then(
@@ -459,10 +474,16 @@ angular.module(
                 blockUI.stop()
         )
 
-]).directive("icswDeviceLocationOverview", ["$templateCache", ($templateCache) ->
+]).directive("icswDeviceLocationOverview",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
-         restrict : "EA"
+        restrict : "EA"
         template: $templateCache.get("icsw.device.location.overview")
+        scope: true
         controller: "icswDeviceLocationCtrl"
     }
 ]).directive("icswDeviceLocationList",
@@ -792,7 +813,7 @@ angular.module(
                         key: "bgimage"
                         width: width
                         height: height
-                        href: _gfx.image_url
+                        xlinkHref: _gfx.image_url
                         preserveAspectRatio: "none"
                     }
                 )

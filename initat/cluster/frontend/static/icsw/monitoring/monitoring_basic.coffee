@@ -31,156 +31,66 @@ monitoring_basic_module = angular.module(
     $templateCache,
 ) ->
     return {
-        restrict:"EA"
+        restrict: "EA"
         template: $templateCache.get("icsw.monitoring.basic")
         controller: "icswMonitoringBasicCtrl"
     }
-]).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.monitorbasics", {
-            url: "/monitorbasics"
-            template: "<icsw-monitoring-basic></icsw-monitoring-basic>"
-            icswData:
-                pageTitle: "Monitoring Basic setup"
-                menuHeader:
-                    key: "mon"
-                    name: "Monitoring"
-                    icon: "fa-gears"
-                    ordering: 70
-                rights: ["mon_check_command.setup_monitoring"]
-                menuEntry:
-                    menukey: "mon"
-                    name: "Basic setup"
-                    icon: "fa-bars"
-                    ordering: 0
+]).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    resolve_map = (mode) ->
+        return {
+            redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
+                console.log "mode=", mode
+                _defer = $q.defer()
+                blockUI.start()
+                icswSimpleAjaxCall(
+                    url: ICSW_URLS.MON_CREATE_CONFIG
+                    data:
+                        cache_mode: mode
+                    title: "create config"
+                ).then(
+                    (xml) ->
+                        blockUI.stop()
+                        _defer.reject("nono")
+                    (xml) ->
+                        blockUI.stop()
+                        _defer.reject("nono")
+                )
+                return _defer.promise
+            ]
         }
-    )
-    $stateProvider.state(
-        "main.monitorredirect", {
-            url: "/monitorredirect"
-            template: "<h2>Redirecting...</h2>"
-            icswData:
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "Icinga"
-                    icon: "fa-share-alt"
-                    ordering: 120
-            resolve:
-                redirect: ["$window", "icswSimpleAjaxCall", "ICSW_URLS", "$q", ($window, icswSimpleAjaxCall, ICSW_URLS, $q) ->
-                    _defer = $q.defer()
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.MON_CALL_ICINGA
-                        dataType: "json"
-                    ).then(
-                        (json) ->
-                            url = json["url"]
-                            $window.open(url, "_blank")
-                            _defer.reject("nono")
-                    )
-                    return _defer.promise
-                ]
-        }
-    )
-    $stateProvider.state(
-        "main.monitorb0", {
-            url: "/monitorb0"
-            icswData:
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "rebuild config cached"
-                    icon: "fa-share-alt"
-                    labelClass: "label-success"
-                    ordering: 101
-                    preSpacer: true
-            resolve:
-                redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
-                    console.log "REDIR"
-                    # todo: add icswMenuProgressService
-                    _defer = $q.defer()
-                    blockUI.start()
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.MON_CREATE_CONFIG
-                        data:
-                            cache_mode: "ALWAYS"
-                        title: "create config"
-                    ).then(
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                    )
-                    return _defer.promise
-                ]
-        }
-    )
-    $stateProvider.state(
-        "main.monitorb1", {
-            url: "/monitorb1"
-            icswData:
-                redirect_to_from_on_error: true
-                menuEntry:
-                    menukey: "mon"
-                    name: "rebuild config dynamic"
-                    icon: "fa-share-alt"
-                    labelClass: "label-warning"
-                    ordering: 102
-            resolve:
-                redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
-                    _defer = $q.defer()
-                    blockUI.start()
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.MON_CREATE_CONFIG
-                        data:
-                            cache_mode: "DYNAMIC"
-                        title: "create config"
-                    ).then(
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                    )
-                    return _defer.promise
-                ]
-        }
-    )
-    $stateProvider.state(
-        "main.monitorb2", {
-            url: "/monitorb2"
-            icswData:
-                menuEntry:
-                    menukey: "mon"
-                    name: "rebuild config refresh"
-                    icon: "fa-share-alt"
-                    labelClass: "label-danger"
-                    ordering: 103
-                    postSpacer: true
-            resolve:
-                redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
-                    _defer = $q.defer()
-                    blockUI.start()
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.MON_CREATE_CONFIG
-                        data:
-                            cache_mode: "REFRESH"
-                        title: "create config"
-                    ).then(
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                        (xml) ->
-                            blockUI.stop()
-                            _defer.reject("nono")
-                    )
-                    return _defer.promise
-                ]
-        }
-    )
+    redirect_map = {
+        redirect: ["$window", "icswSimpleAjaxCall", "ICSW_URLS", "$q", ($window, icswSimpleAjaxCall, ICSW_URLS, $q) ->
+            _defer = $q.defer()
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.MON_CALL_ICINGA
+                dataType: "json"
+            ).then(
+                (json) ->
+                    url = json["url"]
+                    $window.open(url, "_blank")
+                    _defer.reject("nono")
+            )
+            return _defer.promise
+        ]
+    }
+    icswRouteExtensionProvider.add_route("main.monitorbasics")
+    icswRouteExtensionProvider.add_route("main.monitorredirect", redirect_map)
+    icswRouteExtensionProvider.add_route("main.monitorb0", resolve_map("CACHED"))
+    icswRouteExtensionProvider.add_route("main.monitorb1", resolve_map("DYNAMIC"))
+    icswRouteExtensionProvider.add_route("main.monitorb2", resolve_map("ALWAYS"))
+]).directive("icswMonitoringSetup",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    console.log "ms"
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.monitoring.setup")
+        scope: true
+    }
+
 ]).service("icswMonitoringBasicTree",
 [
     "$q", "Restangular", "ICSW_URLS", "ICSW_SIGNALS", "icswTools",
@@ -897,28 +807,41 @@ monitoring_basic_module = angular.module(
     }
 ]).service('icswMonitoringBasicMonContactService',
 [
-    "ICSW_URLS", "icswMonitoringBasicTreeService", "$q", "Restangular", "icswUserGroupTreeService",
+    "ICSW_URLS", "icswMonitoringBasicTreeService", "$q", "Restangular", "icswUserGroupRoleTreeService",
     "icswToolsSimpleModalService", "icswMonContactBackup", "icswMonitoringUtilService",
 (
-    ICSW_URLS, icswMonitoringBasicTreeService, $q, Restangular, icswUserGroupTreeService,
+    ICSW_URLS, icswMonitoringBasicTreeService, $q, Restangular, icswUserGroupRoleTreeService,
     icswToolsSimpleModalService, icswMonContactBackup, icswMonitoringUtilService,
 ) ->
     basic_tree = undefined
     user_group_tree = undefined
+
     return {
         fetch: (scope) ->
             defer = $q.defer()
             $q.all(
                 [
                     icswMonitoringBasicTreeService.load(scope.$id)
-                    icswUserGroupTreeService.load(scope.$id)
+                    icswUserGroupRoleTreeService.load(scope.$id)
                 ]
             ).then(
                 (data) ->
                     basic_tree = data[0]
                     user_group_tree = data[1]
+
+                    for obj in basic_tree.mon_contact_list
+                        obj.loginname = user_group_tree.user_lut[obj.user].login
+
                     scope.basic_tree = basic_tree
                     scope.user_group_tree = user_group_tree
+                    scope.getters = {
+                        nsc_period: (value) ->
+                            return basic_tree.mon_period_lut[value].name
+
+                        nsn_period: (value) ->
+                            return basic_tree.mon_period_lut[value].name
+                    }
+
                     defer.resolve(basic_tree.mon_contact_list)
             )
             return defer.promise
@@ -969,11 +892,11 @@ monitoring_basic_module = angular.module(
     }
 ]).service('icswMonitoringBasicMonContactgroupService',
 [
-    "ICSW_URLS", "icswMonitoringBasicTreeService", "$q", "Restangular", "icswUserGroupTreeService",
+    "ICSW_URLS", "icswMonitoringBasicTreeService", "$q", "Restangular", "icswUserGroupRoleTreeService",
     "icswToolsSimpleModalService", "icswMonContactgroupBackup", "icswMonitoringUtilService",
     "icswDeviceTreeService",
 (
-    ICSW_URLS, icswMonitoringBasicTreeService, $q, Restangular, icswUserGroupTreeService,
+    ICSW_URLS, icswMonitoringBasicTreeService, $q, Restangular, icswUserGroupRoleTreeService,
     icswToolsSimpleModalService, icswMonContactgroupBackup, icswMonitoringUtilService,
     icswDeviceTreeService,
 ) ->
@@ -986,7 +909,7 @@ monitoring_basic_module = angular.module(
             $q.all(
                 [
                     icswMonitoringBasicTreeService.load(scope.$id)
-                    icswUserGroupTreeService.load(scope.$id)
+                    icswUserGroupRoleTreeService.load(scope.$id)
                     icswDeviceTreeService.load(scope.$id)
                 ]
             ).then(

@@ -70,7 +70,6 @@ def main():
     if not ret_code:
         global_config.add_config_entries([("DEBIAN", configfile.bool_c_var(os.path.isfile("/etc/debian_version")))])
         run_code()
-        configfile.terminate_manager()
         # exit
         os._exit(0)
     return 0

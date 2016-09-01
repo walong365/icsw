@@ -17,27 +17,25 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 angular.module(
     "icsw.device.connection",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.deviceconnection"
-            {
-                url: "/deviceconnection"
-                templateUrl: "icsw/main/device/connection.html"
-                icswData:
-                    pageTitle: "Device Connections"
-                    rights: ["device.change_connection"]
-                    menuEntry:
-                        menukey: "dev"
-                        name: "Device connections"
-                        icon: "fa-plug"
-                        ordering: 25
-            }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.deviceconnection")
+]).directive("icswDeviceConnectionOverview",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.connection.overview")
+        controller: "icswDeviceConnectionCtrl"
+    }
 ]).controller("icswDeviceConnectionCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
@@ -60,11 +58,11 @@ angular.module(
         return
         blockUI.start()
         icswSimpleAjaxCall(
-            url   : ICSW_URLS.DEVICE_MANUAL_CONNECTION
-            data  : {
-                "source": $scope.ac_host
-                "target": $scope.ac_cd
-                "mode": $scope.ac_type
+            url: ICSW_URLS.DEVICE_MANUAL_CONNECTION
+            data: {
+                source: $scope.ac_host
+                target: $scope.ac_cd
+                mode: $scope.ac_type
             }
         ).then(
             (xml) ->
@@ -86,6 +84,23 @@ angular.module(
         helper_service: undefined
     }
 
+    # helper functions
+    _build_helper_lists = () ->
+        _dt = $scope.struct.device_tree
+        for dev in $scope.struct.cd_devices
+            _fix_list = (in_list) ->
+                for _entry in in_list
+                    _entry.$$parent = _dt.all_lut[_entry.parent].full_name
+                    _entry.$$child = _dt.all_lut[_entry.child].full_name
+            _fix_list(dev.$$master_list)
+            _fix_list(dev.$$slave_list)
+            _ref_pks = (entry.parent for entry in dev.$$master_list).concat(
+                (entry.child for entry in dev.$$slave_list)
+            )
+            _valid_devs = (_dev for _dev in $scope.struct.devices when dev.idx != _dev.idx and _dev.idx not in _ref_pks)
+            dev.$$cd_valid_list = _valid_devs
+            dev.$$cd_valid_list_cd = (_dev for _dev in _valid_devs when _dev.$$is_cd)
+
     $scope.new_devsel = (dev_sel) ->
         devs = (dev for dev in dev_sel when not dev.is_meta_device)
         $q.all(
@@ -96,7 +111,7 @@ angular.module(
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
-                $scope.struct.user = data[1]
+                $scope.struct.user = data[1].user
                 hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, devs)
                 $scope.struct.device_tree.enrich_devices(hs, ["device_connection_info", "snmp_schemes_info", "com_info"]).then(
                     (done) ->
@@ -116,27 +131,10 @@ angular.module(
                             dev.$$is_cd = _is_cd
                             if dev.$$is_cd
                                 $scope.struct.cd_devices.push(dev)
-                        $scope.build_helper_lists()
+                        _build_helper_lists()
                         console.log "done"
                 )
         )
-
-    # helper functions
-    $scope.build_helper_lists = () ->
-        _dt = $scope.struct.device_tree
-        for dev in $scope.struct.cd_devices
-            _fix_list = (in_list) ->
-                for _entry in in_list
-                    _entry.$$parent = _dt.all_lut[_entry.parent].full_name
-                    _entry.$$child = _dt.all_lut[_entry.child].full_name
-            _fix_list(dev.$$master_list)
-            _fix_list(dev.$$slave_list)
-            _ref_pks = (entry.parent for entry in dev.$$master_list).concat(
-                (entry.child for entry in dev.$$slave_list)
-            )
-            _valid_devs = (_dev for _dev in $scope.struct.devices when dev.idx != _dev.idx and _dev.idx not in _ref_pks)
-            dev.$$cd_valid_list = _valid_devs
-            dev.$$cd_valid_list_cd = (_dev for _dev in _valid_devs when _dev.$$is_cd)
 
     $scope.delete_connection = ($event, cd) ->
         icswToolsSimpleModalService("Really delete connection ?").then(
@@ -144,12 +142,12 @@ angular.module(
                 $scope.struct.device_tree.delete_device_connection(cd, $scope.struct.helper_service).then(
                     (del_ok) ->
                         console.log "deleted cd"
-                        $scope.build_helper_lists()
+                        _build_helper_lists()
                 )
         )
 
     $scope.modify_connection = ($event, cd) ->
-        sub_scope = $scope.$new(false)
+        sub_scope = $scope.$new(true)
         dbu = new icswCDConnectionBackup()
         dbu.create_backup(cd)
         sub_scope.edit_obj = cd
@@ -203,18 +201,7 @@ angular.module(
             _new_obj.child = dev.idx
         $scope.struct.device_tree.create_device_connection(_new_obj, $scope.struct.helper_service).then(
             (new_cd) ->
-                $scope.build_helper_lists()
+                _build_helper_lists()
         )
 
-]).directive("icswDeviceConnectionOverview",
-[
-    "$templateCache",
-(
-    $templateCache,
-) ->
-    return {
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.connection.overview")
-        controller: "icswDeviceConnectionCtrl"
-    }
 ])

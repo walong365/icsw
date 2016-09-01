@@ -26,12 +26,12 @@ import stat
 import time
 
 import zmq
+from initat.tools import configfile, logging_tools, mail_tools, process_tools, server_command, \
+    threading_tools, inotify_tools
 
 from initat.client_version import VERSION_STRING
 from initat.host_monitoring import hm_classes
 from initat.icsw.service import container, transition, instance, service_parser, clusterid
-from initat.tools import configfile, logging_tools, mail_tools, process_tools, server_command, \
-    threading_tools, inotify_tools
 from initat.tools.server_mixins import ICSWBasePoolClient
 from .config import global_config
 from .servicestate import ServiceState
@@ -87,8 +87,8 @@ class main_process(ICSWBasePoolClient):
     def _init_statemachine(self):
         self.__transitions = []
         self.def_ns = service_parser.Parser.get_default_ns(meta_server=True)
-        self.service_state = ServiceState(self.log)
         self.server_instance = instance.InstanceXML(self.log)
+        self.service_state = ServiceState(self.log, self.server_instance)
         self.container = container.ServiceContainer(self.log)
         self.service_state.sync_with_instance(self.server_instance)
         self.__watcher.add_watcher(
@@ -158,14 +158,9 @@ class main_process(ICSWBasePoolClient):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(self.__pid_name, mult=3)
-        _spm = global_config.single_process_mode()
-        if not _spm:
-            process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("meta-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
-        if not _spm:
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
@@ -174,15 +169,21 @@ class main_process(ICSWBasePoolClient):
         if self.__exit_process:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
-            self.log("got signal ({})".format(err_cause))
+            self.log(
+                "got signal ({}), nsis={}, debug={}".format(
+                    err_cause,
+                    self.__next_stop_is_restart,
+                    global_config["DEBUG"],
+                )
+            )
             self.__exit_process = True
-            if not (self.__next_stop_is_restart or global_config["DEBUG"]):
+            if not (self.__next_stop_is_restart):  # or global_config["DEBUG"]):
                 self.service_state.enable_shutdown_mode()
                 _res_list = self.container.check_system(self.def_ns, self.server_instance)
                 trans_list = self.service_state.update(
                     _res_list,
                     throttle=[("uwsgi-init", 5)],
-                    exclude=["logging-server", "meta-server"],
+                    exclude=["meta-server"],
                 )
                 self._new_transitions(trans_list)
                 if not self.__transitions:
@@ -311,9 +312,15 @@ class main_process(ICSWBasePoolClient):
                 self.service_state.transition_finished(_trans)
         self.__transitions = new_list
         if not self.__transitions:
-            self.log("all transitions finished")
             self._disable_transition_timer()
-            if self.__exit_process:
+            _start_probs, _stop_probs = self.service_state.dependency_problem
+            if _start_probs or _stop_probs:
+                self.log("all transitions finished, triggering check because of dependency problems", logging_tools.LOG_LEVEL_WARN)
+                self._check_processes(force=True)
+            else:
+                self.log("all transitions finished")
+            if self.__exit_process and not _stop_probs:
+                # exit as long as there are not dependency issues for stopping
                 self["exit_requested"] = True
 
     def _new_transitions(self, trans_list):
@@ -369,7 +376,7 @@ class main_process(ICSWBasePoolClient):
         self.def_ns.service = []
         trans_list = self.service_state.update(
             _res_list,
-            exclude=["meta-server", "logging-server"],
+            exclude=["meta-server"],
             throttle=[("uwsgi-init", 5)],
             # force first call
             force=(self.__loopcount == 1 or force),

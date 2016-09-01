@@ -79,25 +79,11 @@ class license_usage
 
 lic_module = angular.module("icsw.license.overview",
     [
-        "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "ui.codemirror", "icsw.d3", "icsw.dimple",
+        "ngResource", "ngCookies", "ngSanitize", "init.csw.filters", "ui.bootstrap", "icsw.d3", "icsw.dimple",
         "icsw.tools.angular-dimple-init", "ui.bootstrap.datetimepicker", "restangular", "icsw.tools"
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.licoverview", {
-            url: "/licoverview"
-            templateUrl: "icsw/main/rms/licoverview.html"
-            icswData:
-                pageTitle: "License Liveview"
-                licenses: ["ext_license"]
-                service_types: ["rms-server"]
-                menuEntry:
-                    menukey: "rms"
-                    name: "License liveview"
-                    icon: "fa-line-chart"
-                    ordering: 30
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.licoverview")
 ]).directive("icswLicenseLiveView", [
     "$templateCache",
 (
@@ -256,7 +242,7 @@ lic_module = angular.module("icsw.license.overview",
         if li.selected
             return "btn btn-xs btn-success"
         else
-            return "btn btn-xs"
+            return "btn btn-xs btn-default"
     $scope.toggle_li_sel = (li) ->
         li.selected = !li.selected
         $scope.license_select_change()

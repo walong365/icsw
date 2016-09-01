@@ -198,6 +198,17 @@ generate_devicefiles () {
         done
         minor=$(( $minor + 1 ))
     done
+    major=254
+    minor=0
+    for dsk in a b c d e f g h i j k l m n o p ; do
+        bname=/dev/vd$dsk
+        mknod -m 0600 $bname b $major $minor
+        for i in $(seq 15) ; do
+            minor=$(( $minor + 1 ))
+            mknod -m 0600 $bname$i b $major $minor
+        done
+        minor=$(( $minor + 1 ))
+    done
     # Compaq CCISS
     cpq=/dev/cciss
     mkdir $cpq
@@ -258,7 +269,7 @@ export PATH=/sbin:/bin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin:/opt/cl
 
 depmod -ae || depmod -ave
 
-echo ${echo_opt} "${GREEN}init.at ClusterNetInstall stage1 (c) 2001-2015 init.at (lang-nevyjel@init.at)${OFF}"
+echo ${echo_opt} "${GREEN}init.at ClusterNetInstall stage1 (c) 2001-2016 init.at (lang-nevyjel@init.at)${OFF}"
 
 echo ${echo_opt} "mounting /proc and /sys for stage1 "
 [ ! -d /proc ] && mkdir /proc

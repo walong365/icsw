@@ -2,7 +2,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -226,7 +226,9 @@ def can_delete_obj(obj, logger=None):
     from initat.cluster.backbone.models import device
     ignore_objs = {
         "device_group": list(device.objects.filter(Q(device_group=obj.idx) & Q(is_meta_device=True)))
-    }.get(obj._meta.object_name, [])
+    }.get(
+        obj._meta.object_name, []
+    )
     related_objects = []
     num_refs = get_related_models(obj, ignore_objs=ignore_objs, related_objects=related_objects)
 
@@ -305,7 +307,7 @@ class duration(object):
 
     @classmethod
     def get_class(cls, ident):
-        for klass in cls.Hour, cls.Day, cls.Week, cls.Month:
+        for klass in cls.Hour, cls.Day, cls.Week, cls.Month, cls.Year, cls.Decade:
             if ident == klass.ID:
                 return klass
         raise Exception()
@@ -313,6 +315,7 @@ class duration(object):
     # NOTE: don't use timezone info here
     class Day(object):
         ID = 1
+        name = "day"
 
         @classmethod
         def get_time_frame_start(cls, timepoint):
@@ -326,8 +329,13 @@ class duration(object):
         def get_display_date(cls, timepoint):
             return u"{:02d}-{:02d}".format(timepoint.month, timepoint.day)
 
+        @classmethod
+        def get_shorter_duration(cls):
+            return duration.Hour
+
     class Month(object):
         ID = 2
+        name = "month"
 
         @classmethod
         def get_time_frame_start(cls, timepoint):
@@ -341,8 +349,13 @@ class duration(object):
         def get_display_date(cls, timepoint):
             return u"{}-{:02d}".format(timepoint.year, timepoint.month)
 
+        @classmethod
+        def get_shorter_duration(cls):
+            return duration.Week
+
     class Hour(object):
         ID = 3
+        name = "hour"
 
         @classmethod
         def get_time_frame_start(cls, timepoint):
@@ -356,8 +369,13 @@ class duration(object):
         def get_display_date(cls, timepoint):
             return u"{:02d}:{:02d}".format(timepoint.hour, 0)
 
+        @classmethod
+        def get_shorter_duration(cls):
+            return None
+
     class Week(object):
         ID = 4
+        name = "week"
 
         @classmethod
         def get_time_frame_start(cls, timepoint):
@@ -372,8 +390,13 @@ class duration(object):
         def get_display_date(cls, timepoint):
             return u"{:02d}-{:02d}".format(timepoint.month, timepoint.day)
 
+        @classmethod
+        def get_shorter_duration(cls):
+            return duration.Day
+
     class Year(object):
         ID = 5
+        name = "year"
 
         @classmethod
         def get_time_frame_start(cls, timepoint):
@@ -387,8 +410,13 @@ class duration(object):
         def get_display_date(cls, timepoint):
             return u"{:04d}".format(timepoint.year)
 
+        @classmethod
+        def get_shorter_duration(cls):
+            return duration.Month
+
     class Decade(object):
         ID = 6
+        name = "decade"
 
         @classmethod
         def get_time_frame_start(cls, timepoint):
@@ -402,22 +430,17 @@ class duration(object):
         def get_display_date(cls, timepoint):
             return u"{:04d}".format(timepoint.year)
 
+        @classmethod
+        def get_shorter_duration(cls):
+            return duration.Year
+
     @classmethod
     def get_shorter_duration(cls, duration_type):
         if type(duration_type) == int:
             duration_type = cls.get_class(duration_type)
 
-        if duration_type == cls.Day:
-            shorter_duration = cls.Hour
-        elif duration_type == cls.Week:
-            shorter_duration = cls.Day
-        elif duration_type == cls.Month:
-            shorter_duration = cls.Day  # weeks are not nice
-        elif duration_type == cls.Year:
-            shorter_duration = cls.Month
-        elif duration_type == cls.Decade:
-            shorter_duration = cls.Year
-        else:
+        shorter_duration = duration_type.get_shorter_duration()
+        if shorter_duration is None:
             raise ValueError("Invalid duration type: {}".format(duration_type))
         return shorter_duration
 

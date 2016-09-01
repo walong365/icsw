@@ -24,21 +24,8 @@ package_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "ui.select", "icsw.tools.table",
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.packageinstall", {
-            url: "/packageinstall"
-            template: "<icsw-package-install-overview ng-cloak/>"
-            icswData:
-                pageTitle: "Package install"
-                rights: ["package.package_install"]
-                licenses: ["package_install"]
-                menuEntry:
-                    menukey: "cluster"
-                    icon: "fa-download"
-                    ordering: 50
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.packageinstall")
 ]).service("icswPackageInstallRepositoryTree",
 [
     "Restangular", "ICSW_URLS", "$q",
@@ -496,7 +483,7 @@ package_module = angular.module(
             (data) ->
                 $scope.struct.repo_info_str = ""
                 $scope.struct.tree_loaded = true
-                $scope.struct.user = data[0]
+                $scope.struct.user = data[0].user
                 $scope.struct.repo_tree = data[1]
         )
 
@@ -635,12 +622,12 @@ package_module = angular.module(
 ]).controller("icswPackageInstallSearchController",
 [
     "$scope", "$templateCache", "icswUserService", "ICSW_URLS", "icswSimpleAjaxCall", "Restangular",
-    "blockUI", "$rootScope", "ICSW_SIGNALS", "icswUserGroupTreeService",
+    "blockUI", "$rootScope", "ICSW_SIGNALS", "icswUserGroupRoleTreeService",
     "$timeout", "$q", "icswPackageInstallSearchTreeService",
     "icswToolsSimpleModalService", "icswComplexModalService", "$compile", "toaster",
 (
     $scope, $templateCache, icswUserService, ICSW_URLS, icswSimpleAjaxCall, Restangular,
-    blockUI, $rootScope, ICSW_SIGNALS, icswUserGroupTreeService,
+    blockUI, $rootScope, ICSW_SIGNALS, icswUserGroupRoleTreeService,
     $timeout, $q, icswPackageInstallSearchTreeService,
     icswToolsSimpleModalService, icswComplexModalService, $compile, toaster,
 ) ->
@@ -692,7 +679,7 @@ package_module = angular.module(
     load = (reload) ->
         _w_list = [
             icswUserService.load($scope.$id)
-            icswUserGroupTreeService.load($scope.$id)
+            icswUserGroupRoleTreeService.load($scope.$id)
         ]
         if reload
             _w_list.push(icswPackageInstallSearchTreeService.reload($scope.$id))
@@ -700,7 +687,7 @@ package_module = angular.module(
             _w_list.push(icswPackageInstallSearchTreeService.load($scope.$id))
         $q.all(_w_list).then(
             (data) ->
-                $scope.struct.user = data[0]
+                $scope.struct.user = data[0].user
                 $scope.struct.user_group_tree = data[1]
                 $scope.struct.search_tree = data[2]
                 $scope.struct.tree_valid = true
@@ -1142,7 +1129,7 @@ package_module = angular.module(
         $q.all(w_list).then(
             (data) ->
                 $scope.struct.package_info_str = ""
-                $scope.struct.user = data[0]
+                $scope.struct.user = data[0].user
                 $scope.struct.repo_tree = data[1]
                 $scope.struct.package_tree = data[2]
                 $scope.struct.package_tree_loaded = true
@@ -1232,7 +1219,8 @@ package_module = angular.module(
             )
     )
 
-    icswActiveSelectionService.register_receiver()
+    # hm, not needed ?
+    # icswActiveSelectionService.register_receiver()
 
     $scope.new_devsel = () ->
         devs = ($scope.struct.device_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when $scope.struct.device_tree.all_lut[pk]?)

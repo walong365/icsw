@@ -19,6 +19,7 @@
 #
 
 DT_FORM = "YYYY-MM-DD HH:mm ZZ"
+DT_FORM_DISPLAY = "dd, D. MMM YYYY HH:mm:ss"
 
 angular.module(
     "icsw.rrd.graph",
@@ -26,21 +27,8 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
         "restangular", "icsw.rrd.graphsetting",
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.graph", {
-            url: "/graph"
-            templateUrl: "icsw.rrd.graph"
-            icswData:
-                pageTitle: "Graph"
-                licenses: ["graphing"]
-                rights: ["backbone.device.show_graphs"]
-                menuEntry:
-                    menukey: "stat"
-                    icon: "fa-line-chart"
-                    ordering: 40
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.graph")
 ]).service("icswRRDSensor", [()->
 
     class icswRRDSensor
@@ -82,12 +70,13 @@ angular.module(
             @active = true
             @error = false
             @src = @xml.attr("href") or ""
+            @abssrc = @xml.attr("abssrc") or ""
             @num_devices = @xml.find("devices device").length
             @value_min = parseFloat(@xml.attr("value_min"))
             @value_max = parseFloat(@xml.attr("value_max"))
             # complete graphic
             @img_width = parseInt(@xml.attr("image_width"))
-            @img_height = parseInt(@xml.attr("imageheight"))
+            @img_height = parseInt(@xml.attr("image_height"))
             # relevant part, coordinates in pixel
             @gfx_width = parseInt(@xml.attr("graph_width"))
             @gfx_height = parseInt(@xml.attr("graph_height"))
@@ -98,6 +87,7 @@ angular.module(
             @ts_end = parseInt(@xml.attr("graph_end"))
             @ts_start_mom = moment.unix(@ts_start)
             @ts_end_mom = moment.unix(@ts_end)
+            @device_names = ($(entry).text() for entry in @xml.find("devices device"))
             @cropped = false
             @removed_keys = []
 
@@ -119,7 +109,7 @@ angular.module(
                     # only a valid sensor when the db-idx has a device (no compound displays)
                     @num_sensors++
                     @sensors.push(new icswRRDSensor(@, $(gv), @user_settings.threshold_lut_by_mvv_id))
-                    console.log @sensors, gv
+                    # console.log @sensors, gv
             @sensors = _.sortBy(@sensors, (sensor) -> return sensor.mv_key)
 
         get_sensor_info: () ->
@@ -131,73 +121,67 @@ angular.module(
                 _num_th += _sensor.thresholds.length
             return "#{_num_th} Thresholds"
 
-        get_devices: () ->
-            dev_names = ($(entry).text() for entry in @xml.find("devices device"))
-            return dev_names.join(", ")
-
         get_tv: (val) ->
             if val
-                return val.format(DT_FORM)
+                return val.format(DT_FORM_DISPLAY)
             else
                 return "???"
-
-        get_removed_keys: () ->
-            return @removed_keys.join(", ")
 
         set_crop: (sel) ->
             @cropped = true
             ts_range = @ts_end - @ts_start
             new_start = @ts_start + parseInt((sel.x - @gfx_left) * ts_range / @gfx_width)
-            new_end = @ts_start + parseInt((sel.x2 - @gfx_left) * ts_range / @gfx_width)
-            @crop_width = parseInt((sel.x2 - sel.x) * ts_range / @gfx_width)
+            new_end = @ts_start + parseInt((sel.x + sel.width - @gfx_left) * ts_range / @gfx_width)
+            @crop_width = parseInt((sel.width) * ts_range / @gfx_width)
             @cts_start_mom = moment.unix(new_start)
             @cts_end_mom = moment.unix(new_end)
 
         clear_crop: () ->
             @cropped = false
 
-        get_expand_class: () ->
-            if @active
-                return "glyphicon glyphicon-chevron-down"
-            else
-                return "glyphicon glyphicon-chevron-right"
-
         toggle_expand: () ->
             @active = !@active
-
 ]).controller("icswGraphOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTree", "icswSimpleAjaxCall",
     "icswParseXMLResponseService", "toaster", "icswCachingCall", "icswUserService",
     "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
-    "icswUserGroupTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
+    "icswUserGroupRoleTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
+    "icswRRDGraphBasicSetting", "icswTimeFrameService", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTree, icswSimpleAjaxCall,
     icswParseXMLResponseService, toaster, icswCachingCall, icswUserService,
     icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
-    icswUserGroupTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
+    icswUserGroupRoleTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
+    icswRRDGraphBasicSetting, icswTimeFrameService, ICSW_SIGNALS,
 ) ->
         moment().utc()
-        $scope.timeframe = undefined
+        $scope.timeframe = new icswTimeFrameService()
         $scope.cur_selected = []
-        # to be set by directive
-        $scope.auto_select_keys = []
         $scope.graph_list = []
         # none, all or selected
-        $scope.job_modes = ["none", "all", "selected"]
+        $scope.job_modes = [
+            {short: "none", long: "No jobs"}
+            {short: "all", long: "All Jobs"}
+            {short: "selected", long: "Only selected"}
+        ]
         $scope.job_mode = $scope.job_modes[0]
+
+        # helper functions
+        _get_empty_sensor_data = () ->
+            return {
+                num_struct: 0
+                num_mve: 0
+                num_devices: 0
+                num_mve_sel: 0
+                num_sensors: 0
+            }
         $scope.selected_job = 0
         $scope.struct = {
-            # draw when called
-            draw_on_init: false
-            # search string
-            searchstr: ""
             # is drawing
             is_drawing: false
-            # show tree
-            show_tree: true
             # user
             user: undefined
             # selected devices
@@ -229,15 +213,28 @@ angular.module(
             # vector (==treeView) valid
             vector_valid: false
             # vector data
-            vectordata: {
-                num_struct: 0
-                num_mve: 0
-                num_devices: 0
-                num_mve_sel: 0
-            }
+            vectordata: _get_empty_sensor_data()
             # error string, if not empty show as top-level warning-div
             error_string: "Init structures"
+            # job mode
+            job_mode: $scope.job_modes[0]
+            # base settings
+            base_setting: new icswRRDGraphBasicSetting()
+            # custom setting
+            custom_setting: undefined
+            # custom settin set ?
+            custom_setting_set: false
         }
+        $scope.set_custom_setting = (setting) ->
+            $scope.struct.custom_setting_set = true
+            $scope.struct.custom_setting = setting
+
+        $scope.set_base_setting = (setting) ->
+            $scope.struct.base_setting = setting
+
+        $scope.set_from_and_to_date = (from_dt, to_dt) ->
+            $scope.timeframe.set_from_to_mom(from_dt, to_dt)
+
         $scope.new_devsel = (dev_list) ->
             # clear graphs
             $scope.graph_list = []
@@ -247,26 +244,25 @@ angular.module(
                 [
                     icswUserService.load($scope.$id)
                     icswDeviceTreeService.load($scope.$id)
-                    icswUserGroupTreeService.load($scope.$id),
+                    icswUserGroupRoleTreeService.load($scope.$id),
                     icswSavedSelectionService.load_selections($scope.$id),
                     icswRRDGraphUserSettingService.load($scope.$id),
                 ]
             ).then(
                 (data) ->
-                    $scope.struct.user = data[0]
+                    $scope.struct.user = data[0].user
                     $scope.struct.device_tree = data[1]
                     $scope.struct.user_group_tree = data[2]
                     $scope.struct.selection_list = data[3]
                     $scope.struct.user_settings = data[4]
                     $scope.struct.devices.length = 0
                     for entry in dev_list
-                        if not entry.is_meta_device
-                            $scope.struct.devices.push(entry)
+                        $scope.struct.devices.push(entry)
                     hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
                     $scope.struct.error_string = "Adding sensor info"
                     $scope.struct.device_tree.enrich_devices(hs, ["sensor_threshold_info"]).then(
                         (done) ->
-                            console.log $scope.struct
+                            # console.log $scope.struct
                             if $scope.struct.devices.length
                                 $scope.load_tree()
                             else
@@ -276,12 +272,7 @@ angular.module(
 
         $scope.load_tree = () ->
             $scope.struct.error_string = "Loading VectorTree"
-            $scope.struct.vectordata = {
-                num_struct: 0
-                num_mve: 0
-                num_devices: 0
-                num_mve_sel: 0
-            }
+            $scope.struct.vectordata = _get_empty_sensor_data()
             icswSimpleAjaxCall(
                 url: ICSW_URLS.RRD_DEVICE_RRDS
                 data: {
@@ -295,14 +286,14 @@ angular.module(
                     $scope.struct.error_string = "Error loading tree"
             )
 
-        $scope.set_job_mode = (new_jm) ->
-            $scope.job_mode = new_jm
+        # $scope.set_job_mode = (new_jm) ->
+        #     $scope.job_mode = new_jm
 
         $scope.get_job_mode = (_jm) ->
             if _jm == "selected"
                 return "#{_jm} (#{$scope.selected_job})"
             else
-                return _jm    
+                return _jm
 
         $scope.job_mode_allowed = (cur_jm) ->
             if cur_jm == "selected" and not $scope.selected_job
@@ -315,10 +306,7 @@ angular.module(
                 toaster.pop("error", "", json["error"])
                 $scope.struct.error_string = "Error loading tree"
             else
-                if $scope.auto_select_keys.length
-                    $scope.auto_select_re = new RegExp($scope.auto_select_keys.join("|"))
-                else
-                    $scope.auto_select_re = null
+                $scope.struct.base_setting.set_auto_select_re()
                 # to machine vector
                 root_node = $scope.init_machine_vector()
                 for dev in json
@@ -332,11 +320,11 @@ angular.module(
                 $scope.struct.vector_valid = if $scope.struct.vectordata.num_struct then true else false
                 if $scope.struct.vector_valid
                     $scope.struct.error_string = ""
-                    if $scope.auto_select_re or $scope.cur_selected.length
+                    if $scope.struct.base_setting.auto_select_re or $scope.cur_selected.length
                         # recalc tree when an autoselect_re is present
                         $scope.struct.g_tree.show_selected(false)
                         $scope.selection_changed()
-                        if $scope.struct.draw_on_init and $scope.struct.vectordata.num_mve_sel
+                        if $scope.struct.base_setting.draw_on_init and $scope.struct.vectordata.num_mve_sel
                             $scope.draw_graph()
                 else
                     $scope.struct.error_string = "No vector found"
@@ -348,7 +336,7 @@ angular.module(
                     break
                 _idx++
             return _idx
-            
+
         $scope._add_structural_entry = (entry, lut, parent) =>
             parts = entry.key.split(".")
             _pn = ""
@@ -369,13 +357,13 @@ angular.module(
                     # structural
                     cur_node = $scope.struct.g_tree.create_node(
                         {
-                            folder : true,
-                            expand : false
+                            folder: true,
+                            expand: false
                             _display_name: if (entry.ti and _last) then entry.ti else _part
-                            _mult : 1
-                            _dev_pks : [$scope.mv_dev_pk]
-                            _node_type : "s"
-                            _show_select: false
+                            _mult: 1
+                            _dev_pks:  [$scope.mv_dev_pk]
+                            _node_type: "s"
+                            show_select: false
                             build_info: []
                             # marker: this is not an mve entry
                             _is_mve: false
@@ -386,18 +374,18 @@ angular.module(
                     parent.add_child(cur_node, _child_sort)
                 parent = cur_node
             return parent
-        
+
         $scope._expand_info = (info, g_key) =>
             _num = 0
             for _var in g_key.split(".")
                 _num++
                 info = info.replace("$#{_num}", _var)
             return info
-            
+
         $scope._add_value_entry = (entry, lut, parent, top) =>
             _vd = $scope.struct.vectordata
             # debg ?
-            _vd.a = "ddd"
+            # _vd.a = "ddd"
             # top is the parent node from the value entry (== mvstructentry)
             if entry.key
                 g_key = "#{top.key}.#{entry.key}"
@@ -405,8 +393,8 @@ angular.module(
                 g_key = top.key
             if $scope.cur_selected.length
                 _sel = g_key in $scope.cur_selected
-            else if $scope.auto_select_re
-                _sel = $scope.auto_select_re.test(g_key)
+            else if $scope.struct.base_setting.auto_select_re
+                _sel = $scope.struct.base_setting.auto_select_re.test(g_key)
             else
                 _sel = false
             if g_key of lut
@@ -418,6 +406,10 @@ angular.module(
                     cur_node._dev_pks = []
                     _vd.num_struct--
                     _vd.num_mve++
+                    # init number of sensors and mve with sensors defined
+                    cur_node.num_sensors = 0
+                    cur_node.entries_with_sensors = 0
+                    # console.log "trans", cur_node.build_info, cur_node.num_sensors
             else
                 cur_node = $scope.struct.g_tree.create_node(
                     {
@@ -428,6 +420,10 @@ angular.module(
                     }
                 )
                 cur_node.build_info = []
+                # init number of sensors
+                # console.log "*", cur_node.num_sensors
+                cur_node.num_sensors = 0
+                cur_node.entries_with_sensors = 0
                 _vd.num_mve++
                 lut[g_key] = cur_node
                 parent.add_child(cur_node, _child_sort)
@@ -437,9 +433,12 @@ angular.module(
                 cur_node._dev_pks.push($scope.mv_dev_pk)
             cur_node._node_type = "e"
             cur_node.build_info.push(entry.build_info)
-            cur_node.num_sensors = entry.num_sensors
+            cur_node.num_sensors += entry.num_sensors
+            if entry.num_sensors
+                cur_node.entries_with_sensors++
+            $scope.struct.vectordata.num_sensors += entry.num_sensors
             cur_node.folder = false
-            cur_node._show_select = true
+            cur_node.show_select = true
             cur_node._g_key = g_key
             cur_node.node = entry
             cur_node.selected = _sel
@@ -452,7 +451,7 @@ angular.module(
                     folder: true
                     expand: true
                     _node_type: "h"
-                    _show_select: false
+                    show_select: true
                 }
             )
             root_node.build_info = []
@@ -473,7 +472,7 @@ angular.module(
             $scope.cur_search_to = $timeout($scope.set_search_filter, 500)
 
         $scope.clear_selection = () =>
-            $scope.struct.searchstr = ""
+            $scope.struct.base_setting.clear_search_string()
             $scope.set_search_filter()
 
         $scope.select_with_sensor = () =>
@@ -487,13 +486,8 @@ angular.module(
             $scope.selection_changed()
 
         $scope.set_search_filter = () =>
-            if $scope.struct.searchstr
-                try
-                    cur_re = new RegExp($scope.struct.searchstr, "gi")
-                catch
-                    cur_re = new RegExp("^$", "gi")
-            else
-                cur_re = new RegExp("^$", "gi")
+            cur_re = $scope.struct.base_setting.get_search_re()
+            # console.log "*", cur_re
             $scope.struct.g_tree.toggle_tree_state(undefined, -1, false)
             $scope.struct.g_tree.iter(
                 (entry, cur_re) ->
@@ -514,11 +508,11 @@ angular.module(
             )
             $scope.struct.vectordata.num_mve_sel = $scope.cur_selected.length
 
-        $scope.$on("cropSet", (event, graph) ->
+        $scope.$on(ICSW_SIGNALS("_ICSW_RRD_CROPRANGE_SET"), (event, graph) ->
+            # console.log "g", graph
             event.stopPropagation()
             if graph.crop_width > 600
-                $scope.timeframe.from_date_mom = graph.cts_start_mom
-                $scope.timeframe.to_date_mom = graph.cts_end_mom
+                $scope.timeframe.set_from_to_mom(graph.cts_start_mom, graph.cts_end_mom)
                 $scope.draw_graph()
             else
                 _mins = parseInt(graph.crop_width / 60)
@@ -537,17 +531,22 @@ angular.module(
             if !$scope.struct.is_drawing
                 $scope.struct.is_drawing = true
                 $scope.struct.error_string = "Drawing graphs"
+                # console.log $scope.struct.job_mode
+                if $scope.struct.custom_setting_set
+                    _setting = $scope.struct.custom_setting
+                else
+                    _setting = $scope.struct.user_settings.get_active()
                 gfx = $q.defer()
                 icswSimpleAjaxCall(
-                    url  : ICSW_URLS.RRD_GRAPH_RRDS
-                    data : {
-                        "keys": angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
-                        "pks": angular.toJson((dev.idx for dev in $scope.struct.devices))
-                        "start_time": moment($scope.timeframe.from_date_mom).format(DT_FORM)
-                        "end_time": moment($scope.timeframe.to_date_mom).format(DT_FORM)
-                        "job_mode": $scope.job_mode
-                        "selected_job": $scope.selected_job
-                        "graph_setting": $scope.struct.user_settings.get_active().idx
+                    url: ICSW_URLS.RRD_GRAPH_RRDS
+                    data: {
+                        keys: angular.toJson((get_node_keys($scope.lut[key]) for key in $scope.cur_selected))
+                        pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                        start_time: moment($scope.timeframe.from_date_mom).format(DT_FORM)
+                        end_time: moment($scope.timeframe.to_date_mom).format(DT_FORM)
+                        job_mode: $scope.struct.job_mode.short
+                        selected_job: $scope.selected_job
+                        graph_setting: angular.toJson($scope.struct.user_settings.resolve(_setting))
                     }
                 ).then(
                     (xml) ->
@@ -565,7 +564,7 @@ angular.module(
                         graph_list = []
                         # graph matrix
                         graph_mat = {}
-                        if icswParseXMLResponseService(xml)
+                        if icswParseXMLResponseService(xml, 40, false, true)
                             num_graph = 0
                             for graph in $(xml).find("graph_list > graph")
                                 graph = $(graph)
@@ -589,32 +588,48 @@ angular.module(
                 )
         $scope.$on("$destroy", () ->
             #console.log "dest"
-        )                
-]).directive("icswRrdGraph",
+        )
+]).directive("icswRrdGraphNormal",
 [
     "$templateCache",
 (
     $templateCache
 ) ->
     return {
-        scope: true
         restrict: "EA"
         template: $templateCache.get("icsw.rrd.graph.overview")
-        link: (scope, el, attrs) ->
-            # to be improved
-            # console.log attrs
-            if attrs["icswSelectKeys"]?
-                scope.auto_select_keys = attrs["icswSelectKeys"].split(",")
-            if attrs["fromdt"]? and parseInt(attrs["fromdt"])
-                scope.from_date_mom = moment.unix(parseInt(attrs["fromdt"]))
-            if attrs["todt"]? and parseInt(attrs["todt"])
-                scope.to_date_mom = moment.unix(parseInt(attrs["todt"]))
-            if attrs["jobmode"]?
-                scope.job_mode = attrs["jobmode"]
-            if attrs["selectedjob"]?
-                scope.selected_job = attrs["selectedjob"]
-            scope.struct.draw_on_init = attrs["draw"] ? false
         controller: "icswGraphOverviewCtrl"
+    }
+]).directive("icswRrdGraphRemote",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.rrd.graph.overview")
+        controller: "icswGraphOverviewCtrl"
+        scope: {
+            icsw_graph_setting: "=icswGraphSetting"
+            icsw_base_setting: "=icswBaseSetting"
+            devices: "=icswDeviceList"
+            to_date: "=icswToDate"
+            from_date: "=icswFromDate"
+        }
+        link: (scope, el, attrs) ->
+            #if attrs["jobmode"]?
+            #    scope.job_mode = attrs["jobmode"]
+            #if attrs["selectedjob"]?
+            #    scope.selected_job = attrs["selectedjob"]
+            if scope.icsw_graph_setting?
+                scope.set_custom_setting(scope.icsw_graph_setting)
+            if scope.icsw_base_setting?
+                scope.set_base_setting(scope.icsw_base_setting)
+            if scope.devices?
+                scope.new_devsel(scope.devices)
+            if scope.from_date?
+                scope.set_from_and_to_date(scope.from_date, scope.to_date)
     }
 ]).service("icswRRDGraphTree",
 [
@@ -655,7 +670,6 @@ angular.module(
                 return ""
 
         handle_click: ($event, entry) =>
-            console.log entry._node_type, entry.expand
             if entry._node_type == "s"
                 entry.set_expand(!entry.expand)
             else if entry._node_type == "e"
@@ -669,17 +683,31 @@ angular.module(
             @do_digest()
 
         get_pre_view_element: (entry) ->
+            _rv = []
             if entry._node_type == "e" and entry.num_sensors
-                return span(
-                    {
-                        key: "arrow"
-                        className: "fa fa-arrows-v"
-                    }
+                _rv.push(
+                    span(
+                        {
+                            key: "arrow"
+                            className: "fa fa-arrows-v"
+                        }
+                    )
                 )
-            else
-                return null
-            if entry.num_sensors
-                span.addClass("fa fa-arrows-v")
+                if entry.build_info.length > 1
+                    if entry.entries_with_sensors != entry.build_info.length
+                        _str = "#{entry.entries_with_sensors} / #{entry.build_info.length}"
+                    else
+                        _str = entry.build_info.length
+                    _rv.push(
+                        span(
+                            {
+                                key: "batch"
+                                className: "badge"
+                            }
+                            _str
+                        )
+                    )
+            return _rv
 
 ]).directive("icswRrdGraphList",
 [
@@ -691,117 +719,266 @@ angular.module(
         restrict: "E"
         replace: true
         scope: {
-            graphList: "="
-            graphMatrix: "="
+            graphList: "=icswGraphList"
+            graphMatrix: "=icswGraphMatrix"
         }
         link: (scope, element, attr) ->
             scope.$watch("graphList", (new_val) ->
                 element.children().remove()
                 if new_val.length
+                    scope.$$graph_keys = (key for key of scope.graphMatrix)
                     # console.log "id=", scope.$id
                     element.append($compile($templateCache.get("icsw.rrd.graph.list.header"))(scope))
             )
-            scope.get_graph_keys = () ->
-                return (key for key of scope.graphMatrix)
     }
+]).service("icswRrdGraphDisplayReact",
+[
+    "$q", "icswRRDSensorDialogService", "ICSW_SIGNALS", "$window", "ICSW_URLS",
+(
+    $q, icswRRDSensorDialogService, ICSW_SIGNALS, $window, ICSW_URLS,
+) ->
+    {div, text, h4, span, button, img, br} = React.DOM
+    return React.createClass(
+        propTypes: {
+            # graph object
+            graph: React.PropTypes.object
+            # scope
+            scope: React.PropTypes.object
+        }
+        getInitialState: () ->
+            return {
+                open: true
+                loadError: false
+                cropped: false
+            }
+        render: () ->
+            _graph = @props.graph
+            if _graph.error
+                return h4(
+                    {
+                        key: "top"
+                        className: "text-danger"
+                    }
+                    "Error loading graph (#{_graph.num})"
+                )
+            else
+                _head1_list = [
+                    span(
+                        {
+                            key: "info"
+                            className: "label label-default"
+                            onClick: (event) =>
+                                _graph.clear_crop()
+                                @setState({open: !@state.open, cropped: false})
+                        }
+                        [
+                            span(
+                                {
+                                    key: "oc.span"
+                                    className:  if @state.open then "glyphicon glyphicon-chevron-down" else "glyphicon glyphicon-chevron-right"
+                                }
+                            )
+                            "graph ##{_graph.num}"
+                        ]
+                    )
+                ]
+                if _graph.src
+                    _head1_list.push(
+                        button(
+                            {
+                                key: "download"
+                                type: "button"
+                                className: "btn btn-xs btn-success"
+                                onClick: (event) =>
+                                    $window.location = ICSW_URLS.RRD_DOWNLOAD_RRD.slice(0, -1) + angular.toJson({path: _graph.abssrc})
+                                    # event.preventDefault()
+                            }
+                            [
+                                span(
+                                    {
+                                        key: "span"
+                                        className:  "glyphicon glyphicon-download-alt"
+                                    }
+                                )
+                                "download"
+                            ]
+                        )
+                    )
+                if _graph.src and _graph.num_sensors
+                    _head1_list.push(
+                        " "
+                        button(
+                            {
+                                key: "sensor.button"
+                                type: "button"
+                                className: "btn btn-xs btn-primary"
+                                onClick: (event) =>
+                                    icswRRDSensorDialogService(@props.scope, _graph).then(
+                                        () ->
+                                    )
+                            }
+                            "Sensors"
+                        )
+                    )
+                if _graph.removed_keys.length
+                    _rem_keys = _graph.removed_keys.join(", ")
+                    _head1_list.push(
+                        span(
+                            {
+                                key: "removed.keys"
+                            }
+                            " #{_graph.removed_keys.length} keys not shown (zero data) "
+                            span(
+                                {
+                                    key: "removed.info"
+                                    className: "glyphicon glyphicon-info-sign"
+                                    title: _rem_keys
+                                }
+                            )
+                        )
+                    )
+                _crop_list = []
+                _img = null
+                if @state.cropped
+                    _crop_list = [
+                        span(
+                            {
+                                key: "crop.ts"
+                            }
+                            "cropped timerange: "
+                            _graph.get_tv(_graph.cts_start_mom)
+                            " to "
+                            _graph.get_tv(_graph.cts_end_mom)
+                        )
+                        " "
+                        button(
+                            {
+                                key: "crop.apply"
+                                className: "btn btn-xs btn-success"
+                                onClick: (event) =>
+                                    console.log "Apply"
+                                    @props.scope.$emit(ICSW_SIGNALS("_ICSW_RRD_CROPRANGE_SET"), _graph)
+                            }
+                            "Apply"
+                        )
+                        " "
+                        button(
+                            {
+                                key: "crop.clear"
+                                className: "btn btn-xs btn-warning"
+                                onClick: (event) =>
+                                    if @image?
+                                        $(@image).cropper("clear")
+                                        @setState({cropped: false})
+                            }
+                            "Clear"
+                        )
+                    ]
+                if _graph.src
+                    if @state.open
+                        _graph_list = [
+                            div(
+                                {
+                                    key: "graph.div"
+                                }
+                                img(
+                                    {
+                                        key: "graph.img"
+                                        src: _graph.src
+                                        onError: (event) =>
+                                            _graph.error = true
+                                            @setState({load_error: true})
+                                        onLoad: (event) =>
+                                            _img = event.currentTarget
+                                            @image = _img
+                                            $(_img).cropper(
+                                                {
+                                                    # set MinContainer to fixed values in case of hidden load
+                                                    minContainerWidth: _graph.img_width
+                                                    minContainerHeight: _graph.img_height
+                                                    autoCrop: false
+                                                    movable: false
+                                                    rotatable: false
+                                                    zoomable: false
+                                                    guides: true
+                                                    cropend: (event) =>
+                                                        _graph.set_crop($(_img).cropper("getData"))
+                                                        @setState({cropped: true})
+                                                }
+                                            )
+                                    }
+                                )
+                            )
+                        ]
+                    else
+                        _graph_list = []
+                else
+                    _graph_list = [
+                        span(
+                            {
+                                key: "graph.nosrc"
+                                className: "text-warning"
+                            }
+                            "no graph created"
+                        )
+                    ]
+                return div(
+                    {
+                        key: "top"
+                    }
+                    h4(
+                        {
+                            key: "head1"
+                        }
+                        _head1_list
+                    )
+                    span(
+                        {
+                            key: "info"
+                        }
+                        if _graph.num_devices == 1 then " 1 device: " else " #{_graph.num_devices} devices: "
+                        _graph.device_names.join(", ")
+                        br()
+                    )
+                    span(
+                        {
+                            key: "cropline"
+                        }
+                        _crop_list
+                    )
+                    _graph_list
+                )
+    )
 ]).directive("icswRrdGraphListGraph",
 [
     "$templateCache", "$compile", "icswRRDSensorDialogService",
+    "icswRrdGraphDisplayReact",
 (
-    $templateCache, $compile, icswRRDSensorDialogService
+    $templateCache, $compile, icswRRDSensorDialogService,
+    icswRrdGraphDisplayReact,
 ) ->
     return {
         restrict: "E"
         replace: true
         scope: {
-            graph: "="
+            graph: "=icswGraph"
         }
         # template: $templateCache.get("icsw.rrd.graph.list.graph")
         link: (scope, element, attr) ->
-            # console.log "it=", scope.$id
-            graph_error = () ->
-                element.children().remove()
-                element.append(angular.element("<h4 class='text-danger'>Error loading graph (#{_graph.num})</h4>"))
-            scope.modify_sensors = () ->
-                icswRRDSensorDialogService(scope, _graph).then(
-                    () ->
-                        # console.log "done"
+            _el = ReactDOM.render(
+                React.createElement(
+                    icswRrdGraphDisplayReact
+                    {
+                        graph: scope.graph
+                        scope: scope
+                    }
                 )
-            element.children().remove()
-            _graph = scope.graph
-            if not _graph.error
-                element.append($compile($templateCache.get("icsw.rrd.graph.list.graph.header"))(scope))
-            if _graph.removed_keys.length
-                _rem_keys = _graph.get_removed_keys()
-                element.append(angular.element("<h4>#{_graph.removed_keys.length} keys not shown (zero data) <span class='glyphicon glyphicon-info-sign' title=\"#{_rem_keys}\"></span></h4>"))
-            if _graph.error
-                graph_error()
-            # element.append($compile($templateCache.get("icsw.rrd.graph.list.graph"))(scope))
-            if not _graph.src
-                element.append(angular.element("<div><span class='text-warning'>no graph created</span></div>"))
-            else if not _graph.error
-                _graph.error = false
-                clear = () ->
-                    if scope.img
-                        scope.img.next().remove()
-                        scope.img.remove()
-                        scope.img = undefined
-                clear()
-                if _graph.src
-                    crop_span = angular.element("<span><span></span><input type='button' class='btn btn-xs btn-warning' value='apply'/></span>")
-                    element.after(crop_span)
-                    crop_span.find("input").on("click", () ->
-                        scope.$emit("cropSet", _graph)
-                    )
-                    crop_span.hide()
-                    img_div = angular.element("<div/>")
-                    crop_span.after(img_div)
-                    myImg = angular.element("<img/>")
-                    img_div.append(myImg)
-                    myImg.attr("src", _graph.src)
-                    $(myImg).Jcrop({
-                        trackDocument: true
-                        onSelect: (sel) ->
-                            if not _graph.cropped
-                                crop_span.show()
-                            _graph.set_crop(sel)
-                            crop_span.find("span").text(
-                                "cropped timerange: " +
-                                _graph.get_tv(_graph.cts_start_mom) +
-                                " to " +
-                                _graph.get_tv(_graph.cts_end_mom)
-                            )
-                            scope.$digest()
-                        onRelease: () ->
-                            if _graph.cropped
-                                crop_span.hide()
-                            _graph.clear_crop()
-                            scope.$digest()
-                    }, () ->
-                        # not needed ?
-                        bounds = this.getBounds()
-                    )
-                    myImg.bind("error", (event) ->
-                        _graph.error = true
-                        graph_error()
-                        scope.$digest()
-                    )
-                scope.$on("$destroy", clear)
-                scope.$watch("graph.active", (new_val) ->
-                    # true means hide and false means show ? strange but it works
-                    if crop_span?
-                        if _graph.cropped
-                            if new_val
-                                crop_span.show()
-                            else
-                                crop_span.hide()
-                        if new_val
-                            img_div.show()
-                        else
-                            img_div.hide()
-                )
-            element.on("$destroy", () ->
-                # console.log "destr"
+                element[0]
+            )
+            scope.$on(
+                "$destroy"
+                () ->
+                    ReactDOM.unmountComponentAtNode(element[0])
             )
     }
     # console.log "S", $scope.graph
@@ -852,11 +1029,11 @@ angular.module(
 ]).service("icswRRDSensorDialogService",
 [
     "$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS",
-    "icswToolsSimpleModalService", "$timeout", "icswUserService", "icswSimpleAjaxCall",
+    "icswToolsSimpleModalService", "$timeout", "icswSimpleAjaxCall",
     "icswComplexModalService", "icswRRDThresholdDialogService",
 (
     $q, $compile, $templateCache, Restangular, ICSW_URLS,
-    icswToolsSimpleModalService, $timeout, icswUserService, icswSimpleAjaxCall,
+    icswToolsSimpleModalService, $timeout, icswSimpleAjaxCall,
     icswComplexModalService, icswRRDThresholdDialogService,
 ) ->
     return (scope, graph) ->
@@ -919,11 +1096,11 @@ angular.module(
 ]).service("icswRRDThresholdDialogService",
 [
     "$q", "$compile", "$templateCache", "Restangular", "ICSW_URLS",
-    "icswToolsSimpleModalService", "$timeout", "icswUserService", "icswSimpleAjaxCall",
+    "icswToolsSimpleModalService", "$timeout", "icswSimpleAjaxCall",
     "icswComplexModalService",
 (
     $q, $compile, $templateCache, Restangular, ICSW_URLS,
-    icswToolsSimpleModalService, $timeout, icswUserService, icswSimpleAjaxCall,
+    icswToolsSimpleModalService, $timeout, icswSimpleAjaxCall,
     icswComplexModalService,
 ) ->
     return (create, scope, sensor, threshold) ->
@@ -931,6 +1108,14 @@ angular.module(
         th_scope = scope.$new()
         th_scope.sensor = sensor
         th_scope.threshold = threshold
+
+        if !create
+            th_scope.threshold.notify_users_obj = threshold.notify_users
+
+            for device_selection in sensor.graph.selection_list
+                if threshold.device_selection == device_selection.idx
+                    th_scope.threshold.device_selection_obj = device_selection
+
         console.log "args:", create, sensor, threshold
         if create
             title = "Create new Threshold"
@@ -956,13 +1141,26 @@ angular.module(
                 ok_label: if create then "Create" else "Modify"
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    if create
-                        user_settings.create_threshold_entry(sensor, th_scope.threshold).then(
-                            (created) ->
+                    th_scope.threshold.notify_users = threshold.notify_users_obj
+                    if threshold.device_selection_obj
+                        th_scope.threshold.device_selection = threshold.device_selection_obj.idx
+                    else
+                        th_scope.threshold.device_selection = null
+                    user_settings.create_threshold_entry(sensor, th_scope.threshold).then(
+                        (created) ->
+                            if !create
+                                user_settings.remove_threshold_entry(sensor, th_scope.threshold).then(
+                                    (ok) ->
+                                        d.resolve("done")
+                                    (not_ok) ->
+                                        d.reject("no")
+                                )
+
+                            else
                                 d.resolve("done")
-                            (error) ->
-                                d.reject("no")
-                        )
+                        (error) ->
+                            d.reject("no")
+                    )
                     return d.promise
                 cancel_callback: (modal) ->
                     d = $q.defer()
@@ -979,41 +1177,28 @@ angular.module(
         return React.createClass(
             {
                 propTypes: {
-                    num_struct : React.PropTypes.number.isRequired
-                    num_devices : React.PropTypes.number.isRequired
-                    num_mve : React.PropTypes.number.isRequired
-                    num_mve_sel : React.PropTypes.number.isRequired
+                    num_struct: React.PropTypes.number.isRequired
+                    num_devices: React.PropTypes.number.isRequired
+                    num_mve: React.PropTypes.number.isRequired
+                    num_mve_sel: React.PropTypes.number.isRequired
+                    num_sensors: React.PropTypes.number.isRequired
                 }
                 render: () ->
-                    {div, span} = React.DOM
-                    div(
+                    {div, span, strong} = React.DOM
+                    _show_list = []
+                    if @props.num_devices
+                        _show_list.push("Devices: #{@props.num_devices}")
+                    if @props.num_struct
+                        _show_list.push("Structural: #{@props.num_struct}")
+                    if @props.num_mve
+                        _show_list.push("Data: #{@props.num_mve}")
+                    if @props.num_mve_sel
+                        _show_list.push("Selected: #{@props.num_mve_sel}")
+                    if @props.num_sensors
+                        _show_list.push("Sensors: #{@props.num_sensors}")
+                    return strong(
                         {key: "k0", className: "form-group"},
-                        [
-                            "Vector info: "
-                            span(
-                                {key: "se", className: "label label-primary", title: "structural entries"},
-                                [
-                                    @props.num_struct
-                                    if @props.num_devices
-                                        span(
-                                            {key: "nd", title: "number of devices"}
-                                            " / " + @props.num_devices
-                                        )
-                                ]
-                            )
-                            " / "
-                            span(
-                                {key: "de", className: "label label-primary", title: "data entries"},
-                                [
-                                    @props.num_mve
-                                    if @props.num_mve_sel
-                                        span(
-                                            {key: "des", title: "selected entries"}
-                                            " / " + @props.num_mve_sel
-                                        )
-                                ]
-                            )
-                        ]
+                        _show_list.join(" / ")
                     )
             }
         )

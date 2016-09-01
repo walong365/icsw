@@ -48,6 +48,7 @@ class RemoteSlave(object):
 
 class SyncerProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -145,7 +146,7 @@ class SyncerProcess(threading_tools.process_obj):
                 host="DIRECT",
                 port="0",
                 master_ip=master_ip,
-                master_port="{:d}".format(constants.SERVER_COM_PORT)
+                master_port="{:d}".format(global_config["COMMAND_PORT"]),
             )
             self.log(u"send register_master to {} (master IP {}, UUID {})".format(unicode(_srv), master_ip, _srv.uuid))
             self.send_command(_srv.uuid, unicode(srv_com))

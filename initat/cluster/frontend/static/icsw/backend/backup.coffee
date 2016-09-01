@@ -26,10 +26,24 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
-        "icsw.device.info", "icsw.tools.tree", "icsw.user",
+        "icsw.device.info", "icsw.user",
         "icsw.backend.devicetree",
     ]
-).service("icswBackupDefinition", ["icswBaseMixinClass", (icswBaseMixinClass) ->
+).service("icswBackupTools", [() ->
+    return {
+        # check if changed
+        changed: (object) ->
+            if object.$$ignore_changes?
+                return false
+            else if object.$$changed?
+                return true
+            else if object.$$_ICSW_backup_def?
+                # may be none during updates
+                return object.$$_ICSW_backup_def.changed(object)
+            else
+                return false
+    }
+]).service("icswBackupDefinition", ["icswBaseMixinClass", (icswBaseMixinClass) ->
 
     class backup_def extends icswBaseMixinClass
         constructor: () ->
@@ -59,6 +73,21 @@ angular.module(
                 delete obj.$$_ICSW_backup_data
                 delete obj.$$_ICSW_backup_def
         
+        attribute_changed: (obj, attr_name) ->
+            if obj.$$_ICSW_backup_data?
+                _bu = obj.$$_ICSW_backup_data
+                if attr_name in @simple_attributes
+                    _changed = obj[attr_name] != _bu[attr_name]
+                else if attr_name in @list_attributes
+                    _attr_name = "compare_#{attr_name}"
+                    if @[_attr_name]
+                        _changed = not @[_attr_name](obj[entry], _bu[entry])
+                    else
+                        _changed = not _.isEqual(obj[entry], _bu[entry])
+                else
+                    _changed = false 
+                return _changed
+                
         changed: (obj) =>
             if obj.$$_ICSW_backup_data?
                 _bu = obj.$$_ICSW_backup_data
@@ -102,7 +131,8 @@ angular.module(
             @simple_attributes = [
                 "name", "comment", "device_group", "domain_tree_node", "enabled",
                 "alias", "mon_device_templ", "monitor_checks", "enable_perfdata",
-                "flap_detection_enabled", "mon_resolve_name", "store_rrd_data"
+                "flap_detection_enabled", "mon_resolve_name", "store_rrd_data",
+                "device_class",
             ]
 
 ]).service("icswDeviceBootBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
@@ -268,6 +298,7 @@ angular.module(
             @simple_attributes = [
                 "device", "is_public", "name", "description", "local_copy_ok", "inherit", "protected",
                 "var_type", "val_str", "val_int", "val_blob", "val_data", "val_time",
+                "device_variable_scope",
             ]
 
 ]).service("icswDomainTreeNodeBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
@@ -318,7 +349,7 @@ angular.module(
                 "graph_setting_timeshift", "graph_setting_forecast",
             ]
 
-]).service("icswUserBackup", ["icswBackupDefinition", "icswUserGroupTools", (icswBackupDefinition, icswUserGroupTools) ->
+]).service("icswUserBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
     class icswUserBackupDefinition extends icswBackupDefinition
 
@@ -336,22 +367,35 @@ angular.module(
             ]
             @list_attributes = [
                 "allowed_device_groups", "secondary_groups",
-                "user_permission_set", "user_object_permission_set",
+                "roles",
             ]
 
-        compare_user_permission_set: (a_list, b_list) =>
+]).service("icswRoleBackup", ["icswBackupDefinition", "icswUserGroupRoleTools", (icswBackupDefinition, icswUserGroupRoleTools) ->
+
+    class icswRoleBackupDefinition extends icswBackupDefinition
+
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "idx", "active", "name", "description", "create_user,"
+            ]
+            @list_attributes = [
+                "rolepermission_set", "roleobjectpermission_set",
+            ]
+
+        compare_rolepermission_set: (a_list, b_list) =>
             return @_compare_perms(a_list, b_list)
 
-        compare_user_object_permission_set: (a_list, b_list) =>
+        compare_roleobjectpermission_set: (a_list, b_list) =>
             return @_compare_perms(a_list, b_list)
 
         _compare_perms: (a_list, b_list) =>
             return _.isEqual(
-                [icswUserGroupTools.get_perm_fp(a) for a in a_list]
-                [icswUserGroupTools.get_perm_fp(b) for b in b_list]
+                [icswUserGroupRoleTools.get_perm_fp(a) for a in a_list]
+                [icswUserGroupRoleTools.get_perm_fp(b) for b in b_list]
             )
 
-]).service("icswGroupBackup", ["icswBackupDefinition", "icswUserGroupTools", (icswBackupDefinition, icswUserGroupTools) ->
+]).service("icswGroupBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
     class icswGroupBackupDefinition extends icswBackupDefinition
 
@@ -366,20 +410,8 @@ angular.module(
             ]
             @list_attributes = [
                 "allowed_device_groups",
-                "group_permission_set", "group_object_permission_set",
+                "roles",
             ]
-
-        compare_group_permission_set: (a_list, b_list) =>
-            return @_compare_perms(a_list, b_list)
-
-        compare_group_object_permission_set: (a_list, b_list) =>
-            return @_compare_perms(a_list, b_list)
-
-        _compare_perms: (a_list, b_list) =>
-            return _.isEqual(
-                [icswUserGroupTools.get_perm_fp(a) for a in a_list]
-                [icswUserGroupTools.get_perm_fp(b) for b in b_list]
-            )
 
 ]).service("icswMonPeriodBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 
@@ -681,4 +713,35 @@ angular.module(
             @list_attributes = [
                 "com_capabilities",
             ]
+]).service("icswStaticAssetTemplateBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswStaticAssetTemplateBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "type", "name", "description", "system_template", "parent_template", "user", "enabled",
+            ]
+]).service("icswStaticAssetTemplateFieldBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswStaticAssetTemplateFieldBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "field_description", "field_type", "optional", "consumable",
+                "default_value_str", "default_value_int", "default_value_date",
+                "has_bounds", "value_int_lower_bound", "value_int_upper_bound",
+                "monitor", "static_asset_template", "fixed", "ordering",
+                "consumable_start_value", "consumable_warn_value",
+                "consumable_critical_value",
+                "date_check", "date_warn_value", "date_critical_value",
+            ]
+]).service("icswDVSAllowedNameBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswDVSAllowedNameBackupDefinition extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "forced_type", "name", "description", "group", "unique", "device_variable_scope",
+            ]
 ])
+

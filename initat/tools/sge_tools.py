@@ -52,7 +52,7 @@ def get_empty_job_options(**kwargs):
     options.suppress_nodelist = False
     options.compress_nodelist = True
     options.only_valid_waiting = False
-    options.detailed_wait = False
+    options.queue_details = False
     options.long_status = False
     options.show_stdoutstderr = True
     for key, value in kwargs.iteritems():
@@ -73,6 +73,7 @@ def get_empty_node_options(**kwargs):
     options.show_seq = False
     options.suppress_status = False
     options.long_status = False
+    options.show_topology = True
     options.show_type = False
     options.show_long_type = False
     options.show_complexes = True
@@ -186,7 +187,7 @@ def sec_to_str(in_sec):
     return out_f
 
 
-class sge_info(object):
+class SGEInfo(object):
     def __init__(self, **kwargs):
         """ arguments :
         verbose            : enables verbose messages
@@ -237,7 +238,9 @@ class sge_info(object):
             "queueconf": (2, self._check_queueconf_dict),
             "complexes": (3, self._check_complexes_dict),
             "qhost": (4, self._check_qhost_dict),
-            "qstat": (5, self._check_qstat_dict)
+            "qstat": (5, self._check_qstat_dict),
+            "sconf": (6, self._check_sconf_dict),
+            "fstree": (7, self._check_fairshare_tree_dict),
         }
         self.__valid_dicts = [
             v_key for _bla, v_key in sorted(
@@ -324,6 +327,17 @@ class sge_info(object):
                             file_info.remove(sub_el)
                         for _f_name, f_el in file_dict.iteritems():
                             file_info.append(f_el)
+        if "pinning_dict" in kwargs:
+            for job_id, _struct in kwargs["pinning_dict"].iteritems():
+                job_el = r_tree.xpath(
+                    ".//job_list[@full_id='{}' and master/text() = \"MASTER\"]".format(job_id),
+                    smart_strings=False
+                )
+                if len(job_el):
+                    job_el = job_el[0]
+                    pinning_info = job_el.find(".//pinning_info")
+                    if pinning_info is not None:
+                        pinning_info.text = json.dumps(_struct)
         return r_tree
 
     def get(self, key, def_value):
@@ -355,7 +369,7 @@ class sge_info(object):
             else:
                 # dummy pwd, FIXME
                 cur_pwd = "/tmp/"
-            ext_xml = E.job_ext_info(E.file_info())
+            ext_xml = E.job_ext_info(E.file_info(), E.pinning_info())
             for _std_type, _short in [("stdout", "o"), ("stderr", "e")]:
                 if job_xml.find(".//JB_{}_path_list".format(_std_type)) is not None:
                     _pn_path = job_xml.findtext(".//JB_{}_path_list/path_list/PN_path".format(_std_type))
@@ -406,12 +420,15 @@ class sge_info(object):
     def del_wait_job_info(self, job_id):
         del self.__wait_job_dict[job_id]
 
-    def get_run_time(self, cur_time):
-        # returns time running
+    def _get_diff_seconds(self, cur_time):
         run_time = abs(datetime.datetime.now() - cur_time)
         days = run_time.days
         secs = run_time.seconds
-        return sec_to_str(24 * 3600 * days + secs)
+        return 24 * 3600 * days + secs
+
+    def get_run_time(self, cur_time):
+        # returns time running
+        return sec_to_str(self._get_diff_seconds(cur_time))
 
     def get_left_time(self, start_time, h_rt):
         if h_rt:
@@ -440,6 +457,14 @@ class sge_info(object):
     def _direct_call(self, dict_name):
         s_time = time.time()
         new_el = self.__update_call_dict[dict_name]()
+        if new_el.tag != dict_name:
+            self.log(
+                "update call for dict '{}' returned an '{}' Element -> memory leak".format(
+                    dict_name,
+                    new_el.tag,
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
         new_el.attrib["last_update"] = "{:d}".format(int(time.time()))
         new_el.attrib["valid_until"] = "{:d}".format(int(time.time()) + self.__timeout_dicts[dict_name])
         e_time = time.time()
@@ -538,7 +563,7 @@ class sge_info(object):
             if poll_result:
                 recv = client.recv_unicode()
             else:
-                print "timeout after {:d} seconds".format(timeout_secs)
+                print("timeout after {:d} seconds".format(timeout_secs))
                 recv = None
             my_poller.unregister(client)
             del my_poller
@@ -670,13 +695,14 @@ class sge_info(object):
         os.environ["SGE_ROOT"] = self.__sge_dict["SGE_ROOT"]
         os.environ["SGE_CELL"] = self.__sge_dict["SGE_CELL"]
         os.environ["SGE_SINGLE_LINE"] = "1"
+        _silent_error = kwargs.get("silent_error", False)
         base_com = command.split()[0]
         if os.path.exists(base_com):
             s_time = time.time()
             c_stat, c_out = process_tools.getstatusoutput(command)
             c_out = unicode(c_out, errors='replace')
             e_time = time.time()
-            if c_stat:
+            if c_stat and not _silent_error:
                 self.log(
                     "command '{}' gave ({:d}) in {}: {}".format(
                         command,
@@ -762,6 +788,62 @@ class sge_info(object):
                     cur_hgroups.append(new_hg)
         return cur_hgroups
 
+    def _check_sconf_dict(self):
+        qconf_com = self._get_com_name("qconf")
+        c_stat, c_out = self._execute_command("{} -ssconf".format(qconf_com))
+        cur_sconf = E.sconf()
+        if not c_stat:
+            for line_parts in [
+                s_line.strip().split(None, 1) for s_line in c_out.split("\n") if not s_line.strip().startswith("#")
+            ]:
+                new_ss = E.setting(line_parts[1], name=line_parts[0])
+                # for host in c_out.pop(0)[1].split():
+                #     new_hg.append(E.host(host))
+                cur_sconf.append(new_ss)
+        # print etree.tostring(cur_sconf)
+        return cur_sconf
+
+    def _check_fairshare_tree_dict(self):
+        def _feed_dict(p_dict):
+            _id = p_dict["id"]
+            new_el = E.node(
+                E.childs(),
+                id=_id,
+                shares=p_dict["shares"],
+                type=p_dict["type"],
+                name=p_dict["name"],
+            )
+            id_lut[_id] = new_el
+            child_dict[_id] = []
+            if p_dict["childnodes"].lower() != "none":
+                child_dict[_id] = p_dict["childnodes"].split(",")
+        qconf_com = self._get_com_name("qconf")
+        c_stat, c_out = self._execute_command("{} -sstree".format(qconf_com), silent_error=True)
+        id_lut = {}
+        child_dict = {}
+        if not c_stat:
+            _dict = {}
+            for _key, _value in [
+                s_line.strip().split("=", 1) for s_line in c_out.split("\n") if not s_line.strip().startswith("#")
+            ]:
+                if _key == "id" and _dict:
+                    _feed_dict(_dict)
+                    _dict = {}
+                _dict[_key] = _value
+                # for host in c_out.pop(0)[1].split():
+                #     new_hg.append(E.host(host))
+                # cur_sconf.append(new_ss)
+            if "id" in _dict:
+                _feed_dict(_dict)
+        # create links
+        for _p_id, _childs in child_dict.iteritems():
+            for _child in _childs:
+                id_lut[_p_id].find("childs").append(id_lut[_child])
+        cur_fs_tree = E.fstree()
+        if "0" in id_lut:
+            cur_fs_tree.append(id_lut["0"])
+        return cur_fs_tree
+
     def _check_complexes_dict(self):
         qconf_com = self._get_com_name("qconf")
         c_stat, c_out = self._execute_command("{} -sc".format(qconf_com))
@@ -780,7 +862,7 @@ class sge_info(object):
         if _c_stat:
             all_qhosts = E.call_error(c_out, stat="{:d}".format(_c_stat))
         else:
-            all_qhosts = etree.fromstring(c_out)  # @UndefinedVariable
+            all_qhosts = etree.fromstring(c_out)
         for cur_host in all_qhosts.xpath(".//host", smart_strings=False):  # [not(@name='global')]"):
             cur_host.attrib["short_name"] = cur_host.attrib["name"].split(".")[0]
         for cur_job in all_qhosts.xpath(".//job", smart_strings=False):
@@ -789,6 +871,7 @@ class sge_info(object):
                 cur_job.attrib["full_id"] = "{}.{}".format(cur_job.attrib["name"], task_node.text)
             else:
                 cur_job.attrib["full_id"] = cur_job.attrib["name"]
+        # print etree.tostring(all_qhosts, pretty_print=True)
         for state_el in all_qhosts.xpath(".//queue/queuevalue[@name='state_string']", smart_strings=False):
             state_el.addnext(
                 E.queuevalue(
@@ -1013,7 +1096,9 @@ class sge_info(object):
         for cur_host in self.__tree.findall("qhost/host"):
             self.__host_lut[cur_host.get("name")] = cur_host
         # expand host_list of queue q_name if not already expanded
-        hg_lut = {cur_hg.get("name"): cur_hg for cur_hg in self.__tree.findall("hostgroup/hostgroup")}
+        hg_lut = {
+            cur_hg.get("name"): cur_hg for cur_hg in self.__tree.findall("hostgroup/hostgroup")
+        }
         for queue in self.__queue_lut.itervalues():
             if not queue.findall("hosts"):
                 hosts_el = E.hosts()
@@ -1029,6 +1114,16 @@ class sge_info(object):
                                 )
                         else:
                             hosts_el.append(E.host(hg_name))
+        self.__scheduler_conf = self.__tree.find("sconf")
+        self.__fstree = self.__tree.find("fstree")
+
+    @property
+    def scheduler_conf(self):
+        return self.__scheduler_conf
+
+    @property
+    def fstree(self):
+        return self.__fstree
 
 
 def get_running_headers(options):
@@ -1043,8 +1138,7 @@ def get_running_headers(options):
     if options.show_memory:
         cur_job.extend(
             [
-                E.virtual_total(),
-                E.virtual_free()
+                E.memory(),
             ]
         )
     cur_job.extend(
@@ -1115,6 +1209,56 @@ def create_file_content(act_job):
     return E.files("{:d}".format(len(act_job.xpath(".//file_info/file_content", smart_strings=False))))
 
 
+def build_scheduler_info(s_info):
+    # build scheduler info as dict
+    r_dict = {}
+    int_re = re.compile("^\d+$")
+    float_re = re.compile("^\d+\.\d+$")
+    _sconf = s_info.scheduler_conf
+    if _sconf is not None:
+        for entry in _sconf:
+            _name = entry.attrib["name"]
+            if entry.text.lower() in ["true"]:
+                _val = True
+            elif entry.text.lower() in ["false"]:
+                _val = False
+            elif int_re.match(entry.text):
+                _val = int(entry.text)
+            elif float_re.match(entry.text):
+                _val = float(entry.text)
+            else:
+                _val = entry.text
+            r_dict[_name] = _val
+    else:
+        _els = [x.tag for x in s_info.get_tree().findall("./*")]
+        print(
+            "Found elements: {}".format(
+                ", ".join(_els)
+            )
+        )
+    return r_dict
+
+
+def build_fstree_info(s_info):
+    def _build_node(in_el):
+        return {
+            "id": int(in_el.attrib["id"]),
+            "shares": int(in_el.attrib["shares"]),
+            "name": in_el.attrib["name"],
+            "type": int(in_el.attrib["type"]),
+            "childs": [
+                _build_node(sub_el) for sub_el in in_el.find("childs")
+            ]
+        }
+    # build hierarchical fstree info (transcript from XML to dict)
+    _fstree = s_info.fstree
+    if _fstree is not None and len(_fstree):
+        r_dict = _build_node(_fstree[0])
+    else:
+        r_dict = {}
+    return r_dict
+
+
 def build_running_list(s_info, options, **kwargs):
     user = kwargs.get("user", None)
     # build various local luts
@@ -1163,12 +1307,7 @@ def build_running_list(s_info, options, **kwargs):
         )
         if options.show_memory:
             master_h = s_info.get_host(act_job.findtext("queue_name").split("@")[-1])
-            cur_job.extend(
-                [
-                    E.virtual_total(master_h.findtext("resourcevalue[@name='virtual_total']")),
-                    E.virtual_free(master_h.findtext("resourcevalue[@name='virtual_free']"))
-                ]
-            )
+            cur_job.extend(_get_node_memory(master_h))
         cur_job.extend(
             [
                 getattr(E, "complex")(",".join(sorted(i_reqs)) or "---"),
@@ -1271,9 +1410,11 @@ def get_waiting_headers(options):
                 E.exec_time(),
             ]
         )
-    if options.detailed_wait:
-        cur_job.ext(
-            E.wait_details()
+    if options.queue_details:
+        cur_job.extend(
+            [
+                E.queue_details()
+            ]
         )
     cur_job.extend(
         [
@@ -1346,8 +1487,14 @@ def build_waiting_list(s_info, options, **kwargs):
             submit_time = datetime.datetime.fromtimestamp(int(act_job.attrib["submit_time"]))
             cur_job.extend(
                 [
-                    E.queue_time(logging_tools.get_relative_dt(submit_time)),
-                    E.wait_time(s_info.get_run_time(submit_time)),
+                    E.queue_time(
+                        logging_tools.get_relative_dt(submit_time),
+                        raw=act_job.attrib["submit_time"]
+                    ),
+                    E.wait_time(
+                        s_info.get_run_time(submit_time),
+                        raw="{:d}".format(s_info._get_diff_seconds(submit_time)),
+                    ),
                     E.runtime(s_info.get_h_rt_time(act_job.findtext("hard_request[@name='h_rt']"))),
                 ]
             )
@@ -1359,23 +1506,46 @@ def build_waiting_list(s_info, options, **kwargs):
                 cur_job.append(E.exec_time(logging_tools.get_relative_dt(_exec_time)))
         dep_list = sorted(act_job.xpath(".//predecessor_jobs_req/text()", smart_strings=False))
         # print etree.tostring(act_job, pretty_print=True)
-        if options.detailed_wait:
+        # print "*"
+        if options.queue_details:
+            # see: http://talby.rcs.manchester.ac.uk/~ri/_notes_sge/scheduling.html
             # parse
             _info_dict = {
                 # normalized values
                 "norm_pprio": float(act_job.findtext("JB_nppri")),
                 "norm_urg": float(act_job.findtext("JB_nurg")),
-                # resource requirements
+                "norm_tickets": float(act_job.findtext("JAT_ntix")),
+                # the urgency values contribution that reflects the urgency related to ...
+                # ... resource requirements
                 "rr_contr": float(act_job.findtext("JB_rrcontr")),
-                # wait time
+                # ... wait time
                 "wt_contr": float(act_job.findtext("JB_wtcontr")),
-                # deadline
+                # ... deadline
                 "dl_contr": float(act_job.findtext("JB_dlcontr")),
+                # override portion of the total number of tickets assigned to the job currently
+                "otickets": float(act_job.findtext("otickets")),
+                # functional portion of the total number of tickets assigned to the job currently
+                "ftickets": float(act_job.findtext("ftickets")),
+                # share portion of the total number of tickets assigned to the job currently
+                "stickets": float(act_job.findtext("stickets")),
+                # total number of tickets
+                "tickets": float(act_job.findtext("tickets")),
+                # share of the total system to which the job is entitled currently
+                "share": float(act_job.findtext("JAT_share")),
 
             }
+            # import pprint
+            # pprint.pprint(_info_dict)
             # print _info_dict
             cur_job.append(
-                E.detailed_wait("X")
+                E.queue_details(
+                    "{:.4f} / {:.4f} / {:.4f}".format(
+                        _info_dict["norm_pprio"],
+                        _info_dict["norm_urg"],
+                        _info_dict["norm_tickets"],
+                    ),
+                    raw=json.dumps(_info_dict)
+                )
             )
         cur_job.extend(
             [
@@ -1423,18 +1593,32 @@ def get_node_headers(options):
     if options.show_memory:
         cur_node.extend(
             [
-                E.virtual_tot(),
-                E.virtual_free()
+                E.memory(),
             ]
         )
-    cur_node.extend(
-        [
-            E.load(),
-            E.slots_used(span="2"),
-            E.slots_reserved(),
-            E.slots_total()
-        ]
-    )
+    if options.merge_node_queue:
+        cur_node.extend(
+            [
+                # span was 2, is no longer needed
+                E.load(span="1"),
+                E.slots_used(),
+                E.slots_reserved(),
+                E.slots_total(),
+            ]
+        )
+    else:
+        cur_node.extend(
+            [
+                E.load(),
+                E.slot_info(),
+            ]
+        )
+    if options.show_topology:
+        cur_node.extend(
+            [
+                E.topology()
+            ]
+        )
     if options.show_acl:
         cur_node.extend(
             [
@@ -1446,13 +1630,95 @@ def get_node_headers(options):
     return cur_node
 
 
-def shorten_list(in_list, **kwargs):
+def _shorten_list(in_list, **kwargs):
     if "empty_str" in kwargs:
         in_list = [value if value else kwargs["empty_str"] for value in in_list]
     if kwargs.get("reduce", True):
         if len(set(in_list)) == 1:
             return in_list[0]
     return kwargs.get("sep", "/").join(in_list)
+
+
+class SGETopologyInfo(object):
+    def __init__(self, in_str):
+        self._info = []
+        if in_str:
+            for _c in in_str:
+                self._feed(_c)
+
+    @property
+    def dump(self):
+        return json.dumps(self._info)
+
+    def _feed(self, in_char):
+        _ref = self._info
+        for _idx in xrange({"s": 0, "c": 1, "t": 2}[in_char.lower()]):
+            _ref = _ref[-1].setdefault("l", [])
+        _ref.append({"u": in_char.lower() == in_char, "t": in_char.upper()})
+
+
+def _get_topology_node(act_h):
+    _topo, _topo_used = (
+        act_h.findtext("resourcevalue[@name='m_topology']"),
+        act_h.findtext("resourcevalue[@name='m_topology_inuse']")
+    )
+    if _topo is not None and _topo_used is not None:
+        _node = E.topology(
+            _topo_used,
+            raw=SGETopologyInfo(_topo_used).dump
+        )
+    else:
+        _node = E.topology(
+            "-"
+        )
+    return _node
+
+
+def _get_node_memory(act_h):
+    def _parse_mem(in_str):
+        if in_str and len(in_str) > 1 and not in_str[-1].isdigit():
+            return int(
+                float(in_str[:-1]) * {
+                    "k": 1024,
+                    "m": 1024 * 1024,
+                    "g": 1024 * 1024 * 1024,
+                    "t": 1024 * 1024 * 1024 * 1024,
+                }[in_str[-1].lower()]
+            )
+        else:
+            return 0
+
+    def _get_perc(key, pfix):
+        _total = m_dict["{}_total".format(key)]
+        _used = m_dict["{}_used".format(key)]
+        if _total:
+            return "{:.2f} % used of {} {}".format(
+                100. * _used / _total,
+                logging_tools.get_size_str(_total),
+                pfix,
+            )
+        else:
+            return "{} unused".format(pfix)
+
+    # build dict
+    _keys = sum(
+        [
+            ["{}_{}".format(_a, _b) for _a in ["mem", "swap", "virtual"]] for _b in ["used", "total", "free"]
+        ],
+        []
+    )
+    m_dict = {
+        key: _parse_mem(act_h.findtext("resourcevalue[@name='{}']".format(key))) for key in _keys
+    }
+    return [
+        E.memory(
+            "{} / {}".format(
+                _get_perc("mem", "phys"),
+                _get_perc("swap", "swap"),
+            ),
+            raw=json.dumps(m_dict)
+        ),
+    ]
 
 
 def build_node_list(s_info, options):
@@ -1497,6 +1763,9 @@ def build_node_list(s_info, options):
     node_list = E.node_list()
     if options.merge_node_queue:
         for h_name, q_list in d_list:
+            if not q_list:
+                # skip hosts without related queues
+                continue
             act_q_list, act_h = ([s_info.get_queue(q_name) for q_name in q_list], s_info.get_host(h_name))
             act_q_list = [_entry for _entry in act_q_list if _entry is not None]
             s_name = act_h.get("short_name")
@@ -1551,7 +1820,7 @@ def build_node_list(s_info, options):
                     continue
             cur_node = E.node(
                 E.host(act_h.get("short_name")),
-                E.queues(shorten_list(q_list))
+                E.queues(_shorten_list(q_list))
             )
             if options.show_seq:
                 seq_list = [
@@ -1564,7 +1833,7 @@ def build_node_list(s_info, options):
                         )[-1]
                     ) for act_q in act_q_list
                 ]
-                cur_node.append(E.seqno(shorten_list(seq_list)))
+                cur_node.append(E.seqno(_shorten_list(seq_list)))
             if not options.suppress_status:
                 _list = [
                     m_queue.findtext(
@@ -1575,7 +1844,7 @@ def build_node_list(s_info, options):
                 ]
                 cur_node.append(
                     E.state(
-                        shorten_list(
+                        _shorten_list(
                             [_val or "-" for _val in _list]
                         ),
                         raw=json.dumps(_list)
@@ -1591,7 +1860,7 @@ def build_node_list(s_info, options):
                 ]
                 cur_node.append(
                     E.type(
-                        shorten_list(
+                        _shorten_list(
                             _list
                         ),
                         raw=json.dumps(_list)
@@ -1600,7 +1869,7 @@ def build_node_list(s_info, options):
             if options.show_complexes:
                 cur_node.append(
                     E.complex(
-                        shorten_list(
+                        _shorten_list(
                             [
                                 ",".join(
                                     sorted(
@@ -1622,7 +1891,7 @@ def build_node_list(s_info, options):
             if options.show_pe:
                 cur_node.append(
                     E.pe_list(
-                        shorten_list(
+                        _shorten_list(
                             [
                                 ",".join(
                                     sorted(
@@ -1642,12 +1911,7 @@ def build_node_list(s_info, options):
                     )
                 )
             if options.show_memory:
-                cur_node.extend(
-                    [
-                        E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
-                        E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
-                    ]
-                )
+                cur_node.extend(_get_node_memory(act_h))
             cur_node.extend(
                 [
                     E.load(
@@ -1656,11 +1920,15 @@ def build_node_list(s_info, options):
                         ),
                         **{"type": "float", "format": "{:.2f}"}
                     ),
-                    E.slots_used(shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
-                    E.slots_reserved(shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
-                    E.slots_total(shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
+                    E.slots_used(_shorten_list([m_queue.findtext("queuevalue[@name='slots_used']") for m_queue in m_queue_list])),
+                    E.slots_reserved(_shorten_list([m_queue.findtext("queuevalue[@name='slots_resv']") for m_queue in m_queue_list])),
+                    E.slots_total(_shorten_list([m_queue.findtext("queuevalue[@name='slots']") for m_queue in m_queue_list])),
                 ]
             )
+            if options.show_topology:
+                cur_node.append(
+                    _get_topology_node(act_h)
+                )
             if options.show_acl:
                 acl_str_dict = {}
                 for act_q in act_q_list:
@@ -1684,7 +1952,7 @@ def build_node_list(s_info, options):
                             acl_str = "{} and not ({})".format(pos_list, neg_list)
                         acl_str_dict.setdefault(header_name, []).append(acl_str)
                 for header_name in ["userlists", "projects"]:
-                    cur_node.append(getattr(E, header_name)(shorten_list(acl_str_dict.get(header_name, []))))
+                    cur_node.append(getattr(E, header_name)(_shorten_list(acl_str_dict.get(header_name, []))))
             job_list = []
             for q_name in q_list:
                 type_dict = job_host_pe_lut.get(s_name, {}).get(q_name, {})
@@ -1830,24 +2098,29 @@ def build_node_list(s_info, options):
                     )
                 )
             if options.show_memory:
-                cur_node.extend(
-                    [
-                        E.virtual_tot(act_h.findtext("resourcevalue[@name='virtual_total']") or ""),
-                        E.virtual_free(act_h.findtext("resourcevalue[@name='virtual_free']") or "")
-                    ]
-                )
+                cur_node.extend(_get_node_memory(act_h))
             # print etree.tostring(act_h, pretty_print=True)
             cur_node.extend(
                 [
                     E.load("{:.2f}".format(_load_to_float(act_h.findtext("resourcevalue[@name='load_avg']")))),
-                    E.slots_used(m_queue.findtext("queuevalue[@name='slots_used']")),
-                    E.slots_reserved(m_queue.findtext("queuevalue[@name='slots_resv']")),
-                    E.slots_total(m_queue.findtext("queuevalue[@name='slots']")),
+                    E.slot_info(
+                        "{}/{}/{}".format(
+                            m_queue.findtext("queuevalue[@name='slots_used']"),
+                            m_queue.findtext("queuevalue[@name='slots_resv']"),
+                            m_queue.findtext("queuevalue[@name='slots']")
+                        )
+                    )
                 ]
             )
+            if options.show_topology:
+                cur_node.append(
+                    _get_topology_node(act_h)
+                )
             if options.show_acl:
-                for ref_name, header_name in [("user_list", "userlists"),
-                                              ("project", "projects")]:
+                for ref_name, header_name in [
+                    ("user_list", "userlists"),
+                    ("project", "projects")
+                ]:
                     pos_list = " or ".join(
                         act_q.xpath(
                             ".//{}s/conf_var[not(@host) or @host='{}']/@name".format(
@@ -1909,7 +2182,7 @@ def build_node_list(s_info, options):
 
 
 def _stress_test():
-    a = sge_info(mode="local", verbose=True)
+    a = SGEInfo(mode="local", verbose=True)
     _iters = 100
     for _x in xrange(_iters):
         a.update(force_update=True)

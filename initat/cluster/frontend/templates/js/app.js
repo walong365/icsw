@@ -43,23 +43,34 @@
 // - name of templates start with the name of the module with underscores, ending is ".html"
 // - no root. bindings
 
+angular.module(
+    "icsw.menu", []
+).constant(
+    "ICSW_MENU_JSON", {
+    // <!-- ICSWAPPS:MENU:START -->
+    // <!-- ICSWAPPS:MENU:END -->
+    }
+);
+
 icsw_app = angular.module(
     "icsw.app",
     [
+        "icsw.menu",
         "ngResource",
         "ngCookies",
         "ngSanitize",
         "ngPromiseExtras",
         "ui.bootstrap",
         "ui.router",
+        "ui.ace",
         "restangular",
         "blockUI",
         "toaster",
         "gridster",
         "cfp.hotkeys",
         "init.csw.filters",
-        "icsw.tools.tree",
         "icsw.tools.reacttree",
+        "icsw.layout.theme",
         "icsw.layout.menu",
         "icsw.tools",
         "icsw.login",
@@ -67,15 +78,19 @@ icsw_app = angular.module(
         "icsw.user",
         "icsw.user.password",
         "icsw.user.dashboard",
-        "icsw.user.license",
+        "icsw.system.license",
+        "icsw.variable.scope",
+        "icsw.backend.system.license",
         "icsw.backend.domain_name_tree",
-        "icsw.backend.category_tree",
+        "icsw.backend.category",
+        "icsw.backend.asset",
         "icsw.backend.devicetree",
         "icsw.backend.backup",
         "icsw.backend.network",
         "icsw.backend.config",
+        "icsw.backend.variable",
         "icsw.rrd.graph",
-        "icsw.info.background",
+        "icsw.system.background",
         "icsw.server.info",
         "icsw.config.config",
         "icsw.config.generate",
@@ -83,15 +98,25 @@ icsw_app = angular.module(
         "icsw.device.info",
         "icsw.device.tree",
         "icsw.device.asset",
-        "icsw.config.category_tree",
-        "icsw.config.category_location",
+        "icsw.config.category",
+        "icsw.config.category.location",
+        "icsw.config.category.googlemaps",
         "icsw.config.domain_name_tree",
         "icsw.device.network",
-        "icsw.device.network.graph",
         "icsw.device.config",
         "icsw.device.connection",
         "icsw.device.category",
-        "icsw.device.livestatus",
+        "icsw.livestatus.livestatus",
+        "icsw.livestatus.comp.sources",
+        "icsw.livestatus.comp.connect",
+        "icsw.livestatus.comp.category",
+        "icsw.livestatus.comp.burst",
+        "icsw.livestatus.comp.basefilter",
+        "icsw.livestatus.comp.functions",
+        "icsw.livestatus.comp.topology",
+        "icsw.livestatus.comp.tabular",
+        "icsw.livestatus.comp.elements",
+        "icsw.livestatus.comp.info",
         "icsw.device.monconfig",
         "icsw.device.location",
         "icsw.device.status_history",
@@ -118,21 +143,6 @@ icsw_app = angular.module(
         // <!-- ICSWAPPS:MODULES:END -->
         "icsw.discovery.event_log"
     ]
-).config(
-    [
-        "blockUIConfig",
-        function(blockUIConfig) {
-            blockUIConfig.delay = 0;
-            blockUIConfig.message = "Loading, please wait ...";
-            blockUIConfig.autoBlock = false;
-            blockUIConfig.autoInjectBodyBlock = false;
-        }
-    ]
-).config(
-    function(hotkeysProvider) {
-        hotkeysProvider.templateHeader = "<h1>ICSW Key help</h1>"
-        hotkeysProvider.includeCheatSheet = true;
-    }
 ).constant(
     "ICSW_URLS", {
         <!-- inject:urls:html -->
@@ -141,12 +151,4 @@ icsw_app = angular.module(
         "DIMPLE_MIN_JS": "/icsw/static/dimple.v2.1.6.min.js",
         "STATIC_URL": "/icsw/static"
     }
-).config(function(uiGmapGoogleMapApiProvider) {
-    uiGmapGoogleMapApiProvider.configure(
-        {
-            //    key: 'your api key',
-            v: '3.23', //defaults to latest 3.X anyhow
-            libraries: 'weather,geometry,visualization'
-        }
-    );
-});
+);

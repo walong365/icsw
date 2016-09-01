@@ -8,7 +8,7 @@
         <key name="meta.track.icsw.memory" type="bool" description="track memory consumption of the ICSW">False</key>
         <key name="meta.check.time" type="int" description="minimum time between checks for meta-server">20</key>
         <key name="meta.check.memory.time" type="int" description="minimum time between memory checks for meta-server">300</key>
-        <key name="log.logdir" type="str" description="base dir for all logs">/var/log/cluster/logging-server</key>
+        <key name="log.logdir" type="str" description="base dir for all logs">/var/log/icsw/logging-server</key>
         <key name="log.mail.from.name" type="str" description="from name for mails from logging-server">logging-server</key>
         <key name="log.format.line" type="str" description="format for loglines">%(asctime)s : %(levelname)-5s (%(threadName)s.%(process)d) %(message)s</key>
         <key name="log.format.date" type="str" description="format for datetimes">%a %b %d %H:%M:%S %Y</key>

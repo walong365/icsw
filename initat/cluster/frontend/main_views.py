@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -25,6 +25,7 @@
 import glob
 import json
 import logging
+import datetime
 import os
 
 from django.conf import settings
@@ -43,8 +44,14 @@ logger = logging.getLogger("cluster.main")
 
 
 class get_number_of_background_jobs(View):
+    @method_decorator(login_required)
     def post(self, request):
-        _return = {"background_jobs": background_job.objects.exclude(Q(state__in=["done", "timeout", "ended", "merged"])).count()}
+        request.session["latest_contact"] = datetime.datetime.now()
+        _return = {
+            "background_jobs": background_job.objects.exclude(
+                Q(state__in=["done", "timeout", "ended", "merged"])
+            ).count()
+        }
         return HttpResponse(json.dumps(_return), content_type="application/json")
 
 
@@ -56,6 +63,7 @@ class get_cluster_info(View):
             "DATABASE_VERSION": settings.ICSW_DATABASE_VERSION,
             "SOFTWARE_VERSION": settings.ICSW_SOFTWARE_VERSION,
             "MODELS_VERSION": settings.ICSW_MODELS_VERSION,
+            "GOOGLE_MAPS_KEY": settings.ICSW_GOOGLE_MAPS_KEY,
         }
         for _key, _value in device_variable.objects.values_list("name", "val_str").filter(
             Q(name__in=["CLUSTER_NAME", "CLUSTER_ID"]) &
@@ -76,12 +84,14 @@ class get_docu_info(View):
 
 
 class get_routing_info(View):
-    def post(self, request):
+    # @method_decorator(login_required)
+    def get(self, request):
         cur_routing = routing.SrvTypeRouting(force="force" in request.POST)
         _return = {
             "service_types": {key: True for key in routing.SrvTypeRouting().service_types},
             "routing": cur_routing.resolv_dict,
-            "local_device": unicode(cur_routing.local_device.full_name if cur_routing.local_device is not None else "UNKNOWN"),
+            "local_device": unicode(cur_routing.local_device.full_name) if cur_routing.local_device is not None else None,
+            "internal_dict": cur_routing.internal_dict,
             "unroutable_configs": cur_routing.unroutable_configs,
         }
         return HttpResponse(json.dumps(_return), content_type="application/json")

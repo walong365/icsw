@@ -2,7 +2,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -30,6 +30,7 @@ __all__ = [
     "SensorThresholdSerializer",
     "SensorThresholdActionSerializer",
     "GraphSettingSerializer",
+    "GraphSettingSerializerCustom",
     "GraphSettingSizeSerializer",
     "GraphSettingTimeshiftSerializer",
     "GraphSettingForecastSerializer",
@@ -65,13 +66,6 @@ class GraphSettingSizeSerializer(serializers.ModelSerializer):
         model = GraphSettingSize
 
 
-class GraphSettingSerializer(serializers.ModelSerializer):
-    # graph_setting_size = GraphSettingSizeSerializer()
-
-    class Meta:
-        model = GraphSetting
-
-
 class GraphSettingTimeshiftSerializer(serializers.ModelSerializer):
     class Meta:
         model = GraphSettingTimeshift
@@ -80,6 +74,45 @@ class GraphSettingTimeshiftSerializer(serializers.ModelSerializer):
 class GraphSettingForecastSerializer(serializers.ModelSerializer):
     class Meta:
         model = GraphSettingForecast
+
+
+class GraphSettingForecastSerializerCustom(serializers.Serializer):
+    seconds = serializers.IntegerField()
+    mode = serializers.CharField()
+
+
+class GraphSettingTimeshiftSerializerCustom(serializers.Serializer):
+    seconds = serializers.IntegerField()
+
+
+class GraphSettingSizeSerializerCustom(serializers.Serializer):
+    width = serializers.IntegerField()
+    height = serializers.IntegerField()
+
+
+class GraphSettingSerializerCustom(serializers.ModelSerializer):
+    # name = serializers.CharField(read_only=True)
+    graph_setting_size = GraphSettingSizeSerializerCustom()
+    graph_setting_timeshift = GraphSettingTimeshiftSerializerCustom(required=False)
+    graph_setting_forecast = GraphSettingForecastSerializerCustom(required=False)
+
+    def create(self, validated_data):
+        validated_data["graph_setting_size"] = GraphSettingSize(**validated_data.pop("graph_setting_size"))
+        if "graph_setting_timeshift" in validated_data:
+            validated_data["graph_setting_timeshift"] = GraphSettingTimeshift(**validated_data.pop("graph_setting_timeshift"))
+        if "graph_setting_forecast" in validated_data:
+            validated_data["graph_setting_forecast"] = GraphSettingForecast(**validated_data.pop("graph_setting_forecast"))
+        _gs = GraphSetting(**validated_data)
+        _gs.to_enum()
+        return _gs
+
+    class Meta:
+        model = GraphSetting
+
+
+class GraphSettingSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = GraphSetting
 
 
 class GraphTimeFrameSerializer(serializers.ModelSerializer):

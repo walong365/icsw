@@ -23,11 +23,12 @@ import zmq
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, DeviceScanLock
 from initat.discovery_server.event_log.event_log_poller import EventLogPollerProcess
+from initat.discovery_server.generate_assets_process import GenerateAssetsProcess
 from initat.snmp.process import snmp_process_container
 from initat.tools import cluster_location, configfile, logging_tools, process_tools, \
-    server_command, server_mixins, threading_tools
+    server_command, server_mixins, threading_tools, net_tools
 from initat.tools.server_mixins import RemoteCall
 from .config import global_config, IPC_SOCK_SNMP
 from .discovery import DiscoveryProcess
@@ -49,9 +50,11 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.__msi_block = self._init_msi_block()
         self.add_process(DiscoveryProcess("discovery"), start=True)
         self.add_process(EventLogPollerProcess(EventLogPollerProcess.PROCESS_NAME), start=True)
+        self.add_process(GenerateAssetsProcess("generate_assets"), start=True)
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
-        # self.add_process(build_process("build"), start=True)
+        self.register_func("generate_assets", self._generate_assets)
+        self.register_func("send_msg", self.send_msg)
         db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
         self.__snmp_running = True
@@ -66,12 +69,11 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self._test()
 
     def clear_pending_scans(self):
-        _pdevs = device.objects.exclude(Q(active_scan=""))
-        if len(_pdevs):
-            self.log("clearing active_scan of {}".format(logging_tools.get_plural("device", len(_pdevs))))
-            for _dev in _pdevs:
-                _dev.active_scan = ""
-                _dev.save(update_fields=["active_scan"])
+        pending_locks = DeviceScanLock.objects.filter(Q(server=global_config["SERVER_IDX"]) & Q(active=True))
+        if pending_locks.count():
+            self.log("clearing {}".format(logging_tools.get_plural("active scan", pending_locks.count())))
+            for _lock in pending_locks:
+                [self.log(_what, _level) for _what, _level in _lock.close()]
 
     def _int_error(self, err_cause):
         if not self.__snmp_running:
@@ -100,6 +102,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         process_tools.remove_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
 
     def _re_insert_config(self):
+        # print global_config["SERVER_IDX"], global_config["CONFIG_IDX"]
         cluster_location.write_config("discovery_server", global_config)
 
     def _init_processes(self):
@@ -145,11 +148,9 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=4)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=4)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("discovery-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=4)
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block
@@ -172,6 +173,27 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             simple_server_bind=True,
             pollin=self.remote_call,
         )
+        # dict for external connections
+        self.__ext_con_dict = {}
+
+    def send_msg(self, *args, **kwargs):
+        _from_name, _from_pid, run_idx, conn_str, srv_com = args
+        srv_com = server_command.srv_command(source=srv_com)
+        srv_com["discovery_run_idx"] = "{:d}".format(run_idx)
+        _new_con = net_tools.zmq_connection(
+            "ext_con_discovery_{:d}".format(run_idx),
+            context=self.zmq_context,
+            poller_base=self,
+            callback=self._ext_receive,
+        )
+        self.__ext_con_dict[run_idx] = _new_con
+        _new_con.add_connection(conn_str, srv_com)
+
+    def _ext_receive(self, *args):
+        srv_reply = args[0]
+        run_idx = int(srv_reply["*discovery_run_idx"])
+        del self.__ext_con_dict[run_idx]
+        self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):
@@ -225,3 +247,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         # ignore src specs
         _src_proc, _src_pid = args[0:2]
         self.spc.start_batch(*args[2:], **kwargs)
+
+    def _generate_assets(self, *args, **kwargs):
+        # send to generate_assets process
+        self.send_to_process("generate_assets", "process_assets", args[2])

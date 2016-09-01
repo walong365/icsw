@@ -10,22 +10,26 @@
 <script type="text/ng-template" id="icsw.config.kpi.show_kpi_set">
     <div class="panel panel-default" ng-show="kpi_set">
         <div class="panel-heading">
-            {{title}}
+            {{ title }} ({{ kpi_set.objects.length }} elements)
         </div>
         <div class="panel-body" ng-attr-style="height: {{body_height}}px; overflow-y: auto;">
 
             <button class="btn btn-default btn-primary" ng-if="show_close" ng-click="kpi_set = undefined" style="margin-bottom: 15px">close</button>
 
             <div st-table="entries" st-safe-src="kpi_set.objects" ng-if="kpi_set.objects.length > 0">
-                <div icsw-tools-pagination st-items-by-page="50" st-displayed-pages="8"
-                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                <div
+                    icsw-tools-pagination
+                    st-items-by-page="50"
+                    st-displayed-pages="8"
+                    possible-items-by-page="10,20,50,100,200,500,1000"
+                ></div>
                 <ul class="list-group" >
                     <icsw-config-kpi-show-kpi-object ng-repeat="kpi_obj in entries" kpi-obj="kpi_obj"></icsw-config-kpi-show-kpi-object>
                 </ul>
             </div>
 
             <div ng-if="kpi_set.objects.length == 0">
-                <uib-alert type="info">No objects</uib-alert>
+                <div uib-alert type="info">No objects</div>
             </div>
 
 

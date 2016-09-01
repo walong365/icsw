@@ -23,27 +23,13 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools", "icsw.device.variables"
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.deviceinfo", {
-            url: "/deviceinfo"
-            template: '<icsw-simple-device-info icsw-sel-man="0"></icsw-simple-device-info>'
-            icswData:
-                pageTitle: "Device info"
-                rights: ["user.modify_tree"]
-                menuEntry:
-                    preSpacer: true
-                    menukey: "dev"
-                    icon: "fa-bars"
-                    ordering: 10
-                    postSpacer: true
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.deviceinfo")
 ]).service("DeviceOverviewSelection",
 [
     "$rootScope", "ICSW_SIGNALS",
 (
-    $rootScope, ICSW_SIGNALS
+    $rootScope, ICSW_SIGNALS,
 ) ->
     _selection = []
     set_selection = (sel) ->
@@ -61,25 +47,22 @@ angular.module(
     }
 ]).service("DeviceOverviewService",
 [
-    "Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q", "icswAcessLevelService",
+    "Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q",
     "icswComplexModalService", "DeviceOverviewSelection", "DeviceOverviewSettings",
 (
-    Restangular, $rootScope, $templateCache, $compile, $uibModal, $q, icswAcessLevelService,
+    Restangular, $rootScope, $templateCache, $compile, $uibModal, $q,
     icswComplexModalService, DeviceOverviewSelection, DeviceOverviewSettings
 ) ->
     return (event) ->
         # create new modal for device
         # device object with access_levels
         _defer = $q.defer()
-        devicelist = DeviceOverviewSelection.get_selection()
-        sub_scope = $rootScope.$new()
-        console.log "devlist", devicelist
-        icswAcessLevelService.install(sub_scope)
-        sub_scope.popupmode = 1
-        sub_scope.devicelist = devicelist
+        sub_scope = $rootScope.$new(true)
+        # console.log "devlist", devicelist
+        sub_scope.devicelist = DeviceOverviewSelection.get_selection()
         icswComplexModalService(
             {
-                message: $compile("<icsw-device-overview></icsw-device-overview>")(sub_scope)
+                message: $compile("<icsw-device-overview icsw-popup-mode='1' icsw-device-list='devicelist'></icsw-device-overview>")(sub_scope)
                 title: "Device Info"
                 css_class: "modal-wide modal-tall"
                 closable: true
@@ -96,10 +79,42 @@ angular.module(
         return _defer.promise
         # my_mixin.edit(null, devicelist[0])
         # todo: destroy sub_scope
-]).service("DeviceOverviewSettings", [() ->
+]).service("DeviceOverviewSettings",
+[
+    "icswUserService", "ICSW_SIGNALS", "$rootScope",
+(
+    icswUserService, ICSW_SIGNALS, $rootScope,
+) ->
     # default value
-    def_mode = "general"
+    _defs = {
+        active_tab: "general"
+        disabled_tabs: ""
+    }
     is_active = false
+    user = undefined
+    VAR_NAME_ACT_TAB = "$$ICSW_MODE_ACTIVE_TAB"
+    VAR_NAME_DISABLED_TABS = "$$ICSW_DISABLED_TABS"
+
+    _load_user = () ->
+        icswUserService.load("$$icsw_do_settings").then(
+            (cur_user) ->
+                user = cur_user
+                if user.is_authenticated()
+                    _defs.active_tab = user.get_var(VAR_NAME_ACT_TAB, _defs.mode).value
+                    _defs.disabled_tabs = user.get_var(VAR_NAME_DISABLED_TABS, _defs.disabled_tabs).value
+        )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+        _load_user()
+    )
+
+    _load_user()
+
+    set_var = (var_name, key, value) ->
+        _defs[key] = value
+        if user?
+            user.set_string_var(var_name, value)
+
     return {
         is_active: () ->
             return is_active
@@ -107,73 +122,189 @@ angular.module(
             is_active = true
         close: () ->
             is_active = false
+
+        # mode calls
         get_mode : () ->
-            return def_mode
+            return _defs.active_tab
         set_mode: (mode) ->
-            def_mode = mode
+            return set_var(VAR_NAME_ACT_TAB, "active_tab", mode)
+
+        # disabled tabs calls
+        get_disabled_tabs: () ->
+            return _defs.disabled_tabs
+
+        set_disabled_tabs: (tabs) ->
+            return set_var(VAR_NAME_DISABLED_TABS, "disabled_tabs", tabs)
     }
+]).service("icswDeviceOverviewTabTemplate",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    class icswDeviceOverviewTabTemplate
+        constructor: (@name, @with_meta, @right) ->
+            @template = $templateCache.get("icsw.device.info.tab.#{@name}")
+
+]).service("icswDeviceOverviewTabs",
+[
+    "icswDeviceOverviewTabTemplate",
+(
+    icswDeviceOverviewTabTemplate,
+) ->
+    _list = [
+        new icswDeviceOverviewTabTemplate("general", true, "")
+        new icswDeviceOverviewTabTemplate("network", false, "backbone.device.change_network")
+        new icswDeviceOverviewTabTemplate("config", true, "backbone.device.change_config")
+        new icswDeviceOverviewTabTemplate("category", false, "backbone.device.change_category")
+        new icswDeviceOverviewTabTemplate("location", false, "backbone.device.change_location")
+        new icswDeviceOverviewTabTemplate("variable", true, "backbone.device.change_variables")
+    ]
+    return _list
 ]).directive("icswDeviceOverview",
 [
-    "$compile", "DeviceOverviewSettings", "$templateCache",
+    "$compile", "DeviceOverviewSettings", "$templateCache", "icswAcessLevelService",
+    "icswDeviceOverviewTabs", "ICSW_SIGNALS",
 (
-    $compile, DeviceOverviewSettings, $templateCache
+    $compile, DeviceOverviewSettings, $templateCache, icswAcessLevelService,
+    icswDeviceOverviewTabs, ICSW_SIGNALS,
 ) ->
     return {
         restrict: "EA"
         replace: true
-        scope: false
-        compile: (element, attrs) ->
-            return (scope, iElement, Attrs) ->
-                scope.pk_list = {
-                    general: []
-                    network: []
-                    config: []
-                    status_history: []
-                    livestatus: []
-                    graphing: []
-                    device_variable: []
-                }
-                scope.dev_list = {
-                    general: []
-                    network: []
-                    config: []
-                    status_history: []
-                    livestatus: []
-                    graphing: []
-                    device_variable: []
-                }
-                for key of scope.pk_list
-                    scope["#{key}_active"] = false
-                # pk list of devices
-                scope.dev_pk_list = (dev.idx for dev in scope.devicelist)
-                # pk list of devices without meta-devices
-                scope.dev_pk_nmd_list = (dev.idx for dev in scope.devicelist when !dev.is_meta_device)
-                scope.device_nmd_list = (dev for dev in scope.devicelist when !dev.is_meta_device)
-                _cur_mode = DeviceOverviewSettings.get_mode()
-                scope["#{_cur_mode}_active"] = true
-                scope.activate = (name) ->
+        scope: {
+            devicelist: "=icswDeviceList"
+            popupmode: "@icswPopupMode"
+        }
+        link: (scope, element, attrs) ->
+
+            # destroy old subscope, important
+            scope.$on(
+                "$destroy",
+                () ->
+                    if sub_scope?
+                        sub_scope.$destroy()
+                    console.log "Destroy Device-overview scope"
+            )
+
+            scope.$on(ICSW_SIGNALS("_ICSW_DEVICE_TABS_CHANGED"), () ->
+                build_template()
+            )
+
+            sub_scope = undefined
+
+            build_scope= () ->
+                sub_scope = scope.$new(true)
+                icswAcessLevelService.install(sub_scope)
+                # copy devicelist
+                sub_scope.devicelist = (entry for entry in scope.devicelist)
+                sub_scope.popupmode = scope.popupmode
+                # number of total devices
+                sub_scope.total_sel = scope.devicelist.length
+                # number of normal (== non-meta) devices
+                sub_scope.normal_sel = (dev.idx for dev in scope.devicelist when !dev.is_meta_device).length
+                sub_scope.device_nmd_list = (dev for dev in scope.devicelist when !dev.is_meta_device)
+
+                sub_scope.activate = (name) ->
+                    # remember setting
                     DeviceOverviewSettings.set_mode(name)
-                    if name in ["network", "status_history", "livestatus", "category", "location"]
-                        scope.pk_list[name] = scope.device_nmd_list
-                        scope.dev_list[name] = scope.devicelist
-                    else if name in ["config", "graphing", "device_variable"]
-                        scope.pk_list[name] = scope.devicelist
-                        scope.dev_list[name] = scope.devicelist
-                if scope.dev_pk_list.length > 1
-                    scope.addon_text = " (#{scope.devicelist.length})"
+
+                if sub_scope.total_sel > 1
+                    sub_scope.addon_text = " (#{sub_scope.total_sel})"
                 else
-                    scope.addon_text = ""
-                if scope.dev_pk_nmd_list.length > 1
-                    scope.addon_text_nmd = " (#{scope.device_nmd_list.length})"
+                    sub_scope.addon_text = ""
+                if sub_scope.normal_sel > 1
+                    sub_scope.addon_text_nmd = " (#{sub_scope.normal_sel})"
                 else
-                    scope.addon_text_nmd = ""
-                # destroy old subscope, important
-                scope.$on("$destroy", () -> console.log "Destroy Device-overview scope")
-                new_el = $compile($templateCache.get("icsw.device.info"))(scope)
-                iElement.children().remove()
-                iElement.append(new_el)
-                console.log "Overview init"
+                    sub_scope.addon_text_nmd = ""
+                return sub_scope
+
+
+            build_template = () ->
+                if sub_scope?
+                    sub_scope.$destroy()
+                sub_scope = build_scope()
+                # build template
+                template_f = []
+                _valid_names = []
+                _disabled_tabs = DeviceOverviewSettings.get_disabled_tabs().split(",")
+                for tab in icswDeviceOverviewTabs
+                    if tab.with_meta and sub_scope.total_sel
+                        _add = true
+                    else if not tab.with_meta and sub_scope.normal_sel
+                        _add = true
+                    else
+                        _add = false
+                    if tab.name in _disabled_tabs
+                        _add = false
+                    else if tab.right
+                        if not sub_scope.acl_read(null, tab.right)
+                            _add = false
+                    if _add
+                        _valid_names.push(tab.name)
+                        template_f.push("<uib-tab select='activate(\"#{tab.name}\")'>#{tab.template}</uib-tab>")
+
+                _valid_names.push("$$modify")
+                template_f.push($templateCache.get("icsw.device.info.tab.tab_setup"))
+
+                sub_scope.active_tab = _.indexOf(_valid_names, DeviceOverviewSettings.get_mode())
+                if sub_scope.active_tab < 0
+                    sub_scope.active_tab = 0
+
+                template = template_f.join("")
+                template = "<uib-tabset active='active_tab'>#{template}</uib-tabset>"
+                # console.log "template=", template
+                new_el = $compile(template)(sub_scope)
+                element.children().remove()
+                element.append(new_el)
+
+            build_template()
     }
+]).directive("icswDeviceInfoTabModify",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        controller: "icswDeviceInfoTabModifyCtrl"
+        template: $templateCache.get("icsw.device.info.tab.modify")
+        scope: true
+    }
+]).controller("icswDeviceInfoTabModifyCtrl",
+[
+    "$scope", "icswDeviceOverviewTabs", "DeviceOverviewSettings", "ICSW_SIGNALS",
+(
+    $scope, icswDeviceOverviewTabs, DeviceOverviewSettings, ICSW_SIGNALS,
+) ->
+    $scope.struct = {
+        # tab list
+        tab_list: []
+        # currently disabled
+        disabled_str: ""
+    }
+    update = () ->
+        $scope.struct.disabled_str = DeviceOverviewSettings.get_disabled_tabs()
+        disabled_tabs = $scope.struct.disabled_str.split(",")
+        $scope.struct.tab_list = []
+        for entry in icswDeviceOverviewTabs
+            $scope.struct.tab_list.push(
+                {
+                    name: entry.name
+                    $$active: entry.name not in disabled_tabs
+                }
+            )
+
+    update()
+
+    $scope.modify_tabs = ($event) ->
+        _new_disabled_str = (entry.name for entry in $scope.struct.tab_list when not entry.$$active).join(",")
+        if _new_disabled_str != $scope.struct.disabled_str
+            $scope.struct.disabled_str = _new_disabled_str
+            DeviceOverviewSettings.set_disabled_tabs($scope.struct.disabled_str)
+            $scope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_TABS_CHANGED"))
+
 ]).directive("icswSimpleDeviceInfo",
 [
     "$templateCache", "$compile",
@@ -182,12 +313,30 @@ angular.module(
 ) ->
     return {
         restrict: "EA"
+        controller: "icswSimpleDeviceInfoOverviewCtrl"
+        template: $templateCache.get("icsw.device.info.overview")
+        scope: true
+    }
+]).directive("icswDeviceInfoDevice",
+[
+    "$templateCache", "$compile",
+(
+    $templateCache, $compile
+) ->
+    return {
+        restrict: "EA"
         controller: "icswSimpleDeviceInfoCtrl"
+        scope: {
+            icsw_struct: "=icswStruct"
+        }
         link: (scope, element, attrs) ->
-            scope.$watch("template_name", (new_val) ->
-                if new_val
-                    element.children().remove()
-                    element.append($compile($templateCache.get(new_val))(scope))
+            scope.do_init().then(
+                (done) ->
+                    if scope.icsw_struct.is_devicegroup
+                        _t_name = "icsw.devicegroup.info.form"
+                    else
+                        _t_name = "icsw.device.info.form"
+                    element.append($compile($templateCache.get(_t_name))(scope))
             )
     }
 ]).controller("icswSimpleDeviceInfoCtrl",
@@ -196,32 +345,38 @@ angular.module(
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
     "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
+    "icswCategoryTreeService",
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
     icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
+    icswCategoryTreeService,
 ) ->
-    icswAcessLevelService.install($scope)
-    $scope.data_valid = false
-    $scope.$on("$destroy", () ->
-        console.log "close req"
-        if $scope.bu_obj
-            $scope.bu_obj.restore_backup($scope.edit_obj)
-    )
-    console.log "SDI init"
-    $scope.show_uuid = false
-    $scope.image_url = ""
+    $scope.struct = {
+        # data is valid
+        data_valid: false
+        # device tree
+        device_tree: undefined
+        # monitoring tree
+        monitoring_tree: undefined
+        # domain tree
+        domain_tree: undefined
+        # category tree
+        category_tree: undefined
+        # device group
+        is_devicegroup: false
+    }
 
-    # create info fields
-    create_info_fields = () ->
-        obj = $scope.edit_obj
-        if $scope.is_devicegroup
+    create_info_fields = (obj) ->
+        if $scope.struct.is_devicegroup
             obj.$$full_device_name = obj.name.substr(8)
             # not really needed
             obj.$$snmp_scheme_info = "N/A"
             obj.$$snmp_info = "N/A"
             obj.$$ip_info = "N/A"
+            hints = "---"
+            cats = "---"
         else
             obj.$$full_device_name = obj.full_name
             _sc = obj.snmp_schemes
@@ -239,52 +394,76 @@ angular.module(
                 obj.$$snmp_info = _sc.description
             else
                 obj.$$snmp_info = "none"
+            if obj.monitoring_hint_set.length
+                mhs = obj.monitoring_hint_set
+                hints = "#{mhs.length} (#{(entry for entry in mhs when entry.check_created).length} used for service checks)"
+            else
+                hints = "---"
+
+            # categories
+            _cats = $scope.struct.category_tree.get_device_categories(obj)
+            _asset_cats = (entry for entry in _cats when entry.asset)
+            if _cats.length
+                _cats_info = (entry.name for entry in _cats).join(", ")
+            else
+                _cats_info = "---"
+            obj.$$category_info = _cats_info 
+            if _asset_cats.length
+                _asset_cats_info = (entry.name for entry in _asset_cats).join(", ")
+            else
+                _asset_cats_info = "---"
+            obj.$$asset_category_info = _asset_cats_info 
+
+        # monitoring image
         img_url = ""
         if obj.mon_ext_host
-            for entry in $scope.monitoring_tree.mon_ext_host_list
+            for entry in $scope.struct.monitoring_tree.mon_ext_host_list
                 if entry.idx == obj.mon_ext_host
                     img_url = entry.data_image
         obj.$$image_source = img_url
+        obj.$$monitoring_hint_info = hints
 
-    $scope.new_devsel = (in_list) ->
-        if in_list.length > 0
-            icswDeviceTreeService.load($scope.$id).then(
-                (tree) ->
-                    $scope.dev_tree = tree
-                    edit_obj = in_list[0]
-                    console.log "start enrichment"
-                    dt_hs = icswDeviceTreeHelperService.create($scope.dev_tree, [edit_obj])
-                    $q.all(
-                        [
-                            icswDomainTreeService.load($scope.$id)
-                            icswMonitoringBasicTreeService.load($scope.$id)
-                            $scope.dev_tree.enrich_devices(dt_hs, ["network_info", "monitoring_hint_info", "disk_info", "com_info", "snmp_info", "snmp_schemes_info", "scan_info"])
-                        ]
-                    ).then(
-                        (data) ->
-                            $scope.data_valid = true
-                            $scope.domain_tree = data[0]
-                            $scope.monitoring_tree = data[1]
-                            edit_obj = data[2][0]
-                            if edit_obj.is_meta_device
-                                edit_obj = $scope.dev_tree.get_group(edit_obj)
-                                $scope.is_devicegroup = true
-                                template_name = "icsw.devicegroup.info.form"
-                            else
-                                $scope.is_devicegroup = false
-                                template_name = "icsw.device.info.form"
-                            $scope.edit_obj = edit_obj
-                            # create backup
-                            $scope.template_name = template_name
-                            create_info_fields()
-                    )
-            )
-        else
-            $scope.edit_obj = undefined
-            $scope.template_name = "icsw.deviceempty.info.form"
+    icswAcessLevelService.install($scope)
+
+    _dereg_0 = $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), () ->
+        if $scope.struct.data_valid
+            create_info_fields($scope.edit_obj)
+    )
+
+    $scope.$on("$destroy", () ->
+        _dereg_0()
+    )
+
+    $scope.do_init = () ->
+        defer = $q.defer()
+        $scope.struct.data_valid = false
+        $scope.struct.is_devicegroup = $scope.icsw_struct.is_devicegroup
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+                icswMonitoringBasicTreeService.load($scope.$id)
+                icswDomainTreeService.load($scope.$id)
+                icswCategoryTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.device_tree = data[0]
+                $scope.struct.monitoring_tree = data[1]
+                $scope.struct.domain_tree = data[2]
+                $scope.struct.category_tree = data[3]
+                if $scope.icsw_struct.is_devicegroup
+                    $scope.edit_obj = $scope.struct.device_tree.get_group($scope.icsw_struct.edit_obj)
+                else
+                    $scope.edit_obj = $scope.icsw_struct.edit_obj
+                create_info_fields($scope.edit_obj)
+                $scope.struct.data_valid = true
+                defer.resolve("done")
+        )
+
+        return defer.promise
 
     $scope.modify = () ->
-        if $scope.is_devicegroup
+        if $scope.struct.is_devicegroup
             dbu = new icswDeviceGroupBackup()
             template_name = "icsw.devicegroup.info.edit.form"
             title = "Modify Devicegroup settings"
@@ -313,7 +492,7 @@ angular.module(
                     else
                         sub_scope.edit_obj.put().then(
                             (ok) ->
-                                $scope.dev_tree.reorder()
+                                $scope.struct.device_tree.reorder()
                                 d.resolve("updated")
                             (not_ok) ->
                                 d.reject("not updated")
@@ -329,16 +508,127 @@ angular.module(
             (fin) ->
                 sub_scope.$destroy()
                 # recreate info fields
-                create_info_fields()
+                create_info_fields($scope.edit_obj)
         )
 
-    # helper functions
+    $scope.modify_categories = (for_asset) ->
+        dbu = new icswDeviceBackup()
+        template_name = "icsw.device.category.edit"
+        title = "Modify DeviceCategories"
+        dbu.create_backup($scope.edit_obj)
+        sub_scope = $scope.$new(false)
+        sub_scope.edit_obj = $scope.edit_obj
+        sub_scope.asset_filter = for_asset
 
-    $scope.get_monitoring_hint_info = () ->
-        if $scope.edit_obj.monitoring_hint_set.length
-            mhs = $scope.edit_obj.monitoring_hint_set
-            return "#{mhs.length} (#{(entry for entry in mhs when entry.check_created).length} used for service checks)"
+        # for fields, tree can be the basic or the cluster tree
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get(template_name))(sub_scope)
+                title: title
+                ok_label: "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("updated")
+                    return d.promise
+                cancel_callback: (modal) ->
+                    dbu.restore_backup($scope.edit_obj)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                # recreate info fields
+                create_info_fields($scope.edit_obj)
+        )
+
+]).controller("icswSimpleDeviceInfoOverviewCtrl",
+[
+    "$scope", "Restangular", "$q", "ICSW_URLS",
+    "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
+    "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
+    "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
+(
+    $scope, Restangular, $q, ICSW_URLS,
+    $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
+    icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
+    icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
+) ->
+    icswAcessLevelService.install($scope)
+
+    $scope.struct = {
+        # data is valid
+        data_valid: false
+        # waiting clients
+        waiting_clients: 0
+        # device tree
+        device_tree: undefined
+        # domain tree
+        # devices
+        devices: []
+        # structured list, includes template name
+        slist: []
+    }
+    # create info fields
+    create_small_info_fields = (struct) ->
+        obj = struct.edit_obj
+        group = $scope.struct.device_tree.get_group(obj)
+        if struct.is_devicegroup
+            obj.$$full_device_name = obj.name.substr(8)
+            # not really needed
+            obj.$$snmp_scheme_info = "N/A"
+            obj.$$snmp_info = "N/A"
+            obj.$$ip_info = "N/A"
         else
-            return "---"
+            obj.$$full_device_name = group.full_name
+
+    $scope.new_devsel = (in_list) ->
+        $scope.struct.data_valid = false
+        if in_list.length > 0
+            $scope.struct.devices.length = 0
+            $scope.struct.slist.length = 0
+            icswDeviceTreeService.load($scope.$id).then(
+                (tree) ->
+                    $scope.struct.device_tree = tree
+                    trace_devices =  $scope.struct.device_tree.get_device_trace(in_list)
+                    dt_hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, trace_devices)
+                    $q.all(
+                        [
+                            icswDomainTreeService.load($scope.$id)
+                            $scope.struct.device_tree.enrich_devices(
+                                dt_hs
+                                [
+                                    "network_info", "monitoring_hint_info", "disk_info", "com_info",
+                                    "snmp_info", "snmp_schemes_info", "scan_lock_info",
+                                ]
+                            )
+                       ]
+                    ).then(
+                        (data) ->
+                            $scope.struct.domain_tree = data[0]
+                            for dev in in_list
+                                $scope.struct.devices.push(dev)
+                                if dev.is_meta_device
+                                    new_struct = {
+                                        edit_obj: dev
+                                        is_devicegroup: true
+                                    }
+                                else
+                                    new_struct = {
+                                        edit_obj: dev
+                                        is_devicegroup: false
+                                    }
+                                $scope.struct.slist.push(new_struct)
+                                create_small_info_fields(new_struct)
+                            $scope.struct.data_valid = true
+                    )
+            )
+        else
+            $scope.struct.devices.length = 0
+            $scope.struct.slist.length = 0
+            $scope.struct.data_valid = true
 
 ])

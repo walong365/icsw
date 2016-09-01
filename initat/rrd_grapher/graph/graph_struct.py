@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,15 +19,13 @@
 #
 """ structures and functions for the grapher part of rrd-grapher service """
 
-import os
 import math
+import os
 import time
 import uuid
 
 from django.conf import settings
-
 from django.db.models import Q
-
 from lxml.builder import E
 
 from initat.cluster.backbone.models import cluster_timezone, MachineVector, \
@@ -161,7 +159,7 @@ class GraphVar(object):
             draw_type = draw_type[:-5]
         # plot forecast ?
         if draw_type.startswith("LINE") or (draw_type.startswith("AREA") and not _stacked):
-            show_forecast = True if self.rrd_graph.para_dict["graph_setting"].graph_setting_forecast_id else False
+            show_forecast = True if self.rrd_graph.para_dict["graph_setting"].graph_setting_forecast else False
         else:
             show_forecast = False
         # area: modes area (pure are), area{1,2,3} (area with lines)
@@ -332,6 +330,10 @@ class GraphVar(object):
             for _th in self.thresholds:
                 _thl_name = "{}{:d}l".format(_th_base, _th.idx)
                 _thu_name = "{}{:d}u".format(_th_base, _th.idx)
+                if self.y_scaled:
+                    _th.lower_value *= self.scale_y_factor
+                    _th.upper_value *= self.scale_y_factor
+
                 c_lines.extend(
                     [
                         "CDEF:{}={},{},-,{},ADDNAN".format(
@@ -451,6 +453,8 @@ class GraphTarget(object):
             uuid.uuid4(),
             int(time.time())
         )
+        # will be set in loop
+        self.abs_file_loc = ""
         self.rel_file_loc = os.path.join(
             "/",
             settings.REL_SITE_ROOT,
@@ -611,6 +615,7 @@ class GraphTarget(object):
         )
         if self.valid:
             _xml.attrib["href"] = self.rel_file_loc
+            _xml.attrib["abssrc"] = self.abs_file_loc
             for _key, _value in self.result_dict.iteritems():
                 _xml.attrib[_key] = _value
             _var_dict = {}

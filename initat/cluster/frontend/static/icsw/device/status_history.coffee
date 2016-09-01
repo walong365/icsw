@@ -23,36 +23,28 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select", "ui.bootstrap.datetimepicker", "icsw.tools.status_history_utils"
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.statushistory", {
-            url: "/statushistory"
-            templateUrl: "icsw/main/status_history.html"
-            icswData:
-                pageTitle: "Status History"
-                licenses: ["reporting"]
-                rights: ["backbone.device.show_status_history"]
-                menuEntry:
-                    menukey: "stat"
-                    icon: "fa-pie-chart"
-                    ordering: 60
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.statushistory")
 ]).service("icswStatusHistorySettings", [() ->
     _time_frame = undefined
     _allowed_durations = [
         "day", "week", "month", "year", "decade";
     ]
     
-    _set_time_frame = (date_gui, duration_type, start, end) ->
+    _set_time_frame = (date_gui, duration_type, db_ids, start, end, partial) ->
         if date_gui?
             _time_frame = {
                 date_gui: date_gui
+                # for display
                 duration_type: duration_type
+                # database idxs of aggregated entries covering the requested timeframe
+                db_ids: db_ids
                 start: start
                 end: end
                 start_str: start.format("DD.MM.YYYY HH:mm")
                 end_str: end.format("DD.MM.YYYY HH:mm")
+                # timeframe not fully covered
+                partial: partial
             }
         else
             _time_frame = undefined
@@ -202,7 +194,10 @@ angular.module(
                         start = moment.utc(new_data.start)
                         end = moment.utc(new_data.end)
 
-                        icswStatusHistorySettings.set_time_frame($scope.struct.startdate, $scope.struct.duration_type, start, end)
+                        if new_data.partial
+                            icswStatusHistorySettings.set_time_frame($scope.struct.startdate, $scope.struct.duration_type, new_data.db_ids, start, end, true)
+                        else
+                            icswStatusHistorySettings.set_time_frame($scope.struct.startdate, $scope.struct.duration_type, new_data.db_ids, start, end, false)
 
                     else if new_data.status == "found earlier" and duration_type_change
                         # does not exist for this time span. This usually happens when you select a timeframe which hasn't finished.
@@ -212,7 +207,7 @@ angular.module(
 
                         $scope.startdate = moment.utc(new_data.start)  # also set gui
 
-                        icswStatusHistorySettings.set_time_frame($scope.struct.startdate, $scope.struct.duration_type, start, end)
+                        icswStatusHistorySettings.set_time_frame($scope.struct.startdate, $scope.struct.duration_type, new_data.db_ids, start, end, false)
 
                     else
                         $scope.struct.timespan_error = "No data available for this time span"
@@ -224,6 +219,9 @@ angular.module(
         (new_values, old_values) ->
             update_time_frame(new_values, old_values)
     )
+
+    $scope.reload_data = ($event) ->
+        update_time_frame([$scope.struct.duration_type, $scope.struct.startdate_dp], [$scope.struct.duration_type, $scope.struct.startdate_dp])
 
 ]).directive("icswDeviceStatusHistoryDevice",
 [
@@ -278,15 +276,17 @@ angular.module(
                     $q.all(
                         [
                             status_utils_functions.get_service_data(
-                                [scope.device.idx]
+                                [scope.device]
                                 time_frame.date_gui
                                 time_frame.duration_type
+                                time_frame.db_ids
                             )
                             # also query for year currently
                             status_utils_functions.get_service_data(
-                                [scope.device.idx]
+                                [scope.device]
                                 time_frame.date_gui
                                 time_frame.duration_type
+                                time_frame.db_ids
                                 0
                                 true
                             )

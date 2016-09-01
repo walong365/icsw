@@ -4,7 +4,7 @@
 #
 # Send feedback to: <mallinger@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -34,7 +34,7 @@ from initat.cluster.backbone.models.license import LicenseViolation, LicenseUsag
 from initat.cluster.frontend.rest_views import rest_logging
 
 
-logger = logging.getLogger("cluster.monitoring")
+logger = logging.getLogger("cluster.license")
 
 
 def login_required_rest(default_value_generator=lambda: []):

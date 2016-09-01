@@ -83,9 +83,16 @@ else:
             except ImportError:
                 License = None
                 LicenseState = None
+            try:
+                from initat.cluster.backbone.models import ICSWVersion, VERSION_NAME_LIST
+            except ImportError:
+                ICSWVersion = None
+            else:
+                from django.db.models import Q
         else:
             config_tools = None
             License = None
+            ICSWVersion = None
 
 
 class ServiceContainer(object):
@@ -137,33 +144,37 @@ class ServiceContainer(object):
 
     def update_version_tuple(self):
         if get_database_version is None:
-            if not hasattr(self, "model_version"):
-                self.model_version = "0"
-                self.model_version_changed = False
+            if not hasattr(self, "_model_history"):
+                # list of (model, database) versions
+                self._model_history = [("0", "0")]
+                self.model_version_mismatch = False
                 # do not log, always true on client
                 # self.log("cannot get model version, file missing ... ?", logging_tools.LOG_LEVEL_WARN)
         else:
             _database_v = get_database_version()
             _model_v = get_models_version()
-            if not hasattr(self, "model_version"):
-                self.model_version = _model_v
-                self.model_version_changed = False
+            if not hasattr(self, "_model_history"):
+                self._model_history = [(_model_v, _database_v)]
+                self.model_version_mismatch = False
                 self.log(
-                    "Model version is {}, database version is {}".format(
-                        _model_v,
-                        _database_v,
+                    "Starting Model version is {}, database version is {}".format(
+                        self._model_history[0][0],
+                        self._model_history[0][1],
                     )
                 )
             else:
                 # this is only a rough start, we have to add grace periods and restart options, TODO, FIXME
-                if _model_v != self.model_version:
-                    _cs = "Model version changed from {} to {} (database version is {})".format(
-                        self.model_version,
+                if _model_v != self._model_history[-1][0]:
+                    _cs = "Model version changed from {} to {} (database from version {} version is {}, history has now {:d} entries)".format(
+                        self._model_history[-1][0],
                         _model_v,
+                        self._model_history[-1][1],
                         _database_v,
+                        len(self._model_history) + 1,
                     )
+                    self._model_history.append((_model_v, _database_v))
+                    self.model_version_mismatch = True
                     if not is_debug_run():
-                        self.model_version_changed = True
                         self.log(
                             "{}".format(
                                 _cs
@@ -177,6 +188,45 @@ class ServiceContainer(object):
                             ),
                             logging_tools.LOG_LEVEL_WARN
                         )
+                if self.model_version_mismatch and ICSWVersion is not None:
+                    try:
+                        # close database connection to disable query cache
+                        connection.close()
+                    except:
+                        pass
+                    _highest = self._model_history[-1]
+                    try:
+                        _h_idx = ICSWVersion.objects.all().order_by("-insert_idx").values_list("insert_idx", flat=True)[0]
+                    except:
+                        self.log(
+                            "unable to determine highest ICSWVersion.insert_idx: {}".format(
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                    else:
+                        _dict = {
+                            _entry.name: _entry.version for _entry in ICSWVersion.objects.filter(Q(insert_idx=_h_idx))
+                        }
+                        _db_model_v, _db_database_v = (_dict["models"], _dict["database"])
+                        _v_info = "models={}, database={}".format(
+                            _db_model_v,
+                            _db_database_v,
+                        )
+                        if _db_model_v != _highest[0] and _db_database_v != _highest[1]:
+                            self.log(
+                                "Version info from database ({}) does not match discovered info".format(
+                                    _v_info
+                                ),
+                                logging_tools.LOG_LEVEL_WARN
+                            )
+                        else:
+                            self.log(
+                                "Version info from database ({}) matches discovered info, clearing mismatch flag".format(
+                                    _v_info
+                                )
+                            )
+                            self.model_version_mismatch = False
 
     def check_service(self, entry, use_cache=True, refresh=True, version_changed=False, meta_result=None):
         if not use_cache or not self.__act_proc_dict:
@@ -224,7 +274,7 @@ class ServiceContainer(object):
         else:
             meta_result = None
         for entry in check_list:
-            self.check_service(entry, use_cache=True, refresh=True, version_changed=self.model_version_changed, meta_result=meta_result)
+            self.check_service(entry, use_cache=True, refresh=True, version_changed=self.model_version_mismatch, meta_result=meta_result)
         # if self._config_check_errors:
         #    self.log(
         #        "{} not ok ({}), triggering model check".format(

@@ -1,7 +1,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2010,2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2010,2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -29,9 +29,10 @@ import sys
 import time
 
 from initat.tools import logging_tools, process_tools
+from initat.constants import LOG_ROOT
 
 
-class error_rec(object):
+class ErrorRecord(object):
     def __init__(self, pid, s_name, uid, uname, gid, gname):
         self.__pid = pid
         self.__source_name = s_name
@@ -113,7 +114,7 @@ class error_rec(object):
 def main(options):
     options.overview = True if (not options.stat and not options.index and not options.num) else False
     options.index = [int(cur_idx) for cur_idx in options.index]
-    err_file_name = "/var/log/cluster/logging-server/err_py"
+    err_file_name = os.path.join(LOG_ROOT, "logging-server", "err_py")
     if not os.path.isfile(err_file_name):
         print("{} does not exist".format(err_file_name))
         sys.exit(1)
@@ -202,7 +203,7 @@ def main(options):
                 prev_dt = cur_dt
                 if not act_err or act_err.pid != line_pid or dt_change or line.count("<type"):
                     act_idx += 1
-                    act_err = error_rec(
+                    act_err = ErrorRecord(
                         line_pid,
                         line_s_name,
                         line_uid,

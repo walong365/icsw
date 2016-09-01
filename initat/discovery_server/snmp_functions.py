@@ -22,7 +22,7 @@
 import time
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, ActiveDeviceScanEnum
 from initat.snmp.snmp_struct import ResultNode, simple_snmp_oid
 from initat.snmp.functions import simplify_dict, oid_to_str
 from initat.snmp.sink import SNMPSink
@@ -35,6 +35,8 @@ class SNMPBatch(object):
         self.srv_com = srv_com
         self.id = SNMPBatch.next_snmp_batch_id()
         SNMPBatch.add_batch(self)
+        # lock
+        self.__dev_lock = None
         self.init_run(self.srv_com["*command"])
         self.batch_valid = True
 
@@ -64,13 +66,14 @@ class SNMPBatch(object):
             except ValueError:
                 handle_error("Invalid IP: '{}'".format(self.snmp_address))
             else:
-                if not SNMPBatch.process.device_is_capable(self.device, "snmp"):
+                if not SNMPBatch.process.device_is_capable(self.device, ActiveDeviceScanEnum.SNMP):
                     handle_error("device is missing the required ComCapability 'snmp'")
-                elif not SNMPBatch.process.device_is_idle(self.device, "snmp"):
-                    handle_error("device is locked by scan '{}'".format(self.device.active_scan))
                 else:
-                    self.log("SNMP scan started", result=True)
-                    self.start_run()
+                    _new_lock = SNMPBatch.process.device_is_idle(self.device, ActiveDeviceScanEnum.SNMP)
+                    if _new_lock:
+                        self.__dev_lock = _new_lock
+                        self.log("SNMP scan started", result=True)
+                        self.start_run()
         self.send_return()
 
     def init_run(self, command):
@@ -228,8 +231,8 @@ class SNMPBatch(object):
             self.finish()
 
     def finish(self):
-        if self.device.active_scan:
-            SNMPBatch.process.clear_scan(self.device)
+        if self.__dev_lock:
+            [self.log(_what, _level) for _what, _level in self.__dev_lock.close()]
         # self.send_return()
         SNMPBatch.remove_batch(self)
 

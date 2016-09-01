@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -46,19 +46,19 @@ __all__ = [
     "domain_tree_node",
     "category_tree",
     "category",
-    "TOP_LOCATIONS",
+    "TREE_SUBTYPES",
     "TOP_MONITORING_CATEGORY",
     "location_gfx",
     "device_mon_location",
 ]
 
 # top monitoring category
-TOP_MONITORING_CATEGORY = "/mon"
-TOP_LOCATION_CATEGORY = "/location"
-TOP_CONFIG_CATEGORY = "/config"
-TOP_DEVICE_CATEGORY = "/device"
+TOP_MONITORING_CATEGORY = "mon"
+TOP_LOCATION_CATEGORY = "location"
+TOP_CONFIG_CATEGORY = "config"
+TOP_DEVICE_CATEGORY = "device"
 
-TOP_LOCATIONS = {
+TREE_SUBTYPES = {
     TOP_MONITORING_CATEGORY,
     TOP_LOCATION_CATEGORY,
     TOP_CONFIG_CATEGORY,
@@ -304,7 +304,7 @@ def _migrate_location_type(cat_tree):
         if device_location and device:
             # read all monitoring_config_types
             all_loc_ct = {
-                pk: "{}/{}".format(
+                pk: "/{}/{}".format(
                     TOP_LOCATION_CATEGORY,
                     cur_name
                 ) for pk, cur_name in device_location.objects.all().values_list("pk", "location")
@@ -368,21 +368,16 @@ class category_tree(object):
                             cur_node.depth = self.__node_dict[cur_node.parent_id].depth + 1
                             cur_node.save()
                         self.__node_dict[cur_node.parent_id]._sub_tree.setdefault(cur_node.name, []).append(cur_node)
-        # if TOP_MONITORING_CATEGORY not in self.__category_lut:
-        #     _migrate_mon_type(self)
         if TOP_LOCATION_CATEGORY not in self.__category_lut:
             _migrate_location_type(self)
-        for check_name in [TOP_CONFIG_CATEGORY, TOP_DEVICE_CATEGORY, TOP_MONITORING_CATEGORY, TOP_LOCATION_CATEGORY]:
-            if check_name not in self.__category_lut:
-                self.add_category(check_name)
+        for check_name in TREE_SUBTYPES:
+            _tree_name = "/{}".format(check_name)
+            if _tree_name not in self.__category_lut:
+                self.add_category(_tree_name)
         for cur_node in self.__node_dict.itervalues():
             is_immutable = cur_node.full_name in [
                 "",
-                TOP_CONFIG_CATEGORY,
-                TOP_MONITORING_CATEGORY,
-                TOP_DEVICE_CATEGORY,
-                TOP_LOCATION_CATEGORY
-            ]
+            ] + ["/{}".format(_entry) for _entry in TREE_SUBTYPES]
             if cur_node.immutable != is_immutable:
                 cur_node.immutable = is_immutable
                 cur_node.save()
@@ -506,6 +501,8 @@ class category(models.Model):
     longitude = models.FloatField(default=16.3)
     # locked field, only valid (right now) for locations
     locked = models.BooleanField(default=False)
+    # used for asset categorisation
+    asset = models.BooleanField(default=False)
     # comment
     comment = models.CharField(max_length=256, default="", blank=True)
 
@@ -536,6 +533,27 @@ class category(models.Model):
     def single_select(self):
         return True if (self.full_name.startswith("/location/") and self.physical) else False
 
+    def get_ref_object(self):
+        from initat.cluster.backbone.models import device, config, mon_check_command
+        if self.depth:
+            _tl = self.full_name.split("/")[1]
+            return {
+                "config": config,
+                "device": device,
+                "location": device,
+                "mon": mon_check_command,
+            }[_tl]
+        else:
+            return None
+
+    def build_full_name(self):
+        _list = [self.name]
+        _p = self.parent
+        while _p:
+            _list.insert(0, _p.name)
+            _p = _p.parent
+        self.full_name = "/".join(_list)
+
     # no longer needed
     # def get_reference_dict(self):
     #    all_m2ms = [
@@ -560,6 +578,17 @@ class category(models.Model):
     class Meta:
         verbose_name = "Category"
         unique_together = [("name", "parent"), ]
+
+
+@receiver(signals.post_init, sender=category)
+def category_post_init(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if cur_inst.depth:
+            _tl = cur_inst.full_name.split("/")[1]
+            if _tl not in TREE_SUBTYPES:
+                cur_inst.build_full_name()
+                cur_inst.save()
 
 
 @receiver(signals.pre_save, sender=category)
@@ -605,7 +634,7 @@ def category_pre_save(sender, **kwargs):
             raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
         if cur_inst.depth:
             if cur_inst.depth == 1:
-                if "/{}".format(cur_inst.name) not in TOP_LOCATIONS:
+                if cur_inst.name not in TREE_SUBTYPES:
                     raise ValidationError("illegal top-level category name '{}'".format(cur_inst.name))
             check_empty_string(cur_inst, "name")
             parent_node = cur_inst.parent
@@ -617,6 +646,10 @@ def category_pre_save(sender, **kwargs):
             if new_full_name != cur_inst.full_name:
                 cur_inst.full_name = new_full_name
                 cur_inst.full_name_changed = True
+            # get top level cat
+            top_level_cat = cur_inst.full_name.split("/")[1]
+            if cur_inst.asset and top_level_cat != TOP_DEVICE_CATEGORY:
+                raise ValidationError("Asset flag only allowed for devicecategory '{}'".format(cur_inst.full_name))
             # check for used named
             used_names = category.objects.exclude(
                 Q(pk=cur_inst.pk)

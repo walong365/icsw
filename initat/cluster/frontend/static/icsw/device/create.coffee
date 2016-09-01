@@ -23,27 +23,8 @@ angular.module(
     [
         "ngSanitize", "ui.bootstrap", "restangular"
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.devicecreate"
-        {
-            url: "/devicecreate"
-            templateUrl: "icsw/main/device/create.html"
-            icswData:
-                pageTitle: "Create new Device"
-                menuHeader:
-                    key: "dev"
-                    name: "Device"
-                    icon: "fa-hdd-o"
-                    ordering: 0
-                rights: ["user.modify_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    name: "Create new device"
-                    icon: "fa-plus-circle"
-                    ordering: 5
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.devicecreate")
 ]).controller("icswDeviceCreateCtrl",
 [
     "$scope", "$timeout", "$window", "$templateCache", "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
@@ -77,7 +58,10 @@ angular.module(
             (data) ->
                 $scope.device_tree = data[0]
                 $scope.peer_tree = data[1]
-                $scope.device_data.device_group = (entry for entry in $scope.device_tree.group_list when $scope.device_tree.ignore_cdg(entry))[0].name
+                # present non-system device group
+                ns_dg = (entry for entry in $scope.device_tree.group_list when $scope.device_tree.ignore_cdg(entry))
+                if ns_dg.length
+                    $scope.device_data.device_group = ns_dg[0].name
                 if $scope.peer_tree.peer_list.length
                     $scope.device_data.peer = $scope.peer_tree.peer_list[0].idx
 
@@ -106,8 +90,8 @@ angular.module(
             $scope.device_data.ip = ""
             $scope.resolve_pending = true
             icswSimpleAjaxCall(
-                url  : ICSW_URLS.MON_RESOLVE_NAME
-                data : {
+                url: ICSW_URLS.MON_RESOLVE_NAME
+                data: {
                     fqdn: $scope.device_data.full_name
                 }
             ).then(
@@ -122,7 +106,7 @@ angular.module(
         icswSimpleAjaxCall(
             url: ICSW_URLS.DEVICE_CREATE_DEVICE
             data: {
-                "device_data" : angular.toJson(d_dict)
+                device_data: angular.toJson(d_dict)
             }
         ).then(
             (xml) =>

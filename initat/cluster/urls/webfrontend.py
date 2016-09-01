@@ -29,11 +29,27 @@ from django.conf.urls.static import static
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
-    lic_views, auth_views, asset_views
+    lic_views, auth_views, asset_views, report_views
 
 # handler404 = main_views.index.as_view()
+report_patterns = [
+    url("^upload_report_gfx$", report_views.UploadReportGfx.as_view(), name="upload_report_gfx"),
+    url("^get_report_gfx$", report_views.GetReportGfx.as_view(), name="get_report_gfx"),
+    url("^generate_report_pdf$", report_views.GenerateReportPdf.as_view(), name="generate_report_pdf"),
+    url("^get_progress$", report_views.GetProgress.as_view(), name="get_progress"),
+    url("^get_report_data$", report_views.GetReportData.as_view(), name="get_report_data"),
+    url("^report_data_available$", report_views.ReportDataAvailable.as_view(), name="report_data_available"),
+    url("^generate_report_xlsx$", report_views.GenerateReportXlsx.as_view(), name="generate_report_xlsx"),
+    url("^report_history_available$", report_views.ReportHistoryAvailable.as_view(), name="report_history_available"),
+    url("^update_download_count$", report_views.UpdateDownloadCount.as_view(), name="update_download_count"),
+]
 
 asset_patterns = [
+    url("^export_assetbatch_to_xlsx$", asset_views.export_assetbatch_to_xlsx.as_view(), name="export_assetbatch_to_xlsx"),
+    url("^export_assetbatch_to_pdf$", asset_views.export_assetbatch_to_pdf.as_view(), name="export_assetbatch_to_pdf"),
+    url("^export_scheduled_runs_to_csv$", asset_views.export_scheduled_runs_to_csv.as_view(), name="export_scheduled_runs_to_csv"),
+    url("^export_packages_to_csv$", asset_views.export_packages_to_csv.as_view(), name="export_packages_to_csv"),
+    url("^export_assetruns_to_csv$", asset_views.export_assetruns_to_csv.as_view(), name="export_assetruns_to_csv"),
     url("^run_assetrun_for_device_now$", asset_views.run_assetrun_for_device_now.as_view(), name="run_assetrun_for_device_now"),
     url("^get_devices_for_asset$", asset_views.get_devices_for_asset.as_view(), name="get_devices_for_asset"),
     url("^get_assetrun_diffs$", asset_views.get_assetrun_diffs.as_view(), name="get_assetrun_diffs"),
@@ -42,26 +58,72 @@ asset_patterns = [
     url("^get_schedule_list$", asset_views.ScheduledRunViewSet.as_view({"get": "list"}), name="get_schedule_list"),
     url("^get_assetruns_for_devices$", asset_views.AssetRunsViewSet.as_view({"get": "list_all"}), name="get_assetruns_for_devices"),
     url("^get_asset_packages$", asset_views.AssetPackageViewSet.as_view({"get": "get_all"}), name="get_all_asset_packages"),
+    url("^get_static_templates$", asset_views.StaticAssetTemplateViewSet.as_view({"get": "get_all"}), name="get_static_templates"),
+    url("^get_static_template_refs$", asset_views.StaticAssetTemplateViewSet.as_view({"get": "get_refs"}), name="get_static_template_references"),
+    url("^reorder_template_field$", asset_views.StaticAssetTemplateViewSet.as_view({"post": "reorder_fields"}), name="reorder_template_fields"),
+    url("^copy_static_template$", asset_views.copy_static_template.as_view(), name="copy_static_template"),
+    url(
+        "^create_static_template$",
+        asset_views.StaticAssetTemplateViewSet.as_view({"post": "create_template"}),
+        name="create_static_asset_template"
+    ),
+    url(
+        "^static_template/(?P<pk>[0-9]+$)",
+        asset_views.StaticAssetTemplateViewSet.as_view({"delete": "delete_template"}),
+        name="static_asset_template_detail"
+    ),
+    url(
+        "^static_asset_template_field/(?P<pk>[0-9]+)$",
+        asset_views.StaticAssetTemplateViewSet.as_view({"delete": "delete_field", "put": "store_field"}),
+        name="static_asset_template_field_detail",
+    ),
+    url(
+        "^static_asset_template_field$",
+        asset_views.StaticAssetTemplateViewSet.as_view({"post": "create_field"}),
+        name="static_asset_template_field_call",
+    ),
+    url(
+        "^device_asset$",
+        asset_views.DeviceStaticAssetViewSet.as_view({"post": "create_asset"}),
+        name="device_asset_call",
+    ),
+    url(
+        "^device_asset/(?P<pk>[0-9]+$)",
+        asset_views.DeviceStaticAssetViewSet.as_view({"delete": "delete_asset"}),
+        name="device_asset_detail"
+    ),
+    url(
+        "^device_asset_field/(?P<pk>[0-9]+$)",
+        asset_views.DeviceStaticAssetViewSet.as_view({"delete": "delete_field"}),
+        name="device_asset_field_detail"
+    ),
+    url(
+        "device_asset_post$", asset_views.device_asset_post.as_view(), name="device_asset_post",
+    ),
+    url(
+        "device_asset_add_unused$", asset_views.DeviceStaticAssetViewSet.as_view({"post": "add_unused"}),
+        name="device_asset_add_unused",
+    ),
 ]
 
 session_patterns = [
     url(r"logout", session_views.session_logout.as_view(), name="logout"),
     url(r"login", session_views.session_login.as_view(), name="login"),
+    url(r"expel", session_views.session_expel.as_view(), name="expel"),
     url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
-    url(r"get_authenticated_user$", session_views.get_user.as_view(), name="get_authenticated_user"),
+    url(r"get_authenticated_user$", session_views.UserView.as_view({"get": "get_user"}), name="get_authenticated_user"),
     url(r"get_csrf_token$", session_views.get_csrf_token.as_view(), name="get_csrf_token"),
 ]
 
 rms_patterns = [
     url(r"get_header_dict", rms_views.get_header_dict.as_view(), name="get_header_dict"),
     url(r"get_header_xml", rms_views.get_header_xml.as_view(), name="get_header_xml"),
-    url(r"get_rms_json", rms_views.get_rms_json.as_view(), name="get_rms_json"),
+    url(r"get_rms_current_json", rms_views.get_rms_current_json.as_view(), name="get_rms_current_json"),
+    url(r"get_rms_done_json", rms_views.get_rms_done_json.as_view(), name="get_rms_done_json"),
     url(r"get_rms_jobinfo", rms_views.get_rms_jobinfo.as_view(), name="get_rms_jobinfo"),
     url(r"control_job", rms_views.control_job.as_view(), name="control_job"),
     url(r"control_queue", rms_views.control_queue.as_view(), name="control_queue"),
     url(r"get_file_content", rms_views.get_file_content.as_view(), name="get_file_content"),
-    url(r"set_user_setting", rms_views.set_user_setting.as_view(), name="set_user_setting"),
-    url(r"get_user_setting", rms_views.get_user_setting.as_view(), name="get_user_setting"),
     url(r"change_job_pri$", rms_views.change_job_priority.as_view(), name="change_job_priority"),
 ]
 
@@ -122,7 +184,7 @@ boot_patterns = [
     url("^xml/get_devlog_info$", boot_views.get_devlog_info.as_view(), name="get_devlog_info"),
     url("^soft_control$", boot_views.soft_control.as_view(), name="soft_control"),
     url("^hard_control$", boot_views.hard_control.as_view(), name="hard_control"),
-    url("^update_device/(\d+)$", boot_views.update_device.as_view(), name="update_device"),
+    url("^update_device$", boot_views.update_device.as_view(), name="update_device"),
     url("^update_device_settings/boot/(\d+)$", boot_views.update_device_bootsettings.as_view(), name="update_device_settings"),
     url("^modify_mbl$", boot_views.modify_mbl.as_view(), name="modify_mbl"),
 ]
@@ -138,6 +200,37 @@ device_patterns = [
     url("^get_device_locations$", device_views.get_device_location.as_view(), name="get_device_location"),
     url("^GetMatchingDevices$", device_views.GetMatchingDevices.as_view(), name="GetMatchingDevices"),
     url("^create_device", device_views.create_device.as_view(), name="create_device"),
+    url("^device_list_info$", device_views.DeviceListInfo.as_view(), name="device_list_info"),
+    url(
+        "^device_variable_call$",
+        device_views.DeviceVariableViewSet.as_view({"post": "create", "get": "get"}),
+        name="device_variable_list",
+    ),
+    url(
+        "^device_variable_call/(?P<pk>[0-9]+)$",
+        device_views.DeviceVariableViewSet.as_view({"delete": "delete", "put": "store"}),
+        name="device_variable_detail",
+    ),
+    url(
+        "^device_variable_scope_call$",
+        device_views.DeviceVariableScopeViewSet.as_view({"get": "list"}),
+        name="device_variable_scope_list",
+    ),
+    url(
+        "^device_variable_scope_entry$",
+        device_views.DeviceVariableScopeViewSet.as_view({"post": "create_entry"}),
+        name="device_variable_scope_entry_list",
+    ),
+    url(
+        "^device_variable_scope_dvs_detail/(?P<pk>[0-9]+)$",
+        device_views.DeviceVariableScopeViewSet.as_view({"delete": "delete_entry", "put": "store_entry"}),
+        name="device_variable_scope_entry_detail",
+    ),
+    url(
+        "^device_class_call$",
+        device_views.DeviceClassViewSet.as_view({"get": "list"}),
+        name="device_class_list",
+    ),
 ]
 
 
@@ -155,7 +248,6 @@ network_patterns = [
     url("^json_network$", network_views.json_network.as_view(), name="json_network"),
     # url("^cdnt$", network_views.get_domain_name_tree.as_view(), name="domain_name_tree"),
     url("^get_clusters$", network_views.get_network_clusters.as_view(), name="get_clusters"),
-    url("^get_scans", network_views.get_active_scans.as_view(), name="get_active_scans"),
     url("^get_free_ip$", network_views.get_free_ip.as_view(), name="get_free_ip"),
     url("^rescan_networks", network_views.rescan_networks.as_view(), name="rescan_networks"),
 ]
@@ -189,8 +281,7 @@ monitoring_patterns = [
 
 user_patterns = [
     url("sync$", user_views.sync_users.as_view(), name="sync_users"),
-    url("^set_user_var$", user_views.set_user_var.as_view(), name="set_user_var"),
-    url("^get_user_var$", user_views.get_user_var.as_view(), name="get_user_var"),
+    url("^set_theme$", user_views.set_theme.as_view(), name="set_theme"),
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),
     url("^upload_license_file$", user_views.upload_license_file.as_view(), name="upload_license_file"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
@@ -199,6 +290,8 @@ user_patterns = [
     url("^GetObjectPermissions$", user_views.GetObjectPermissions.as_view(), name="GetObjectPermissions"),
     url("^GetInitProduct$", user_views.GetInitProduct.as_view(), name="GetInitProduct"),
     url("^GetNumQuotaServers$", user_views.get_num_quota_servers.as_view(), name="get_num_quota_servers"),
+    # not really needed right now
+    url("^", include(user_views.local_router.urls)),
 ]
 
 pack_patterns = [
@@ -232,6 +325,7 @@ rrd_patterns = [
     url(r"^dev_rrds$", rrd_views.device_rrds.as_view(), name="device_rrds"),
     url(r"^graph_rrd$", rrd_views.graph_rrds.as_view(), name="graph_rrds"),
     url(r"^trigger_threshold", rrd_views.trigger_sensor_threshold.as_view(), name="trigger_sensor_threshold"),
+    url(r"^download_graph/(?P<hash>.*)$", rrd_views.download_rrd.as_view(), name="download_rrd")
 ]
 
 discovery_patterns = [
@@ -266,6 +360,7 @@ for src_mod, obj_name in rest_views.REST_LIST:
 rpl.extend([
     url("^device_tree$", rest_views.device_tree_list.as_view(), name="device_tree_list"),
     url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
+    # url("^device_tree/(?P<pk>[0-9]+)$", rest_views.device_tree_detail.as_view(), name="device_tree_detail"),
     url("^device_com_cap_list$", rest_views.device_com_capabilities.as_view(), name="device_com_capabilities"),
     url("^home_export_list$", rest_views.rest_home_export_list.as_view(), name="home_export_list"),
     url("^csw_object_list$", rest_views.csw_object_list.as_view({"get": "list"}), name="csw_object_list"),
@@ -333,6 +428,7 @@ my_url_patterns = [
     url(r"^system/", include(system_patterns, namespace="system")),
     url(r"^discovery/", include(discovery_patterns, namespace="discovery")),
     url(r"^asset/", include(asset_patterns, namespace="asset")),
+    url(r"^report/", include(report_patterns, namespace="report")),
 ]
 
 urlpatterns = [

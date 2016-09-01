@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -51,6 +51,9 @@ class XMLWrapper(object):
         if logger:
             logger.log(log_level, log_str)
 
+    def clear_log_buffer(self):
+        self.log_buffer = []
+
     def info(self, log_str, logger=None):
         self.log(logging_tools.LOG_LEVEL_OK, log_str, logger)
 
@@ -62,6 +65,9 @@ class XMLWrapper(object):
 
     def critical(self, log_str, logger=None):
         self.log(logging_tools.LOG_LEVEL_CRITICAL, log_str, logger)
+
+    def feed_log_lines(self, lines):
+        [self.feed_log_line(_lev, _str) for _lev, _str in lines]
 
     def feed_log_line(self, log_level, log_str):
         """
@@ -147,7 +153,8 @@ class XMLWrapper(object):
         """
         num_errors, num_warnings = (
             len([True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_ERROR]),
-            len([True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_WARN]))
+            len([True for log_lev, _log_str in self.log_buffer if log_lev == logging_tools.LOG_LEVEL_WARN])
+        )
         return E.response(
             E.header(
                 E.messages(
@@ -272,10 +279,13 @@ def contact_server(request, srv_type, send_com, **kwargs):
             _conn_strs = []
             for _send_id, _send_com in send_list:
                 if _send_id is None:
+                    # get send_id from target_server_id
+                    _send_id = kwargs.get("target_server_id", None)
                     # no split send, decide based on target_server_id
-                    _conn_str = cur_router.get_connection_string(srv_type, server_id=kwargs.get("target_server_id", None))
-                else:
-                    _conn_str = cur_router.get_connection_string(srv_type, server_id=_send_id)
+                #    _conn_str = cur_router.get_connection_string(srv_type, server_id=)
+                # else:
+                # print "*", _send_id
+                _conn_str = cur_router.get_connection_string(srv_type, server_id=_send_id)
                 _conn_strs.append(_conn_str)
                 _conn.add_connection(_conn_str, _send_com, multi=True, immediate=True)
             log_result = kwargs.get("log_result", True)
@@ -283,14 +293,15 @@ def contact_server(request, srv_type, send_com, **kwargs):
             cur_router.start_result_feed()
             # merge results
             [
-                cur_router.feed_result(
+                cur_router.feed_srv_result(
                     send_com,
                     _res,
                     request if _xml_req else None,
                     _conn_str,
                     _log_lines,
                     log_result,
-                    log_error
+                    log_error,
+                    srv_type,
                 ) for _res, _conn_str in zip(_conn.loop(), _conn_strs)
             ]
             result = cur_router.result

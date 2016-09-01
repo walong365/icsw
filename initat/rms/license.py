@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2014, 2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,7 +28,7 @@ import time
 
 import zmq
 from django.db.models import Max, Min, Avg, Count
-from lxml.builder import E  # @UnresolvedImport @UnusedImport
+from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import ext_license_site, ext_license, ext_license_check, \
@@ -62,6 +62,7 @@ def pairwise(iterable):
 
 class LicenseProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -241,14 +242,18 @@ class LicenseProcess(threading_tools.process_obj):
             have_earlier_time = last_earlier_time is not None
             if have_earlier_time:
                 last_earlier_check = ext_license_check.objects.filter(date=last_earlier_time)[0]
-                last_earlier_states = ext_license_state.objects.filter(ext_license_check__date=last_earlier_time,
-                                                                       ext_license_check__ext_license_site=site).select_related('ext_license_check')
+                last_earlier_states = ext_license_state.objects.filter(
+                    ext_license_check__date=last_earlier_time,
+                    ext_license_check__ext_license_site=site
+                ).select_related('ext_license_check')
 
             # first later must exist
             first_later_time = ext_license_check.objects.filter(date__gt=start, ext_license_site=site).aggregate(Max('date')).itervalues().next()
             first_later_check = ext_license_check.objects.filter(date=first_later_time)[0]
-            first_later_states = ext_license_state.objects.filter(ext_license_check__date=first_later_time,
-                                                                  ext_license_check__ext_license_site=site).select_related('ext_license_check')
+            first_later_states = ext_license_state.objects.filter(
+                ext_license_check__date=first_later_time,
+                ext_license_check__ext_license_site=site
+            ).select_related('ext_license_check')
 
             timespan_state_data = ext_license_state.objects.filter(
                 ext_license_check__date__range=(start, end), ext_license_check__ext_license_site=site)
@@ -257,8 +262,10 @@ class LicenseProcess(threading_tools.process_obj):
                 ext_license_check__date__range=(start, end), ext_license_check__ext_license_site=site)
 
             # this indirection is 10 times faster than using timespan_version_state_data as possible indices for ext_license_version_state
-            timespan_usage_data = ext_license_usage.objects.filter(ext_license_version_state__ext_license_check__date__range=(start, end),
-                                                                   ext_license_version_state__ext_license_check__ext_license_site=site)
+            timespan_usage_data = ext_license_usage.objects.filter(
+                ext_license_version_state__ext_license_check__date__range=(start, end),
+                ext_license_version_state__ext_license_check__ext_license_site=site
+            )
 
             print("num checks: {}".format(len(ext_license_check.objects.filter(date__range=(start, end)))))
             print("found {} state entries from {} to {}".format(len(timespan_state_data), start, end))
@@ -407,8 +414,10 @@ class LicenseProcess(threading_tools.process_obj):
                 freq_sum = 0.0
 
                 for vendor_lic_version in timespan_version_state_data.filter(
-                        ext_license_state__ext_license_id=lic_id
-                ).values("vendor", "ext_license_version").annotate(frequency=Count("pk")):
+                    ext_license_state__ext_license_id=lic_id
+                ).values(
+                    "vendor", "ext_license_version"
+                ).annotate(frequency=Count("pk")):
                     ext_lic_id = vendor_lic_version['ext_license_version']
                     vendor_id = vendor_lic_version['vendor']
 

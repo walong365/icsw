@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -15,7 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" cluster-server, background inotify import script """
+""" various servers, background inotify import script """
 
 import datetime
 import time
@@ -58,7 +58,7 @@ class ServerBackgroundNotifyMixin(object):
         _timeout = background_job.objects.filter(
             Q(initiator=self.srv_routing.local_device.pk) &
             Q(state__in=["pre-init", "pending"]) &
-            Q(valid_until__lte=datetime.datetime.now())
+            Q(valid_until__lte=cluster_timezone.localize(datetime.datetime.now()))
         )
         if _timeout.count():
             self.log("{} timeout".format(logging_tools.get_plural("background job", _timeout.count())), logging_tools.LOG_LEVEL_WARN)
@@ -129,13 +129,20 @@ class ServerBackgroundNotifyMixin(object):
         self.bg_notify_check_for_bgj_finish(_run_job.background_job)
 
     def bg_notify_check_for_bgj_finish(self, cur_bg):
-        if not cur_bg.background_job_run_set.filter(Q(result="")).count():
-            _states = cur_bg.background_job_run_set.all().values_list("state", flat=True)
-            if len(_states):
-                cur_bg.set_state("done", result=max(_states))
-            else:
-                cur_bg.set_state("done", result=server_command.SRV_REPLY_STATE_UNSET)
-            self.log("{} finished".format(unicode(cur_bg)))
+        _runs = cur_bg.background_job_run_set.all()
+        if len(_runs):
+            # background run sets defined (== subcommands, for example for node splitting [mother])
+            if not any([_run.result == "" for _run in _runs]):
+                # all results set
+                _states = cur_bg.background_job_run_set.all().values_list("state", flat=True)
+                if len(_states):
+                    cur_bg.set_state("done", result=max(_states))
+                else:
+                    cur_bg.set_state("done", result=server_command.SRV_REPLY_STATE_UNSET)
+                self.log("{} finished".format(unicode(cur_bg)))
+        else:
+            # no subcommands, mark as done
+            cur_bg.set_state("done")
 
     def _run_bg_jobs(self, cur_bg, to_run):
         if to_run:

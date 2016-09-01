@@ -2,59 +2,117 @@
     <nav
         class="navbar navbar-default navbar-fixed-top"
         role="navigation"
+        ng-show="struct.current_user"
         icsw-element-size="size"
         ng-controller="icswMenuBaseCtrl"
         ng-cloak
-        ng-show="show_navbar"
-        ng-cloak
     >
-        <icsw-menu-progress-bars user="CURRENT_USER"></icsw-menu-progress-bars>
+        <div class="container-fluid">
+            <icsw-menu-progress-bars user="struct.current_user"></icsw-menu-progress-bars>
 
-        <ul class="nav navbar-nav">
-            <li>
-                <a ui-sref="main.dashboard"><span class="fa fa-home fa-lg" title="Dashboard"></span></a>
-            </li>
-        </ul>
-
-        <icsw-menu-directive user="CURRENT_USER"></icsw-menu-directive>
-
-        <ul class="nav navbar-nav navbar-right">
-            <li>
-                <a class="dropdown-toggle" data-toggle="dropdown">
-                    <span class="fa fa-user fa-lg fa_top"></span>
-                    <span title="{{ CURRENT_USER.full_name }}">{{ CURRENT_USER.login }}</span>
-                    <span ng-show="CURRENT_USER.login != CURRENT_USER.login_name"> (via alias {{ CURRENT_USER.login_name }})</span>
-                    &nbsp;&nbsp;<icsw-background-job-info></icsw-background-job-info>
-                    <span class="fa fa-sort-down pull-right"></span>&nbsp;&nbsp;
-                </a>
-                <ul class="dropdown-menu">
-                    <li>
-                        <a ui-sref="main.useraccount">
-                            <span class="fa fa-info-circle fa_icsw"></span>
-                            Account Info
-                        </a>
-                    </li>
-                    <li ng-show="has_menu_permission('backbone.user.admin')"><a href="{{ ICSW_URLS.ADMIN_INDEX }}"><span class="fa fa-wrench fa_icsw"></span>Admin</a></li>
-                    <li><a ui-sref="logout"><span class="fa fa-sign-out fa_icsw"></span>Logout</a></li>
-                    <li class="divider"></li>
-                    <li>
-                        <a ui-sref="main.serverinfo">
-                            <span class="fa fa-info fa_icsw"></span>
-                            Server information
-                        </a>
-                    </li>
-                    <li ng-show="handbook_url_valid">
-                        <a href="{{ handbook_url }}">
-                            <span class="fa fa-book fa_icsw"></span>PDF Handbook
-                        </a>
-                    </li>
-                    <li ng-show="has_menu_permission('background_job.show_background')">
-                        <a ui-sref="main.backgroundinfo">
-                            <span class="fa fa-list fa-sm fa_icsw"></span>
-                            Background Job Info
-                        </a>
+            <!-- <nav class="navbar yamm navbar-default " role="navigation">
+                <ul class="nav navbar-nav">
+                    <li class="dropdown">
+                        <a class="dropdown-toggle" data-toggle="dropdown">Dropdown</a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <div class="yamm-content">
+                                    <div class="row">
+                                        bla
+                                    </div>
+                                </div>
+                            </li>
+                        </ul>
                     </li>
                 </ul>
+            </nav> -->
+
+            <icsw-menu-directive></icsw-menu-directive>
+
+            <div class="collapse navbar-collapse">
+                <form class="navbar-form navbar-left">
+                    <div class="input-group">
+                        <input
+                            type="text"
+                            class="form-control"
+                            ng-model="struct.search_string"
+                            icsw-auto-focus="struct.focus_search"
+                            placeholder="enter search or command ..."
+                            typeahead-editable="false"
+                            autocomplete="off"
+                            uib-typeahead="hint for hint in get_selections($viewValue)"
+                            typeahead-loading="struct.typeahead_loading"
+                        />
+                        <span class="input-group-btn">
+                            <span class="fa fa-search"></span>
+                        </span>
+                    </div>
+                </form>
+
+                <ul class="nav navbar-nav navbar-right" ng-if="struct.current_user" style="margin-right:0px;">
+                    <!-- <li class="active" ng-click="device_selection($event)">
+                        <a>
+                            <span class="fa fa-desktop fa-lg" title="Device Selection">
+                            </span>
+                            {{ struct.selection_string }}
+                        </a>
+                    </li> -->
+                    <li>
+                        <a class="dropdown-toggle cursorpointer" data-toggle="dropdown"> <!--  style="padding-bottom:15px;"> -->
+                            <span ng-if="struct.current_user">
+                                <span class="fa fa-user fa-lg fa_top"></span>
+                                <span title="{{ struct.current_user.full_name }}">{{ struct.current_user.login }}</span>
+                                <span ng-show="struct.current_user.login != struct.current_user.login_name"> (via alias {{ struct.current_user.login_name }})</span>
+                                &nbsp;&nbsp;<icsw-background-job-info></icsw-background-job-info>
+                            </span>
+                            <span class="fa fa-sort-down pull-right"></span>&nbsp;&nbsp;
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li ng-if="struct.current_user">
+                                <a ui-sref="main.useraccount">
+                                    <span class="fa fa-info-circle fa_icsw"></span>
+                                    Account Info
+                                </a>
+                            </li>
+                            <!-- @ifdef DEBUG -->
+                            <li ng-show="has_menu_permission('backbone.user.admin')">
+                                <a href="{{ ICSW_URLS.ADMIN_INDEX }}">
+                                    <span class="fa fa-wrench fa_icsw"></span>
+                                    Admin
+                                </a>
+                            </li>
+                            <!-- @endif -->
+                            <li ng-if="struct.current_user">
+                                <a ui-sref="logout">
+                                    <span class="fa fa-sign-out fa_icsw"></span>
+                                    Logout
+                                </a>
+                            </li>
+                            <li class="divider" ng-if="struct.current_user"></li>
+                            <li ng-show="handbook_url_valid">
+                                <a href="{{ handbook_url }}" target="_blank">
+                                    <span class="fa fa-book fa_icsw"></span>PDF Handbook
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+</script>
+
+<script type="text/ng-template" id="icsw.layout.submenubar">
+    <nav class="navbar navbar-default submenu-bar" ng-if="struct.current_user" style="position:fixed;width:100%;z-index:1029;margin-top:-30px;">
+        <ul class="sub-breadcrumb pull-left">
+            <li ng-repeat="entry in struct.bc_list track by $index"  class="pull-left">
+                <a class="cursorpointer" ui-sref="{{ entry.sref }}" ui-sref-opts="{icswRegister: false}">
+                    <span class="fa" ng-class="entry.icon"/> {{ entry.name }}
+                </a>
+            </li>
+            <li class="pull-right cursorpointer" ng-click="device_selection($event)">
+                <span class="label label-success" ng-show="struct.num_selected">{{ struct.select_txt }} selected</span>
+                <span ng-show="!struct.num_selected">No devices selected</span>
             </li>
         </ul>
     </nav>
@@ -62,14 +120,15 @@
 
 <script type="text/ng-template" id="icsw.layout.menubar.progress">
     <ul class="nav navbar-nav">
-        <li class="active" ng-if="num_gauges" ng-click="device_quickselection()">
+        <li class="active" ng-if="num_gauges">
             <div ng-repeat="(key, obj) in cur_gauges" class="progress" style="width:200px; margin-top:10px;">
-                <uib-progressbar animate="true" value="obj.value" type="success"><span>{{ obj.value }} %</span></uib-progressbar>
+                <uib-progressbar animate="true" value="obj.value" type="success">
+                    <span>{{ obj.value }} %</span>
+                </uib-progressbar>
             </div>
         </li>
-        <li class="active" ng-if="num_gauges == 0" ng-click="device_quickselection()">
-            <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="redirect_to_init()" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
+        <li class="active" ng-if="num_gauges == 0"><!-- redirect_to_init() -->
+            <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="go_mainboard($event)" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
         </li>
     </ul>
-
 </script>

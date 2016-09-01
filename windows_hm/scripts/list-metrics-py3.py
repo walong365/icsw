@@ -364,12 +364,12 @@ if __name__=="__main__":
 
     print('PerfMon queries:')
     #take a second snapshot 100ms after the first:
-    usage = get_perf_data(r'\Processor(_Total)\% Processor Time', fmts='double', delay=100)
+    usage = get_perf_data(r'\Processor(_Total)\% Processor Time', english=True, fmts='double', delay=100)
     print(' CPU Usage: {}'.format(usage))
 
     #query multiple at once:
     counters = [ r'\Paging File(_Total)\% Usage', r'\Memory\Available MBytes']
-    results = get_perf_data(counters, fmts='double large'.split())
+    results = get_perf_data(counters, english=True, fmts='double large'.split())
     print(' Pagefile Usage: {}, Mem Avail: {} MB'.format(results[0], results[1]))
 
 

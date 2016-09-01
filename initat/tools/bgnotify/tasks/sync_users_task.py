@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,12 +17,13 @@
 #
 """ cluster-server, background inotify import script """
 
+import datetime
 
 from django.db.models import Q
-import datetime
+
 from initat.cluster.backbone.models import user, background_job_run, cluster_timezone
-from .base import BGInotifyTask
 from initat.tools import logging_tools, server_command, config_tools
+from .base import BGInotifyTask
 
 
 class SyncUserTask(BGInotifyTask):
@@ -32,7 +33,7 @@ class SyncUserTask(BGInotifyTask):
 
     def run(self, cur_bg):
         # step 1: create user homes
-        _uo = user.objects  # @UndefinedVariable
+        _uo = user.objects
         create_user_list = _uo.exclude(
             Q(export=None)
         ).filter(

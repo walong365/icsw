@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -237,18 +237,6 @@ class get_network_clusters(permission_required_mixin, View):
     def post(self, request):
         r_obj = config_tools.router_object(self.log)
         return HttpResponse(json.dumps(r_obj.get_clusters()), content_type="application/json")
-
-
-class get_active_scans(permission_required_mixin, View):
-    all_required_permissions = []
-
-    def get(self, request):
-        _pks = json.loads(request.GET["pks"])
-        _dev = list(device.objects.filter(Q(pk__in=_pks)).values("pk", "active_scan"))
-        return HttpResponse(
-            json.dumps(_dev),
-            content_type="application/json"
-        )
 
 
 class get_free_ip(View):

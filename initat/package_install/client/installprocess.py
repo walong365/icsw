@@ -106,6 +106,7 @@ def get_srv_command(**kwargs):
 class InstallProcess(threading_tools.process_obj):
     """ handles all install and external command stuff """
     def __init__(self, name):
+        global_config.close()
         threading_tools.process_obj.__init__(
             self,
             name,

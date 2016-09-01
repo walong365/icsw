@@ -40,6 +40,7 @@ from initat.tools import logging_tools, server_command, process_tools, threading
 
 class DynConfigProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -218,7 +219,9 @@ class DynConfigProcess(threading_tools.process_obj):
         return _prefix
 
     def _create_hints_ipmi(self, cur_dev, mon_info):
-        cur_hints = {(cur_h.m_type, cur_h.key): cur_h for cur_h in monitoring_hint.objects.filter(Q(device=cur_dev))}
+        cur_hints = {
+            (cur_h.m_type, cur_h.key): cur_h for cur_h in monitoring_hint.objects.filter(Q(device=cur_dev))
+        }
         _ocsp_prefix = self._get_ipmi_service_prefix(cur_dev)
         if not _ocsp_prefix:
             self.log("cannot get prefix for IPMI service results for device {}".format(unicode(cur_dev)))
@@ -261,7 +264,6 @@ class DynConfigProcess(threading_tools.process_obj):
                     "lc", "uc", "lw", "uw"
                 ] if _key in _val.attrib
             }
-            _value = _val.get("value")
             if _val.get("v_type") == "f":
                 _value = float(_val.get("value"))
             else:

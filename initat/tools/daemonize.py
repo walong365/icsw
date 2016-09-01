@@ -1,5 +1,5 @@
 #!/usr/bin/python-init -Otu
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #
@@ -22,16 +22,17 @@
 """ daemonizes a given server """
 
 import argparse
+import grp
+import importlib
+import os
+import pwd
 import setproctitle
 import sys
-import importlib
-import pwd
-import grp
-import os
 
 import daemon
 
-#  do NOT but initat imports here (otherwise path manipulations below will not work)
+
+#  do NOT put initat imports here (otherwise path manipulations below will not work)
 
 
 def get_gid_from_name(group):
@@ -73,6 +74,7 @@ def main():
     _parser.add_argument("--groups", type=str, default="", help="comma-separated list of groups for the process [%(default)s]")
     _parser.add_argument("--nice", type=int, default=0, help="set nice level of new process [%(default)d]")
     _parser.add_argument("--debug", default=False, action="store_true", help="enable debug mode (modify sys.path), [%(default)s]")
+    _parser.add_argument("--debug-flag", default=False, action="store_true", help="enable debug flag via environment (modify sys.path), [%(default)s]")
     _parser.add_argument("extra_args", nargs="*", type=str, help="extra  arguments")
     opts = _parser.parse_args()
     _args = [opts.progname]
@@ -94,23 +96,26 @@ def main():
     if opts.daemonize:
         _daemon_context.open()
     else:
+        if gids:
+            os.setgroups(gids)
         if uid or gid:
             os.setgid(gid)
             os.setuid(uid)
-        if gids:
-            os.setgroups(gids)
     if opts.debug:
         abs_path = os.path.dirname(__file__)
         abs_path = os.path.split(os.path.split(abs_path)[0])[0]
         sys.path.insert(0, abs_path)
         _args.append("-d")
+        if opts.debug_flag:
+            os.environ["DEBUG_WEBFRONTEND"] = "yes"
     if opts.extra_args:
         _args.extend(opts.extra_args)
     sys.argv = _args
     setproctitle.setproctitle(opts.proctitle)
     main_module = importlib.import_module(opts.modname)
-    from initat.tools.io_stream_helper import io_stream
     if opts.daemonize:
+        # redirect IO-streams
+        from initat.tools.io_stream_helper import io_stream
         sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
         sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
     main_module.main()

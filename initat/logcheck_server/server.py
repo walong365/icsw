@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2011-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2011-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -73,7 +73,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, 
 
     def _init_network_sockets(self):
         self.network_bind(
-            need_all_binds=True,
+            need_all_binds=False,
             bind_port=global_config["COMMAND_PORT"],
             pollin=self.remote_call,
             server_type="logcheck-server",
@@ -111,11 +111,9 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, 
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=2)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("logcheck-server")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=2, process_name="manager")
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block

@@ -15,6 +15,7 @@ ACCEPT_DICT = {
     "super.q": 8,
 }
 
+
 class MyJSV(JSVBase):
     def on_verify(self):
         if self.has_param("pe_name") and self.has_param("q_hard"):

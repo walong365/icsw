@@ -1,7 +1,7 @@
 
 <script type="text/ng-template" id="icsw.monitoring.device">
 
-    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server...</div>
     <h2>Devices ({{ struct.devices.length }} entries)</h2>
     <table
         st-table="entries_displayed"

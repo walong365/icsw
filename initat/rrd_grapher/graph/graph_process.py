@@ -23,6 +23,7 @@ import json
 import select
 import socket
 import time
+import uuid
 
 import dateutil.parser
 from django.db.models import Q
@@ -30,6 +31,7 @@ from django.db.models import Q
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import device, GraphSetting
+from initat.cluster.backbone.serializers import GraphSettingSerializerCustom
 from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsage, \
     LicenseParameterTypeEnum
 from initat.tools import logging_tools, process_tools, server_mixins, server_command, threading_tools
@@ -42,6 +44,7 @@ FLOAT_FMT = "{:.6f}"
 
 class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -134,42 +137,51 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
             )
         LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
         graph_keys = json.loads(srv_com["*graph_key_list"])
-        para_dict = {}
-        for para in srv_com.xpath(".//parameters", smart_strings=False)[0]:
-            para_dict[para.tag] = para.text
-        # cast to integer
-        para_dict = {key: int(value) if key in ["graph_setting"] else value for key, value in para_dict.iteritems()}
+        para_dict = {
+            para.tag: para.text for para in srv_com.xpath(".//parameters", smart_strings=False)[0]
+        }
         for key in ["start_time", "end_time"]:
             # cast to datetime
             para_dict[key] = dateutil.parser.parse(para_dict[key])
-        para_dict["graph_setting"] = GraphSetting.objects.get(Q(pk=para_dict["graph_setting"]))
-        para_dict["graph_setting"].to_enum()
-        for key, _default in [
-            ("debug_mode", "0"),
-        ]:
-            para_dict[key] = True if int(para_dict.get(key, "0")) else False
-        self._open_rrdcached_socket()
-        try:
-            graph_list = RRDGraph(
-                self.graph_root_debug if para_dict.get("debug_mode", False) else self.graph_root,
-                self.log,
-                self.colorizer,
-                para_dict,
-                self
-            ).graph(dev_pks, graph_keys)
-        except:
-            for _line in process_tools.exception_info().log_lines:
-                self.log(_line, logging_tools.LOG_LEVEL_ERROR)
+        _raw = json.loads(para_dict["graph_setting"])
+        # fake name
+        _raw["name"] = uuid.uuid4().get_urn()
+        _setting = GraphSettingSerializerCustom(data=_raw)
+        if _setting.is_valid():
+            para_dict["graph_setting"] = _setting.save()
+            for key, _default in [
+                ("debug_mode", "0"),
+            ]:
+                para_dict[key] = True if int(para_dict.get(key, "0")) else False
+            self._open_rrdcached_socket()
+            try:
+                graph_list = RRDGraph(
+                    self.graph_root_debug if para_dict.get("debug_mode", False) else self.graph_root,
+                    self.log,
+                    self.colorizer,
+                    para_dict,
+                    self
+                ).graph(dev_pks, graph_keys)
+            except:
+                for _line in process_tools.exception_info().log_lines:
+                    self.log(_line, logging_tools.LOG_LEVEL_ERROR)
+                srv_com["graphs"] = []
+                srv_com.set_result(
+                    "error generating graphs: {}".format(process_tools.get_except_info()),
+                    server_command.SRV_REPLY_STATE_CRITICAL
+                )
+            else:
+                srv_com["graphs"] = graph_list
+                srv_com.set_result(
+                    "generated {}".format(logging_tools.get_plural("graph", len(graph_list))),
+                    server_command.SRV_REPLY_STATE_OK
+                )
+        else:
             srv_com["graphs"] = []
             srv_com.set_result(
-                "error generating graphs: {}".format(process_tools.get_except_info()),
+                "graphsettings are not valid: {}".format(str(_setting.errors)),
                 server_command.SRV_REPLY_STATE_CRITICAL
             )
-        else:
-            srv_com["graphs"] = graph_list
-            srv_com.set_result(
-                "generated {}".format(logging_tools.get_plural("graph", len(graph_list))),
-                server_command.SRV_REPLY_STATE_OK
-            )
+
         self._close_rrdcached_socket()
         self.send_pool_message("remote_call_async_result", unicode(srv_com))

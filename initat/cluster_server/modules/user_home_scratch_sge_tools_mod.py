@@ -1,6 +1,6 @@
 #!/usr/bin/python -Ot
 #
-# Copyright (C) 2007,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -81,7 +81,7 @@ class create_user_home(cs_base_class.server_com):
                 homestart = exp_dict.get("createdir", exp_dict["homeexport"])
                 # check for skeleton directory
                 skel_dir = None
-                for skel_dir in ["opt/cluster/skel", "/etc/skel"]:
+                for skel_dir in ["/opt/cluster/skel", "/etc/skel"]:
                     if os.path.isdir(skel_dir):
                         skel_dir = skel_dir
                         break

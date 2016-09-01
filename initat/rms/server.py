@@ -50,10 +50,10 @@ class ServerProcess(
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
+        self.register_func("job_ended", self._job_ended)
         self._log_config()
         # dc.release()
         self._init_network_sockets()
-        # self.add_process(db_verify_process("db_verify"), start=True)
         self.add_process(RMSMonProcess("rms_mon"), start=True)
         self.add_process(AccountingProcess("accounting"), start=True)
         self.add_process(LicenseProcess("license"), start=True)
@@ -90,12 +90,10 @@ class ServerProcess(
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=5)
         if not global_config["DEBUG"] or True:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("rms-server")
             msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-            msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=5, process_name="manager")
             msi_block.kill_pids = True
             msi_block.save_block()
         else:
@@ -108,6 +106,11 @@ class ServerProcess(
             need_all_binds=False,
             pollin=self.remote_call,
         )
+
+    # internal commands
+    def _job_ended(self, *args, **kwargs):
+        job_id, task_id = (args[2], args[3])
+        self.send_to_process("rms_mon", "job_ended", job_id, task_id)
 
     @server_mixins.RemoteCall(target_process="rms_mon")
     def get_config(self, srv_com, **kwargs):
@@ -145,6 +148,10 @@ class ServerProcess(
 
     @server_mixins.RemoteCall(target_process="rms_mon", send_async_return=False)
     def file_watch_content(self, srv_com, **kwargs):
+        return srv_com
+
+    @server_mixins.RemoteCall(target_process="rms_mon", send_async_return=False)
+    def affinity_info(self, srv_com, **kwargs):
         return srv_com
 
     @server_mixins.RemoteCall(target_process="accounting", send_async_return=False, target_process_func="job_ss_info")

@@ -21,10 +21,12 @@
 #
 
 
+import base64
 import glob
+import hashlib
 import os
 import sys
-import hashlib
+import warnings
 
 from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
@@ -33,7 +35,7 @@ from lxml import etree
 
 from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, SITE_PACKAGES_BASE
 from initat.icsw.service.instance import InstanceXML
-from initat.tools import logging_tools, config_store
+from initat.tools import logging_tools, config_store, process_tools
 
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
@@ -97,11 +99,28 @@ ICSW_DATABASE_VERSION = _vers["database"]
 ICSW_SOFTWARE_VERSION = _vers["software"]
 ICSW_MODELS_VERSION = _vers["models"]
 
+ICSW_DEBUG = process_tools.get_machine_name() in ["eddie", "lemmy"]
+
 # validate settings
 if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
-    raise ImproperlyConfigured("password hash function '{}' not known".format(_cs["password.hash.function"]))
+    raise ImproperlyConfigured(
+        "password hash function '{}' not known".format(
+            _cs["password.hash.function"]
+        )
+    )
+
+if DEBUG:
+    warnings.filterwarnings(
+        "error",
+        r"DateTimeField .* received a naive datetime",
+        RuntimeWarning,
+        r'django\.db\.models\.fields',
+    )
 
 SECRET_KEY = _cs["django.secret.key"]
+# create a somehow shorter key
+SECRET_KEY_SHORT = base64.b64encode(SECRET_KEY)[0:10]
+ICSW_GOOGLE_MAPS_KEY = _cs["google.maps.key"]
 
 _c_key = hashlib.new("md5")
 
@@ -144,6 +163,8 @@ LANGUAGES = (
 
 ANONYMOUS_USER_ID = -1
 
+SILENCED_SYSTEM_CHECKS = ["auth.C010", "auth.C009"]
+
 SITE_ID = 1
 
 REL_SITE_ROOT = "icsw/api/v2"
@@ -156,9 +177,6 @@ USE_L10N = True
 
 USE_TZ = True
 
-# URL that handles the media served from MEDIA_ROOT. Make sure to use a
-# trailing slash.
-# Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
 MEDIA_ROOT = os.path.join(FILE_ROOT, "frontend", "media")
 
 MEDIA_URL = "{}/media/".format(SITE_ROOT)
@@ -178,12 +196,24 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
     except IOError:
         pass
 
+# where to store PDF Files
+REPORT_DATA_STORAGE_DIR = os.path.join("/tmp/", ".icswReportData")
+if not os.path.exists(REPORT_DATA_STORAGE_DIR):
+    os.mkdir(REPORT_DATA_STORAGE_DIR)
+
 # use X-Forwarded-Host header
 USE_X_FORWARDED_HOST = True
 
 # URL prefix for static files.
 # Example: "http://media.lawrence.com/static/"
 STATIC_URL = "{}/static/".format(SITE_ROOT)
+
+THEMES = [
+    ("default", "Default"),
+    ("cora", "Cora"),
+    ("sirocco", "Sirocco"),
+]
+THEME_DEFAULT = "default"
 
 # Session settings
 SESSION_ENGINE = "django.contrib.sessions.backends.cache"
@@ -213,7 +243,7 @@ MIDDLEWARE_CLASSES = (
 
 if not DEBUG:
     MIDDLEWARE_CLASSES = tuple(
-        ["django.middleware.gzip.GZipMiddleware"] +
+        # ["django.middleware.gzip.GZipMiddleware"] +
         list(
             MIDDLEWARE_CLASSES
         )
@@ -261,7 +291,7 @@ STATICFILES_DIRS.append(
 
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 
-# print STATICFILES_DIRS
+#print STATICFILES_DIRS
 
 # add all applications, including backbone
 
@@ -272,6 +302,7 @@ ADDITIONAL_ANGULAR_APPS = []
 # ADDITIONAL_URLS = []
 ICSW_ADDITIONAL_JS = []
 ICSW_ADDITIONAL_HTML = []
+ICSW_ADDITIONAL_MENU = []
 
 # my authentication backend
 AUTHENTICATION_BACKENDS = (
@@ -298,6 +329,7 @@ for sub_dir in os.listdir(dir_name):
                         raise
                     else:
                         ICSW_ADDON_APPS.append(sub_dir)
+                        ICSW_ADDITIONAL_MENU.append(os.path.join(sub_dir, "menu", "menu.xml"))
                         ADDITIONAL_ANGULAR_APPS.extend(
                             [_el.attrib["name"] for _el in _tree.findall(".//app")]
                         )
@@ -412,13 +444,18 @@ LOGGING = {
             "()": "initat.tools.logging_net.initat_formatter",
         },
         'verbose': {
-            'format': '%(levelname)s %(asctime)s %(module)s %(process)d %(message)s %(thread)d %(message)s'
+            'format': '%(levelname)s %(asctime)s %(message)s'
         },
         'simple': {
             'format': '%(levelname)s %(message)s'
         },
     },
     'handlers': {
+        "console": {
+            "level": "INFO" if DEBUG else "WARN",
+            "class": "logging.StreamHandler",
+            "formatter": "verbose",
+        },
         "init_unified": {
             "level": "INFO" if DEBUG else "WARN",
             "class": "initat.tools.logging_net.init_handler_unified",
@@ -437,9 +474,9 @@ LOGGING = {
     },
     'loggers': {
         'django': {
-            'handlers': ['init_unified', "init_mail"],
+            'handlers': ['init_unified', "init_mail", "console"],
             'propagate': True,
-            'level': 'WARN',
+            'level': 'INFO',
         },
         'initat': {
             'handlers': ['init_unified', "init_mail"],
@@ -453,3 +490,5 @@ LOGGING = {
         },
     }
 }
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None

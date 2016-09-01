@@ -4,7 +4,7 @@
 
 <script type="text/ng-template" id="icsw.license.liveview">
     <uib-accordion close-others="no" ng-show="lic_overview.length">
-        <uib-accordion-group is-open="overview_open">
+        <div uib-accordion-group class="panel-default" is-open="overview_open">
             <uib-accordion-heading>
                 <div class="row">
                     <div class="col-md-2">
@@ -49,12 +49,12 @@
                     </tr>
                 </tbody>
             </table>
-        </uib-accordion-group>
+        </div>
     </uib-accordion>
     <h2>Licenses from Licenseserver: {{ licenses.length }}</h2>
     <uib-accordion close-others="no" ng-show="licenses.length">
-        <uib-accordion-group ng-repeat="license in licenses" is-open="license.open">
-            <uib-ccordion-heading>
+        <div uib-accordion-group class="panel-default" ng-repeat="license in licenses" is-open="license.open">
+            <uib-accordion-heading>
                 <div class="row">
                     <div class="col-md-2">
                     <i class="glyphicon" ng-class="{'glyphicon-chevron-down': license.open, 'glyphicon-chevron-right': !license.open}"></i>
@@ -67,7 +67,7 @@
                         <span class="label label-primary">{{ license.issued }} issued</span>
                     </div>
                 </div>
-            </uib-ccordion-heading>
+            </uib-accordion-heading>
             <h4 ng-show="!license.used">No licenses in use</h4>
             <table class="table table-condensed table-hover table-striped" style="width:auto;" ng-show="license.used">
                 <thead>
@@ -106,10 +106,10 @@
                     </ul>
                 </li>
             </ul>
-        </uib-accordion-group>
+        </div>
     </uib-accordion>
     <uib-accordion close-others="no" ng-show="servers.length">
-        <uib-accordion-group is-open="server_open">
+        <div uib-accordion-group class="panel-default" is-open="server_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': server_open, 'glyphicon-chevron-right': !server_open}"></i>
                 License servers: {{ servers.length }}
@@ -119,7 +119,7 @@
                     {{ server.info }}
                 </li>
             </ul>
-        </uib-accordion-group>
+        </div>
     </uib-accordion>
 </script>
 

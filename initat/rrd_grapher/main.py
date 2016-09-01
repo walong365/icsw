@@ -91,5 +91,4 @@ def main():
     if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
         global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
     run_code()
-    configfile.terminate_manager()
     sys.exit(0)

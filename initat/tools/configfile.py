@@ -17,102 +17,21 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" module for handling config files """
+""" module for handling config files, now implemented using MemCache """
 
 import argparse
 import datetime
-import grp
+import json
 import os
-import pwd
 import re
-import sys
-import threading
-from collections import OrderedDict
-from multiprocessing import current_process, util, forking, managers
-from multiprocessing.managers import BaseManager, BaseProxy, Server
+import base64
+import bz2
+import uuid
 
+import memcache
+
+from initat.icsw.service import instance
 from initat.tools import logging_tools, process_tools
-
-
-class config_proxy(BaseProxy):
-    def add_config_entries(self, ce_list, **kwargs):
-        return self._callmethod("add_config_entries", (ce_list,), kwargs)
-
-    def handle_commandline(self, **kwargs):
-        kwargs["proxy_call"] = True
-        ret_value, exit_code = self._callmethod("handle_commandline", [], kwargs)
-        # handle exit code
-        if exit_code is not None:
-            sys.exit(exit_code)
-        return ret_value
-
-    def get_log(self, **kwargs):
-        return self._callmethod("get_log", [], kwargs)
-
-    def fixed(self, key):
-        return self._callmethod("fixed", (key,))
-
-    def get_type(self, key):
-        return self._callmethod("get_type", (key,))
-
-    def is_global(self, key):
-        return self._callmethod("is_global", (key,))
-
-    def set_global(self, key, value):
-        return self._callmethod("set_global", (key, value))
-
-    def database(self, key):
-        return self._callmethod("database", (key,))
-
-    def keys(self):
-        return self._callmethod("keys")
-
-    def __getitem__(self, key):
-        return self._callmethod("__getitem__", (key,))
-
-    def __delitem__(self, key):
-        return self._callmethod("__delitem__", (key,))
-
-    def get_source(self, key):
-        return self._callmethod("get_source", (key,))
-
-    def get(self, key, default):
-        return self._callmethod("get", (key, default))
-
-    def __setitem__(self, key, value):
-        return self._callmethod("__setitem__", (key, value))
-
-    def __contains__(self, key):
-        return self._callmethod("__contains__", (key,))
-
-    def parse_file(self, *args, **kwargs):
-        return self._callmethod("parse_file", (args), kwargs)
-
-    def get_config_info(self):
-        return self._callmethod("get_config_info")
-
-    def single_process_mode(self):
-        return self._callmethod("single_process_mode")
-
-    def name(self):
-        return self._callmethod("name")
-
-    def get_argument_stuff(self):
-        return self._callmethod("get_argument_stuff")
-
-    def help_string(self, key):
-        return self._callmethod("help_string", (key,))
-
-    def set_uid_gid(self, uid, gid):
-        if isinstance(uid, basestring):
-            uid = pwd.getpwnam(uid)[2]
-        if isinstance(gid, basestring):
-            gid = grp.getgrnam(gid)[2]
-        cur_address = self._manager.address
-        addr_path = os.path.dirname(cur_address)
-        os.chown(addr_path, uid, gid)
-        os.chown(cur_address, uid, gid)
-        return self._callmethod("set_uid_gid", (uid, gid))
 
 
 class _conf_var(object):
@@ -141,7 +60,7 @@ class _conf_var(object):
         self._database = kwargs.get("database", False)
         self._only_commandline = kwargs.get("only_commandline", False)
         kw_keys = set(kwargs) - {
-            "only_commandline", "info", "source", "fixed", "action",
+            "only_commandline", "info", "source", "fixed", "action", "is_global",
             "help_string", "short_options", "choices", "nargs", "database",
         }
         if kw_keys:
@@ -150,6 +69,37 @@ class _conf_var(object):
                 str(self.value),
                 ", ".join(sorted(kw_keys)),
             )
+
+    def serialize(self):
+        if self.descr in ["Blob"]:
+            _val = base64.b64encode(bz2.compress(self.value))
+            _def_val = base64.b64encode(bz2.compress(self.__default_val))
+        else:
+            _val = self.value
+            _def_val = self.__default_val
+        return json.dumps(
+            {
+                # to determine type
+                "descr": self.descr,
+                # first argument
+                "default_value": _def_val,
+                # current value
+                "value": _val,
+                # kwargs
+                "kwargs": {
+                    "info": self.__info,
+                    "source": self.source,
+                    "fixed": self.fixed,
+                    "is_global": self.is_global,
+                    "help_string": self._help_string,
+                    "short_options": self._short_opts,
+                    "choices": self._choices,
+                    "nargs": self._nargs,
+                    "database": self.database,
+                    "only_commandline": self._only_commandline,
+                }
+            }
+        )
 
     def is_commandline_option(self):
         return True if self._help_string else False
@@ -396,7 +346,7 @@ class datetime_c_var(_conf_var):
         _conf_var.__init__(self, def_val, **kwargs)
 
     def check_type(self, val):
-        return type(val) == type(datetime.datetime.now())
+        return isinstance(val, datetime.datetime)
 
 
 class timedelta_c_var(_conf_var):
@@ -408,18 +358,201 @@ class timedelta_c_var(_conf_var):
         _conf_var.__init__(self, def_val, **kwargs)
 
     def check_type(self, val):
-        return type(val) == type(datetime.timedelta(1))
+        return isinstance(val, datetime.timedelta)
+
+
+CONFIG_PREFIX = "__ICSW__$conf$__"
+
+
+class InMemoryProxy(object):
+    # simple proxy for md-config-server
+    def __init__(self, g_config):
+        self.global_config = g_config
+        self.__dict = {}
+
+    def __getitem__(self, key):
+        if key not in self.__dict:
+            self.__dict[key] = self.global_config[key]
+        return self.__dict[key]
+
+
+class MemCacheBasedDict(object):
+    def __init__(self, mc_client, prefix, single_process_mode):
+        self.__spm = single_process_mode
+        self.mc_client = mc_client
+        self.prefix = prefix
+        self._dict = {}
+        self._keys = []
+        # version tag
+        self._version = None
+        # update mode, used for faster updates
+        self.__update_mode = False
+        self._check_mc()
+
+    @property
+    def update_mode(self):
+        return self.__update_mode
+
+    @update_mode.setter
+    def update_mode(self, mode):
+        self.__update_mode = mode
+        if not self.__update_mode:
+            self._store_full_dict()
+
+    def _mc_key(self, key):
+        return "{}_{}".format(self.prefix, key)
+
+    def _get(self, key):
+        return self.mc_client.get(self._mc_key(key))
+
+    def _set(self, key, value):
+        return self.mc_client.set(self._mc_key(key), value)
+
+    def _check_mc(self):
+        if not self.__spm:
+            _mc_vers = self._get("version")
+            if not self._version:
+                # get version
+                if _mc_vers is None:
+                    # version not found, store full dict
+                    self._store_full_dict()
+                else:
+                    # read full dict
+                    self._read_full_dict()
+            elif self._version != _mc_vers:
+                # reread
+                self._read_full_dict()
+
+    def _change_version(self):
+        self._version = uuid.uuid4().get_urn()
+        # print os.getpid(), "CV ->", self._version
+        self._set("version", self._version)
+
+    def _store_full_dict(self):
+        if not self.__spm:
+            for _key in self._keys:
+                self._update_key(_key)
+            self._set("keys", json.dumps(self._keys))
+            self._change_version()
+
+    def _update_key(self, key):
+        self._set("k_{}".format(key), self._dict[key].serialize())
+
+    def _key_modified(self, key):
+        if not self.__spm:
+            self._update_key(key)
+            self._set("keys", json.dumps(self._keys))
+            self._change_version()
+
+    def _dummy_init(self):
+        self._keys = []
+        self._dict = {}
+        self._store_full_dict()
+
+    def _read_full_dict(self):
+        try:
+            self._version = self._get("version")
+            self._keys = json.loads(self._get("keys"))
+            self._dict = {}
+            for _key in self._keys:
+                # print "*", _key
+                # deserialize dict
+                _raw = self._get("k_{}".format(_key))
+                try:
+                    _json = json.loads(_raw)
+                except:
+                    # print os.getpid(), "JSON", _key, _raw, "*"
+                    raise
+                _is_blob = _json["descr"] in ["Blob"]
+                if _is_blob:
+                    _json["default_value"] = bz2.decompress(base64.b64decode(_json["default_value"]))
+                # print _raw
+                _obj = {
+                    "Timedelta": timedelta_c_var,
+                    "Datetime": datetime_c_var,
+                    "Dict": dict_c_var,
+                    "Array": array_c_var,
+                    "Bool": bool_c_var,
+                    "Blob": blob_c_var,
+                    "String": str_c_var,
+                    "Float": float_c_var,
+                    "Integer": int_c_var,
+                }[_json["descr"]](_json["default_value"], **_json["kwargs"])
+                if _is_blob:
+                    _obj.value = bz2.decompress(base64.b64decode(_json["value"]))
+                else:
+                    _obj.value = _json["value"]
+                self._dict[_key] = _obj
+        except:
+            print(
+                "Something went wrong in deserializing config with prefix {}: {}, pid={:d}".format(
+                    self.prefix,
+                    process_tools.get_except_info(),
+                    os.getpid(),
+                )
+            )
+            # something went wrong, start with empty dict
+            self._dummy_init()
+
+    # public functions
+
+    def keys(self):
+        self._check_mc()
+        return self._keys
+
+    def __contains__(self, _key):
+        self._check_mc()
+        return _key in self._keys
+
+    def __setitem__(self, key, value):
+        # print os.getpid(), "store", key
+        self._check_mc()
+        if key not in self._keys:
+            self._keys.append(key)
+        self._dict[key] = value
+        if not self.__update_mode:
+            self._key_modified(key)
+
+    def __getitem__(self, key):
+        self._check_mc()
+        # print os.getpid(), "get", key
+        # print self._dict
+        return self._dict[key]
+
+    def key_changed(self, key):
+        self._key_modified(key)
 
 
 class configuration(object):
     def __init__(self, name, *args, **kwargs):
+        inst_xml = instance.InstanceXML(quiet=True)
+        _mc_addr = "127.0.0.1"
+        _mc_port = inst_xml.get_port_dict("memcached", command=True)
+        self.__mc_addr = "{}:{:d}".format(_mc_addr, _mc_port)
         self.__name = name
+        self.__mc_prefix = "{}{}".format(CONFIG_PREFIX, self.__name)
         self.__verbose = kwargs.get("verbose", False)
         self.__spm = kwargs.pop("single_process_mode", False)
-        self.__c_dict = OrderedDict()
+        self._reopen_mc(True)
         self.clear_log()
         if args:
             self.add_config_entries(*args)
+
+    def close(self):
+        # to be called for every new process
+        self._reopen_mc()
+
+    def _reopen_mc(self, first=False):
+        if self.__spm:
+            self.__mc_client = None
+        else:
+            if not first:
+                self.__mc_client.disconnect_all()
+            try:
+                self.__mc_client = memcache.Client([self.__mc_addr])
+            except:
+                raise
+        self.__c_dict = MemCacheBasedDict(self.__mc_client, self.__mc_prefix, self.__spm)
 
     def get_log(self, **kwargs):
         ret_val = [entry for entry in self.__log_array]
@@ -435,16 +568,6 @@ class configuration(object):
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_array.append((what, log_level))
-    # def copy_flags(self, var_dict):
-    #    # copy flags (right now only global / local) for given var_names
-    #    for var_name, var_value in var_dict.iteritems():
-    #        self.__c_dict[var_name].is_global = var_value.is_global()
-
-    def set_uid_gid(self, new_uid, new_gid):
-        os.setgid(new_gid)
-        os.setegid(new_gid)
-        os.setuid(new_uid)
-        os.seteuid(new_uid)
 
     def single_process_mode(self):
         return self.__spm
@@ -458,6 +581,7 @@ class configuration(object):
     def add_config_entries(self, entries, **kwargs):
         if type(entries) == dict:
             entries = sorted([(key, value) for key, value in entries.iteritems()])
+        self.__c_dict.update_mode = True
         for key, value in entries:
             # check for override of database flag
             if not value._database_set and "database" in kwargs:
@@ -469,6 +593,7 @@ class configuration(object):
             self.__c_dict[key] = value
             if self.__verbose:
                 self.log("Setting config for key {} to {}".format(key, value))
+        self.__c_dict.update_mode = False
 
     def pretty_print(self, key):
         if key in self.__c_dict:
@@ -495,6 +620,8 @@ class configuration(object):
             else:
                 source = None
             self.__c_dict[key].set_value(value, source)
+            # import the signal changes
+            self.__c_dict.key_changed(key)
         else:
             raise KeyError("Key {} not found in c_dict".format(key))
 
@@ -698,7 +825,11 @@ class configuration(object):
             "arg_list": self.positional_arguments + self.other_arguments
         }
 
-    def handle_commandline(self, **kwargs):
+    def handle_commandline(self, *opt_args, **kwargs):
+        if len(opt_args):
+            opt_args = list(opt_args)
+        else:
+            opt_args = None
         proxy_call = kwargs.pop("proxy_call", False)
         pos_arguments = kwargs.pop("positional_arguments", False)
         pos_arguments_optional = kwargs.pop("positional_arguments_optional", False)
@@ -726,7 +857,7 @@ class configuration(object):
                 if partial:
                     options, rest_args = my_parser.parse_known_args()
                 else:
-                    options, rest_args = (my_parser.parse_args(), [])
+                    options, rest_args = (my_parser.parse_args(opt_args), [])
             except:
                 # catch parse errors
                 if self.exit_code is not None:
@@ -748,164 +879,8 @@ class configuration(object):
             return options
 
 
-class my_server(Server):
-    def serve_forever(self):
-        """
-        Run the server forever, modified version to prevent early exit.
-        """
-        if sys.version_info[0] == 3:
-            self.stop_event = threading.Event()
-        current_process()._manager_server = self
-        _run = True
-        try:
-            while _run:
-                try:
-                    while True:
-                        try:
-                            c = self.listener.accept()
-                        except (OSError, IOError):
-                            continue
-                        _thread = threading.Thread(target=self.handle_request, args=(c,))
-                        _thread.daemon = True
-                        _thread.start()
-                except (KeyboardInterrupt):
-                    pass
-                except (SystemExit):
-                    # system exit requested, exit loop
-                    _run = False
-                except:
-                    raise
-        finally:
-            self.stop = 999
-            self.listener.close()
-
-
-class config_manager(BaseManager):
-    # monkey-patch Server
-    _Server = my_server
-
-    @staticmethod
-    def _finalize_manager(process, address, authkey, state, _Client):
-        '''
-        Shutdown the manager process; will be registered as a finalizer
-        '''
-        if process.is_alive():
-            util.info('sending shutdown message to manager')
-            try:
-                conn = _Client(address, authkey=authkey)
-                try:
-                    forking.dispatch(conn, None, 'shutdown')
-                finally:
-                    conn.close()
-            except Exception:
-                pass
-            process.join(timeout=0.2)
-            if process.is_alive():
-                util.info('manager still alive')
-                if hasattr(process, 'terminate'):
-                    util.info('trying to `terminate()` manager process')
-                    process.terminate()
-                    process.join(timeout=0.1)
-                    if process.is_alive():
-                        util.info('manager still alive after terminate')
-
-        state.value = managers.State.SHUTDOWN
-        try:
-            del BaseProxy._address_to_local[address]
-        except KeyError:
-            pass
-
-config_manager.register(
-    "config",
-    configuration,
-    config_proxy,
-    exposed=[
-        "parse_file", "add_config_entries", "set_uid_gid",
-        "single_process_mode", "help_string",
-        "get_log", "handle_commandline", "keys", "get_type", "get", "get_source",
-        "is_global", "database", "is_global", "set_global",
-        "__getitem__", "__setitem__", "__contains__", "__delitem__",
-        "get_config_info", "name", "get_argument_stuff", "fixed",
-    ]
-)
-
-cur_manager = config_manager()
-
-CONFIG_MANAGER_INIT = False
-
-
-def get_global_config(c_name, single_process=False, ignore_lock=False):
-    # lock against double-init, for instance md-config-server includes process_monitor_mod which
-    # in turn tries to start the global_config manager (but from a different module)
-    if not globals()["CONFIG_MANAGER_INIT"] or ignore_lock:
-        globals()["CONFIG_MANAGER_INIT"] = True
-        if single_process:
-            return configuration(c_name, single_process_mode=True)
-        else:
-            cur_manager.start()
-            _ret = cur_manager.config(c_name)
-            globals()["CONFIG_MANAGER"] = _ret
-            return _ret
-    else:
-        return globals()["CONFIG_MANAGER"]
-
-
-# not needed ?
-def terminate_manager():
-    cur_manager.shutdown()
-
-
-class gc_proxy(object):
-    def __init__(self, g_config):
-        self.global_config = g_config
-        self.__dict = {}
-
-    def __getitem__(self, key):
-        if key not in self.__dict:
-            self.__dict[key] = self.global_config[key]
-        return self.__dict[key]
-
-
-def enable_config_access(user_name, group_name):
-    address = cur_manager.address
-    process_tools.change_user_group_path(address, user_name, group_name)
-    process_tools.change_user_group_path(os.path.dirname(address), user_name, group_name)
-
-
-def get_manager_pid():
-    if cur_manager.address:
-        return cur_manager._process.pid
-    else:
-        return None
-
-
-# type:
-# 0 ... only read the file,  strip empty- and comment lines
-# 1 ... parse the lines according to VAR = ARG,  return dictionary
-def readconfig(name, c_type=0, in_array=[]):
-    ret_code, ret_array = (False, [])
-    try:
-        rcf = [y for y in [x.strip() for x in file(name, "r").read().split("\n")] if y and not re.match("^\s*#.*$", y)]
-    except:
-        pass
-    else:
-        if c_type == 0:
-            ret_code, ret_array = (True, rcf)
-        elif c_type == 1:
-            cd = {_key: [] for _key in in_array}
-            for line in rcf:
-                lm = re.match("^\s*(?P<key>[^=]+)\s*=\s*(?P<value>\S+)\s*$", line)
-                if lm:
-                    act_k = lm.group("key").strip()
-                    arg = lm.group("value").strip()
-                    if act_k in in_array:
-                        cd[act_k].append(arg)
-                    else:
-                        cd[act_k] = arg
-            ret_code, ret_array = (True, cd)
-        else:
-            print("Unknown type {:d} for readconfig".format(c_type))
-    return (ret_code, ret_array)
+def get_global_config(c_name, single_process=False):
+    return configuration(c_name, single_process_mode=single_process)
 
 
 def check_str_config(in_dict, name, default):

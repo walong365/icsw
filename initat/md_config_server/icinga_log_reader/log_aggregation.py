@@ -1,8 +1,8 @@
-# Copyright (C) 2015 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -25,15 +25,17 @@ from collections import defaultdict
 from django.conf import settings
 from django.db.models.query_utils import Q
 
-from initat.tools import logging_tools
+from initat.cluster.backbone.models.functions import cluster_timezone, duration
 from initat.cluster.backbone.models.status_history import mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
     mon_icinga_log_raw_host_flapping_data, mon_icinga_log_aggregated_host_data, mon_icinga_log_aggregated_timespan, mon_icinga_log_raw_base,\
     mon_icinga_log_aggregated_service_data, mon_icinga_log_full_system_dump, StatusHistoryUtils, AlertList, mon_icinga_log_raw_host_downtime_data, \
     mon_icinga_log_raw_service_downtime_data
-from initat.cluster.backbone.models.functions import cluster_timezone, duration
+from initat.tools import logging_tools
 
-__all__ = ["icinga_log_aggregator"]
+__all__ = [
+    "icinga_log_aggregator"
+]
 
 
 # itertools recipe
@@ -58,8 +60,10 @@ class icinga_log_aggregator(object):
         from initat.md_config_server.config import global_config
         if global_config["ENABLE_ICINGA_LOG_PARSING"]:  # this is actually also checked in icinga_log_reader.update()
             if 'sqlite' in settings.DATABASES['default']['ENGINE']:
-                self.log("log aggregation is not supported with the sqlite database backend",
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "log aggregation is not supported with the sqlite database backend",
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 self._host_flapping_cache = mon_icinga_log_raw_host_flapping_data.objects.all().order_by('date')
                 self._service_flapping_cache = mon_icinga_log_raw_service_flapping_data.objects.all().order_by('date')
@@ -371,14 +375,14 @@ class icinga_log_aggregator(object):
 
         service_downtimes = StatusHistoryUtils.preprocess_start_stop_data(
             self._service_downtime_cache,
-            StatusHistoryUtils.get_key_fun(is_host=False),
+            StatusHistoryUtils.get_key_func(is_host=False),
             'downtime_state',
             start_time,
             end_time
         )
         host_downtimes = StatusHistoryUtils.preprocess_start_stop_data(
             self._host_downtime_cache,
-            StatusHistoryUtils.get_key_fun(is_host=True),
+            StatusHistoryUtils.get_key_func(is_host=True),
             'downtime_state',
             start_time,
             end_time
@@ -576,9 +580,12 @@ class icinga_log_aggregator(object):
             data_sum = defaultdict(lambda: 0.0)
             # check how many timespan entries we have for each service (to detect added/removed services)
             data_timespans = defaultdict(lambda: set())
-            for (timespan_id, device_id, service_id, service_info, state, state_type, value) in \
-                    db_entries.values_list("timespan_id", "device_id", "service_id", "service_info",
-                                           "state", "state_type", "value"):
+            for (
+                timespan_id, device_id, service_id, service_info, state, state_type, value
+            ) in db_entries.values_list(
+                "timespan_id", "device_id", "service_id", "service_info",
+                "state", "state_type", "value"
+            ):
                 data_sum[device_id, service_id, service_info, state, state_type] += value
                 data_timespans[device_id, service_id, service_info].add(timespan_id)
 

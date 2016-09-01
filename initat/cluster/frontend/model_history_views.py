@@ -2,7 +2,7 @@
 #
 # Send feedback to: <mallinger@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -26,10 +26,8 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import ForeignKey
 from django.utils.decorators import method_decorator
-from django.views.generic import View
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
-from reversion import revisions as reversion
 from reversion.models import Version
 
 import initat
@@ -45,12 +43,16 @@ class get_models_with_history(RetrieveAPIView):
     @method_decorator(login_required)
     @rest_logging
     def get(self, request, *args, **kwargs):
-        return Response({model.__name__: model._meta.verbose_name for model in icsw_register.REGISTERED_MODELS})
+        return Response(
+            {
+                model.__name__: model._meta.verbose_name for model in icsw_register.REGISTERED_MODELS
+            }
+        )
 
 
 class DeletedObjectsCache(dict):
     def __missing__(self, target_model):
-        value = {entry.pk: entry for entry in reversion.get_deleted(target_model)}
+        value = {entry.pk: entry for entry in Version.objects.get_deleted(target_model)}
         self[target_model] = value
         return value
 
@@ -103,11 +105,13 @@ class get_historical_data(ListAPIView):
         content_type = ContentType.objects.get_for_model(model)
 
         filter_dict = {'content_type': content_type}
+        filter_dict_del = {"content_type": content_type}
         if object_id is not None:
-            filter_dict['object_id_int'] = object_id
+            filter_dict['object_id'] = object_id
+            filter_dict_del['object_id_int'] = object_id
 
         # get data for deletion and version (they mostly have the same fields)
-        deletion_queryset = icsw_deletion_record.objects.filter(**filter_dict)
+        deletion_queryset = icsw_deletion_record.objects.filter(**filter_dict_del)
         # print dir(reversion.VersionAdapter)
         version_queryset = Version.objects.filter(**filter_dict).select_related('revision')
 

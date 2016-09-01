@@ -12,10 +12,10 @@
             </ul>
         </div>
     </h2>
-    <uib-alert type="warning" ng-show="struct.loading">Fetching data from server ...</uib-alert>
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server ...</div>
     <icsw-tools-ensure-device-selection dev-list="struct.devices"> <!-- don't need list-ready since it's handled in the page below -->
         <uib-accordion close-others="no">
-            <uib-accordion-group is-open="struct.monconfig_open" ng-show="!struct.fetching">
+            <div uib-accordion-group class="panel-default" is-open="struct.monconfig_open" ng-show="!struct.fetching">
                 <uib-accordion-heading>
                     <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.monconfig_open, 'glyphicon-chevron-right': !struct.monconfig_open}"></i>
                     Monitoring config, {{ struct.mc_tables.length }} tables shown
@@ -46,7 +46,7 @@
                                             <button
                                                 type="button"
                                                 ng-repeat="attr in table.attr_list"
-                                                class="btn btn-xs"
+                                                class="btn btn-xs btn-default"
                                                 ng-click="table.toggle_column(attr)"
                                                 ng-class="table.columns_enabled[attr] && 'btn-success' || 'btn-default'"
                                                 title="{{ table.attr_dict[attr].long }}"
@@ -78,8 +78,8 @@
                         </table>
                     </uib-tab>
                 </uib-tabset>
-            </uib-accordion-group>
-            <uib-accordion-group is-open="struct.monhint_open">
+            </div>
+            <div uib-accordion-group class="panel-default" is-open="struct.monhint_open">
                 <uib-accordion-heading>
                     <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.monhint_open, 'glyphicon-chevron-right': !struct.monhint_open}"></i>
                     Monitoring hint for {{ struct.devices.length }} devices
@@ -107,7 +107,7 @@
                         </tr>
                     </tbody>
                 </table>
-            </uib-accordion-group>
+            </div>
         </uib-accordion>
     </icsw-tools-ensure-device-selection>
 </script>
@@ -193,7 +193,7 @@
         <icsw-tools-button type="delete" ng-click="delete_hint($event, hint)" size="xs"></icsw-tools-button>
     </td>
     <td class="text-center">
-        <input type="button" class="btn btn-xs" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled($event, hint)"/></input>
+        <input type="button" class="btn btn-xs btn-default" ng-class="hint.enabled && 'btn-success' || 'btn-warning'" ng-value="hint.enabled && 'disable' || 'enable'" ng-click="toggle_enabled($event, hint)"/></input>
     </td>
     <td class="text-center">
         <icsw-tools-button type="modify" ng-show="hint.$$show_modify" ng-click="edit_hint($event, hint)" size="xs"></icsw-tools-button>

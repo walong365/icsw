@@ -1,68 +1,91 @@
 <script type="text/ng-template" id="icsw.rrd.graph">
-    <icsw-rrd-graph icsw-sel-man="0" icsw-sel-man-sel-mode="D"></icsw-rrd-graph>
+    <icsw-rrd-graph-normal icsw-sel-man="0"></icsw-rrd-graph-normal>
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.overview">
-    <div ng-if="struct.error_string">
-        <uib-alert type="warning">{{ struct.error_string }}</uib-alert>
-    </div>
-    <h4 ng-show="struct.vector_valid">
-        <div class="input-group form-inline">
-            <icsw-rrd-vector-info vector-info="struct.vectordata"></icsw-rrd-vector-info>,
-            <div class="form-group">
-                <div class="input-group-btn">
-                    <button type="button" ng-class="struct.show_tree && 'btn btn-xs btn-primary' || 'btn btn-xs'" ng-click="struct.show_tree=!struct.show_tree" title="show/hide RRD tree">
-                        <span class="glyphicon glyphicon-align-left"></span>
-                        tree
-                    </button>
-                </div>
-            </div>&nbsp;
-            <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
-            <icsw-rrd-graph-time-frame timeframe="timeframe" detail="1"></icsw-rrd-graph-time-frame>
-            <div class="form-group">
-                <div class="btn-group">
-                    <button type="button" class="btn btn-xs btn-success dropdown-toggle" data-toggle="dropdown" title="which jobs to show">
-                        <span class="glyphicon glyphicon-tasks"></span>
-                        {{ get_job_mode(job_mode) }}<span class="caret"></span>
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li ng-repeat="_jm in job_modes" ng-show="job_mode_allowed(_jm)" ng-click="set_job_mode(_jm)">
-                            <a href="#">{{ get_job_mode(_jm) }}</a>
-                        </li>
-                    </ul>
-                </div>
-            </div>
+    <div class="container-fluid">
+<!--        <div ng-if="struct.error_string">
+            <div uib-alert class="alert-warning">{{ struct.error_string }}</div>
+        </div>-->
+        <div>
+            <h2>
+                Graphing,
+                <icsw-tools-yes-no icsw-yes="show settings" icsw-no="hide settings" flag="struct.base_setting.show_settings" ng-show="struct.base_setting.display_settings_switch"></icsw-tools-yes-no>
+                <icsw-tools-yes-no icsw-yes="show tree" icsw-no="hide tree" flag="struct.base_setting.show_tree" ng-show="struct.base_setting.display_tree_switch"></icsw-tools-yes-no>
+                <span ng-show="struct.error_string" class="text-warning">{{ struct.error_string }}</span>
+            </h2>
         </div>
-    </h4>
-    <div class="row" ng-if="struct.vector_valid">
-        <div class="col-md-3" ng-show="struct.show_tree">
-            <div class="input-group">
-                <input type="text" class="form-control" ng-disabled="struct.error_string.length" ng-model="struct.searchstr" placeholder="search ..." ng-change="update_search()"/>
-                <span class="input-group-btn">
-                    <button class="btn btn-success" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
-                        <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
-                    </button>
-                    <button class="btn btn-warning" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="clear_selection()">
-                        <span title="clear selection" class="fa fa-remove"></span>
-                    </button>
-                    <button class="btn btn-warning" type="button" ladda="struct.is_drawing" ng-click="select_with_sensor()">
-                        <span title="select all with sensors" class="fa fa-wrench"></span>
-                    </button>
-                </span>
-            </div>
-            <icsw-react-tree icsw-tree-config="struct.g_tree"></icsw-react-tree>
-        </div>
-        <div ng-class="struct.show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
-            <icsw-rrd-graph-list graph-list="graph_list" graph-matrix="graph_mat"></icsw-rrd-graph-list>
-        </div>
-    </div>
-</script>
+        <table class="table table-condensed table-striped table-bordered" style="width:auto;" ng-show="struct.vector_valid && struct.base_setting.show_settings">
+            <tbody>
+                <tr>
+                    <th>Vector Info</th>
+                    <td>
+                        <div class="input-group form-inline">
+                            <icsw-rrd-vector-info vector-info="struct.vectordata"></icsw-rrd-vector-info>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Settings</th>
+                    <td>
+                        <div class="input-group form-inline">
+                            <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
+                            <button class="btn btn-success btn-xs" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
+                                <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Timeframe</th>
+                    <td>
+                        <div class="input-group form-inline">
+                            <icsw-rrd-graph-time-frame timeframe="timeframe" detail="1"></icsw-rrd-graph-time-frame>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
+                    <th>
+                        Jobs
+                    </th>
+                    <td>
+                        <div class="form-group form-inline" style="margin-bottom:0;">
+                            <ui-select ng-model="struct.job_mode">
+                                <ui-select-match class="ui-select-match" placeholder="Job mode...">
+                                    {{ $select.selected.long }}
+                                </ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="jm as jm in job_modes">
+                                    <div ng-bind-html="jm.long"></div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </td>
+                </tr>
 
-<script type="text/ng-template" id="icsw.rrd.graph.list.graph">
-    <div>
-        <span ng-show="graph.cropped && graph.active">cropped timerange: {{ graph.get_tv(graph.cts_start_mom) }} to {{ graph.get_tv(graph.cts_end_mom) }}
-            <input type="button" class="btn btn-xs btn-warning" value="apply" ng-click="use_crop(graph)"/>
-        </span>
+            </tbody>
+        </table>
+        <div class="row" ng-if="struct.vector_valid">
+            <div class="col-md-3" ng-show="struct.base_setting.show_tree">
+                <div class="input-group input-group-xs">
+                    <input type="text" class="form-control" ng-disabled="struct.error_string.length" ng-model="struct.base_setting.search_string" placeholder="search ..." ng-change="update_search()"/>
+                    <span class="input-group-addon input-group-addon-button">
+                        <button class="btn btn-success btn-xs" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
+                            <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
+                        </button>
+                        <button class="btn btn-warning btn-xs" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="clear_selection()">
+                            <span title="clear selection" class="fa fa-remove"></span>
+                        </button>
+                        <button class="btn btn-warning btn-xs" type="button" ladda="struct.is_drawing" ng-click="select_with_sensor()">
+                            <span title="select all with sensors" class="fa fa-wrench"></span>
+                        </button>
+                    </span>
+                </div>
+                <icsw-react-tree icsw-tree-config="struct.g_tree"></icsw-react-tree>
+            </div>
+            <div ng-class="struct.base_setting.show_tree && 'col-md-9' || 'col-md-12'" ng-show="graph_list.length">
+                <icsw-rrd-graph-list icsw-graph-list="graph_list" icsw-graph-matrix="graph_mat"></icsw-rrd-graph-list>
+            </div>
+        </div>
     </div>
 </script>
 
@@ -71,30 +94,18 @@
         {{ graphList.length }} graphs, {{ graphList[0].get_tv(graphList[0].ts_start_mom) }} to {{ graphList[0].get_tv(graphList[0].ts_end_mom) }}
     </h2>
     <table class="table-condensed">
-        <tr ng-repeat="gkey in get_graph_keys()">
+        <tr ng-repeat="gkey in $$graph_keys">
             <td ng-repeat="(dkey, graph) in graphMatrix[gkey]" style="vertical-align:top;">
-                <icsw-rrd-graph-list-graph graph="graph"></icsw-rrd-graph-list-graph>
+                <icsw-rrd-graph-list-graph icsw-graph="graph"></icsw-rrd-graph-list-graph>
             </td>
         </tr>
     </table>
 </script>
 
-
-<script type="text/ng-template" id="icsw.rrd.graph.list.graph.header">
-    <h4>
-        <span class="label label-default" ng-click="graph.toggle_expand()">
-            <span ng-class="graph.get_expand_class()"></span>
-            graph #{{ graph.num }}
-        </span>&nbsp;
-        <ng-pluralize count="graph.num_devices" when="{'one' : '1 device', 'other' : '{} devices'}"></ng-pluralize>: {{ graph.get_devices() }}
-        <icsw-tools-button type="modify" size="xs" ng-show="graph.src && graph.num_sensors" value="Sensors" ng-click="modify_sensors()"></icsw-tools-button>
-    </h4>
-</script>
-
 <script type="text/ng-template" id="icsw.rrd.graph.sensor">
     <div ng-cloak>
         <uib-accordion close-others="false">
-            <uib-accordion-group ng-repeat="sensor in graph.sensors" is-open="sensor.open">
+            <div uib-accordion-group class="panel-default" ng-repeat="sensor in graph.sensors" is-open="sensor.open">
                 <uib-accordion-heading>
                     Sensor key: <code>{{ sensor.mv_key }}</code>, device: {{ graph.device_tree.all_lut[sensor.device_id].full_name }}
                     <span ng-show="sensor.thresholds.length">, #thresholds: {{  sensor.thresholds.length }}</span>
@@ -128,7 +139,7 @@
                         </span>
                     </div>
                 </div>
-            </uib-accordion-group>
+            </div>
         </uib-accordion>
     </div>
 </script>
@@ -138,17 +149,26 @@
     <td>{{ resolve_user() }}</td>
     <td>{{ threshold.lower_value | number: 4 }}</td>
     <td>{{ get_sensor_action_name('lower') }}</td>
-    <td><icsw-tools-yes-no-small flag="threshold.lower_enabled" ng-click="toggle_enabled('lower')"></icsw-tools-yes-no-small></td>
-    <td><icsw-tools-yes-no-small flag="threshold.lower_mail" ng-click="toggle_mail('lower')"></icsw-tools-yes-no-small></td>
+    <td>
+        <icsw-tools-yes-no-small flag="threshold.lower_enabled" ng-click="toggle_enabled('lower')" title="Lower threshold is enabled"></icsw-tools-yes-no-small>
+    </td>
+    <td>
+        <icsw-tools-yes-no-small flag="threshold.lower_mail" ng-click="toggle_mail('lower')" title="Lower action sends email"></icsw-tools-yes-no-small>
+    </td>
     <td>{{ threshold.upper_value | number: 4 }}</td>
     <td>{{ get_sensor_action_name('upper') }}</td>
-    <td><icsw-tools-yes-no-small flag="threshold.upper_enabled" ng-click="toggle_enabled('upper')"></icsw-tools-yes-no-small></td>
-    <td><icsw-tools-yes-no-small flag="threshold.upper_mail" ng-click="toggle_mail('upper')"></icsw-tools-yes-no-small></td>
+    <td>
+        <icsw-tools-yes-no-small flag="threshold.upper_enabled" ng-click="toggle_enabled('upper')" title="Upper threshold is enabled"></icsw-tools-yes-no-small>
+    </td>
+    <td>
+        <icsw-tools-yes-no-small flag="threshold.upper_mail" ng-click="toggle_mail('upper')" title="Upper action send email"></icsw-tools-yes-no-small>
+    </td>
     <td class="text-center">{{ threshold.notify_users.length }}</td>
     <td class="text-center">{{ get_device_selection_info() }}</td>
     <td class="text-center">
         <icsw-tools-button type="modify" size="xs" ng-click="modify_threshold(sensor, threshold)"></icsw-tools-button>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete_threshold(sensor, threshold)"></icsw-tools-button><p/>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete_threshold(sensor, threshold)"></icsw-tools-button>
+        <p/>
     </td>
     <td class=text-center">
         <button class="btn btn-xs btn-warning" ng-click="trigger_threshold(sensor, threshold, 'lower')"><span class="glyphicon glyphicon-arrow-down"/>lower</button>
@@ -174,9 +194,9 @@
                 <div class="col-md-9 controls">
                     <div class="input-group">
                         <ui-select ng-model="threshold.create_user">
-                            <ui-select-match class="ui-select-match" placeholder="Pick a user ...">{{ $select.selected.login + ' (' + $select.selected.email + ')'}}</ui-select-match>
+                            <ui-select-match class="ui-select-match" placeholder="Pick a user ...">{{ $select.selected.$$user_email }}</ui-select-match>
                             <ui-select-choices class="ui-select-choices" repeat="user.idx as user in sensor.graph.user_group_tree.user_list">
-                                <div ng-bind-html="user.login + ' (' + user.email + ')'"></div>
+                                <div ng-bind-html="user.$$user_email"></div>
                             </ui-select-choices>
                         </ui-select>
                     </div>
@@ -187,9 +207,9 @@
                 <div class="col-md-9 controls">
                     <div class="input-group">
                         <ui-select multiple ng-model="threshold.notify_users_obj">
-                            <ui-select-match class="ui-select-match" placeholder="Pick some notify users...">{{ $item.login + ' (' + $item.email + ')'}}</ui-select-match>
+                            <ui-select-match class="ui-select-match" placeholder="Pick some notify users...">{{ $item.$$user_email }}</ui-select-match>
                             <ui-select-choices class="ui-select-choices" repeat="user.idx as user in sensor.graph.user_group_tree.user_list">
-                                <div ng-bind-html="user.login + ' (' + user.email + ')'"></div>
+                                <div ng-bind-html="user.$$user_email"></div>
                             </ui-select-choices>
                         </ui-select>
                         <span class="input-group-btn">

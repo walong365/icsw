@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,6 +21,7 @@
 """ rms-server, monitoring process """
 
 import os
+import re
 import time
 import uuid
 
@@ -28,7 +29,7 @@ import zmq
 from django.core.cache import cache
 from django.db.models import Q
 from lxml import etree
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
@@ -77,6 +78,7 @@ class QueueInfo(object):
 
 class RMSMonProcess(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
@@ -89,14 +91,22 @@ class RMSMonProcess(threading_tools.process_obj):
         self.__node_options = sge_tools.get_empty_node_options()
         self._init_network()
         self._init_sge_info()
+        # job content dict
         self.__job_content_dict = {}
+        # pinning dict
+        self.__job_pinning_dict = {}
         self.register_func("get_config", self._get_config)
         self.register_func("job_control", self._job_control)
         self.register_func("queue_control", self._queue_control)
         self.register_func("file_watch_content", self._file_watch_content)
+        self.register_func("affinity_info", self._affinity_info)
+        self.register_func("job_ended", self._job_ended)
         self.register_func("full_reload", self._full_reload)
         # job stop/start info
-        self.register_timer(self._update, 30)
+        self.register_timer(self._update_nodes, 30)
+        if global_config["TRACE_FAIRSHARE"]:
+            self.log("register fairshare tracer")
+            self.register_timer(self._update_fairshare, 60, instant=True)
 
     def _init_cache(self):
         self.__cache = {
@@ -105,7 +115,7 @@ class RMSMonProcess(threading_tools.process_obj):
 
     def _init_sge_info(self):
         self.log("init sge_info")
-        self.__sge_info = sge_tools.sge_info(
+        self.__sge_info = sge_tools.SGEInfo(
             log_command=self.log,
             run_initial_update=False,
             verbose=True if global_config["DEBUG"] else False,
@@ -134,6 +144,9 @@ class RMSMonProcess(threading_tools.process_obj):
     def _update(self):
         self.__sge_info.update(no_file_cache=True, force_update=True)
         self.__sge_info.build_luts()
+
+    def _update_nodes(self):
+        self._update()
         _res = sge_tools.build_node_list(self.__sge_info, self.__node_options)
         self._generate_slotinfo(_res)
 
@@ -189,11 +202,8 @@ class RMSMonProcess(threading_tools.process_obj):
             _queue = _node.findtext("queue")
             _queue_names.add(_queue)
             _host_names.add(_host)
-            _su, _sr, _st = (
-                int(_node.findtext("slots_used")),
-                int(_node.findtext("slots_reserved")),
-                int(_node.findtext("slots_total")),
-            )
+            _si = _node.findtext("slot_info")
+            _su, _sr, _st = (int(_val) for _val in _si.split("/"))
             _state = _node.findtext("state")
             _queues["total"].feed(_st, _sr, _su, _state)
             if _queue not in _queues:
@@ -316,7 +326,10 @@ class RMSMonProcess(threading_tools.process_obj):
         # needed_dicts = opt_dict.get("needed_dicts", ["hostgroup", "queueconf", "qhost", "complexes"])
         # update_list = opt_dict.get("update_list", [])
         self.__sge_info.update(update_list=needed_dicts)
-        srv_com["sge"] = self.__sge_info.get_tree(file_dict=self.__job_content_dict)
+        srv_com["sge"] = self.__sge_info.get_tree(
+            file_dict=self.__job_content_dict,
+            pinning_dict=self.__job_pinning_dict,
+        )
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
         del srv_com
 
@@ -391,13 +404,73 @@ class RMSMonProcess(threading_tools.process_obj):
             )
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
+    def _affinity_info(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        job_id = srv_com["*job_id"]
+        task_id = srv_com["*task_id"]
+        action = srv_com["*action"]
+        if task_id and task_id.lower().isdigit():
+            task_id = int(task_id)
+            full_job_id = "{}.{:d}".format(job_id, task_id)
+        else:
+            task_id = None
+            full_job_id = job_id
+        process_id = int(srv_com["*process_id"])
+        _source_host = srv_com["source"].attrib["host"]
+        _source_dev = self._get_device(_source_host)
+        if action == "add":
+            target_cpu = int(srv_com["*target_cpu"])
+            self.log(
+                "pinning process {:d} of job {} to CPU {:d} (host: {})".format(
+                    process_id,
+                    full_job_id,
+                    target_cpu,
+                    unicode(_source_dev),
+                )
+            )
+        else:
+            self.log(
+                "removing process {:d} of job {} (host: {})".format(
+                    process_id,
+                    full_job_id,
+                    unicode(_source_dev),
+                )
+            )
+        if _source_dev is not None:
+            if action == "add":
+                self.__job_pinning_dict.setdefault(
+                    full_job_id, {}
+                ).setdefault(
+                    _source_dev.idx, {}
+                )[process_id] = target_cpu
+            else:
+                if full_job_id in self.__job_pinning_dict:
+                    if _source_dev.idx in self.__job_pinning_dict[full_job_id]:
+                        if process_id in self.__job_pinning_dict[full_job_id][_source_dev.idx]:
+                            del self.__job_pinning_dict[full_job_id][_source_dev.idx][process_id]
+        # import pprint
+        # pprint.pprint(self.__job_pinning_dict)
+
+    def _job_ended(self, *args, **kwargs):
+        job_id, task_id = (args[0], args[1])
+        if task_id:
+            full_job_id = "{}.{}".format(job_id, task_id)
+        else:
+            full_job_id = "{}".format(job_id)
+        if full_job_id in self.__job_pinning_dict:
+            self.log("removed job {} from pinning dict".format(full_job_id))
+            del self.__job_pinning_dict[full_job_id]
+        if full_job_id in self.__job_content_dict:
+            self.log("removed job {} from job_content_dict".format(full_job_id))
+            del self.__job_content_dict[full_job_id]
+
     def _file_watch_content(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
-        job_id = srv_com["send_id"].text.split(":")[0]
-        file_name = srv_com["name"].text
+        job_id = srv_com["*send_id"].split(":")[0]
+        file_name = srv_com["*name"]
         # in case of empty file
         content = srv_com["content"].text or ""
-        last_update = int(float(srv_com["update"].text))
+        last_update = int(float(srv_com["*update"]))
         self.log(
             u"got content for '{}' (job {}), len {:d} bytes, update_ts {:d}".format(
                 file_name,
@@ -447,3 +520,108 @@ class RMSMonProcess(threading_tools.process_obj):
         self.vector_socket.close()
         self.collectd_socket.close()
         self.__log_template.close()
+
+    # fairshare handling
+    def _update_fairshare(self):
+        self._update()
+        # get user list
+        cur_stat, cur_out = call_command(
+            "{} -suserl".format(
+                self._get_sge_bin("qconf"),
+            ),
+            log_com=self.log
+        )
+        if cur_stat:
+            # problem calling, return immediately
+            return
+        _users = [line.strip() for line in cur_out.split("\n")]
+        _fs_tree = self.__sge_info.get_tree().find("fstree")
+        if _fs_tree is not None:
+            # fairshare tree found
+            # check if all users are present
+            for _user in _users:
+                _user_el = _fs_tree.find(".//node[@name='{}']".format(_user))
+                if _user_el is None:
+                    _path = global_config["FAIRSHARE_TREE_NODE_TEMPLATE"].format(
+                        project="defaultproject",
+                        user=_user,
+                    )
+                    _shares = global_config["FAIRSHARE_TREE_DEFAULT_SHARES"]
+                    self.log(
+                        "No user element for user '{}' found, adding node at {} with {:d} shares".format(
+                            _user,
+                            _path,
+                            _shares,
+                        ),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
+                    cur_stat, cur_out = call_command(
+                        "{} -astnode {}={:d}".format(
+                            self._get_sge_bin("qconf"),
+                            _path,
+                            _shares,
+                        ),
+                        log_com=self.log
+                    )
+        else:
+            self.log("no fairshare tree element found", logging_tools.LOG_LEVEL_WARN)
+        # todo: match user list with sharetree config
+        cur_stat, cur_out = call_command(
+            "{} -n -c 1 ".format(
+                self._get_sge_bin("sge_share_mon"),
+            ),
+            log_com=self.log
+        )
+        _float_re = re.compile("^\d+\.\d+")
+        # headers
+        drop_com = server_command.srv_command(command="set_vector")
+        _bldr = drop_com.builder()
+        _rms_vector = _bldr("values")
+        # 10 minutes valid
+        act_time = int(time.time())
+        valid_until = act_time + 10 * 60
+        if not cur_stat:
+            for _line in cur_out.split("\n"):
+                _dict = {}
+                for _part in _line.strip().split():
+                    _header, _value = _part.split("=", 1)
+                    _header = _header.replace("%", "")
+                    if _float_re.match(_value):
+                        _dict[_header] = float(_value)
+                    elif _value.isdigit():
+                        _dict[_header] = int(_value)
+                    else:
+                        _dict[_header] = _value
+                # filter
+                if _dict["project_name"] == "defaultproject" and _dict.get("user_name", None):
+                    _user = _dict["user_name"]
+                    for _t_key, _key, _info in [
+                        ("cpu", "cpu", "CPU usage"),
+                        ("io", "io", "IO usage"),
+                        ("mem", "mem", "Memory usage"),
+                        ("ltcpu", "ltcpu", "long target CPU usage"),
+                        ("ltio", "ltio", "long target IO usage"),
+                        ("ltmem", "ltmem", "long target Memory usage"),
+                        ("job_count", "job_count", "Job count"),
+                        ("share.short_target", "short_target_share", "short target share"),
+                        ("share.long_target", "long_target_share", "long target share"),
+                        ("share.actual", "actual_share", "actual share"),
+                        ("shares", "shares", "configured shares"),
+                        ("level", "level", "level"),
+                        ("total", "total", "total"),
+                    ]:
+                        _rms_vector.append(
+                            hm_classes.mvect_entry(
+                                "rms.fairshare.{}.{}".format(_user, _t_key),
+                                info="{} for user {}".format(_info, _user),
+                                default=0.,
+                                value=_dict[_key],
+                                factor=1,
+                                valid_until=valid_until,
+                                base=1000,
+                            ).build_xml(_bldr)
+                        )
+
+        drop_com["vector_rms"] = _rms_vector
+        drop_com["vector_rms"].attrib["type"] = "vector"
+        self.vector_socket.send_unicode(unicode(drop_com))

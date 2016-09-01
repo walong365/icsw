@@ -2,11 +2,8 @@
 
 from __future__ import print_function
 
-import os
-import shlex
-import subprocess
 import select
-import time
+import subprocess
 
 
 class IAClass(object):

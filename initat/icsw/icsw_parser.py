@@ -49,6 +49,11 @@ import argparse
 
 from initat.icsw.service.instance import InstanceXML
 
+
+class ParseError(BaseException):
+    pass
+
+
 SC_MAPPING = {
     "service": ".service.service_parser",
     "user": ".user.user_parser",
@@ -63,8 +68,9 @@ SC_MAPPING = {
     "relay": ".relay.relay_parser",
     "cstore": ".cstore.cstore_parser",
     "logwatch": ".logwatch.logwatch_parser",
-    "server": ".service.service_parser",
+    # "server": ".service.service_parser",
     "config": ".config.config_parser",
+    "call": ".call.call_parser",
 }
 
 
@@ -89,17 +95,18 @@ class ICSWParser(object):
         try:
             _parser_module = importlib.import_module(SC_MAPPING[subcom], package="initat.icsw")
         except:
-            pass
+            sub_parser = None
         else:
             try:
-                _parser_module.Parser().link(
+                sub_parser = _parser_module.Parser().link(
                     self.sub_parser,
                     server_mode=server_mode,
                     instance_xml=inst_xml,
                 )
             except TypeError:
                 # can happen when old parsers are still in the path
-                pass
+                sub_parser = None
+        return sub_parser
 
     def _populate_all(self, server_mode, inst_xml):
         if not self.fully_populated:
@@ -108,7 +115,7 @@ class ICSWParser(object):
                 self._add_parser(_sc, server_mode, inst_xml)
 
     def _error(self, *args, **kwargs):
-        raise ValueError(args[0])
+        raise ParseError(args[0])
 
     def parse_args(self):
         # set constants
@@ -120,23 +127,36 @@ class ICSWParser(object):
         if _known.args and _known.args[0] in SC_MAPPING:
             _sc = _known.args[0]
             # add subcommand parser
-            self._add_parser(_sc, server_mode, inst_xml)
+            sub_parser = self._add_parser(_sc, server_mode, inst_xml)
         else:
-            # error parsing, fully popualte the parser
+            # error parsing, fully populate the parser
             self._populate_all(server_mode, inst_xml)
+            sub_parser = None
         # are there any unknown args ?
         # monkey-patch parser
         _prev_error = self._parser.error
         self._parser.error = self._error
         try:
             _known, _unknown = self._parser.parse_known_args()
-        except ValueError:
+        except ParseError as pe:
+            # error in parseing known args
             _known, _unknown = ("error", "error")
         finally:
             self._parser.error = _prev_error
-        if _unknown:
-            # yes, fully populate the parser
+        if _unknown and sub_parser is None:
+            # unknown arguments found but unable to parse known argument, so
+            # fully populate the parser and make a full scan
             self._populate_all(server_mode, inst_xml)
-        # parse and go
-        opt_ns = self._parser.parse_args()
+            opt_ns = self._parser.parse_args()
+        else:
+            _prev_error = self._parser.error
+            self._parser.error = self._error
+            try:
+                opt_ns = self._parser.parse_args()
+            except ParseError as pe:
+                print("ParseError: {}\n".format(str(pe)))
+                sub_parser.print_help()
+                sys.exit(2)
+            finally:
+                self._parser.error = _prev_error
         return opt_ns

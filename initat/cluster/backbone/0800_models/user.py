@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -279,6 +279,13 @@ class group(models.Model):
     # new model
     perms = models.ManyToManyField(csw_permission, related_name="db_group_perms", blank=True, through=group_permission)
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_group_perms", blank=True, through=group_object_permission)
+
+    # for Django1.10
+    def is_anonymous(self):
+        return False
+
+    def is_authenticated(self):
+        return True
 
     class Meta:
         db_table = u'ggroup'

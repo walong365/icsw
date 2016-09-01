@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,6 +25,7 @@ import sys
 import time
 
 from django.db.models import Q
+
 from initat.cluster.backbone.models import WrittenConfigFile, ConfigTreeNode
 from initat.cluster_config_server.base_objects import new_config_object, dir_object, copy_object, \
     link_object, delete_object, file_object

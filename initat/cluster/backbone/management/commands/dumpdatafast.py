@@ -32,7 +32,6 @@ import time
 import zipfile
 from collections import Counter
 from functools import partial
-from optparse import make_option
 
 import networkx as nx
 import pytz
@@ -42,7 +41,7 @@ from django.core.management.base import BaseCommand, CommandError
 from django.db import DEFAULT_DB_ALIAS, connection
 from django.db.models import ForeignKey, OneToOneField, Model, ManyToManyField
 from django.utils import datetime_safe
-from django.utils.datastructures import SortedDict
+from collections import OrderedDict
 from django.utils.encoding import smart_unicode
 
 from initat.tools import logging_tools, process_tools
@@ -116,35 +115,58 @@ def critical(x):
 
 
 class Command(BaseCommand):
-    option_list = BaseCommand.option_list + (
-        make_option('--database', action='store', dest='database',
-                    default=DEFAULT_DB_ALIAS, help='Nominates a specific database to dump '
-                    'fixtures from. Defaults to the "default" database.'),
-        make_option('-e', '--exclude', dest='exclude', action='append', default=[],
-                    help='An appname or appname.ModelName to exclude (use multiple'
-                    ' --exclude to exclude multiple apps/models).'),
-        make_option('-d', '--directory', action='store', default='/tmp', help=''
-                    'The output directory (default: %default'),
-        make_option('-s', '--stats', action='store_true', help='Show stats for '
-                    'each dumped model'),
-        make_option('-i', '--iterator', action="store_true", help="Use custom "
-                    "QuerySet iterator. (Saves RAM, takes more time)"),
-        make_option('-c', '--count', action="store", default=None, type=int, help="Maximum count"
-                    "of objects to dump per model"),
-        make_option('-b', "--bz2", action="store_true", help="bzip2 the resulting"
-                    " postgres dumps"),
-        make_option("-p", "--progress", action="store_true", help="Print progress"
-                    " bar"),
-        make_option("-z", "--step-size", action="store", type=int, default=2000,
-                    help="Iterator step size (default %default)"),
-        make_option("--one-file", type=str, default="", help="generate one zip file (default '%default', relative to directory)"),
-        make_option("-r", "--validate", action="store_true", help="Dump "
-                    "only data with valid relations"),
-        make_option("-m", "--missing", action="store_true", help="Print missing "
-                    "foreign keys. Use with --validate")
-
-    )
     help = "Output the contents of the database in PostgreSQL dump format. "
+
+    def add_arguments(self, parser):
+        parser.add_argument(
+            '--database', action='store', dest='database',
+            default=DEFAULT_DB_ALIAS, help='Nominates a specific database to dump '
+            'fixtures from. Defaults to the "default" database.'
+        )
+        parser.add_argument(
+            '-e', '--exclude', dest='exclude', action='append', default=[],
+            help='An appname or appname.ModelName to exclude (use multiple'
+            ' --exclude to exclude multiple apps/models).'
+        )
+        parser.add_argument(
+            '-d', '--directory', action='store', default='/tmp', help=''
+            'The output directory (default: %default'
+        )
+        parser.add_argument(
+            '-s', '--stats', action='store_true', help='Show stats for '
+            'each dumped model'
+        )
+        parser.add_argument(
+            '-i', '--iterator', action="store_true", help="Use custom "
+            "QuerySet iterator. (Saves RAM, takes more time)"
+        )
+        parser.add_argument(
+            '-c', '--count', action="store", default=None, type=int, help="Maximum count"
+            "of objects to dump per model"
+        )
+        parser.add_argument(
+            '-b', "--bz2", action="store_true", help="bzip2 the resulting"
+            " postgres dumps"
+        )
+        parser.add_argument(
+            "-p", "--progress", action="store_true", help="Print progress bar"
+        )
+        parser.add_argument(
+            "-z", "--step-size", action="store", type=int, default=2000,
+            help="Iterator step size (default %default)"
+        )
+        parser.add_argument(
+            "--one-file", type=str, default="", help="generate one zip file (default '%default', relative to directory)"
+        )
+        parser.add_argument(
+            "-r", "--validate", action="store_true", help="Dump "
+            "only data with valid relations"
+        )
+        parser.add_argument(
+            "-m", "--missing", action="store_true", help="Print missing "
+            "foreign keys. Use with --validate"
+        )
+
     args = '[appname appname.ModelName ...]'
 
     def handle(self, *app_labels, **options):
@@ -205,9 +227,9 @@ class Command(BaseCommand):
                     raise CommandError(msg)
 
         if len(app_labels) == 0:
-            app_list = SortedDict((app, None) for app in get_apps() if app not in excluded_apps)
+            app_list = OrderedDict((app, None) for app in get_apps() if app not in excluded_apps)
         else:
-            app_list = SortedDict()
+            app_list = OrderedDict()
             for label in app_labels:
                 try:
                     app_label, model_label = label.split('.')

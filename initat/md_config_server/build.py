@@ -372,7 +372,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             # check for SNMP container config
             self._check_for_snmp_container()
         # copy from global_config (speedup)
-        self.gc = configfile.gc_proxy(global_config)
+        self.gc = configfile.InMemoryProxy(global_config)
         hdep_from_topo = self.gc["USE_HOST_DEPENDENCIES"] and self.gc["HOST_DEPENDENCIES_FROM_TOPOLOGY"]
         if hdep_from_topo:
             host_deps = mon_host_dependency_templ.objects.all().order_by("-priority")

@@ -26,21 +26,24 @@ import json
 import logging
 
 from django.apps import apps
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http.response import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from lxml.builder import E
+from rest_framework import viewsets
 from rest_framework.generics import RetrieveAPIView
 from rest_framework.response import Response
+from rest_framework.routers import DefaultRouter
 
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, user_object_permission, device, License, device_variable
 from initat.cluster.backbone.models.functions import db_t2000_limit
-from initat.cluster.backbone.serializers import group_object_permission_serializer, user_object_permission_serializer
+from initat.cluster.backbone.serializers import RolePermissionSerializer, RoleObjectPermissionSerializer, \
+    user_variable_serializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.license_views import login_required_rest
 from initat.cluster.frontend.rest_views import rest_logging
@@ -48,6 +51,9 @@ from initat.server_version import VERSION_STRING, VERSION_MAJOR, BUILD_MACHINE
 from initat.tools import config_tools, server_command
 
 logger = logging.getLogger("cluster.user")
+
+# local router for local REST urls
+local_router = DefaultRouter()
 
 
 class get_num_quota_servers(View):
@@ -66,7 +72,7 @@ class sync_users(View):
         ).filter(
             Q(home_dir_created=False) & Q(active=True) & Q(group__active=True)
         ).select_related("export__device")
-        logger.info("user homes to create: %d" % (len(create_user_list)))
+        logger.info("user homes to create: {:d}".format(len(create_user_list)))
         for create_user in create_user_list:
             logger.info(
                 "trying to create user_home for '{}' on server {}".format(
@@ -84,70 +90,16 @@ class sync_users(View):
             _result = contact_server(request, "md-config", srv_com)
 
 
-class set_user_var(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        _post = request.POST
-        user_vars = request.session["user_vars"]
-        key, value = (_post["key"], _post["value"])
-        v_type = _post.get("type", "unicode")
-        if v_type == "unicode":
-            value = unicode(value)
-        elif v_type == "str":
-            value = str(value)
-        elif v_type == "int":
-            value = int(value)
-        elif v_type == "bool":
-            value = True if value.lower() in ["true"] else False
-        logger.info(
-            "setting user_var '{}' to '{}' (type {})".format(
-                key,
-                str(value),
-                v_type,
-            )
-        )
-        if key in user_vars:
-            if user_vars[key].value != value:
-                user_vars[key].value = value
-                user_vars[key].save()
-        else:
-            user_vars[key] = user_variable.objects.create(
-                user=request.user,
-                name=key,
-                value=value
-            )
-        request.session.save()
-
-
-class get_user_var(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        var_name = request.POST["var_name"]
-        if var_name.endswith("*"):
-            found_uv = [key for key in request.session["user_vars"] if key.startswith(var_name[:-1])]
-        else:
-            found_uv = [key for key in request.session["user_vars"] if key == var_name]
-        user_vars = [request.session["user_vars"][key] for key in found_uv]
-        request.xml_response["result"] = E.user_variables(
-            *[
-                E.user_variable(
-                    unicode(cur_var.value),
-                    name=cur_var.name,
-                    type=cur_var.var_type
-                ) for cur_var in user_vars
-            ]
-        )
-
-
 class change_object_permission(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
         auth_pk = int(_post["auth_pk"])
-        auth_obj = {"g": group, "u": user}[_post["auth_type"]].objects.get(Q(pk=auth_pk))
+        auth_obj = {
+            "g": group,
+            "u": user
+        }[_post["auth_type"]].objects.get(Q(pk=auth_pk))
         set_perm = csw_permission.objects.select_related("content_type").get(Q(pk=_post["csw_idx"]))
         obj_pk = int(_post["obj_idx"])
         add = True if int(_post["set"]) else False
@@ -353,16 +305,17 @@ class GetGlobalPermissions(RetrieveAPIView):
         for _key in _keys:
             _parts = _key.split(".")
             in_dict.setdefault(_parts[0], {}).setdefault(_parts[1], {})[_parts[2]] = in_dict[_key]
+        in_dict["__authenticated"] = True
         return in_dict
 
-    @method_decorator(login_required_rest(lambda: {}))
+    @method_decorator(login_required_rest(lambda: {"__authenticated": False}))
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response(self._unfold(request.user.get_global_permissions()))
 
 
 class GetObjectPermissions(RetrieveAPIView):
-    @method_decorator(login_required_rest(lambda: {}))
+    @method_decorator(login_required_rest(lambda: {"__authenticated": False}))
     @rest_logging
     def get(self, request, *args, **kwargs):
         return Response(GetGlobalPermissions._unfold(request.user.get_all_object_perms(None)))
@@ -381,3 +334,34 @@ class GetInitProduct(RetrieveAPIView):
                 "build_machine": BUILD_MACHINE,
             }
         )
+
+
+class UserVariableViewSet(viewsets.ModelViewSet):
+    queryset = user_variable.objects.all()
+    serializer_class = user_variable_serializer
+
+    def post(self, request):
+        print "-" * 20
+        cur_var = self.get_object()
+        print "**", cur_var
+        print "*", request.data
+        _var = user_variable.objects.get(pk=1)
+        serializer = user_variable_serializer(_var)
+        return Response(serializer.data)
+
+class set_theme(RetrieveAPIView):
+    @method_decorator(login_required_rest(lambda: {"__authenticated": False}))
+    @rest_logging
+    def get(self, request):
+        _get = request.GET
+        act_user = request.user
+        theme = _get.get("theme", settings.THEME_DEFAULT)
+        act_user.ui_theme_selection = theme
+        act_user.save(update_fields=["ui_theme_selection"])
+        return Response(
+            {
+                'name': theme,
+            }
+        )
+
+local_router.register("user_variable_new", UserVariableViewSet)

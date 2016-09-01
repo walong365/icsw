@@ -157,7 +157,8 @@ def _input(in_str, default, **kwargs):
     if len(_choices) == 1:
         return _choices[0]
     _cur_inp = None
-    while True:
+
+    while sys.stdin.isatty():
         try:
             _cur_inp = raw_input(
                 "{:<30s} : ".format(
@@ -243,8 +244,8 @@ def init_webfrontend(opts):
                 )
                 file(_target, "w").write(_output)
     for _what, _command, _target in [
-        ("modify app.js", "inject_addons --srcfile /srv/www/init.at/icsw/app.js --modify", None),
-        ("modify main.html", "inject_addons --srcfile /srv/www/init.at/icsw/main.html --modify", None),
+        ("modify app.js", "inject_addons --srcfile /srv/www/init.at/icsw/app.js --modify --with-addons=yes", None),
+        ("modify main.html", "inject_addons --srcfile /srv/www/init.at/icsw/main.html --modify --with-addons=yes", None),
     ]:
         print(_what)
         _success, _output = call_manage(_command.split(), output=True)
@@ -503,7 +504,7 @@ class Migration(migrations.Migration):
     ]
 """
     )
-    _list_stat, _list_out = call_manage(["migrate", "backbone", "--list", "--no-color"], output=True)
+    _list_stat, _list_out = call_manage(["showmigrations", "backbone", "--no-color"], output=True)
     dummy_mig.restore()
     ds0.restore()
     ds0.cleanup()
@@ -618,7 +619,7 @@ def migrate_db(opts):
                 print("found app {}, disabled automatic migrations, please migrate by hand".format(_sync_app))
                 # call_manage(["makemigrations", _sync_app, "--noinput"])
                 # call_manage(["migrate", _sync_app, "--noinput"])
-        subprocess.check_output("/opt/cluster/sbin/pis/check_content_stores.py")
+        subprocess.check_output("/opt/cluster/sbin/pis/check_content_stores_server.py")
         auth_app_name = "django.contrib.auth"
         for _app in ["backbone", auth_app_name, "reversion", "django.contrib.admin", "django.contrib.sessions", "django.contrib.sites"]:
             if app_has_unapplied_migrations(_app.split(".")[-1]):
@@ -665,8 +666,8 @@ def create_version_entries():
 
 @SetupLogger
 def create_fixtures():
-    call_manage(["create_fixtures"])
-    call_manage(["init_icsw_permissions"])
+    call_manage(["create_icsw_fixtures"])
+    call_manage(["init_icsw_permissions", "--modify"])
 
 
 @SetupLogger

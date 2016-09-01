@@ -312,7 +312,7 @@ class all_commands(host_type_config):
                 cats = [cur_cat.full_name for cur_cat in ngc.categories.all()]  # .values_list("full_name", flat=True)
                 cat_pks = [cur_cat.pk for cur_cat in ngc.categories.all()]
             else:
-                cats = [TOP_MONITORING_CATEGORY]
+                cats = ["/{}".format(TOP_MONITORING_CATEGORY)]
                 cat_pks = []
             if ngc.mon_check_command_special_id:
                 com_line = mccs_dict[ngc.mon_check_command_special_id].command_line

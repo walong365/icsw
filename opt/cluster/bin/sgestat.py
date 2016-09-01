@@ -69,7 +69,7 @@ def sjs(s_info, opt_dict):
         ret_list.append(str(r_out_list))
     # waiting jobs
     w_out_list = logging_tools.new_form_list()
-    left_justified = set(["id", "task", "depends"])
+    left_justified = {"id", "task", "depends"}
     wait_list = sge_tools.build_waiting_list(s_info, opt_dict)
     for wait_job in wait_list:
         w_out_list.append(
@@ -102,6 +102,9 @@ def sns(s_info, opt_dict):
         "complex", "pe_list", "userlists", "projects", "jobs"
     }
     short_dict = {
+        # one queue per line
+        # "slot_info": "si",
+        # for merged info
         "slots_used": "su",
         "slots_reserved": "sr",
         "slots_total": "st",
@@ -290,7 +293,7 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("--seq", dest="show_seq", help="show sequence number [%(default)s]", action="store_true", default=False)
             self.add_argument("-u", dest="users", type=str, help="show only jobs of user [%(default)s]", action="append", default=[])
             self.add_argument("-c", dest="complexes", type=str, help="show only jobs with the given complexes [%(default)s]", action="append", default=[])
-            self.add_argument("-w", dest="detailed_wait", default=False, help="show detailed wait statistics [%(default)s]", action="store_true")
+            self.add_argument("-w", dest="queue_details", default=False, help="show detailed wait statistics [%(default)s]", action="store_true")
             self.add_argument(
                 "-e",
                 dest="show_nonstd",
@@ -307,6 +310,7 @@ class my_opt_parser(argparse.ArgumentParser):
             self.add_argument("--pe", dest="show_pe", help="show pe information [%(default)s]", action="store_true", default=False)
             self.add_argument("-J", dest="merge_node_queue", help="merge node with queues in output [%(default)s]", action="store_true", default=False)
             self.add_argument("-q", dest="queue_name", type=str, default="", help="queue to show [%(default)s]")
+            self.add_argument("--notopo", action="store_false", dest="show_topology", default=True, help="suppress topology [%(default)s]")
         elif run_mode == "sjs":
             # self.add_argument("-s", dest="no_status", help="suppress status [%(default)s]", action="store_true", default=False)
             self.add_argument("--valid", dest="only_valid_waiting", help="show only valid waiting jobs [%(default)s]", action="store_true", default=False)
@@ -346,7 +350,7 @@ def get_server():
 def stress_system():
     from initat.tools import process_tools
     # stress sge info
-    s_si = sge_tools.sge_info(
+    s_si = sge_tools.SGEInfo(
         server="localhost",
         default_pref=["server"],
         never_direct=True,
@@ -356,7 +360,12 @@ def stress_system():
     _iter = 0
     while True:
         if not _iter % 20:
-            print("iteration: {:3d}, memory usage: {}".format(_iter, logging_tools.get_size_str(process_tools.get_mem_info())))
+            print(
+                "iteration: {:3d}, memory usage: {}".format(
+                    _iter,
+                    logging_tools.get_size_str(process_tools.get_mem_info())
+                )
+            )
         s_si.update()
         _iter += 1
         if _iter == 1000:
@@ -379,7 +388,7 @@ def main():
         options = my_opt_parser(run_mode).parse_args()
     if getattr(options, "stress", False):
         stress_system()
-    act_si = sge_tools.sge_info(
+    act_si = sge_tools.SGEInfo(
         verbose=options.verbose,
         log_command=log_com,
         server=get_server(),
@@ -439,12 +448,15 @@ def main():
         else:
             sns(act_si, options)
     else:
-        print "Unknown runmode {}".format(run_mode)
+        print("Unknown runmode {}".format(run_mode))
     e_time = time.time()
     if not options.interactive:
-        print "took {} / {}".format(
-            logging_tools.get_diff_time_str(s_time - c_time),
-            logging_tools.get_diff_time_str(e_time - s_time))
+        print(
+            "took {} / {}".format(
+                logging_tools.get_diff_time_str(s_time - c_time),
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )
 
 if __name__ == "__main__":
     main()

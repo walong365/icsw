@@ -4,7 +4,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# This file is part of webfrontend
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -42,7 +42,7 @@ from rest_framework_xml.parsers import XMLParser
 from rest_framework_xml.renderers import XMLRenderer
 
 from initat.cluster.backbone import serializers
-from initat.cluster.backbone.models import config, device, device_config, ConfigTreeNode, \
+from initat.cluster.backbone.models import device, device_config, ConfigTreeNode, \
     get_related_models, mon_check_command, category, config_str, config, \
     config_script, config_bool, config_blob, config_int, config_catalog
 from initat.cluster.backbone.serializers import config_dump_serializer, mon_check_command_serializer
@@ -350,9 +350,12 @@ class download_configs(View):
     @method_decorator(login_required)
     def get(self, request, *args, **kwargs):
         conf_ids = json.loads(kwargs["hash"])
-        logger.info("got download request for {}: {}".format(
-            logging_tools.get_plural("config", len(conf_ids)),
-            ", ".join(["{:d}".format(val) for val in sorted(conf_ids)])))
+        logger.info(
+            "got download request for {}: {}".format(
+                logging_tools.get_plural("config", len(conf_ids)),
+                ", ".join(["{:d}".format(val) for val in sorted(conf_ids)])
+            )
+        )
         configs = []
         # res_xml.append(configs)
         conf_list = getattr(config, "objects").filter(Q(pk__in=conf_ids)).prefetch_related(
@@ -366,12 +369,12 @@ class download_configs(View):
         )
         for cur_conf in conf_list:
             configs.append(config_dump_serializer(cur_conf).data)
-        xml_tree = etree.fromstring(XMLRenderer().render(configs))  # @UndefinedVariable
+        xml_tree = etree.fromstring(XMLRenderer().render(configs))
         # remove all idxs and parent_configs
         for pk_el in xml_tree.xpath(".//idx|.//parent_config|.//categories|.//date", smart_strings=False):
             pk_el.getparent().remove(pk_el)
         act_resp = HttpResponse(
-            etree.tostring(xml_tree, pretty_print=True),  # @UndefinedVariable
+            etree.tostring(xml_tree, pretty_print=True),
             content_type="application/xml"
         )
         act_resp["Content-disposition"] = "attachment; filename=config_{}.xml".format(
@@ -508,11 +511,16 @@ class handle_cached_config(View):
 
     def _take_config(self, request, conf, ccat):
         _sets = {}
-        for key in conf.iterkeys():
-            # remove all subsets, needed because of limitations in DRF
-            if key.endswith("_set") and conf[key]:
-                _sets[key] = conf[key]
-                conf[key] = []
+        # for key in conf.iterkeys():
+        #    # remove all subsets, needed because of limitations in DRF
+        #    if key.endswith("_set") and conf[key]:
+        #        _sets[key] = conf[key]
+        #        conf[key] = []
+        if not conf.get("description", None):
+            # fix missing or None description
+            conf["description"] = ""
+        import pprint
+        pprint.pprint(conf)
         _ent = config_dump_serializer(data=conf)
         added = 0
         sub_added = 0
@@ -535,12 +543,17 @@ class handle_cached_config(View):
         if _take:
             if _ent.is_valid():
                 print dir(_ent)
+                print "*", dummy_name
                 _ent.create_default_entries = False
                 try:
-                    # store config catalog
+                    # store config with config catalog
+                    print "a"
                     _ent.save(name=dummy_name, config_catalog=ccat)
+                    print "b"
                     # pass
                 except:
+                    for entry in process_tools.exception_info().log_lines:
+                        logger.log(logging_tools.LOG_LEVEL_ERROR, entry)
                     request.xml_response.error(
                         "error saving entry '{}': {}".format(
                             unicode(_ent),

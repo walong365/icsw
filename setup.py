@@ -56,6 +56,7 @@ setup(
         "initat.rms",
         "initat.cluster",
         "initat.cluster.backbone",
+        "initat.cluster.backbone.tools",
         "initat.cluster.backbone.0800_models",
         "initat.cluster.backbone.models",
         "initat.cluster.backbone.exceptions",
@@ -87,6 +88,7 @@ setup(
         "initat.md_config_server.special_commands",
         "initat.md_config_server.special_commands.instances",
         "initat.md_config_server.kpi",
+        "initat.md_sync_server",
         "initat.package_install",
         "initat.package_install.server",
         "initat.package_install.client",
@@ -176,7 +178,8 @@ setup(
                 "opt/cluster/sbin/pis/icsw_client_post_install.sh",
                 "opt/cluster/sbin/pis/icsw_server_post_install.sh",
                 "opt/cluster/sbin/pis/merge_client_configs.py",
-                "opt/cluster/sbin/pis/check_content_stores.py",
+                "opt/cluster/sbin/pis/check_content_stores_server.py",
+                "opt/cluster/sbin/pis/check_content_stores_client.py",
                 "opt/cluster/sbin/pis/icsw_pis_tools.sh",
             ]
         ),
@@ -266,36 +269,7 @@ setup(
         ),
 
     ],
-    scripts=[
-    ],
     package_data={
-        "initat.cluster.frontend": [
-            # "static/css/*",
-            # "static/fonts/*",
-            # "static/icons/*",
-            # "static/icsw/*/*.coffee",
-            # "static/icsw/*/*.html",
-            # "static/icsw/*/*/*.coffee",
-            # "static/icsw/*/*/*.html",
-            # "static/images/*",
-            # "static/images/*/*",
-            # "static/images/*/*/*",
-            # "static/css/*",
-            # "static/css/*/*",
-            # "static/js/*",
-            # "static/js/*/*",
-            # "static/js/*/*/*",
-            # "static/js/*/*/*/*",
-            # "static/js/*/*/*/*/*",
-            # "templates/*.html",
-            # "templates/js/*.js",
-        ],
-        "initat.cluster": [
-            # "runserver.sh",
-        ],
-        "initat.cluster.rms": [
-            # "templates/*.html",
-        ],
         "initat.cluster.backbone": [
             "fixtures_deprecated/*.xml",
         ],

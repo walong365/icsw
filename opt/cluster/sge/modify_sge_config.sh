@@ -20,6 +20,7 @@ echo "Architecture is $ARCH (root is $SGE_ROOT)"
 # adding usefull stuff to SGE (PEs and so one)
 pe_tmp=`mktemp /tmp/.pe_XXXXXX`
 conf_temp=`mktemp /tmp/.conf_XXXXXX`
+ss_temp=`mktemp /tmp/.sstree_XXXXXX`
 orte_pe_name="orte";
 simple_pe_name="simple";
 pvm_pe_name="pvm";
@@ -82,17 +83,16 @@ prolog root@${SGE_ROOT}/3rd_party/prologue \$host \$job_owner \$job_id \$job_nam
 epilog root@${SGE_ROOT}/3rd_party/epilogue \$host \$job_owner \$job_id \$job_name \$queue 
 shell_start_mode posix_compliant
 reschedule_unknown 00:30:00
-enforce_project true
-enforce_user true
 qmaster_params ENABLE_FORCED_QDEL
-execd_params ACCT_RESERVED_USAGE,NO_REPRIORITIZATION,SHARETREE_RESERVED_USAGE,ENABLE_ADDGRP_KILL=true,NOTIFY_KILL,H_MEMORYLOCKED=infinity
+execd_params ACCT_RESERVED_USAGE,NO_REPRIORITIZATION,ENABLE_ADDGRP_KILL=true,NOTIFY_KILL,H_MEMORYLOCKED=infinity,ENABLE_BINDING
 qlogin_command ${SGE_ROOT}/3rd_party/qlogin_wrapper.sh
 rlogin_command /usr/bin/ssh
 qlogin_daemon /usr/sbin/sshd -i
 rlogin_daemon /usr/sbin/sshd -i
 xterm /usr/bin/xterm
 enforce_project false
-enforce_user false
+auto_user_fshare 1000
+enforce_user auto
 EOF
 #echo "rsh_command none" >> /tmp/.qconf_config
 #echo "rsh_daemon none" >> /tmp/.qconf_config
@@ -103,16 +103,36 @@ qconf -mconf global
 
 # generate scheduler config file
 # generate general config file
+# halftime equals 2 days
 cat > /tmp/.qconf_config << EOF
 flush_submit_sec 1
 flush_finish_sec 1
+halftime 48
 EOF
 
 echo "Modifying SGE schedulerconfig, storing old one in /tmp/.sge_sconf_old ..."
 qconf -ssconf > /tmp/.sge_sconf_old
 qconf -msconf
 
-rm -f ${pe_tmp} ${conf_temp}
+# add fairsharetree
+qconf -sstree >/dev/null 2>&1 || {
+    echo "Creating default FairShare tree"
+    cat > ${ss_temp} << EOF
+id=0
+name=Root
+type=0
+shares=1000
+childnodes=1
+id=1
+name=defaultproject
+type=0
+shares=1000
+childnodes=NONE
+EOF
+    qconf -Astree ${ss_temp}
+}
+
+rm -f ${pe_tmp} ${conf_temp} ${ss_temp}
 unset EDITOR
 
 echo "Copying sge_request and sge_qstat to ${SGE_ROOT}/${SGE_CELL}/common"

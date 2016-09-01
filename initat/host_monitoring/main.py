@@ -36,6 +36,7 @@ from initat.icsw.service.instance import InstanceXML
 
 COLLCLIENT = False
 
+
 def run_code(prog_name, global_config):
     if COLLCLIENT:
         prog_name = "collclient"
@@ -70,7 +71,7 @@ def main():
                 ("IDENTITY_STRING", configfile.str_c_var("collclient", help_string="identity string", short_options="i")),
                 ("TIMEOUT", configfile.int_c_var(10, help_string="set timeout [%(default)d", only_commandline=True)),
                 (
-                    "COM_PORT",
+                    "COMMAND_PORT",
                     configfile.int_c_var(
                         InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True),
                         info="listening Port",

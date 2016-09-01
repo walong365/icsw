@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,8 +25,8 @@ from django.db import connection
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device, network, config, log_level_lookup, LogSource, \
-    net_ip
+from initat.cluster.backbone.models import device, network, config, LogSource, net_ip
+from initat.cluster.backbone.models.device import log_level_lookup
 from initat.cluster.backbone.routing import get_server_uuid, get_type_from_config
 from initat.cluster_config_server.build_client import build_client
 from initat.cluster_config_server.build_container import GeneratedTree, BuildContainer
@@ -86,12 +86,14 @@ class network_tree(dict):
 
 class build_process(threading_tools.process_obj):
     def process_init(self):
+        global_config.close()
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
             global_config["LOG_DESTINATION"],
             zmq=True,
             context=self.zmq_context,
-            init_logger=True)
+            init_logger=True
+        )
         # close database connection
         db_tools.close_connection()
         self.router_obj = config_tools.router_object(self.log)
@@ -221,7 +223,7 @@ class build_process(threading_tools.process_obj):
         cur_c.log("built took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
         if global_config["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
-            cur_c.log("queries issued: %d" % (tot_query_count))
+            cur_c.log("queries issued: {:d}".format(tot_query_count))
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
                 cur_c.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
         # pprint.pprint(cur_c.get_send_dict())

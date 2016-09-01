@@ -65,5 +65,4 @@ def main():
         ]
     )
     server_process(options).loop()
-    configfile.terminate_manager()
     os._exit(0)

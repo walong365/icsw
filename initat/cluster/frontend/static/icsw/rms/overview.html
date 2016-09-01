@@ -21,6 +21,12 @@
         <uib-tab heading="{{ struct.rms.node.info }}">
             <icsw-rms-queue-table icsw-rms-struct="struct.rms.node" icsw-rms-global="struct"></icsw-rms-queue-table>
         </uib-tab>
+        <uib-tab ng-if="struct.fstree_present" select="select_fairshare_tree()">
+            <uib-tab-heading>
+                FairShare tree
+            </uib-tab-heading>
+            <icsw-rms-fair-share-tree></icsw-rms-fair-share-tree>
+        </uib-tab>
         <uib-tab ng-repeat="(key, io_struct) in struct.io_dict" active="io_struct.active">
             <uib-tab-heading>
                 {{ key }}
@@ -38,12 +44,12 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.job.running.table">
-    <table st-table="struct.displayed_entries" st-safe-src="struct.list" class="table table-condensed table-hover table-striped" style="width:auto;">
+    <table st-table="struct.displayed_entries" st-safe-src="struct.list" class="table table-condensed table-striped" style="width:auto;">
         <thead>
             <tr icsw-rms-table-headers icsw-rms-struct="struct" class="info"></tr>
             <tr>
                 <td colspan="99">
-                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11"
                          possible-items-by-page="10,20,50,100,200,500,1000"></div>
                 </td>
             </tr>
@@ -68,12 +74,12 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.job.waiting.table">
-    <table st-table="struct.displayed_entries" st-safe-src="struct.list" class="table table-condensed table-hover table-striped" style="width:auto;">
+    <table st-table="struct.displayed_entries" st-safe-src="struct.list" class="table table-condensed table-striped" style="width:auto;">
         <thead>
             <tr icsw-rms-table-headers icsw-rms-struct="struct" class="info"></tr>
             <tr>
                 <td colspan="99">
-                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11"
                          possible-items-by-page="10,20,50,100,200,500,1000"></div>
                 </td>
             </tr>
@@ -93,12 +99,12 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.job.done.table">
-    <table st-table="struct.displayed_entries" st-safe-src="struct.list" class="table table-condensed table-hover" style="width:auto;">
+    <table st-table="struct.displayed_entries" st-safe-src="struct.list" class="table table-condensed" style="width:auto;">
         <thead>
             <tr icsw-rms-table-headers icsw-rms-struct="struct" class="info"></tr>
             <tr>
                 <td colspan="99">
-                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11"
                          possible-items-by-page="10,20,50,100,200,500,1000"></div>
                 </td>
             </tr>
@@ -118,12 +124,12 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.queue.table">
-    <table st-table="struct.displayed_entries" st-safe-src="struct.queue_list" class="table table-condensed table-hover" style="width:auto;">
+    <table st-table="struct.displayed_entries" st-safe-src="struct.queue_list" class="table table-condensed" style="width:auto;">
         <thead>
             <tr icsw-rms-table-headers icsw-rms-struct="struct" class="info"></tr>
             <tr>
                 <td colspan="99">
-                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11"
                          possible-items-by-page="10,20,50,100,200,500,1000"></div>
                 </td>
             </tr>
@@ -145,17 +151,16 @@
 <script type="text/ng-template" id="icsw.rms.iostruct">
     <h4>
         {{ io_struct.get_file_info() }}, 
-        <button class="btn btn-xs" ng-class="io_struct.update && 'btn-success' || ''" ng-click="io_struct.update = !io_struct.update">
+        <button class="btn btn-xs" ng-class="io_struct.update && 'btn-success' || 'btn-default'" ng-click="io_struct.update = !io_struct.update">
            <span class="fa fa-refresh"/> reload
         </button>
-        <button class="btn btn-xs" ng-class="io_struct.editorOptions.followTail && 'btn-success' || ''" ng-click="io_struct.editorOptions.followTail = !io_struct.editorOptions.followTail">
+        <button class="btn btn-xs" ng-class="io_struct.follow_tail && 'btn-success' || 'btn-default'" ng-click="io_struct.toggle_follow_tail()">
            <span class="fa fa-arrow-down"/> follow
         </button>
     </h4>
     <div>
         <tt>
-            <textarea ui-codemirror="io_struct.editorOptions" ng-model="io_struct.text">
-            </textarea>
+            <div ui-ace="io_struct.ace_options" ng-model="io_struct.text" style="height:600px;"></div>
         </tt>
     </div>
 </script>
@@ -184,7 +189,7 @@
         <div>
             <input
                 type="button"
-                ng-class="job.file_info_dict[file[0]].show && 'btn btn-xs btn-success' || 'btn btn-xs'"
+                ng-class="job.file_info_dict[file[0]].show && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
                 ng-click="job.file_info_dict[file[0]].show = !job.file_info_dict[file[0]].show"
                 ng-value="job.file_info_dict[file[0]].show && 'hide' || 'show'"
             />
@@ -199,10 +204,14 @@
 <script type="text/ng-template" id="icsw.rms.queue.line">
     <td ng-show="struct.toggle['host']">
         {{ queue.host.host.value }}&nbsp;
-        <icsw-tools-button type="draw" size="xs" ng-show="queue.host.$$has_rrd" ng-click="gstruct.draw_rrd($event, queue.host)">
-        </icsw-tools-button>
+        <span class="pull-right">
+            <icsw-tools-button type="info" size="xs" ng-click="click_node($evvent, queue.host.$$device)" ng-show="queue.host.$$device">
+            </icsw-tools-button>
+            <icsw-tools-button type="draw" size="xs" ng-show="queue.host.$$has_rrd" ng-click="gstruct.draw_rrd($event, queue.host.$$rrd_device_ids)">
+            </icsw-tools-button>
+        </span>
     </td>
-    <td ng-show="struct.toggle['queues']">
+    <td ng-if="struct.toggle['queues']">
         <icsw-rms-queue-state icsw-rms-queue="queue" ng-if="gstruct.rms_operator"></icsw-rms-queue-state>
         <span
             ng-if="!gstruct.rms_operator"
@@ -211,48 +220,43 @@
             {{ queue.name }} : {{ queue.state.value }}
         </span>
     </td>
-    <td ng-show="struct.toggle['type']">
-        {{ queue.type.value }}
+    <td ng-if="struct.toggle['seqno']">
+        {{ :: queue.seqno.value }}
     </td>
-    <td ng-show="struct.toggle['complex']">
-        {{ queue.complex.value }}
+    <td ng-if="struct.toggle['type']">
+        {{ ::queue.type.value }}
     </td>
-    <td ng-show="struct.toggle['pe_list']">
-        {{ queue.pe_list.value }}
+    <td ng-if="struct.toggle['complex']">
+        {{ ::queue.complex.value }}
     </td>
-    <td ng-show="struct.toggle['load']">
-        <div class="row" ng-show="queue.$$load_is_valid">
-            <div class="col-sm-3"><b>{{ queue.load.value }}</b>&nbsp;</div>
-            <div class="col-sm-9" style="width:140px; height:20px;">
-                <uib-progressbar value="queue.$$load_percentage" animate="false"></uib-progressbar>
-            </div>
-        </div>
-        <b ng-show="!queue.$$load_is_valid">{{ queue.load.value }}</b>
+    <td ng-if="struct.toggle['pe_list']">
+        {{ ::queue.pe_list.value }}
     </td>
-    <td ng-show="struct.toggle['slots_used']">
-        <div ng-repeat="entry in queue.load_vector" class="row">
+    <td ng-if="struct.toggle['memory']">
+        <icsw-rms-memory-info></icsw-rms-memory-info>
+    </td>
+    <td ng-if="struct.toggle['load']">
+        <icsw-rms-load-info></icsw-rms-load-info>
+        <!-- <div ng-repeat="entry in queue.load_vector" class="row">
              <div class="col-sm-12" style="width:140px; height:20px;">
                  <uib-progressbar max="entry[0]" value="entry[1]" animate="false" type="info"><span style="color:black;">{{ entry[1] }} / {{ entry[0] }}</span></uib-progressbar>
              </div>
-        </div>
+        </div> -->
     </td>
-    <td ng-show="struct.toggle['slots_used']">
-        {{ queue.slots_used.value }}
+    <td ng-if="struct.toggle['slots_used']" class="text-center">
+        <tt>{{ queue.slots_info.used }}  / {{ queue.slots_info.reserved }} / {{ queue.slots_info.total }}</tt>
     </td>
-    <td ng-show="struct.toggle['slots_reserved']">
-        {{ queue.slots_reserved.value }}
+    <td ng-if="struct.toggle['topology']" class="text-center">
+        <icsw-rms-topology-info></icsw-rms-topology-info>
     </td>
-    <td ng-show="struct.toggle['slots_total']">
-        {{ queue.slots_total.value }}
-    </td>
-    <td ng-show="struct.toggle['jobs']">
+    <td ng-if="struct.toggle['jobs']">
         {{ queue.jobs.value }}
     </td>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.queue.state.oper">
     <span uib-dropdown>
-        <button type="button" class="btn btn-xs dropdown-toggle" ng-class="queue.$$queue_btn_class" uib-dropdown-toggle>
+        <button type="button" class="btn btn-xs btn-default dropdown-toggle" ng-class="queue.$$queue_btn_class" uib-dropdown-toggle>
             {{ queue.name }} : {{ queue.state.value }} <span class="caret"></span>
         </button>
         <ul class="dropdown-menu" uib-dropdown-menu>
@@ -280,7 +284,7 @@
 <script type="text/ng-template" id="icsw.rms.job.done.line">
     <td ng-show="struct.toggle['job_id']">
         {{ job.rms_job.jobid }}&nbsp;
-        <icsw-tools-button type="draw" size="xs" ng-show="job.$$has_rrd" ng-click="gstruct.draw_rrd($event, job)"></icsw-tools-button>
+        <icsw-tools-button type="draw" size="xs" ng-show="job.$$has_rrd" ng-click="gstruct.draw_rrd($event, job.$$rrd_device_ids)"></icsw-tools-button>
     </td>
     <td ng-show="struct.toggle['task_id']">
         {{ job.rms_job.taskid }}
@@ -346,7 +350,7 @@
     <table
         st-table="displayed_entries"
         st-safe-src="struct.var_list"
-        class="table table-hover table-striped"
+        class="table table-striped"
         style="width:auto;"
     >
         <thead>
@@ -368,8 +372,12 @@
             </tr>
             <tr>
                 <td colspan="99">
-                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                         possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="20"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500,1000"
+                    ></div>
                 </td>
             </tr>
         </thead>
@@ -437,10 +445,24 @@
     <td ng-show="struct.toggle['exec_time']">
         {{ job.exec_time.value }}
     </td>
+    <td ng-show="struct.toggle['queue_details']">
+        {{ job.queue_details.value }}
+        <button
+            type="button"
+            class="btn btn-xs btn-primary"
+            popover-placement="right-top"
+            popover-trigger="none"
+            popover-is-open="job.queue_details.$$open"
+            uib-popover-html="job.queue_details.popover"
+            ng-click="struct.toggle_popover(job)"
+        >
+            <span class="glyphicon glyphicon-info-sign"></span>
+        </button>
+    </td>
     <td ng-show="struct.toggle['prio']">
         {{ job.prio.value }}
     </td>
-    <td ng-show="struct.toggle['priority']">
+    <td ng-show="struct.toggle['priority']" class="text-right">
         {{ job.priority.value }}
     </td>
     <td ng-show="struct.toggle['depends']">
@@ -455,7 +477,7 @@
 <script type="text/ng-template" id="icsw.rms.job.run.line">
     <td ng-show="struct.toggle['job_id']">
         {{ job.job_id.value }}&nbsp;
-        <icsw-tools-button ng-show="job.$$has_rrd" type="draw" size="xs" ng-click="gstruct.draw_rrd($event, job)"></icsw-tools-button>
+        <icsw-tools-button ng-show="job.$$has_rrd" type="draw" size="xs" ng-click="gstruct.draw_rrd($event, job.$$rrd_device_ids)"></icsw-tools-button>
     </td>
     <td ng-show="struct.toggle['task_id']">
         {{ job.task_id.value }}
@@ -559,4 +581,179 @@
              title="{{ stack.title }}"
              type="{{ stack.type }}">{{ stack.out }}</uib-bar>
     </uib-progress>
+</script>
+
+<script type="text/ng-template" id="icsw.rms.detail.popover">
+    <div>
+        <h4>Scheduling details for Job {{ j.job_id.value }}</h4>
+        <table class="table table-striped table-condensed">
+            <tbody>
+                <tr>
+                    <th colspan="6">Normalized values</th>
+                </tr>
+                <tr class="info">
+                    <th>Name</th>
+                    <th colspan="2">Value</th>
+                    <th colspan="2">Weight</th>
+                    <th>eff. Value</th>
+                </tr>
+                <tr>
+                    <td>PosixPrio</td>
+                    <td class="text-right">{{ d.norm_pprio }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">{{ s.vars.weight_priority }}</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.eff_norm_pprio | number: 6 }}</td>
+                </tr>
+                <tr>
+                    <td>Urgency</td>
+                    <td class="text-right">{{ d.norm_urg }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">{{ s.vars.weight_urgency }}</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.eff_norm_urg | number: 6 }}</td>
+                </tr>
+                <tr>
+                    <td>Tickets</td>
+                    <td class="text-right">{{ d.norm_tickets }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">{{ s.vars.weight_ticket }}</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.eff_norm_tickets | number: 6 }}</td>
+                </tr>
+                <tr class="success">
+                    <td>Total</td>
+                    <td class="text-right"></td>
+                    <td class="text-center"></td>
+                    <td class="text-right"></td>
+                    <td class="text-center"></td>
+                    <td class="text-right">{{ d.eff_norm | number: 6 }}</td>
+                </tr>
+                <tr>
+                    <th colspan="6">Posix Priority</th>
+                </tr>
+                <tr>
+                    <td>Priority</td>
+                    <td class="text-right">{{ j.priority.value }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left">1</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ j.priority.value }}</td>
+                </tr>
+                <tr class="success">
+                    <td>Total</td>
+                    <td class="text-right"></td>
+                    <td class="text-center"></td>
+                    <td class="text-right"></td>
+                    <td class="text-center"></td>
+                    <td class="text-right">{{ j.priority.value }}</td>
+                </tr>
+                <tr>
+                    <th colspan="6">Urgency Contribution</th>
+                </tr>
+                <tr class="info">
+                    <th>Name</th>
+                    <th colspan="2">Value</th>
+                    <th colspan="2">Weight</th>
+                    <th>eff.Value</th>
+                </tr>
+                <tr>
+                    <td>Resource</td>
+                    <td class="text-right">{{ d.raw_rr_contr }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left">1</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.rr_contr }}</td>
+                </tr>
+                <tr>
+                    <td>Wait</td>
+                    <td class="text-right">{{ d.raw_wt_contr }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">{{ s.vars.weight_waiting_time }}</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.wt_contr }}</td>
+                </tr>
+                <tr>
+                    <td>Deadline</td>
+                    <td class="text-right">{{ d.raw_dl_contr }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">{{ s.vars.weight_deadline }}</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.dl_contr }}</td>
+                </tr>
+                <tr class="success">
+                    <td>Total</td>
+                    <td class="text-right"></td>
+                    <td class="text-center"></td>
+                    <td class="text-right"></td>
+                    <td class="text-center"></td>
+                    <td class="text-right">{{ d.total_contr }}</td>
+                </tr>
+                <tr>
+                    <th colspan="6">Ticket Contribution</th>
+                </tr>
+                <tr class="info">
+                    <th>Name</th>
+                    <th colspan="2">Value</th>
+                    <th colspan="2">Weight</th>
+                    <th>eff.Value</th>
+                </tr>
+                <tr>
+                    <td>Override</td>
+                    <td class="text-right">{{ d.otickets }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">1</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.otickets }}</td>
+                </tr>
+                <tr>
+                    <td>Functional</td>
+                    <td class="text-right">{{ d.ftickets }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">1</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.ftickets }}</td>
+                </tr>
+                <tr>
+                    <td>Fairshare</td>
+                    <td class="text-right">{{ d.stickets }}</td>
+                    <td class="text-center">*</td>
+                    <td class="text-left warning">1</td>
+                    <td class="text-center">=</td>
+                    <td class="text-right">{{ d.stickets }}</td>
+                </tr>
+                <tr class="success">
+                    <td>Total</td>
+                    <td class="text-right"></td>
+                    <td class="text-center"></td>
+                    <td class="text-right"></td>
+                    <td class="text-center"></td>
+                    <td class="text-right">{{ d.tickets }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.rms.node.rrd">
+    <icsw-rrd-graph-remote
+        icsw-device-list="devices"
+        icsw-graph-setting="local_settings"
+        icsw-base-setting="base_setting"
+        <!-- fromdt="#{start_time}"
+        # todt="#{end_time}"
+        # jobmode="#{job_mode}"
+        # selectedjob="#{selected_job}" -->
+    ></icsw-rrd-graph>
+</script>
+
+<script type="text/ng-template" id="icsw.rms.fairshare.tree">
+    <icsw-rrd-graph-remote
+        ng-if="struct.base_data_set"
+        icsw-device-list="struct.devices"
+        icsw-graph-setting="struct.local_setting"
+        icsw-base-setting="struct.base_setting"
+        icsw-from-date="struct.from_date"
+        icsw-to-date="struct.to_date"
+    ></icsw-rrd-graph-remote>
 </script>

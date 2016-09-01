@@ -126,6 +126,7 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} ha-addons/ibmbcs ${DESTDIR}/${STONITH_DIR}
 	# Copy the main source code
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/menu
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/graphs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/etc/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/servers.d
@@ -159,6 +160,9 @@ install: install_webcontent
 	# Create to ICSW_SBIN
 	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
 	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
+ 	# menu.xml
+	${INSTALL} ${INSTALL_OPTS} initat/cluster/menu/menu.xml ${DESTDIR}/${PYTHON_SITE}/initat/cluster/menu/menu.xml
+	${INSTALL} ${INSTALL_OPTS} initat/cluster/menu/menu_relax.xml ${DESTDIR}/${PYTHON_SITE}/initat/cluster/menu/menu_relax.xml
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
@@ -179,11 +183,9 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} init_scripts/init-license-server.rc ${DESTDIR}/${INIT}/init-license-server
 	${INSTALL} ${INSTALL_OPTS} init_scripts/hoststatus.rc ${DESTDIR}/${INIT}/hoststatus
 	${INSTALL} ${INSTALL_OPTS} init_scripts/meta-server ${DESTDIR}/${INIT}/meta-server
-	${INSTALL} ${INSTALL_OPTS} init_scripts/logging-server ${DESTDIR}/${INIT}/logging-server
 	# /usr/sbin (mostly rc* files)
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${USRSBIN}
 	${LN} -s ${INIT}/meta-server ${DESTDIR}${USRSBIN}/rcmeta-server
-	${LN} -s ${INIT}/logging-server ${DESTDIR}${USRSBIN}/rclogging-server
 	${LN} -s ${INIT}/hoststatus ${DESTDIR}${USRSBIN}/rchoststatus
 	${LN} -s ${INIT}/loadmodules ${DESTDIR}${USRSBIN}/rcloadmodules
 	${LN} -s ${INIT}/init-license-server ${DESTDIR}${USRSBIN}/rcinit-license-server
@@ -228,7 +230,7 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_TFTP}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${VARDIR}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/lib/logging-server
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/cluster
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/var/log/icsw
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${META_DIR}
 	# uwsgi
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi

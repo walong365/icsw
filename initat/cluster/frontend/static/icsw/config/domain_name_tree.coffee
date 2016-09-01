@@ -24,38 +24,18 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select",
         "restangular", "icsw.backend.domain_name_tree",
     ]
-).config(["$stateProvider", ($stateProvider) ->
-    $stateProvider.state(
-        "main.domaintree", {
-            url: "/domaintree"
-            templateUrl: "icsw/main/device/domaintree.html"
-            icswData:
-                pageTitle: "Domain name tree"
-                rights: ["user.modify_domain_name_tree"]
-                menuEntry:
-                    menukey: "dev"
-                    icon: "fa-list-alt"
-                    ordering: 45
-        }
-    )
+).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
+    icswRouteExtensionProvider.add_route("main.domaintree")
 ]).service("icswConfigDomainNameTreeService",
 [
-    "icswTreeConfig",
+    "icswReactTreeConfig",
 (
-    icswTreeConfig
+    icswReactTreeConfig
 ) ->
-    class icswConfigDomainNameTree extends icswTreeConfig
+    class icswConfigDomainNameTree extends icswReactTreeConfig
 
         constructor: (@scope, args) ->
             super(args)
-            @show_selection_buttons = false
-            @show_icons = false
-            @show_select = false
-            @show_descendants = true
-            @show_childs = false
-            # link to config-service of a list controller
-            @config_service = undefined
-            @config_object = undefined
 
         clear_tree: () =>
             @lut = {}
@@ -70,20 +50,19 @@ angular.module(
         toggle_active_obj: (obj) =>
             node = @lut[obj.idx]
             if obj.depth
-                node.active = !node.active
+                node.set_active(!node.active)
                 @show_active()
                 @scope.update_active()
 
-        handle_click: (entry, event) =>
+        handle_click: (event, entry) =>
             @toggle_active_obj(entry.obj)
             @scope.$digest()
 
-        handle_dblclick: (entry, event) =>
+        handle_context_menu: (event, entry) =>
             dtn = entry.obj
             if dtn.depth
                 @config_service.create_or_edit(@config_object.list_scope, event, false, dtn)
-
-
+            event.preventDefault()
 
 ]).controller("icswConfigDomainNameTreeCtrl",
 [
@@ -97,7 +76,16 @@ angular.module(
 ) ->
     $scope.struct = {}
     $scope.reload = () ->
-        $scope.dn_tree = new icswConfigDomainNameTreeService($scope)
+        $scope.dn_tree = new icswConfigDomainNameTreeService(
+            $scope
+            {
+                show_selection_buttons: false
+                show_icons: false
+                show_select: false
+                show_descendants: true
+                show_childs: false
+            }
+        )
         icswDomainTreeService.load($scope.$id).then(
             (tree) ->
                 $scope.struct.tree = tree
@@ -127,7 +115,7 @@ angular.module(
         $scope.dn_tree.clear_tree()
         $scope.dn_tree.clear_root_nodes()
         for entry in $scope.struct.tree.list
-            t_entry = $scope.dn_tree.new_node(
+            t_entry = $scope.dn_tree.create_node(
                 {
                     folder: false
                     obj: entry
@@ -166,6 +154,8 @@ angular.module(
             scope.icsw_config_object.list_scope = scope
             scope.tree = scope.icsw_config_object.tree
             scope.dn_tree = scope.icsw_config_object.dn_tree
+            scope.dn_tree.config_service = @
+            scope.dn_tree.config_object = scope.icsw_config_object
             defer.resolve(scope.tree.list)
             return defer.promise
 

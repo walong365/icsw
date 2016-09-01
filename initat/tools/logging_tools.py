@@ -24,7 +24,7 @@
 import bz2
 import datetime
 import gzip
-import logging  # @UnusedImport
+import logging
 import logging.handlers
 import os
 import re
@@ -33,6 +33,8 @@ import string
 import sys
 import syslog
 import time
+
+from pygments.token import Token
 
 LOG_LEVEL_OK = 20
 LOG_LEVEL_WARN = 30
@@ -448,6 +450,7 @@ class form_entry(object):
     def __init__(self, content, **kwargs):
         self.content = content
         self.left = True
+        self.center = False
         self.min_width = 0
         self.pre_str = ""
         self.post_str = ""
@@ -495,8 +498,14 @@ class form_entry(object):
         if max_len is None:
             form_str = u"{{:{}}}".format(form_str)
         else:
+            if self.left:
+                _f = "<"
+            elif self.center:
+                _f = "^"
+            else:
+                _f = ">"
             form_str = u"{{:{}{:d}{}}}".format(
-                "<" if self.left else ">",
+                _f,
                 max_len,
                 form_str,
             )
@@ -509,6 +518,11 @@ class form_entry(object):
 class form_entry_right(form_entry):
     def __init__(self, content, **kwargs):
         form_entry.__init__(self, content, left=False, **kwargs)
+
+
+class form_entry_center(form_entry):
+    def __init__(self, content, **kwargs):
+        form_entry.__init__(self, content, left=False, center=True, **kwargs)
 
 
 class new_form_list(object):
@@ -552,10 +566,10 @@ class new_form_list(object):
                 return ""
         return self._format()
 
-    def urwid_encode(self):
-        return self._format(urwid=True)
+    def prompt_encode(self):
+        return self._format(prompt=True)
 
-    def _format(self, urwid=False):
+    def _format(self, prompt=False):
         # count number of rows
         row_count = [len(line) for line in self.__content]
         _min_rows, max_rows = (
@@ -607,11 +621,9 @@ class new_form_list(object):
             out_lines.append(
                 "-" * len(out_lines[-1])
             )
-        if urwid:
+        if prompt:
             # add one for CR
-            urwid_rlc = [
-                ("", len(_line) + 1) for _line in out_lines
-            ]
+            out_lines = [[(Token.String.ICSW.Header, _line)] for _line in out_lines]
             for line in self.__content:
                 _line = []
                 for _idx, (entry, max_len) in enumerate(zip(line, row_lens[:len(line)])):
@@ -619,23 +631,13 @@ class new_form_list(object):
                     _str = entry.format(max_len)
                     if last:
                         _str = _str.rstrip()
-                    _line.append(_str)
-                    urwid_rlc.append(
-                        (getattr(entry, "display_attribute", ""), len(_str))
-                    )
-                    if last:
-                        # for CR
-                        urwid_rlc.append(
-                            ("", 1)
+                    _line.append((getattr(Token.String.ICSW, getattr(entry, "display_attribute", "dummy").title() or "Dummy"), _str))
+                    if not last:
+                        _line.append(
+                            (Token.String.ICSW.Dummy, self.__col_sep)
                         )
-                    else:
-                        urwid_rlc.append(
-                            ("", len(self.__col_sep))
-                        )
-                out_lines.append(
-                    self.__col_sep.join(_line)
-                )
-            return ("\n".join(out_lines), urwid_rlc)
+                out_lines.append(_line)
+            return out_lines
         else:
             for line in self.__content:
                 out_lines.append(
@@ -657,6 +659,16 @@ class new_form_list(object):
 
     def __len__(self):
         return len(self.__content)
+
+
+def get_icsw_prompt_styles():
+    return {
+        Token.String.ICSW.Header: "bold",
+        Token.String.ICSW.Dummy: "",
+        Token.String.ICSW.Ok: "#00ff00",
+        Token.String.ICSW.Warning: "#ffff00 bold",
+        Token.String.ICSW.Critical: "#ff0000 bold",
+    }
 
 
 def compress_list(ql, **kwargs):
@@ -962,6 +974,7 @@ def struct_to_string(in_struct):
             _r[0],
         )
     else:
+        # empty strings will be displayed as [], so node[][2] means {node, node2}
         return "{}[{}]".format(
             _pf,
             "][".join(_r),

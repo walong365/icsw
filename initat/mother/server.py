@@ -106,11 +106,9 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
 
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
-        process_tools.append_pids(self.__pid_name, pid=configfile.get_manager_pid(), mult=6)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("mother")
         msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.add_actual_pid(act_pid=configfile.get_manager_pid(), mult=6, process_name="manager")
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block
@@ -135,7 +133,7 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
 
     def _init_network_sockets(self):
         self.network_bind(
-            need_all_binds=True,
+            need_all_binds=global_config["NEED_ALL_NETWORK_BINDS"],
             bind_port=global_config["COMMAND_PORT"],
             pollin=self.remote_call,
             server_type="mother",
@@ -371,7 +369,8 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
         if syslog_srvcs:
             self.__syslog_type = syslog_srvcs[0]
             self.log("syslog type found: {}".format(self.__syslog_type))
-            if self.__syslog_type.count("rsys"):
+            # hack for old sles11sp3 (liebherr)
+            if self.__syslog_type.count("rsys") or (self.__syslog_type in ["syslog"] and process_tools.get_machine_name() in ["lwnsu62020"]):
                 self._enable_rsyslog()
             else:
                 self.log("syslog-type {} not supported".format(self.__syslog_type), logging_tools.LOG_LEVEL_ERROR)

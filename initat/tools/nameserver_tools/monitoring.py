@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007-2009,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2009,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,8 +20,9 @@
 """ monitoring for nsX.init.at """
 
 import os
-from .zone import Zone
+
 from .host import Host
+from .zone import Zone
 
 
 class Monitoring(object):

@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Bernhard Mallinger
+# Copyright (C) 2015-2016 Bernhard Mallinger
 #
 # Send feedback to: <mallinger@init.at>
 #
-# This file is part of cluster-backbone-sql
+# This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -22,17 +22,18 @@
 
 import base64
 import bz2
-import glob
-from lxml import etree
 import datetime
+import glob
 import logging
 
 import M2Crypto
 import pytz
+from lxml import etree
+
+from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, \
     LicenseUsage
 from initat.cluster.settings import TIME_ZONE
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.tools import process_tools
 
 logger = logging.getLogger("cluster.license_file_reader")
@@ -57,7 +58,11 @@ class LicenseFileReader(object):
         try:
             signed_content_str = bz2.decompress(base64.b64decode(file_content))
         except:
-            logger.error("Error reading uploaded license file: {}".format(process_tools.get_except_info()))
+            logger.error(
+                "Error reading uploaded license file: {}".format(
+                    process_tools.get_except_info()
+                )
+            )
             raise LicenseFileReader.InvalidLicenseFile()
 
         signed_content_xml = etree.fromstring(signed_content_str)

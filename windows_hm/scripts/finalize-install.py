@@ -10,7 +10,7 @@ INI_DATA = """# If you want to fill this file with all avalible options run the 
 
 ; Undocumented section
 [/settings/default]
-allowed hosts = 192.168.1.193,192.168.1.48,127.0.0.1,192.168.1.0/24,192.168.1.178
+allowed hosts = {}
 allowed ciphers = ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH
 timeout=6000
 command_timeout=6000
@@ -74,6 +74,10 @@ list-software-py3=python\python.exe scripts\python\list-software-py3.py
 list-hardware-py3=python\python.exe scripts\python\list-hardware-py3.py
 ;
 list-hardware-lstopo-py3=python\python.exe scripts\python\list-hardware-lstopo-py3.py
+;
+dmiinfo=python\python.exe scripts\python\list-dmiinfo-py3.py
+;
+pciinfo=python\python.exe scripts\python\list-pciinfo-py3.py
 
 [NRPE]
 timeout=6000
@@ -108,7 +112,8 @@ insecure = true
 allow arguments = true
 allow nasty characters = true
 payload length = 1048576
-use ssl = false"""
+use ssl = false
+port = {}"""
 
 if __name__=="__main__":
     hostnames = sys.argv[1]
@@ -118,14 +123,8 @@ if __name__=="__main__":
     lines = INI_DATA.split("\n")
 
     f = open("nsclient.ini", "w")
-    
-    for line in lines:
-        if line.startswith("allowed hosts"):
-            f.write("allowed hosts = {}".format(hostnames))
-        else:
-            f.write(line)
-    
-        f.write("\r\n")
+
+    f.write(INI_DATA.format(hostnames, ports))
 
     f.close()
 

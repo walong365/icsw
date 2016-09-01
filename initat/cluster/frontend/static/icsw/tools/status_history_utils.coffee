@@ -70,8 +70,8 @@ angular.module(
                     time_frame = icswStatusHistorySettings.get_time_frame()
                     $q.all(
                         [
-                            status_utils_functions.get_device_data([scope.device], time_frame.date_gui, time_frame.duration_type)
-                            status_utils_functions.get_device_data([scope.device], time_frame.date_gui, time_frame.duration_type, true)
+                            status_utils_functions.get_device_data([scope.device], time_frame.date_gui, time_frame.duration_type, time_frame.db_ids)
+                            status_utils_functions.get_device_data([scope.device], time_frame.date_gui, time_frame.duration_type, time_frame.db_ids, true)
                         ]
                     ).then(
                         (new_data) ->
@@ -81,6 +81,7 @@ angular.module(
                                 srv_data
                                 weights
                                 status_utils_functions.host_colors
+                                status_utils_functions.host_cssclass
                                 scope.float_format
                             )
                             line_data = new_data[1].plain()[0]
@@ -101,6 +102,7 @@ angular.module(
                         scope.data
                         weights
                         status_utils_functions.host_colors
+                        status_utils_functions.host_cssclass
                         scope.float_format
                     )
 
@@ -153,6 +155,7 @@ angular.module(
                         [scope.deviceid],
                         status_history_ctrl.time_frame.date_gui,
                         status_history_ctrl.time_frame.time_range,
+                        [],
                         cont,
                         merge_services=1)
 
@@ -188,6 +191,14 @@ angular.module(
         "Undetermined": "#c7c7c7"
         "Planned down": "#5bc0de"
     }
+    service_cssclass = {
+        "Ok": "svg_srv_ok"
+        "Warning": "svg_srv_warn"
+        "Critical": "svg_srv_crit"
+        "Unknown": "svg_srv_unknown"
+        "Undetermined": "svg_srv_notmonitored"
+        "Planned down": "svg_plandown"
+    }
 
     host_colors = {
         "Up": "#66dd66"
@@ -196,21 +207,30 @@ angular.module(
         "Undetermined": "#c7c7c7"
         "Planned down": "#5bc0de"
     }
+    host_cssclass = {
+        "Up": "svg_dev_up"
+        "Down": "svg_dev_down"
+        "Unreachable": "svg_dev_unreach"
+        "Undetermined": "svg_dev_notmonitored"
+        "Planned down": "svg_plandown"
+    }
     # olive? "#808000"
 
-    get_device_data = (devices, start_date, timerange, line_graph_data=false) ->
+    get_device_data = (devices, start_date, timerange, db_ids, line_graph_data=false) ->
         query_data = {
             device_ids: angular.toJson((_dev.idx for _dev in devices))
             date: moment(start_date).unix()  # ask server in utc
             duration_type: timerange
         }
+        if db_ids.length
+            query_data.db_ids = angular.toJson(db_ids)
         if line_graph_data
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_LINE_GRAPH_DATA.slice(1))
         else
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_DATA.slice(1))
         return base.getList(query_data)
 
-    get_service_data = (devices, start_date, timerange, merge_services=0, line_graph_data=false) ->
+    get_service_data = (devices, start_date, timerange, db_ids, merge_services=0, line_graph_data=false) ->
         # merge_services: boolean as int
         # line_graph_data: boolean as int, get only line graph data
         query_data = {
@@ -219,6 +239,8 @@ angular.module(
             duration_type: timerange
             merge_services: merge_services
         }
+        if db_ids.length
+            query_data.db_ids = angular.toJson(db_ids)
         if line_graph_data
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_SERVICE_LINE_GRAPH_DATA.slice(1))
         else
@@ -236,7 +258,7 @@ angular.module(
     float_format = (n) ->
         return (n * 100).toFixed(3) + "%"
 
-    preprocess_state_data = (new_data, weights, colors) ->
+    preprocess_state_data = (new_data, weights, colors, cssclass) ->
         formatted_data = _.cloneDeep(new_data)
         for key of weights
             if not _.some(new_data, (d) -> return d['state'] == key)
@@ -257,9 +279,10 @@ angular.module(
         for d in new_data
             if d['state'] != "Flapping"  # can't display flapping in pie
                 pie_data.push {
-                    'title': d['state']
-                    'value': Math.round(d['value'] * 10000) / 100
-                    'color': colors[d['state']]
+                    title: d['state']
+                    value: Math.round(d['value'] * 10000) / 100
+                    color: colors[d['state']]
+                    cssclass: cssclass[d['state']]
                 }
         return [final_data, pie_data]
 
@@ -271,7 +294,7 @@ angular.module(
             Unknown: -5
             Undetermined: -4
         }
-        return preprocess_state_data(new_data, weights, service_colors, float_format)
+        return preprocess_state_data(new_data, weights, service_colors, service_cssclass, float_format)
 
     return {
         float_format: float_format
@@ -285,7 +308,9 @@ angular.module(
         # kpi states and service states currently coincide even though kpis also have host data
         preprocess_kpi_state_data: preprocess_service_state_data
         service_colors: service_colors
+        service_cssclass: service_cssclass
         host_colors: host_colors
+        host_cssclass: host_cssclass
     }
 ]).directive("icswToolsHistLineGraph",
 [
@@ -296,11 +321,11 @@ angular.module(
     return {
         restrict: 'E'
         scope   : {
-            'data': '='
-            'forHost': '&'
-            'widthAttr': '&width'
-            'heightAttr': '&height'
-            'clickAttr': '&click'
+            data: '='
+            forHost: '&'
+            widthAttr: '&width'
+            heightAttr: '&height'
+            clickAttr: '&click'
         }
         require : "^icswDeviceStatusHistoryOverview"
         link: (scope, element, attrs) ->
@@ -362,10 +387,10 @@ angular.module(
                                     {
                                         x: pos_x
                                         y: scope.height
-                                        style: "fill:black"
-                                        "font-size": "#{scope.fontSize}px"
-                                        "text-anchor": "middle"
-                                        "alignment-baseline": "baseline"
+                                        class: "default_text"
+                                        # style: "font-size": "#{scope.fontSize}px"
+                                        textAnchor: "middle"
+                                        alignmentBaseline: "baseline"
                                     }
                                 )
                                 _marker.text(marker)
@@ -379,7 +404,16 @@ angular.module(
                         _tooltip.hide()
                         _div.append(_tooltip)
                         # calculate data to show
+                        # total duration of data in milliseconds
                         total_duration = time_frame.end.diff(time_frame.start)
+                        # total duration of requested timeframe
+                        tf_duration = {
+                            day: 24 * 3600
+                            week: 7 * 24 * 3600
+                            month: time_frame.start.daysInMonth() * 24 * 3600
+                            year: 365 * 24 * 3600
+                            decade: 10 * 365 * 24 * 3600
+                        }[time_frame.duration_type] * 1000
 
                         pos_x = scope.side_margin
                         last_date = time_frame.start
@@ -394,8 +428,14 @@ angular.module(
 
                         _mousemove = (event) ->
                             entry = event.data
-                            _pos_x = event.offsetX - _tooltip.width() / 2
-                            _pos_y = event.offsetY - _tooltip.height() - 10
+
+                            _pos_x = event.clientX - _tooltip.width() / 2
+                            _pos_y = event.clientY - _tooltip.height() - 10
+
+                            if _pos_x < 0
+                                _pos_x = 0
+
+                            _tooltip.css("position", "fixed")
                             _tooltip.css("left", "#{_pos_x}px")
                             _tooltip.css("top", "#{_pos_y}px")
 
@@ -411,7 +451,7 @@ angular.module(
                                 display_end = cur_date
 
                             duration = cur_date.diff(last_date)
-                            entry_width = scope.draw_width * duration / total_duration
+                            entry_width = scope.draw_width * duration / tf_duration
 
                             if index != 0
 
@@ -426,6 +466,7 @@ angular.module(
                                         when "Unreachable" then 22
                                         when "Undetermined" then 18
                                     color = status_utils_functions.host_colors[last_entry.state]
+                                    cssclass = status_utils_functions.host_cssclass[last_entry.state]
                                 else
                                     entry_height = switch last_entry.state
                                         when "Ok" then 15
@@ -435,6 +476,7 @@ angular.module(
                                         when "Unknown" then 18
                                         when "Undetermined" then 18
                                     color = status_utils_functions.service_colors[last_entry.state]
+                                    cssclass = status_utils_functions.service_cssclass[last_entry.state]
 
                                 label_height = 13
 
@@ -463,7 +505,8 @@ angular.module(
                                         y: pos_y
                                         rx: 1
                                         ry: 1
-                                        style: "fill:#{color}; stroke-width: 0; stroke: rgb(0, 0, 0)"
+                                        #style: "fill:#{color}; stroke-width: 0; stroke: rgb(0, 0, 0);"
+                                        class: cssclass
                                     }
                                 )
                                 _rect.bind("mouseenter", last_entry, (event) ->
@@ -502,8 +545,8 @@ angular.module(
     return {
         restrict: 'E'
         scope: {
-            'data': '&'  # takes same data as line graph
-            'enabled': '&'
+            data: '&'  # takes same data as line graph
+            enabled: '&'
         }
         templateUrl: "icsw.tools.hist_log_viewer"
         link: (scope, element, attrs) ->
@@ -517,14 +560,18 @@ angular.module(
                             scope.actual_data = scope.data()
 
                         else if scope.view_mode == 'new'
-                            last_line = {'msg': undefined}
+                            last_line = {
+                                msg: undefined
+                            }
                             for line in scope.data()
                                 if line.msg != last_line.msg
                                     scope.actual_data.push(line)
                                 last_line = line
 
                         else if scope.view_mode == 'state_change'
-                            last_line = {'state': undefined}
+                            last_line = {
+                                state: undefined
+                            }
                             for line in scope.data()
                                 if line.state != last_line.state
                                     scope.actual_data.push(line)

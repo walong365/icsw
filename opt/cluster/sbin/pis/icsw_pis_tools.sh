@@ -35,6 +35,8 @@ MANAGE=${PREFIX_INIT}/initat/cluster/manage.py
 USRSBIN=/usr/sbin
 USRBIN=/usr/bin
 INIT=/etc/init.d
+NEW_LOG_DIR="/var/log/icsw"
+OLD_LOG_DIR="/var/log/cluster"
 
 BOLD="\033[1m"
 RED="\033[31m"
@@ -60,6 +62,25 @@ function icsw_cleanup() {
     rm -rf ${PREFIX_INIT}/initat/cluster/rms
     # old django py(o|c) files, for instance importlib
     rm -f ${DJANGO_PY}/utils/*.py{c,o}
+    [ -d /var/log/cluster/sockets ] && rm -rf /var/log/cluster/sockets
+    [ -d /tmp/.icsw_zmq ] && rm -rf /tmp/.icsw_zmq
+    [ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
+    PY_FILES="host-monitoring limits hm_classes ipc_comtools"
+
+    for file in $PY_FILES ; do
+        rm -f ${ICSW_SBIN}/$file.py{c,o}
+    done
+}
+
+function move_log_dir() {
+    if [ -d ${NEW_LOG_DIR} -a -d ${OLD_LOG_DIR} ] ; then
+        # check for empty new log
+        if [ $(ls -1 ${NEW_LOG_DIR} | wc -l) = "0" ] ; then
+            echo -e "${YELLOW}New logdir present but empty, moving from ${OLD_LOG_DIR} to ${NEW_LOG_DIR} ...${OFF}"
+            mv ${OLD_LOG_DIR}/* ${NEW_LOG_DIR}
+            echo -e "${GREEN}done${OFF}"
+        fi
+    fi
 }
 
 function is_chroot() {
@@ -79,6 +100,7 @@ function is_chroot() {
 
 function restart_software() {
     mode=$1
+    RESTART_CAUSE=${2:-"N/A"}
     if is_chroot ; then
         echo "running chrooted, skipping restart"
     else
@@ -88,6 +110,7 @@ function restart_software() {
         echo -e "\n${GREEN}restarting logging-server${OFF}\n"
         ${ICSW_SBIN}/icsw --logger stdout --logall service restart logging-server
 
+        # check if icsw-server is installed
         if [ ! -f ${ICSW_PIS}/icsw_server_post_install.sh -o "${mode}" = "server" ] ; then
             # start / stop to force restart of all services
             if [ ! -d /var/lib/meta-server/.srvstate ] ; then
@@ -96,7 +119,7 @@ function restart_software() {
                 NUM_RS=1
             fi
 
-            echo -e "\n${GREEN}restarting all ICSW related services (${RESTART_CAUSE}) (LC: ${NUM_RS})${OFF}\n"
+            echo -e "\n${GREEN}restarting all ICSW related services (${RESTART_CAUSE}) (LoopCount is ${NUM_RS})${OFF}\n"
 
             for idx in $(seq ${NUM_RS} ) ; do
                 echo -e "${GREEN}(${idx}/${NUM_RS}) restarting all ICSW related services (mode=${mode})${OFF}\n"

@@ -21,11 +21,9 @@
 #
 import os
 
-# noinspection PyUnresolvedReferences
-from lxml import etree
-from initat.icsw.license.license_lock import lock_entity, unlock_entity, show_locked_entities, show_cluster_id
 from initat.cluster.backbone.available_licenses import LicenseEnum
-from initat.icsw.license.register_cluster import register_cluster
+from initat.icsw.license.license_lock import lock_entity, unlock_entity, show_locked_entities, show_cluster_id
+from initat.icsw.license.register_cluster import register_cluster, install_license_file
 
 
 class Parser(object):
@@ -56,6 +54,13 @@ class Parser(object):
         reg_cluster_parser.add_argument("-p", "--password", dest='password', required=True, help="your icsw password")
         reg_cluster_parser.add_argument("-n", "--cluster-name", dest='cluster_name', required=True,
                                         help="cluster name as provided by init.at")
+
+        install_cluster_parser = lic_sub_parser.add_parser(
+            "install_license",
+            help="install already downloaded license file"
+        )
+        install_cluster_parser.set_defaults(execute=run_with_db(install_license_file))
+        install_cluster_parser.add_argument("licensefile", help="License file")
 
         def add_lock_arguments(p):
             p.add_argument("-l", "--license", dest="license", help="the license to lock usage of", required=True,

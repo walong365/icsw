@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,24 +22,21 @@ source $(dirname $0)/icsw_pis_tools.sh
 /sbin/ldconfig
 
 # some cleanup tasks
-
 icsw_cleanup
 
-[ -d /var/log/cluster/sockets ] && rm -rf /var/log/cluster/sockets
-[ -d /tmp/.icsw_zmq ] && rm -rf /tmp/.icsw_zmq
-[ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
+# move logging dir
+move_log_dir
 
 # migrate client config files
 /opt/cluster/sbin/pis/merge_client_configs.py
 
-PY_FILES="host-monitoring limits hm_classes ipc_comtools"
-for file in $PY_FILES ; do
-    rm -f ${ICSW_SBIN}/$file.py{c,o}
-done
+# check content stores for client
+[ -x ${ICSW_PIS}/check_content_stores_client.py ] && ${ICSW_PIS}/check_content_stores_client.py
 
 # purge debian packages
 if [ -f /etc/debian_version ] ; then
-    for service in host-monitoring package-client ; do
+
+    for service in host-monitoring package-client logging-server ; do
         if [ -f /etc/init.d/${service} ] ; then
             aptitude purge ${service}
         fi
@@ -56,12 +53,12 @@ else
     chmod 0644 /root/.bashrc
 fi
 
-for client in logging-server meta-server loadmodules hoststatus ; do
+for client in meta-server loadmodules hoststatus ; do
     ${ICSW_PIS}/modify_service.sh activate ${client}
 done
 
 # deactivate most client services (now handled via meta-server)
-for client in host-monitoring package-client memcached ; do
+for client in host-monitoring package-client memcached logging-server ; do
     if [ -f /etc/init.d/${client} ] ; then
         ${ICSW_PIS}/modify_service.sh deactivate ${client}
     fi
@@ -71,7 +68,7 @@ done
 if [ -f /etc/debian_version ] ; then
     ${USRSBIN}/update-rc.d meta-server start 21 2 3 5 . stop 79 0 1 4 6 .
     ${USRSBIN}/update-rc.d loadmodules start 8 2 3 5 . stop 92 0 1 4 6 .
-    for client in logging-server hoststatus ; do
+    for client in hoststatus ; do
         ${USRSBIN}/update-rc.d ${client} start 25 2 3 5 . stop 75 0 1 4 6 .
     done
 fi

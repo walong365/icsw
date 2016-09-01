@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007-2009,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2009,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,17 +19,16 @@
 #
 """ generates zonefiles for nsX.init.at """
 
-import os
-import time
-import tempfile
-import shutil
 import commands
-import pwd
 import json
+import os
+import pwd
+import shutil
 import stat
+import tempfile
+import time
 
 from initat.tools import logging_tools, ipvx_tools
-
 from .functions import make_qualified, make_unqualified, to_idna
 from .network import Network
 

@@ -26,9 +26,109 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
         "init.csw.filters", "restangular", "noVNC", "ui.select", "icsw.tools",
-        "icsw.device.info", "icsw.tools.tree", "icsw.user",
+        "icsw.device.info", "icsw.user", "icsw.backend.variable",
     ]
-).service("icswDeviceTreeHelper",
+).service("icswDeviceClassTree",
+[
+    "$q",
+(
+    $q,
+) ->
+    class icswDeviceClassTree
+        constructor: (list) ->
+            @list =[]
+            @update(list)
+
+        update: (list) =>
+            @list.length = 0
+            for entry in list
+                if entry.default_system_class
+                    @__dsc = entry
+                if not entry.$$enabled?
+                    entry.$$enabled = false
+                @list.push(entry)
+            @enabled_idx_list = []
+            @enabled_fp = ""
+            @build_luts()
+
+        build_luts: () =>
+            @lut = _.keyBy(@list, "idx")
+
+        get_fingerprint: () =>
+            return @enabled_fp
+
+        validate_device_class_filter: (dcf) =>
+            # dcf ... dict with class.idx => class.$$enabled
+            _changed = false
+
+            # check for new values
+            for entry in @list
+                if entry.idx not of dcf
+                    dcf[entry.idx] = entry.$$enabled
+                    _changed = true
+                else
+                    entry.$$enabled = dcf[entry.idx]
+
+            # validate
+            if not _.some(_.values(dcf))
+                @__dsc.$$enabled = true
+                dcf[@__dsc.idx] = @__dsc.$$enabled
+                _changed = true
+            # build enabled_idx_list
+            @enabled_idx_list = (entry.idx for entry in @list when entry.$$enabled)
+            @enabled_fp = ("#{_val}" for _val in @enabled_idx_list).join("::")
+            return _changed
+
+        read_device_class_filter: (dcf) =>
+            # syncs entries from dcf
+            _changed = false
+            for entry in @list
+                if entry.$$enabled != dcf[entry.idx]
+                    entry.$$enabled = dcf[entry.idx]
+                    _changed = true
+            if @validate_device_class_filter(dcf)
+                _changed = true
+            return _changed
+
+        write_device_class_filter: (dcf) =>
+            # syncs dcf from entries
+            # dcf ... dict with class.idx => class.$$enabled
+            # step one: copy
+            _changed = false
+            for entry in @list
+                if entry.$$enabled != dcf[entry.idx]
+                    dcf[entry.idx] = entry.$$enabled
+                    _changed = true
+            if @validate_device_class_filter(dcf)
+                _changed = true
+            return _changed
+
+        get_filter_name: () =>
+            _fv = (entry.$$enabled for entry in @list)
+            if _.every(_fv)
+                return "all"
+            else if not _.some(_fv)
+                return "none"
+            else
+                _enabled = (1 for entry in @list when entry.$$enabled).length
+                return "#{_enabled} / #{_fv.length}"
+
+]).service("icswDeviceClassTreeService",
+[
+    "$q", "icswDeviceClassTree", "icswTreeBase", "ICSW_URLS",
+(
+    $q, icswDeviceClassTree, icswTreeBase, ICSW_URLS,
+) ->
+    rest_map = [
+        ICSW_URLS.DEVICE_DEVICE_CLASS_LIST
+    ]
+    return new icswTreeBase(
+        "DeviceClassTree"
+        icswDeviceClassTree
+        rest_map
+        ""
+    )
+]).service("icswDeviceTreeHelper",
 [
     "icswTools",
 (
@@ -37,7 +137,7 @@ angular.module(
     ref_ctr = 0
     # helper service for global (== selection-wide) luts and lists
     class icswDeviceTreeHelper
-        constructor: (@tree, @devices) ->
+        constructor: (@tree, devices) ->
             # just for testing
             ref_ctr++
             @ref_ctr = ref_ctr
@@ -45,6 +145,21 @@ angular.module(
             @netdevice_lut = {}
             @net_ip_list = []
             @net_ip_lut = {}
+            @devices = []
+            @update(devices)
+            
+        update: (dev_list) =>
+            @devices.length = 0
+            for dev in dev_list
+                @devices.push(dev)
+            @build_luts()
+        
+        add_device: (dev) =>
+            @devices.push(dev)
+            @build_luts()
+            
+        build_luts: () =>
+            @device_lut = _.keyBy(@devices, "idx")
 
         # global post calls
 
@@ -73,6 +188,10 @@ angular.module(
                 ["asc", "asc", "asc"],
             )
 
+        post_g_static_asset_info: () ->
+
+            console.log "post_g static_asset_info"
+
         post_g_device_connection_info: () ->
             dev_pks = (dev.idx for dev in @devices)
             dev_lut = _.keyBy(@devices, "idx")
@@ -93,7 +212,6 @@ angular.module(
                             dev_lut[cd.child].$$master_list.push(cd)
             
         post_g_variable_info: () ->
-
             if not @var_name_filter?
                 @var_name_filter = ""
             for dev in @devices
@@ -106,11 +224,19 @@ angular.module(
             @var_name_filter = new_filter
             @filter_device_variables()
 
+        replace_device_variable: (new_var) =>
+            for dev in @devices
+                if dev.idx == new_var.device
+                    _.remove(dev.device_variable_set, (entry) -> return entry.idx == new_var.idx)
+                    dev.device_variable_set.push(new_var)
+                    
         filter_device_variables: () =>
             try
                 filter_re = new RegExp(@var_name_filter, "gi")
             catch
                 filter_re = new RegExp("^$", "gi")
+            # scope tree
+            _dvst = @tree.device_variable_scope_tree
             # step 1: filter variables
             for dev in @devices
                 dev.$var_filter_active = false
@@ -130,6 +256,7 @@ angular.module(
                 for d_var in dev.device_variable_set
                     if not d_var.$selected?
                         d_var.$selected = false
+                    d_var.$scope_name = _dvst.lut[d_var.device_variable_scope].name
                     # set var_type
                     if d_var.var_type == "s"
                         d_var.$var_type = "string"
@@ -146,6 +273,9 @@ angular.module(
                     else if d_var.var_type == "d"
                         d_var.$var_type = "datetime"
                         d_var.$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY HH:mm:ss")
+                    else if d_var.var_type == "D"
+                        d_var.$var_type = "date"
+                        d_var.$var_value = moment(d_var.val_date).format("dd, D. MMM YYYY")
                     else
                         d_var.$var_type = "VarType #{d_var.var_type}"
                         d_var.$var_value = "unknown type #{d_var.var_type}"
@@ -162,6 +292,8 @@ angular.module(
             for dev in @devices
                 if not dev.is_meta_device
                     meta = @tree.get_meta_device(dev)
+                    if not meta.device_variables_filtered?
+                        console.error "metadevice #{meta.full_name} / #{meta.idx} not init, deviceHelper call missing?"
                     for d_var in meta.device_variables_filtered
                         if d_var.inherit
                             if d_var.name in dev.$local_var_names
@@ -194,6 +326,7 @@ angular.module(
             for dev in @devices
                 icswTools.order_in_place(
                     dev.device_variables_filtered
+                    ["$scope_name"]
                     ["name"]
                     ["asc"]
                 )
@@ -231,9 +364,11 @@ angular.module(
                 @device.device_connection_set = []
             if not @device.sensor_threshold_set?
                 @device.sensor_threshold_set = []
+            if not @device.devicescanlock_set?
+                @device.devicescanlock_set = []
 
         is_scalar: (req) =>
-            return req in ["scan_info"]
+            return req in []
 
         is_element: (req) =>
             return req in ["disk_info", "snmp_info"]
@@ -242,16 +377,11 @@ angular.module(
             return req in @loaded
 
         get_setter_name: (req) =>
-            _lut = {
-                scan_info: "set_scan_info"
-            }
+            _lut = {}
             if req of _lut
                 return _lut[req]
             else
                 throw new Error("Unknown EnrichmentKey in get_setter_name(): #{req}")
-
-        set_scan_info: (dev, scan_object) =>
-            dev.active_scan = scan_object.active_scan
 
         get_attr_name: (req) =>
             _lut = {
@@ -261,7 +391,7 @@ angular.module(
                 com_info: "com_capability_list"
                 snmp_info: "devicesnmpinfo"
                 snmp_schemes_info: "snmp_schemes"
-                scan_info: "active_scan"
+                scan_lock_info: "devicescanlock_set"
                 variable_info: "device_variable_set"
                 device_connection_info: "device_connection_set"
                 sensor_threshold_info: "sensor_threshold_set"
@@ -270,6 +400,7 @@ angular.module(
                 dispatcher_info: "dispatcher_set"
                 # shallow version for info
                 past_assetrun_info: "past_assetrun_set"
+                static_asset_info: "staticasset_set"
             }
             if req of _lut
                 return _lut[req]
@@ -433,7 +564,7 @@ angular.module(
     ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService
 ) ->
     class icswDeviceTree
-        constructor: (full_list, group_list, domain_tree, cat_tree) ->
+        constructor: (full_list, group_list, domain_tree, cat_tree, device_variable_scope_tree, device_class_tree) ->
             @group_list = group_list
             @all_list = []
             @enabled_list = []
@@ -444,6 +575,8 @@ angular.module(
             @disabled_list = []
             @domain_tree = domain_tree
             @cat_tree = cat_tree
+            @device_variable_scope_tree = device_variable_scope_tree
+            @device_class_tree = device_class_tree
             @enricher = new icswEnrichmentInfo(@)
             @build_luts(full_list)
 
@@ -534,6 +667,9 @@ angular.module(
             # create helper structures
             # console.log "link"
 
+        device_class_is_enabled: (dev) =>
+            return dev.device_class in @device_class_tree.enabled_idx_list
+
         get_meta_device: (dev) =>
             return @all_lut[@group_lut[dev.device_group].device]
 
@@ -580,6 +716,35 @@ angular.module(
 
         # for device
 
+        update_device: (upd_dev) =>
+            defer = $q.defer()
+            Restangular.restangularizeElement(null, upd_dev, ICSW_URLS.REST_DEVICE_TREE_DETAIL.slice(1).slice(0, -2))
+            upd_dev.put().then(
+                (data) =>
+                    # replace device
+                    _.remove(@all_list, (entry) -> return entry.idx == upd_dev.idx)
+                    @all_list.push(data)
+                    # root password magic
+                    if upd_dev.root_passwd
+                        upd_dev.root_passwd_set = true
+                    s1_defer = $q.defer()
+                    if not data.is_meta_device
+                        # reload meta device
+                        _group = @group_lut[data.device_group]
+                        _meta = _group.device
+                        @_fetch_device(_group.device, s1_defer, "updated device")
+                    else
+                        s1_defer.resolve("not needed")
+                    s1_defer.promise.then(
+                        (done) =>
+                            @reorder()
+                            defer.resolve(data)
+                    )
+                (notok) ->
+                    defer.reject("not saved")
+            )
+            return defer.promise
+
         create_device: (new_dev) =>
             # create new device
             defer = $q.defer()
@@ -587,7 +752,7 @@ angular.module(
                 (new_obj) =>
                     @_fetch_device(new_obj.idx, defer, "created device ")
                 (not_ok) ->
-                    defer.object("not created")
+                    defer.reject("not created")
             )
             return defer.promise
 
@@ -598,15 +763,16 @@ angular.module(
         _fetch_device: (pk, defer, msg) =>
             Restangular.all(ICSW_URLS.REST_DEVICE_TREE_LIST.slice(1)).getList(
                 {
-                    ignore_cdg: false
-                    tree_mode: true
-                    with_categories: true
-                    ignore_disabled: true
+                    # ignore_cdg: false
+                    # tree_mode: true
+                    # with_categories: true
+                    # ignore_disabled: true
                     pks: angular.toJson([pk])
                 }
             ).then(
                 (dev_list) =>
                     dev = dev_list[0]
+                    _.remove(@all_list, (entry) -> return entry.idx == dev.idx)
                     @all_list.push(dev)
                     if dev.device_group of @group_lut
                         @reorder()
@@ -705,13 +871,30 @@ angular.module(
             )
 
         # for device Variables
-
-        create_device_variable: (new_var) =>
+        
+        update_device_variable: (cur_var, helper) =>
+            defer = $q.defer()
+            Restangular.restangularizeElement(
+                null
+                cur_var
+                ICSW_URLS.DEVICE_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2)
+            )
+            cur_var.put().then(
+                (mod_var) =>
+                    helper.replace_device_variable(mod_var)
+                    helper.filter_device_variables()
+                    defer.resolve("updated")
+                (not_ok) =>
+                    defer.reject("not ok")
+            )
+            return defer.promise
+            
+        create_device_variable: (new_var, helper) =>
             # create new netIP
             defer = $q.defer()
-            Restangular.all(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then(
+            Restangular.all(ICSW_URLS.DEVICE_DEVICE_VARIABLE_LIST.slice(1)).post(new_var).then(
                 (new_obj) =>
-                    @_fetch_device_variable(new_obj.idx, defer, "created variable")
+                    @_fetch_device_variable(new_obj.idx, defer, "created variable", helper)
                 (not_ok) ->
                     defer.reject("variable not created")
             )
@@ -719,25 +902,26 @@ angular.module(
 
         delete_device_variable: (del_var) =>
             # ensure REST hooks
-            Restangular.restangularizeElement(null, del_var, ICSW_URLS.REST_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
+            Restangular.restangularizeElement(null, del_var, ICSW_URLS.DEVICE_DEVICE_VARIABLE_DETAIL.slice(1).slice(0, -2))
             defer = $q.defer()
             del_var.remove().then(
                 (ok) =>
                     dev = @all_lut[del_var.device]
-                    console.log del_var, dev.device_variable_set
+                    # console.log del_var, dev.device_variable_set.length
                     _.remove(dev.device_variable_set, (entry) -> return entry.idx == del_var.idx)
+                    # console.log del_var, dev.device_variable_set.length
                     defer.resolve("deleted")
                 (error) ->
                     defer.reject("not deleted")
             )
             return defer.promise
 
-        _fetch_device_variable: (pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_DEVICE_VARIABLE_LIST.slice(1)).get({idx: pk}).then(
+        _fetch_device_variable: (pk, defer, msg, helper) =>
+            Restangular.one(ICSW_URLS.DEVICE_DEVICE_VARIABLE_LIST.slice(1)).get({pk: pk}).then(
                 (new_var) =>
-                    new_var = new_var[0]
                     dev = @all_lut[new_var.device]
                     dev.device_variable_set.push(new_var)
+                    helper.filter_device_variables()
                     defer.resolve(msg)
             )
 
@@ -759,8 +943,7 @@ angular.module(
                 _fetch.resolve({})
             else
                 #console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
-                console.log "*** enrichment_request: ", en_req
-
+                _start = new Date().getTime()
                 # non-empty request, fetch from server
                 icswSimpleAjaxCall(
                     url: ICSW_URLS.DEVICE_ENRICH_DEVICES
@@ -770,6 +953,10 @@ angular.module(
                     dataType: "json"
                 ).then(
                     (result) =>
+                        _end = new Date().getTime()
+                        # runtime in milliseconds
+                        _run_time = icswTools.get_diff_time_ms(_end - _start)
+                        console.log "*** enrichment_request for #{_.keys(en_req)} took #{_run_time}"
                         _fetch.resolve(result)
                 )
             _fetch.promise.then(
@@ -819,8 +1006,8 @@ angular.module(
         # device scan functions
 
         init_device_scans: () =>
-            # devices with scans running (pk => scan)
-            @scans_running = {}
+            # devices with scans running (pk list)
+            @scans_running = []
             @scans_promise = {}
             @scan_timeout = undefined
 
@@ -829,11 +1016,10 @@ angular.module(
 
             # register scan mode
 
-            @set_device_scan(dev, scan_settings.scan_mode)
+            @set_device_scan(dev, true)
 
-            if scan_settings.scan_mode != "base"
-                # save defer function for later reference
-                @scans_promise[dev.idx] = defer
+            # save defer function for later reference
+            @scans_promise[dev.idx] = defer
 
             # start scan on server
             icswSimpleAjaxCall(
@@ -844,57 +1030,43 @@ angular.module(
                 (xml) =>
                     # scan startet (or already done for base-scan because base-scan is synchronous)
                     @check_scans_running()
-                    if scan_settings.scan_mode == "base"
-                        defer.resolve("scan done")
+                    defer.resolve("scan started")
                 (error) ->
+                    @check_scans_running()
                     defer.reject("scan not ok")
             )
 
             return defer.promise
 
-        set_device_scan: (dev, scan_type) =>
-            _changed = false
-            dev.active_scan = scan_type
-            if dev.idx not of @scans_running
-                prev_mode = ""
-                _changed = true
-                @scans_running[dev.idx] = scan_type
-            else
-                prev_mode = @scans_running[dev.idx]
-                if @scans_running[dev.idx] != scan_type
-                    @scans_running[dev.idx] = scan_type
-                    _changed = true
-            if not @scans_running[dev.idx]
-                # send no signal
-                if prev_mode == "base"
-                    _changed = false
-                    # force update of com_info
-                    @enrich_devices(new icswDeviceTreeHelper(@, [dev]), ["com_info"], true).then(
-                        (result) =>
-                            $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), dev.idx, "")
-                    )
-                else if @scans_promise[dev.idx]?
-                    # rescan device network
-                    @enrich_devices(new icswDeviceTreeHelper(@, [dev]), ["network_info"], true).then(
-                        (result) =>
-                            @scans_promise[dev.idx].resolve("scan done")
-                            delete @scans_promise[dev.idx]
-                    )
-                delete @scans_running[dev.idx]
-            if _changed
-                # send signal if required
-                $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), dev.idx, scan_type)
+        activate_device_scan: (dev) =>
+            if dev.idx not in @scans_running
+                @scans_running.push(dev.idx)
+                
+        set_device_scan: (dev, to_add) =>
+            if to_add and dev.idx not in @scans_running
+                @scans_running.push(dev.idx)
+            else if not to_add and dev.idx in @scans_running
+                _.remove(@scans_running, (entry) -> return entry == dev.idx)
 
         check_scans_running: () =>
-            if not _.isEmpty(@scans_running)
-                Restangular.all(ICSW_URLS.NETWORK_GET_ACTIVE_SCANS.slice(1)).getList(
-                    {
-                        pks: angular.toJson(@scans_running)
-                    }
+            if @scans_running.length
+                if @scan_timeout
+                    $timeout.cancel(@scan_timeout)
+                @enrich_devices(
+                    new icswDeviceTreeHelper(@, (@all_lut[_pk] for _pk in @scans_running)),
+                    ["scan_lock_info"]
+                    true
                 ).then(
                     (result) =>
-                        for _res in result
-                            @set_device_scan(@all_lut[_res.pk], _res.active_scan)
+                        for _dev in result
+                            if _dev.devicescanlock_set.length == 0
+                                # no more locks, remove from list and trigger enrichment
+                                @set_device_scan(_dev, false)
+                                @enrich_devices(new icswDeviceTreeHelper(@, [_dev]), ["com_info", "network_info"], true).then(
+                                    (result) =>
+                                        $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), _dev.idx)
+                                )
+                            $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_SCAN_CHANGED"), _dev.idx)
                         @scan_timeout = $timeout(@check_scans_running, 1000)
                 )
 
@@ -917,11 +1089,15 @@ angular.module(
 
         # category functions
         add_category_to_device_by_pk: (dev_pk, cat_pk) =>
-            dev = @all_lut[dev_pk]
+            @add_category_to_device(@all_lut[dev_pk], cat_pk)
+
+        add_category_to_device: (dev, cat_pk) =>
             dev.categories.push(cat_pk)
 
         remove_category_from_device_by_pk: (dev_pk, cat_pk) =>
-            dev = @all_lut[dev_pk]
+            @remove_category_from_device(@all_lut[dev_pk], cat_pk)
+
+        remove_category_from_device: (dev, cat_pk) =>
             _.remove(dev.categories, (entry) -> return entry == cat_pk)
 
         # device connection calls
@@ -1012,7 +1188,7 @@ angular.module(
                     (results) ->
                         for entry in results
                             device.dispatcher_set.push(entry)
-                        console.log results
+                        # console.log results
                         _c_defer.resolve("created")
                 )
             else
@@ -1039,23 +1215,23 @@ angular.module(
 
 ]).service("icswDeviceTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "icswCachingCall",
+    "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswDeviceClassTreeService",
     "icswTools", "icswDeviceTree", "$rootScope", "ICSW_SIGNALS",
-    "icswDomainTreeService", "icswCategoryTreeService",
+    "icswDomainTreeService", "icswCategoryTreeService", "icswDeviceVariableScopeTreeService",
 (
-    $q, Restangular, ICSW_URLS, icswCachingCall,
+    $q, Restangular, ICSW_URLS, icswCachingCall, icswDeviceClassTreeService,
     icswTools, icswDeviceTree, $rootScope, ICSW_SIGNALS,
-    icswDomainTreeService, icswCategoryTreeService
+    icswDomainTreeService, icswCategoryTreeService, icswDeviceVariableScopeTreeService,
 ) ->
     rest_map = [
         [
             ICSW_URLS.REST_DEVICE_TREE_LIST
             {
-                ignore_cdg: false
-                tree_mode: true
-                all_devices: true
-                with_categories: true
-                ignore_disabled: true
+                # ignore_cdg: false
+                # tree_mode: true
+                # all_devices: true
+                # with_categories: true
+                # ignore_disabled: true
             }
         ]
         [
@@ -1073,11 +1249,13 @@ angular.module(
         _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
         _wait_list.push(icswDomainTreeService.load(client))
         _wait_list.push(icswCategoryTreeService.load(client))
+        _wait_list.push(icswDeviceVariableScopeTreeService.load(client))
+        _wait_list.push(icswDeviceClassTreeService.load(client))
         _defer = $q.defer()
         $q.all(_wait_list).then(
             (data) ->
                 console.log "*** device tree loaded ***"
-                _result = new icswDeviceTree(data[0], data[1], data[2], data[3])
+                _result = new icswDeviceTree(data[0], data[1], data[2], data[3], data[4], data[5])
                 _defer.resolve(_result)
                 for client of _fetch_dict
                     # resolve clients

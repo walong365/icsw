@@ -82,63 +82,20 @@ kernel_module = angular.module(
 ]).service("icswKernelTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
-    "icswTools", "$rootScope", "ICSW_SIGNALS", "icswKernelTree",
+    "icswTools", "$rootScope", "ICSW_SIGNALS", "icswKernelTree", "icswTreeBase",
 (
     $q, Restangular, ICSW_URLS, $window, icswCachingCall,
-    icswTools, $rootScope, ICSW_SIGNALS, icswKernelTree,
+    icswTools, $rootScope, ICSW_SIGNALS, icswKernelTree, icswTreeBase,
 ) ->
     rest_map = [
-        [
-            ICSW_URLS.REST_KERNEL_LIST, {}
-        ]
+        ICSW_URLS.REST_KERNEL_LIST
     ]
-    _fetch_dict = {}
-    _result = undefined
-    # load called
-    load_called = false
-
-    load_data = (client) ->
-        load_called = true
-        _wait_list = (icswCachingCall.fetch(client, _entry[0], _entry[1], []) for _entry in rest_map)
-        _defer = $q.defer()
-        $q.all(_wait_list).then(
-            (data) ->
-                console.log "*** kernel tree loaded ***"
-                if _result
-                    # for reload
-                    _result.update(data[0])
-                else
-                    _result = new icswKernelTree(data[0])
-                _defer.resolve(_result)
-                for client of _fetch_dict
-                    # resolve clients
-                    _fetch_dict[client].resolve(_result)
-                # $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), _result)
-                # reset fetch_dict
-                _fetch_dict = {}
-        )
-        return _defer
-
-    fetch_data = (client) ->
-        if client not of _fetch_dict
-            # register client
-            _defer = $q.defer()
-            _fetch_dict[client] = _defer
-        if _result
-            # resolve immediately
-            _fetch_dict[client].resolve(_result)
-        return _fetch_dict[client]
-
-    return {
-        "load": (client) ->
-            if load_called
-                # fetch when data is present (after sidebar)
-                return fetch_data(client).promise
-            else
-                return load_data(client).promise
-        "reload": (client) ->
-            return load_data(client).promise
-    }
+    return new icswTreeBase(
+        "KernelTree"
+        icswKernelTree
+        rest_map
+        ""
+    )
 ]).directive("icswKernelOverview",
 [
     "$templateCache",
