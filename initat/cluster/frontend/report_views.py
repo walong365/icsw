@@ -355,12 +355,12 @@ class DeviceReport(GenericReport):
 
 
 class ReportGenerator(object):
-    def __init__(self, settings, _devices):
+    def __init__(self, _settings, _devices):
         self.data = ""
 
         # general settings stored under special key -1
-        self.general_settings = settings[-1]
-        self.device_settings = settings
+        self.general_settings = _settings[-1]
+        self.device_settings = _settings
 
         self.devices = _devices
         self.progress = 0
@@ -518,8 +518,8 @@ class ReportGenerator(object):
 
 
 class PDFReportGenerator(ReportGenerator):
-    def __init__(self, settings, _devices):
-        super(PDFReportGenerator, self).__init__(settings, _devices)
+    def __init__(self, _settings, _devices):
+        super(PDFReportGenerator, self).__init__(_settings, _devices)
 
         # logo and styling options/settings
         system_device = None
@@ -1001,7 +1001,7 @@ class PDFReportGenerator(ReportGenerator):
         body_data.append((text_block, t))
 
         t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
-                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),])
+                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
         elements.append(t_head)
         elements.append(Spacer(1, 30))
@@ -1040,7 +1040,6 @@ class PDFReportGenerator(ReportGenerator):
             elif AssetType(ar.run_type) == AssetType.HARDWARE:
                 sorted_runs[8] = ar
 
-
         for idx in sorted_runs:
             _buffer = BytesIO()
 
@@ -1056,7 +1055,7 @@ class PDFReportGenerator(ReportGenerator):
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_status'])
 
-                heading = "System Updates" # "Installed Updates"
+                heading = "System Updates"
 
                 report = DeviceReport(_device, report_settings, heading)
                 if not report.report_settings['installed_updates_selected']:
@@ -1065,7 +1064,6 @@ class PDFReportGenerator(ReportGenerator):
                 root_report.add_child(report)
 
                 section_number = report.get_section_number()
-
 
                 rpt = PollyReportsReport(data)
 
@@ -1095,7 +1093,7 @@ class PDFReportGenerator(ReportGenerator):
             elif AssetType(ar.run_type) == AssetType.LICENSE:
                 data = row_collector.rows_dict[1:]
 
-                heading = "Active Licenses" # "Available Licenses"
+                heading = "Active Licenses"
 
                 report = DeviceReport(_device, report_settings, heading)
                 if not report.report_settings['licenses_selected']:
@@ -1119,7 +1117,7 @@ class PDFReportGenerator(ReportGenerator):
                 header_names_right = []
 
                 self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data, _device)
+                                            header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1133,7 +1131,7 @@ class PDFReportGenerator(ReportGenerator):
                     logger.info("PDF generation for packages failed, error was: {}".format(str(e)))
                     packages = []
 
-                heading = "Installed Software" # "Installed Packages"
+                heading = "Installed Software"
 
                 report = DeviceReport(_device, report_settings, heading)
                 if not report.report_settings['packages_selected']:
@@ -1142,7 +1140,6 @@ class PDFReportGenerator(ReportGenerator):
                 root_report.add_child(report)
 
                 section_number = report.get_section_number()
-
 
                 data = [package.get_as_row() for package in packages]
                 data = sorted(data, key=lambda k: k['package_name'])
@@ -1168,10 +1165,10 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Version", "package_version", 15.00),
                                      ("Release", "package_release", 15.00)]
                 header_names_right = [("Size", "package_size", 15.00),
-                                     ("Install Date", "package_install_date", 15.00)]
+                                      ("Install Date", "package_install_date", 15.00)]
 
                 self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data, _device)
+                                            header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1183,7 +1180,7 @@ class PDFReportGenerator(ReportGenerator):
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_name'])
 
-                heading = "Updates ready for install" # "Available Updates"
+                heading = "Updates ready for install"
 
                 report = DeviceReport(_device, report_settings, heading)
                 root_report.add_child(report)
@@ -1211,7 +1208,7 @@ class PDFReportGenerator(ReportGenerator):
                 header_names_right = []
 
                 self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data, _device)
+                                            header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1246,7 +1243,7 @@ class PDFReportGenerator(ReportGenerator):
                 header_names_right = []
 
                 self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data, _device)
+                                            header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1284,7 +1281,7 @@ class PDFReportGenerator(ReportGenerator):
                 header_names_right = []
 
                 self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data, _device)
+                                            header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1293,7 +1290,7 @@ class PDFReportGenerator(ReportGenerator):
                 if not report.report_settings['dmi_report_selected']:
                     continue
 
-                heading = "Hardware Details" #"DMI Information"
+                heading = "Hardware Details"
 
                 data = row_collector.rows_dict[1:]
 
@@ -1322,7 +1319,7 @@ class PDFReportGenerator(ReportGenerator):
                 header_names_right = []
 
                 self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data, _device)
+                                            header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1368,7 +1365,7 @@ class PDFReportGenerator(ReportGenerator):
                 header_names_right = []
 
                 self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data, _device)
+                                            header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1391,7 +1388,6 @@ class PDFReportGenerator(ReportGenerator):
         root_report.add_child(report)
 
         section_number = report.get_section_number()
-
 
         _buffer = BytesIO()
         doc = SimpleDocTemplate(_buffer,
@@ -1511,8 +1507,11 @@ class PDFReportGenerator(ReportGenerator):
         t_body = Table(data, colWidths=(available_width * 0.10, available_width * 0.90),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
-        p_h = Paragraph('<font face="{}" size="16">{} Hardware Report for {}</font>'.format(self.bold_font, section_number,
-            hardware_report_ar.asset_batch.device.name), style_sheet["BodyText"])
+        p_h = Paragraph('<font face="{}" size="16">{} Hardware Report for {}</font>'.format(
+            self.bold_font,
+            section_number,
+            hardware_report_ar.asset_batch.device.name),
+            style_sheet["BodyText"])
 
         logo = Image(self.logo_buffer)
         logo.drawHeight = self.logo_height
@@ -1562,13 +1561,12 @@ class PDFReportGenerator(ReportGenerator):
                                        fontSize=11,
                                        alignment=TA_CENTER))
 
-
         available_width = self.page_format[0] - (self.margin * 4)
 
-        data = []
-
-        data.append([Paragraph("Asset report", style_sheet['heading_1'])])
-        data.append([Paragraph("Report #{}".format(self.report_id), style_sheet['heading_2'])])
+        data = [
+            [Paragraph("Asset report", style_sheet['heading_1'])],
+            [Paragraph("Report #{}".format(self.report_id), style_sheet['heading_2'])]
+            ]
 
         h, w = self.__scale_logo(drawheight_max=23 * mm)
 
@@ -1621,7 +1619,7 @@ class PDFReportGenerator(ReportGenerator):
 
         data.append([Paragraph(selected_devices_str, style_sheet['heading_4'])])
 
-        t_head = Table(data, colWidths=(available_width), rowHeights=(70, 45, 150, 15, 20, 50, 16, 50, 16),
+        t_head = Table(data, colWidths=[available_width], rowHeights=[70, 45, 150, 15, 20, 50, 16, 50, 16],
                        style=[
                            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                            ('LEFTPADDING', (0, 0), (-1, -1), 0),
@@ -1656,8 +1654,8 @@ class PDFReportGenerator(ReportGenerator):
 
         t_head = Table(
             data,
-            rowHeights=(200),
-            colWidths=(available_width - self.logo_width, None),
+            rowHeights=[200],
+            colWidths=[available_width - self.logo_width, None],
             style=[
                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 0),
@@ -1702,12 +1700,17 @@ class PDFReportGenerator(ReportGenerator):
             heading_str_width = stringWidth(heading_str, "SourceSansPro-Regular", 10)
 
             dots = "."
-            while (25 * indent) + (heading_str_width + 10) + stringWidth(dots, "SourceSansPro-Regular", 10) < (width - 150):
+            while (25 * indent) + (heading_str_width + 10) + stringWidth(dots, "SourceSansPro-Regular", 10) < \
+                    (width - 150):
                 dots += "."
 
             can.setFillAlpha(0.35)
             can.setFillColor(HexColor(0xBDBDBD))
-            can.drawString(35 + (25 * indent) + (heading_str_width + 10), heigth - (top_margin + (15 * vertical_x)), dots)
+            can.drawString(
+                35 + (25 * indent) + (heading_str_width + 10),
+                heigth - (top_margin + (15 * vertical_x)),
+                dots
+            )
             can.setFillAlpha(1.0)
             can.setFillColor(HexColor(0x000000))
 
@@ -1728,7 +1731,7 @@ class PDFReportGenerator(ReportGenerator):
 
         return _buffer
 
-    def __add_page_numbers(self, pdf_buffer, toc_offset_num):
+    def __add_page_numbers(self, pdf_buffer):
         output = PdfFileWriter()
         existing_pdf = PdfFileReader(pdf_buffer)
         num_pages = existing_pdf.getNumPages()
@@ -1759,14 +1762,13 @@ class PDFReportGenerator(ReportGenerator):
                 str_to_draw_1 = "ServerID\t{}".format(self.cluster_id)
                 str_to_draw_2 = "Created\t{} by {}".format(creationdate_str, _user_str)
 
-                can.drawTabbedString(25 * mm, 20 * mm, tab_spec, str_to_draw_1)
-                can.drawTabbedString(25 * mm, 15 * mm, tab_spec, str_to_draw_2)
+                can.draw_tabbed_string(25 * mm, 20 * mm, tab_spec, str_to_draw_1)
+                can.draw_tabbed_string(25 * mm, 15 * mm, tab_spec, str_to_draw_2)
 
                 can.save()
                 page_num_buffer.seek(0)
                 page_num_pdf = PdfFileReader(page_num_buffer)
                 page.mergePage(page_num_pdf.getPage(0))
-
 
             else:
                 page_num_buffer = BytesIO()
@@ -1783,12 +1785,7 @@ class PDFReportGenerator(ReportGenerator):
 
                 can.drawString(page_number_str_draw_point, 6 * mm, page_number_str)
 
-
                 # draw info footer string
-
-
-
-
                 creationdate_str = self.creation_date.strftime(ASSET_DATETIMEFORMAT)
 
                 info_str = "Report #{}, {}, {}".format(self.report_id, creationdate_str, self.cluster_name)
@@ -1815,7 +1812,7 @@ class PDFReportGenerator(ReportGenerator):
 
     def __generate_user_group_overview_report(self, root_report):
         _buffer = BytesIO()
-        canvas = Canvas(_buffer, (self.page_format))
+        canvas = Canvas(_buffer, self.page_format)
 
         data = self._get_data_for_user_group_overview()
 
@@ -1854,7 +1851,7 @@ class PDFReportGenerator(ReportGenerator):
 
     def __generate_user_role_overview_report(self, root_report):
         _buffer = BytesIO()
-        canvas = Canvas(_buffer, (self.page_format))
+        canvas = Canvas(_buffer, self.page_format)
 
         data = self._get_data_for_user_roles_overview()
 
@@ -1887,11 +1884,10 @@ class PDFReportGenerator(ReportGenerator):
             report.add_buffer_to_report(_buffer)
             self.current_page_num += rpt.pagenumber
 
-
     def generate_report(self):
         if self.general_settings["network_report_overview_module_selected"] or \
-            self.general_settings["general_device_overview_module_selected"] or \
-            self.general_settings["user_group_overview_module_selected"]:
+                self.general_settings["general_device_overview_module_selected"] or \
+                self.general_settings["user_group_overview_module_selected"]:
 
             report = GenericReport("General Reports")
             report.section_number = 1
@@ -1929,7 +1925,7 @@ class PDFReportGenerator(ReportGenerator):
                 group_report = GenericReport(_group_name)
                 device_report.add_child(group_report)
 
-                for _device in sorted(group_device_dict[_group_name], key=lambda _device: _device.full_name):
+                for _device in sorted(group_device_dict[_group_name], key=lambda __device: __device.full_name):
                     if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
                         return
                     self.__generate_device_report(_device, self.device_settings[_device.idx], group_report)
@@ -1969,7 +1965,6 @@ class PDFReportGenerator(ReportGenerator):
         for i in reversed(range(toc_pdf_page_num)):
             output_pdf.insertPage(toc_pdf.getPage(i))
 
-
         # generate front page, prepend to pdf
         frontpage_buffer = self.__generate_front_page(output_pdf.getNumPages())
         frontpage_pdf = PdfFileReader(frontpage_buffer)
@@ -1982,7 +1977,7 @@ class PDFReportGenerator(ReportGenerator):
 
         # Add page numbers
         output_pdf.write(output_buffer)
-        output_pdf = self.__add_page_numbers(output_buffer, number_of_pre_content_sites)
+        output_pdf = self.__add_page_numbers(output_buffer)
         self.progress = 100
 
         # Generate Bookmarks
@@ -1991,7 +1986,8 @@ class PDFReportGenerator(ReportGenerator):
         for _report in queue:
             _report.bookmark = output_pdf.addBookmark("{} {}".format(_report.get_section_number(), _report.name),
                                                       current_page_number,
-                                                      parent=_report.root_report.bookmark if _report.root_report else None)
+                                                      parent=_report.root_report.bookmark if _report.root_report
+                                                      else None)
             current_page_number += _report.number_of_pages
 
         output_buffer = BytesIO()
@@ -2069,8 +2065,8 @@ class XlsxReportGenerator(ReportGenerator):
             workbooks.append((workbook, _device.full_name))
 
         from zipfile import ZipFile
-        buffer = BytesIO()
-        zipfile = ZipFile(buffer, "w")
+        _buffer = BytesIO()
+        zipfile = ZipFile(_buffer, "w")
 
         for workbook, workbook_name in workbooks:
             s = save_virtual_workbook(workbook)
@@ -2079,7 +2075,7 @@ class XlsxReportGenerator(ReportGenerator):
 
         zipfile.close()
 
-        self.data = buffer.getvalue()
+        self.data = _buffer.getvalue()
 
         _user = user.objects.get(idx=self.general_settings["user_idx"])
         self.report_history.created_by_user = _user
@@ -2153,7 +2149,8 @@ class XlsxReportGenerator(ReportGenerator):
 
         return workbook
 
-    def __generate_device_overview(self, _device, workbook):
+    @staticmethod
+    def __generate_device_overview(_device, workbook):
         sheet = workbook.create_sheet()
 
         _title = _device.full_name
@@ -2238,7 +2235,6 @@ class XlsxReportGenerator(ReportGenerator):
                           "#IPs",
                           "Network Type"]
 
-
             sheet.append(header_row)
 
             for _network in networks:
@@ -2281,7 +2277,6 @@ class XlsxReportGenerator(ReportGenerator):
     def __generate_general_device_overview_report(self):
         workbook = Workbook()
 
-
         data = _generate_hardware_info_data_dict(self.devices, self.general_settings["assetbatch_selection_mode"])
 
         if data:
@@ -2306,7 +2301,6 @@ class XlsxReportGenerator(ReportGenerator):
                 ]
 
                 sheet.append(row)
-
 
         return workbook
 
@@ -2383,7 +2377,6 @@ class GetReportData(View):
         data = report_history.get_data()
         data_b64 = base64.b64encode(data)
 
-
         return HttpResponse(
             json.dumps(
                 {
@@ -2402,7 +2395,6 @@ class GenerateReportPdf(View):
             pk_settings[-1]['hostname'] = request.META['HOSTNAME']
         else:
             pk_settings[-1]['hostname'] = "unknown"
-
 
         pdf_report_generator = PDFReportGenerator(pk_settings, _devices)
         pdf_report_generator.timestamp = current_time
@@ -2448,6 +2440,7 @@ class UploadReportGfx(View):
 class GetReportGfx(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
+        id(request)
         val_blob = ""
         system_device = None
         for _device in device.objects.all():
@@ -2508,7 +2501,6 @@ class ReportDataAvailable(View):
 
         group_selected_runs = {}
 
-
         for idx in idx_list:
             idx = int(idx)
             _device = device.objects.get(idx=idx)
@@ -2518,7 +2510,8 @@ class ReportDataAvailable(View):
                 continue
 
             selected_runs = _select_assetruns_for_device(_device, assetbatch_selection_mode)
-            selected_run_info_array = [(ar.run_type, str(ar.run_start_time), ar.asset_batch.idx)  for ar in selected_runs]
+            selected_run_info_array = \
+                [(ar.run_type, str(ar.run_start_time), ar.asset_batch.idx) for ar in selected_runs]
 
             if _device.device_group_name() not in group_selected_runs:
                 group_selected_runs[_device.device_group_name()] = []
@@ -2541,9 +2534,11 @@ class ReportDataAvailable(View):
             )
         )
 
+
 class ReportHistoryAvailable(View):
     @method_decorator(login_required)
     def post(self, request):
+        id(request)
         data = {}
         report_ids = []
 
@@ -2575,6 +2570,7 @@ class ReportHistoryAvailable(View):
                 }
             )
         )
+
 
 class UpdateDownloadCount(View):
     @method_decorator(login_required)
@@ -2684,7 +2680,7 @@ def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
         elif AssetType(ar.run_type) == AssetType.PROCESS:
             # disabled for now
             pass
-            #sorted_runs[4] = ar
+            # sorted_runs[4] = ar
         elif AssetType(ar.run_type) == AssetType.PRETTYWINHW:
             sorted_runs[5] = ar
         elif AssetType(ar.run_type) == AssetType.DMI:
@@ -2986,10 +2982,10 @@ def _generate_report(report_generator):
     try:
         report_generator.generate_report()
     except Exception as e:
-        import traceback, sys
-        print '-'*60
-        traceback.print_exc(file=sys.stdout)
-        print '-'*60
+        # import traceback, sys
+        # print '-'*60
+        # traceback.print_exc(file=sys.stdout)
+        # print '-'*60
         logger.info("Report Generation failed, error was: {}".format(str(e)))
         report_generator.data = ""
         report_generator.progress = -1
@@ -3065,28 +3061,28 @@ TAB_LINE = 0x30
 
 
 class TabbedCanvas(Canvas):
-
-    def GetMatchingTab( self, pos, tabspec ):
+    @staticmethod
+    def get_matching_tab(pos, tabspec):
         for ts in tabspec:
             if ts[0] > pos:
                 return ts
         return None
 
-    def drawTabbedString( self, x, y, tabspec, parts ):
+    def draw_tabbed_string(self, x, y, tabspec, parts):
         parts = parts.split('\t')
         fn = self._fontname
         fs = self._fontsize
-        spc = self.stringWidth( ' ', fn, fs )
-        dot = self.stringWidth( '.', fn, fs )
-        dash = self.stringWidth( '-', fn, fs )
+        spc = self.stringWidth(' ', fn, fs)
+        dot = self.stringWidth('.', fn, fs)
+        dash = self.stringWidth('-', fn, fs)
 
-        self.drawString( x, y, parts[0] )
-        pos = self.stringWidth( parts[0], fn, fs )
+        self.drawString(x, y, parts[0])
+        pos = self.stringWidth(parts[0], fn, fs)
         for part in parts[1:]:
-            pw = self.stringWidth( part, fn, fs )
+            pw = self.stringWidth(part, fn, fs)
             delta = 0
 
-            ts = self.GetMatchingTab( pos, tabspec )
+            ts = self.get_matching_tab(pos, tabspec)
             if ts:
                 delta = ts[0] - pos
                 align = ts[1] & 0x0f
@@ -3101,8 +3097,8 @@ class TabbedCanvas(Canvas):
                 elif align == TAB_RIGHT:
                     delta -= pw
                 elif align == TAB_DECIMAL:
-                    twoparts = part.split('.',1)
-                    p1w = self.stringWidth( twoparts[0], fn, fs )
+                    twoparts = part.split('.', 1)
+                    p1w = self.stringWidth(twoparts[0], fn, fs)
                     delta -= p1w
 
                 # If delta is now negative, make the delta equal to one
@@ -3116,16 +3112,16 @@ class TabbedCanvas(Canvas):
                 if fill == TAB_SPACE:
                     pass
                 elif fill == TAB_DOT:
-                    dots = int( (delta-spc-spc) / dot )
+                    dots = int((delta-spc-spc) / dot)
                     fillstr = '.'*dots
                 elif fill == TAB_DASH:
-                    dots = int( (delta-spc-spc) / dash )
+                    dots = int((delta-spc-spc) / dash)
                     fillstr = '-'*dots
                 elif fill == TAB_LINE:
-                    self.line( x+pos+spc, y, x+pos+delta, y )
+                    self.line(x+pos+spc, y, x+pos+delta, y)
 
                 if fillstr:
-                    self.drawString( x+pos+spc, y, fillstr )
+                    self.drawString(x+pos+spc, y, fillstr)
 
-            self.drawString( x+pos+delta, y, part )
+            self.drawString(x+pos+delta, y, part)
             pos += delta + pw
