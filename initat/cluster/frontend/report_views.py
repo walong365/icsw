@@ -73,6 +73,8 @@ else:
     _file_root = settings.ICSW_PROD_WEB_DIR
     NOCTUA_LOGO_PATH = os.path.join(settings.STATIC_ROOT, "noctua-flat-trans.png")
 
+# this makes problems when running package-knife builds on devices without installed icsw-server
+# package because DEBUG=False
 
 pdfmetrics.registerFont(TTFont('SourceSansPro-Black',
                                os.path.join(_file_root, "fonts", "SourceSansPro-Black.ttf")))
