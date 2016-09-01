@@ -1624,7 +1624,7 @@ class PDFReportGenerator(ReportGenerator):
 
         data.append([Paragraph(selected_devices_str, style_sheet['heading_4'])])
 
-        t_head = Table(data, colWidths=[available_width], rowHeights=[70, 45, 150, 15, 20, 50, 16, 50, 16],
+        t_head = Table(data, colWidths=[available_width], rowHeights=[70, 45, 150, 15, 20, 50, 16, 50, None],
                        style=[
                            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
                            ('LEFTPADDING', (0, 0), (-1, -1), 0),
