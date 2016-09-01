@@ -338,8 +338,6 @@ class DeviceReport(GenericReport):
             return self.report_settings["licenses_selected"]
         elif AssetType(assetrun.run_type) == AssetType.UPDATE:
             return self.report_settings["installed_updates_selected"]
-        elif AssetType(assetrun.run_type) == AssetType.SOFTWARE_VERSION:
-            return True
         elif AssetType(assetrun.run_type) == AssetType.PROCESS:
             return self.report_settings["process_report_selected"]
         elif AssetType(assetrun.run_type) == AssetType.PENDING_UPDATE:
@@ -349,6 +347,8 @@ class DeviceReport(GenericReport):
         elif AssetType(assetrun.run_type) == AssetType.PCI:
             return self.report_settings["pci_report_selected"]
         elif AssetType(assetrun.run_type) == AssetType.PRETTYWINHW:
+            return self.report_settings["hardware_report_selected"]
+        elif AssetType(assetrun.run_type) == AssetType.LSHW:
             return self.report_settings["hardware_report_selected"]
 
 
