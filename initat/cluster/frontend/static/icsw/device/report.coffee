@@ -203,6 +203,9 @@ device_report_module = angular.module(
                                 else if asset_type_name == "Hardware"
                                     device.$lstopo_report_button_disabled = false
                                     device.$lstopo_report_button_title= button_title_str
+                                else if asset_type_name == "LSHW"
+                                    device.$hardware_report_button_disabled = false
+                                    device.$hardware_report_button_title = button_title_str
 
               (not_ok) ->
                   console.log not_ok
