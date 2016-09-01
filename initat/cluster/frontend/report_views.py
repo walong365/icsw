@@ -228,7 +228,7 @@ class RowCollector(object):
 
             self.rows_dict.append(o)
 
-        elif self.current_asset_type == AssetType.PRETTYWINHW:
+        elif self.current_asset_type == AssetType.PRETTYWINHW or self.current_asset_type == AssetType.LSHW:
             pass
 
         elif self.current_asset_type == AssetType.DMI:
@@ -1034,7 +1034,7 @@ class PDFReportGenerator(ReportGenerator):
                 sorted_runs[3] = ar
             elif AssetType(ar.run_type) == AssetType.PROCESS:
                 sorted_runs[4] = ar
-            elif AssetType(ar.run_type) == AssetType.PRETTYWINHW:
+            elif AssetType(ar.run_type) == AssetType.PRETTYWINHW or AssetType(ar.run_type) == AssetType.LSHW:
                 sorted_runs[5] = ar
             elif AssetType(ar.run_type) == AssetType.DMI:
                 sorted_runs[6] = ar
@@ -1373,7 +1373,7 @@ class PDFReportGenerator(ReportGenerator):
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
 
-            elif ar.run_type == AssetType.PRETTYWINHW:
+            elif ar.run_type == AssetType.PRETTYWINHW or ar.run_type == AssetType.LSHW:
                 if not report.report_settings['hardware_report_selected']:
                     continue
 
@@ -2684,7 +2684,7 @@ def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
             # disabled for now
             pass
             # sorted_runs[4] = ar
-        elif AssetType(ar.run_type) == AssetType.PRETTYWINHW:
+        elif AssetType(ar.run_type) == AssetType.PRETTYWINHW or AssetType(ar.run_type) == AssetType.LSHW:
             sorted_runs[5] = ar
         elif AssetType(ar.run_type) == AssetType.DMI:
             sorted_runs[6] = ar
@@ -2921,7 +2921,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
                     row_writer_func(row)
 
-    elif ar.run_type == AssetType.PRETTYWINHW:
+    elif ar.run_type == AssetType.PRETTYWINHW or ar.run_type == AssetType.LSHW:
         base_header.extend([
             'entry'
         ])
@@ -3007,7 +3007,7 @@ def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
         memory_str = "N/A"
 
         for assetrun in selected_runs:
-            if AssetType(assetrun.run_type) == AssetType.PRETTYWINHW:
+            if AssetType(assetrun.run_type) == AssetType.PRETTYWINHW or AssetType(assetrun.run_type) == AssetType.LSHW:
                 for cpu in assetrun.asset_batch.cpus.all():
                     if cpu_str != "N/A":
                         cpu_str += "\n{}".format(str(cpu))
