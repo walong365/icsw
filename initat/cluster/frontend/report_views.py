@@ -131,7 +131,6 @@ class RowCollector(object):
             update_status = str(_row[13])
             # update_installed = str(_row[15])
 
-
             if type(install_date) != str:
                 install_date = install_date.strftime(ASSET_DATETIMEFORMAT)
 
@@ -306,7 +305,10 @@ class GenericReport(object):
         self.pdf_buffers.append(_buffer)
 
     def increase_page_count(self, canvas, doc):
+        id(canvas)
+        id(doc)
         self.number_of_pages += 1
+
 
 class DeviceReport(GenericReport):
     def __init__(self, _device, report_settings, name):
@@ -381,7 +383,8 @@ class ReportGenerator(object):
     def get_report_type(self):
         pass
 
-    def _get_data_for_user_group_overview(self):
+    @staticmethod
+    def _get_data_for_user_group_overview():
         users = user.objects.all()
         data = []
 
@@ -408,7 +411,6 @@ class ReportGenerator(object):
                 else:
                     roles_str = "{}, {}".format(roles_str, role.name)
 
-
             allowed_device_group_str = "All/Any"
             for allowed_device_group in _user.allowed_device_groups.all():
                 new_allowed_device_group_str = "{}".format(allowed_device_group.name)
@@ -418,7 +420,6 @@ class ReportGenerator(object):
                 else:
                     allowed_device_group_str = "{}, {}".format(allowed_device_group_str, new_allowed_device_group_str)
 
-
             o['secondary_groups'] = secondary_groups_str
             o['roles'] = roles_str
             o['allowed_device_groups'] = allowed_device_group_str
@@ -427,7 +428,8 @@ class ReportGenerator(object):
 
         return data
 
-    def _get_data_for_user_roles_overview(self):
+    @staticmethod
+    def _get_data_for_user_roles_overview():
         from initat.cluster.backbone.models.user import Role
 
         ac_to_str_dict = {
@@ -465,10 +467,9 @@ class ReportGenerator(object):
                 object_pk = role_object_permission.csw_object_permission.object_pk
 
                 content_type = role_object_permission.csw_object_permission.csw_permission.content_type
-                object = content_type.get_object_for_this_type(pk=object_pk)
+                _object = content_type.get_object_for_this_type(pk=object_pk)
 
-
-                new_permission_str = "{}: {} for {} [{}]".format(index, permission_name, str(object),
+                new_permission_str = "{}: {} for {} [{}]".format(index, permission_name, str(_object),
                                                                  ac_to_str_dict[role_object_permission.level])
 
                 if permission_str == "N/A":
@@ -484,7 +485,8 @@ class ReportGenerator(object):
 
         return data
 
-    def _get_data_for_network_report(self):
+    @staticmethod
+    def _get_data_for_network_report():
         data = []
         for _network in network.objects.all():
             o = {
@@ -502,7 +504,8 @@ class ReportGenerator(object):
 
         return data
 
-    def _get_data_for_sub_network_report(self, _network):
+    @staticmethod
+    def _get_data_for_sub_network_report(_network):
         data = []
         for net_ip in _network.net_ip_set.all():
             o = {
@@ -520,7 +523,7 @@ class PDFReportGenerator(ReportGenerator):
     def __init__(self, settings, _devices):
         super(PDFReportGenerator, self).__init__(settings, _devices)
 
-        ## logo and styling options/settings
+        # logo and styling options/settings
         system_device = None
         for _device in device.objects.all():
             if _device.is_cluster_device_group():
@@ -573,13 +576,12 @@ class PDFReportGenerator(ReportGenerator):
             cluster_name_var = cluster_name_var[0]
             self.cluster_name = cluster_name_var.val_str
 
-
-        ## Storage dicts / lists
+        # Storage dicts / lists
         self.current_page_num = 0
 
         self.reports = []
 
-    def __scale_logo(self, drawheight_max = None, drawwidth_max = None):
+    def __scale_logo(self, drawheight_max=None, drawwidth_max=None):
         im = PILImage.open(self.logo_buffer)
         logo_width = im.size[0]
         logo_height = im.size[1]
@@ -590,9 +592,10 @@ class PDFReportGenerator(ReportGenerator):
             logo_width -= ratio * 1
             logo_height -= 1
 
-        return (logo_width, logo_height)
+        return logo_width, logo_height
 
     def __get_logo_helper(self, value):
+        id(value)
         _tmp_file = tempfile.NamedTemporaryFile()
         self.logo_buffer.seek(0)
         _tmp_file.write(self.logo_buffer.read())
@@ -601,7 +604,7 @@ class PDFReportGenerator(ReportGenerator):
 
         return logo
 
-    def __config_report_helper(self, header, header_names_left, header_names_right, rpt, data, _device=None):
+    def __config_report_helper(self, header, header_names_left, header_names_right, rpt, data):
         available_width = self.page_format[0] - (self.margin * 2)
 
         header_list = [PollyReportsImage(pos=(available_width - self.logo_width, -20),
@@ -632,7 +635,6 @@ class PDFReportGenerator(ReportGenerator):
                     wrap_idx = i
                     s_new += "\n"
                 s_new += header_name[i]
-
 
             header_list.append(Element((position, 24), (self.standard_font, header_font_size), text=s_new))
             detail_list.append(Element((position, 0), (self.standard_font, normal_font_size), key=key))
@@ -676,8 +678,22 @@ class PDFReportGenerator(ReportGenerator):
                     s_new += "\n"
                 s_new += header_name[i]
 
-            header_list.append(Element((position, 24), (self.standard_font, header_font_size), text=s_new, align="right"))
-            detail_list.append(Element((position, 0), (self.standard_font, normal_font_size), key=key, align="right"))
+            header_list.append(
+                Element(
+                    (position, 24),
+                    (self.standard_font, header_font_size),
+                    text=s_new,
+                    align="right"
+                )
+            )
+            detail_list.append(
+                Element(
+                    (position, 0),
+                    (self.standard_font, normal_font_size),
+                    key=key,
+                    align="right"
+                )
+            )
 
             position -= available_width * (avail_width_percentage / 100.0)
 
@@ -750,7 +766,7 @@ class PDFReportGenerator(ReportGenerator):
 
     def __generate_network_report(self, root_report):
         _buffer = BytesIO()
-        canvas = Canvas(_buffer, (self.page_format))
+        canvas = Canvas(_buffer, self.page_format)
 
         data = self._get_data_for_network_report()
 
@@ -768,13 +784,13 @@ class PDFReportGenerator(ReportGenerator):
                                      getvalue=lambda x: x["id"][0])]
 
             header_names_left = [("Identifier", "id", 12.5),
-                            ("Network", "network", 12.5),
-                            ("Netmask", "netmask", 12.5),
-                            ("Broadcast", "broadcast", 12.5),
-                            ("Gateway", "gateway", 12.5),
-                            ('GW Priority', "gwprio", 12.5),
-                            ("#IPs", "num_ips", 12.5),
-                            ("Network Type", "network_type", 12.5)]
+                                 ("Network", "network", 12.5),
+                                 ("Netmask", "netmask", 12.5),
+                                 ("Broadcast", "broadcast", 12.5),
+                                 ("Gateway", "gateway", 12.5),
+                                 ('GW Priority', "gwprio", 12.5),
+                                 ("#IPs", "num_ips", 12.5),
+                                 ("Network Type", "network_type", 12.5)]
 
             header_names_right = []
 
@@ -791,10 +807,9 @@ class PDFReportGenerator(ReportGenerator):
             for _network in network.objects.all():
                 self.__generate_sub_network_report(_network, report)
 
-
     def __generate_sub_network_report(self, _network, root_report):
         _buffer = BytesIO()
-        canvas = Canvas(_buffer, (self.page_format))
+        canvas = Canvas(_buffer, self.page_format)
 
         data = self._get_data_for_sub_network_report(_network)
 
@@ -858,8 +873,11 @@ class PDFReportGenerator(ReportGenerator):
 
         data = [[paragraph_header, logo]]
 
-        t_head = Table(data, colWidths = (available_width - self.logo_width - 11.75, self.logo_width + 11.75),
-                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),])
+        t_head = Table(
+            data,
+            colWidths=(available_width - self.logo_width - 11.75, self.logo_width + 11.75),
+            style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')]
+        )
 
         body_data = []
 
