@@ -476,7 +476,7 @@ def device_pre_save(sender, **kwargs):
         else:
             if present_dev.pk != cur_inst.pk:
                 raise ValidationError(
-                    "UUID clash (={} for {} and {})".format(
+                    "UUID clash (same value '{}' for {} and {})".format(
                         cur_inst.uuid,
                         unicode(cur_inst),
                         unicode(present_dev),

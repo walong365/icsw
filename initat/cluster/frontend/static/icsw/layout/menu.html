@@ -30,7 +30,7 @@
             <icsw-menu-directive></icsw-menu-directive>
 
             <div class="collapse navbar-collapse">
-                <!-- @ifdef DEBUG -->
+                <!-- @if DEBUG -->
                 <form class="navbar-form navbar-left">
                     <div class="input-group">
                         <input
@@ -76,7 +76,7 @@
                                     Account Info
                                 </a>
                             </li>
-                            <!-- @ifdef DEBUG -->
+                            <!-- @if DEBUG -->
                             <li ng-show="has_menu_permission('backbone.user.admin')">
                                 <a href="{{ ICSW_URLS.ADMIN_INDEX }}">
                                     <span class="fa fa-wrench fa_icsw"></span>
