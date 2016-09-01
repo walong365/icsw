@@ -21,84 +21,82 @@
 """ report views """
 
 import base64
+import datetime
 import json
 import logging
-import datetime
-import tempfile
 import os
-
-from django.contrib.auth.decorators import login_required
-from django.http import HttpResponse
-from django.utils.decorators import method_decorator
-from django.views.generic import View
-from threading import Thread
-from PIL import Image as PILImage
+import tempfile
 from io import BytesIO
+from threading import Thread
 
-from reportlab.lib.utils import ImageReader
-from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Spacer, Table, Paragraph, Image
-from reportlab.graphics.shapes import Drawing, Rect
-from reportlab.pdfgen.canvas import Canvas
-from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.lib.pagesizes import landscape, letter, A4, A3
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-
+from PIL import Image as PILImage
 from PollyReports import Element, Rule, Band
 from PollyReports import Image as PollyReportsImage
 from PollyReports import Report as PollyReportsReport
-
 from PyPDF2 import PdfFileWriter, PdfFileReader
-
-from initat.cluster.backbone.models import device, device_variable, AssetType, PackageTypeEnum, RunStatus, RunResult
-from initat.cluster.frontend.helper_functions import xml_wrapper
-from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
-from initat.cluster.backbone.models.report import ReportHistory
-from initat.cluster.backbone.models import user
-from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
-from initat.cluster.backbone.models import network
-
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse
+from django.utils import timezone
+from django.utils.decorators import method_decorator
+from django.views.generic import View
 from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
-
-from django.utils import timezone
-
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.lib.enums import TA_LEFT, TA_CENTER
-from reportlab.lib.units import cm, mm, inch, pica
+from reportlab.graphics.shapes import Drawing, Rect
+from reportlab.lib import colors
 from reportlab.lib.colors import HexColor
+from reportlab.lib.enums import TA_LEFT, TA_CENTER
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import mm, inch
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.pdfmetrics import stringWidth
+from reportlab.pdfbase.ttfonts import TTFont
+from reportlab.pdfgen.canvas import Canvas
+from reportlab.platypus import SimpleDocTemplate, Spacer, Table, Paragraph, Image
 
-from initat.cluster.settings import FILE_ROOT
+from initat.cluster.backbone.models import device, device_variable, AssetType, PackageTypeEnum, RunStatus, RunResult
+from initat.cluster.backbone.models import network
+from initat.cluster.backbone.models import user
+from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
+from initat.cluster.backbone.models.report import ReportHistory
+from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
+from initat.cluster.frontend.helper_functions import xml_wrapper
+
+if settings.DEBUG:
+    _file_root = os.path.join(settings.FILE_ROOT, "frontend", "static")
+    NOCTUA_LOGO_PATH = os.path.join(_file_root, "frontend", "images", "product", "noctua-flat-trans.png")
+else:
+    _file_root = settings.ICSW_PROD_WEB_DIR
+    NOCTUA_LOGO_PATH = os.path.join(settings.STATIC_ROOT, "noctua-flat-trans.png")
 
 
 pdfmetrics.registerFont(TTFont('SourceSansPro-Black',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Black.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-Black.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-BlackIt',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-BlackIt.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-BlackIt.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-Bold',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Bold.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-Bold.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-BoldIt',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-BoldIt.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-BoldIt.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-ExtraLight',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-ExtraLight.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-ExtraLight.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-ExtraLightIt',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts",
+                               os.path.join(_file_root, "fonts",
                                             "SourceSansPro-ExtraLightIt.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-It',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-It.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-It.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-Light',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Light.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-Light.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-LightIt',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-LightIt.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-LightIt.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-Regular',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Regular.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-Regular.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-Semibold',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Semibold.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-Semibold.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-SemiboldIt',
-                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-SemiboldIt.ttf")))
+                               os.path.join(_file_root, "fonts", "SourceSansPro-SemiboldIt.ttf")))
 
-NOCTUA_LOGO_PATH = os.path.join(FILE_ROOT, "frontend/static/images/product/noctua-flat-trans.png")
 
 logger = logging.getLogger(__name__)
 
@@ -1623,7 +1621,6 @@ class PDFReportGenerator(ReportGenerator):
 
         data.append([Paragraph(selected_devices_str, style_sheet['heading_4'])])
 
-
         t_head = Table(data, colWidths=(available_width), rowHeights=(70, 45, 150, 15, 20, 50, 16, 50, 16),
                        style=[
                            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
@@ -1639,7 +1636,6 @@ class PDFReportGenerator(ReportGenerator):
         doc.build(elements)
 
         return _buffer
-
 
     def __generate_toc(self, queue):
         style_sheet = getSampleStyleSheet()
@@ -1658,12 +1654,15 @@ class PDFReportGenerator(ReportGenerator):
 
         available_width = self.page_format[0] - (13 * mm * 2)
 
-        t_head = Table(data, rowHeights=(200),
-                       colWidths=(available_width - self.logo_width, None),
-                       style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
-                              ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                              ]
-                       )
+        t_head = Table(
+            data,
+            rowHeights=(200),
+            colWidths=(available_width - self.logo_width, None),
+            style=[
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+            ]
+        )
 
         _buffer = BytesIO()
         can = Canvas(_buffer, pagesize=self.page_format)
@@ -2695,7 +2694,7 @@ def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
         elif AssetType(ar.run_type) == AssetType.HARDWARE:
             # disabled for now
             pass
-            #sorted_runs[8] = ar
+            # sorted_runs[8] = ar
 
     return [sorted_runs[idx] for idx in sorted_runs]
 
@@ -3063,6 +3062,7 @@ TAB_SPACE = 0x00
 TAB_DASH = 0x10
 TAB_DOT = 0x20
 TAB_LINE = 0x30
+
 
 class TabbedCanvas(Canvas):
 

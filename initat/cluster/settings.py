@@ -177,9 +177,6 @@ USE_L10N = True
 
 USE_TZ = True
 
-# URL that handles the media served from MEDIA_ROOT. Make sure to use a
-# trailing slash.
-# Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
 MEDIA_ROOT = os.path.join(FILE_ROOT, "frontend", "media")
 
 MEDIA_URL = "{}/media/".format(SITE_ROOT)
