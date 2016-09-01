@@ -69,23 +69,36 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.units import cm, mm, inch, pica
 from reportlab.lib.colors import HexColor
 
-from initat.cluster.settings import FILE_ROOT, REPORT_DATA_STORAGE_DIR
+from initat.cluster.settings import FILE_ROOT
 
-pdfmetrics.registerFont(TTFont('Open-Sans', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "open-sans.regular.ttf")))
-pdfmetrics.registerFont(TTFont('Open-Sans-Bold', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "open-sans.bold.ttf")))
 
-pdfmetrics.registerFont(TTFont('SourceSansPro-Black', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Black.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-BlackIt', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-BlackIt.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-Bold', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Bold.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-BoldIt', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-BoldIt.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-ExtraLight', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-ExtraLight.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-ExtraLightIt', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-ExtraLightIt.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-It', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-It.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-Light', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Light.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-LightIt', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-LightIt.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-Regular', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Regular.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-Semibold', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Semibold.ttf")))
-pdfmetrics.registerFont(TTFont('SourceSansPro-SemiboldIt', os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-SemiboldIt.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-Black',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Black.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-BlackIt',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-BlackIt.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-Bold',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Bold.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-BoldIt',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-BoldIt.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-ExtraLight',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-ExtraLight.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-ExtraLightIt',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts",
+                                            "SourceSansPro-ExtraLightIt.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-It',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-It.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-Light',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Light.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-LightIt',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-LightIt.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-Regular',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Regular.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-Semibold',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-Semibold.ttf")))
+pdfmetrics.registerFont(TTFont('SourceSansPro-SemiboldIt',
+                               os.path.join(FILE_ROOT, "frontend", "static", "fonts", "SourceSansPro-SemiboldIt.ttf")))
+
+NOCTUA_LOGO_PATH = os.path.join(FILE_ROOT, "frontend/static/images/product/noctua-flat-trans.png")
 
 logger = logging.getLogger(__name__)
 
@@ -545,8 +558,8 @@ class PDFReportGenerator(ReportGenerator):
         self.page_format = eval(self.general_settings["pdf_page_format"])
         self.margin = 36
 
-        self.standard_font = "Open-Sans"
-        self.bold_font = "Open-Sans-Bold"
+        self.standard_font = "SourceSansPro-Regular"
+        self.bold_font = "SourceSansPro-Bold"
 
         self.cluster_id = "Unknown"
         cluster_id_var = system_device.device_variable_set.filter(name="CLUSTER_ID")
@@ -591,7 +604,7 @@ class PDFReportGenerator(ReportGenerator):
     def __config_report_helper(self, header, header_names_left, header_names_right, rpt, data, _device=None):
         available_width = self.page_format[0] - (self.margin * 2)
 
-        header_list = [PollyReportsImage(pos=(available_width - self.logo_width, -25),
+        header_list = [PollyReportsImage(pos=(available_width - self.logo_width, -20),
                                          width=self.logo_width,
                                          height=self.logo_height,
                                          getvalue=self.__get_logo_helper),
@@ -826,15 +839,15 @@ class PDFReportGenerator(ReportGenerator):
         _buffer = BytesIO()
         doc = SimpleDocTemplate(_buffer,
                                 pagesize=self.page_format,
-                                rightMargin=25,
-                                leftMargin=25,
-                                topMargin=0,
+                                rightMargin=0,
+                                leftMargin=0,
+                                topMargin=10,
                                 bottomMargin=25)
         elements = []
 
         style_sheet = getSampleStyleSheet()
 
-        available_width = self.page_format[0] - (self.margin * 2)
+        available_width = self.page_format[0] - 60
 
         paragraph_header = Paragraph('<font face="{}" size="16">{} Overview for {}</font>'.format(
             self.bold_font, section_number, _device.name), style_sheet["BodyText"])
@@ -845,7 +858,8 @@ class PDFReportGenerator(ReportGenerator):
 
         data = [[paragraph_header, logo]]
 
-        t_head = Table(data, colWidths=(available_width - self.logo_width, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+        t_head = Table(data, colWidths = (available_width - self.logo_width - 11.75, self.logo_width + 11.75),
+                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),])
 
         body_data = []
 
@@ -853,7 +867,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[_device.full_name]]
 
         text_block = Paragraph('<b>FQDN:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
+        t = Table(data, colWidths=(available_width * 0.83),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
@@ -864,7 +878,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[_device.device_group_name()]]
 
         text_block = Paragraph('<b>DeviceGroup:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
+        t = Table(data, colWidths=(available_width * 0.83),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
@@ -876,7 +890,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[_device.device_class.name]]
 
         text_block = Paragraph('<b>DeviceClass:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
+        t = Table(data, colWidths=(available_width * 0.83),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
@@ -895,7 +909,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>ComCapabilities:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
+        t = Table(data, colWidths=(available_width * 0.83),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
@@ -913,7 +927,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>IP Info:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
+        t = Table(data, colWidths=(available_width * 0.83),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
@@ -931,7 +945,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>SNMP Scheme:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
+        t = Table(data, colWidths=(available_width * 0.83),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
@@ -944,7 +958,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>SNMP Info:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
+        t = Table(data, colWidths=(available_width * 0.83),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
@@ -962,7 +976,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[str_to_use]]
 
         text_block = Paragraph('<b>Categories:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
+        t = Table(data, colWidths=(available_width * 0.83),
                   style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                          ('BOX', (0, 0), (-1, -1), 1, colors.black),
                          ]
@@ -970,7 +984,8 @@ class PDFReportGenerator(ReportGenerator):
 
         body_data.append((text_block, t))
 
-        t_body = Table(body_data, colWidths=(available_width * 0.15, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+        t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
+                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),])
 
         elements.append(t_head)
         elements.append(Spacer(1, 30))
@@ -1365,9 +1380,9 @@ class PDFReportGenerator(ReportGenerator):
         _buffer = BytesIO()
         doc = SimpleDocTemplate(_buffer,
                                 pagesize=self.page_format,
-                                rightMargin=25,
-                                leftMargin=25,
-                                topMargin=0,
+                                rightMargin=0,
+                                leftMargin=0,
+                                topMargin=10,
                                 bottomMargin=25)
         elements = []
 
@@ -1376,7 +1391,7 @@ class PDFReportGenerator(ReportGenerator):
                                        fontName='Courier',
                                        fontSize=12))
 
-        available_width = self.page_format[0] - (self.margin * 2)
+        available_width = self.page_format[0] - 60
 
         data = [["Name", "Cores"]]
         for cpu in hardware_report_ar.asset_batch.cpus.all():
@@ -1386,8 +1401,8 @@ class PDFReportGenerator(ReportGenerator):
         p0_1 = Paragraph('<b>CPUs:</b>', style_sheet["BodyText"])
 
         t_1 = Table(data,
-                    colWidths=(available_width * 0.90 * 0.50,
-                               available_width * 0.90 * 0.50),
+                    colWidths=(available_width * 0.88 * 0.50,
+                               available_width * 0.88 * 0.50),
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black)])
 
@@ -1398,8 +1413,8 @@ class PDFReportGenerator(ReportGenerator):
 
         p0_2 = Paragraph('<b>GPUs:</b>', style_sheet["BodyText"])
         t_2 = Table(data,
-                    colWidths=(available_width * 0.90 * 0.50,
-                               available_width * 0.90 * 0.50),
+                    colWidths=(available_width * 0.88 * 0.50,
+                               available_width * 0.88 * 0.50),
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black),
                            ])
@@ -1412,9 +1427,9 @@ class PDFReportGenerator(ReportGenerator):
 
         p0_3 = Paragraph('<b>HDDs:</b>', style_sheet["BodyText"])
         t_3 = Table(data,
-                    colWidths=(available_width * 0.90 * 0.33,
-                               available_width * 0.90 * 0.34,
-                               available_width * 0.90 * 0.33),
+                    colWidths=(available_width * 0.88 * 0.33,
+                               available_width * 0.88 * 0.34,
+                               available_width * 0.88 * 0.33),
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black),
                            ])
@@ -1443,10 +1458,10 @@ class PDFReportGenerator(ReportGenerator):
 
         p0_4 = Paragraph('<b>Partitions:</b>', style_sheet["BodyText"])
         t_4 = Table(data,
-                    colWidths=(available_width * 0.90 * 0.25,
-                               available_width * 0.90 * 0.25,
-                               available_width * 0.90 * 0.25,
-                               available_width * 0.90 * 0.25),
+                    colWidths=(available_width * 0.88 * 0.25,
+                               available_width * 0.88 * 0.25,
+                               available_width * 0.88 * 0.25,
+                               available_width * 0.88 * 0.25),
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black),
                            ])
@@ -1462,11 +1477,11 @@ class PDFReportGenerator(ReportGenerator):
 
         p0_5 = Paragraph('<b>Memory Modules:</b>', style_sheet["BodyText"])
         t_5 = Table(data,
-                    colWidths=(available_width * 0.90 * 0.2,
-                               available_width * 0.90 * 0.2,
-                               available_width * 0.90 * 0.2,
-                               available_width * 0.90 * 0.2,
-                               available_width * 0.90 * 0.2),
+                    colWidths=(available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2),
                     style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
                            ('BOX', (0, 0), (-1, -1), 2, colors.black),
                            ])
@@ -1477,7 +1492,8 @@ class PDFReportGenerator(ReportGenerator):
                 [p0_4, t_4],
                 [p0_5, t_5]]
 
-        t_body = Table(data, colWidths=(available_width * 0.10, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+        t_body = Table(data, colWidths=(available_width * 0.10, available_width * 0.90),
+                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
         p_h = Paragraph('<font face="{}" size="16">{} Hardware Report for {}</font>'.format(self.bold_font, section_number,
             hardware_report_ar.asset_batch.device.name), style_sheet["BodyText"])
@@ -1488,7 +1504,9 @@ class PDFReportGenerator(ReportGenerator):
 
         data = [[p_h, logo]]
 
-        t_head = Table(data, colWidths=(available_width - self.logo_width, None), style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+        t_head = Table(data,
+                       colWidths=(available_width - self.logo_width - 11.75, self.logo_width + 11.75),
+                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
         elements.append(t_head)
         elements.append(Spacer(1, 30))
@@ -1529,7 +1547,7 @@ class PDFReportGenerator(ReportGenerator):
                                        alignment=TA_CENTER))
 
 
-        available_width = self.page_format[0] - (self.margin * 2)
+        available_width = self.page_format[0] - (self.margin * 4)
 
         data = []
 
@@ -1598,212 +1616,14 @@ class PDFReportGenerator(ReportGenerator):
                        ]
                        )
 
-        # body content
-        _user = user.objects.get(idx=self.general_settings["user_idx"])
-        _user_str = str(_user)
-
-        _creation_str = self.creation_date.strftime(ASSET_DATETIMEFORMAT)
-
-        body_data = []
-
-        data = [[self.report_id]]
-
-        text_block = Paragraph('<b>ReportID:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
-                  style=[]
-                  )
-        body_data.append((text_block, t))
-
-        data = [[self.cluster_id]]
-
-        text_block = Paragraph('<b>ClusterID:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
-                  style=[]
-                  )
-
-        body_data.append((text_block, t))
-
-        data = [[_creation_str]]
-
-        text_block = Paragraph('<b>CreationDate:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
-                  style=[]
-                  )
-
-        body_data.append((text_block, t))
-
-        data = [[_user_str]]
-
-        text_block = Paragraph('<b>Requested by user:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
-                  style=[]
-                  )
-
-        body_data.append((text_block, t))
-
-        data = [[self.general_settings['hostname']]]
-
-        text_block = Paragraph('<b>Requested by host:</b>', style_sheet["BodyText"])
-        t = Table(data, colWidths=(available_width * 0.85),
-                  style=[]
-                  )
-
-        body_data.append((text_block, t))
-
-        t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
-                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
-                              ('LEFTPADDING', (0, 0), (-1, -1), 0),
-                              ('RIGHTPADDING', (0, 0), (-1, -1), 0)]
-                       )
-
-
-        # config matrix
-        config_data = []
-
-
-        header_row = [Paragraph('Device', style_sheet["BodyText"]),
-                      Paragraph('Installed Packages', style_sheet["BodyText"]),
-                      Paragraph('Available Licenses', style_sheet["BodyText"]),
-                      Paragraph('Installed Updates', style_sheet["BodyText"]),
-                      Paragraph('Available Updates', style_sheet["BodyText"]),
-                      Paragraph('Process Information', style_sheet["BodyText"]),
-                      Paragraph('Hardware Report', style_sheet["BodyText"]),
-                      Paragraph('DMI Information', style_sheet["BodyText"]),
-                      Paragraph('PCI Information', style_sheet["BodyText"]),
-                      Paragraph('LSTOPO Information', style_sheet["BodyText"])]
-
-
-
-        config_data.append(header_row)
-
-        device_group_to_devices_dict = {}
-
-        for idx in self.device_settings:
-            if idx < 0:
-                continue
-
-            _device = device.objects.get(idx=idx)
-            _device_group = _device.device_group.name
-            if _device_group not in device_group_to_devices_dict:
-                device_group_to_devices_dict[_device_group] = []
-
-            device_group_to_devices_dict[_device_group].append(_device)
-
-
-        for _device_group in device_group_to_devices_dict:
-            for _device in device_group_to_devices_dict[_device_group]:
-                row = [Paragraph(_device.full_name, style_sheet["BodyText"])]
-
-                for i in range(1, 10):
-                    if i == 1:
-                        if self.device_settings[_device.idx]["packages_selected"]:
-                            row.append(Paragraph('On', style_sheet["green font"]))
-                        else:
-                            row.append(Paragraph('Off', style_sheet["red font"]))
-                    if i == 2:
-                        if self.device_settings[_device.idx]["licenses_selected"]:
-                            row.append(Paragraph('On', style_sheet["green font"]))
-                        else:
-                            row.append(Paragraph('Off', style_sheet["red font"]))
-                    if i == 3:
-                        if self.device_settings[_device.idx]["installed_updates_selected"]:
-                            row.append(Paragraph('On', style_sheet["green font"]))
-                        else:
-                            row.append(Paragraph('Off', style_sheet["red font"]))
-                    if i == 4:
-                        if self.device_settings[_device.idx]["avail_updates_selected"]:
-                            row.append(Paragraph('On', style_sheet["green font"]))
-                        else:
-                            row.append(Paragraph('Off', style_sheet["red font"]))
-                    if i == 5:
-                        if self.device_settings[_device.idx]["process_report_selected"]:
-                            row.append(Paragraph('On', style_sheet["green font"]))
-                        else:
-                            row.append(Paragraph('Off', style_sheet["red font"]))
-                    if i == 6:
-                        if self.device_settings[_device.idx]["hardware_report_selected"]:
-                            row.append(Paragraph('On', style_sheet["green font"]))
-                        else:
-                            row.append(Paragraph('Off', style_sheet["red font"]))
-                    if i == 7:
-                        if self.device_settings[_device.idx]["dmi_report_selected"]:
-                            row.append(Paragraph('On', style_sheet["green font"]))
-                        else:
-                            row.append(Paragraph('Off', style_sheet["red font"]))
-                    if i == 8:
-                        if self.device_settings[_device.idx]["pci_report_selected"]:
-                            row.append(Paragraph('On', style_sheet["green font"]))
-                        else:
-                            row.append(Paragraph('Off', style_sheet["red font"]))
-                    if i == 9:
-                        if self.device_settings[_device.idx]["lstopo_report_selected"]:
-                            row.append(Paragraph('On', style_sheet["green font"]))
-                        else:
-                            row.append(Paragraph('Off', style_sheet["red font"]))
-
-                config_data.append(row)
-
-        t_config = Table(config_data, colWidths=[available_width * (float(1) / len(header_row)) for _ in range(len(header_row))],
-                         style=[('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                                ('LEFTPADDING', (0, 0), (-1, -1), 2),
-                                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                                ('BOX', (0, 0), (-1, -1), 0.5, colors.black)
-                                ]
-                         )
-
-        config_data = []
-        header_row = [Paragraph('Network Overview', style_sheet["BodyText"]),
-                      Paragraph('Device Overview', style_sheet["BodyText"]),
-                      Paragraph('User/Group Overview', style_sheet["BodyText"])]
-
-        row = []
-
-        if self.general_settings['network_report_overview_module_selected']:
-            row.append(Paragraph('On', style_sheet["green font"]))
-        else:
-            row.append(Paragraph('Off', style_sheet["red font"]))
-
-        if self.general_settings['general_device_overview_module_selected']:
-            row.append(Paragraph('On', style_sheet["green font"]))
-        else:
-            row.append(Paragraph('Off', style_sheet["red font"]))
-
-        if self.general_settings['user_group_overview_module_selected']:
-            row.append(Paragraph('On', style_sheet["green font"]))
-        else:
-            row.append(Paragraph('Off', style_sheet["red font"]))
-
-        config_data.append(header_row)
-        config_data.append(row)
-        t_config_2 = Table(config_data, colWidths=[available_width * (float(1) / len(header_row)) for _ in range(len(header_row))],
-                         style=[('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-                                ('LEFTPADDING', (0, 0), (-1, -1), 2),
-                                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-                                ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                                ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
-                                ]
-                         )
-
-
         elements.append(t_head)
-        # elements.append(Spacer(1, 30))
-        # elements.append(t_body)
-        # elements.append(Spacer(1, 30))
-        # elements.append(t_config_2)
-
-
-        # if self.devices:
-        #     elements.append(Spacer(1, 30))
-        #     elements.append(t_config)
 
         doc.build(elements)
 
         return _buffer
 
 
-    def __get_toc_pages(self, queue):
+    def __generate_toc(self, queue):
         style_sheet = getSampleStyleSheet()
         style_sheet.add(ParagraphStyle(name="heading_1",
                                        fontName="SourceSansPro-Regular",
@@ -1818,27 +1638,27 @@ class PDFReportGenerator(ReportGenerator):
 
         data = [[paragraph_header, logo]]
 
-        available_width = self.page_format[0] - (self.margin * 2)
+        available_width = self.page_format[0] - (13 * mm * 2)
 
         t_head = Table(data, rowHeights=(200),
                        colWidths=(available_width - self.logo_width, None),
-                       style=[('GRID', (0, 0), (-1, -1), 0.5, colors.black),
-                              ('BOX', (0, 0), (-1, -1), 0.5, colors.black),
-                              ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                       style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
                               ('RIGHTPADDING', (0, 0), (-1, -1), 0),
                               ]
                        )
 
         _buffer = BytesIO()
         can = Canvas(_buffer, pagesize=self.page_format)
-        can.setFont(self.standard_font, 14)
+        can.setFont("SourceSansPro-Regular", 10)
+        can.setFillColor(HexColor(0x000000))
+        can.setFillAlpha(1.0)
 
         width, heigth = self.page_format
 
         t_head.wrapOn(can, 0, 0)
-        t_head.drawOn(can, 25, heigth - 50)
+        t_head.drawOn(can, 13 * mm, heigth - 56)
 
-        vertical_x_limit = 32
+        vertical_x_limit = int((heigth - (heigth * 0.20)) / 15)
         vertical_x = 1
         num_pages = 1
 
@@ -1850,7 +1670,7 @@ class PDFReportGenerator(ReportGenerator):
 
         vertical_x = 1
 
-        top_margin = 75
+        top_margin = 60
 
         current_page_num = num_pages
         for _report in queue:
@@ -1860,15 +1680,19 @@ class PDFReportGenerator(ReportGenerator):
 
             heading_str = "{} {}".format(section_number, _report.name)
 
-            can.drawString(25 + (25 * indent), heigth - (top_margin + (15 * vertical_x)), heading_str)
+            can.drawString(13 * mm + (25 * indent), heigth - (top_margin + (15 * vertical_x)), heading_str)
 
-            heading_str_width = stringWidth(heading_str, self.standard_font, 10)
+            heading_str_width = stringWidth(heading_str, "SourceSansPro-Regular", 10)
 
             dots = "."
-            while (25 * indent) + heading_str_width + stringWidth(dots, self.standard_font, 14) < (width - 150):
+            while (25 * indent) + (heading_str_width + 10) + stringWidth(dots, "SourceSansPro-Regular", 10) < (width - 150):
                 dots += "."
 
-            can.drawString(35 + (25 * indent) + heading_str_width, heigth - (top_margin + (15 * vertical_x)), dots)
+            can.setFillAlpha(0.35)
+            can.setFillColor(HexColor(0xBDBDBD))
+            can.drawString(35 + (25 * indent) + (heading_str_width + 10), heigth - (top_margin + (15 * vertical_x)), dots)
+            can.setFillAlpha(1.0)
+            can.setFillColor(HexColor(0x000000))
 
             can.drawString(width - 75, heigth - (top_margin + (15 * vertical_x)),
                            "{}".format(current_page_num + num_pages))
@@ -1879,9 +1703,9 @@ class PDFReportGenerator(ReportGenerator):
             if vertical_x > vertical_x_limit:
                 vertical_x = 1
                 can.showPage()
-                can.setFont(self.standard_font, 14)
+                can.setFont("SourceSansPro-Regular", 10)
                 t_head.wrapOn(can, 0, 0)
-                t_head.drawOn(can, 25, heigth - 50)
+                t_head.drawOn(can, 13 * mm, heigth - 56)
 
         can.save()
 
@@ -1901,16 +1725,67 @@ class PDFReportGenerator(ReportGenerator):
             self.progress = int((page_number / float(num_pages)) * 90) + 10
             page = existing_pdf.getPage(page_number)
 
-            if page_number >= toc_offset_num:
+            if page_number == 0:
                 page_num_buffer = BytesIO()
-                can = Canvas(page_num_buffer, pagesize=self.page_format)
-                can.setFont(self.standard_font, 8)
+                can = TabbedCanvas(page_num_buffer, pagesize=self.page_format)
+                can.setFont("SourceSansPro-Regular", 10)
+
+                tab_spec = (
+                    [1.0 * inch, TAB_LEFT | TAB_SPACE],
+                    [1.0 * inch, TAB_DECIMAL | TAB_DOT]
+                )
 
                 creationdate_str = self.creation_date.strftime(ASSET_DATETIMEFORMAT)
-                str_to_draw = "Page: {} | ReportId: {} | ClusterId: {} | Generated: {}".format(page_number + 1,
-                                                                                               self.report_id,
-                                                                                               self.cluster_id, creationdate_str)
-                can.drawString(25, 15, str_to_draw)
+                _user = user.objects.get(idx=self.general_settings["user_idx"])
+                _user_str = str(_user)
+
+                str_to_draw_1 = "ServerID\t{}".format(self.cluster_id)
+                str_to_draw_2 = "Created\t{} by {}".format(creationdate_str, _user_str)
+
+                can.drawTabbedString(25 * mm, 20 * mm, tab_spec, str_to_draw_1)
+                can.drawTabbedString(25 * mm, 15 * mm, tab_spec, str_to_draw_2)
+
+                can.save()
+                page_num_buffer.seek(0)
+                page_num_pdf = PdfFileReader(page_num_buffer)
+                page.mergePage(page_num_pdf.getPage(0))
+
+
+            else:
+                page_num_buffer = BytesIO()
+                can = Canvas(page_num_buffer, pagesize=self.page_format)
+                can.setFont("SourceSansPro-Regular", 9)
+
+                # draw page number
+                page_number_str = "Page {} of {}".format(page_number + 1, num_pages)
+
+                page_width = self.page_format[0]
+                pagee_number_str_width = stringWidth(page_number_str, "SourceSansPro-Regular", 9)
+
+                page_number_str_draw_point = (page_width / 2.0) - (pagee_number_str_width / 2.0)
+
+                can.drawString(page_number_str_draw_point, 6 * mm, page_number_str)
+
+
+                # draw info footer string
+
+
+
+
+                creationdate_str = self.creation_date.strftime(ASSET_DATETIMEFORMAT)
+
+                info_str = "Report #{}, {}, {}".format(self.report_id, creationdate_str, self.cluster_name)
+                info_str_server = None
+
+                if (stringWidth(info_str, "SourceSansPro-Regular", 9) + 13 * mm) > page_number_str_draw_point:
+                    info_str = "Report #{}, {},".format(self.report_id, creationdate_str)
+                    info_str_server = "{}".format(self.cluster_name)
+
+                can.drawString(13 * mm, 6 * mm, info_str)
+                if info_str_server:
+                    can.drawString(13 * mm, 3 * mm, info_str_server)
+
+                can.drawImage(NOCTUA_LOGO_PATH, page_width - (13 * mm) - 100, 4 * mm, 80, 18.6, mask="auto")
 
                 can.save()
                 page_num_buffer.seek(0)
@@ -2070,7 +1945,7 @@ class PDFReportGenerator(ReportGenerator):
                 [output_pdf.addPage(sub_pdf.getPage(page_num)) for page_num in range(sub_pdf.numPages)]
 
         # generate toc pages, prepend to pdf
-        toc_buffer = self.__get_toc_pages(queue)
+        toc_buffer = self.__generate_toc(queue)
         toc_pdf = PdfFileReader(toc_buffer)
         toc_pdf_page_num = toc_pdf.getNumPages()
 
@@ -2844,7 +2719,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
         row_writer_func(base_header)
 
-        for package_version in ar.packages.select_related("asset_package").all():
+        for package_version in ar.asset_batch.packages.select_related("asset_package").all():
             row = base_row[:]
 
             row.append(package_version.asset_package.name)
@@ -3160,3 +3035,79 @@ def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
         data.append(o)
 
     return data
+
+
+TAB_LEFT = 0
+TAB_CENTER = 1
+TAB_RIGHT = 2
+TAB_DECIMAL = 3
+TAB_SPACE = 0x00
+TAB_DASH = 0x10
+TAB_DOT = 0x20
+TAB_LINE = 0x30
+
+class TabbedCanvas(Canvas):
+
+    def GetMatchingTab( self, pos, tabspec ):
+        for ts in tabspec:
+            if ts[0] > pos:
+                return ts
+        return None
+
+    def drawTabbedString( self, x, y, tabspec, parts ):
+        parts = parts.split('\t')
+        fn = self._fontname
+        fs = self._fontsize
+        spc = self.stringWidth( ' ', fn, fs )
+        dot = self.stringWidth( '.', fn, fs )
+        dash = self.stringWidth( '-', fn, fs )
+
+        self.drawString( x, y, parts[0] )
+        pos = self.stringWidth( parts[0], fn, fs )
+        for part in parts[1:]:
+            pw = self.stringWidth( part, fn, fs )
+            delta = 0
+
+            ts = self.GetMatchingTab( pos, tabspec )
+            if ts:
+                delta = ts[0] - pos
+                align = ts[1] & 0x0f
+                fill = ts[1] & 0xf0
+
+                # Figure out the skip space based on the align type.
+
+                if align == TAB_LEFT:
+                    pass
+                elif align == TAB_CENTER:
+                    delta -= pw/2
+                elif align == TAB_RIGHT:
+                    delta -= pw
+                elif align == TAB_DECIMAL:
+                    twoparts = part.split('.',1)
+                    p1w = self.stringWidth( twoparts[0], fn, fs )
+                    delta -= p1w
+
+                # If delta is now negative, make the delta equal to one
+                # space.  Although not necessarily intuitive, this is exactly
+                # how Microsoft Word handles this situation.
+
+                if delta < 0:
+                    delta = spc
+
+                fillstr = ''
+                if fill == TAB_SPACE:
+                    pass
+                elif fill == TAB_DOT:
+                    dots = int( (delta-spc-spc) / dot )
+                    fillstr = '.'*dots
+                elif fill == TAB_DASH:
+                    dots = int( (delta-spc-spc) / dash )
+                    fillstr = '-'*dots
+                elif fill == TAB_LINE:
+                    self.line( x+pos+spc, y, x+pos+delta, y )
+
+                if fillstr:
+                    self.drawString( x+pos+spc, y, fillstr )
+
+            self.drawString( x+pos+delta, y, part )
+            pos += delta + pw
