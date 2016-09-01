@@ -70,9 +70,6 @@ menu_module = angular.module(
                     )
                     return _defer.promise
                 ]
-            # hotkeys: [
-            #     ["s", "Show device selection", "show devsel"]
-            # ]
             controller: "icswMainCtrl"
         }
     )
@@ -92,12 +89,14 @@ menu_module = angular.module(
         helpVisible: false
         allowIn: ["INPUT", "SELECT", "TEXTAREA"]
         callback: (event) ->
-            hotkeys.toggleCheatSheet()
             event.preventDefault()
+            hotkeys.toggleCheatSheet()
     ).add(
-        combo: "s"
+        combo: "ctrl+s"
+        allowIn: ["INPUT", "SELECT", "TEXTAREA"]
         description: "Show device selection"
-        callback: () ->
+        callback: (event) ->
+            event.preventDefault()
             icswLayoutSelectionDialogService.quick_dialog()
     )
     $scope.struct = {
@@ -158,6 +157,7 @@ menu_module = angular.module(
             else
                 icswBreadcrumbs.add_state(to_state)
     )
+
     $scope.$on("$stateChangeError", (event, to_state, to_params, from_state, from_params, error) ->
         console.error "error moving to state #{to_state.name} (#{to_state}), error is #{error}"
         _to_login = true
@@ -179,7 +179,7 @@ menu_module = angular.module(
         link: (scope, el) ->
             listener = (event, to_state) ->
                 title = "ICSW page"
-                if to_state.icswData && to_state.icswData.pageTitle
+                if to_state.icswData? and to_state.icswData.pageTitle
                     title = to_state.icswData.pageTitle
 
                 $timeout(
