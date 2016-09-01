@@ -1,3 +1,5 @@
+from _collections import defaultdict
+
 
 def format_mac_address(mac_address):
     return mac_address.upper()
@@ -56,8 +58,21 @@ class Hardware(object):
             for sub_tree in win32_tree['Win32_VideoController']:
                 self.gpus.append(HardwareGPU(win32_tree=sub_tree))
 
+            partition_path_partitions = {}
+            for sub_tree in win32_tree['Win32_DiskPartition']:
+                partition = Partition(win32_tree=sub_tree)
+                partition_path_partitions[partition._path_w32] = partition
+
+            disk_path_partition = defaultdict(list)
+            for (partition_path, disk_path) in \
+                    win32_tree['Win32_DiskDriveToDiskPartition']:
+                disk_path_partition[disk_path].append(partition_path)
+
             for sub_tree in win32_tree['Win32_DiskDrive']:
-                self.hdds.append(HardwareHdd(win32_tree=sub_tree))
+                hdd = HardwareHdd(win32_tree=sub_tree)
+                hdd.partitions = [partition_path_partitions[p]
+                    for p in disk_path_partition[hdd._path_w32]]
+                self.hdds.append(hdd)
 
             for sub_tree in win32_tree['Win32_NetworkAdapter']:
                 if sub_tree['PhysicalAdapter']:
@@ -77,6 +92,7 @@ class HardwareBase(object):
             raise AssertionError
 
         self._tree = lshw_tree if lshw_tree is not None else win32_tree
+        self._path_w32 = None
 
         if lshw_tree is not None:
             self._populate_lshw(lshw_tree)
@@ -86,7 +102,7 @@ class HardwareBase(object):
     def __unicode__(self):
         infos = []
         for (key, value) in self.__dict__.items():
-            if value:
+            if not key.startswith('_') and value is not None:
                 infos.append('{}: {}'.format(key, value))
         return ', '.join(infos)
 
@@ -110,6 +126,8 @@ class HardwareBase(object):
             if value is not None and func:
                 value = func(value)
             setattr(self, prop_name, value)
+
+        self._path_w32 = win32_tree['_path']
 
 
 class HardwareCPU(HardwareBase):
@@ -213,7 +231,32 @@ class HardwareHdd(HardwareBase):
         self.device_name = None
         self.serial = None
         self.size = None
+
+        self.partitions = []
         super(HardwareHdd, self).__init__(lshw_tree, win32_tree)
+
+    def set_partitions_win32(self, partions, mapping):
+        pass
+
+
+class Partition(HardwareBase):
+    LSHW_ELEMENTS = {
+        'size': (None, str),
+        'index': (None, int),
+        'bootable': (None, str),
+    }
+    WIN32_ELEMENTS = {
+        'size': ('Size', int),
+        'index': ('Index', int),
+        'bootable': ('Bootable', bool),
+    }
+
+    def __init__(self, lshw_tree=None, win32_tree=None):
+        self.size = None
+        self.index = None
+        self.bootable = None
+        super(Partition, self).__init__(lshw_tree=lshw_tree,
+            win32_tree=win32_tree)
 
 
 class HardwareNetwork(HardwareBase):
