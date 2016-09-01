@@ -199,6 +199,11 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
     except IOError:
         pass
 
+# where to store PDF Files
+REPORT_DATA_STORAGE_DIR = os.path.join("/tmp/", ".icswReportData")
+if not os.path.exists(REPORT_DATA_STORAGE_DIR):
+    os.mkdir(REPORT_DATA_STORAGE_DIR)
+
 # use X-Forwarded-Host header
 USE_X_FORWARDED_HOST = True
 
@@ -289,7 +294,7 @@ STATICFILES_DIRS.append(
 
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 
-# print STATICFILES_DIRS
+#print STATICFILES_DIRS
 
 # add all applications, including backbone
 
@@ -488,3 +493,5 @@ LOGGING = {
         },
     }
 }
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None

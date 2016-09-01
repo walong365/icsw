@@ -39,6 +39,64 @@ from initat.cluster.backbone.tools.hw import Hardware
 # Functions
 ########################################################################################################################
 
+def sizeof_fmt(num, suffix='B'):
+    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
+
+def get_packages_for_ar(asset_run):
+    blob = asset_run.raw_result_str
+    runtype = asset_run.run_type
+    scantype = asset_run.scan_type
+
+    assets = []
+
+    if blob:
+        if runtype == AssetType.PACKAGE:
+            if scantype == ScanType.NRPE:
+                if blob.startswith("b'"):
+                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+                else:
+                    _data = bz2.decompress(base64.b64decode(blob))
+                l = json.loads(_data)
+                for (name, version, size, date) in l:
+                    if size == "Unknown":
+                        size = 0
+                    assets.append(
+                        BaseAssetPackage(
+                            name,
+                            version=version,
+                            size=size,
+                            install_date=date,
+                            package_type=PackageTypeEnum.WINDOWS
+                        )
+                    )
+            elif scantype == ScanType.HM:
+                try:
+                    package_dict = server_command.decompress(blob, pickle=True)
+                except:
+                    raise
+                else:
+                    for package_name in package_dict:
+                        for versions_dict in package_dict[package_name]:
+                            installtimestamp = None
+                            if 'installtimestamp' in versions_dict:
+                                installtimestamp = versions_dict['installtimestamp']
+
+                            assets.append(
+                                BaseAssetPackage(
+                                    package_name,
+                                    version=versions_dict['version'],
+                                    size=versions_dict['size'],
+                                    release=versions_dict['release'],
+                                    install_date=installtimestamp,
+                                    package_type=PackageTypeEnum.LINUX
+                                )
+                            )
+
+    return assets
 
 def get_base_assets_from_raw_result(asset_run,):
     asset_batch = asset_run.asset_batch
@@ -74,12 +132,16 @@ def get_base_assets_from_raw_result(asset_run,):
                 else:
                     for package_name in package_dict:
                         for versions_dict in package_dict[package_name]:
+                            installtimestamp = None
+                            if 'installtimestamp' in versions_dict:
+                                installtimestamp = versions_dict['installtimestamp']
                             assets.append(
                                 BaseAssetPackage(
                                     package_name,
                                     version=versions_dict['version'],
                                     size=versions_dict['size'],
                                     release=versions_dict['release'],
+                                    install_date=installtimestamp,
                                     package_type=PackageTypeEnum.LINUX
                                 )
                             )
@@ -121,6 +183,19 @@ def get_base_assets_from_raw_result(asset_run,):
                     apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
                     apv.save()
                 asset_batch.packages.add(apv)
+
+                install_time = ba.get_install_time_as_datetime()
+
+                if install_time:
+                    apv_install_times = AssetPackageVersionInstallTime.objects.filter(package_version=apv, install_time=install_time)
+                    if not apv_install_times:
+                        apv_install_time = AssetPackageVersionInstallTime(package_version=apv, install_time=install_time)
+                        apv_install_time.save()
+                    else:
+                        assert (len(apv_install_times) < 2)
+                        apv_install_time = apv_install_times[0]
+
+                    asset_run.packages_install_times.add(apv_install_time)
 
         elif runtype == AssetType.HARDWARE:
             if scantype == ScanType.NRPE:
@@ -398,7 +473,6 @@ def get_base_assets_from_raw_result(asset_run,):
 # Base Asset Classes
 ########################################################################################################################
 
-
 class BaseAssetPackage(object):
     def __init__(self, name, version=None, release=None, size=None, install_date=None, package_type=None):
         self.name = name
@@ -407,6 +481,80 @@ class BaseAssetPackage(object):
         self.size = size
         self.install_date = install_date
         self.package_type = package_type
+
+    def get_install_time_as_datetime(self):
+        if self.package_type == PackageTypeEnum.LINUX:
+            try:
+                return datetime.datetime.fromtimestamp(int(self.install_date))
+            except:
+                pass
+
+            return None
+        else:
+            try:
+                year = self.install_date[0:4]
+                month = self.install_date[4:6]
+                day = self.install_date[6:8]
+
+                return datetime.datetime(year=int(year), month=int(month), day=int(day), hour=12)
+            except:
+                pass
+
+            return None
+
+    def get_as_row(self):
+        _name = self.name
+        _version = self.version if self.version else "N/A"
+        _release = self.release if self.release else "N/A"
+
+        if self.package_type == PackageTypeEnum.LINUX:
+            if self.size:
+                try:
+                    _size = sizeof_fmt(self.size)
+                except:
+                    _size = "N/A"
+            else:
+                _size = "N/A"
+
+            if self.install_date:
+                try:
+                    _install_date = datetime.datetime.fromtimestamp(int(self.install_date)).\
+                        strftime(ASSET_DATETIMEFORMAT)
+                except:
+                    _install_date = "N/A"
+            else:
+                _install_date = "N/A"
+        else:
+            if self.size:
+                try:
+                    _size = sizeof_fmt(int(self.size) * 1024)
+                except:
+                    _size = "N/A"
+            else:
+                _size = "N/A"
+
+            _install_date = self.install_date if self.install_date else "N/A"
+            if _install_date == "Unknown":
+                _install_date = "N/A"
+
+            if _install_date != "N/A":
+                try:
+                    year = _install_date[0:4]
+                    month = _install_date[4:6]
+                    day = _install_date[6:8]
+
+                    _install_date = datetime.datetime(year=int(year), month=int(month), day=int(day)).\
+                        strftime(ASSET_DATETIMEFORMAT)
+                except:
+                    _install_date = "N/A"
+
+        o = {}
+        o['package_name'] = _name
+        o['package_version'] = _version
+        o['package_release'] = _release
+        o['package_size'] = _size
+        o['package_install_date'] = _install_date
+        return o
 
     def __repr__(self):
         s = "Name: %s" % self.name
@@ -439,8 +587,10 @@ class BaseAssetPackage(object):
         return hash((self.name, self.version, self.release, self.size, self.install_date, self.package_type))
 
 ########################################################################################################################
-# Enums
+# Enums / Globals
 ########################################################################################################################
+
+ASSET_DATETIMEFORMAT = "%a %d. %b %Y %H:%M:%S"
 
 
 class AssetType(IntEnum):
@@ -558,12 +708,12 @@ class AssetHWMemoryEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "MemoryEntry[BankLabel:{}|FormFactor:{}|Memorytype:{}|Manufacturer:{}|Capacity:{}]".format(
+        return "BankLabel:{} FormFactor:{} Memorytype:{} Manufacturer:{} Capacity:{}".format(
             self.banklabel,
-            self.formfactor,
-            self.memorytype,
+            self.get_name_of_form_factor(),
+            self.get_name_of_memory_type(),
             self.manufacturer,
-            self.capacity
+            sizeof_fmt(self.capacity)
         )
 
     def get_name_of_form_factor(self):
@@ -599,7 +749,7 @@ class AssetHWCPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "CPUEntry[CPUname:{}|Numberofcores:{}]".format(self.cpuname, self.numberofcores)
+        return "{} [Cores:{}]".format(self.cpuname, self.numberofcores)
 
 
 class AssetHWGPUEntry(models.Model):
@@ -612,7 +762,7 @@ class AssetHWGPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "GPUEntry[GPUname:{}|Driverversion:{}]".format(self.gpuname, self.driverversion)
+        return "{} [Version:{}]".format(self.gpuname, self.driverversion)
 
 
 class AssetHWHDDEntry(models.Model):
@@ -627,7 +777,7 @@ class AssetHWHDDEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "HDDEntry[Name:{}|Serialnumber:{}|Size:{}]".format(self.name, self.serialnumber, self.size)
+        return "{} [Serialnumber:{} Size:{}]".format(self.name, self.serialnumber, sizeof_fmt(self.size))
 
 
 class AssetHWLogicalEntry(models.Model):
@@ -642,7 +792,7 @@ class AssetHWLogicalEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "PartitionEntry[Name:{}|Size:{}|Free:{}]".format(self.name, self.size, self.free)
+        return "{} [Size:{} Free:{}]".format(self.name, sizeof_fmt(self.size), sizeof_fmt(self.free))
 
 
 class AssetHWDisplayEntry(models.Model):
@@ -659,7 +809,7 @@ class AssetHWDisplayEntry(models.Model):
     manufacturer = models.TextField(null=True)
 
     def __unicode__(self):
-        return "DisplayEntry[Name:{}|Type:{}|xpixels:{}|ypixels:{}|manufacturer:{}]".format(
+        return "{} [Type:{} xpixels:{} ypixels:{} manufacturer:{}]".format(
             self.name,
             self.type,
             self.xpixels,
@@ -667,6 +817,10 @@ class AssetHWDisplayEntry(models.Model):
             self.manufacturer
         )
 
+class AssetPackageVersionInstallTime(models.Model):
+    idx = models.AutoField(primary_key=True)
+    package_version = models.ForeignKey("backbone.AssetPackageVersion")
+    install_time = models.DateTimeField(null=True)
 
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -934,6 +1088,9 @@ class AssetRun(models.Model):
     raw_result_interpreted = models.BooleanField(default=False)
     scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
+    # link to packageversions
+    packages = models.ManyToManyField(AssetPackageVersion)
+    packages_install_times = models.ManyToManyField(AssetPackageVersionInstallTime)
     created = models.DateTimeField(auto_now_add=True)
 
     @property
@@ -1002,6 +1159,9 @@ class AssetRun(models.Model):
             get_base_assets_from_raw_result(self)
             self.raw_result_interpreted = True
             self.save()
+
+    def has_data(self):
+        return RunResult(self.run_result) == RunResult.SUCCESS
 
 
 class AssetBatch(models.Model):
@@ -1415,3 +1575,12 @@ class StaticAssetFieldValue(models.Model):
                 setattr(self, _local, in_dict[_short])
             self.change_user = user
             self.save()
+
+def sizeof_fmt(num, suffix='B'):
+    if num is None:
+        return "N/A"
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num) < 1024.0:
+            return "%3.1f%s%s" % (num, unit, suffix)
+        num /= 1024.0
+    return "%.1f%s%s" % (num, 'Yi', suffix)
