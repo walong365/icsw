@@ -27,7 +27,8 @@ from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry, \
     StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
     AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry, AssetHWGPUEntry, \
-    AssetHWHDDEntry, AssetHWLogicalEntry, AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue
+    AssetHWHDDEntry, AssetHWLogicalEntry, AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
+    AssetPackageVersionInstallTime
 
 __all__ = [
     "AssetRunSimpleSerializer",
@@ -35,6 +36,7 @@ __all__ = [
     "AssetRunDetailSerializer",
     "AssetBatchSerializer",
     "AssetPackageSerializer",
+    "AssetPackageVersionInstallTime",
     "AssetPackageVersionSerializer",
     "ShallowPastAssetRunSerializer",
     "ShallowPastAssetBatchSerializer",
@@ -84,6 +86,10 @@ class AssetBatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetBatch
 
+class AssetPackageVersionInstallTimeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssetPackageVersionInstallTime
+        fields = ("idx", "package_version", "install_time")
 
 class AssetPackageVersionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -255,12 +261,13 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
     hdds = AssetHWHDDEntrySerializer(many=True)
     partitions = AssetHWLogicalEntrySerializer(many=True)
     displays = AssetHWDisplayEntrySerializer(many=True)
+    packages_install_times = AssetPackageVersionInstallTimeSerializer(many=True)
 
     class Meta:
         model = AssetRun
         fields = (
             "idx",
-            "packages", "assethardwareentry_set",
+            "packages", "packages_install_times", "assethardwareentry_set",
             "assetprocessentry_set", "assetlicenseentry_set",
             "assetupdateentry_set", "assetpcientry_set", "assetdmihead_set",
             "memory_modules", "memory_count", "cpus", "cpu_count", "gpus", "hdds",
