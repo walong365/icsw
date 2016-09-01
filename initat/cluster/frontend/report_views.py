@@ -76,6 +76,7 @@ else:
 # this makes problems when running package-knife builds on devices without installed icsw-server
 # package because DEBUG=False
 
+
 pdfmetrics.registerFont(TTFont('SourceSansPro-Black',
                                os.path.join(_file_root, "fonts", "SourceSansPro-Black.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-BlackIt',
