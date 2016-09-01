@@ -68,7 +68,7 @@ _ = {landscape, letter, A4, A3}
 
 if settings.DEBUG:
     _file_root = os.path.join(settings.FILE_ROOT, "frontend", "static")
-    NOCTUA_LOGO_PATH = os.path.join(_file_root, "frontend", "images", "product", "noctua-flat-trans.png")
+    NOCTUA_LOGO_PATH = os.path.join(_file_root, "images", "product", "noctua-flat-trans.png")
 else:
     _file_root = settings.ICSW_PROD_WEB_DIR
     NOCTUA_LOGO_PATH = os.path.join(settings.STATIC_ROOT, "noctua-flat-trans.png")
