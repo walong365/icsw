@@ -1247,6 +1247,8 @@ class AssetBatch(models.Model):
             except AssetRun.DoesNotExist:
                 pass
             else:
+                if run.raw_result_str == None:
+                    continue
                 blob = run.raw_result_str
                 if blob.startswith("b'"):
                     blob = blob[2:-2]
