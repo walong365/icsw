@@ -1,7 +1,15 @@
+from _collections import defaultdict
+
+
+def format_mac_address(mac_address):
+    return mac_address.upper()
+
+
 class Hardware(object):
     def __init__(self, lshw_tree=None, win32_tree=None):
         self.cpus = []
         self.memory = None
+        self.memory_modules = []
         self.gpus = []
         self.hdds = []
         self.network_devices = []
@@ -17,6 +25,13 @@ class Hardware(object):
             self.memory = HardwareMemory(sub_tree)
 
             for sub_tree in lshw_tree.xpath(
+                    "//node[@id='memory' and @class='memory']/node"):
+                memory_module = MemoryModule(sub_tree)
+                # don't add empty slots
+                if memory_module.capacity:
+                    self.memory_modules.append(memory_module)
+
+            for sub_tree in lshw_tree.xpath(
                     "//node[@id='display' and @class='display']"):
                 self.gpus.append(HardwareGPU(sub_tree))
 
@@ -26,7 +41,9 @@ class Hardware(object):
 
             for sub_tree in lshw_tree.xpath(
                     "//node[@id='network' and @class='network']"):
-                self.network_devices.append(HardwareNetwork(sub_tree))
+                self.network_devices.append(
+                    HardwareNetwork(sub_tree)
+                    )
 
         if win32_tree:
             for sub_tree in win32_tree['Win32_Processor']:
@@ -35,15 +52,32 @@ class Hardware(object):
             self.memory = HardwareMemory(
                 win32_tree=win32_tree['Win32_ComputerSystem'][0])
 
+            for sub_tree in win32_tree['Win32_PhysicalMemory']:
+                self.memory_modules.append(MemoryModule(win32_tree=sub_tree))
+
             for sub_tree in win32_tree['Win32_VideoController']:
                 self.gpus.append(HardwareGPU(win32_tree=sub_tree))
 
+            partition_path_partitions = {}
+            for sub_tree in win32_tree['Win32_DiskPartition']:
+                partition = Partition(win32_tree=sub_tree)
+                partition_path_partitions[partition._path_w32] = partition
+
+            disk_path_partition = defaultdict(list)
+            for (partition_path, disk_path) in \
+                    win32_tree['Win32_DiskDriveToDiskPartition']:
+                disk_path_partition[disk_path].append(partition_path)
+
             for sub_tree in win32_tree['Win32_DiskDrive']:
-                self.hdds.append(HardwareHdd(win32_tree=sub_tree))
+                hdd = HardwareHdd(win32_tree=sub_tree)
+                hdd.partitions = [partition_path_partitions[p]
+                    for p in disk_path_partition[hdd._path_w32]]
+                self.hdds.append(hdd)
 
             for sub_tree in win32_tree['Win32_NetworkAdapter']:
-                self.network_devices.append(
-                    HardwareNetwork(win32_tree=sub_tree))
+                if sub_tree['PhysicalAdapter']:
+                    self.network_devices.append(
+                        HardwareNetwork(win32_tree=sub_tree))
 
 
 class HardwareBase(object):
@@ -57,6 +91,9 @@ class HardwareBase(object):
         if not set(self.LSHW_ELEMENTS) == set(self.WIN32_ELEMENTS):
             raise AssertionError
 
+        self._tree = lshw_tree if lshw_tree is not None else win32_tree
+        self._path_w32 = None
+
         if lshw_tree is not None:
             self._populate_lshw(lshw_tree)
         elif win32_tree:
@@ -65,7 +102,7 @@ class HardwareBase(object):
     def __unicode__(self):
         infos = []
         for (key, value) in self.__dict__.items():
-            if value:
+            if not key.startswith('_') and value is not None:
                 infos.append('{}: {}'.format(key, value))
         return ', '.join(infos)
 
@@ -90,27 +127,29 @@ class HardwareBase(object):
                 value = func(value)
             setattr(self, prop_name, value)
 
+        self._path_w32 = win32_tree['_path']
+
 
 class HardwareCPU(HardwareBase):
     LSHW_ELEMENTS = {
-        'product': ('product', None),
-        'vendor': ('vendor', None),
-        'version': ('version', None),
-        'serial': ('serial', None),
+        'product': ('product', str),
+        'manufacturer': ('vendor', str),
+        'version': ('version', str),
+        'serial': ('serial', str),
         'number_of_cores': ("configuration/setting[@id='cores']/@value", int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394373%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'product': ('Description', None),
-        'vendor': ('Manufacturer', None),
-        'version': ('Version', None),
-        'serial': ('ProcessorId', None),
+        'product': ('Description', str),
+        'manufacturer': ('Manufacturer', str),
+        'version': ('Version', str),
+        'serial': ('ProcessorId', str),
         'number_of_cores': ('NumberOfCores', int),
     }
 
     def __init__(self, lshw_tree=None, win32_tree=None):
         self.product = None
-        self.vendor = None
+        self.manufacturer = None
         self.version = None
         self.serial = None
         self.number_of_cores = None
@@ -127,39 +166,62 @@ class HardwareMemory(HardwareBase):
     }
 
 
+class MemoryModule(HardwareBase):
+    LSHW_ELEMENTS = {
+        'manufacturer': ('vendor', str),
+        'capacity': ('size', int),
+        'serial': ('serial', str),
+        'bank_label': ('slot', str),
+    }
+    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394197(v=vs.85).aspxq
+    WIN32_ELEMENTS = {
+        'manufacturer': ('Manufacturer', str),
+        'capacity': ('Capacity', int),
+        'serial': ('SerialNumber', str),
+        'bank_label': ('DeviceLocator', str),
+    }
+
+    def __init__(self, lshw_tree=None, win32_tree=None):
+        self.manufacturer = None
+        self.capacity = None
+        self.serial = None
+        self.bank_label = None
+        super(MemoryModule, self).__init__(
+            lshw_tree=lshw_tree, win32_tree=win32_tree
+        )
+
+
 class HardwareGPU(HardwareBase):
     LSHW_ELEMENTS = {
-        'description': ('description', None),
-        'product': ('product', None),
+        'description': ('description', str),
+        'product': ('product', str),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394512%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'description': ('Description', None),
-        'product': ('VideoProcessor', None),
+        'description': ('Description', str),
+        'product': ('VideoProcessor', str),
     }
 
     def __init__(self, lshw_tree=None, win32_tree=None):
         self.description = None
         self.product = None
-        self.vendor = None
-        self.version = None
         super(HardwareGPU, self).__init__(lshw_tree, win32_tree)
 
 
 class HardwareHdd(HardwareBase):
     LSHW_ELEMENTS = {
-        'description': ('description', None),
-        'product': ('product', None),
-        'device_name': ('logicalname', None),
-        'serial': ('serial', None),
+        'description': ('description', str),
+        'product': ('product', str),
+        'device_name': ('logicalname', str),
+        'serial': ('serial', str),
         'size': ('size', int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394132%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'description': ('Description', None),
-        'product': ('Caption', None),
-        'device_name': ('DeviceID', None),
-        'serial': ('SerialNumber', None),
+        'description': ('Description', str),
+        'product': ('Caption', str),
+        'device_name': ('DeviceID', str),
+        'serial': ('SerialNumber', str),
         'size': ('Size', int),
     }
 
@@ -169,33 +231,55 @@ class HardwareHdd(HardwareBase):
         self.device_name = None
         self.serial = None
         self.size = None
+
+        self.partitions = []
         super(HardwareHdd, self).__init__(lshw_tree, win32_tree)
+
+    def set_partitions_win32(self, partions, mapping):
+        pass
+
+
+class Partition(HardwareBase):
+    LSHW_ELEMENTS = {
+        'size': (None, str),
+        'index': (None, int),
+        'bootable': (None, str),
+    }
+    WIN32_ELEMENTS = {
+        'size': ('Size', int),
+        'index': ('Index', int),
+        'bootable': ('Bootable', bool),
+    }
+
+    def __init__(self, lshw_tree=None, win32_tree=None):
+        self.size = None
+        self.index = None
+        self.bootable = None
+        super(Partition, self).__init__(lshw_tree=lshw_tree,
+            win32_tree=win32_tree)
 
 
 class HardwareNetwork(HardwareBase):
     LSHW_ELEMENTS = {
-        'description': ('description', None),
-        'product': ('product', None),
-        'vendor': ('vendor', None),
-        'device_name': ('logicalname', None),
-        'mac_address': ('serial', None),
+        'product': ('product', str),
+        'manufacturer': ('vendor', str),
+        'device_name': ('logicalname', str),
+        'mac_address': ('serial', format_mac_address),
         'speed': ('size', int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394216(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'description': ('Description', None),
-        'product': ('Caption', None),
-        'vendor': ('Manufacturer', None),
-        'device_name': ('DeviceID', None),
-        'mac_address': ('MACAddress', None),
+        'product': ('ProductName', str),
+        'manufacturer': ('Manufacturer', str),
+        'device_name': ('DeviceID', str),
+        'mac_address': ('MACAddress', str),
         'speed': ('Speed', int),
     }
 
     def __init__(self, lshw_tree=None, win32_tree=None):
-        self.description = None
         self.product = None
-        self.vendor = None
-        self.version = None
+        self.manufacturer = None
+        self.device_name = None
         self.mac_address = None
         self.speed = None  # bit/s
         super(HardwareNetwork, self).__init__(lshw_tree, win32_tree)
