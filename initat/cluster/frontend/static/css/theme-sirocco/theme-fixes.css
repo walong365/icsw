@@ -100,10 +100,6 @@ span.fancytree-expander {
     color: #000000;
 }
 
-.modal-body table {
-    background-color: #444444;
-}
-
 .modal-header {
     padding: 10px 15px;
 }
@@ -149,7 +145,7 @@ table.rotateheaders th {
     box-shadow: -1px 0px 0px 0px rgba(0,0,0,0.5);
 }
 .simple-border {
-    border: 1px solid #444444;
+    border: 1px solid #aaaaaa;
 }
 .table-pager-block {
     margin-right:10px;

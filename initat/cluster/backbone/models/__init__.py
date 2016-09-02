@@ -74,6 +74,7 @@ from initat.cluster.backbone.signals import UserChanged, GroupChanged, \
     BootsettingsChanged, VirtualDesktopUserSettingChanged, SensorThresholdChanged, \
     RoleChanged
 from initat.cluster.backbone.models.asset import *
+from initat.cluster.backbone.models.report import *
 import initat.cluster.backbone.models.model_history
 
 

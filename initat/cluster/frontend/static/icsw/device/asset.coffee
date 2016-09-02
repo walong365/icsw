@@ -254,6 +254,9 @@ device_asset_module = angular.module(
         else if obj.run_type == 10
             # easy/win hw entries
             obj.$$num_results = obj.num_hw_entries
+        else if obj.run_type == 5
+            # easy/win hw entries
+            obj.$$num_results = obj.num_hw_entries
         else
             obj.$$num_results = 0
         if obj.run_start_time
@@ -644,13 +647,40 @@ device_asset_module = angular.module(
                     _run.$$selected = false
 
     # resolve functions
-    resolve_package_assets = (tree, vers_list) ->
+    resolve_package_assets = (tree, vers_list, package_install_times) ->
         _res = _.orderBy(
             (tree.version_lut[idx] for idx in vers_list)
             ["$$package.name"]
             ["asc"]
         )
-        return _res
+
+        result_new = []
+
+        # do some more salting of package objectss
+        for vers in _res
+            new_obj = {}
+
+            if vers.release == ""
+                new_obj.release = "N/A"
+            else
+                new_obj.release = vers.release
+
+            new_obj.$$install_time = "N/A"
+            new_obj.$$package = vers.$$package
+            new_obj.version = vers.version
+            new_obj.size = vers.size
+
+            if vers.$$package.$$package_type == "Windows"
+                new_obj.$$size = Number((vers.size / 1024).toFixed(2)) + " MByte"
+
+            for package_install_time in package_install_times
+                if vers.idx == package_install_time.package_version
+                    new_obj.$$install_time = moment(package_install_time.install_time).format("YYYY-MM-DD HH:mm:ss")
+                    break
+
+            result_new.push(new_obj)
+
+        return result_new
 
     resolve_hardware_assets = (in_list) ->
         # todo: create structured tree
@@ -738,7 +768,7 @@ device_asset_module = angular.module(
                     if assetrun.run_type == 1
                         icswAssetPackageTreeService.load($scope.$id).then(
                             (tree) ->
-                                _done.resolve(resolve_package_assets(tree, data[0].packages))
+                                _done.resolve(resolve_package_assets(tree, data[0].packages, data[0].packages_install_times))
 
                         )
                     else if assetrun.run_type == 2
@@ -747,6 +777,8 @@ device_asset_module = angular.module(
                         _done.resolve(data[0].assetlicenseentry_set)
                     else if assetrun.run_type == 4
                         _done.resolve(resolve_installed_updates(data[0].assetupdateentry_set))
+                    else if assetrun.run_type == 5
+                        _done.resolve(resolve_hw_entries(assetrun, data))
                     else if assetrun.run_type == 7
                         _done.resolve(resolve_pending_updates(data[0].assetupdateentry_set))
                     else if assetrun.run_type == 6
@@ -756,7 +788,6 @@ device_asset_module = angular.module(
                     else if assetrun.run_type == 9
                         _done.resolve(resolve_pci_entries(data[0].assetpcientry_set))
                     else if assetrun.run_type == 10
-                        console.log "data_object: ", data
                         _done.resolve(resolve_hw_entries(assetrun, data))
                     else
                         _done.resolve([])
@@ -836,6 +867,8 @@ device_asset_module = angular.module(
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.licenses"))(scope)
             else if scope.asset_run.run_type == 4
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.installed.updates"))(scope)
+            else if scope.asset_run.run_type == 5
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.hw_entry"))(scope)
             else if scope.asset_run.run_type == 6
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.process"))(scope)
             else if scope.asset_run.run_type == 7

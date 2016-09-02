@@ -512,7 +512,7 @@ partition_table_module = angular.module(
                         d.reject("form not valid")
                     else
                         blockUI.start("saving partition data...")
-                        $scope.part_tree.update_partition_table($scope.layout).then(
+                        $scope.part_tree.update_partition_table_layout($scope.layout).then(
                             (ok) ->
                                 blockUI.stop()
                                 d.resolve("saved")
