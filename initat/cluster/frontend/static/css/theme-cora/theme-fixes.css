@@ -111,7 +111,7 @@ table.rotateheaders th {
     background-color: #313131;
 }
 .modal-body table.rotateheaders th {
-    background-color: #555555;
+    background-color: #393939;
 }
 
 .input-group-addon {
@@ -156,10 +156,12 @@ table.rotateheaders th {
 .submenu-bar {
     display: block;
     padding-left: 10px;
-    background-color: #222222;
+    background-color: #292929;
     margin-bottom: 17px;
     min-height: 25px;
     vertical-align: 10;
+    border: none;
+    border-bottom: 1px solid #222222;
 }
 .submenu-bar .sub-breadcrumb {
     font-size: 12px;
@@ -194,4 +196,7 @@ table.rotateheaders th {
 }
 .cfp-hotkeys h1 {
     color: #313131;
+}
+.icsw-table-striped-4 > tbody > tr:nth-child(4n+1) {
+    background-color: #3b3b3b;
 }

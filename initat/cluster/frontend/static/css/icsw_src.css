@@ -232,6 +232,7 @@ ul.fancytree-container {
     border: 1px solid #cccccc;
     display: inline-block;
     min-height: 180px;
+    height: auto;
     margin-top: 150px;
     text-align: center;
     vertical-align: middle;
