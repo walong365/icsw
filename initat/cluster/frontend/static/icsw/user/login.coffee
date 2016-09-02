@@ -89,14 +89,9 @@ angular.module(
                 $scope.struct.cluster_data = data[1]
                 $scope.license_tree = data[2]
                 $scope.struct.fx_mode = icswSystemLicenseDataService.fx_mode()
+                # show loginform when we know which kind of product it is
                 $scope.struct.data_valid = true
                 # current user is still valid, force logout
-
-                # show loginform when we know which kind of product it is
-                angular.element(document).ready(
-                    () ->
-                        $scope.all_loaded = true;
-                )
 
                 if data[3].is_authenticated()
                     $state.go("logout")

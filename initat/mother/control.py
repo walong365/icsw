@@ -221,7 +221,15 @@ class Host(object):
         if dev_spec in Host.__lut:
             return Host.__lut[dev_spec]
         else:
-            if Host.sync(pks=[dev_spec]):
+            if not dev_spec.isdigit():
+                # try to resolve uuid
+                try:
+                    pk = device.objects.get(Q(uuid=dev_spec))
+                except device.DoesNotExist:
+                    dev_spec = None
+                else:
+                    dev_spec = pk
+            if dev_spec and Host.sync(pks=[dev_spec]):
                 return Host.__lut[dev_spec]
             else:
                 Host.g_log(
