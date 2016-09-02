@@ -24,7 +24,7 @@ class TestHardware(unittest.TestCase):
     def _common_test(self, hw):
         self.assertNotEqual(hw.cpus, [])
         self.assertIsNotNone(hw.memory)
-        self.assertNotEqual(hw.displays, [])
+        self.assertNotEqual(hw.gpus, [])
         self.assertNotEqual(hw.hdds, [])
         self.assertNotEqual(hw.network_devices, [])
 
