@@ -10,7 +10,7 @@ import django.db.models.deletion
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backbone', '0985_remove_assetrun_device'),
+        ('backbone', '0986_auto_20160831_1109'),
     ]
 
     operations = [
