@@ -177,9 +177,6 @@ USE_L10N = True
 
 USE_TZ = True
 
-# URL that handles the media served from MEDIA_ROOT. Make sure to use a
-# trailing slash.
-# Examples: "http://media.lawrence.com/media/", "http://example.com/media/"
 MEDIA_ROOT = os.path.join(FILE_ROOT, "frontend", "media")
 
 MEDIA_URL = "{}/media/".format(SITE_ROOT)
@@ -198,6 +195,11 @@ if not os.path.isdir(STATIC_ROOT_DEBUG):
         os.makedirs(STATIC_ROOT_DEBUG)
     except IOError:
         pass
+
+# where to store PDF Files
+REPORT_DATA_STORAGE_DIR = os.path.join("/tmp/", ".icswReportData")
+if not os.path.exists(REPORT_DATA_STORAGE_DIR):
+    os.mkdir(REPORT_DATA_STORAGE_DIR)
 
 # use X-Forwarded-Host header
 USE_X_FORWARDED_HOST = True
@@ -289,7 +291,7 @@ STATICFILES_DIRS.append(
 
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 
-# print STATICFILES_DIRS
+#print STATICFILES_DIRS
 
 # add all applications, including backbone
 
@@ -488,3 +490,5 @@ LOGGING = {
         },
     }
 }
+
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None

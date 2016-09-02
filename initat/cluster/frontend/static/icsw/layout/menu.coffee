@@ -28,12 +28,12 @@ menu_module = angular.module(
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
     "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService",
-    "$rootScope", "ICSW_SIGNALS",
+    "$rootScope", "ICSW_SIGNALS", "$timeout",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
     $q, icswUserService, blockUI, $state, icswSystemLicenseDataService,
-    $rootScope, ICSW_SIGNALS,
+    $rootScope, ICSW_SIGNALS, $timeout,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -43,11 +43,31 @@ menu_module = angular.module(
         current_user: undefined
         # selection string
         selection_string: "N/A"
+        # focus search field
+        focus_search: false
+        # typeahead is loading
+        typeahead_loading: false
+        # search-strings
+        search_string: ""
     }
     $scope.HANDBOOK_PDF_PRESENT = false
     $scope.HANDBOOK_CHUNKS_PRESENT = false
     $scope.HANDBOOK_PAGE = "---"
     icswAcessLevelService.install($scope)
+
+    # typeahead functions
+    $scope.get_selections = (view_value) ->
+        console.log "gs", view_value
+        defer = $q.defer()
+        $scope.struct.typeahead_loading = true
+        $timeout(
+            () ->
+                $scope.struct.typeahead_loading = false
+                defer.resolve(["a", "b", "aqweqe", "123"])
+            1000
+        )
+        return defer.promise
+
     $q.all(
         [
             icswSimpleAjaxCall(
@@ -65,42 +85,11 @@ menu_module = angular.module(
     )
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
         $scope.struct.current_user = icswUserService.get().user
+        $scope.struct.focus_search = true
     )
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
         $scope.struct.current_user = undefined
     )
-    ### TF
-    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-        _cur_sel = icswActiveSelectionService.current()
-        _cur_check_to = undefined
-        _install_to = () ->
-            if _cur_check_to
-                $timeout.cancel(_cur_check_to)
-            # check future selection every 2 seconds
-            _cur_check_to = $timeout(
-                () ->
-                    _future_tot = _cur_sel.tot_dev_sel.length
-                    _show_string(_current_tot, _future_tot)
-                    _install_to()
-                2000
-            )
-
-        _show_string = (cur, future) ->
-            if cur == future
-                if cur
-                    $scope.struct.selection_string = "#{cur}"
-                else
-                    $scope.struct.selection_string = "none"
-            else
-                $scope.struct.selection_string = "#{cur} / #{future}"
-
-        _install_to()
-        _current_tot = _cur_sel.tot_dev_sel.length
-        _future_tot = _current_tot
-        _show_string(_current_tot, _future_tot)
-    )
-    ###
-
 
     $scope.get_progress_style = (obj) ->
         return {width: "#{obj.value}%"}

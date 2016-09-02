@@ -29,9 +29,20 @@ from django.conf.urls.static import static
 from initat.cluster.frontend import rest_views, device_views, main_views, network_views, \
     monitoring_views, user_views, package_views, config_views, boot_views, session_views, rrd_views, \
     base_views, setup_views, doc_views, license_views, model_history_views, discovery_views, rms_views, \
-    lic_views, auth_views, asset_views
+    lic_views, auth_views, asset_views, report_views
 
 # handler404 = main_views.index.as_view()
+report_patterns = [
+    url("^upload_report_gfx$", report_views.UploadReportGfx.as_view(), name="upload_report_gfx"),
+    url("^get_report_gfx$", report_views.GetReportGfx.as_view(), name="get_report_gfx"),
+    url("^generate_report_pdf$", report_views.GenerateReportPdf.as_view(), name="generate_report_pdf"),
+    url("^get_progress$", report_views.GetProgress.as_view(), name="get_progress"),
+    url("^get_report_data$", report_views.GetReportData.as_view(), name="get_report_data"),
+    url("^report_data_available$", report_views.ReportDataAvailable.as_view(), name="report_data_available"),
+    url("^generate_report_xlsx$", report_views.GenerateReportXlsx.as_view(), name="generate_report_xlsx"),
+    url("^report_history_available$", report_views.ReportHistoryAvailable.as_view(), name="report_history_available"),
+    url("^update_download_count$", report_views.UpdateDownloadCount.as_view(), name="update_download_count"),
+]
 
 asset_patterns = [
     url("^export_assetbatch_to_xlsx$", asset_views.export_assetbatch_to_xlsx.as_view(), name="export_assetbatch_to_xlsx"),
@@ -417,6 +428,7 @@ my_url_patterns = [
     url(r"^system/", include(system_patterns, namespace="system")),
     url(r"^discovery/", include(discovery_patterns, namespace="discovery")),
     url(r"^asset/", include(asset_patterns, namespace="asset")),
+    url(r"^report/", include(report_patterns, namespace="report")),
 ]
 
 urlpatterns = [
