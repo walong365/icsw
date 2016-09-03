@@ -21,7 +21,7 @@
         </route>
         <route name="main.deviceconfig">
             <stateData type="dict" url_str="/deviceconfig" templateUrl_str="icsw/main/device/config.html"/>
-            <icswData type="dict" pageTitle_str="Configure Device">
+            <icswData type="dict" pageTitle_str="Configure Device" hasDevselFunc_bool="yes">
                 <menuEntry type="dict" icon_str="fa-check-square" name_str="Device Configurations"/>
                 <rights type="list">
                     <value>backbone.device.change_config</value>
@@ -30,7 +30,7 @@
         </route>
         <route name="main.deviceconnection">
             <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
-            <icswData type="dict" pageTitle_str="Device Connections">
+            <icswData type="dict" pageTitle_str="Device Connections" hasDevselFunc_bool="yes">
                 <menuEntry type="dict" icon_str="fa-plug" name_str="Connections"/>
                 <rights type="list">
                     <value>backbone.device.change_connection</value>
@@ -39,7 +39,7 @@
         </route>
         <route name="main.devicenetwork">
             <stateData type="dict" url_str="/network" template_str="&lt;icsw-device-network-total&gt;&lt;/icsw-device-network-total&gt;"/>
-            <icswData type="dict" pageTitle_str="Network">
+            <icswData type="dict" pageTitle_str="Network" hasDevselFunc_bool="yes">
                 <menuEntry type="dict" icon_str="fa-sitemap"/>
                 <rights type="list">
                     <value>backbone.device.change_network</value>
@@ -49,7 +49,7 @@
         <route name="main.devvars">
             <stateData type="dict" url_str="/variables"
                        templateUrl_str="icsw/device/variable.html"/>
-            <icswData type="dict" pageTitle_str="Device variables">
+            <icswData type="dict" pageTitle_str="Device variables" hasDevselFunc_bool="yes">
                 <menuEntry type="dict" icon_str="fa-code" name_str="Variables"/>
                 <rights type="list">
                     <value>backbone.device.change_variables</value>
@@ -332,7 +332,7 @@
         <menuHeader type="dict" name_str="Cluster" icon_str="fa-cubes"/>
         <route name="main.deployboot">
             <stateData type="dict" url_str="/deployboot" templateUrl_str="icsw/main/deploy/boot.html"/>
-            <icswData type="dict" pageTitle_str="Boot nodes">
+            <icswData type="dict" pageTitle_str="Boot nodes" hasDevselFunc_bool="yes">
                 <serviceTypes type="list">
                     <value>mother</value>
                 </serviceTypes>
@@ -372,7 +372,7 @@
         </route>
         <route name="main.packageinstall">
             <stateData type="dict" url_str="/packageinstall" template_str="&lt;icsw-package-install-overview ng-cloak/&gt;"/>
-            <icswData type="dict" pageTitle_str="Package install">
+            <icswData type="dict" pageTitle_str="Package install" hasDevselFunc_bool="yes">
                 <licenses type="list">
                     <value>package_install</value>
                 </licenses>
