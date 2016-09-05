@@ -1436,10 +1436,10 @@ class PDFReportGenerator(ReportGenerator):
                            ])
 
         data = [["Name", "Serialnumber", "Size"]]
-        for hdd in hardware_report_ar.asset_batch.hdds.all():
-            data.append([Paragraph(str(hdd.name), style_sheet["BodyText"]),
-                         Paragraph(str(hdd.serialnumber), style_sheet["courier"]),
-                         Paragraph(sizeof_fmt(hdd.size), style_sheet["BodyText"])])
+        for hdd in hardware_report_ar.asset_batch.partition_table.partition_disc_set.all():
+            data.append([Paragraph(str(hdd.disc), style_sheet["BodyText"]),
+                             Paragraph(str("N/A"), style_sheet["courier"]),
+                             Paragraph(str("N/A"), style_sheet["BodyText"])])
 
         p0_3 = Paragraph('<b>HDDs:</b>', style_sheet["BodyText"])
         t_3 = Table(data,
@@ -2942,12 +2942,12 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
             row_writer_func(row)
 
-        for hdd in ar.asset_batch.hdds.all():
-            row = base_row[:]
-
-            row.append(str(hdd))
-
-            row_writer_func(row)
+        # for hdd in ar.asset_batch.hdds.all():
+        #     row = base_row[:]
+        #
+        #     row.append(str(hdd))
+        #
+        #     row_writer_func(row)
 
         for partition in ar.asset_batch.partitions.all():
             row = base_row[:]
@@ -2989,10 +2989,10 @@ def _generate_report(pk_settings, _devices, queue, type):
 
         report_generator.generate_report()
     except Exception as e:
-        # import traceback, sys
-        # print '-'*60
-        # traceback.print_exc(file=sys.stdout)
-        # print '-'*60
+        import traceback, sys
+        print '-'*60
+        traceback.print_exc(file=sys.stdout)
+        print '-'*60
         logger.info("Report Generation failed, error was: {}".format(str(e)))
 
         if report_generator:
@@ -3026,11 +3026,11 @@ def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
                     else:
                         gpu_str = str(gpu)
 
-                for hdd in assetrun.asset_batch.hdds.all():
-                    if hdd_str != "N/A":
-                        hdd_str += "\n{}".format(str(hdd))
-                    else:
-                        hdd_str = str(hdd)
+                #for hdd in assetrun.asset_batch.hdds.all():
+                #    if hdd_str != "N/A":
+                #        hdd_str += "\n{}".format(str(hdd))
+                #    else:
+                #        hdd_str = str(hdd)
 
                 for partition in assetrun.asset_batch.partitions.all():
                     if partition_str != "N/A":

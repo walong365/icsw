@@ -741,7 +741,8 @@ device_asset_module = angular.module(
             assetrun.$$gpu_entries.push(entry)
 
         for entry in hdd_entries
-            entry.$$size = (parseInt(entry.size) / (1024 * 1024 * 1024)).toFixed(2)
+            entry.$$size = "N/A" #(parseInt(entry.size) / (1024 * 1024 * 1024)).toFixed(2)
+            entry.serialnumber = "N/A"
             assetrun.$$hdd_entries.push(entry)
 
         for entry in partition_entries

@@ -1119,15 +1119,16 @@ class AssetRun(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     @property
+    def hdds(self):
+        return self.asset_batch.partition_table.partition_disc_set.all()
+
+    @property
     def cpus(self):
         return self.asset_batch.cpus.all()
 
     @property
     def gpus(self):
         return self.asset_batch.gpus.all()
-    @property
-    def hdds(self):
-        return self.asset_batch.hdds.all()
 
     @property
     def partitions(self):
