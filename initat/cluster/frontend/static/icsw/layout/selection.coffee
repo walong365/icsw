@@ -943,7 +943,6 @@ angular.module(
             _str = "Selected: #{$scope.struct.selection.tot_dev_sel.length} devices"
             if $scope.struct.changed_timeout
                 _str = "#{_str} <i class='fa fa-spinner fa-3x fa-spin'></i> <span class='label label-warning'>Selection changed...</span>"
-            console.log _str
             $scope.struct.modal.setTitle(_str)
 
     _stop_changed_timeout = () ->

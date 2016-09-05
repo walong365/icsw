@@ -595,6 +595,10 @@ menu_module = angular.module(
                 sel_devices++
             else
                 sel_groups++
+
+    $scope.activate_state = (entry) ->
+        $state.go(entry.sref, null, {icswRegister: false})
+
 ]).service('icswBreadcrumbs',
 [
     "$state", "icswRouteHelper", "$rootScope", "ICSW_SIGNALS",
