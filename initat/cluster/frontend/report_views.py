@@ -522,6 +522,28 @@ class ReportGenerator(object):
 
         return data
 
+class ColoredRule(Rule):
+    def __init__(self, pos, width, thickness=1.0, report=None, hexcolor=None):
+        super(ColoredRule, self).__init__(pos, width, thickness, report)
+
+        self.hexcolor = hexcolor
+
+    def generate(self, row):
+        return ColoredRule(self.pos, self.width, self.height, self.report, self.hexcolor)
+
+
+    def render(self, offset, canvas):
+        leftmargin = self.report.leftmargin
+        canvas.saveState()
+        canvas.setLineWidth(self.height)
+        canvas.setFillColor(self.hexcolor)
+        canvas.setStrokeColor(self.hexcolor)
+        canvas.line(self.pos[0] + leftmargin,
+                    -1 * (self.pos[1] + offset + self.height / 2),
+                    self.pos[0] + self.width + leftmargin,
+                    -1 * (self.pos[1] + offset + self.height / 2))
+
+        canvas.restoreState()
 
 class PDFReportGenerator(ReportGenerator):
     def __init__(self, _settings, _devices):
@@ -725,8 +747,10 @@ class PDFReportGenerator(ReportGenerator):
 
                 _dict[key] = s_new_comps
 
-        header_list.append(Rule((0, rule_position), self.page_format[0] - (self.margin * 2), thickness=2))
-        detail_list.append(Rule((0, 0), self.page_format[0] - (self.margin * 2), thickness=0.1))
+        header_list.append(ColoredRule((0, rule_position), self.page_format[0] - (self.margin * 2), thickness=1.5,
+            hexcolor=HexColor(0xBDBDBD)))
+        detail_list.append(ColoredRule((0, 0), self.page_format[0] - (self.margin * 2), thickness=0.1,
+            hexcolor=HexColor(0xBDBDBD)))
 
         rpt.pageheader = Band(header_list)
         rpt.detailband = Band(detail_list)
@@ -890,9 +914,7 @@ class PDFReportGenerator(ReportGenerator):
 
         text_block = Paragraph('<b>FQDN:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
-                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                         ]
+                  style=[]
                   )
         body_data.append((text_block, t))
 
@@ -901,9 +923,7 @@ class PDFReportGenerator(ReportGenerator):
 
         text_block = Paragraph('<b>DeviceGroup:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
-                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                         ]
+                  style=[]
                   )
 
         body_data.append((text_block, t))
@@ -913,9 +933,7 @@ class PDFReportGenerator(ReportGenerator):
 
         text_block = Paragraph('<b>DeviceClass:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
-                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                         ]
+                  style=[]
                   )
 
         body_data.append((text_block, t))
@@ -932,9 +950,7 @@ class PDFReportGenerator(ReportGenerator):
 
         text_block = Paragraph('<b>ComCapabilities:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
-                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                         ]
+                  style=[]
                   )
 
         body_data.append((text_block, t))
@@ -950,9 +966,7 @@ class PDFReportGenerator(ReportGenerator):
 
         text_block = Paragraph('<b>IP Info:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
-                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                         ]
+                  style=[]
                   )
 
         body_data.append((text_block, t))
@@ -968,9 +982,7 @@ class PDFReportGenerator(ReportGenerator):
 
         text_block = Paragraph('<b>SNMP Scheme:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
-                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                         ]
+                  style=[]
                   )
 
         body_data.append((text_block, t))
@@ -981,9 +993,7 @@ class PDFReportGenerator(ReportGenerator):
 
         text_block = Paragraph('<b>SNMP Info:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
-                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                         ]
+                  style=[]
                   )
 
         body_data.append((text_block, t))
@@ -999,15 +1009,16 @@ class PDFReportGenerator(ReportGenerator):
 
         text_block = Paragraph('<b>Categories:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
-                  style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-                         ]
+                  style=[]
                   )
 
         body_data.append((text_block, t))
 
         t_body = Table(body_data, colWidths=(available_width * 0.15, available_width * 0.85),
-                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE'),
+                              ('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                              ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                              ])
 
         elements.append(t_head)
         elements.append(Spacer(1, 30))
@@ -1421,8 +1432,8 @@ class PDFReportGenerator(ReportGenerator):
         t_1 = Table(data,
                     colWidths=(available_width * 0.88 * 0.50,
                                available_width * 0.88 * 0.50),
-                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                           ('BOX', (0, 0), (-1, -1), 2, colors.black)])
+                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD))])
 
         data = [["Name", "Driver Version"]]
         for gpu in hardware_report_ar.asset_batch.gpus.all():
@@ -1433,8 +1444,8 @@ class PDFReportGenerator(ReportGenerator):
         t_2 = Table(data,
                     colWidths=(available_width * 0.88 * 0.50,
                                available_width * 0.88 * 0.50),
-                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                           ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
         data = [["Name", "Serialnumber", "Size"]]
@@ -1448,8 +1459,8 @@ class PDFReportGenerator(ReportGenerator):
                     colWidths=(available_width * 0.88 * 0.33,
                                available_width * 0.88 * 0.34,
                                available_width * 0.88 * 0.33),
-                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                           ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
         data = [["Name", "Size", "Free", "Graph"]]
@@ -1480,8 +1491,8 @@ class PDFReportGenerator(ReportGenerator):
                                available_width * 0.88 * 0.25,
                                available_width * 0.88 * 0.25,
                                available_width * 0.88 * 0.25),
-                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                           ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
         data = [["Banklabel", "Formfactor", "Memorytype", "Manufacturer", "Capacity"]]
@@ -1500,8 +1511,8 @@ class PDFReportGenerator(ReportGenerator):
                                available_width * 0.88 * 0.2,
                                available_width * 0.88 * 0.2,
                                available_width * 0.88 * 0.2),
-                    style=[('GRID', (0, 0), (-1, -1), 1, colors.black),
-                           ('BOX', (0, 0), (-1, -1), 2, colors.black),
+                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
         data = [[p0_1, t_1],
@@ -1785,6 +1796,14 @@ class PDFReportGenerator(ReportGenerator):
                 page_number_str = "Page {} of {}".format(page_number + 1, num_pages)
 
                 page_width = self.page_format[0]
+
+                can.setFillColor(HexColor(0xBDBDBD))
+                can.setStrokeColor(HexColor(0xBDBDBD))
+                can.setLineWidth(0.35)
+                can.line(13 * mm, 9.5 * mm, page_width - (13 * mm), 9.5 * mm)
+                can.setFillColor(HexColor(0x000000))
+                can.setStrokeColor(HexColor(0x000000))
+
                 pagee_number_str_width = stringWidth(page_number_str, "SourceSansPro-Regular", 9)
 
                 page_number_str_draw_point = (page_width / 2.0) - (pagee_number_str_width / 2.0)
@@ -1805,7 +1824,7 @@ class PDFReportGenerator(ReportGenerator):
                 if info_str_server:
                     can.drawString(13 * mm, 3 * mm, info_str_server)
 
-                can.drawImage(NOCTUA_LOGO_PATH, page_width - (13 * mm) - 100, 4 * mm, 80, 18.6, mask="auto")
+                can.drawImage(NOCTUA_LOGO_PATH, page_width - (13 * mm) - 80, 4 * mm, 80, 18.6, mask="auto")
 
                 can.save()
                 page_num_buffer.seek(0)

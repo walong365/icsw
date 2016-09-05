@@ -293,6 +293,8 @@ angular.module(
             @redirectToFromOnError = false
             # flag: valid for quicklink
             @validForQuicklink = false
+            # has deviceselection function
+            @hasDevselFunc = false
             for key, value of args
                 if not @[key]?
                     console.error "unknown icswRouteExtension #{key}=#{value}", @
@@ -622,8 +624,6 @@ angular.module(
         ICSW_DSR_UNREGISTERED: "icsw.dsr.unregistered"
         # breadcrumbs changed
         ICSW_BREADCRUMBS_CHANGED: "icsw.breadcrumbs.changed"
-        # selector shown
-        ICSW_SELECTOR_SHOW: "icsw.selector.show"
         ICSW_DEVICE_TREE_LOADED: "icsw.device.tree.loaded"
         ICSW_CATEGORY_TREE_LOADED: "icsw.category.tree.loaded"
         ICSW_NETWORK_TREE_LOADED: "icsw.network.tree.loaded"
@@ -1268,7 +1268,12 @@ angular.module(
                 modal.getModal().find(".modal-body").css("max-height", height)
                 if in_dict.show_callback?
                     in_dict.show_callback(modal)
+            onshown: (modal) =>
+                if in_dict.shown_callback?
+                    in_dict.shown_callback(modal)
             onhidden: (modal) =>
+                if in_dict.hidden_callback?
+                    in_dict.hidden_callback(modal)
                 d.resolve("closed")
             buttons: buttons
         }
