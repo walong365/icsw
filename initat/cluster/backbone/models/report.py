@@ -53,10 +53,11 @@ class ReportHistory(models.Model):
 
     filename = models.TextField(null=True)
 
+    progress = models.IntegerField(default=0)
+
     def write_data(self, data):
         b64data = base64.b64encode(data)
         self.b64_size = len(b64data)
-        self.save()
 
         f = open(os.path.join(REPORT_DATA_STORAGE_DIR, self.filename), "wb")
         f.write(data)

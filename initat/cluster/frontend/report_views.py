@@ -369,23 +369,26 @@ class ReportGenerator(object):
         self.device_settings = _settings
 
         self.devices = _devices
-        self.progress = 0
-        self.last_poll_time = None
 
-        self.report_history = ReportHistory()
-        self.report_history.save()
-        self.report_id = self.report_history.idx
+        report_history_obj = ReportHistory()
+        report_history_obj.save()
+
+        self.report_id = report_history_obj.idx
 
         self.creation_date = datetime.datetime.now()
-
-    def get_progress(self):
-        return self.progress
 
     def get_report_data(self):
         return self.data
 
     def get_report_type(self):
         pass
+
+    def set_progress(self, progress):
+        report_history_obj = ReportHistory.objects.get(idx=self.report_id)
+
+        if report_history_obj.progress != progress:
+            report_history_obj.progress = progress
+            report_history_obj.save()
 
     @staticmethod
     def _get_data_for_user_group_overview():
@@ -522,6 +525,7 @@ class ReportGenerator(object):
 
         return data
 
+
 class ColoredRule(Rule):
     def __init__(self, pos, width, thickness=1.0, report=None, hexcolor=None):
         super(ColoredRule, self).__init__(pos, width, thickness, report)
@@ -530,7 +534,6 @@ class ColoredRule(Rule):
 
     def generate(self, row):
         return ColoredRule(self.pos, self.width, self.height, self.report, self.hexcolor)
-
 
     def render(self, offset, canvas):
         leftmargin = self.report.leftmargin
@@ -544,6 +547,7 @@ class ColoredRule(Rule):
                     -1 * (self.pos[1] + offset + self.height / 2))
 
         canvas.restoreState()
+
 
 class PDFReportGenerator(ReportGenerator):
     def __init__(self, _settings, _devices):
@@ -1754,12 +1758,7 @@ class PDFReportGenerator(ReportGenerator):
         num_pages = existing_pdf.getNumPages()
 
         for page_number in range(num_pages):
-            # this loop might take a long time -> kill this loop if no polling happend in the last few seconds (i.e the
-            # user closed the browser window or switched to a different view
-            if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
-                break
-
-            self.progress = int((page_number / float(num_pages)) * 90) + 10
+            self.set_progress(int((page_number / float(num_pages)) * 90) + 10)
             page = existing_pdf.getPage(page_number)
 
             if page_number == 0:
@@ -1951,13 +1950,11 @@ class PDFReportGenerator(ReportGenerator):
                 device_report.add_child(group_report)
 
                 for _device in sorted(group_device_dict[_group_name], key=lambda __device: __device.full_name):
-                    if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
-                        return
                     self.__generate_device_report(_device, self.device_settings[_device.idx], group_report)
-                    self.progress = int((float(idx) / len(self.devices)) * 10)
+                    self.set_progress(int((float(idx) / len(self.devices)) * 10))
                     idx += 1
 
-        self.progress = 10
+        self.set_progress(10)
 
         self.finalize_pdf()
 
@@ -2003,7 +2000,7 @@ class PDFReportGenerator(ReportGenerator):
         # Add page numbers
         output_pdf.write(output_buffer)
         output_pdf = self.__add_page_numbers(output_buffer)
-        self.progress = 100
+        self.set_progress(100)
 
         # Generate Bookmarks
         current_page_number = number_of_pre_content_sites
@@ -2021,17 +2018,18 @@ class PDFReportGenerator(ReportGenerator):
 
         # create report history entry
         _user = user.objects.get(idx=self.general_settings["user_idx"])
-        self.report_history.created_by_user = _user
-        self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
-        self.report_history.number_of_pages = output_pdf.getNumPages()
-        self.report_history.size = len(self.data)
-        self.report_history.type = self.get_report_type()
-        self.report_history.generate_filename()
-        self.report_history.save()
 
-        self.report_history.write_data(self.data)
+        report_history_obj = ReportHistory.objects.get(idx=self.report_id)
 
-        self.progress = -1
+        report_history_obj.created_by_user = _user
+        report_history_obj.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
+        report_history_obj.number_of_pages = output_pdf.getNumPages()
+        report_history_obj.size = len(self.data)
+        report_history_obj.type = self.get_report_type()
+        report_history_obj.generate_filename()
+        report_history_obj.write_data(self.data)
+        report_history_obj.progress = -1
+        report_history_obj.save()
 
     def get_report_type(self):
         return "pdf"
@@ -2084,7 +2082,7 @@ class XlsxReportGenerator(ReportGenerator):
 
                 generate_csv_entry_for_assetrun(ar, sheet.append)
 
-            self.progress = int(round((float(idx) / len(self.devices)) * 100))
+            self.set_progress(int(round((float(idx) / len(self.devices)) * 100)))
             idx += 1
 
             workbooks.append((workbook, _device.full_name))
@@ -2103,16 +2101,17 @@ class XlsxReportGenerator(ReportGenerator):
         self.data = _buffer.getvalue()
 
         _user = user.objects.get(idx=self.general_settings["user_idx"])
-        self.report_history.created_by_user = _user
-        self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
-        self.report_history.number_of_pages = 0
-        self.report_history.size = len(self.data)
-        self.report_history.type = self.get_report_type()
-        self.report_history.generate_filename()
-        self.report_history.save()
-        self.report_history.write_data(self.data)
+        report_history_obj = ReportHistory.objects.get(idx=self.report_id)
 
-        self.progress = -1
+        report_history_obj.created_by_user = _user
+        report_history_obj.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
+        report_history_obj.number_of_pages = 0
+        report_history_obj.size = len(self.data)
+        report_history_obj.type = self.get_report_type()
+        report_history_obj.generate_filename()
+        report_history_obj.write_data(self.data)
+        report_history_obj.progress = -1
+        report_history_obj.save()
 
     def __generate_user_group_overview_report(self):
         workbook = Workbook()
@@ -2332,21 +2331,16 @@ class XlsxReportGenerator(ReportGenerator):
 ########################################################################################################################
 # Views
 ########################################################################################################################
-REPORT_GENERATORS = {}
-REPORT_TIMEOUT_SECONDS = 1800
 
 
 class GetProgress(View):
     @method_decorator(login_required)
     def post(self, request):
-        report_generator_id = int(request.POST["id"])
+        report_id = int(request.POST["id"])
 
-        progress = 0
-        if report_generator_id in REPORT_GENERATORS:
-            report_generator = REPORT_GENERATORS[report_generator_id]
-            progress = report_generator.progress
+        report_history_object = ReportHistory.objects.get(idx=report_id)
 
-            report_generator.last_poll_time = datetime.datetime.now()
+        progress = report_history_object.progress
 
         return HttpResponse(
             json.dumps(
@@ -2364,19 +2358,7 @@ class GetReportData(View):
         report_type = "unknown"
         report_id = None
 
-        if "report_generator_id" in request.POST:
-            report_generator_id = int(request.POST["report_generator_id"])
-            report_data = ""
-
-            if report_generator_id in REPORT_GENERATORS:
-                report_generator = REPORT_GENERATORS[report_generator_id]
-                report_data = report_generator.get_report_data()
-                report_type = report_generator.get_report_type()
-                report_id = report_generator.report_id
-                del REPORT_GENERATORS[report_generator_id]
-
-            data_b64 = base64.b64encode(report_data)
-        elif "report_id" in request.POST:
+        if "report_id" in request.POST:
             report_id = int(request.POST["report_id"])
 
             report_history = ReportHistory.objects.get(idx=report_id)
@@ -2414,7 +2396,7 @@ class GetReportData(View):
 class GenerateReportPdf(View):
     @method_decorator(login_required)
     def post(self, request):
-        pk_settings, _devices, current_time = _init_report_settings(request)
+        pk_settings, _devices = _init_report_settings(request)
 
         if 'HOSTNAME' in request.META:
             pk_settings[-1]['hostname'] = request.META['HOSTNAME']
@@ -2422,15 +2404,13 @@ class GenerateReportPdf(View):
             pk_settings[-1]['hostname'] = "unknown"
 
         pdf_report_generator = PDFReportGenerator(pk_settings, _devices)
-        pdf_report_generator.timestamp = current_time
-        REPORT_GENERATORS[id(pdf_report_generator)] = pdf_report_generator
 
         Thread(target=_generate_report, args=[pdf_report_generator]).start()
 
         return HttpResponse(
             json.dumps(
                 {
-                    'id': id(pdf_report_generator)
+                    'report_id': pdf_report_generator.report_id
                 }
             )
         )
@@ -2491,18 +2471,16 @@ class GetReportGfx(View):
 class GenerateReportXlsx(View):
     @method_decorator(login_required)
     def post(self, request):
-        pk_settings, _devices, current_time = _init_report_settings(request)
+        pk_settings, _devices = _init_report_settings(request)
 
         xlsx_report_generator = XlsxReportGenerator(pk_settings, _devices)
-        xlsx_report_generator.timestamp = current_time
-        REPORT_GENERATORS[id(xlsx_report_generator)] = xlsx_report_generator
 
         Thread(target=_generate_report, args=[xlsx_report_generator]).start()
 
         return HttpResponse(
             json.dumps(
                 {
-                    'id': id(xlsx_report_generator)
+                    'report_id': xlsx_report_generator.report_id
                 }
             )
         )
@@ -2621,12 +2599,6 @@ class UpdateDownloadCount(View):
 ########################################################################################################################
 
 def _init_report_settings(request):
-    current_time = datetime.datetime.now()
-    # remove references of old report generators
-    for report_generator_id in REPORT_GENERATORS.keys():
-        if (current_time - REPORT_GENERATORS[report_generator_id].timestamp).seconds > REPORT_TIMEOUT_SECONDS:
-            del REPORT_GENERATORS[report_generator_id]
-
     settings_dict = {}
 
     for key in request.POST.iterkeys():
@@ -2664,7 +2636,7 @@ def _init_report_settings(request):
         if not _device.is_meta_device:
             _devices.append(_device)
 
-    return pk_settings, _devices, current_time
+    return pk_settings, _devices
 
 
 # asset_batch_selection_mode
@@ -3013,7 +2985,7 @@ def _generate_report(report_generator):
         # print '-'*60
         logger.info("Report Generation failed, error was: {}".format(str(e)))
         report_generator.data = ""
-        report_generator.progress = -1
+        report_generator.set_progress(-1)
 
 
 def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
