@@ -45,8 +45,7 @@
                             ng-click="call_devsel_func()"
                             ng-disabled="!devsel_receivers"
                         >
-                            Use
-                            <span class="fa fa-arrow-right"></span>
+                            Use in {{ struct.current_state.icswData.pageTitle }}
                         </button>
                         <button
                             class="btn btn-success btn-sm"
@@ -66,11 +65,10 @@
                             <li
                                 role="menuItem"
                                 ng-click="call_devsel_func(entry.name)"
-                                ng-repeat="entry in struct.target_list">
-                                <a>
-                                    {{ entry.icswData.pageTitle }}
-                                </a>
-                            </li>
+                                ng-repeat="entry in struct.target_list"
+                            ><a><span ng-class="entry.$$sel_span_class"></span>
+                                {{ entry.icswData.pageTitle }}
+                            </a></li>
                         </ul>
                     </span>
                     <span>

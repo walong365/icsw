@@ -562,10 +562,15 @@ angular.module(
         modal: undefined
         # list of possible targets
         target_list: []
+        # current state
+        current_state: undefined
     }
+    $scope.struct.current_state = $state.current
+
     for entry in $state.get()
-        if entry.icswData? and entry.icswData.$$allowed and entry.icswData.hasDevselFunc
+        if entry.icswData? and entry.icswData.$$allowed and entry.icswData.menuEntry and entry.icswData.hasDevselFunc
             $scope.struct.target_list.push(entry)
+            entry.$$sel_span_class = "fa fa-fw #{entry.icswData.menuEntry.icon}"
 
     # console.log "new ctrl", $scope.$id
     # notifier queue to handle changes in the ReactTrees
@@ -977,6 +982,7 @@ angular.module(
     $scope.call_devsel_func = (target) ->
         if target?
             $state.go(target)
+            $scope.modal.close()
         else
             if $scope.cur_search_to?
                 # set flag: call devsel after search is done
