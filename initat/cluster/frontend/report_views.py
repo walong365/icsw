@@ -586,7 +586,7 @@ class PDFReportGenerator(ReportGenerator):
             # generate a simple placeholder image
             self.logo_height = 42
             self.logo_width = 103
-            logo = PILImage.new('RGB', (255, 255), "black")  # create a new black image
+            logo = PILImage.new('RGB', (255, 255), "white")  # create a new white image
             logo.save(self.logo_buffer, format="BMP")
 
         self.page_format = eval(self.general_settings["pdf_page_format"])
@@ -625,24 +625,10 @@ class PDFReportGenerator(ReportGenerator):
 
         return logo_width, logo_height
 
-    def __get_logo_helper(self, value):
-        id(value)
-        _tmp_file = tempfile.NamedTemporaryFile()
-        self.logo_buffer.seek(0)
-        _tmp_file.write(self.logo_buffer.read())
-        logo = ImageReader(_tmp_file.name)
-        _tmp_file.close()
-
-        return logo
-
     def __config_report_helper(self, header, header_names_left, header_names_right, rpt, data):
         available_width = self.page_format[0] - (self.margin * 2)
 
-        header_list = [PollyReportsImage(pos=(available_width - self.logo_width, -20),
-                                         width=self.logo_width,
-                                         height=self.logo_height,
-                                         getvalue=self.__get_logo_helper),
-                       Element((0, 0), (self.bold_font, 16), text=header)]
+        header_list = [Element((0, 0), (self.bold_font, 16), text=header)]
 
         detail_list = []
 
@@ -900,17 +886,13 @@ class PDFReportGenerator(ReportGenerator):
         paragraph_header = Paragraph('<font face="{}" size="16">{} Overview for {}</font>'.format(
             self.bold_font, section_number, _device.name), style_sheet["BodyText"])
 
-        logo = Image(self.logo_buffer)
-        logo.drawHeight = self.logo_height
-        logo.drawWidth = self.logo_width
+        data = [[paragraph_header]]
 
-        data = [[paragraph_header, logo]]
-
-        t_head = Table(
-            data,
-            colWidths=(available_width - self.logo_width - 11.75, self.logo_width + 11.75),
-            style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')]
-        )
+        t_head = Table(data,
+                       colWidths=(available_width),
+                       rowHeights=[35],
+                       style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
+                              ('RIGHTPADDING', (0, 0), (-1, -1), 0),])
 
         body_data = []
 
@@ -1535,15 +1517,12 @@ class PDFReportGenerator(ReportGenerator):
             hardware_report_ar.asset_batch.device.name),
             style_sheet["BodyText"])
 
-        logo = Image(self.logo_buffer)
-        logo.drawHeight = self.logo_height
-        logo.drawWidth = self.logo_width
-
-        data = [[p_h, logo]]
+        data = [[p_h]]
 
         t_head = Table(data,
-                       colWidths=(available_width - self.logo_width - 11.75, self.logo_width + 11.75),
-                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+                       colWidths=(available_width),
+                       rowHeights=[35],
+                       style=[])
 
         elements.append(t_head)
         elements.append(Spacer(1, 30))
@@ -1666,18 +1645,14 @@ class PDFReportGenerator(ReportGenerator):
 
         paragraph_header = Paragraph('Contents'.format(self.bold_font), style_sheet["heading_1"])
 
-        logo = Image(self.logo_buffer)
-        logo.drawHeight = self.logo_height
-        logo.drawWidth = self.logo_width
-
-        data = [[paragraph_header, logo]]
+        data = [[paragraph_header]]
 
         available_width = self.page_format[0] - (13 * mm * 2)
 
         t_head = Table(
             data,
-            rowHeights=[200],
-            colWidths=[available_width - self.logo_width, None],
+            rowHeights=[10],
+            colWidths=[available_width],
             style=[
                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 0),
@@ -1693,7 +1668,7 @@ class PDFReportGenerator(ReportGenerator):
         width, heigth = self.page_format
 
         t_head.wrapOn(can, 0, 0)
-        t_head.drawOn(can, 13 * mm, heigth - 56)
+        t_head.drawOn(can, 13 * mm, heigth - 52)
 
         vertical_x_limit = int((heigth - (heigth * 0.20)) / 15)
         vertical_x = 1
@@ -1758,6 +1733,11 @@ class PDFReportGenerator(ReportGenerator):
         existing_pdf = PdfFileReader(pdf_buffer)
         num_pages = existing_pdf.getNumPages()
 
+        _tmp_file = tempfile.NamedTemporaryFile()
+        self.logo_buffer.seek(0)
+        _tmp_file.write(self.logo_buffer.read())
+        _tmp_file.flush()
+
         for page_number in range(num_pages):
             self.set_progress(int((page_number / float(num_pages)) * 90) + 10)
             page = existing_pdf.getPage(page_number)
@@ -1795,7 +1775,14 @@ class PDFReportGenerator(ReportGenerator):
                 # draw page number
                 page_number_str = "Page {} of {}".format(page_number + 1, num_pages)
 
-                page_width = self.page_format[0]
+                page_width, page_heigth = self.page_format
+
+                can.drawImage(_tmp_file.name,
+                    page_width - (13 * mm) - self.logo_width,
+                    page_heigth - 5 * mm - self.logo_height,
+                    self.logo_width,
+                    self.logo_height,
+                    mask="auto")
 
                 can.setFillColor(HexColor(0xBDBDBD))
                 can.setStrokeColor(HexColor(0xBDBDBD))
@@ -1832,6 +1819,8 @@ class PDFReportGenerator(ReportGenerator):
                 page.mergePage(page_num_pdf.getPage(0))
 
             output.addPage(page)
+
+        _tmp_file.close()
 
         return output
 
