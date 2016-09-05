@@ -138,7 +138,8 @@ class partition(models.Model):
     partition_disc = models.ForeignKey("backbone.partition_disc")
     mountpoint = models.CharField(max_length=192, default="/", blank=True)
     partition_hex = models.CharField(max_length=6, blank=True)
-    size = models.IntegerField(null=True, blank=True, default=100)
+    # size in bytes
+    size = models.BigIntegerField(null=True, blank=True)
     mount_options = models.CharField(max_length=255, blank=True, default="defaults")
     pnum = models.IntegerField()
     bootable = models.BooleanField(default=False)

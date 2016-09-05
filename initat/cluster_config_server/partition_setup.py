@@ -68,9 +68,11 @@ class partition_setup(object):
                 while old_pnum < act_pnum - 1:
                     old_pnum += 1
                     sfdisk.append(",0, ")
+                # ATTN: The unit of partition.size is bytes, however the file
+                # system utilities expect MB.
                 if cur_part and fs_name != "ext":
                     if cur_part.size:
-                        upper_size += cur_part.size
+                        upper_size += cur_part.size / (1024 ** 2)
                     else:
                         # to be replaced by stage2 by actual upper size
                         upper_size = 0
@@ -100,7 +102,12 @@ class partition_setup(object):
                 else:
                     upper_size = lower_size
                 if cur_part.size and fs_name != "ext":
-                    sfdisk.append(",%d,0x%s" % (cur_part.size, cur_part.partition_hex))
+                    sfdisk.append(
+                        ",%d,0x%s" % (
+                            cur_part.size / (1024 ** 2),
+                            cur_part.partition_hex
+                        )
+                    )
                 else:
                     sfdisk.append(",,0x%s" % (cur_part.partition_hex))
                 fs = fs_name or "auto"
