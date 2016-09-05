@@ -168,7 +168,7 @@ angular.module(
                 _text_el = text(
                     {
                         x: 0
-                        y: 4
+                        y: 0
                         key: "svg.text"
                         textAnchor: "middle"
                         alignmentBaseline: "middle"

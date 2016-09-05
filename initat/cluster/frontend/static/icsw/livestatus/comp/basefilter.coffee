@@ -277,7 +277,6 @@ angular.module(
             return _redraw
 
         render: () ->
-
             _filter_changed = () =>
                 @props.livestatus_filter.filter_changed()
 
@@ -474,7 +473,6 @@ angular.module(
                         )
                     )
                 )
-
             )
     )
 ]).directive("icswLivestatusFilterDisplay",

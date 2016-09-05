@@ -571,6 +571,8 @@ angular.module(
         devices: []
         # structured list, includes template name
         slist: []
+        # active tab
+        active_tab: 0
     }
     # create info fields
     create_small_info_fields = (struct) ->
@@ -624,11 +626,13 @@ angular.module(
                                 $scope.struct.slist.push(new_struct)
                                 create_small_info_fields(new_struct)
                             $scope.struct.data_valid = true
+                            $scope.struct.active_tab = 0
                     )
             )
         else
             $scope.struct.devices.length = 0
             $scope.struct.slist.length = 0
             $scope.struct.data_valid = true
+            $scope.struct.active_tab = 0
 
 ])

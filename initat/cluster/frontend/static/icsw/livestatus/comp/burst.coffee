@@ -350,7 +350,7 @@ angular.module(
                         div(
                             {
                                 key: "svg.div"
-                                className: "col-xs-6"
+                                className: "col-xs-12"
                             }
                             [
                                 h3(

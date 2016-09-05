@@ -108,9 +108,12 @@
     <nav class="navbar navbar-default submenu-bar" ng-if="struct.current_user" style="position:fixed;width:100%;z-index:1029;margin-top:-30px;">
         <ul class="sub-breadcrumb pull-left">
             <li ng-repeat="entry in struct.bc_list track by $index"  class="pull-left">
-                <a class="cursorpointer" ui-sref="{{ entry.sref }}" ui-sref-opts="{icswRegister: false}">
+                <a class="cursorpointer" ui-sref="{{ entry.sref }}" ui-sref-opts="{icswRegister: false}" ng-show="!entry.has_devsel">
                     <span class="fa" ng-class="entry.icon"/> {{ entry.name }}
                 </a>
+                <button type="button" ng-show="entry.has_devsel" class="btn btn-xs btn-default" ng-click="activate_state(entry)">
+                    <span class="fa" ng-class="entry.icon"/> {{ entry.name }}
+                </button>
             </li>
             <li class="pull-right cursorpointer" ng-click="device_selection($event)">
                 <span class="label label-success" ng-show="struct.num_selected">{{ struct.select_txt }} selected</span>

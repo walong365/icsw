@@ -460,7 +460,7 @@ device_report_module = angular.module(
                         icswSimpleAjaxCall({
                             url: ICSW_URLS.REPORT_GET_PROGRESS
                             data:
-                                id: result.id
+                                id: result.report_id
                             dataType: 'json'
                         }).then(
                             (data) ->
@@ -472,7 +472,7 @@ device_report_module = angular.module(
                                         icswSimpleAjaxCall({
                                             url: ICSW_URLS.REPORT_GET_REPORT_DATA
                                             data:
-                                                report_generator_id: result.id
+                                                report_id: result.report_id
                                             dataType: 'json'
                                         }).then(
                                             (result) ->

@@ -44,6 +44,11 @@ angular.module(
                 @tree = tree
                 # console.log "tree set for icswSelection", @tree
             )
+            # init
+            @cat_sel = []
+            @devg_sel = []
+            @dev_sel = []
+            @tot_dev_sel = []
             @tree = undefined
             @sync_with_db(undefined)
             @user = undefined
@@ -65,8 +70,22 @@ angular.module(
                         @_last_stored = ""
             )
 
-        update: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
+        update: (cat_sel, devg_sel, dev_sel, tot_dev_sel) ->
+            _changed = false
+            for [attr_name, in_list] in [
+                ["cat_sel", cat_sel]
+                ["devg_sel", devg_sel]
+                ["dev_sel", dev_sel]
+                ["tot_dev_sel", tot_dev_sel]
+            ]
+                prev_list = (_e for _e in @[attr_name])
+                @[attr_name].length = 0
+                for entry in in_list
+                    @[attr_name].push(entry)
+                if not _.isEqual(prev_list, @[attr_name])
+                    _changed = true
             @selection_changed()
+            return _changed
 
         selection_changed: () =>
             if @user
@@ -564,6 +583,8 @@ angular.module(
         target_list: []
         # current state
         current_state: undefined
+        # changed timeout
+        changed_timeout: undefined
     }
     $scope.struct.current_state = $state.current
 
@@ -917,7 +938,25 @@ angular.module(
                 # $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
         )
 
+    _update_title = () ->
+        if $scope.struct.modal?
+            _str = "Selected: #{$scope.struct.selection.tot_dev_sel.length} devices"
+            if $scope.struct.changed_timeout
+                _str = "#{_str} <i class='fa fa-spinner fa-3x fa-spin'></i> <span class='label label-warning'>Selection changed...</span>"
+            $scope.struct.modal.setTitle(_str)
+
+    _stop_changed_timeout = () ->
+        if $scope.struct.changed_timeout
+            $timeout.cancel($scope.struct.changed_timeout)
+            $scope.struct.changed_timeout = undefined
+            _update_title()
+
+    $scope.$on("$destroy", () ->
+        _stop_changed_timeout()
+    )
+
     _selection_changed = () ->
+        _stop_changed_timeout()
         # this function is called everytime the selection in one of
         # the ReactTrees changes
         dev_sel_nodes = $scope.tc_devices.get_selected(
@@ -962,7 +1001,12 @@ angular.module(
         for _cs in cat_sel_nodes
             for _cat_dev in $scope.struct.device_tree.get_category(_cs).reference_dict.device
                 tot_dev_sel.push(_cat_dev)
-        $scope.struct.selection.update(cat_sel_nodes, devg_sel, dev_sel, _.uniq(tot_dev_sel))
+        if $scope.struct.selection.update(cat_sel_nodes, devg_sel, dev_sel, _.uniq(tot_dev_sel))
+            $scope.struct.changed_timeout = $timeout(
+                () ->
+                    _stop_changed_timeout()
+                1000
+            )
         if $scope.struct.selection.is_synced()
             # current selection is in sync with a saved one
             $scope.struct.synced = true
@@ -976,8 +1020,7 @@ angular.module(
         $scope.struct.resolved_devices = $scope.struct.selection.resolve_devices()
         $scope.struct.resolved_categories = $scope.struct.selection.resolve_categories()
         $scope.struct.resolved_total_devices = $scope.struct.selection.resolve_total_devices()
-        if $scope.struct.modal?
-            $scope.struct.modal.setTitle("Selected: #{$scope.struct.selection.tot_dev_sel.length} devices")
+        _update_title()
 
     $scope.call_devsel_func = (target) ->
         if target?
