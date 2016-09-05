@@ -82,9 +82,9 @@ DATABASE_ROUTERS = [
 
 # config stores
 # database config
-_cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
+_cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True, access_mode=config_store.AccessModeEnum.GLOBAL)
 if config_store.ConfigStore.exists(DB_ACCESS_CS_NAME):
-    _ps = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True)
+    _ps = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True, access_mode=config_store.AccessModeEnum.LOCAL)
 else:
     raise ImproperlyConfigured("DB-Access not configured (store not found)")
 

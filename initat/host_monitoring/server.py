@@ -377,7 +377,14 @@ class server_code(ICSWBasePool, HMHRMixin):
                 zmq_id_dict = {}
             if "*" not in zmq_id_dict:
                 zmq_id_dict["*"] = (my_0mq_id, False)
-            _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, read=False, prefix="bind")
+            _cs = config_store.ConfigStore(
+                ZMQ_ID_MAP_STORE,
+                log_com=self.log,
+                read=False,
+                prefix="bind",
+                access_mode=config_store.AccessModeEnum.LOCAL,
+                fix_access_mode=True,
+            )
             for _idx, _key in enumerate(["*"] + sorted([_key for _key in zmq_id_dict.keys() if _key not in ["*"]])):
                 _cs["{:d}".format(_idx)] = {
                     "address": _key,
@@ -386,7 +393,13 @@ class server_code(ICSWBasePool, HMHRMixin):
                 }
         else:
             # read from cs
-            _cs = config_store.ConfigStore(ZMQ_ID_MAP_STORE, log_com=self.log, prefix="bind")
+            _cs = config_store.ConfigStore(
+                ZMQ_ID_MAP_STORE,
+                log_com=self.log,
+                prefix="bind",
+                access_mode=config_store.AccessModeEnum.LOCAL,
+                fix_access_mode=True,
+            )
             create_0mq_cs = False
 
         if "0" not in _cs:

@@ -170,7 +170,13 @@ class machine_vector(object):
         self.__socket_dict = {}
         _conf_name = "/etc/sysconfig/host-monitoring.d/machvector.xml"
         if config_store.ConfigStore.exists(MACHVECTOR_CS_NAME):
-            self.cs = config_store.ConfigStore(MACHVECTOR_CS_NAME, log_com=self.log, prefix="mv")
+            self.cs = config_store.ConfigStore(
+                MACHVECTOR_CS_NAME,
+                log_com=self.log,
+                prefix="mv",
+                access_mode=config_store.AccessModeEnum.LOCAL,
+                fix_access_mode=True,
+            )
         else:
             if os.path.isfile(_conf_name):
                 # migrate old config
@@ -199,7 +205,13 @@ class machine_vector(object):
             }
             if xml_struct is not None:
                 # rewrite current config
-                _cs = config_store.ConfigStore(MACHVECTOR_CS_NAME, log_com=self.log, prefix="mv", read=False)
+                _cs = config_store.ConfigStore(
+                    MACHVECTOR_CS_NAME,
+                    log_com=self.log,
+                    prefix="mv",
+                    read=False,
+                    access_mode=config_store.AccessModeEnum.LOCAL,
+                )
                 for mv_idx, mv_target in enumerate(xml_struct.xpath(".//mv_target", smart_strings=False)):
                     _attr = mv_target.attrib
                     self.log("migrating old machvector {:d} ({})".format(mv_idx, str(_attr)))

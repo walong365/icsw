@@ -104,7 +104,7 @@ def migrate_uuid():
 def migrate_db_cf():
     if not config_store.ConfigStore.exists(DB_ACCESS_CS_NAME) and os.path.exists(DB_FILE):
         _src_stat = os.stat(DB_FILE)
-        _cs = config_store.ConfigStore(DB_ACCESS_CS_NAME)
+        _cs = config_store.ConfigStore(DB_ACCESS_CS_NAME, access_mode=config_store.AccessModeEnum.LOCAL)
         sql_dict = {
             key.split("_")[1]: value for key, value in [
                 line.strip().split("=", 1) for line in file(DB_FILE, "r").read().split(
@@ -127,12 +127,15 @@ def migrate_db_cf():
         os.chmod(_cs.file_name, _src_stat[stat.ST_MODE])
         # delete old file
         remove_file(DB_FILE)
+    else:
+        # check rights
+        config_store.ConfigStore(DB_ACCESS_CS_NAME, access_mode=config_store.AccessModeEnum.LOCAL, fix_access_mode=True)
 
 
 def main():
     if not config_store.ConfigStore.exists(GEN_CS_NAME):
         # migrate
-        new_store = config_store.ConfigStore(GEN_CS_NAME)
+        new_store = config_store.ConfigStore(GEN_CS_NAME, access_mode=config_store.AccessModeEnum.GLOBAL)
         for _key, _value in get_old_local_settings().iteritems():
             new_store[_key] = _value
         new_store.write()

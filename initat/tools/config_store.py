@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #
@@ -25,12 +25,23 @@ for password-types we need to add some encryption / message digest code via {alg
 """
 
 import os
+import grp
+import stat
+
+from enum import Enum
 
 from lxml import etree
 from lxml.builder import E
 
 from initat.tools import process_tools, logging_tools
 from initat.constants import CLUSTER_DIR
+
+__all__ = [
+    "ConfigVar",
+    "ConfigStore",
+    "AccessModeEnum",
+    "CONFIG_STORE_ROOT",
+]
 
 CS_NG = """
 <element name="config-store" xmlns="http://relaxng.org/ns/structure/1.0">
@@ -43,6 +54,16 @@ CS_NG = """
     </optional>
     <optional>
         <attribute name="prefix">
+        </attribute>
+    </optional>
+    <optional>
+        <attribute name="access-mode">
+            <choice>
+                <!-- world readable -->
+                <value>global</value>
+                <!-- idg readable -->
+                <value>local</value>
+            </choice>
         </attribute>
     </optional>
     <zeroOrMore>
@@ -72,6 +93,21 @@ CS_NG = """
 """
 
 CONFIG_STORE_ROOT = os.path.join(CLUSTER_DIR, "etc", "cstores.d")
+
+
+class AccessModeEnum(Enum):
+    GLOBAL = "global"
+    LOCAL = "local"
+
+
+ACCESS_MODE_DICT = {
+    AccessModeEnum.GLOBAL: {
+        "mode": 0664,
+    },
+    AccessModeEnum.LOCAL: {
+        "mode": 0640,
+    }
+}
 
 
 class ConfigVar(object):
@@ -138,7 +174,9 @@ class ConfigVar(object):
 
 
 class ConfigStore(object):
-    def __init__(self, name, log_com=None, read=True, quiet=False, prefix=None):
+    IDG_GID = None
+
+    def __init__(self, name, log_com=None, read=True, quiet=False, prefix=None, access_mode=None, fix_access_mode=False):
         # do not move this to a property, otherwise the Makefile will no longer work
         self.file_name = ConfigStore.build_path(name)
         self.tree_valid = True
@@ -147,9 +185,14 @@ class ConfigStore(object):
         self.name = name
         self.__quiet = quiet
         self.__log_com = log_com
+        self.__uid, self.__gid, self.__mode = (None, None, None)
         self.vars = {}
+        self.__required_access_mode = access_mode
+        self.__access_mode = None
         if read:
             self.read()
+            if fix_access_mode and self.__required_access_mode is not None and not self.access_mode_is_ok:
+                self.write()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if not self.__quiet:
@@ -181,6 +224,19 @@ class ConfigStore(object):
             ]
         )
 
+    @property
+    def idg_gid(self):
+        if ConfigStore.IDG_GID is None:
+            try:
+                ConfigStore.IDG_GID = grp.getgrnam("idg").gr_gid
+            except:
+                ConfigStore.IDG_GID = None
+        return ConfigStore.IDG_GID
+
+    @property
+    def access_mode_is_ok(self):
+        return self.__access_mode is not None and self.__access_mode_is_ok
+
     def read(self, name=None):
         if name is not None:
             _read_name = ConfigStore.build_path(name)
@@ -189,7 +245,13 @@ class ConfigStore(object):
         if os.path.isfile(_read_name):
             self.tree_valid = False
             try:
+                _stat = os.stat(_read_name)
                 _tree = etree.fromstring(file(_read_name, "r").read())
+                self.__uid, self.__gid, self.__mode = (
+                    _stat[stat.ST_UID],
+                    _stat[stat.ST_GID],
+                    _stat[stat.ST_MODE],
+                )
             except:
                 self.log(
                     "cannot read or interpret ConfigStore at '{}': {}".format(
@@ -204,6 +266,19 @@ class ConfigStore(object):
                 if _valid:
                     self.tree_valid = True
                     self.name = _tree.get("name", "")
+                    self.__access_mode_is_valid = False
+                    try:
+                        self.__access_mode = getattr(AccessModeEnum, _tree.get("access-mode", "global").upper())
+                    except:
+                        self.__access_mode = AccessModeEnum.GLOBAL
+                    if self.__required_access_mode is not None and self.__required_access_mode != self.__access_mode:
+                        self.__access_mode = self.__required_access_mode
+                    # try to guess access mode
+                    _t_mode = ACCESS_MODE_DICT[self.__access_mode]["mode"]
+                    if (self.__mode & ~(_t_mode | stat.S_IFREG)) | _t_mode == _t_mode and self.__gid == self.idg_gid:
+                        self.__access_mode_is_ok = True
+                    else:
+                        self.__access_mode_is_ok = False
                     _xml_prefix = _tree.get("prefix", "")
                     _rewrite = False
                     if (_xml_prefix or None) != self.prefix:
@@ -266,6 +341,12 @@ class ConfigStore(object):
                     "prefix": self.prefix,
                 }
             )
+        if self.__access_mode is not None:
+            _root.attrib.update(
+                {
+                    "access-mode": self.__access_mode.value,
+                }
+            )
         _kl = E("key-list")
         for _key in sorted(self.vars.iterkeys()):
             _kl.append(self.vars[_key].get_element())
@@ -278,11 +359,17 @@ class ConfigStore(object):
 
     @property
     def info(self):
-        return "{} defined".format(logging_tools.get_plural("key", len(self.vars)))
+        return "{} defined, access mode is {} {}".format(
+            logging_tools.get_plural("key", len(self.vars)),
+            "valid" if self.access_mode_is_ok else "invalid",
+            self.__access_mode,
+        )
 
-    def write(self):
+    def write(self, access_mode=None):
         # dangerous, use with care
         if self.tree_valid:
+            if access_mode is not None:
+                self.__access_mode = access_mode
             try:
                 file(self.file_name, "w").write(etree.tostring(self._generate(), pretty_print=True, xml_declaration=True))
             except:
@@ -294,17 +381,36 @@ class ConfigStore(object):
                     logging_tools.LOG_LEVEL_ERROR
                 )
             else:
-                self.log("wrote to {}".format(self.file_name))
+                _mode_set_ok = True
                 try:
-                    os.chmod(self.file_name, 0664)
+                    _stat = os.stat(self.file_name)
+                    os.chown(self.file_name, _stat[stat.ST_UID], self.idg_gid)
                 except:
+                    _mode_set_ok = False
+                if self.__access_mode == AccessModeEnum.GLOBAL:
+                    _tmod = 0664
+                else:
+                    _tmod = 0640
+                try:
+                    os.chmod(self.file_name, _tmod)
+                except:
+                    _mode_set_ok = False
                     self.log(
-                        "cannot change mod of {} to 0664: {}".format(
+                        "cannot change mod of {} to {:o}: {}".format(
                             self.file_name,
+                            _tmod,
                             process_tools.get_except_info(),
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
+                self.log(
+                    "wrote to {}, setting of mode {} was {}".format(
+                        self.file_name,
+                        self.__access_mode,
+                        "successfull" if _mode_set_ok else "unsuccessfull",
+                    ),
+                    logging_tools.LOG_LEVEL_OK if _mode_set_ok else logging_tools.LOG_LEVEL_WARN,
+                )
         else:
             self.log("tree is not valid", logging_tools.LOG_LEVEL_ERROR)
 

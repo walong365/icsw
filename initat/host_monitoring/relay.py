@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -192,7 +192,12 @@ class relay_code(ICSWBasePool, HMHRMixin):
         self.master_uuid = None
         _master_found = False
         if config_store.ConfigStore.exists(RELAY_SETTINGS_CS_NAME):
-            new_store = config_store.ConfigStore(RELAY_SETTINGS_CS_NAME, log_com=self.log)
+            new_store = config_store.ConfigStore(
+                RELAY_SETTINGS_CS_NAME,
+                log_com=self.log,
+                access_mode=config_store.AccessModeEnum.LOCAL,
+                fix_access_mode=True,
+            )
             try:
                 self._register_master(
                     new_store["master_ip"],
@@ -256,9 +261,20 @@ class relay_code(ICSWBasePool, HMHRMixin):
         _ets = etree.tostring  # @UndefinedVariable
         if write:
             if config_store.ConfigStore.exists(RELAY_SETTINGS_CS_NAME):
-                _store = config_store.ConfigStore(RELAY_SETTINGS_CS_NAME, log_com=self.log)
+                _store = config_store.ConfigStore(
+                    RELAY_SETTINGS_CS_NAME,
+                    log_com=self.log,
+                    fix_access_mode=True,
+                    access_mode=config_store.AccessModeEnum.LOCAL,
+                )
             else:
-                _store = config_store.ConfigStore(RELAY_SETTINGS_CS_NAME, log_com=self.log, read=False)
+                _store = config_store.ConfigStore(
+                    RELAY_SETTINGS_CS_NAME,
+                    log_com=self.log,
+                    read=False,
+                    fix_access_mode=True,
+                    access_mode=config_store.AccessModeEnum.LOCAL,
+                )
             _store["master_ip"] = self.master_ip
             _store["master_uuid"] = self.master_uuid
             _store["master_port"] = self.master_port

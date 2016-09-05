@@ -53,10 +53,15 @@ def get_uuid(renew=False):
     else:
         _create_cs = False
     if _create_cs:
-        _cs = config_store.ConfigStore(DATASTORE_NAME)
+        _cs = config_store.ConfigStore(DATASTORE_NAME, access_mode=config_store.AccessModeEnum.GLOBAL)
         _cs["cluster.device.uuid"] = the_uuid.get_urn()
         _cs.write()
-    the_uuid = uuid.UUID(config_store.ConfigStore(DATASTORE_NAME, quiet=True)["cluster.device.uuid"])
+    the_uuid = uuid.UUID(config_store.ConfigStore(
+        DATASTORE_NAME,
+        quiet=True,
+        access_mode=config_store.AccessModeEnum.GLOBAL,
+        fix_access_mode=True,
+    )["cluster.device.uuid"])
     _write = False
     if not os.path.exists(NEW_UUID_NAME):
         _write = True
