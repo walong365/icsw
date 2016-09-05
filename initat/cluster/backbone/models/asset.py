@@ -22,6 +22,7 @@ import base64
 import bz2
 import datetime
 import json
+import time
 
 from django.db.models import signals, CASCADE
 from django.dispatch import receiver
@@ -170,7 +171,6 @@ def get_base_assets_from_raw_result(asset_run,):
                     ap = lu_cache[ba.name]
 
                     versions = ap.assetpackageversion_set.filter(version=version, release=release, size=size)
-                    assert (len(versions) < 2)
 
                     if versions:
                         apv = versions[0]
@@ -187,15 +187,20 @@ def get_base_assets_from_raw_result(asset_run,):
                 install_time = ba.get_install_time_as_datetime()
 
                 if install_time:
-                    apv_install_times = AssetPackageVersionInstallTime.objects.filter(package_version=apv, install_time=install_time)
+                    timestamp = time.mktime(install_time.timetuple())
+
+                    apv_install_times = AssetPackageVersionInstallTime.objects.filter(package_version=apv,
+                        timestamp=timestamp)
+
                     if not apv_install_times:
-                        apv_install_time = AssetPackageVersionInstallTime(package_version=apv, install_time=install_time)
+                        apv_install_time = AssetPackageVersionInstallTime(package_version=apv,
+                            timestamp=timestamp)
+
                         apv_install_time.save()
                     else:
-                        assert (len(apv_install_times) < 2)
                         apv_install_time = apv_install_times[0]
 
-                    asset_run.packages_install_times.add(apv_install_time)
+                    asset_run.asset_batch.packages_install_times.add(apv_install_time)
 
         elif runtype == AssetType.HARDWARE:
             if scantype == ScanType.NRPE:
@@ -820,7 +825,11 @@ class AssetHWDisplayEntry(models.Model):
 class AssetPackageVersionInstallTime(models.Model):
     idx = models.AutoField(primary_key=True)
     package_version = models.ForeignKey("backbone.AssetPackageVersion")
-    install_time = models.DateTimeField(null=True)
+    timestamp = models.BigIntegerField()
+
+    @property
+    def install_time(self):
+        return datetime.datetime.fromtimestamp(float(self.timestamp))
 
 class AssetHWNetworkDevice(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -1106,9 +1115,6 @@ class AssetRun(models.Model):
     raw_result_interpreted = models.BooleanField(default=False)
     scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
-    # link to packageversions
-    packages = models.ManyToManyField(AssetPackageVersion)
-    packages_install_times = models.ManyToManyField(AssetPackageVersionInstallTime)
     created = models.DateTimeField(auto_now_add=True)
 
     @property
@@ -1144,11 +1150,11 @@ class AssetRun(models.Model):
 
     @property
     def packages(self):
-        # _packages = []
-        # for apv in self.asset_batch.packages.all():
-        #     _packages.append(apv.asset_package)
-        # return _packages
         return [package.idx for package in self.asset_batch.packages.all()]
+
+    @property
+    def packages_install_times(self):
+        return self.asset_batch.packages_install_times.all()
 
     @property
     def device(self):
@@ -1212,6 +1218,7 @@ class AssetBatch(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     # fields generated from raw entries
     packages = models.ManyToManyField(AssetPackageVersion)
+    packages_install_times = models.ManyToManyField(AssetPackageVersionInstallTime)
     cpus = models.ManyToManyField(AssetHWCPUEntry)
     memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
     gpus = models.ManyToManyField(AssetHWGPUEntry)

@@ -765,8 +765,8 @@ config_module = angular.module(
         restrict : "EA"
         template : $templateCache.get("icsw.config.script.table")
         scope:
-            config: "="
-            configTree: "="
+            config: "=config"
+            configTree: "=configTree"
     }
 ]).service('icswConfigMonCheckCommandListService',
 [

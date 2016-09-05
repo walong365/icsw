@@ -1,67 +1,121 @@
 <script type="text/ng-template" id="icsw.layout.selection.modify">
-    <div ng-controller="icswLayoutSelectionController">
-        <uib-tabset ng-if="struct.selection_valid">
+    <icsw-selection-modal icsw-modal="modal"></icsw-selection-modal>
+</script>
+
+<script type="text/ng-template" id="icsw.selection.modal">
+    <div>
+        <div uib-alert class="alert-warning" ng-if="!struct.data_ready">Loading...</div>
+        <uib-tabset ng-if="struct.selection_valid && struct.data_ready">
             <uib-tab>
                 <uib-tab-heading>
                     <span ng-class="struct.synced && 'fa fa-lock' || 'fa fa-unlock'"></span>
                     current selection
                 </uib-tab-heading>
-                <form class="input-group" ng-submit="call_devsel_func()">
-                    <div ng-class="struct.search_ok && 'form-group' || 'form-group has-error'">
-                        <input
-                            type="text"
-                            class="form-control"
-                            ng-disabled="struct.is_loading"
-                            ng-model="struct.search_str"
-                            placeholder="search by name, IP or MAC"
-                            ng-change="update_search()"
-                            icsw-auto-focus
-                        />
-                    </div>
-                    <span class="input-group-btn">
-                        <button class="btn btn-success" title="Use selection (with resolve)" type="button" ng-click="call_devsel_func()" ng-show="devsel_receivers">
-                            <span class="fa fa-chevron-right"></span>
-                             Apply
+                <div class="fluid-container">
+                    <form class="input-group" ng-submit="call_devsel_func()">
+                        <div ng-class="struct.search_ok && 'form-group' || 'form-group has-error'">
+                            <input
+                                type="text"
+                                class="form-control"
+                                ng-disabled="struct.is_loading"
+                                ng-model="struct.search_str"
+                                placeholder="search by name, IP or MAC"
+                                ng-change="update_search()"
+                                icsw-auto-focus
+                            >
+                            </input>
+                        </div>
+                        <span class="input-group-btn">
+                            <!-- not working right now
+                            <button class="btn btn-default" ng-show="struct.loading" type="button">
+                                <span class="fa fa-spinner fa-spin"></span>
+                            </button> -->
+                            <button class="btn btn-danger" title="Clear selection" type="button" ng-click="clear_search()">
+                                <span class="fa fa-trash"></span>
+                            </button>
+                        </span>
+                    </form>
+                </div>
+                <div class="fluid-container">
+                    <span class="btn-group btn-sm pull-right" uib-dropdown is-open="struct.isopen">
+                        <button
+                            class="btn btn-success btn-sm"
+                            title="Use selection (with resolve)"
+                            type="button"
+                            ng-click="call_devsel_func()"
+                            ng-disabled="!devsel_receivers"
+                        >
+                            Use in {{ struct.current_state.icswData.pageTitle }}
                         </button>
-                        <button class="btn btn-warning" title="Clear selection" type="button" ng-click="clear_search()">
-                            <span class="fa fa-remove"></span>
-                             Clear
+                        <button
+                            class="btn btn-success btn-sm"
+                            type="button"
+                            uib-dropdown-toggle
+                        >
+                            <span class="caret"></span>
                         </button>
+                        <ul class="dropdown-menu" uib-dropdown-menu role="menu">
+                            <li
+                                role="menuitem"
+                                ng-show="struct.selection.any_selected()"
+                                ng-click="show_current_selection_in_overlay()"
+                            >
+                                <a>Overlay</a>
+                            </li>
+                            <li
+                                role="menuItem"
+                                ng-click="call_devsel_func(entry.name)"
+                                ng-repeat="entry in struct.target_list"
+                            ><a><span ng-class="entry.$$sel_span_class"></span>
+                                {{ entry.icswData.pageTitle }}
+                            </a></li>
+                        </ul>
                     </span>
-                </form>
-                <span>
-                    <button
-                        class="btn btn-primary btn-xs"
-                        ng-disabled="!struct.selection.any_selected()"
-                        ng-click="show_current_selection_in_overlay()"
-                    >
-                        <span class="bootstrap-dialog-button-icon glyphicon glyphicon-menu-hamburger"></span>
-                        show in overlay
-                    </button>
-                    <icsw-tools-button
-                        type="select_parent"
-                        value="select parents"
-                        size="xs"
-                        disabled="!struct.selection.any_selected()"
-                        ng-click="select_parents()"
-                    ></icsw-tools-button>
-                    <icsw-tools-button type="display" size="xs" value="show selection" ng-show="struct.selection.any_selected()" ng-click="toggle_show_selection()"></icsw-tools-button>
-                    <icsw-tools-button type="modify" size="xs" value="resolve lazy selection" ng-show="struct.selection.any_lazy_selected()" ng-click="resolve_lazy_selection()"></icsw-tools-button>
-                    <icsw-tools-button type="modify" size="xs" icsw-value="struct.class_filter_name" ng-click="show_class_filter($event)"></icsw-tools-button>
-                </span>
+                    <span>
+                        <icsw-tools-button
+                            type="select_parent"
+                            value="select parents"
+                            size="sm"
+                            disabled="!struct.selection.any_selected()"
+                            ng-click="select_parents()"
+                        ></icsw-tools-button>
+                        <icsw-tools-button
+                            type="show"
+                            size="sm"
+                            is-show="struct.show_selection"
+                            ng-show="struct.selection.any_selected()"
+                            ng-click="toggle_show_selection()"
+                        ></icsw-tools-button>
+                        <icsw-tools-button
+                            type="resolve"
+                            size="sm"
+                            value="resolve"
+                            title="resolve lazy selection"
+                            ng-show="struct.selection.any_lazy_selected()"
+                            ng-click="resolve_lazy_selection()"
+                        ></icsw-tools-button>
+                        Classfilter:
+                        <icsw-tools-button
+                            type="filter"
+                            size="sm"
+                            icsw-value="struct.class_filter_name"
+                            ng-click="show_class_filter($event)"
+                        ></icsw-tools-button>
+                    </span>
+                </div>
                 <small>
                     <ul class="list-group" ng-show="struct.show_selection && struct.selection.any_selected()">
                         <li class="list-group-item" ng-show="struct.selection.devg_sel.length">
-                            <strong>{{ struct.selection.devg_sel.length }} lazy Device Groups:</strong> {{ resolve_device_groups(struct.selection) }}
+                            <strong>{{ struct.selection.devg_sel.length }} lazy Device Groups:</strong> {{ struct.resolved_device_groups }}
                         </li>
                         <li class="list-group-item" ng-show="struct.selection.cat_sel.length">
-                            <strong>{{ struct.selection.cat_sel.length }} lazy Categories:</strong> {{ resolve_categories(struct.selection) }}
+                            <strong>{{ struct.selection.cat_sel.length }} lazy Categories:</strong> {{ struct.resolved_categories }}
                         </li>
                         <li class="list-group-item" ng-show="struct.selection.dev_sel.length">
-                            <strong>{{ struct.selection.dev_sel.length }} direct Devices:</strong> {{ resolve_devices(struct.selection) }}
+                            <strong>{{ struct.selection.dev_sel.length }} direct Devices:</strong> {{ struct.resolved_devices }}
                         </li>
                         <li class="list-group-item text-success" ng-show="struct.selection.tot_dev_sel.length">
-                            <strong>{{ struct.selection.tot_dev_sel.length }} total Devices:</strong> {{ resolve_total_devices(struct.selection) }}
+                            <strong>{{ struct.selection.tot_dev_sel.length }} total Devices:</strong> {{ struct.resolved_total_devices }}
                         </li>
                     </ul>
                 </small>
@@ -69,7 +123,7 @@
                     <div class="form-group" ng-show="struct.synced">
                         <label class="col-md-2 control-label">Selected:</label>
                         <div class="col-md-10 form-control-static">
-                            {{ struct.selection.db_obj.info }}
+                            <span class="label label-warning" ng-show="struct.selection.db_obj.$$changed">changed</span> {{ struct.selection.db_obj.info }}
                             <span class="pull-right">
                                 <icsw-tools-button type="save" size="sm" ng-show="struct.selection.changed" ng-click="update_selection()"></icsw-tools-button>
                             </span>
@@ -119,10 +173,12 @@
             </uib-tab>
             <uib-tab heading="saved selections" select="enable_saved_selections()">
                 <form class="form-horizontal">
-                    <h3 ng-show="!saved_selections.length" class="text-warning">No saved selections found</h3>
+                    <fieldset>
+                        <h3 ng-show="!saved_selections.length" class="text-warning">No saved selections found</h3>
+
                     <div ng-show="saved_selections.length">
                         <h3 class="text-success">{{ saved_selections.length }} saved selections found</h3>
-                        <div class="col-md-12 controls form-control-static">
+                        <div class="row controls form-control-static">
                             {{  selection_for_dropdown }}
                             <div class="input-group">
                                 <ui-select ng-model="struct.selection_for_dropdown" on-select="use_selection($item, $model)">
@@ -134,7 +190,7 @@
                                     </ui-select-choices>
                                 </ui-select>
                                 <span class="input-group-btn">
-                                    <button type="button" ng-click="unselect()" class="btn btn-default">
+                                    <button type="button" ng-click="unselect()" class="btn btn-danger">
                                         <span class="glyphicon glyphicon-trash"></span>
                                     </button>
                                 </span>
@@ -142,8 +198,10 @@
                         </div>
                     </div>
                     <div class="form-group" ng-show="struct.synced">
-                        <label class="col-md-2 control-label">Selected:</label>
-                        <div class="col-md-10 form-control-static">
+                        <label class="col-md-2 col-xs-2 control-label">
+                            Selected:
+                        </label>
+                        <div class="col-md-10 col-xs-10 form-control-static">
                             {{ struct.selection.db_obj.info }}
                             <span class="pull-right">
                                 <icsw-tools-button type="save" size="sm" ng-show="struct.selection.changed" ng-click="update_selection()"></icsw-tools-button>
@@ -155,17 +213,18 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="col-md-2 control-label">
+                        <label class="col-md-2 col-xs-2 control-label">
                             <span ng-show="struct.synced">or </span>
                             create:
                         </label>
-                        <div class="col-md-8 controls">
+                        <div class="col-md-8 col-xs-8 controls">
                             <input class="form-control" ng-model="struct.selection.db_obj.name" type="text"/>
                         </div>
-                        <div class="col-md-2 controls">
+                        <div class="col-md-2 col-xs-2 controls">
                             <icsw-tools-button type="create" size="" ng-click="create_selection()"></icsw-tools-button>
                         </div>
                     </div>
+                    </fieldset>
                 </form>
             </uib-tab>
         </uib-tabset>
@@ -181,7 +240,7 @@
                     {{ entry.name }}
                 </label>
                 <div class="controls col-sm-2">
-                    <icsw-tools-yes-no flag="entry.$$enabled" icsw-callback="selection_changed"></icsw-tools-yes-no>
+                    <icsw-tools-yes-no flag="entry.$$enabled" icsw-callback="class_selection_changed"></icsw-tools-yes-no>
                 </div>
                 <label class="col-sm-7">
                     {{ entry.description }}

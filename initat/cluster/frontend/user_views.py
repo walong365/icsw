@@ -349,6 +349,7 @@ class UserVariableViewSet(viewsets.ModelViewSet):
         serializer = user_variable_serializer(_var)
         return Response(serializer.data)
 
+
 class set_theme(RetrieveAPIView):
     @method_decorator(login_required_rest(lambda: {"__authenticated": False}))
     @rest_logging

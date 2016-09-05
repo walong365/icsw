@@ -72,6 +72,14 @@
                                 </choice>
                             </attribute>
                         </optional>
+                        <optional>
+                            <attribute name="hasDevselFunc_bool">
+                                <choice>
+                                    <value>yes</value>
+                                    <value>no</value>
+                                </choice>
+                            </attribute>
+                        </optional>
                         <interleave>
                             <optional>
                                 <element name="licenses">

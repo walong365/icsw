@@ -78,7 +78,8 @@
 
 <script type="text/ng-template" id="icsw.device.info.overview">
     <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Fetching data from server ...</div>
-    <uib-tabset ng-if="struct.data_valid && struct.slist.length > 1">
+    <div uib-alert class="alert-warning" ng-if="struct.data_valid && struct.devices.length == 0">No devices selected</div>
+    <uib-tabset ng-if="struct.data_valid && struct.slist.length > 1" active="struct.active_tab">
         <uib-tab ng-repeat="entry in struct.slist">
             <uib-tab-heading>
                 <span ng-show="entry.edit_obj.is_meta_device" class="glyphicon glyphicon-list"></span>
