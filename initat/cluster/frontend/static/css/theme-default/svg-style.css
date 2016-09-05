@@ -4,6 +4,7 @@
 .svg_dev_unreach { fill: #ff0000; }
 .svg_dev_unknown { fill: #dddddd; }
 .svg_dev_notmonitored { fill: #888888; }
+.svg-dev-unselected { fill: #dddddd; }
 
 /* service colors */
 .svg_srv_ok { fill: #66dd66; }
@@ -11,7 +12,29 @@
 .svg_srv_crit { fill: #ff7777; }
 .svg_srv_unknown { fill: #ff0000; }
 .svg_srv_notmonitored { fill: #888888; }
+.svg-srv-unselected { fill: #dddddd; }
 
+.svg-sh-type { fill: #8888ff ; }
+.svg-filter-text {
+    text-anchor: middle;
+    alignment-baseline: middle;
+    paint-order: stroke;
+    font-size: 12px;
+    fill: #ffffff;
+    stroke: #000000;
+    stroke-width: 1px;
+    pointer-events: none;
+}
+.svg-filter-head-text {
+    text-anchor: middle;
+    alignment-baseline: middle;
+    paint-order: stroke;
+    font-size: 15px;
+    fill: #000000;
+    stroke: #ffffff;
+    stroke-width: 0.5px;
+    pointer-events: none;
+}
 /* others */
 .svg_plandown { fill: #5bc0de; }
 .svg_active { fill: #9999ff; }
@@ -23,6 +46,7 @@
 .default_text { fill: black; font-size: 10px; }
 
 .sb_lines { stroke: #ffffff; stroke-width: 0.3; }
+.sb-lines-selected { stroke: #000000 ; stroke-width: 2; }
 .svg_stroke { stroke: #ffffff; stroke-width: 0.5; }
 .pieSegment { stroke-width: 1; stroke-miterlimit: 2; stroke: #ffffff; }
 .svg_sel { opacity: 0.7; }

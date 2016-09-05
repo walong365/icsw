@@ -89,11 +89,11 @@ angular.module(
             @f_services = 0
             # possible service states
             @service_state_list = [
-                [0, "O", true, "show OK states", "btn-success"]
-                [1, "W", true, "show warning states", "btn-warning"]
-                [2, "C", true, "show critical states", "btn-danger"]
-                [3, "U", true, "show unknown states", "btn-danger"]
-                [5, "p", true, "show pending states", "btn-primary"]
+                [0, "O", true, "show OK states", "btn-success", "ok"]
+                [1, "W", true, "show warning states", "btn-warning", "warn"]
+                [2, "C", true, "show critical states", "btn-danger", "crit"]
+                [3, "U", true, "show unknown states", "btn-danger", "unknown"]
+                [5, "p", true, "show pending states", "btn-primary", "notmonitored"]
             ]
             @service_state_lut = {}
 
@@ -106,11 +106,11 @@ angular.module(
 
             # possible host states
             @host_state_list = [
-                [0, "U", true, "show Up states", "btn-success"]
-                [1, "D", true, "show Down states", "btn-warning"]
-                [2, "?", true, "show unreachable states", "btn-danger"]
-                [4, "M", true, "show unmonitored devs", "btn-primary"]
-                [5, "p", true, "show pending devs", "btn-primary"]
+                [0, "U", true, "show Up states", "btn-success", "up"]
+                [1, "D", true, "show Down states", "btn-warning", "down"]
+                [2, "?", true, "show unreachable states", "btn-danger", "unreach"]
+                [4, "M", true, "show unmonitored devs", "btn-primary", "notmonitored"]
+                [5, "p", true, "show pending devs", "btn-primary", "unknown"]
             ]
             @host_state_lut = {}
 
@@ -236,13 +236,12 @@ angular.module(
 
 ]).factory("icswLivestatusFilterReactDisplay",
 [
-    "$q", "icswLivestatusCircleInfoReact",
+    "$q", "icswLivestatusCircleInfoReact", "icswDeviceLivestatusFunctions",
 (
-    $q, icswLivestatusCircleInfoReact,
+    $q, icswLivestatusCircleInfoReact, icswDeviceLivestatusFunctions,
 ) ->
     # display of livestatus filter
-    react_dom = ReactDOM
-    {div, h4, select, option, p, input, span, table, tr, td, tbody, span, button} = React.DOM
+    {span, rect, title, span, svg, path, g, text} = React.DOM
 
     return React.createClass(
         propTypes: {
@@ -306,173 +305,261 @@ angular.module(
                 _service_data = [
                     [_lf.n_services, _active_class, null]
                 ]
-            _service_buttons = []
-            for entry in _lf.service_state_list
-                _service_buttons.push(
-                    input(
-                        {
-                            key: "srvc.#{entry[1]}"
-                            type: "button"
-                            className: "btn btn-xs " + if _lf.service_states[entry[0]] then entry[4] else "btn-default"
-                            value: entry[1]
-                            title: entry[3]
-                            onClick: (event) =>
-                                # _lf.toggle_md(event.target_value)
-                                _lf.toggle_service_state(event.target.value)
-                                # force redraw
-                                @setState({filter_state_str: _lf.get_filter_state_str()})
-                                _filter_changed()
-                        }
-                    )
-                )
-            _host_buttons = []
-            for entry in _lf.host_state_list
-                _host_buttons.push(
-                    input(
-                        {
-                            key: "host.#{entry[1]}"
-                            type: "button"
-                            className: "btn btn-xs " + if _lf.host_states[entry[0]] then entry[4] else "btn-default"
-                            value: entry[1]
-                            title: entry[3]
-                            onClick: (event) =>
-                                _lf.toggle_host_state(event.target.value)
-                                # force redraw
-                                @setState({filter_state_str: _lf.get_filter_state_str()})
-                                _filter_changed()
-                        }
-                    )
-                )
-            _s_type_buttons = []
-            for entry in _lf.service_type_list
-                _s_type_buttons.push(
-                    input(
-                        {
-                            key: "stype.#{entry[1]}"
-                            type: "button"
-                            className: "btn btn-xs " + if _lf.service_types[entry[0]] then entry[4] else "btn-default"
-                            value: entry[1]
-                            title: entry[3]
-                            onClick: (event) =>
-                                _lf.toggle_service_type(event.target.value)
-                                # force redraw
-                                @setState({filter_state_str: _lf.get_filter_state_str()})
-                                _filter_changed()
-                        }
-                    )
-                )
 
-            _h_type_buttons = []
-            for entry in _lf.host_type_list
-                _h_type_buttons.push(
-                    input(
-                        {
-                            key: "stype.#{entry[1]}"
-                            type: "button"
-                            className: "btn btn-xs " + if _lf.host_types[entry[0]] then entry[4] else "btn-default"
-                            value: entry[1]
-                            title: entry[3]
-                            onClick: (event) =>
-                                _lf.toggle_host_type(event.target.value)
-                                # force redraw
-                                @setState({filter_state_str: _lf.get_filter_state_str()})
-                                _filter_changed()
-                        }
+            _build_ring = (in_list, inner, outer, class_cb, click_cb) ->
+                _rings = []
+                _end_arc = 0
+                _cur_size = 0
+                _middle = (inner + outer) / 2.0
+                _total = in_list.length
+                _idx = 0
+                for entry in in_list
+                    _idx++
+                    _start_arc = _end_arc
+                    _prev_size = _cur_size
+                    _cur_size++
+                    _end_arc = Math.PI * 2.0 *_cur_size / _total #  - Math.PI * 0.5
+                    _middle_arc = Math.PI * 2.0 * (_cur_size + _prev_size) / (2.0 * _total)
+                    _middle_x = Math.cos(_middle_arc) * _middle
+                    _middle_y = Math.sin(_middle_arc) * _middle
+                    _rings.push(
+                        path(
+                            {
+                                key: "seg.#{_idx}"
+                                d: icswDeviceLivestatusFunctions.ring_segment_path(inner, outer, _start_arc, _end_arc)
+                                className: class_cb(entry)
+                                id: entry[1]
+                                onClick: (event) =>
+                                    click_cb($(event.target).attr("id"))
+                                    _filter_changed()
+                            }
+                            title(
+                                {
+                                    key: "seg.#{_idx}.title"
+                                }
+                                entry[3]
+                            )
+                        )
                     )
-                )
-            _lock_class = if _lf.linked then "fa-lock" else "fa-unlock"
-            return div(
-                {key: "top"}
-                table(
-                    {key: "mt", className: "table table-condensed", style: {"width": "auto"}}
-                    tbody(
-                        {key: "body"}
-                        tr(
-                            {key: "l0"}
-                            td(
-                                {key: "ltd", rowSpan: "2"}
-                                button(
-                                    {
-                                        type: "button"
-                                        className: "btn btn-default"
-                                        key: "linkbut"
-                                        onClick: (event) =>
-                                            _lf.toggle_link_state()
-                                            @setState({filter_state_str: _lf.get_filter_state_str()})
-                                            _filter_changed()
+                    _rings.push(
+                        text(
+                            {
+                                key: "seg.#{_idx}.t"
+                                transform: "translate(#{_middle_x}, #{_middle_y})"
+                                className: "svg-filter-text cursorpointer"
+                            }
+                            entry[1]
+                        )
+                    )
+                return _rings
+
+            # build rings
+            _rads = [0, 20, 22, 42]
+            _rings_0 = _build_ring(
+                _lf.host_state_list
+                _rads[2]
+                _rads[3]
+                (entry) =>
+                    if _lf.host_states[entry[0]]
+                        return "cursorpointer sb_lines svg_dev_#{entry[5]}"
+                    else
+                        return "cursorpointer sb_lines svg-dev-unselected"
+                (code) =>
+                    _lf.toggle_host_state(code)
+                    @setState({filter_state_str: _lf.get_filter_state_str()})
+            )
+            _rings_1 = _build_ring(
+                _lf.host_type_list
+                _rads[0]
+                _rads[1]
+                (entry) ->
+                    if _lf.host_types[entry[0]]
+                        return "cursorpointer sb_lines svg-sh-type"
+                    else
+                        return "cursorpointer sb_lines svg-dev-unselected"
+                (code) =>
+                    _lf.toggle_host_type(code)
+                    @setState({filter_state_str: _lf.get_filter_state_str()})
+            )
+            _rings_2 = _build_ring(
+                _lf.service_state_list
+                _rads[2]
+                _rads[3]
+                (entry) =>
+                    if _lf.service_states[entry[0]]
+                        return "cursorpointer sb_lines svg_srv_#{entry[5]}"
+                    else
+                        return "cursorpointer sb_lines svg-srv-unselected"
+                (code) =>
+                    _lf.toggle_service_state(code)
+                    @setState({filter_state_str: _lf.get_filter_state_str()})
+            )
+            _rings_3 = _build_ring(
+                _lf.service_type_list
+                _rads[0]
+                _rads[1]
+                (entry) ->
+                    if _lf.service_types[entry[0]]
+                        return "cursorpointer sb_lines svg-sh-type"
+                    else
+                        return "cursorpointer sb_lines svg-srv-unselected"
+                (code) =>
+                    _lf.toggle_service_type(code)
+                    @setState({filter_state_str: _lf.get_filter_state_str()})
+            )
+            _width = 220
+            _height = 140
+            return svg(
+                {
+                    key: "top"
+                    width: "#{_width}px"
+                    height: "#{_height}px"
+                    fontFamily: "'Open-Sans', sans-serif"
+                    fontSize: "10pt"
+                }
+                [
+                    g(
+                        {
+                            key: "link"
+                            transform: "translate(#{_width / 2}, 80)"
+                        }
+                        [
+                            rect(
+                                {
+                                    key: "rlink"
+                                    x: -100
+                                    y: -50
+                                    rx: 50
+                                    ry: 50
+                                    width: 200
+                                    height: 100
+                                    style: {
+                                        fill: "none",
+                                        stroke: if _lf.linked then "#ff4444" else "#ffdddd",
+                                        strokeWidth: "3px"
                                     }
-                                    span(
+                                }
+
+                            )
+                            g(
+                                {
+                                    key: "linkbutton"
+                                    transform: "translate(0, -50)"
+                                }
+                                [
+                                    rect(
                                         {
-                                            key: "linkedspan"
-                                            className: "fa fa-4x #{_lock_class} fa-fw"
+                                            key: "buttonrect"
+                                            x: -15
+                                            y: -15
+                                            width: 30
+                                            height: 30
+                                            rx: 3
+                                            ry: 3
+                                            style: {
+                                                fill: "#ffffff"
+                                                stroke: "#000000"
+                                                strokeWidth: "1px"
+                                            }
                                         }
                                     )
-                                )
+                                    text(
+                                        {
+                                            key: "linktext"
+                                            x: 0
+                                            y: 12
+                                            fontFamily: "fontAwesome"
+                                            className: "cursorpointer"
+                                            fontSize: "30px"
+                                            alignmentBaseline: "middle"
+                                            textAnchor: "middle"
+                                            pointerEvents: "painted"
+                                            onClick: (event) =>
+                                                _lf.toggle_link_state()
+                                                @setState({filter_state_str: _lf.get_filter_state_str()})
+                                                _filter_changed()
+                                        }
+                                        if _lf.linked then "\uf023" else "\uf13e"
+                                    )
+                                ]
                             )
-                            td(
-                                {key: "t0"}
-                                "Host"
+                            g(
+                                {
+                                    key: "hosts"
+                                    transform: "translate(-50, 0)"
+                                }
+                                [
+                                    g(
+                                        {
+                                            key: "gtext"
+                                            transform: "translate(-10, -50)"
+                                        }
+                                        rect(
+                                            {
+                                                key: "textrect"
+                                                x: -40
+                                                y: -8
+                                                width: 80
+                                                height: 16
+                                                style: {
+                                                    fill: "#ffffff"
+                                                    stroke: "#000000"
+                                                    strokeWidth: "1px"
+                                                }
+                                            }
+                                        )
+                                        text(
+                                            {
+                                                key: "text"
+                                                className: "svg-filter-head-text"
+                                            }
+                                            "#{_host_text}"
+                                        )
+                                    )
+                                    _rings_0
+                                    _rings_1
+                                ]
                             )
-                            td(
-                                {key: "t1"}
-                                div(
-                                    {key: "t1g", className: "btn-group"}
-                                    _host_buttons
-                                )
+                            g(
+                                {
+                                    key: "services"
+                                    transform: "translate(50, 0)"
+                                }
+                                [
+                                    g(
+                                        {
+                                            key: "gtext"
+                                            transform: "translate(10, -50)"
+                                        }
+                                        rect(
+                                            {
+                                                key: "textrect"
+                                                x: -40
+                                                y: -8
+                                                width: 80
+                                                height: 16
+                                                style: {
+                                                    fill: "#ffffff"
+                                                    stroke: "#000000"
+                                                    strokeWidth: "1px"
+                                                }
+                                            }
+                                        )
+                                        text(
+                                            {
+                                                key: "text"
+                                                className: "svg-filter-head-text"
+                                            }
+                                            "#{_service_text}"
+                                        )
+                                    )
+                                    _rings_2
+                                    _rings_3
+                                ]
                             )
-                            td(
-                                {key: "t2"}
-                                div(
-                                    {key: "t2g", className: "btn-group"}
-                                    _h_type_buttons
-                                )
-                            )
-                            td(
-                                {key: "t4", rowSpan: "2"}
-                                React.createElement(
-                                    icswLivestatusCircleInfoReact
-                                    {
-                                        size: 44
-                                        data: _host_data
-                                        text: _host_text
-                                    }
-                                )
-                            )
-                            td(
-                                {key: "t5", rowSpan: "2"}
-                                React.createElement(
-                                    icswLivestatusCircleInfoReact
-                                    {
-                                        size: 44
-                                        data: _service_data
-                                        text: _service_text
-                                    }
-                                )
-                            )
-                        )
-                        tr(
-                            {key: "l1"}
-                            td(
-                                {key: "t0"}
-                                "Service"
-                            )
-                            td(
-                                {key: "t1"}
-                                div(
-                                    {key: "t1g", className: "btn-group"}
-                                    _service_buttons
-                                )
-                            )
-                            td(
-                                {key: "t2"}
-                                div(
-                                    {key: "t2g", className: "btn-group"}
-                                    _s_type_buttons
-                                )
-                            )
-                        )
+                        ]
                     )
-                )
+                ]
             )
     )
 ]).directive("icswLivestatusFilterDisplay",
