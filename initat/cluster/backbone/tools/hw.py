@@ -274,12 +274,14 @@ class Partition(HardwareBase):
         'index': (None, int),
         'bootable': (None, str),
         'device_name': ('logicalname', str),
+        'type': (None, str),
     }
     WIN32_ELEMENTS = {
         'size': ('Size', int),
         'index': ('Index', int),
         'bootable': ('Bootable', bool),
-        'device_name': (None, None),
+        'device_name': ('DeviceID', str),
+        'type': ('Type', str),
     }
 
     def __init__(self, lshw_tree=None, win32_tree=None):
