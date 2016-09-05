@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import tempfile
+import Queue
 from io import BytesIO
 from threading import Thread
 
@@ -2338,9 +2339,14 @@ class GetProgress(View):
     def post(self, request):
         report_id = int(request.POST["id"])
 
-        report_history_object = ReportHistory.objects.get(idx=report_id)
+        report_history_object = ReportHistory.objects.filter(idx=report_id)
 
-        progress = report_history_object.progress
+        progress = 0
+
+        if report_history_object:
+            report_history_object = report_history_object[0]
+
+            progress = report_history_object.progress
 
         return HttpResponse(
             json.dumps(
@@ -2403,14 +2409,16 @@ class GenerateReportPdf(View):
         else:
             pk_settings[-1]['hostname'] = "unknown"
 
-        pdf_report_generator = PDFReportGenerator(pk_settings, _devices)
+        queue = Queue.Queue()
 
-        Thread(target=_generate_report, args=[pdf_report_generator]).start()
+        Thread(target=_generate_report, args=[pk_settings, _devices, queue, "pdf"]).start()
+
+        report_id = queue.get()
 
         return HttpResponse(
             json.dumps(
                 {
-                    'report_id': pdf_report_generator.report_id
+                    'report_id': report_id
                 }
             )
         )
@@ -2473,14 +2481,16 @@ class GenerateReportXlsx(View):
     def post(self, request):
         pk_settings, _devices = _init_report_settings(request)
 
-        xlsx_report_generator = XlsxReportGenerator(pk_settings, _devices)
+        queue = Queue.Queue()
 
-        Thread(target=_generate_report, args=[xlsx_report_generator]).start()
+        Thread(target=_generate_report, args=[pk_settings, _devices, queue, "xlsx"]).start()
+
+        report_id = queue.get()
 
         return HttpResponse(
             json.dumps(
                 {
-                    'report_id': xlsx_report_generator.report_id
+                    'report_id': report_id
                 }
             )
         )
@@ -2975,8 +2985,14 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def _generate_report(report_generator):
+def _generate_report(pk_settings, _devices, queue, type):
+    report_generator = None
     try:
+        if type == "pdf":
+            report_generator = PDFReportGenerator(pk_settings, _devices)
+        else:
+            report_generator = XlsxReportGenerator(pk_settings, _devices)
+
         report_generator.generate_report()
     except Exception as e:
         # import traceback, sys
@@ -2984,8 +3000,15 @@ def _generate_report(report_generator):
         # traceback.print_exc(file=sys.stdout)
         # print '-'*60
         logger.info("Report Generation failed, error was: {}".format(str(e)))
-        report_generator.data = ""
-        report_generator.set_progress(-1)
+
+        if report_generator:
+            report_generator.data = ""
+            report_generator.set_progress(-1)
+
+    report_id = -1
+    if report_generator:
+        report_id = report_generator.report_id
+    queue.put(report_id)
 
 
 def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
