@@ -613,6 +613,7 @@ menu_module = angular.module(
                     icon: state.icswData.menuEntry.icon
                     sref: state.name
                     name: state.icswData.menuEntry.name
+                    has_devsel: state.icswData.hasDevselFunc
                 }
             else if state.icswData.pageTitle?
                 _add = true
@@ -620,6 +621,7 @@ menu_module = angular.module(
                     icon: ""
                     sref: state.name
                     name: state.icswData.pageTitle
+                    has_devsel: state.icswData.hasDevselFunc
                 }
             if _add
                 _.remove(bc_list, (entry) -> return entry.sref == _add_struct.sref)

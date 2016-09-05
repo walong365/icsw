@@ -109,7 +109,9 @@
         <ul class="sub-breadcrumb pull-left">
             <li ng-repeat="entry in struct.bc_list track by $index"  class="pull-left">
                 <a class="cursorpointer" ui-sref="{{ entry.sref }}" ui-sref-opts="{icswRegister: false}">
-                    <span class="fa" ng-class="entry.icon"/> {{ entry.name }}
+                    <span class="fa" ng-class="entry.icon"/>
+                    <span ng-show="entry.has_devsel"><strong>{{ entry.name }}</strong></span>
+                    <span ng-show="!entry.has_devsel">{{ entry.name }}</span>
                 </a>
             </li>
             <li class="pull-right cursorpointer" ng-click="device_selection($event)">
