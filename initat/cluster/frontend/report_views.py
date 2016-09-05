@@ -2993,6 +2993,11 @@ def _generate_report(pk_settings, _devices, queue, type):
         else:
             report_generator = XlsxReportGenerator(pk_settings, _devices)
 
+        report_id = -1
+        if report_generator:
+            report_id = report_generator.report_id
+        queue.put(report_id)
+
         report_generator.generate_report()
     except Exception as e:
         # import traceback, sys
@@ -3004,11 +3009,6 @@ def _generate_report(pk_settings, _devices, queue, type):
         if report_generator:
             report_generator.data = ""
             report_generator.set_progress(-1)
-
-    report_id = -1
-    if report_generator:
-        report_id = report_generator.report_id
-    queue.put(report_id)
 
 
 def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
