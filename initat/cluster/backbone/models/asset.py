@@ -1225,6 +1225,7 @@ class AssetBatch(models.Model):
     gpus = models.ManyToManyField(AssetHWGPUEntry)
     partition_table = models.ForeignKey("backbone.partition_table", null=True)
     network_devices = models.ManyToManyField(AssetHWNetworkDevice)
+    # TODO: Remove this.
     partitions = models.ManyToManyField(AssetHWLogicalEntry)
     displays = models.ManyToManyField(AssetHWDisplayEntry)
 
