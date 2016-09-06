@@ -526,6 +526,7 @@ angular.module(
             # lookup tables
             @__luts_set = true
             _srv_lut = {}
+            # dict: [srv_state][category] -> number of entries
             _srv_cat_lut = {}
             for srv in @services
                 if srv.state not of _srv_lut
@@ -542,6 +543,7 @@ angular.module(
                         _srv_cat_lut[srv.state][_cat] = 0
                     _srv_cat_lut[srv.state][_cat]++
             _host_lut = {}
+            # dict: [dev_state][category] -> number of entries
             _host_cat_lut = {}
             for host in @hosts
                 if host.state not of _host_lut
