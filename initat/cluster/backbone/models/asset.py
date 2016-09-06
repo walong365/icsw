@@ -49,6 +49,7 @@ def sizeof_fmt(num, suffix='B'):
         num /= 1024.0
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
+
 def get_packages_for_ar(asset_run):
     blob = asset_run.raw_result_str
     runtype = asset_run.run_type
@@ -101,379 +102,8 @@ def get_packages_for_ar(asset_run):
 
     return assets
 
-def get_base_assets_from_raw_result(asset_run,):
-    asset_batch = asset_run.asset_batch
-    blob = asset_run.raw_result_str
-    runtype = asset_run.run_type
-    scantype = asset_run.scan_type
-    if blob:
-        if runtype == AssetType.PACKAGE:
-            assets = []
-            if scantype == ScanType.NRPE:
-                if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-                else:
-                    _data = bz2.decompress(base64.b64decode(blob))
-                l = json.loads(_data)
-                for (name, version, size, date) in l:
-                    if size == "Unknown":
-                        size = 0
-                    assets.append(
-                        BaseAssetPackage(
-                            name,
-                            version=version,
-                            size=size,
-                            install_date=date,
-                            package_type=PackageTypeEnum.WINDOWS
-                        )
-                    )
-            elif scantype == ScanType.HM:
-                try:
-                    package_dict = server_command.decompress(blob, pickle=True)
-                except:
-                    raise
-                else:
-                    for package_name in package_dict:
-                        for versions_dict in package_dict[package_name]:
-                            installtimestamp = None
-                            if 'installtimestamp' in versions_dict:
-                                installtimestamp = versions_dict['installtimestamp']
-                            assets.append(
-                                BaseAssetPackage(
-                                    package_name,
-                                    version=versions_dict['version'],
-                                    size=versions_dict['size'],
-                                    release=versions_dict['release'],
-                                    install_date=installtimestamp,
-                                    package_type=PackageTypeEnum.LINUX
-                                )
-                            )
-            # lookup cache
-            lu_cache = {}
-            for idx, ba in enumerate(assets):
-                if idx % 100 == 0:
-                    lu_cache = {
-                        _p.name: _p for _p in AssetPackage.objects.filter(
-                            Q(name__in=[_x.name for _x in assets[idx:idx + 100]]) &
-                            Q(package_type=ba.package_type)
-                        ).prefetch_related(
-                            "assetpackageversion_set"
-                        )
-                    }
-                name = ba.name
-                version = ba.version if ba.version else ""
-                release = ba.release if ba.release else ""
-                size = ba.size if ba.size else 0
-                package_type = ba.package_type
 
-                # kwfilterdict['name'] = ba.name
-                # kwfilterdict['version'] = ba.version
-                # kwfilterdict['release'] = ba.release
-                if name in lu_cache:
-                    ap = lu_cache[ba.name]
 
-                    versions = ap.assetpackageversion_set.filter(version=version, release=release, size=size)
-
-                    if versions:
-                        apv = versions[0]
-                    else:
-                        apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
-                        apv.save()
-                else:
-                    ap = AssetPackage(name=name, package_type=package_type)
-                    ap.save()
-                    apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
-                    apv.save()
-                asset_batch.packages.add(apv)
-
-                install_time = ba.get_install_time_as_datetime()
-
-                if install_time:
-                    timestamp = time.mktime(install_time.timetuple())
-
-                    apv_install_times = AssetPackageVersionInstallTime.objects.filter(package_version=apv,
-                        timestamp=timestamp)
-
-                    if not apv_install_times:
-                        apv_install_time = AssetPackageVersionInstallTime(package_version=apv,
-                            timestamp=timestamp)
-
-                        apv_install_time.save()
-                    else:
-                        apv_install_time = apv_install_times[0]
-
-                    asset_run.asset_batch.packages_install_times.add(apv_install_time)
-
-        elif runtype == AssetType.HARDWARE:
-            if scantype == ScanType.NRPE:
-                if blob.startswith("b'"):
-                    s = bz2.decompress(base64.b64decode(blob[2:-2]))
-                else:
-                    s = bz2.decompress(base64.b64decode(blob))
-            elif scantype == ScanType.HM:
-                s = bz2.decompress(base64.b64decode(blob))
-            else:
-                s = blob
-
-            root = etree.fromstring(s)
-            assert (root.tag == "topology")
-
-            # lookup for structural entries
-            _struct_lut = {}
-            _root_tree = root.getroottree()
-            struct_el = None
-            for element in root.iter():
-                if element.tag in ["topology", "object"]:
-                    # structural entry
-                    struct_el = AssetHardwareEntry(
-                        type=element.tag,
-                        attributes=json.dumps({key: value for key, value in element.attrib.iteritems()}),
-                        asset_run=asset_run,
-                    )
-                    # get local path
-                    _path = _root_tree.getpath(element)
-                    _struct_lut[_path] = struct_el
-                    struct_el._info_dict = {}
-                    if element.getparent() is not None:
-                        # parent_path
-                        _parent = _struct_lut[_root_tree.getpath(element.getparent())]
-                        struct_el.parent = _parent
-                        struct_el.depth = _parent.depth + 1
-
-                    struct_el.save()
-                else:
-                    _struct_el = _struct_lut[_root_tree.getpath(element.getparent())]
-                    _struct_el._info_dict.setdefault(element.tag, []).append(
-                        json.dumps(
-                            {key: value for key, value in element.attrib.iteritems()}
-                        )
-                    )
-            for _path, _el in _struct_lut.iteritems():
-                _el.info_list = json.dumps(_el._info_dict)
-                _el.save()
-
-        elif runtype == AssetType.LICENSE:
-            if scantype == ScanType.NRPE:
-                if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-                else:
-                    _data = bz2.decompress(base64.b64decode(blob))
-                l = json.loads(_data)
-                for (name, licensekey) in l:
-                    new_lic = AssetLicenseEntry(
-                        name=name,
-                        license_key=licensekey,
-                        asset_run=asset_run,
-                    )
-                    new_lic.save()
-            elif scantype == ScanType.HM:
-                # todo implement me (--> what do we want to gather/display here?)
-                pass
-
-        elif runtype == AssetType.PENDING_UPDATE:
-            if scantype == ScanType.NRPE:
-                if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-                else:
-                    _data = bz2.decompress(base64.b64decode(blob))
-                l = json.loads(_data)
-                for (name, optional) in l:
-                    new_pup = AssetUpdateEntry(
-                        name=name,
-                        installed=False,
-                        asset_run=asset_run,
-                        optional=optional,
-                    )
-                    new_pup.save()
-
-            elif scantype == ScanType.HM:
-                l = server_command.decompress(blob, pickle=True)
-                for (name, version) in l:
-                    new_pup = AssetUpdateEntry(
-                        name=name,
-                        installed=False,
-                        asset_run=asset_run,
-                        # by definition linux updates are optional
-                        optional=True,
-                        new_version=version,
-                    )
-                    new_pup.save()
-
-        elif runtype == AssetType.UPDATE:
-            if scantype == ScanType.NRPE:
-                if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-                else:
-                    _data = bz2.decompress(base64.b64decode(blob))
-                l = json.loads(_data)
-                for (name, up_date, status) in l:
-                    new_up = AssetUpdateEntry(
-                        name=name,
-                        install_date=dateparse.parse_datetime(up_date),
-                        status=status,
-                        installed=True,
-                        asset_run=asset_run,
-                        optional=False,
-                    )
-                    new_up.save()
-            elif scantype == ScanType.HM:
-                # todo implement me (--> what do we want to gather/display here?)
-                pass
-
-        elif runtype == AssetType.PROCESS:
-            if scantype == ScanType.NRPE:
-                if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-                else:
-                    _data = bz2.decompress(base64.b64decode(blob))
-                l = json.loads(_data)
-                process_dict = {int(pid): {"name": name} for name, pid in l}
-            elif scantype == ScanType.HM:
-                process_dict = eval(bz2.decompress(base64.b64decode(blob)))
-            for pid, stuff in process_dict.iteritems():
-                new_proc = AssetProcessEntry(
-                    pid=pid,
-                    name=stuff["name"],
-                    asset_run=asset_run,
-                )
-                new_proc.save()
-
-        elif runtype == AssetType.PCI:
-            if scantype == ScanType.NRPE:
-                if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-                else:
-                    _data = bz2.decompress(base64.b64decode(blob))
-
-                info_dicts = []
-
-                info_dict = {}
-                for line in _data.decode().split("\r\n"):
-                    if len(line) == 0:
-                        if len(info_dict) > 0:
-                            info_dicts.append(info_dict)
-                            info_dict = {}
-                    if line.startswith("Slot:"):
-                        info_dict['slot'] = line.split("\t", 1)[1]
-
-                        comps = info_dict['slot'].split(":")
-                        bus = comps[0]
-
-                        comps = comps[1].split(".")
-                        slot = comps[0]
-                        func = comps[1]
-
-                        info_dict['bus'] = bus
-                        info_dict['slot'] = slot
-                        info_dict['func'] = func
-                    elif line.startswith("Class:"):
-                        info_dict['class'] = line.split("\t", 1)[1]
-                    elif line.startswith("Vendor:"):
-                        info_dict['vendor'] = line.split("\t", 1)[1]
-                    elif line.startswith("Device:"):
-                        info_dict['device'] = line.split("\t", 1)[1]
-                    elif line.startswith("SVendor:"):
-                        info_dict['svendor'] = line.split("\t", 1)[1]
-                    elif line.startswith("SDevice:"):
-                        info_dict['sdevice'] = line.split("\t", 1)[1]
-                    elif line.startswith("Rev:"):
-                        info_dict['rev'] = line.split("\t", 1)[1]
-
-                for info_dict in info_dicts:
-                    new_pci = AssetPCIEntry(
-                        asset_run=asset_run,
-                        domain=0,
-                        bus=int(info_dict['bus'], 16) if 'bus' in info_dict else 0,
-                        slot=int(info_dict['slot'], 16) if 'slot' in info_dict else 0,
-                        func=int(info_dict['func'], 16) if 'func' in info_dict else 0,
-                        pci_class=0,
-                        subclass=0,
-                        device=0,
-                        vendor=0,
-                        revision=int(info_dict['rev'], 16) if 'rev' in info_dict else 0,
-                        pci_classname=info_dict['class'],
-                        subclassname=info_dict['class'],
-                        devicename=info_dict['device'],
-                        vendorname=info_dict['vendor'],
-                    )
-                    new_pci.save()
-
-            elif scantype == ScanType.HM:
-                s = pci_database.pci_struct_to_xml(
-                    pci_database.decompress_pci_info(blob)
-                )
-                for func in s.findall(".//func"):
-                    _slot = func.getparent()
-                    _bus = _slot.getparent()
-                    _domain = _bus.getparent()
-                    new_pci = AssetPCIEntry(
-                        asset_run=asset_run,
-                        domain=int(_domain.get("id")),
-                        bus=int(_domain.get("id")),
-                        slot=int(_slot.get("id")),
-                        func=int(func.get("id")),
-                        pci_class=int(func.get("class"), 16),
-                        subclass=int(func.get("subclass"), 16),
-                        device=int(func.get("device"), 16),
-                        vendor=int(func.get("vendor"), 16),
-                        revision=int(func.get("revision"), 16),
-                        pci_classname=func.get("classname"),
-                        subclassname=func.get("subclassname"),
-                        devicename=func.get("devicename"),
-                        vendorname=func.get("vendorname"),
-                    )
-                    new_pci.save()
-
-        elif runtype == AssetType.DMI:
-            if scantype == ScanType.NRPE:
-                if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-                else:
-                    _data = bz2.decompress(base64.b64decode(blob))
-
-                _lines = []
-
-                for line in _data.decode().split("\r\n"):
-                    _lines.append(line)
-                    if line == "End Of Table":
-                        break
-
-                _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(_lines))
-            elif scantype == ScanType.HM:
-                _xml = dmi_tools.decompress_dmi_info(blob)
-            head = AssetDMIHead(
-                asset_run=asset_run,
-                version=_xml.get("version"),
-                size=int(_xml.get("size")),
-            )
-            head.save()
-            for _handle in _xml.findall(".//handle"):
-                handle = AssetDMIHandle(
-                    dmihead=head,
-                    handle=int(_handle.get("handle")),
-                    dmi_type=int(_handle.get("dmi_type")),
-                    length=int(_handle.get("length")),
-                    header=_handle.get("header"),
-                )
-                handle.save()
-                for _value in _handle.findall(".//value"):
-                    if len(_value):
-                        value = AssetDMIValue(
-                            dmihandle=handle,
-                            key=_value.get("key"),
-                            single_value=False,
-                            value=json.dumps([_el.text for _el in _value]),
-                            num_values=len(_value),
-                        )
-                    else:
-                        value = AssetDMIValue(
-                            dmihandle=handle,
-                            key=_value.get("key"),
-                            single_value=True,
-                            value=_value.text or "",
-                            num_values=1,
-                        )
-                    value.save()
 
 
 ########################################################################################################################
@@ -1182,14 +812,403 @@ class AssetRun(models.Model):
         self.save()
         self.asset_batch.run_done(self)
 
-    def generate_assets(self):
-        if not self.raw_result_interpreted:
-            get_base_assets_from_raw_result(self)
-            self.raw_result_interpreted = True
-            self.save()
-
     def has_data(self):
         return RunResult(self.run_result) == RunResult.SUCCESS
+
+    def generate_assets(self):
+        functions = {
+            AssetType.PACKAGE: self._get_assets_package,
+            AssetType.HARDWARE: self._get_assets_hardware,
+            AssetType.LICENSE: self._get_assets_license,
+            AssetType.PENDING_UPDATE: self._get_assets_pending_update,
+            AssetType.UPDATE: self._get_assets_update,
+            AssetType.PROCESS: self._get_assets_process,
+            AssetType.PCI: self._get_assets_pci,
+            AssetType.DMI: self._get_assets_dmi,
+            AssetType.PRETTYWINHW: self._get_assets_prettywinhw,
+            AssetType.LSHW: self._get_assets_lshw,
+            }
+
+        if not self.raw_result_interpreted:
+            self.raw_result_interpreted = True
+            if self.raw_result_str:
+                functions[self.run_type](self.raw_result_str)
+            self.save()
+
+    def _get_assets_package(self, blob):
+        assets = []
+        if self.scan_type == ScanType.NRPE:
+            if blob.startswith("b'"):
+                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+            else:
+                _data = bz2.decompress(base64.b64decode(blob))
+            l = json.loads(_data)
+            for (name, version, size, date) in l:
+                if size == "Unknown":
+                    size = 0
+                assets.append(
+                    BaseAssetPackage(
+                        name,
+                        version=version,
+                        size=size,
+                        install_date=date,
+                        package_type=PackageTypeEnum.WINDOWS
+                    )
+                )
+        elif self.scan_type == ScanType.HM:
+            try:
+                package_dict = server_command.decompress(blob, pickle=True)
+            except:
+                raise
+            else:
+                for package_name in package_dict:
+                    for versions_dict in package_dict[package_name]:
+                        installtimestamp = None
+                        if 'installtimestamp' in versions_dict:
+                            installtimestamp = versions_dict['installtimestamp']
+                        assets.append(
+                            BaseAssetPackage(
+                                package_name,
+                                version=versions_dict['version'],
+                                size=versions_dict['size'],
+                                release=versions_dict['release'],
+                                install_date=installtimestamp,
+                                package_type=PackageTypeEnum.LINUX
+                            )
+                        )
+        # lookup cache
+        lu_cache = {}
+        for idx, ba in enumerate(assets):
+            if idx % 100 == 0:
+                lu_cache = {
+                    _p.name: _p for _p in AssetPackage.objects.filter(
+                        Q(name__in=[_x.name for _x in assets[idx:idx + 100]]) &
+                        Q(package_type=ba.package_type)
+                    ).prefetch_related(
+                        "assetpackageversion_set"
+                    )
+                }
+            name = ba.name
+            version = ba.version if ba.version else ""
+            release = ba.release if ba.release else ""
+            size = ba.size if ba.size else 0
+            package_type = ba.package_type
+
+            # kwfilterdict['name'] = ba.name
+            # kwfilterdict['version'] = ba.version
+            # kwfilterdict['release'] = ba.release
+            if name in lu_cache:
+                ap = lu_cache[ba.name]
+
+                versions = ap.assetpackageversion_set.filter(version=version, release=release, size=size)
+
+                if versions:
+                    apv = versions[0]
+                else:
+                    apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
+                    apv.save()
+            else:
+                ap = AssetPackage(name=name, package_type=package_type)
+                ap.save()
+                apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
+                apv.save()
+            self.asset_batch.packages.add(apv)
+
+            install_time = ba.get_install_time_as_datetime()
+
+            if install_time:
+                timestamp = time.mktime(install_time.timetuple())
+
+                apv_install_times = AssetPackageVersionInstallTime.objects.filter(package_version=apv,
+                    timestamp=timestamp)
+
+                if not apv_install_times:
+                    apv_install_time = AssetPackageVersionInstallTime(package_version=apv,
+                        timestamp=timestamp)
+
+                    apv_install_time.save()
+                else:
+                    apv_install_time = apv_install_times[0]
+
+                self.asset_batch.packages_install_times.add(apv_install_time)
+
+    def _get_assets_hardware(self, blob):
+        if self.scan_type == ScanType.NRPE:
+            if blob.startswith("b'"):
+                s = bz2.decompress(base64.b64decode(blob[2:-2]))
+            else:
+                s = bz2.decompress(base64.b64decode(blob))
+        elif self.scan_type == ScanType.HM:
+            s = bz2.decompress(base64.b64decode(blob))
+        else:
+            s = blob
+
+        root = etree.fromstring(s)
+        assert (root.tag == "topology")
+
+        # lookup for structural entries
+        _struct_lut = {}
+        _root_tree = root.getroottree()
+        struct_el = None
+        for element in root.iter():
+            if element.tag in ["topology", "object"]:
+                # structural entry
+                struct_el = AssetHardwareEntry(
+                    type=element.tag,
+                    attributes=json.dumps({key: value for key, value in element.attrib.iteritems()}),
+                    asset_run=self,
+                )
+                # get local path
+                _path = _root_tree.getpath(element)
+                _struct_lut[_path] = struct_el
+                struct_el._info_dict = {}
+                if element.getparent() is not None:
+                    # parent_path
+                    _parent = _struct_lut[_root_tree.getpath(element.getparent())]
+                    struct_el.parent = _parent
+                    struct_el.depth = _parent.depth + 1
+
+                struct_el.save()
+            else:
+                _struct_el = _struct_lut[_root_tree.getpath(element.getparent())]
+                _struct_el._info_dict.setdefault(element.tag, []).append(
+                    json.dumps(
+                        {key: value for key, value in element.attrib.iteritems()}
+                    )
+                )
+        for _path, _el in _struct_lut.iteritems():
+            _el.info_list = json.dumps(_el._info_dict)
+            _el.save()
+
+    def _get_assets_license(self, blob):
+        if self.scan_type == ScanType.NRPE:
+            if blob.startswith("b'"):
+                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+            else:
+                _data = bz2.decompress(base64.b64decode(blob))
+            l = json.loads(_data)
+            for (name, licensekey) in l:
+                new_lic = AssetLicenseEntry(
+                    name=name,
+                    license_key=licensekey,
+                    asset_run=self,
+                )
+                new_lic.save()
+        elif self.scan_type == ScanType.HM:
+            # todo implement me (--> what do we want to gather/display here?)
+            pass
+
+    def _get_assets_pending_update(self, blob):
+        if self.scan_type == ScanType.NRPE:
+            if blob.startswith("b'"):
+                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+            else:
+                _data = bz2.decompress(base64.b64decode(blob))
+            l = json.loads(_data)
+            for (name, optional) in l:
+                new_pup = AssetUpdateEntry(
+                    name=name,
+                    installed=False,
+                    asset_run=self,
+                    optional=optional,
+                )
+                new_pup.save()
+
+        elif self.scan_type == ScanType.HM:
+            l = server_command.decompress(blob, pickle=True)
+            for (name, version) in l:
+                new_pup = AssetUpdateEntry(
+                    name=name,
+                    installed=False,
+                    asset_run=self,
+                    # by definition linux updates are optional
+                    optional=True,
+                    new_version=version,
+                )
+                new_pup.save()
+
+    def _get_assets_update(self, blob):
+        if self.scan_type == ScanType.NRPE:
+            if blob.startswith("b'"):
+                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+            else:
+                _data = bz2.decompress(base64.b64decode(blob))
+            l = json.loads(_data)
+            for (name, up_date, status) in l:
+                new_up = AssetUpdateEntry(
+                    name=name,
+                    install_date=dateparse.parse_datetime(up_date),
+                    status=status,
+                    installed=True,
+                    asset_run=self,
+                    optional=False,
+                )
+                new_up.save()
+        elif self.scan_type == ScanType.HM:
+            # todo implement me (--> what do we want to gather/display here?)
+            pass
+
+    def _get_assets_process(self, blob):
+        if self.scan_type == ScanType.NRPE:
+            if blob.startswith("b'"):
+                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+            else:
+                _data = bz2.decompress(base64.b64decode(blob))
+            l = json.loads(_data)
+            process_dict = {int(pid): {"name": name} for name, pid in l}
+        elif self.scan_type == ScanType.HM:
+            process_dict = eval(bz2.decompress(base64.b64decode(blob)))
+        for pid, stuff in process_dict.iteritems():
+            new_proc = AssetProcessEntry(
+                pid=pid,
+                name=stuff["name"],
+                asset_run=self,
+            )
+            new_proc.save()
+
+    def _get_assets_pci(self, blob):
+        if self.scan_type == ScanType.NRPE:
+            if blob.startswith("b'"):
+                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+            else:
+                _data = bz2.decompress(base64.b64decode(blob))
+
+            info_dicts = []
+
+            info_dict = {}
+            for line in _data.decode().split("\r\n"):
+                if len(line) == 0:
+                    if len(info_dict) > 0:
+                        info_dicts.append(info_dict)
+                        info_dict = {}
+                if line.startswith("Slot:"):
+                    info_dict['slot'] = line.split("\t", 1)[1]
+
+                    comps = info_dict['slot'].split(":")
+                    bus = comps[0]
+
+                    comps = comps[1].split(".")
+                    slot = comps[0]
+                    func = comps[1]
+
+                    info_dict['bus'] = bus
+                    info_dict['slot'] = slot
+                    info_dict['func'] = func
+                elif line.startswith("Class:"):
+                    info_dict['class'] = line.split("\t", 1)[1]
+                elif line.startswith("Vendor:"):
+                    info_dict['vendor'] = line.split("\t", 1)[1]
+                elif line.startswith("Device:"):
+                    info_dict['device'] = line.split("\t", 1)[1]
+                elif line.startswith("SVendor:"):
+                    info_dict['svendor'] = line.split("\t", 1)[1]
+                elif line.startswith("SDevice:"):
+                    info_dict['sdevice'] = line.split("\t", 1)[1]
+                elif line.startswith("Rev:"):
+                    info_dict['rev'] = line.split("\t", 1)[1]
+
+            for info_dict in info_dicts:
+                new_pci = AssetPCIEntry(
+                    asset_run=self,
+                    domain=0,
+                    bus=int(info_dict['bus'], 16) if 'bus' in info_dict else 0,
+                    slot=int(info_dict['slot'], 16) if 'slot' in info_dict else 0,
+                    func=int(info_dict['func'], 16) if 'func' in info_dict else 0,
+                    pci_class=0,
+                    subclass=0,
+                    device=0,
+                    vendor=0,
+                    revision=int(info_dict['rev'], 16) if 'rev' in info_dict else 0,
+                    pci_classname=info_dict['class'],
+                    subclassname=info_dict['class'],
+                    devicename=info_dict['device'],
+                    vendorname=info_dict['vendor'],
+                )
+                new_pci.save()
+
+        elif self.scan_type == ScanType.HM:
+            s = pci_database.pci_struct_to_xml(
+                pci_database.decompress_pci_info(blob)
+            )
+            for func in s.findall(".//func"):
+                _slot = func.getparent()
+                _bus = _slot.getparent()
+                _domain = _bus.getparent()
+                new_pci = AssetPCIEntry(
+                    asset_run=self,
+                    domain=int(_domain.get("id")),
+                    bus=int(_domain.get("id")),
+                    slot=int(_slot.get("id")),
+                    func=int(func.get("id")),
+                    pci_class=int(func.get("class"), 16),
+                    subclass=int(func.get("subclass"), 16),
+                    device=int(func.get("device"), 16),
+                    vendor=int(func.get("vendor"), 16),
+                    revision=int(func.get("revision"), 16),
+                    pci_classname=func.get("classname"),
+                    subclassname=func.get("subclassname"),
+                    devicename=func.get("devicename"),
+                    vendorname=func.get("vendorname"),
+                )
+                new_pci.save()
+
+    def _get_assets_dmi(self, blob):
+        if self.scan_type == ScanType.NRPE:
+            if blob.startswith("b'"):
+                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
+            else:
+                _data = bz2.decompress(base64.b64decode(blob))
+
+            _lines = []
+
+            for line in _data.decode().split("\r\n"):
+                _lines.append(line)
+                if line == "End Of Table":
+                    break
+
+            _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(_lines))
+        elif self.scan_type == ScanType.HM:
+            _xml = dmi_tools.decompress_dmi_info(blob)
+
+        head = AssetDMIHead(
+            asset_run=self,
+            version=_xml.get("version"),
+            size=int(_xml.get("size")),
+        )
+        head.save()
+        for _handle in _xml.findall(".//handle"):
+            handle = AssetDMIHandle(
+                dmihead=head,
+                handle=int(_handle.get("handle")),
+                dmi_type=int(_handle.get("dmi_type")),
+                length=int(_handle.get("length")),
+                header=_handle.get("header"),
+            )
+            handle.save()
+            for _value in _handle.findall(".//value"):
+                if len(_value):
+                    value = AssetDMIValue(
+                        dmihandle=handle,
+                        key=_value.get("key"),
+                        single_value=False,
+                        value=json.dumps([_el.text for _el in _value]),
+                        num_values=len(_value),
+                    )
+                else:
+                    value = AssetDMIValue(
+                        dmihandle=handle,
+                        key=_value.get("key"),
+                        single_value=True,
+                        value=_value.text or "",
+                        num_values=1,
+                    )
+                value.save()
+
+    def _get_assets_prettywinhw(self, blob):
+        pass
+
+    def _get_assets_lshw(self, blob):
+        pass
 
 
 class AssetBatch(models.Model):
