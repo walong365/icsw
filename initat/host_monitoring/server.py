@@ -75,7 +75,9 @@ class server_code(ICSWBasePool, HMHRMixin):
                 pass
             else:
                 self.objgraph = objgraph
-        self.add_process(SocketProcess("socket"), start=True)
+
+        if sys.platform != "darwin":
+            self.add_process(SocketProcess("socket"), start=True)
         self.add_process(ResolveProcess("resolve"), start=True)
         self.install_signal_handlers()
         self._check_ksm()

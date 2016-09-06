@@ -1432,7 +1432,7 @@ def get_programm_name():
 
 
 def get_machine_name(short=True):
-    if sys.platform in ["linux2", "linux3", "linux"]:
+    if sys.platform in ["linux2", "linux3", "linux", "darwin"]:
         # for linux
         m_name = os.uname()[1]
     else:
@@ -1653,7 +1653,7 @@ def find_file(file_name, s_path=None, exception_on_error=False):
         s_path = [s_path]
     s_path.extend(
         [
-            "/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin"
+            "/opt/cluster/sbin", "/opt/cluster/bin", "/bin", "/usr/bin", "/sbin", "/usr/sbin", "/usr/local/bin"
         ]
     )
     for cur_path in s_path:
