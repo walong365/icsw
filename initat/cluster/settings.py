@@ -86,7 +86,7 @@ _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True, access_mode=config_store
 if config_store.ConfigStore.exists(DB_ACCESS_CS_NAME):
     _ps = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True, access_mode=config_store.AccessModeEnum.LOCAL)
 else:
-    raise ImproperlyConfigured("DB-Access not configured (store not found)")
+    raise ImproperlyConfigured("DB-Access not configured (store not found or not readable)")
 
 # version config
 # TODO: check for local config when running in debug (development) mode

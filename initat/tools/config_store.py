@@ -209,7 +209,16 @@ class ConfigStore(object):
 
     @staticmethod
     def exists(name):
-        return os.path.exists(ConfigStore.build_path(name))
+        # checks for existance and readability
+        _exists = False
+        if os.path.exists(ConfigStore.build_path(name)):
+            try:
+                file(ConfigStore.build_path(name), "r").read(1)
+            except:
+                pass
+            else:
+                _exists = True
+        return _exists
 
     @staticmethod
     def build_path(name):
