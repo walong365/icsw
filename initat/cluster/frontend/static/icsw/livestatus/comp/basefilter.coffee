@@ -241,12 +241,12 @@ angular.module(
     $q, icswLivestatusCircleInfoReact, icswDeviceLivestatusFunctions,
 ) ->
     # display of livestatus filter
-    {span, rect, title, span, svg, path, g, text} = React.DOM
+    {span, rect, title, span, svg, path, g, text, div} = React.DOM
 
     return React.createClass(
         propTypes: {
             livestatus_filter: React.PropTypes.object
-            # filter_changed_cb: React.PropTypes.func
+            filter_changed_cb: React.PropTypes.func
         }
         getInitialState: () ->
             return {
@@ -276,8 +276,10 @@ angular.module(
             return _redraw
 
         render: () ->
+            console.log "RENDER"
             _filter_changed = () =>
                 @props.livestatus_filter.filter_changed()
+                @props.filter_changed_cb()
 
             _active_class = "svg_active"
             _inact_class = "svg_inactive"
@@ -409,98 +411,57 @@ angular.module(
             )
             _width = 220
             _height = 140
-            return svg(
+            return div(
                 {
                     key: "top"
-                    width: "#{_width}px"
-                    height: "#{_height}px"
-                    fontFamily: "'Open-Sans', sans-serif"
-                    fontSize: "10pt"
                 }
-                [
-                    g(
-                        {
-                            key: "link"
-                            transform: "translate(#{_width / 2}, 80)"
-                        }
-                        [
-                            rect(
-                                {
-                                    key: "rlink"
-                                    x: -100
-                                    y: -50
-                                    rx: 50
-                                    ry: 50
-                                    width: 200
-                                    height: 100
-                                    style: {
-                                        fill: "none",
-                                        stroke: if _lf.linked then "#ff4444" else "#ffdddd",
-                                        strokeWidth: "3px"
+                svg(
+                    {
+                        key: "top"
+                        width: "#{_width}px"
+                        height: "#{_height}px"
+                        fontFamily: "'Open-Sans', sans-serif"
+                        fontSize: "10pt"
+                    }
+                    [
+                        g(
+                            {
+                                key: "link"
+                                transform: "translate(#{_width / 2}, 80)"
+                            }
+                            [
+                                rect(
+                                    {
+                                        key: "rlink"
+                                        x: -100
+                                        y: -50
+                                        rx: 50
+                                        ry: 50
+                                        width: 200
+                                        height: 100
+                                        style: {
+                                            fill: "none",
+                                            stroke: if _lf.linked then "#ff4444" else "#ffdddd",
+                                            strokeWidth: "3px"
+                                        }
                                     }
-                                }
 
-                            )
-                            g(
-                                {
-                                    key: "linkbutton"
-                                    transform: "translate(0, -50)"
-                                }
-                                [
-                                    rect(
-                                        {
-                                            key: "buttonrect"
-                                            x: -15
-                                            y: -15
-                                            width: 30
-                                            height: 30
-                                            rx: 3
-                                            ry: 3
-                                            style: {
-                                                fill: "#ffffff"
-                                                stroke: "#000000"
-                                                strokeWidth: "1px"
-                                            }
-                                        }
-                                    )
-                                    text(
-                                        {
-                                            key: "linktext"
-                                            x: 0
-                                            y: 12
-                                            fontFamily: "fontAwesome"
-                                            className: "cursorpointer"
-                                            fontSize: "30px"
-                                            alignmentBaseline: "middle"
-                                            textAnchor: "middle"
-                                            pointerEvents: "painted"
-                                            onClick: (event) =>
-                                                _lf.toggle_link_state()
-                                                @setState({filter_state_str: _lf.get_filter_state_str()})
-                                                _filter_changed()
-                                        }
-                                        if _lf.linked then "\uf023" else "\uf13e"
-                                    )
-                                ]
-                            )
-                            g(
-                                {
-                                    key: "hosts"
-                                    transform: "translate(-50, 0)"
-                                }
-                                [
-                                    g(
-                                        {
-                                            key: "gtext"
-                                            transform: "translate(-10, -50)"
-                                        }
+                                )
+                                g(
+                                    {
+                                        key: "linkbutton"
+                                        transform: "translate(0, -50)"
+                                    }
+                                    [
                                         rect(
                                             {
-                                                key: "textrect"
-                                                x: -40
-                                                y: -8
-                                                width: 80
-                                                height: 16
+                                                key: "buttonrect"
+                                                x: -15
+                                                y: -15
+                                                width: 30
+                                                height: 30
+                                                rx: 3
+                                                ry: 3
                                                 style: {
                                                     fill: "#ffffff"
                                                     stroke: "#000000"
@@ -510,79 +471,148 @@ angular.module(
                                         )
                                         text(
                                             {
-                                                key: "text"
-                                                className: "svg-filter-head-text"
+                                                key: "linktext"
+                                                x: 0
+                                                y: 12
+                                                fontFamily: "fontAwesome"
+                                                className: "cursorpointer"
+                                                fontSize: "30px"
+                                                alignmentBaseline: "middle"
+                                                textAnchor: "middle"
+                                                pointerEvents: "painted"
+                                                onClick: (event) =>
+                                                    _lf.toggle_link_state()
+                                                    @setState({filter_state_str: _lf.get_filter_state_str()})
+                                                    _filter_changed()
                                             }
-                                            "#{_host_text}"
+                                            if _lf.linked then "\uf023" else "\uf13e"
                                         )
-                                    )
-                                    _rings_0
-                                    _rings_1
-                                ]
-                            )
-                            g(
-                                {
-                                    key: "services"
-                                    transform: "translate(50, 0)"
-                                }
-                                [
-                                    g(
-                                        {
-                                            key: "gtext"
-                                            transform: "translate(10, -50)"
-                                        }
-                                        rect(
+                                    ]
+                                )
+                                g(
+                                    {
+                                        key: "hosts"
+                                        transform: "translate(-50, 0)"
+                                    }
+                                    [
+                                        g(
                                             {
-                                                key: "textrect"
-                                                x: -40
-                                                y: -8
-                                                width: 80
-                                                height: 16
-                                                style: {
-                                                    fill: "#ffffff"
-                                                    stroke: "#000000"
-                                                    strokeWidth: "1px"
+                                                key: "gtext"
+                                                transform: "translate(-10, -50)"
+                                            }
+                                            rect(
+                                                {
+                                                    key: "textrect"
+                                                    x: -40
+                                                    y: -8
+                                                    width: 80
+                                                    height: 16
+                                                    style: {
+                                                        fill: "#ffffff"
+                                                        stroke: "#000000"
+                                                        strokeWidth: "1px"
+                                                    }
                                                 }
-                                            }
+                                            )
+                                            text(
+                                                {
+                                                    key: "text"
+                                                    className: "svg-filter-head-text"
+                                                }
+                                                "#{_host_text}"
+                                            )
                                         )
-                                        text(
+                                        _rings_0
+                                        _rings_1
+                                    ]
+                                )
+                                g(
+                                    {
+                                        key: "services"
+                                        transform: "translate(50, 0)"
+                                    }
+                                    [
+                                        g(
                                             {
-                                                key: "text"
-                                                className: "svg-filter-head-text"
+                                                key: "gtext"
+                                                transform: "translate(10, -50)"
                                             }
-                                            "#{_service_text}"
+                                            rect(
+                                                {
+                                                    key: "textrect"
+                                                    x: -40
+                                                    y: -8
+                                                    width: 80
+                                                    height: 16
+                                                    style: {
+                                                        fill: "#ffffff"
+                                                        stroke: "#000000"
+                                                        strokeWidth: "1px"
+                                                    }
+                                                }
+                                            )
+                                            text(
+                                                {
+                                                    key: "text"
+                                                    className: "svg-filter-head-text"
+                                                }
+                                                "#{_service_text}"
+                                            )
                                         )
-                                    )
-                                    _rings_2
-                                    _rings_3
-                                ]
-                            )
-                        ]
-                    )
-                ]
+                                        _rings_2
+                                        _rings_3
+                                    ]
+                                )
+                            ]
+                        )
+                    ]
+                )
             )
     )
 ]).directive("icswLivestatusFilterDisplay",
 [
-    "$q", "icswLivestatusFilterReactDisplay",
+    "$q", "icswLivestatusFilterReactDisplay", "$templateCache",
 (
-    $q, icswLivestatusFilterReactDisplay,
+    $q, icswLivestatusFilterReactDisplay, $templateCache,
 ) ->
+    class DefinedFilter
+        constructor: (@id, @name, @filter_str) ->
+
     return  {
         restrict: "EA"
         replace: true
         scope:
             filter: "=icswLivestatusFilter"
+        template: $templateCache.get("icsw.livestatus.filter.display")
         link: (scope, element, attr) ->
-            ReactDOM.render(
+            # predefined filters
+            scope.filter_list = [
+                new DefinedFilter("c", "Custom", "W:C:U;D:?:M;S:H;S:H;ul")
+                new DefinedFilter("a", "All Services and hosts", "O:W:C:U:p;U:D:?:M:p;S:H;S:H;ul")
+            ]
+
+            scope.filter_changed = () ->
+                console.log "fc", scope.filter.get_filter_state_str()
+
+            scope.struct = {
+                cur_filter: scope.filter_list[0]
+            }
+
+            scope.changed = () ->
+                scope.filter.restore_settings(scope.struct.cur_filter.filter_str)
+                new_rel.forceUpdate()
+
+            new_rel = ReactDOM.render(
                 React.createElement(
                     icswLivestatusFilterReactDisplay
                     {
                         livestatus_filter: scope.filter
+                        filter_changed_cb: scope.filter_changed
                     }
                 )
-                element[0]
+                $(element).find("div#svg")[0]
             )
+            console.log new_rel
     }
 
 ])
