@@ -42,9 +42,11 @@ from initat.tools.server_mixins import ICSWBasePool
 from .config import global_config
 from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE
 from .hm_direct import SocketProcess
-from .hm_inotify import HMInotifyProcess
 from .hm_resolve import ResolveProcess
 from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
+
+if sys.platform != "darwin":
+    from .hm_inotify import HMInotifyProcess
 
 # defaults to 10 seconds
 IDLE_LOOP_GRANULARITY = 10000.0
@@ -88,7 +90,7 @@ class server_code(ICSWBasePool, HMHRMixin):
         self.__callbacks, self.__callback_queue = ({}, {})
         self.register_func("register_callback", self._register_callback)
         self.register_func("callback_result", self._callback_result)
-        if not self.CC.CS["hm.disable.inotify.process"]:
+        if not self.CC.CS["hm.disable.inotify.process"] and sys.platform != "darwin":
             self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
         global_config["LOG_NAME"] = "bla"
         self._show_config()
@@ -426,6 +428,7 @@ class server_code(ICSWBasePool, HMHRMixin):
         zmq_id_dict = {}
         for _idx in _cs.keys():
             _bind = _cs[_idx]
+
             zmq_id_dict[_bind["address"]] = (
                 _bind["uuid"],
                 _bind["virtual"],

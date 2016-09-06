@@ -122,12 +122,16 @@ class log_adapter(logging.LoggerAdapter):
             level = _lev
         if self.__prefix:
             what = "{}{}".format(self.__prefix, what)
-        try:
-            logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
-        except:
-            my_syslog(what)
+
+        if sys.platform != "darwin":
+            try:
+                logging.LoggerAdapter.log(self, level, what, *args, **kwargs)
+            except:
+                my_syslog(what)
+                print(what, self)
+                raise
+        else:
             print(what, self)
-            raise
         self.__lock.release()
 
     def close(self):

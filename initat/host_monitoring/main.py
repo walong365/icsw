@@ -35,11 +35,16 @@ from initat.tools import configfile
 from initat.icsw.service.instance import InstanceXML
 
 COLLCLIENT = False
+COLLSERVER = False
 
 
 def run_code(prog_name, global_config):
     if COLLCLIENT:
         prog_name = "collclient"
+
+    if COLLSERVER:
+        prog_name = "collserver"
+
     if prog_name in ["collserver"]:
         from initat.host_monitoring.server import server_code
         ret_state = server_code().loop()
@@ -96,6 +101,10 @@ def main():
 
 if __name__ == "__main__":
     print sys.argv[0]
+
+    if "--server" in sys.argv:
+        COLLSERVER = True
+
     if sys.argv[0] == "main.py":
         COLLCLIENT = True
     sys.exit(main())
