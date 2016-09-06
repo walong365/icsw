@@ -133,6 +133,15 @@ class lvm_vg(models.Model):
         verbose_name = u"Partition: LVM Volume Group"
 
 
+class LogicalDisc(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device_name = models.CharField(max_length=128)
+    partition_fs = models.ForeignKey("partition_fs")
+    partitions = models.ManyToManyField("partition")
+    size = models.BigIntegerField(null=True)
+    free_space = models.BigIntegerField(null=True)
+
+
 class partition(models.Model):
     idx = models.AutoField(db_column="partition_idx", primary_key=True)
     partition_disc = models.ForeignKey("backbone.partition_disc")
