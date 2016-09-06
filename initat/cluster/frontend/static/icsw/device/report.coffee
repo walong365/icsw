@@ -401,7 +401,7 @@ device_report_module = angular.module(
                         $scope.struct.devices.push(dev)
                         idx_list.push(dev.idx)
 
-                        $scope.assetbatch_selection_mode_change()
+                $scope.assetbatch_selection_mode_change()
         )
         
     $scope.get_tr_class = (obj) ->
