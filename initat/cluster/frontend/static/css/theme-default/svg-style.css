@@ -35,6 +35,7 @@
     stroke-width: 0.5px;
     pointer-events: none;
 }
+.svg-outline { stroke-width: 0.5px; stroke: #000000; }
 /* others */
 .svg_plandown { fill: #5bc0de; }
 .svg_active { fill: #9999ff; }

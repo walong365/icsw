@@ -130,7 +130,7 @@ angular.module(
                                         {
                                             key: "sge.#{_idx}.#{_sub_idx}"
                                             d: _call(_outer, _outer_detail, _sub_start_arc, _sub_end_arc)
-                                            className : "sb_lines svg_inactive"
+                                            className : "svg_inactive svg-outline"
                                         }
                                     )
                                 )

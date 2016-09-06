@@ -291,7 +291,7 @@ STATICFILES_DIRS.append(
 
 STATICFILES_DIRS = list(STATICFILES_DIRS)
 
-#print STATICFILES_DIRS
+# print STATICFILES_DIRS
 
 # add all applications, including backbone
 
