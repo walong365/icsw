@@ -35,6 +35,16 @@ angular.module(
     $q, $rootScope, icswMonLivestatusPipeBase, icswMonitoringResult, $timeout,
     icswSaltMonitoringResultService,
 ) ->
+    _luts = icswSaltMonitoringResultService.get_luts()
+
+    class StateEntry
+        constructor: (@type, @idx, @short_code, @default_sel, @help_str, @btn_class) ->
+            @data = _luts[@type][@idx]
+
+    class StateTypeEntry
+        constructor: (@type, @idx, @short_code, @default_sel, @help_str, @btn_class) ->
+            @data = _luts.state[@idx]
+
     running_id = 0
     class icswLivestatusFilter extends icswMonLivestatusPipeBase
         constructor: () ->
@@ -89,38 +99,37 @@ angular.module(
             # filtered entries
             @f_hosts = 0
             @f_services = 0
-            _luts = icswSaltMonitoringResultService.get_luts()
             # possible service states
             @service_state_list = [
-                [0, "O", true, "show OK states", "btn-success", _luts.dev[0].className]
-                [1, "W", true, "show warning states", "btn-warning", _luts.dev[1].className]
-                [2, "C", true, "show critical states", "btn-danger", _luts.dev[2].className]
-                [3, "U", true, "show unknown states", "btn-danger", _luts.dev[3].className]
-                [5, "p", true, "show pending states", "btn-primary", _luts.dev[5].className]
+                new StateEntry("srv", 0, "O", true, "show OK states", "btn-success")
+                new StateEntry("srv", 1, "W", true, "show warning states", "btn-warning")
+                new StateEntry("srv", 2, "C", true, "show critical states", "btn-danger")
+                new StateEntry("srv", 3, "U", true, "show unknown states", "btn-danger")
+                new StateEntry("srv", 5, "p", true, "show pending states", "btn-primary")
             ]
             @service_state_lut = {}
 
             # possibel service type states
             @service_type_list = [
-                [0, "S", true, "show soft states", "btn-primary"]
-                [1, "H", true, "show hard states", "btn-primary"]
+                new StateTypeEntry("srv", 0, "S", true, "show soft states", "btn-primary")
+                new StateTypeEntry("srv", 1, "H", true, "show hard states", "btn-primary")
             ]
             @service_type_lut = {}
 
             # possible host states
             @host_state_list = [
-                [0, "U", true, "show Up states", "btn-success", _luts.srv[0].className]
-                [1, "D", true, "show Down states", "btn-warning", _luts.srv[1].className]
-                [2, "?", true, "show unreachable states", "btn-danger", _luts.srv[2].className]
-                [4, "M", true, "show unmonitored devs", "btn-primary", _luts.srv[4].className]
-                [5, "p", true, "show pending devs", "btn-primary", _luts.srv[5].className]
+                new StateEntry("dev", 0, "U", true, "show Up states", "btn-success")
+                new StateEntry("dev", 1, "D", true, "show Down states", "btn-warning")
+                new StateEntry("dev", 2, "?", true, "show unreachable states", "btn-danger")
+                new StateEntry("dev", 4, "M", true, "show unmonitored devs", "btn-primary")
+                new StateEntry("dev", 5, "p", true, "show pending devs", "btn-primary")
             ]
             @host_state_lut = {}
 
             # possibel host type states
             @host_type_list = [
-                [0, "S", true, "show soft states", "btn-primary"]
-                [1, "H", true, "show hard states", "btn-primary"]
+                new StateTypeEntry("dev", 0, "S", true, "show soft states", "btn-primary")
+                new StateTypeEntry("dev", 1, "H", true, "show hard states", "btn-primary")
             ]
             @host_type_lut = {}
 
@@ -130,30 +139,30 @@ angular.module(
             # default values for service states
             @service_states = {}
             for entry in @service_state_list
-                @service_state_lut[entry[0]] = entry
-                @service_state_lut[entry[1]] = entry
-                @service_states[entry[0]] = entry[2]
+                @service_state_lut[entry.idx] = entry
+                @service_state_lut[entry.short_code] = entry
+                @service_states[entry.idx] = entry.default
 
             # default values for host states
             @host_states = {}
             for entry in @host_state_list
-                @host_state_lut[entry[0]] = entry
-                @host_state_lut[entry[1]] = entry
-                @host_states[entry[0]] = entry[2]
+                @host_state_lut[entry.idx] = entry
+                @host_state_lut[entry.short_code] = entry
+                @host_states[entry.idx] = entry.default
                 
             # default values for service types
             @service_types = {}
             for entry in @service_type_list
-                @service_type_lut[entry[0]] = entry
-                @service_type_lut[entry[1]] = entry
-                @service_types[entry[0]] = entry[2]
+                @service_type_lut[entry.idx] = entry
+                @service_type_lut[entry.short_code] = entry
+                @service_types[entry.idx] = entry.default
 
             # default values for service types
             @host_types = {}
             for entry in @host_type_list
-                @host_type_lut[entry[0]] = entry
-                @host_type_lut[entry[1]] = entry
-                @host_types[entry[0]] = entry[2]
+                @host_type_lut[entry.idx] = entry
+                @host_type_lut[entry.short_code] = entry
+                @host_types[entry.idx] = entry.default
 
             @react_notifier = $q.defer()
             @change_notifier = $q.defer()
@@ -178,7 +187,7 @@ angular.module(
                 # set referenced
                 for key in _field.split(":")
                     try
-                        _dict[_lut[key][0]] = true
+                        _dict[_lut[key].idx] = true
                     catch err
                         console.error err
 
@@ -187,37 +196,37 @@ angular.module(
             @_settings_changed()
 
         toggle_service_state: (code) =>
-            _srvc_idx = @service_state_lut[code][0]
+            _srvc_idx = @service_state_lut[code].idx
             @service_states[_srvc_idx] = !@service_states[_srvc_idx]
             @_settings_changed()
 
         toggle_host_state: (code) =>
-            _host_idx = @host_state_lut[code][0]
+            _host_idx = @host_state_lut[code].idx
             @host_states[_host_idx] = !@host_states[_host_idx]
             @_settings_changed()
 
         toggle_service_type: (code) =>
-            _type_idx = @service_type_lut[code][0]
+            _type_idx = @service_type_lut[code].idx
             @service_types[_type_idx] = !@service_types[_type_idx]
             @_settings_changed()
 
         toggle_host_type: (code) =>
-            _type_idx = @host_type_lut[code][0]
+            _type_idx = @host_type_lut[code].idx
             @host_types[_type_idx] = !@host_types[_type_idx]
             @_settings_changed()
 
         # get state strings for ReactJS, a little hack ...
         _get_service_state_str: () =>
-            return (entry[1] for entry in @service_state_list when @service_states[entry[0]]).join(":")
+            return (entry.short_code for entry in @service_state_list when @service_states[entry.idx]).join(":")
 
         _get_host_state_str: () =>
-            return (entry[1] for entry in @host_state_list when @host_states[entry[0]]).join(":")
+            return (entry.short_code for entry in @host_state_list when @host_states[entry.idx]).join(":")
             
         _get_service_type_str: () =>
-            return (entry[1] for entry in @service_type_list when @service_types[entry[0]]).join(":")
+            return (entry.short_code for entry in @service_type_list when @service_types[entry.idx]).join(":")
 
         _get_host_type_str: () =>
-            return (entry[1] for entry in @host_type_list when @host_types[entry[0]]).join(":")
+            return (entry.short_code for entry in @host_type_list when @host_types[entry.idx]).join(":")
 
         _get_linked_str: () =>
             return if @linked then "l" else "ul"
@@ -336,7 +345,7 @@ angular.module(
                                 key: "seg.#{_idx}"
                                 d: icswDeviceLivestatusFunctions.ring_segment_path(inner, outer, _start_arc, _end_arc)
                                 className: class_cb(entry)
-                                id: entry[1]
+                                id: entry.short_code
                                 onClick: (event) =>
                                     click_cb($(event.target).attr("id"))
                                     _filter_changed()
@@ -345,7 +354,7 @@ angular.module(
                                 {
                                     key: "seg.#{_idx}.title"
                                 }
-                                entry[3]
+                                entry.help_str
                             )
                         )
                     )
@@ -353,10 +362,15 @@ angular.module(
                         text(
                             {
                                 key: "seg.#{_idx}.t"
-                                transform: "translate(#{_middle_x}, #{_middle_y})"
-                                className: "svg-filter-text cursorpointer"
+                                transform: "translate(#{_middle_x}, #{_middle_y + 4})"
+                                fontFamily: "fontAwesome"
+                                className: "cursorpointer"
+                                fontSize: "10px"
+                                pointerEvents: "none"
+                                alignmentBaseline: "middle"
+                                textAnchor: "middle"
                             }
-                            entry[1]
+                            entry.data.iconCode
                         )
                     )
                 return _rings
@@ -368,10 +382,10 @@ angular.module(
                 _rads[2]
                 _rads[3]
                 (entry) =>
-                    if _lf.host_states[entry[0]]
-                        return "cursorpointer sb_lines #{entry[5]}"
+                    if _lf.host_states[entry.idx]
+                        return "cursorpointer sb-lines #{entry.data.svgClassName}"
                     else
-                        return "cursorpointer sb_lines svg-dev-unselected"
+                        return "cursorpointer sb-lines svg-dev-unselected"
                 (code) =>
                     _lf.toggle_host_state(code)
                     @setState({filter_state_str: _lf.get_filter_state_str()})
@@ -381,10 +395,10 @@ angular.module(
                 _rads[0]
                 _rads[1]
                 (entry) ->
-                    if _lf.host_types[entry[0]]
-                        return "cursorpointer sb_lines svg-sh-type"
+                    if _lf.host_types[entry.idx]
+                        return "cursorpointer sb-lines svg-sh-type"
                     else
-                        return "cursorpointer sb_lines svg-dev-unselected"
+                        return "cursorpointer sb-lines svg-dev-unselected"
                 (code) =>
                     _lf.toggle_host_type(code)
                     @setState({filter_state_str: _lf.get_filter_state_str()})
@@ -394,10 +408,10 @@ angular.module(
                 _rads[2]
                 _rads[3]
                 (entry) =>
-                    if _lf.service_states[entry[0]]
-                        return "cursorpointer sb_lines #{entry[5]}"
+                    if _lf.service_states[entry.idx]
+                        return "cursorpointer sb-lines #{entry.data.svgClassName}"
                     else
-                        return "cursorpointer sb_lines svg-srv-unselected"
+                        return "cursorpointer sb-lines svg-srv-unselected"
                 (code) =>
                     _lf.toggle_service_state(code)
                     @setState({filter_state_str: _lf.get_filter_state_str()})
@@ -407,10 +421,10 @@ angular.module(
                 _rads[0]
                 _rads[1]
                 (entry) ->
-                    if _lf.service_types[entry[0]]
-                        return "cursorpointer sb_lines svg-sh-type"
+                    if _lf.service_types[entry.idx]
+                        return "cursorpointer sb-lines svg-sh-type"
                     else
-                        return "cursorpointer sb_lines svg-srv-unselected"
+                        return "cursorpointer sb-lines svg-srv-unselected"
                 (code) =>
                     _lf.toggle_service_type(code)
                     @setState({filter_state_str: _lf.get_filter_state_str()})

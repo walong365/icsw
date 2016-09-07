@@ -47,12 +47,22 @@ angular.module(
             # none ..... no focus mode
             # simple ... other mode
             focusMode: React.PropTypes.string
+            # showInfo, true or false
+            showInfo: React.PropTypes.bool
+            # showDetails, true or false
+            showDetails: React.PropTypes.bool
         }
 
         handle_mouse_enter: (event, focus_mode) ->
             # console.log "me", event, focus_mode
 
         render: () ->
+            _show_info = false
+            if @props.showInfo?
+                _show_info = @props.showInfo
+            _show_details = false
+            if @props.showDetails?
+                _show_details = @props.showDetails
             _w = @props.size
             _d = @props.data
             if _d.length == 0
@@ -69,7 +79,7 @@ angular.module(
                 _fm = @props.focusMode
             else
                 _fm = "none"
-            _total = _.sum((_el[0] for _el in _d))
+            _total = _.sum((_el.value for _el in _d))
             _idx = 0
             _end_arc = - Math.PI * 0.5
             _cur_size = 0
@@ -82,22 +92,25 @@ angular.module(
                 _outer = _w / 2.0 * 0.80
                 _outer_detail = _w / 2.0 * 0.95
             _inner = _w / 2.0 * 0.5
-            for [d_size, className, _info, _detail] in _d
+            _raw_text_list = []
+            for _entry in _d   # [d_size, className, _info, _detail] in _d
                 _idx++
-                if d_size
-                    _cur_size += d_size
+                if _entry.value
+                    if _show_info
+                        _raw_text_list.push("#{_entry.shortInfoStr}")
+                    _cur_size += _entry.value
                     _start_arc = _end_arc
                     _end_arc = Math.PI * 2.0 * _cur_size / _total - Math.PI * 0.5
-                    if d_size == _total
+                    if _entry.value == _total
                         _call = icswDeviceLivestatusFunctions.ring_path
                     else
                         _call = icswDeviceLivestatusFunctions.ring_segment_path
-                    if _info? and _info
+                    if _entry.infoStr?
                         _title_el = title(
                             {
                                 key: "title.#{_idx}"
                             }
-                            _info
+                            _entry.infoStr
                         )
                     else
                         _title_el = null
@@ -106,7 +119,7 @@ angular.module(
                             {
                                 key: "sge.#{_idx}"
                                 d: _call(_inner, _outer, _start_arc, _end_arc)
-                                className: "sb-lines #{className}"
+                                className: "sb-lines #{_entry.data.svgClassName}"
                                 onMouseEnter: (event) =>
                                     if _fm != "none"
                                         @handle_mouse_enter(event, _fm)
@@ -114,13 +127,13 @@ angular.module(
                             _title_el
                         )
                     )
-                    if _detail
-                        _sub_sum = _.sum((_value for _key, _value of _detail))
+                    if _entry.detail? and _show_details
+                        _sub_sum = _.sum((_value for _key, _value of _entry.detail))
                         if _sub_sum
                             _sub_idx = 0
                             _sub_end_arc = _start_arc
                             _cur_sum = 0
-                            for _key, _value of _detail
+                            for _key, _value of _entry.detail
                                 _sub_idx++
                                 _cur_sum += _value
                                 _sub_start_arc = _sub_end_arc
@@ -165,20 +178,29 @@ angular.module(
                 _text_height = 0
                 _title_el = null
             if @props.text?
-                _text_el = text(
-                    {
-                        x: 0
-                        y: 0
-                        key: "svg.text"
-                        textAnchor: "middle"
-                        alignmentBaseline: "middle"
-                        paintOrder: "stroke"
-                        className: "svg-stroke default-text"
-                    }
-                    @props.text
+                _raw_text_list.push(@props.text)
+            _text_list = []
+            _idx = 0
+            _len = _raw_text_list.length + 1
+            # calculate text size
+            _text_size = _.min([parseInt(@props.size / (1.6 * _len)), 12])
+            for _text in _raw_text_list
+                _idx++
+                _text_list.push(
+                    text(
+                        {
+                            x: 0
+                            y: - _text_size / 2 * _len + _text_size * _idx
+                            key: "svg.text.#{_idx}"
+                            textAnchor: "middle"
+                            fontSize: "#{_text_size}px"
+                            alignmentBaseline: "middle"
+                            paintOrder: "stroke"
+                            className: "svg-stroke default-text"
+                        }
+                        _text
+                    )
                 )
-            else
-                _text_el = null
             return span(
                 {
                     key: "div.top"
@@ -201,7 +223,7 @@ angular.module(
                                 transform: "translate(#{_w/2}, #{_w/2 + _text_height})"
                             }
                             _p_list
-                            _text_el
+                            _text_list
                         )
                     )
                 )
@@ -228,6 +250,7 @@ angular.module(
                             data: scope.mon_data.service_circle_data
                             title: "Services"
                             titleSize: 5
+                            showInfo: false
                         }
                     )
                     element[0]
@@ -261,6 +284,7 @@ angular.module(
                             data: scope.mon_data.device_circle_data
                             title: "Devices"
                             titleSize: 5
+                            showInfo: false
                         }
                     )
                     element[0]

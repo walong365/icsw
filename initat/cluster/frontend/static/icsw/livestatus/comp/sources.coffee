@@ -169,57 +169,98 @@ angular.module(
         entry.custom_variables = "DEVICE_PK|#{dev.idx},UUID|#{dev.uuid}"
         return entry
 
-    _device_lut = {
+    _state_lut = {
         0: {
-            className: "svg-dev-up"
-            info: "Up"
+            # soft state
+            svgClassName: "svg-sh-type"
+            info: "Soft state"
+            iconCode: "\uf096"
+            iconFaName: "fa-square-o"
         }
         1: {
-            className:  "svg-dev-down"
+            # hard state
+            svgClassName: "svg-sh-type"
+            info: "Hard state"
+            iconCode: "\uf0c8"
+            iconFaName: "fa-square"
+        }
+    }
+
+    _device_lut = {
+        0: {
+            svgClassName: "svg-dev-up"
+            info: "Up"
+            iconCode: "\uf00c"
+            iconFaName: "fa-check"
+        }
+        1: {
+            svgClassName:  "svg-dev-down"
             info: "Down"
+            iconCode: "\uf0e7"
+            iconFaName: "fa-bolt"
         }
         2: {
-            className: "svg-dev-unreach"
+            svgClassName: "svg-dev-unreach"
             info: "Unreachable"
+            iconCode: "\uf071"
+            iconFaName: "fa-warning"
         }
         3: {
-            className: "svg-dev-unknown"
+            svgClassName: "svg-dev-unknown"
             info: "Unknown"
+            iconCode: "\uf29c"
+            iconFaName: "fa-question-circle-o"
         }
         4: {
-            className: "svg-dev-notmonitored"
+            svgClassName: "svg-dev-notmonitored"
             info: "not monitored"
+            iconCode: "\uf05e"
+            iconFaName: "fa-ban"
         }
         5: {
-            className: "svg-dev-pending"
+            svgClassName: "svg-dev-pending"
             info: "pending"
+            iconCode: "\uf10c"
+            iconFaName: "fa-circle-o"
         }
     }
 
     _service_lut = {
         0: {
-            className: "svg-srv-ok"
+            svgClassName: "svg-srv-ok"
             info: "OK"
+            iconCode: "\uf00c"
+            iconFaName: "fa-check"
         }
         1: {
-            className: "svg-srv-warn"
+            svgClassName: "svg-srv-warn"
             info: "Warning"
+            iconCode: "\uf071"
+            iconFaName: "fa-warning"
         }
         2: {
-            className: "svg-srv-crit"
+            svgClassName: "svg-srv-crit"
             info: "Critical"
+            iconCode: "\uf0e7"
+            iconFaName: "fa-bolt"
         }
         3: {
-            className: "svg-srv-unknown"
+            svgClassName: "svg-srv-unknown"
             info: "Unknown"
+            iconCode: "\uf29c"
+            iconFaName: "fa-question-circle-o"
         }
         4: {
-            className: "svg-srv-notmonitored"
+            svgClassName: "svg-srv-notmonitored"
             info: "not monitored"
+            iconCode: "\uf05e"
+            iconFaName: "fa-ban"
         }
         5: {
-            className: "svg-srv-pending"
+            svgClassName: "svg-srv-pending"
             info: "pending"
+            iconCode: "\uf10c"
+            iconFaName: "fa-circle-o"
         }
     }
     _struct = {
@@ -340,13 +381,16 @@ angular.module(
             if _state of in_dict
                 _count = in_dict[_state]
                 _ps = if _count > 1 then "s" else ""
-                _info_str = "#{_count} #{in_type}#{_ps} #{_lut[_state].info}"
+                _info = {
+                    value: _count
+                    data: _lut[_state]
+                    infoStr: "#{_count} #{in_type}#{_ps} #{_lut[_state].info}"
+                    shortInfoStr: "#{_count} #{_lut[_state].info}"
+                }
                 if detail_dict?
                     _sub_keys = _.keys(detail_dict[_state])
-                    _info_str = "#{_info_str}, #{_sub_keys.length} subelements"
-                _info = [_count, _lut[_state].className, _info_str]
-                if detail_dict?
-                    _info.push(detail_dict[_state])
+                    _info.infoStr = "#{_info.infoStr}, #{_sub_keys.length} subelements"
+                    _info.detail = detail_dict[_state]
                 _r_list.push(_info)
         return _r_list
 
@@ -355,6 +399,7 @@ angular.module(
             return {
                 dev: _device_lut
                 srv: _service_lut
+                state: _state_lut
             }
 
         get_unmonitored_device_entry: get_unmonitored_device_entry
@@ -560,10 +605,8 @@ angular.module(
                     if _cat not of _host_cat_lut[host.state]
                         _host_cat_lut[host.state][_cat] = 0
                     _host_cat_lut[host.state][_cat]++
-            @service_circle_data = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut)
-            @device_circle_data = icswSaltMonitoringResultService.build_circle_info("device", _host_lut)
-            @service_circle_data_details = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut, _srv_cat_lut)
-            @device_circle_data_details = icswSaltMonitoringResultService.build_circle_info("device", _host_lut, _host_cat_lut)
+            @service_circle_data = icswSaltMonitoringResultService.build_circle_info("service", _srv_lut, _srv_cat_lut)
+            @device_circle_data = icswSaltMonitoringResultService.build_circle_info("device", _host_lut, _host_cat_lut)
 
 ]).service("icswDeviceLivestatusDataService",
 [
