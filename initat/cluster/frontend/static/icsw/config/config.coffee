@@ -81,8 +81,8 @@ config_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("config.catalog.form"))(sub_scope)
-                title: "Config Catalog"
-                css_class: "modal-wide"
+                title: "Configure Catalog"
+                css_class: "modal-wide modal-form"
                 ok_label: if create then "Create" else "Modify"
                 closable: true
                 ok_callback: (modal) ->
@@ -591,7 +591,7 @@ config_module = angular.module(
                 {
                     message: $compile($templateCache.get("icsw.config.strintbool.form"))(sub_scope)
                     title: "ConfigVariable (#{var_type})"
-                    css_class: "modal-wide"
+                    css_class: "modal-wide modal-form"
                     ok_label: if create then "Create" else "Modify"
                     closable: true
                     ok_callback: (modal) ->

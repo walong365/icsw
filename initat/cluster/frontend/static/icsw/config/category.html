@@ -153,7 +153,7 @@
         <fieldset>
             <legend>Basic settings</legend>
             <div id="div_id_name" class="form-group  ng-class:form_error('name')">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Name<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
@@ -161,11 +161,11 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Parent<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.parent" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.parent" style="max-width:500px; min-width:240px;" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="Select a parent node">
                             {{ $select.selected.info_string }}
                         </ui-select-match>
@@ -179,7 +179,7 @@
         <fieldset>
             <legend>Additional fields</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Comment
                 </label>
                 <div class="controls col-sm-7">
@@ -187,7 +187,7 @@
                 </div>
             </div>
             <div class="form-group row" ng-show="edit_obj.was_unuseable">
-                <div class="control-label col-sm-3">
+                <div class="control-label col-sm-3 icsw-formlabel">
                     Useable
                 </div>
                 <div class="controls col-sm-7">
@@ -198,7 +198,7 @@
         <fieldset ng-if="is_location(edit_obj)">
             <legend>Positional data</legend>
             <div class="form-group  ng-class:form_error('latitude')">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Latitude<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
@@ -206,7 +206,7 @@
                 </div>
             </div>
             <div class="form-group  ng-class:form_error('longitude')">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Longitude<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
@@ -250,7 +250,7 @@
         <fieldset>
             <legend>Basic settings</legend>
             <div id="div_id_name" class="form-group  ng-class:form_error('name')">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Name<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
@@ -261,7 +261,7 @@
         <fieldset>
             <legend>Additional fields</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Comment
                 </label>
                 <div class="controls col-sm-7">
