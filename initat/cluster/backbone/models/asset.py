@@ -241,6 +241,7 @@ class AssetType(IntEnum):
     DMI = 8
     PCI = 9
     PRETTYWINHW = 10
+    PARTITION = 11
 
 
 class ScanType(IntEnum):
@@ -815,34 +816,35 @@ class AssetRun(models.Model):
     def has_data(self):
         return RunResult(self.run_result) == RunResult.SUCCESS
 
-    def generate_assets(self):
-        functions = {
-            AssetType.PACKAGE: self._generate_assets_package,
-            AssetType.HARDWARE: self._generate_assets_hardware,
-            AssetType.LICENSE: self._generate_assets_license,
-            AssetType.PENDING_UPDATE: self._generate_assets_pending_update,
-            AssetType.UPDATE: self._generate_assets_update,
-            AssetType.PROCESS: self._generate_assets_process,
-            AssetType.PCI: self._generate_assets_pci,
-            AssetType.DMI: self._generate_assets_dmi,
-            AssetType.PRETTYWINHW: self._generate_assets_prettywinhw,
-            AssetType.LSHW: self._generate_assets_lshw,
-            }
+    @property
+    def raw_result(self):
+        raw = self.raw_result_str
+        if self.scan_type == ScanType.NRPE:
+            if raw.startswith("b'"):
+                raw = raw[2:-2]
+            result = bz2.decompress(base64.b64decode(raw))
+        elif self.scan_type == ScanType.HM:
+            # parse XML
+            result = etree.fromstring(raw)
+        else:
+            raise NotImplemented
+        return result
 
+    def generate_assets(self):
+        function_name = '_generate_assets_{}_{}'.format(
+            AssetType(self.run_type)._name_.lower(),
+            ScanType(self.scan_type)._name_.lower()
+        )
+        func = getattr(self, function_name)
         if not self.raw_result_interpreted:
-            self.raw_result_interpreted = True
-            if self.raw_result_str:
-                functions[self.run_type](self.raw_result_str)
+            # call the appropriate _generate_assets_... method
+            func(self.raw_result)
             self.save()
 
-    def _generate_assets_package(self, blob):
+    def _generate_assets_package_nrpe(self, data):
         assets = []
         if self.scan_type == ScanType.NRPE:
-            if blob.startswith("b'"):
-                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-            else:
-                _data = bz2.decompress(base64.b64decode(blob))
-            l = json.loads(_data)
+            l = json.loads(data)
             for (name, version, size, date) in l:
                 if size == "Unknown":
                     size = 0
@@ -855,27 +857,34 @@ class AssetRun(models.Model):
                         package_type=PackageTypeEnum.WINDOWS
                     )
                 )
-        elif self.scan_type == ScanType.HM:
-            try:
-                package_dict = server_command.decompress(blob, pickle=True)
-            except:
-                raise
-            else:
-                for package_name in package_dict:
-                    for versions_dict in package_dict[package_name]:
-                        installtimestamp = None
-                        if 'installtimestamp' in versions_dict:
-                            installtimestamp = versions_dict['installtimestamp']
-                        assets.append(
-                            BaseAssetPackage(
-                                package_name,
-                                version=versions_dict['version'],
-                                size=versions_dict['size'],
-                                release=versions_dict['release'],
-                                install_date=installtimestamp,
-                                package_type=PackageTypeEnum.LINUX
-                            )
+        self._generate_assets_package(assets)
+
+    def _generate_assets_package_hm(self, tree):
+        blob = tree.xpath('ns0:pkg_list', namespaces=tree.nsmap)[0].text
+        assets = []
+        try:
+            package_dict = server_command.decompress(blob, pickle=True)
+        except:
+            raise
+        else:
+            for package_name in package_dict:
+                for versions_dict in package_dict[package_name]:
+                    installtimestamp = None
+                    if 'installtimestamp' in versions_dict:
+                        installtimestamp = versions_dict['installtimestamp']
+                    assets.append(
+                        BaseAssetPackage(
+                            package_name,
+                            version=versions_dict['version'],
+                            size=versions_dict['size'],
+                            release=versions_dict['release'],
+                            install_date=installtimestamp,
+                            package_type=PackageTypeEnum.LINUX
                         )
+                    )
+        self._generate_assets_package(assets)
+
+    def _generate_assets_package(self, assets):
         # lookup cache
         lu_cache = {}
         for idx, ba in enumerate(assets):
@@ -932,20 +941,16 @@ class AssetRun(models.Model):
 
                 self.asset_batch.packages_install_times.add(apv_install_time)
 
-    def _generate_assets_hardware(self, blob):
-        if self.scan_type == ScanType.NRPE:
-            if blob.startswith("b'"):
-                s = bz2.decompress(base64.b64decode(blob[2:-2]))
-            else:
-                s = bz2.decompress(base64.b64decode(blob))
-        elif self.scan_type == ScanType.HM:
-            s = bz2.decompress(base64.b64decode(blob))
-        else:
-            s = blob
+    def _generate_assets_hardware_nrpe(self, data):
+        self._generate_assets_hardware(etree.fromstring(data))
 
-        root = etree.fromstring(s)
-        assert (root.tag == "topology")
+    def _generate_assets_hardware_hm(self, tree):
+        blob = tree.xpath('ns0:lstopo_dump', namespaces=tree.nsmap)[0].text
+        xml_str = bz2.decompress(base64.b64decode(blob))
+        root = etree.fromstring(xml_str)
+        self._generate_assets_hardware(root)
 
+    def _generate_assets_hardware(self, root):
         # lookup for structural entries
         _struct_lut = {}
         _root_tree = root.getroottree()
@@ -980,84 +985,68 @@ class AssetRun(models.Model):
             _el.info_list = json.dumps(_el._info_dict)
             _el.save()
 
-    def _generate_assets_license(self, blob):
-        if self.scan_type == ScanType.NRPE:
-            if blob.startswith("b'"):
-                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-            else:
-                _data = bz2.decompress(base64.b64decode(blob))
-            l = json.loads(_data)
-            for (name, licensekey) in l:
-                new_lic = AssetLicenseEntry(
-                    name=name,
-                    license_key=licensekey,
-                    asset_run=self,
-                )
-                new_lic.save()
-        elif self.scan_type == ScanType.HM:
-            # todo implement me (--> what do we want to gather/display here?)
-            pass
+    def _generate_assets_license_nrpe(self, data):
+        l = json.loads(data)
+        for (name, licensekey) in l:
+            new_lic = AssetLicenseEntry(
+                name=name,
+                license_key=licensekey,
+                asset_run=self,
+            )
+            new_lic.save()
 
-    def _generate_assets_pending_update(self, blob):
-        if self.scan_type == ScanType.NRPE:
-            if blob.startswith("b'"):
-                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-            else:
-                _data = bz2.decompress(base64.b64decode(blob))
-            l = json.loads(_data)
-            for (name, optional) in l:
-                new_pup = AssetUpdateEntry(
-                    name=name,
-                    installed=False,
-                    asset_run=self,
-                    optional=optional,
-                )
-                new_pup.save()
+    def _generate_assets_pending_update_nrpe(self, data):
+        l = json.loads(data)
+        for (name, optional) in l:
+            new_pup = AssetUpdateEntry(
+                name=name,
+                installed=False,
+                asset_run=self,
+                optional=optional,
+            )
+            new_pup.save()
 
-        elif self.scan_type == ScanType.HM:
-            l = server_command.decompress(blob, pickle=True)
-            for (name, version) in l:
-                new_pup = AssetUpdateEntry(
-                    name=name,
-                    installed=False,
-                    asset_run=self,
-                    # by definition linux updates are optional
-                    optional=True,
-                    new_version=version,
-                )
-                new_pup.save()
+    def _generate_assets_pending_update_hm(self, tree):
+        blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0]\
+            .text
+        l = server_command.decompress(blob, pickle=True)
+        for (name, version) in l:
+            new_pup = AssetUpdateEntry(
+                name=name,
+                installed=False,
+                asset_run=self,
+                # by definition linux updates are optional
+                optional=True,
+                new_version=version,
+            )
+            new_pup.save()
 
-    def _generate_assets_update(self, blob):
-        if self.scan_type == ScanType.NRPE:
-            if blob.startswith("b'"):
-                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-            else:
-                _data = bz2.decompress(base64.b64decode(blob))
-            l = json.loads(_data)
-            for (name, up_date, status) in l:
-                new_up = AssetUpdateEntry(
-                    name=name,
-                    install_date=dateparse.parse_datetime(up_date),
-                    status=status,
-                    installed=True,
-                    asset_run=self,
-                    optional=False,
-                )
-                new_up.save()
-        elif self.scan_type == ScanType.HM:
-            # todo implement me (--> what do we want to gather/display here?)
-            pass
+    def _generate_assets_update_nrpe(self, data):
+        l = json.loads(data)
+        for (name, up_date, status) in l:
+            new_up = AssetUpdateEntry(
+                name=name,
+                install_date=dateparse.parse_datetime(up_date),
+                status=status,
+                installed=True,
+                asset_run=self,
+                optional=False,
+            )
+            new_up.save()
 
-    def _generate_assets_process(self, blob):
-        if self.scan_type == ScanType.NRPE:
-            if blob.startswith("b'"):
-                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-            else:
-                _data = bz2.decompress(base64.b64decode(blob))
-            l = json.loads(_data)
-            process_dict = {int(pid): {"name": name} for name, pid in l}
-        elif self.scan_type == ScanType.HM:
-            process_dict = eval(bz2.decompress(base64.b64decode(blob)))
+    def _generate_assets_process_nrpe(self, data):
+        l = json.loads(data)
+        process_dict = {int(pid): {"name": name} for name, pid in l}
+        self._generate_assets_process(process_dict)
+
+    def _generate_assets_process_hm(self, tree):
+        blob = tree.xpath('ns0:process_tree', namespaces=tree.nsmap)[0]\
+            .text
+        # TODO: Remove eval().
+        process_dict = eval(bz2.decompress(base64.b64decode(blob)))
+        self._generate_assets_process(process_dict)
+
+    def _generate_assets_process(self, process_dict):
         for pid, stuff in process_dict.iteritems():
             new_proc = AssetProcessEntry(
                 pid=pid,
@@ -1066,117 +1055,108 @@ class AssetRun(models.Model):
             )
             new_proc.save()
 
-    def _generate_assets_pci(self, blob):
-        if self.scan_type == ScanType.NRPE:
-            if blob.startswith("b'"):
-                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-            else:
-                _data = bz2.decompress(base64.b64decode(blob))
+    def _generate_assets_pci_nrpe(self, data):
+        info_dicts = []
+        info_dict = {}
+        for line in data.decode().split("\r\n"):
+            if len(line) == 0:
+                if len(info_dict) > 0:
+                    info_dicts.append(info_dict)
+                    info_dict = {}
+            if line.startswith("Slot:"):
+                info_dict['slot'] = line.split("\t", 1)[1]
 
-            info_dicts = []
+                comps = info_dict['slot'].split(":")
+                bus = comps[0]
 
-            info_dict = {}
-            for line in _data.decode().split("\r\n"):
-                if len(line) == 0:
-                    if len(info_dict) > 0:
-                        info_dicts.append(info_dict)
-                        info_dict = {}
-                if line.startswith("Slot:"):
-                    info_dict['slot'] = line.split("\t", 1)[1]
+                comps = comps[1].split(".")
+                slot = comps[0]
+                func = comps[1]
 
-                    comps = info_dict['slot'].split(":")
-                    bus = comps[0]
+                info_dict['bus'] = bus
+                info_dict['slot'] = slot
+                info_dict['func'] = func
+            elif line.startswith("Class:"):
+                info_dict['class'] = line.split("\t", 1)[1]
+            elif line.startswith("Vendor:"):
+                info_dict['vendor'] = line.split("\t", 1)[1]
+            elif line.startswith("Device:"):
+                info_dict['device'] = line.split("\t", 1)[1]
+            elif line.startswith("SVendor:"):
+                info_dict['svendor'] = line.split("\t", 1)[1]
+            elif line.startswith("SDevice:"):
+                info_dict['sdevice'] = line.split("\t", 1)[1]
+            elif line.startswith("Rev:"):
+                info_dict['rev'] = line.split("\t", 1)[1]
 
-                    comps = comps[1].split(".")
-                    slot = comps[0]
-                    func = comps[1]
-
-                    info_dict['bus'] = bus
-                    info_dict['slot'] = slot
-                    info_dict['func'] = func
-                elif line.startswith("Class:"):
-                    info_dict['class'] = line.split("\t", 1)[1]
-                elif line.startswith("Vendor:"):
-                    info_dict['vendor'] = line.split("\t", 1)[1]
-                elif line.startswith("Device:"):
-                    info_dict['device'] = line.split("\t", 1)[1]
-                elif line.startswith("SVendor:"):
-                    info_dict['svendor'] = line.split("\t", 1)[1]
-                elif line.startswith("SDevice:"):
-                    info_dict['sdevice'] = line.split("\t", 1)[1]
-                elif line.startswith("Rev:"):
-                    info_dict['rev'] = line.split("\t", 1)[1]
-
-            for info_dict in info_dicts:
-                new_pci = AssetPCIEntry(
-                    asset_run=self,
-                    domain=0,
-                    bus=int(info_dict['bus'], 16) if 'bus' in info_dict else 0,
-                    slot=int(info_dict['slot'], 16) if 'slot' in info_dict else 0,
-                    func=int(info_dict['func'], 16) if 'func' in info_dict else 0,
-                    pci_class=0,
-                    subclass=0,
-                    device=0,
-                    vendor=0,
-                    revision=int(info_dict['rev'], 16) if 'rev' in info_dict else 0,
-                    pci_classname=info_dict['class'],
-                    subclassname=info_dict['class'],
-                    devicename=info_dict['device'],
-                    vendorname=info_dict['vendor'],
-                )
-                new_pci.save()
-
-        elif self.scan_type == ScanType.HM:
-            s = pci_database.pci_struct_to_xml(
-                pci_database.decompress_pci_info(blob)
+        for info_dict in info_dicts:
+            new_pci = AssetPCIEntry(
+                asset_run=self,
+                domain=0,
+                bus=int(info_dict['bus'], 16) if 'bus' in info_dict else 0,
+                slot=int(info_dict['slot'], 16) if 'slot' in info_dict else 0,
+                func=int(info_dict['func'], 16) if 'func' in info_dict else 0,
+                pci_class=0,
+                subclass=0,
+                device=0,
+                vendor=0,
+                revision=int(info_dict['rev'], 16) if 'rev' in info_dict else 0,
+                pci_classname=info_dict['class'],
+                subclassname=info_dict['class'],
+                devicename=info_dict['device'],
+                vendorname=info_dict['vendor'],
             )
-            for func in s.findall(".//func"):
-                _slot = func.getparent()
-                _bus = _slot.getparent()
-                _domain = _bus.getparent()
-                new_pci = AssetPCIEntry(
-                    asset_run=self,
-                    domain=int(_domain.get("id")),
-                    bus=int(_domain.get("id")),
-                    slot=int(_slot.get("id")),
-                    func=int(func.get("id")),
-                    pci_class=int(func.get("class"), 16),
-                    subclass=int(func.get("subclass"), 16),
-                    device=int(func.get("device"), 16),
-                    vendor=int(func.get("vendor"), 16),
-                    revision=int(func.get("revision"), 16),
-                    pci_classname=func.get("classname"),
-                    subclassname=func.get("subclassname"),
-                    devicename=func.get("devicename"),
-                    vendorname=func.get("vendorname"),
-                )
-                new_pci.save()
+            new_pci.save()
 
-    def _generate_assets_dmi(self, blob):
-        if self.scan_type == ScanType.NRPE:
-            if blob.startswith("b'"):
-                _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-            else:
-                _data = bz2.decompress(base64.b64decode(blob))
+    def _generate_assets_pci_hm(self, tree):
+        blob = tree.xpath('ns0:pci_dump', namespaces=tree.nsmap)[0].text
+        s = pci_database.pci_struct_to_xml(
+            pci_database.decompress_pci_info(blob)
+        )
+        for func in s.findall(".//func"):
+            _slot = func.getparent()
+            _bus = _slot.getparent()
+            _domain = _bus.getparent()
+            new_pci = AssetPCIEntry(
+                asset_run=self,
+                domain=int(_domain.get("id")),
+                bus=int(_domain.get("id")),
+                slot=int(_slot.get("id")),
+                func=int(func.get("id")),
+                pci_class=int(func.get("class"), 16),
+                subclass=int(func.get("subclass"), 16),
+                device=int(func.get("device"), 16),
+                vendor=int(func.get("vendor"), 16),
+                revision=int(func.get("revision"), 16),
+                pci_classname=func.get("classname"),
+                subclassname=func.get("subclassname"),
+                devicename=func.get("devicename"),
+                vendorname=func.get("vendorname"),
+            )
+            new_pci.save()
 
-            _lines = []
+    def _generate_assets_dmi_nrpe(self, blob):
+        _lines = []
+        for line in blob.decode().split("\r\n"):
+            _lines.append(line)
+            if line == "End Of Table":
+                break
+        xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(_lines))
+        self._generate_assets_dmi(xml)
 
-            for line in _data.decode().split("\r\n"):
-                _lines.append(line)
-                if line == "End Of Table":
-                    break
+    def _generate_assets_dmi_hm(self, tree):
+        blob = tree.xpath('ns0:dmi_dump', namespaces=tree.nsmap)[0].text
+        xml = dmi_tools.decompress_dmi_info(blob)
+        self._generate_assets_dmi(xml)
 
-            _xml = dmi_tools.dmi_struct_to_xml(dmi_tools.parse_dmi_output(_lines))
-        elif self.scan_type == ScanType.HM:
-            _xml = dmi_tools.decompress_dmi_info(blob)
-
+    def _generate_assets_dmi(self, xml):
         head = AssetDMIHead(
             asset_run=self,
-            version=_xml.get("version"),
-            size=int(_xml.get("size")),
+            version=xml.get("version"),
+            size=int(xml.get("size")),
         )
         head.save()
-        for _handle in _xml.findall(".//handle"):
+        for _handle in xml.findall(".//handle"):
             handle = AssetDMIHandle(
                 dmihead=head,
                 handle=int(_handle.get("handle")),
@@ -1204,10 +1184,13 @@ class AssetRun(models.Model):
                     )
                 value.save()
 
-    def _generate_assets_prettywinhw(self, blob):
+    def _generate_assets_prettywinhw_nrpe(self, blob):
         pass
 
-    def _generate_assets_lshw(self, blob):
+    def _generate_assets_lshw_hm(self, tree):
+        pass
+
+    def _generate_assets_partition_hm(self, tree):
         pass
 
 
@@ -1269,7 +1252,7 @@ class AssetBatch(models.Model):
             self.run_time = int((self.run_end_time - self.run_start_time).seconds)
             self.run_status = RunStatus.ENDED
             self.run_result = max([_res.run_result for _res in self.assetrun_set.all()])
-            self._set_assets_from_raw_results()
+            self._generate_assets_from_raw_results()
         self.save()
 
     def __repr__(self):
@@ -1280,7 +1263,7 @@ class AssetBatch(models.Model):
             unicode(self.device)
         )
 
-    def _set_assets_from_raw_results(self):
+    def _generate_assets_from_raw_results(self):
         """Set the batch level hardware information (.cpus, .memory_modules
         etc.) from the acquired asset runs."""
         runs = [
@@ -1297,14 +1280,18 @@ class AssetBatch(models.Model):
             except AssetRun.DoesNotExist:
                 pass
             else:
-                if run.raw_result_str == None:
-                    continue
-                blob = run.raw_result_str
-                if blob.startswith("b'"):
-                    blob = blob[2:-2]
-                raw_data = bz2.decompress(base64.b64decode(blob))
+                if run.scan_type == ScanType.NRPE:
+                    blob = run.raw_result
+                elif run.scan_type == ScanType.HM:
+                    tree = run.raw_result
+                    blob = tree.xpath(
+                        'ns0:lshw_dump',
+                        namespaces=tree.nsmap
+                    )[0].text
+                    blob = bz2.decompress(base64.b64decode(blob))
+
                 # parse raw_data
-                parsed = parser(raw_data)
+                parsed = parser(blob)
             run_results[arg_name] = parsed
 
         # check if we have the necessary asset runs
@@ -1479,7 +1466,6 @@ class StaticAssetTemplate(models.Model):
         nt.save()
         for _field in self.staticassettemplatefield_set.all():
             nt.staticassettemplatefield_set.add(_field.copy(nt, create_user))
-            print _field
         return nt
 
     class CSW_Meta:

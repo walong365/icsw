@@ -603,7 +603,6 @@ class HostMonitoringMixin(object):
                         _old_peer_dict = {}
                         for _old_peer in _peers:
                             _old_peer_dict.setdefault(_old_peer["my_name"], []).append(_old_peer)
-                        # pprint.pprint(_old_peer_dict)
                         self.log("removing current network devices")
                         target_dev.netdevice_set.all().delete()
                         all_ok = True

@@ -126,9 +126,7 @@ class BaseScanBatch(ScanBatch):
         # example: /opt/cluster/bin/nmap -sU -sS -p U:53,T:80 192.168.1.50
         _tcp_list, _udp_list = ([], [])
         _ref_lut = {}
-        print "***"
         for _com in ComCapability.objects.all():
-            print _com
             for _port in _com.port_spec.strip().split():
                 if _port.endswith(","):
                     _port = _port[:-1]
@@ -515,7 +513,6 @@ def align_hour(now, sched_start_hour):
 
 def align_day(now, sched_start_day):
     while True:
-        # print(now, datetime.timedelta(days=1))
         if now.weekday() == sched_start_day:
             break
         now += datetime.timedelta(days=1)
@@ -679,36 +676,18 @@ class PlannedRunState(object):
         s, _error_string = (None, "")
 
         if result is not None:
+#             print 'store_zmq_result'
+#             print 'result:', result
+#             print '_db_obj.run_type', _db_obj.run_type
+#             print 'result.tostring():', etree.tostring(result.tree)
+#             print
             try:
-                if _db_obj.run_type == AssetType.PACKAGE:
-                    if "pkg_list" in result:
-                        s = result["pkg_list"].text
-                elif _db_obj.run_type == AssetType.HARDWARE:
-                    if "lstopo_dump" in result:
-                        s = result["lstopo_dump"].text
-                elif _db_obj.run_type == AssetType.LICENSE:
-                    pass
-                    # todo implement me
-                elif _db_obj.run_type == AssetType.UPDATE:
-                    pass
-                    # todo implement me
-                elif _db_obj.run_type == AssetType.PROCESS:
-                    if "process_tree" in result:
-                        s = result["process_tree"].text
-                elif _db_obj.run_type == AssetType.PENDING_UPDATE:
-                    if "update_list" in result:
-                        s = result["update_list"].text
-                elif _db_obj.run_type == AssetType.DMI:
-                    if "dmi_dump" in result:
-                        s = result["dmi_dump"].text
-                elif _db_obj.run_type == AssetType.PCI:
-                    if "pci_dump" in result:
-                        s = result["pci_dump"].text
-                elif _db_obj.run_type == AssetType.LSHW:
-                    if "lshw_dump" in result:
-                        s = result["lshw_dump"].text
-                else:
-                    raise ValueError("Unknown ScanType {}".format(_db_obj.run_type))
+                if _db_obj.run_type not in AssetType:
+                    raise ValueError(
+                        "Unknown ScanType {}".format(_db_obj.run_type)
+                    )
+                # store the whole XML tree
+                s = etree.tostring(result.tree)
             except:
                 _error_string = "ParseProblem: {}".format(
                     process_tools.get_except_info()
@@ -1074,7 +1053,8 @@ class Dispatcher(object):
             (AssetType.PENDING_UPDATE, "updatelist", 60),
             (AssetType.DMI, "dmiinfo", 15),
             (AssetType.PCI, "pciinfo", 15),
-            (AssetType.LSHW, "lshw", 15)
+            (AssetType.LSHW, "lshw", 15),
+            (AssetType.PARTITION, "partinfo", 15),
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command, timeout) in enumerate(cmd_tuples):
