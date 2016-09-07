@@ -34,6 +34,8 @@ from lxml import etree
 
 from initat.tools import server_command, pci_database, dmi_tools
 from initat.cluster.backbone.tools.hw import Hardware
+from initat.cluster.backbone.models.partition import (partition_disc,
+    partition_table, partition, partition_fs, LogicalDisc)
 
 
 ########################################################################################################################
@@ -770,6 +772,7 @@ class AssetHWGPUEntry(models.Model):
         return "{} [Version:{}]".format(self.gpuname, self.driverversion)
 
 
+# TODO: Remove this model.
 class AssetHWHDDEntry(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -1118,15 +1121,16 @@ class AssetRun(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     @property
+    def hdds(self):
+        return self.asset_batch.partition_table.partition_disc_set.all()
+
+    @property
     def cpus(self):
         return self.asset_batch.cpus.all()
 
     @property
     def gpus(self):
         return self.asset_batch.gpus.all()
-    @property
-    def hdds(self):
-        return self.asset_batch.hdds.all()
 
     @property
     def partitions(self):
@@ -1222,8 +1226,9 @@ class AssetBatch(models.Model):
     cpus = models.ManyToManyField(AssetHWCPUEntry)
     memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
     gpus = models.ManyToManyField(AssetHWGPUEntry)
-    hdds = models.ManyToManyField(AssetHWHDDEntry)
+    partition_table = models.ForeignKey("backbone.partition_table", null=True)
     network_devices = models.ManyToManyField(AssetHWNetworkDevice)
+    # TODO: Remove this.
     partitions = models.ManyToManyField(AssetHWLogicalEntry)
     displays = models.ManyToManyField(AssetHWDisplayEntry)
 
@@ -1288,6 +1293,7 @@ class AssetBatch(models.Model):
             return
         hw = Hardware(**run_results)
 
+        # set the CPUs
         self.cpus.all().delete()
         for cpu in hw.cpus:
             new_cpu = AssetHWCPUEntry(cpuname=cpu.product,
@@ -1295,6 +1301,7 @@ class AssetBatch(models.Model):
             new_cpu.save()
             self.cpus.add(new_cpu)
 
+        # set the memory modules
         self.memory_modules.all().delete()
         for memory_module in hw.memory_modules:
             new_memory_module = AssetHWMemoryEntry(
@@ -1305,22 +1312,57 @@ class AssetBatch(models.Model):
             new_memory_module.save()
             self.memory_modules.add(new_memory_module)
 
+        # set the GPUs
         self.gpus.all().delete()
         for gpus in hw.gpus:
             new_gpu = AssetHWGPUEntry(gpuname=gpus.description)
             new_gpu.save()
             self.gpus.add(new_gpu)
 
-        self.hdds.all().delete()
-        for hdd in hw.hdds:
-            new_hdd = AssetHWHDDEntry(
-                name=hdd.description,
-                serialnumber=hdd.serial,
-                size=hdd.size,
-            )
-            new_hdd.save()
-            self.hdds.add(new_hdd)
+        # set the discs and partitions
+        fs_dict = {fs.name: fs for fs in partition_fs.objects.all()}
 
+        name = "_".join([self.device.name, "part", str(self.idx)])
+        partition_table_ = partition_table(
+            name=name,
+            description='partition information generated during asset run',
+        )
+        partition_table_.save()
+        for hdd in hw.hdds:
+            disc = partition_disc(
+                partition_table=partition_table_,
+                disc=hdd.device_name,
+            )
+            disc.save()
+
+            for hdd_partition in hdd.partitions:
+                partition_ = partition(
+                    partition_disc=disc,
+                    pnum=hdd_partition.index,
+                    size=hdd_partition.size,
+                )
+                if hdd_partition.logical:
+                    partition_fs_ = \
+                        fs_dict[hdd_partition.logical.file_system.lower()]
+                else:
+                    partition_fs_ = fs_dict["empty"]
+                partition_.partition_fs = partition_fs_
+                partition_.save()
+                if hdd_partition.logical:
+                    logical = LogicalDisc(
+                        device_name=hdd_partition.logical.device_name,
+                        partition_fs=partition_fs_,
+                        size=hdd_partition.logical.size,
+                        free_space=hdd_partition.logical.free_space,
+                    )
+                    logical.save()
+                    logical.partitions.add(partition_)
+        self.partition_table = partition_table_
+        # set the partition info on the device
+        self.device.act_partition_table = partition_table_
+        self.device.save()
+
+        # set the network devices
         self.network_devices.all().delete()
         for network_device in hw.network_devices:
             new_network_device = AssetHWNetworkDevice(
@@ -1332,7 +1374,6 @@ class AssetBatch(models.Model):
                 )
             new_network_device.save()
             self.network_devices.add(new_network_device)
-        # TODO: Set partitions.
 
         # TODO: Set displays.
 

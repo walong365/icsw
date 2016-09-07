@@ -171,54 +171,54 @@ angular.module(
 
     _device_lut = {
         0: {
-            className: "svg_dev_up"
+            className: "svg-dev-up"
             info: "Up"
         }
         1: {
-            className:  "svg_dev_down"
+            className:  "svg-dev-down"
             info: "Down"
         }
         2: {
-            className: "svg_dev_unreach"
+            className: "svg-dev-unreach"
             info: "Unreachable"
         }
         3: {
-            className: "svg_dev_unknown"
+            className: "svg-dev-unknown"
             info: "Unknown"
         }
         4: {
-            className: "svg_dev_notmonitored"
+            className: "svg-dev-notmonitored"
             info: "not monitored"
         }
         5: {
-            color: "#888888"
+            className: "svg-dev-pending"
             info: "pending"
         }
     }
 
     _service_lut = {
         0: {
-            className: "svg_srv_ok"
+            className: "svg-srv-ok"
             info: "OK"
         }
         1: {
-            className: "svg_srv_warn"
+            className: "svg-srv-warn"
             info: "Warning"
         }
         2: {
-            className: "svg_srv_crit"
+            className: "svg-srv-crit"
             info: "Critical"
         }
         3: {
-            className: "svg_srv_unknown"
+            className: "svg-srv-unknown"
             info: "Unknown"
         }
         4: {
-            className: "svg_srv_notmonitored"
+            className: "svg-srv-notmonitored"
             info: "not monitored"
         }
         5: {
-            color: "#888888"
+            className: "svg-srv-pending"
             info: "pending"
         }
     }
@@ -229,14 +229,14 @@ angular.module(
         service_states: [0, 1, 2, 3, 4, 5]
     }
     salt_device_state = (entry) ->
-        entry.className = {
-            0: "svg_dev_up"
-            1: "svg_srv_warn"
-            2: "svg_srv_crit"
-            3: "svg_dev_unknown"
-            4: "svg_dev_unknown"
-            5: "svg_dev_unknown"
-        }[entry.state]
+        entry.className = _device_lut[entry.state].className
+        #    0: "svg-dev-up"
+        #    1: "svg-srv-warn"
+        #    2: "svg-srv-crit"
+        #    3: "svg-dev-unknown"
+        #    4: "svg-dev-unknown"
+        #    5: "svg-dev-unknown"
+        # }[entry.state]
         _r_str = {
             0: "success"
             1: "danger"
@@ -269,14 +269,14 @@ angular.module(
             # special state: pending
             5: "default"
         }[entry.state]
-        entry.className = {
-            0: "svg_srv_ok"
-            1: "svg_srv_warn"
-            2: "svg_srv_crit"
-            3: "svg_danger"
-            4: "svg_srv_unknown"
-            5: "svg_srv_unknown"
-        }[entry.state]
+        entry.className = _service_lut[entry.state].className
+        #    0: "svg-srv-ok"
+        #    1: "svg-srv-warn"
+        #    2: "svg-srv-crit"
+        #    3: "svg-danger"
+        #    4: "svg-srv-unknown"
+        #    5: "svg-srv-unknown"
+        # }[entry.state]
         entry.$$icswStateClass = _r_str
         # entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
@@ -351,6 +351,12 @@ angular.module(
         return _r_list
 
     return {
+        get_luts: () ->
+            return {
+                dev: _device_lut
+                srv: _service_lut
+            }
+
         get_unmonitored_device_entry: get_unmonitored_device_entry
 
         get_dummy_service_entry: get_dummy_service_entry
@@ -526,6 +532,7 @@ angular.module(
             # lookup tables
             @__luts_set = true
             _srv_lut = {}
+            # dict: [srv_state][category] -> number of entries
             _srv_cat_lut = {}
             for srv in @services
                 if srv.state not of _srv_lut
@@ -542,6 +549,7 @@ angular.module(
                         _srv_cat_lut[srv.state][_cat] = 0
                     _srv_cat_lut[srv.state][_cat]++
             _host_lut = {}
+            # dict: [dev_state][category] -> number of entries
             _host_cat_lut = {}
             for host in @hosts
                 if host.state not of _host_lut

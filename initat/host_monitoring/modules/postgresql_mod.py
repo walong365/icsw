@@ -134,15 +134,17 @@ class _general(hm_classes.hm_module):
 
     def read_config(self):
         sample_name = "{}_sample".format(CS_NAME)
-        if not config_store.ConfigStore.exists(sample_name):
+        if not config_store.ConfigStore.exists(
+            sample_name,
+        ):
             self.log("Creating sample config store")
-            sample_cs = config_store.ConfigStore(sample_name, log_com=self.log, read=False)
+            sample_cs = config_store.ConfigStore(sample_name, log_com=self.log, read=False, access_mode=config_store.AccessModeEnum.LOCAL, fix_access_mode=True)
             for _key, _value in DEFAULTS.iteritems():
                 sample_cs[_key] = _value
             sample_cs.write()
         if config_store.ConfigStore.exists(CS_NAME):
             try:
-                self.config = config_store.ConfigStore(CS_NAME, log_com=self.log)
+                self.config = config_store.ConfigStore(CS_NAME, log_com=self.log, access_mode=config_store.AccessModeEnum.LOCAL, fix_access_mode=True)
             except:
                 self.log(
                     "disabled postgres machvector-feed because error parsing config store {}: {}".format(

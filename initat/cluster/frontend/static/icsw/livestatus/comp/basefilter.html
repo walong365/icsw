@@ -1,0 +1,13 @@
+<script type="text/ng-template" id="icsw.livestatus.filter.display">
+    <div>
+        <ui-select ng-model="struct.cur_filter" ng-change="changed()" style="width:240px;">
+            <ui-select-match class="ui-select-match" placeholder="Filter">
+                {{ $select.selected.name }}
+            </ui-select-match>
+            <ui-select-choices class="ui-select-choices" repeat="value as value in filter_list">
+                <div ng-bind-html="value.name"></div>
+            </ui-select-choices>
+        </ui-select>
+        <div id="svg"></div>
+    </div>
+</script>

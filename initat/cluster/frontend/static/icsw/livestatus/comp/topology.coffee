@@ -139,10 +139,10 @@ angular.module(
             _g.append("circle")
             # <circle r="18" fill="{{ fill_color }}" stroke-width="{{ stroke_width }}" stroke="{{ stroke_color }}" cursor="crosshair"></circle>
             .attr('r', (d) -> return d.radius)
-            .attr("class", "svg_d3circle")
+            .attr("class", "svg-d3circle")
             .attr("cursor", "crosshair")
             _g.append("text")
-            .attr("class", "svg_d3text")
+            .attr("class", "svg-d3text")
             .text(
                 (d) ->
                     return d.$$device.full_name
@@ -169,7 +169,7 @@ angular.module(
             # console.log "link=", graph.links
             ds = selector.data(graph.links, (l) -> return graph.link_to_dom_id(l))
             ds.enter().append("line")
-            .attr("class", "d3-link svg_d3link")
+            .attr("class", "d3-link svg-d3link")
             ds.exit().remove()
 
 ]).service("icswNetworkTopologyDrawService",
@@ -372,7 +372,7 @@ angular.module(
 
         set_fixed: (dom_node, device, flag) ->
             device.fixed = flag
-            cssclass = if flag then "svg_d3circle_selected" else "svg_d3circle"
+            cssclass = if flag then "svg-d3circle-selected" else "svg-d3circle"
             $(dom_node).find("circle").attr("class", cssclass)
             device.vx = 0.0
             device.vy = 0.0

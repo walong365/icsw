@@ -26,6 +26,7 @@ import json
 import logging
 import os
 import tempfile
+import Queue
 from io import BytesIO
 from threading import Thread
 
@@ -369,23 +370,26 @@ class ReportGenerator(object):
         self.device_settings = _settings
 
         self.devices = _devices
-        self.progress = 0
-        self.last_poll_time = None
 
-        self.report_history = ReportHistory()
-        self.report_history.save()
-        self.report_id = self.report_history.idx
+        report_history_obj = ReportHistory()
+        report_history_obj.save()
+
+        self.report_id = report_history_obj.idx
 
         self.creation_date = datetime.datetime.now()
-
-    def get_progress(self):
-        return self.progress
 
     def get_report_data(self):
         return self.data
 
     def get_report_type(self):
         pass
+
+    def set_progress(self, progress):
+        report_history_obj = ReportHistory.objects.get(idx=self.report_id)
+
+        if report_history_obj.progress != progress:
+            report_history_obj.progress = progress
+            report_history_obj.save()
 
     @staticmethod
     def _get_data_for_user_group_overview():
@@ -522,6 +526,7 @@ class ReportGenerator(object):
 
         return data
 
+
 class ColoredRule(Rule):
     def __init__(self, pos, width, thickness=1.0, report=None, hexcolor=None):
         super(ColoredRule, self).__init__(pos, width, thickness, report)
@@ -530,7 +535,6 @@ class ColoredRule(Rule):
 
     def generate(self, row):
         return ColoredRule(self.pos, self.width, self.height, self.report, self.hexcolor)
-
 
     def render(self, offset, canvas):
         leftmargin = self.report.leftmargin
@@ -544,6 +548,7 @@ class ColoredRule(Rule):
                     -1 * (self.pos[1] + offset + self.height / 2))
 
         canvas.restoreState()
+
 
 class PDFReportGenerator(ReportGenerator):
     def __init__(self, _settings, _devices):
@@ -581,7 +586,7 @@ class PDFReportGenerator(ReportGenerator):
             # generate a simple placeholder image
             self.logo_height = 42
             self.logo_width = 103
-            logo = PILImage.new('RGB', (255, 255), "black")  # create a new black image
+            logo = PILImage.new('RGB', (255, 255), "white")  # create a new white image
             logo.save(self.logo_buffer, format="BMP")
 
         self.page_format = eval(self.general_settings["pdf_page_format"])
@@ -620,24 +625,10 @@ class PDFReportGenerator(ReportGenerator):
 
         return logo_width, logo_height
 
-    def __get_logo_helper(self, value):
-        id(value)
-        _tmp_file = tempfile.NamedTemporaryFile()
-        self.logo_buffer.seek(0)
-        _tmp_file.write(self.logo_buffer.read())
-        logo = ImageReader(_tmp_file.name)
-        _tmp_file.close()
-
-        return logo
-
     def __config_report_helper(self, header, header_names_left, header_names_right, rpt, data):
         available_width = self.page_format[0] - (self.margin * 2)
 
-        header_list = [PollyReportsImage(pos=(available_width - self.logo_width, -20),
-                                         width=self.logo_width,
-                                         height=self.logo_height,
-                                         getvalue=self.__get_logo_helper),
-                       Element((0, 0), (self.bold_font, 16), text=header)]
+        header_list = [Element((0, 0), (self.bold_font, 16), text=header)]
 
         detail_list = []
 
@@ -895,17 +886,13 @@ class PDFReportGenerator(ReportGenerator):
         paragraph_header = Paragraph('<font face="{}" size="16">{} Overview for {}</font>'.format(
             self.bold_font, section_number, _device.name), style_sheet["BodyText"])
 
-        logo = Image(self.logo_buffer)
-        logo.drawHeight = self.logo_height
-        logo.drawWidth = self.logo_width
+        data = [[paragraph_header]]
 
-        data = [[paragraph_header, logo]]
-
-        t_head = Table(
-            data,
-            colWidths=(available_width - self.logo_width - 11.75, self.logo_width + 11.75),
-            style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')]
-        )
+        t_head = Table(data,
+                       colWidths=(available_width),
+                       rowHeights=[35],
+                       style=[('LEFTPADDING', (0, 0), (-1, -1), 0),
+                              ('RIGHTPADDING', (0, 0), (-1, -1), 0),])
 
         body_data = []
 
@@ -1449,10 +1436,10 @@ class PDFReportGenerator(ReportGenerator):
                            ])
 
         data = [["Name", "Serialnumber", "Size"]]
-        for hdd in hardware_report_ar.asset_batch.hdds.all():
-            data.append([Paragraph(str(hdd.name), style_sheet["BodyText"]),
-                         Paragraph(str(hdd.serialnumber), style_sheet["courier"]),
-                         Paragraph(sizeof_fmt(hdd.size), style_sheet["BodyText"])])
+        for hdd in hardware_report_ar.asset_batch.partition_table.partition_disc_set.all():
+            data.append([Paragraph(str(hdd.disc), style_sheet["BodyText"]),
+                             Paragraph(str("N/A"), style_sheet["courier"]),
+                             Paragraph(str("N/A"), style_sheet["BodyText"])])
 
         p0_3 = Paragraph('<b>HDDs:</b>', style_sheet["BodyText"])
         t_3 = Table(data,
@@ -1530,15 +1517,12 @@ class PDFReportGenerator(ReportGenerator):
             hardware_report_ar.asset_batch.device.name),
             style_sheet["BodyText"])
 
-        logo = Image(self.logo_buffer)
-        logo.drawHeight = self.logo_height
-        logo.drawWidth = self.logo_width
-
-        data = [[p_h, logo]]
+        data = [[p_h]]
 
         t_head = Table(data,
-                       colWidths=(available_width - self.logo_width - 11.75, self.logo_width + 11.75),
-                       style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
+                       colWidths=(available_width),
+                       rowHeights=[35],
+                       style=[])
 
         elements.append(t_head)
         elements.append(Spacer(1, 30))
@@ -1661,18 +1645,14 @@ class PDFReportGenerator(ReportGenerator):
 
         paragraph_header = Paragraph('Contents'.format(self.bold_font), style_sheet["heading_1"])
 
-        logo = Image(self.logo_buffer)
-        logo.drawHeight = self.logo_height
-        logo.drawWidth = self.logo_width
-
-        data = [[paragraph_header, logo]]
+        data = [[paragraph_header]]
 
         available_width = self.page_format[0] - (13 * mm * 2)
 
         t_head = Table(
             data,
-            rowHeights=[200],
-            colWidths=[available_width - self.logo_width, None],
+            rowHeights=[10],
+            colWidths=[available_width],
             style=[
                 ('LEFTPADDING', (0, 0), (-1, -1), 0),
                 ('RIGHTPADDING', (0, 0), (-1, -1), 0),
@@ -1688,7 +1668,7 @@ class PDFReportGenerator(ReportGenerator):
         width, heigth = self.page_format
 
         t_head.wrapOn(can, 0, 0)
-        t_head.drawOn(can, 13 * mm, heigth - 56)
+        t_head.drawOn(can, 13 * mm, heigth - 52)
 
         vertical_x_limit = int((heigth - (heigth * 0.20)) / 15)
         vertical_x = 1
@@ -1753,13 +1733,13 @@ class PDFReportGenerator(ReportGenerator):
         existing_pdf = PdfFileReader(pdf_buffer)
         num_pages = existing_pdf.getNumPages()
 
-        for page_number in range(num_pages):
-            # this loop might take a long time -> kill this loop if no polling happend in the last few seconds (i.e the
-            # user closed the browser window or switched to a different view
-            if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
-                break
+        _tmp_file = tempfile.NamedTemporaryFile()
+        self.logo_buffer.seek(0)
+        _tmp_file.write(self.logo_buffer.read())
+        _tmp_file.flush()
 
-            self.progress = int((page_number / float(num_pages)) * 90) + 10
+        for page_number in range(num_pages):
+            self.set_progress(int((page_number / float(num_pages)) * 90) + 10)
             page = existing_pdf.getPage(page_number)
 
             if page_number == 0:
@@ -1795,7 +1775,14 @@ class PDFReportGenerator(ReportGenerator):
                 # draw page number
                 page_number_str = "Page {} of {}".format(page_number + 1, num_pages)
 
-                page_width = self.page_format[0]
+                page_width, page_heigth = self.page_format
+
+                can.drawImage(_tmp_file.name,
+                    page_width - (13 * mm) - self.logo_width,
+                    page_heigth - 5 * mm - self.logo_height,
+                    self.logo_width,
+                    self.logo_height,
+                    mask="auto")
 
                 can.setFillColor(HexColor(0xBDBDBD))
                 can.setStrokeColor(HexColor(0xBDBDBD))
@@ -1832,6 +1819,8 @@ class PDFReportGenerator(ReportGenerator):
                 page.mergePage(page_num_pdf.getPage(0))
 
             output.addPage(page)
+
+        _tmp_file.close()
 
         return output
 
@@ -1951,13 +1940,11 @@ class PDFReportGenerator(ReportGenerator):
                 device_report.add_child(group_report)
 
                 for _device in sorted(group_device_dict[_group_name], key=lambda __device: __device.full_name):
-                    if self.last_poll_time and (datetime.datetime.now() - self.last_poll_time).seconds > 5:
-                        return
                     self.__generate_device_report(_device, self.device_settings[_device.idx], group_report)
-                    self.progress = int((float(idx) / len(self.devices)) * 10)
+                    self.set_progress(int((float(idx) / len(self.devices)) * 10))
                     idx += 1
 
-        self.progress = 10
+        self.set_progress(10)
 
         self.finalize_pdf()
 
@@ -2003,7 +1990,7 @@ class PDFReportGenerator(ReportGenerator):
         # Add page numbers
         output_pdf.write(output_buffer)
         output_pdf = self.__add_page_numbers(output_buffer)
-        self.progress = 100
+        self.set_progress(100)
 
         # Generate Bookmarks
         current_page_number = number_of_pre_content_sites
@@ -2021,17 +2008,18 @@ class PDFReportGenerator(ReportGenerator):
 
         # create report history entry
         _user = user.objects.get(idx=self.general_settings["user_idx"])
-        self.report_history.created_by_user = _user
-        self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
-        self.report_history.number_of_pages = output_pdf.getNumPages()
-        self.report_history.size = len(self.data)
-        self.report_history.type = self.get_report_type()
-        self.report_history.generate_filename()
-        self.report_history.save()
 
-        self.report_history.write_data(self.data)
+        report_history_obj = ReportHistory.objects.get(idx=self.report_id)
 
-        self.progress = -1
+        report_history_obj.created_by_user = _user
+        report_history_obj.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
+        report_history_obj.number_of_pages = output_pdf.getNumPages()
+        report_history_obj.size = len(self.data)
+        report_history_obj.type = self.get_report_type()
+        report_history_obj.generate_filename()
+        report_history_obj.write_data(self.data)
+        report_history_obj.progress = -1
+        report_history_obj.save()
 
     def get_report_type(self):
         return "pdf"
@@ -2084,7 +2072,7 @@ class XlsxReportGenerator(ReportGenerator):
 
                 generate_csv_entry_for_assetrun(ar, sheet.append)
 
-            self.progress = int(round((float(idx) / len(self.devices)) * 100))
+            self.set_progress(int(round((float(idx) / len(self.devices)) * 100)))
             idx += 1
 
             workbooks.append((workbook, _device.full_name))
@@ -2103,16 +2091,17 @@ class XlsxReportGenerator(ReportGenerator):
         self.data = _buffer.getvalue()
 
         _user = user.objects.get(idx=self.general_settings["user_idx"])
-        self.report_history.created_by_user = _user
-        self.report_history.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
-        self.report_history.number_of_pages = 0
-        self.report_history.size = len(self.data)
-        self.report_history.type = self.get_report_type()
-        self.report_history.generate_filename()
-        self.report_history.save()
-        self.report_history.write_data(self.data)
+        report_history_obj = ReportHistory.objects.get(idx=self.report_id)
 
-        self.progress = -1
+        report_history_obj.created_by_user = _user
+        report_history_obj.created_at_time = timezone.make_aware(self.creation_date, timezone.get_current_timezone())
+        report_history_obj.number_of_pages = 0
+        report_history_obj.size = len(self.data)
+        report_history_obj.type = self.get_report_type()
+        report_history_obj.generate_filename()
+        report_history_obj.write_data(self.data)
+        report_history_obj.progress = -1
+        report_history_obj.save()
 
     def __generate_user_group_overview_report(self):
         workbook = Workbook()
@@ -2332,21 +2321,21 @@ class XlsxReportGenerator(ReportGenerator):
 ########################################################################################################################
 # Views
 ########################################################################################################################
-REPORT_GENERATORS = {}
-REPORT_TIMEOUT_SECONDS = 1800
 
 
 class GetProgress(View):
     @method_decorator(login_required)
     def post(self, request):
-        report_generator_id = int(request.POST["id"])
+        report_id = int(request.POST["id"])
+
+        report_history_object = ReportHistory.objects.filter(idx=report_id)
 
         progress = 0
-        if report_generator_id in REPORT_GENERATORS:
-            report_generator = REPORT_GENERATORS[report_generator_id]
-            progress = report_generator.progress
 
-            report_generator.last_poll_time = datetime.datetime.now()
+        if report_history_object:
+            report_history_object = report_history_object[0]
+
+            progress = report_history_object.progress
 
         return HttpResponse(
             json.dumps(
@@ -2364,19 +2353,7 @@ class GetReportData(View):
         report_type = "unknown"
         report_id = None
 
-        if "report_generator_id" in request.POST:
-            report_generator_id = int(request.POST["report_generator_id"])
-            report_data = ""
-
-            if report_generator_id in REPORT_GENERATORS:
-                report_generator = REPORT_GENERATORS[report_generator_id]
-                report_data = report_generator.get_report_data()
-                report_type = report_generator.get_report_type()
-                report_id = report_generator.report_id
-                del REPORT_GENERATORS[report_generator_id]
-
-            data_b64 = base64.b64encode(report_data)
-        elif "report_id" in request.POST:
+        if "report_id" in request.POST:
             report_id = int(request.POST["report_id"])
 
             report_history = ReportHistory.objects.get(idx=report_id)
@@ -2414,23 +2391,23 @@ class GetReportData(View):
 class GenerateReportPdf(View):
     @method_decorator(login_required)
     def post(self, request):
-        pk_settings, _devices, current_time = _init_report_settings(request)
+        pk_settings, _devices = _init_report_settings(request)
 
         if 'HOSTNAME' in request.META:
             pk_settings[-1]['hostname'] = request.META['HOSTNAME']
         else:
             pk_settings[-1]['hostname'] = "unknown"
 
-        pdf_report_generator = PDFReportGenerator(pk_settings, _devices)
-        pdf_report_generator.timestamp = current_time
-        REPORT_GENERATORS[id(pdf_report_generator)] = pdf_report_generator
+        queue = Queue.Queue()
 
-        Thread(target=_generate_report, args=[pdf_report_generator]).start()
+        Thread(target=_generate_report, args=[pk_settings, _devices, queue, "pdf"]).start()
+
+        report_id = queue.get()
 
         return HttpResponse(
             json.dumps(
                 {
-                    'id': id(pdf_report_generator)
+                    'report_id': report_id
                 }
             )
         )
@@ -2491,18 +2468,18 @@ class GetReportGfx(View):
 class GenerateReportXlsx(View):
     @method_decorator(login_required)
     def post(self, request):
-        pk_settings, _devices, current_time = _init_report_settings(request)
+        pk_settings, _devices = _init_report_settings(request)
 
-        xlsx_report_generator = XlsxReportGenerator(pk_settings, _devices)
-        xlsx_report_generator.timestamp = current_time
-        REPORT_GENERATORS[id(xlsx_report_generator)] = xlsx_report_generator
+        queue = Queue.Queue()
 
-        Thread(target=_generate_report, args=[xlsx_report_generator]).start()
+        Thread(target=_generate_report, args=[pk_settings, _devices, queue, "xlsx"]).start()
+
+        report_id = queue.get()
 
         return HttpResponse(
             json.dumps(
                 {
-                    'id': id(xlsx_report_generator)
+                    'report_id': report_id
                 }
             )
         )
@@ -2621,12 +2598,6 @@ class UpdateDownloadCount(View):
 ########################################################################################################################
 
 def _init_report_settings(request):
-    current_time = datetime.datetime.now()
-    # remove references of old report generators
-    for report_generator_id in REPORT_GENERATORS.keys():
-        if (current_time - REPORT_GENERATORS[report_generator_id].timestamp).seconds > REPORT_TIMEOUT_SECONDS:
-            del REPORT_GENERATORS[report_generator_id]
-
     settings_dict = {}
 
     for key in request.POST.iterkeys():
@@ -2664,7 +2635,7 @@ def _init_report_settings(request):
         if not _device.is_meta_device:
             _devices.append(_device)
 
-    return pk_settings, _devices, current_time
+    return pk_settings, _devices
 
 
 # asset_batch_selection_mode
@@ -2971,12 +2942,12 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
             row_writer_func(row)
 
-        for hdd in ar.asset_batch.hdds.all():
-            row = base_row[:]
-
-            row.append(str(hdd))
-
-            row_writer_func(row)
+        # for hdd in ar.asset_batch.hdds.all():
+        #     row = base_row[:]
+        #
+        #     row.append(str(hdd))
+        #
+        #     row_writer_func(row)
 
         for partition in ar.asset_batch.partitions.all():
             row = base_row[:]
@@ -3003,17 +2974,30 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def _generate_report(report_generator):
+def _generate_report(pk_settings, _devices, queue, type):
+    report_generator = None
     try:
+        if type == "pdf":
+            report_generator = PDFReportGenerator(pk_settings, _devices)
+        else:
+            report_generator = XlsxReportGenerator(pk_settings, _devices)
+
+        report_id = -1
+        if report_generator:
+            report_id = report_generator.report_id
+        queue.put(report_id)
+
         report_generator.generate_report()
     except Exception as e:
-        # import traceback, sys
-        # print '-'*60
-        # traceback.print_exc(file=sys.stdout)
-        # print '-'*60
+        import traceback, sys
+        print '-'*60
+        traceback.print_exc(file=sys.stdout)
+        print '-'*60
         logger.info("Report Generation failed, error was: {}".format(str(e)))
-        report_generator.data = ""
-        report_generator.progress = -1
+
+        if report_generator:
+            report_generator.data = ""
+            report_generator.set_progress(-1)
 
 
 def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
@@ -3042,11 +3026,11 @@ def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
                     else:
                         gpu_str = str(gpu)
 
-                for hdd in assetrun.asset_batch.hdds.all():
-                    if hdd_str != "N/A":
-                        hdd_str += "\n{}".format(str(hdd))
-                    else:
-                        hdd_str = str(hdd)
+                #for hdd in assetrun.asset_batch.hdds.all():
+                #    if hdd_str != "N/A":
+                #        hdd_str += "\n{}".format(str(hdd))
+                #    else:
+                #        hdd_str = str(hdd)
 
                 for partition in assetrun.asset_batch.partitions.all():
                     if partition_str != "N/A":

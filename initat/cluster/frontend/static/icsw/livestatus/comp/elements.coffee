@@ -106,7 +106,7 @@ angular.module(
                             {
                                 key: "sge.#{_idx}"
                                 d: _call(_inner, _outer, _start_arc, _end_arc)
-                                className: "sb_lines #{className}"
+                                className: "sb-lines #{className}"
                                 onMouseEnter: (event) =>
                                     if _fm != "none"
                                         @handle_mouse_enter(event, _fm)
@@ -130,7 +130,7 @@ angular.module(
                                         {
                                             key: "sge.#{_idx}.#{_sub_idx}"
                                             d: _call(_outer, _outer_detail, _sub_start_arc, _sub_end_arc)
-                                            className : "sb_lines svg_inactive"
+                                            className : "svg-inactive svg-outline"
                                         }
                                     )
                                 )
@@ -141,7 +141,7 @@ angular.module(
                                     {
                                         key: "sge.#{_idx}.none"
                                         d: _call(_outer, _outer_detail, _start_arc, _end_arc)
-                                        className: "sb_lines svg_white"
+                                        className: "sb-lines svg-white"
                                     }
                                 )
                             )
@@ -155,7 +155,7 @@ angular.module(
                         key: "svg.title"
                         textAnchor: "middle"
                         fontSize: "#{_text_height}px"
-                        className: "svg_txt_color"
+                        className: "svg-txt-color"
                         alignmentBaseline: "middle"
 
                     }
@@ -168,12 +168,12 @@ angular.module(
                 _text_el = text(
                     {
                         x: 0
-                        y: 4
+                        y: 0
                         key: "svg.text"
                         textAnchor: "middle"
                         alignmentBaseline: "middle"
                         paintOrder: "stroke"
-                        className: "svg_stroke default_text"
+                        className: "svg-stroke default-text"
                     }
                     @props.text
                 )

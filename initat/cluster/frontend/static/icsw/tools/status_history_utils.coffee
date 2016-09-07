@@ -192,12 +192,12 @@ angular.module(
         "Planned down": "#5bc0de"
     }
     service_cssclass = {
-        "Ok": "svg_srv_ok"
-        "Warning": "svg_srv_warn"
-        "Critical": "svg_srv_crit"
-        "Unknown": "svg_srv_unknown"
-        "Undetermined": "svg_srv_notmonitored"
-        "Planned down": "svg_plandown"
+        "Ok": "svg-srv-ok"
+        "Warning": "svg-srv-warn"
+        "Critical": "svg-srv-crit"
+        "Unknown": "svg-srv-unknown"
+        "Undetermined": "svg-srv-notmonitored"
+        "Planned down": "svg-plandown"
     }
 
     host_colors = {
@@ -208,11 +208,11 @@ angular.module(
         "Planned down": "#5bc0de"
     }
     host_cssclass = {
-        "Up": "svg_dev_up"
-        "Down": "svg_dev_down"
-        "Unreachable": "svg_dev_unreach"
-        "Undetermined": "svg_dev_notmonitored"
-        "Planned down": "svg_plandown"
+        "Up": "svg-dev-up"
+        "Down": "svg-dev-down"
+        "Unreachable": "svg-dev-unreach"
+        "Undetermined": "svg-dev-notmonitored"
+        "Planned down": "svg-plandown"
     }
     # olive? "#808000"
 

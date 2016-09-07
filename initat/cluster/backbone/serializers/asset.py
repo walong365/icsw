@@ -30,6 +30,8 @@ from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     AssetHWHDDEntry, AssetHWLogicalEntry, AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
     AssetPackageVersionInstallTime
 
+from initat.cluster.backbone.models.partition import partition_disc
+
 __all__ = [
     "AssetRunSimpleSerializer",
     "AssetRunOverviewSerializer",
@@ -224,9 +226,9 @@ class AssetHWGPUEntrySerializer(serializers.ModelSerializer):
 class AssetHWHDDEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
-        model = AssetHWHDDEntry
+        model = partition_disc
         fields = (
-            "idx", "name", "serialnumber", "size"
+            "idx", "disc"
         )
 
 

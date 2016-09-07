@@ -119,7 +119,7 @@ MAP_DICT = {
 def main():
     src_files = ["logging-server", "meta-server", "package-client", "collserver"]
     if not config_store.ConfigStore.exists("client"):
-        new_store = config_store.ConfigStore("client")
+        new_store = config_store.ConfigStore("client", access_mode=config_store.AccessModeEnum.LOCAL, fix_access_mode=True)
         new_store.read("client_sample")
         _dict = {}
         for _file in src_files:
@@ -138,6 +138,8 @@ def main():
                     new_store[MAP_DICT[_new_key]] = _value
         # new_store.show()
         new_store.write()
+    else:
+        config_store.ConfigStore("client", access_mode=config_store.AccessModeEnum.LOCAL, fix_access_mode=True)
 
 
 if __name__ == "__main__":

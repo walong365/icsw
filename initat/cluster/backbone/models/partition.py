@@ -133,12 +133,22 @@ class lvm_vg(models.Model):
         verbose_name = u"Partition: LVM Volume Group"
 
 
+class LogicalDisc(models.Model):
+    idx = models.AutoField(primary_key=True)
+    device_name = models.CharField(max_length=128)
+    partition_fs = models.ForeignKey("partition_fs")
+    partitions = models.ManyToManyField("partition")
+    size = models.BigIntegerField(null=True)
+    free_space = models.BigIntegerField(null=True)
+
+
 class partition(models.Model):
     idx = models.AutoField(db_column="partition_idx", primary_key=True)
     partition_disc = models.ForeignKey("backbone.partition_disc")
     mountpoint = models.CharField(max_length=192, default="/", blank=True)
     partition_hex = models.CharField(max_length=6, blank=True)
-    size = models.IntegerField(null=True, blank=True, default=100)
+    # size in bytes
+    size = models.BigIntegerField(null=True, blank=True)
     mount_options = models.CharField(max_length=255, blank=True, default="defaults")
     pnum = models.IntegerField()
     bootable = models.BooleanField(default=False)
@@ -263,12 +273,16 @@ class partition_disc(models.Model):
 @receiver(signals.pre_save, sender=partition_disc)
 def partition_disc_pre_save(sender, **kwargs):
     if "instance" in kwargs:
-        disc_re = re.compile("^/dev/([shv]d[a-z]{1,2}|dm-(\d+)|mapper/.*|ida/(.*)|cciss/(.*))$")
+        disc_re_unix = re.compile(
+            "^/dev/([shv]d[a-z]{1,2}|dm-(\d+)|md\d+|mapper/.*|ida/(.*)|"
+            "cciss/(.*))$"
+        )
+        disc_re_win = re.compile(r'\\\\[\w.]\\physicaldrive\d+')
         cur_inst = kwargs["instance"]
         d_name = cur_inst.disc.strip().lower()
         if not d_name:
             raise ValidationError("name must not be zero")
-        if not disc_re.match(d_name):
+        if not disc_re_unix.match(d_name) and not disc_re_win.match(d_name):
             raise ValidationError("illegal name '{}'".format(d_name))
         all_discs = partition_disc.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_table=cur_inst.partition_table)).values_list("disc", flat=True)
         if d_name in all_discs:

@@ -19,6 +19,12 @@ class TestHardware(unittest.TestCase):
             open(os.path.join(self.BASE_PATH, 'win32.json')))
         hw = Hardware(win32_tree=win32_tree)
         self.assertEqual(hw.cpus[0].number_of_cores, 1)
+
+        self.assertEqual(len(hw.hdds), 3)
+        self.assertEqual(len(hw.hdds[0].partitions), 3)
+        partition = hw.hdds[0].partitions[2]
+        self.assertEqual(partition.logical.file_system, 'NTFS')
+
         self._common_test(hw)
 
     def _common_test(self, hw):
