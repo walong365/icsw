@@ -27,6 +27,7 @@ for password-types we need to add some encryption / message digest code via {alg
 import os
 import grp
 import stat
+import sys
 
 from enum import Enum
 
@@ -35,6 +36,10 @@ from lxml.builder import E
 
 from initat.tools import process_tools, logging_tools
 from initat.constants import CLUSTER_DIR
+
+if sys.platform == "darwin":
+    CLUSTER_DIR = os.path.join(sys.prefix, "opt/cluster")
+
 
 __all__ = [
     "ConfigVar",

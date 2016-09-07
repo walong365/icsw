@@ -59,6 +59,12 @@ def run_code(prog_name, global_config):
         ret_state = -1
     return ret_state
 
+def main_server():
+    global COLLCLIENT, COLLSERVER
+    COLLCLIENT = False
+    COLLSERVER = True
+
+    main()
 
 def main():
     prog_name = global_config.name()
