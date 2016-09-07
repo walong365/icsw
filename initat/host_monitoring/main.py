@@ -23,7 +23,17 @@
 """ host-monitoring, main part """
 
 import sys
+import subprocess
+import socket
 
+if sys.platform == "darwin":
+    subprocess.call(["/usr/local/bin/memcached", "-l", "localhost", "-p", "8001", "-u", "root", "-d"])
+
+    while True:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        result = sock.connect_ex(('127.0.0.1', 8001))
+        if result == 0:
+            break
 
 if __name__ == "__main__":
     # modify path if testing
