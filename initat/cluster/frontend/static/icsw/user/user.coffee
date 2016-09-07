@@ -2421,7 +2421,7 @@ user_module = angular.module(
                 return [_.round(radius * Math.cos(angle), 2), _.round(radius * Math.sin(angle), 2)]
 
             g = @d3_element.append("svg").attr("width", diameter).attr("height", diameter).append("g").attr("transform", "translate(#{outer_radius},#{outer_radius})")
-            link = g.selectAll(".link").data(root.descendants().slice(1)).enter().append("path").attr("class", "svg_d3link").attr(
+            link = g.selectAll(".link").data(root.descendants().slice(1)).enter().append("path").attr("class", "svg-d3link").attr(
                 "d"
                 (d) ->
                     # return "M" + project(d.x, d.y) + "C" + project(d.x, (d.y + d.parent.y) / 2) + " " + project(d.parent.x, (d.y + d.parent.y) / 2) + " " + project(d.parent.x, d.parent.y)

@@ -30,8 +30,10 @@ angular.module(
 ]).service("icswLivestatusFilterService",
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase", "icswMonitoringResult", "$timeout",
+    "icswSaltMonitoringResultService",
 (
     $q, $rootScope, icswMonLivestatusPipeBase, icswMonitoringResult, $timeout,
+    icswSaltMonitoringResultService,
 ) ->
     running_id = 0
     class icswLivestatusFilter extends icswMonLivestatusPipeBase
@@ -87,13 +89,14 @@ angular.module(
             # filtered entries
             @f_hosts = 0
             @f_services = 0
+            _luts = icswSaltMonitoringResultService.get_luts()
             # possible service states
             @service_state_list = [
-                [0, "O", true, "show OK states", "btn-success", "ok"]
-                [1, "W", true, "show warning states", "btn-warning", "warn"]
-                [2, "C", true, "show critical states", "btn-danger", "crit"]
-                [3, "U", true, "show unknown states", "btn-danger", "unknown"]
-                [5, "p", true, "show pending states", "btn-primary", "notmonitored"]
+                [0, "O", true, "show OK states", "btn-success", _luts.dev[0].className]
+                [1, "W", true, "show warning states", "btn-warning", _luts.dev[1].className]
+                [2, "C", true, "show critical states", "btn-danger", _luts.dev[2].className]
+                [3, "U", true, "show unknown states", "btn-danger", _luts.dev[3].className]
+                [5, "p", true, "show pending states", "btn-primary", _luts.dev[5].className]
             ]
             @service_state_lut = {}
 
@@ -106,11 +109,11 @@ angular.module(
 
             # possible host states
             @host_state_list = [
-                [0, "U", true, "show Up states", "btn-success", "up"]
-                [1, "D", true, "show Down states", "btn-warning", "down"]
-                [2, "?", true, "show unreachable states", "btn-danger", "unreach"]
-                [4, "M", true, "show unmonitored devs", "btn-primary", "notmonitored"]
-                [5, "p", true, "show pending devs", "btn-primary", "unknown"]
+                [0, "U", true, "show Up states", "btn-success", _luts.srv[0].className]
+                [1, "D", true, "show Down states", "btn-warning", _luts.srv[1].className]
+                [2, "?", true, "show unreachable states", "btn-danger", _luts.srv[2].className]
+                [4, "M", true, "show unmonitored devs", "btn-primary", _luts.srv[4].className]
+                [5, "p", true, "show pending devs", "btn-primary", _luts.srv[5].className]
             ]
             @host_state_lut = {}
 
@@ -236,9 +239,9 @@ angular.module(
 
 ]).factory("icswLivestatusFilterReactDisplay",
 [
-    "$q", "icswLivestatusCircleInfoReact", "icswDeviceLivestatusFunctions",
+    "$q", "icswLivestatusCircleInfoReact", "icswDeviceLivestatusFunctions", "icswSaltMonitoringResultService",
 (
-    $q, icswLivestatusCircleInfoReact, icswDeviceLivestatusFunctions,
+    $q, icswLivestatusCircleInfoReact, icswDeviceLivestatusFunctions, icswSaltMonitoringResultService,
 ) ->
     # display of livestatus filter
     {span, rect, title, span, svg, path, g, text, div} = React.DOM
@@ -275,14 +278,17 @@ angular.module(
                 _redraw = true
             return _redraw
 
+        filter_set: () ->
+            @setState({display_iter: @state.display_iter + 1})
+            @props.livestatus_filter.filter_changed()
+
         render: () ->
-            console.log "RENDER"
             _filter_changed = () =>
                 @props.livestatus_filter.filter_changed()
                 @props.filter_changed_cb()
 
-            _active_class = "svg_active"
-            _inact_class = "svg_inactive"
+            _active_class = "svg-active"
+            _inact_class = "svg-inactive"
             # console.log "r", @props.livestatus_filter
             _lf = @props.livestatus_filter
             if _lf.f_hosts != _lf.n_hosts
@@ -363,7 +369,7 @@ angular.module(
                 _rads[3]
                 (entry) =>
                     if _lf.host_states[entry[0]]
-                        return "cursorpointer sb_lines svg_dev_#{entry[5]}"
+                        return "cursorpointer sb_lines #{entry[5]}"
                     else
                         return "cursorpointer sb_lines svg-dev-unselected"
                 (code) =>
@@ -389,7 +395,7 @@ angular.module(
                 _rads[3]
                 (entry) =>
                     if _lf.service_states[entry[0]]
-                        return "cursorpointer sb_lines svg_srv_#{entry[5]}"
+                        return "cursorpointer sb_lines #{entry[5]}"
                     else
                         return "cursorpointer sb_lines svg-srv-unselected"
                 (code) =>
@@ -587,20 +593,28 @@ angular.module(
         link: (scope, element, attr) ->
             # predefined filters
             scope.filter_list = [
-                new DefinedFilter("c", "Custom", "W:C:U;D:?:M;S:H;S:H;ul")
+                new DefinedFilter("c", "Custom", "")
                 new DefinedFilter("a", "All Services and hosts", "O:W:C:U:p;U:D:?:M:p;S:H;S:H;ul")
+                new DefinedFilter("um", "All Unmonitored and pending hosts", "O:W:C:U:p;M:p;S:H;S:H;ul")
+                new DefinedFilter("upp", "All hard problems on up hosts", "O:W:C:U:p;U;H;H;l")
             ]
 
             scope.filter_changed = () ->
-                console.log "fc", scope.filter.get_filter_state_str()
+                _cur_fs = scope.filter.get_filter_state_str()
+                console.log "fs=", _cur_fs
+                scope.struct.cur_filter = scope.filter_list[0]
+                for entry in scope.filter_list
+                    if entry.filter_str == _cur_fs
+                        scope.struct.cur_filter = entry
 
             scope.struct = {
                 cur_filter: scope.filter_list[0]
             }
 
             scope.changed = () ->
-                scope.filter.restore_settings(scope.struct.cur_filter.filter_str)
-                new_rel.forceUpdate()
+                if scope.struct.cur_filter.filter_str
+                    scope.filter.restore_settings(scope.struct.cur_filter.filter_str)
+                    new_rel.filter_set()
 
             new_rel = ReactDOM.render(
                 React.createElement(
