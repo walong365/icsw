@@ -406,7 +406,7 @@ angular.module(
                 d_spec: ""
             }
             if obj_type == "dev"
-                title = "Create new peer on device '#{cur_obj.full_name}'"
+                title = "Create new Peer on Device '#{cur_obj.full_name}'"
                 edit_obj.s_netdevice = cur_obj.netdevice_set[0].idx
                 edit_obj.$$s_type = "l"
                 edit_obj.d_netdevice = cur_obj.netdevice_set[0].idx
@@ -414,7 +414,7 @@ angular.module(
                 helper_mode = "d"
 
             else if obj_type == "nd"
-                title = "Create new peer on netdevice '#{cur_obj.devname}'"
+                title = "Create new Peer on Netdevice '#{cur_obj.devname}'"
                 edit_obj.s_netdevice = cur_obj.idx
                 edit_obj.$$s_type = "l"
                 edit_obj.d_netdevice = cur_obj.idx
@@ -533,11 +533,11 @@ angular.module(
                 "domain_tree_node" : $scope.domain_tree.list[0].idx
             }
             if obj_type == "dev"
-                title = "Create new IP on device '#{cur_obj.full_name}'"
+                title = "Create new IP on Device '#{cur_obj.full_name}'"
                 edit_obj.netdevice = cur_obj.netdevice_set[0].idx
                 dev = cur_obj
             else if obj_type == "nd"
-                title = "Create new IP on netdevice '#{cur_obj.devname}'"
+                title = "Create new IP on Netdevice '#{cur_obj.devname}'"
                 edit_obj.netdevice = cur_obj.idx
                 dev = $scope.device_tree.all_lut[cur_obj.device]
         else
@@ -672,7 +672,7 @@ angular.module(
                 # dummy value
                 "network_device_type": new_type.idx
             }
-            title = "Create new netdevice on '#{nd_obj.full_name}'"
+            title = "Create new Netdevice on '#{nd_obj.full_name}'"
         else
             edit_obj = nd_obj
             dbu = new icswNetworkDeviceBackup()
@@ -1314,7 +1314,7 @@ angular.module(
             if create
                 obj_or_parent = {
                     "identifier"  : "eth"
-                    "description" : "new network device type"
+                    "description" : "New Network Device Type"
                     "name_re"     : "^eth.*$"
                     "mac_bytes"   : 6
                     "allow_virtual_interfaces" : true
@@ -1327,8 +1327,8 @@ angular.module(
             icswComplexModalService(
                 {
                     message: $compile($templateCache.get("network.device.type.form"))(sub_scope)
-                    title: "Network device type"
-                    css_class: "modal-wide"
+                    title: "Network Device Type"
+                    css_class: "modal-wide modal-form"
                     ok_label: if create then "Create" else "Modify"
                     closable: true
                     ok_callback: (modal) ->
@@ -1405,7 +1405,7 @@ angular.module(
             if create
                 obj_or_parent = {
                     "identifier": "p"
-                    "description": "new Network type"
+                    "description": "New Network Type"
                 }
             else
                 dbu = new icswNetworkTypeBackup()
@@ -1415,8 +1415,8 @@ angular.module(
             icswComplexModalService(
                 {
                     message: $compile($templateCache.get("network.type.form"))(sub_scope)
-                    title: "Network type"
-                    css_class: "modal-wide"
+                    title: "Network Type"
+                    css_class: "modal-wide modal-form"
                     ok_label: if create then "Create" else "Modify"
                     closable: true
                     ok_callback: (modal) ->
@@ -1592,7 +1592,7 @@ angular.module(
                 {
                     message: $compile($templateCache.get("network.form"))(sub_scope)
                     title: "Network"
-                    css_class: "modal-wide"
+                    css_class: "modal-wide modal-form"
                     ok_label: if create then "Create" else "Modify"
                     closable: true
                     ok_callback: (modal) ->

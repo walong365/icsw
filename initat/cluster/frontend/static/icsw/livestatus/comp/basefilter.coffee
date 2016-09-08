@@ -30,9 +30,21 @@ angular.module(
 ]).service("icswLivestatusFilterService",
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase", "icswMonitoringResult", "$timeout",
+    "icswSaltMonitoringResultService",
 (
     $q, $rootScope, icswMonLivestatusPipeBase, icswMonitoringResult, $timeout,
+    icswSaltMonitoringResultService,
 ) ->
+    _luts = icswSaltMonitoringResultService.get_luts()
+
+    class StateEntry
+        constructor: (@type, @idx, @short_code, @default_sel, @help_str, @btn_class) ->
+            @data = _luts[@type][@idx]
+
+    class StateTypeEntry
+        constructor: (@type, @idx, @short_code, @default_sel, @help_str, @btn_class) ->
+            @data = _luts.state[@idx]
+
     running_id = 0
     class icswLivestatusFilter extends icswMonLivestatusPipeBase
         constructor: () ->
@@ -89,35 +101,35 @@ angular.module(
             @f_services = 0
             # possible service states
             @service_state_list = [
-                [0, "O", true, "show OK states", "btn-success", "ok"]
-                [1, "W", true, "show warning states", "btn-warning", "warn"]
-                [2, "C", true, "show critical states", "btn-danger", "crit"]
-                [3, "U", true, "show unknown states", "btn-danger", "unknown"]
-                [5, "p", true, "show pending states", "btn-primary", "notmonitored"]
+                new StateEntry("srv", 0, "O", true, "show OK states", "btn-success")
+                new StateEntry("srv", 1, "W", true, "show warning states", "btn-warning")
+                new StateEntry("srv", 2, "C", true, "show critical states", "btn-danger")
+                new StateEntry("srv", 3, "U", true, "show unknown states", "btn-danger")
+                new StateEntry("srv", 5, "p", true, "show pending states", "btn-primary")
             ]
             @service_state_lut = {}
 
             # possibel service type states
             @service_type_list = [
-                [0, "S", true, "show soft states", "btn-primary"]
-                [1, "H", true, "show hard states", "btn-primary"]
+                new StateTypeEntry("srv", 0, "S", true, "show soft states", "btn-primary")
+                new StateTypeEntry("srv", 1, "H", true, "show hard states", "btn-primary")
             ]
             @service_type_lut = {}
 
             # possible host states
             @host_state_list = [
-                [0, "U", true, "show Up states", "btn-success", "up"]
-                [1, "D", true, "show Down states", "btn-warning", "down"]
-                [2, "?", true, "show unreachable states", "btn-danger", "unreach"]
-                [4, "M", true, "show unmonitored devs", "btn-primary", "notmonitored"]
-                [5, "p", true, "show pending devs", "btn-primary", "unknown"]
+                new StateEntry("dev", 0, "U", true, "show Up states", "btn-success")
+                new StateEntry("dev", 1, "D", true, "show Down states", "btn-warning")
+                new StateEntry("dev", 2, "?", true, "show unreachable states", "btn-danger")
+                new StateEntry("dev", 4, "M", true, "show unmonitored devs", "btn-primary")
+                new StateEntry("dev", 5, "p", true, "show pending devs", "btn-primary")
             ]
             @host_state_lut = {}
 
             # possibel host type states
             @host_type_list = [
-                [0, "S", true, "show soft states", "btn-primary"]
-                [1, "H", true, "show hard states", "btn-primary"]
+                new StateTypeEntry("dev", 0, "S", true, "show soft states", "btn-primary")
+                new StateTypeEntry("dev", 1, "H", true, "show hard states", "btn-primary")
             ]
             @host_type_lut = {}
 
@@ -127,30 +139,30 @@ angular.module(
             # default values for service states
             @service_states = {}
             for entry in @service_state_list
-                @service_state_lut[entry[0]] = entry
-                @service_state_lut[entry[1]] = entry
-                @service_states[entry[0]] = entry[2]
+                @service_state_lut[entry.idx] = entry
+                @service_state_lut[entry.short_code] = entry
+                @service_states[entry.idx] = entry.default
 
             # default values for host states
             @host_states = {}
             for entry in @host_state_list
-                @host_state_lut[entry[0]] = entry
-                @host_state_lut[entry[1]] = entry
-                @host_states[entry[0]] = entry[2]
+                @host_state_lut[entry.idx] = entry
+                @host_state_lut[entry.short_code] = entry
+                @host_states[entry.idx] = entry.default
                 
             # default values for service types
             @service_types = {}
             for entry in @service_type_list
-                @service_type_lut[entry[0]] = entry
-                @service_type_lut[entry[1]] = entry
-                @service_types[entry[0]] = entry[2]
+                @service_type_lut[entry.idx] = entry
+                @service_type_lut[entry.short_code] = entry
+                @service_types[entry.idx] = entry.default
 
             # default values for service types
             @host_types = {}
             for entry in @host_type_list
-                @host_type_lut[entry[0]] = entry
-                @host_type_lut[entry[1]] = entry
-                @host_types[entry[0]] = entry[2]
+                @host_type_lut[entry.idx] = entry
+                @host_type_lut[entry.short_code] = entry
+                @host_types[entry.idx] = entry.default
 
             @react_notifier = $q.defer()
             @change_notifier = $q.defer()
@@ -175,7 +187,7 @@ angular.module(
                 # set referenced
                 for key in _field.split(":")
                     try
-                        _dict[_lut[key][0]] = true
+                        _dict[_lut[key].idx] = true
                     catch err
                         console.error err
 
@@ -184,37 +196,37 @@ angular.module(
             @_settings_changed()
 
         toggle_service_state: (code) =>
-            _srvc_idx = @service_state_lut[code][0]
+            _srvc_idx = @service_state_lut[code].idx
             @service_states[_srvc_idx] = !@service_states[_srvc_idx]
             @_settings_changed()
 
         toggle_host_state: (code) =>
-            _host_idx = @host_state_lut[code][0]
+            _host_idx = @host_state_lut[code].idx
             @host_states[_host_idx] = !@host_states[_host_idx]
             @_settings_changed()
 
         toggle_service_type: (code) =>
-            _type_idx = @service_type_lut[code][0]
+            _type_idx = @service_type_lut[code].idx
             @service_types[_type_idx] = !@service_types[_type_idx]
             @_settings_changed()
 
         toggle_host_type: (code) =>
-            _type_idx = @host_type_lut[code][0]
+            _type_idx = @host_type_lut[code].idx
             @host_types[_type_idx] = !@host_types[_type_idx]
             @_settings_changed()
 
         # get state strings for ReactJS, a little hack ...
         _get_service_state_str: () =>
-            return (entry[1] for entry in @service_state_list when @service_states[entry[0]]).join(":")
+            return (entry.short_code for entry in @service_state_list when @service_states[entry.idx]).join(":")
 
         _get_host_state_str: () =>
-            return (entry[1] for entry in @host_state_list when @host_states[entry[0]]).join(":")
+            return (entry.short_code for entry in @host_state_list when @host_states[entry.idx]).join(":")
             
         _get_service_type_str: () =>
-            return (entry[1] for entry in @service_type_list when @service_types[entry[0]]).join(":")
+            return (entry.short_code for entry in @service_type_list when @service_types[entry.idx]).join(":")
 
         _get_host_type_str: () =>
-            return (entry[1] for entry in @host_type_list when @host_types[entry[0]]).join(":")
+            return (entry.short_code for entry in @host_type_list when @host_types[entry.idx]).join(":")
 
         _get_linked_str: () =>
             return if @linked then "l" else "ul"
@@ -236,17 +248,17 @@ angular.module(
 
 ]).factory("icswLivestatusFilterReactDisplay",
 [
-    "$q", "icswLivestatusCircleInfoReact", "icswDeviceLivestatusFunctions",
+    "$q", "icswLivestatusCircleInfoReact", "icswDeviceLivestatusFunctions", "icswSaltMonitoringResultService",
 (
-    $q, icswLivestatusCircleInfoReact, icswDeviceLivestatusFunctions,
+    $q, icswLivestatusCircleInfoReact, icswDeviceLivestatusFunctions, icswSaltMonitoringResultService,
 ) ->
     # display of livestatus filter
-    {span, rect, title, span, svg, path, g, text} = React.DOM
+    {span, rect, title, span, svg, path, g, text, div} = React.DOM
 
     return React.createClass(
         propTypes: {
             livestatus_filter: React.PropTypes.object
-            # filter_changed_cb: React.PropTypes.func
+            filter_changed_cb: React.PropTypes.func
         }
         getInitialState: () ->
             return {
@@ -275,12 +287,17 @@ angular.module(
                 _redraw = true
             return _redraw
 
+        filter_set: () ->
+            @setState({display_iter: @state.display_iter + 1})
+            @props.livestatus_filter.filter_changed()
+
         render: () ->
             _filter_changed = () =>
                 @props.livestatus_filter.filter_changed()
+                @props.filter_changed_cb()
 
-            _active_class = "svg_active"
-            _inact_class = "svg_inactive"
+            _active_class = "svg-active"
+            _inact_class = "svg-inactive"
             # console.log "r", @props.livestatus_filter
             _lf = @props.livestatus_filter
             if _lf.f_hosts != _lf.n_hosts
@@ -328,7 +345,7 @@ angular.module(
                                 key: "seg.#{_idx}"
                                 d: icswDeviceLivestatusFunctions.ring_segment_path(inner, outer, _start_arc, _end_arc)
                                 className: class_cb(entry)
-                                id: entry[1]
+                                id: entry.short_code
                                 onClick: (event) =>
                                     click_cb($(event.target).attr("id"))
                                     _filter_changed()
@@ -337,7 +354,7 @@ angular.module(
                                 {
                                     key: "seg.#{_idx}.title"
                                 }
-                                entry[3]
+                                entry.help_str
                             )
                         )
                     )
@@ -345,10 +362,15 @@ angular.module(
                         text(
                             {
                                 key: "seg.#{_idx}.t"
-                                transform: "translate(#{_middle_x}, #{_middle_y})"
-                                className: "svg-filter-text cursorpointer"
+                                transform: "translate(#{_middle_x}, #{_middle_y + 4})"
+                                fontFamily: "fontAwesome"
+                                className: "cursorpointer"
+                                fontSize: "10px"
+                                pointerEvents: "none"
+                                alignmentBaseline: "middle"
+                                textAnchor: "middle"
                             }
-                            entry[1]
+                            entry.data.iconCode
                         )
                     )
                 return _rings
@@ -360,10 +382,10 @@ angular.module(
                 _rads[2]
                 _rads[3]
                 (entry) =>
-                    if _lf.host_states[entry[0]]
-                        return "cursorpointer sb_lines svg_dev_#{entry[5]}"
+                    if _lf.host_states[entry.idx]
+                        return "cursorpointer sb-lines #{entry.data.svgClassName}"
                     else
-                        return "cursorpointer sb_lines svg-dev-unselected"
+                        return "cursorpointer sb-lines svg-dev-unselected"
                 (code) =>
                     _lf.toggle_host_state(code)
                     @setState({filter_state_str: _lf.get_filter_state_str()})
@@ -373,10 +395,10 @@ angular.module(
                 _rads[0]
                 _rads[1]
                 (entry) ->
-                    if _lf.host_types[entry[0]]
-                        return "cursorpointer sb_lines svg-sh-type"
+                    if _lf.host_types[entry.idx]
+                        return "cursorpointer sb-lines svg-sh-type"
                     else
-                        return "cursorpointer sb_lines svg-dev-unselected"
+                        return "cursorpointer sb-lines svg-dev-unselected"
                 (code) =>
                     _lf.toggle_host_type(code)
                     @setState({filter_state_str: _lf.get_filter_state_str()})
@@ -386,10 +408,10 @@ angular.module(
                 _rads[2]
                 _rads[3]
                 (entry) =>
-                    if _lf.service_states[entry[0]]
-                        return "cursorpointer sb_lines svg_srv_#{entry[5]}"
+                    if _lf.service_states[entry.idx]
+                        return "cursorpointer sb-lines #{entry.data.svgClassName}"
                     else
-                        return "cursorpointer sb_lines svg-srv-unselected"
+                        return "cursorpointer sb-lines svg-srv-unselected"
                 (code) =>
                     _lf.toggle_service_state(code)
                     @setState({filter_state_str: _lf.get_filter_state_str()})
@@ -399,108 +421,67 @@ angular.module(
                 _rads[0]
                 _rads[1]
                 (entry) ->
-                    if _lf.service_types[entry[0]]
-                        return "cursorpointer sb_lines svg-sh-type"
+                    if _lf.service_types[entry.idx]
+                        return "cursorpointer sb-lines svg-sh-type"
                     else
-                        return "cursorpointer sb_lines svg-srv-unselected"
+                        return "cursorpointer sb-lines svg-srv-unselected"
                 (code) =>
                     _lf.toggle_service_type(code)
                     @setState({filter_state_str: _lf.get_filter_state_str()})
             )
             _width = 220
             _height = 140
-            return svg(
+            return div(
                 {
                     key: "top"
-                    width: "#{_width}px"
-                    height: "#{_height}px"
-                    fontFamily: "'Open-Sans', sans-serif"
-                    fontSize: "10pt"
                 }
-                [
-                    g(
-                        {
-                            key: "link"
-                            transform: "translate(#{_width / 2}, 80)"
-                        }
-                        [
-                            rect(
-                                {
-                                    key: "rlink"
-                                    x: -100
-                                    y: -50
-                                    rx: 50
-                                    ry: 50
-                                    width: 200
-                                    height: 100
-                                    style: {
-                                        fill: "none",
-                                        stroke: if _lf.linked then "#ff4444" else "#ffdddd",
-                                        strokeWidth: "3px"
+                svg(
+                    {
+                        key: "top"
+                        width: "#{_width}px"
+                        height: "#{_height}px"
+                        fontFamily: "'Open-Sans', sans-serif"
+                        fontSize: "10pt"
+                    }
+                    [
+                        g(
+                            {
+                                key: "link"
+                                transform: "translate(#{_width / 2}, 80)"
+                            }
+                            [
+                                rect(
+                                    {
+                                        key: "rlink"
+                                        x: -100
+                                        y: -50
+                                        rx: 50
+                                        ry: 50
+                                        width: 200
+                                        height: 100
+                                        style: {
+                                            fill: "none",
+                                            stroke: if _lf.linked then "#ff4444" else "#ffdddd",
+                                            strokeWidth: "3px"
+                                        }
                                     }
-                                }
 
-                            )
-                            g(
-                                {
-                                    key: "linkbutton"
-                                    transform: "translate(0, -50)"
-                                }
-                                [
-                                    rect(
-                                        {
-                                            key: "buttonrect"
-                                            x: -15
-                                            y: -15
-                                            width: 30
-                                            height: 30
-                                            rx: 3
-                                            ry: 3
-                                            style: {
-                                                fill: "#ffffff"
-                                                stroke: "#000000"
-                                                strokeWidth: "1px"
-                                            }
-                                        }
-                                    )
-                                    text(
-                                        {
-                                            key: "linktext"
-                                            x: 0
-                                            y: 12
-                                            fontFamily: "fontAwesome"
-                                            className: "cursorpointer"
-                                            fontSize: "30px"
-                                            alignmentBaseline: "middle"
-                                            textAnchor: "middle"
-                                            pointerEvents: "painted"
-                                            onClick: (event) =>
-                                                _lf.toggle_link_state()
-                                                @setState({filter_state_str: _lf.get_filter_state_str()})
-                                                _filter_changed()
-                                        }
-                                        if _lf.linked then "\uf023" else "\uf13e"
-                                    )
-                                ]
-                            )
-                            g(
-                                {
-                                    key: "hosts"
-                                    transform: "translate(-50, 0)"
-                                }
-                                [
-                                    g(
-                                        {
-                                            key: "gtext"
-                                            transform: "translate(-10, -50)"
-                                        }
+                                )
+                                g(
+                                    {
+                                        key: "linkbutton"
+                                        transform: "translate(0, -50)"
+                                    }
+                                    [
                                         rect(
                                             {
-                                                key: "textrect"
-                                                x: -40
-                                                y: -8
-                                                width: 80
-                                                height: 16
+                                                key: "buttonrect"
+                                                x: -15
+                                                y: -15
+                                                width: 30
+                                                height: 30
+                                                rx: 3
+                                                ry: 3
                                                 style: {
                                                     fill: "#ffffff"
                                                     stroke: "#000000"
@@ -510,79 +491,156 @@ angular.module(
                                         )
                                         text(
                                             {
-                                                key: "text"
-                                                className: "svg-filter-head-text"
+                                                key: "linktext"
+                                                x: 0
+                                                y: 12
+                                                fontFamily: "fontAwesome"
+                                                className: "cursorpointer"
+                                                fontSize: "30px"
+                                                alignmentBaseline: "middle"
+                                                textAnchor: "middle"
+                                                pointerEvents: "painted"
+                                                onClick: (event) =>
+                                                    _lf.toggle_link_state()
+                                                    @setState({filter_state_str: _lf.get_filter_state_str()})
+                                                    _filter_changed()
                                             }
-                                            "#{_host_text}"
+                                            if _lf.linked then "\uf023" else "\uf13e"
                                         )
-                                    )
-                                    _rings_0
-                                    _rings_1
-                                ]
-                            )
-                            g(
-                                {
-                                    key: "services"
-                                    transform: "translate(50, 0)"
-                                }
-                                [
-                                    g(
-                                        {
-                                            key: "gtext"
-                                            transform: "translate(10, -50)"
-                                        }
-                                        rect(
+                                    ]
+                                )
+                                g(
+                                    {
+                                        key: "hosts"
+                                        transform: "translate(-50, 0)"
+                                    }
+                                    [
+                                        g(
                                             {
-                                                key: "textrect"
-                                                x: -40
-                                                y: -8
-                                                width: 80
-                                                height: 16
-                                                style: {
-                                                    fill: "#ffffff"
-                                                    stroke: "#000000"
-                                                    strokeWidth: "1px"
+                                                key: "gtext"
+                                                transform: "translate(-10, -50)"
+                                            }
+                                            rect(
+                                                {
+                                                    key: "textrect"
+                                                    x: -40
+                                                    y: -8
+                                                    width: 80
+                                                    height: 16
+                                                    style: {
+                                                        fill: "#ffffff"
+                                                        stroke: "#000000"
+                                                        strokeWidth: "1px"
+                                                    }
                                                 }
-                                            }
+                                            )
+                                            text(
+                                                {
+                                                    key: "text"
+                                                    className: "svg-filter-head-text"
+                                                }
+                                                "#{_host_text}"
+                                            )
                                         )
-                                        text(
+                                        _rings_0
+                                        _rings_1
+                                    ]
+                                )
+                                g(
+                                    {
+                                        key: "services"
+                                        transform: "translate(50, 0)"
+                                    }
+                                    [
+                                        g(
                                             {
-                                                key: "text"
-                                                className: "svg-filter-head-text"
+                                                key: "gtext"
+                                                transform: "translate(10, -50)"
                                             }
-                                            "#{_service_text}"
+                                            rect(
+                                                {
+                                                    key: "textrect"
+                                                    x: -40
+                                                    y: -8
+                                                    width: 80
+                                                    height: 16
+                                                    style: {
+                                                        fill: "#ffffff"
+                                                        stroke: "#000000"
+                                                        strokeWidth: "1px"
+                                                    }
+                                                }
+                                            )
+                                            text(
+                                                {
+                                                    key: "text"
+                                                    className: "svg-filter-head-text"
+                                                }
+                                                "#{_service_text}"
+                                            )
                                         )
-                                    )
-                                    _rings_2
-                                    _rings_3
-                                ]
-                            )
-                        ]
-                    )
-                ]
+                                        _rings_2
+                                        _rings_3
+                                    ]
+                                )
+                            ]
+                        )
+                    ]
+                )
             )
     )
 ]).directive("icswLivestatusFilterDisplay",
 [
-    "$q", "icswLivestatusFilterReactDisplay",
+    "$q", "icswLivestatusFilterReactDisplay", "$templateCache",
 (
-    $q, icswLivestatusFilterReactDisplay,
+    $q, icswLivestatusFilterReactDisplay, $templateCache,
 ) ->
+    class DefinedFilter
+        constructor: (@id, @name, @filter_str) ->
+
     return  {
         restrict: "EA"
         replace: true
         scope:
             filter: "=icswLivestatusFilter"
+        template: $templateCache.get("icsw.livestatus.filter.display")
         link: (scope, element, attr) ->
-            ReactDOM.render(
+            # predefined filters
+            scope.filter_list = [
+                new DefinedFilter("c", "Custom", "")
+                new DefinedFilter("a", "All Services and hosts", "O:W:C:U:p;U:D:?:M:p;S:H;S:H;ul")
+                new DefinedFilter("um", "All Unmonitored and pending hosts", "O:W:C:U:p;M:p;S:H;S:H;ul")
+                new DefinedFilter("upp", "All hard problems on up hosts", "O:W:C:U:p;U;H;H;l")
+            ]
+
+            scope.filter_changed = () ->
+                _cur_fs = scope.filter.get_filter_state_str()
+                console.log "fs=", _cur_fs
+                scope.struct.cur_filter = scope.filter_list[0]
+                for entry in scope.filter_list
+                    if entry.filter_str == _cur_fs
+                        scope.struct.cur_filter = entry
+
+            scope.struct = {
+                cur_filter: scope.filter_list[0]
+            }
+
+            scope.changed = () ->
+                if scope.struct.cur_filter.filter_str
+                    scope.filter.restore_settings(scope.struct.cur_filter.filter_str)
+                    new_rel.filter_set()
+
+            new_rel = ReactDOM.render(
                 React.createElement(
                     icswLivestatusFilterReactDisplay
                     {
                         livestatus_filter: scope.filter
+                        filter_changed_cb: scope.filter_changed
                     }
                 )
-                element[0]
+                $(element).find("div#svg")[0]
             )
+            console.log new_rel
     }
 
 ])

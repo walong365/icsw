@@ -71,6 +71,10 @@ angular.module(
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = gettextCatalog.getString("stop")
             ret_obj.icon_class = "fa fa-hand-stop-o"
+        else if type == "select"
+            ret_obj.css_class = "btn-primary"
+            ret_obj.button_value = "Select"
+            ret_obj.icon_class = "fa fa-check-square-o"
         else if type == "clear_selection"
             ret_obj.css_class = "btn-warning"
             ret_obj.button_value = gettextCatalog.getString("clear selection")

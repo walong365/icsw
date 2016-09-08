@@ -105,14 +105,14 @@ angular.module(
                         "g"
                         {
                             "data-active": 1
-                            class: "pieSegmentGroup"
+                            class: "pie-segment-group"
                             "data-order": i
                         }
                     )
                     _path = createSVGElement(
                         "path"
                         {
-                            class: "pieSegment #{entry.cssclass}"
+                            class: "pie-segment #{entry.cssclass}"
                             d: cmd.join(" ")
                         }
                     )
