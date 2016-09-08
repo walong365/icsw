@@ -57,21 +57,15 @@ angular.module(
             # console.log "me", event, focus_mode
 
         render: () ->
+            # check flags
+
             _show_info = false
             if @props.showInfo?
                 _show_info = @props.showInfo
+
             _show_details = false
             if @props.showDetails?
                 _show_details = @props.showDetails
-            _w = @props.size
-            _d = @props.data
-            if _d.length == 0
-                return div(
-                    {
-                        key: "top"
-                    }
-                    "No data"
-                )
 
             # check FocusMode
 
@@ -79,21 +73,25 @@ angular.module(
                 _fm = @props.focusMode
             else
                 _fm = "none"
+
+            _w = @props.size
+            _d = @props.data
+
             _total = _.sum((_el.value for _el in _d))
             _idx = 0
             _end_arc = - Math.PI * 0.5
             _cur_size = 0
             _p_list = []
-            if _d[0].length == 3
-                # no detailed info
-                _outer = _w / 2.0 * 0.95
-            else
+            if _d.length and _d[0].detail? and _show_details
                 # detailed info present, draw extra arcs
                 _outer = _w / 2.0 * 0.80
                 _outer_detail = _w / 2.0 * 0.95
+            else
+                # no detailed info
+                _outer = _w / 2.0 * 0.95
             _inner = _w / 2.0 * 0.5
             _raw_text_list = []
-            for _entry in _d   # [d_size, className, _info, _detail] in _d
+            for _entry in _d
                 _idx++
                 if _entry.value
                     if _show_info

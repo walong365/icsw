@@ -320,13 +320,13 @@ angular.module(
                     # $$segment is the pointer to the StructuredBurstNode and holds important flags and
                     #    structural information
                     # $$service is the pointer to the linked service check (may be a dummy check)
-                    if not srvc.className?
-                        console.log srvc
+                    if not srvc.$$data?
+                        console.warn "no $$data tag in", srvc
                     _el = {
                         key: "path.#{key_prefix}.#{_idx}"
                         d: _path
                         #classes : srvc.className #not needed any more?
-                        className: "sb_lines #{srvc.className}"
+                        className: "sb-lines #{srvc.$$data.svgClassName}"
                         $$segment: node
                         # link to check (node or device or devicegroup or system)
                         $$service: srvc
@@ -344,7 +344,7 @@ angular.module(
                             key: "path.#{key_prefix}.omit"
                             d: ring_path(inner, outer)
                             $$service: _dummy
-                            className: "sb_lines"
+                            className: "sb-lines"
                         }
                     )
         else
@@ -355,7 +355,7 @@ angular.module(
                     key: "path.#{key_prefix}.empty"
                     d: ring_path(inner, outer)
                     $$service: _dummy
-                    className: "sb_lines"
+                    className: "sb-lines"
                 }
             )
         return _result

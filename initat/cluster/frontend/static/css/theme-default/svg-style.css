@@ -46,7 +46,7 @@
 .svg-danger { fill: #ff0000; } /* prepare removal */
 
 .svg-txt_color { fill: black; }
-.default_text { fill: black; font-size: 10px; }
+.default-text { fill: black; font-size: 10px; }
 
 .sb-lines { stroke: #ffffff; stroke-width: 0.3; }
 .sb-lines-selected { stroke: #000000 ; stroke-width: 2; }

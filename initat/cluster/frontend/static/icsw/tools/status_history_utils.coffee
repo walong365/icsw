@@ -387,7 +387,7 @@ angular.module(
                                     {
                                         x: pos_x
                                         y: scope.height
-                                        class: "default_text"
+                                        class: "default-text"
                                         # style: "font-size": "#{scope.fontSize}px"
                                         textAnchor: "middle"
                                         alignmentBaseline: "baseline"

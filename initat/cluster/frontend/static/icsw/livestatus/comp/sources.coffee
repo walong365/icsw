@@ -270,7 +270,7 @@ angular.module(
         service_states: [0, 1, 2, 3, 4, 5]
     }
     salt_device_state = (entry) ->
-        entry.className = _device_lut[entry.state].className
+        entry.$$data = _device_lut[entry.state]
         #    0: "svg-dev-up"
         #    1: "svg-srv-warn"
         #    2: "svg-srv-crit"
@@ -310,7 +310,7 @@ angular.module(
             # special state: pending
             5: "default"
         }[entry.state]
-        entry.className = _service_lut[entry.state].className
+        entry.$$data = _service_lut[entry.state]
         #    0: "svg-srv-ok"
         #    1: "svg-srv-warn"
         #    2: "svg-srv-crit"
@@ -384,13 +384,14 @@ angular.module(
                 _info = {
                     value: _count
                     data: _lut[_state]
-                    infoStr: "#{_count} #{in_type}#{_ps} #{_lut[_state].info}"
                     shortInfoStr: "#{_count} #{_lut[_state].info}"
                 }
+                _info_str = "#{_count} #{in_type}#{_ps} #{_lut[_state].info}"
                 if detail_dict?
                     _sub_keys = _.keys(detail_dict[_state])
-                    _info.infoStr = "#{_info.infoStr}, #{_sub_keys.length} subelements"
+                    _info_str = "#{_info_str}, #{_sub_keys.length} subelements"
                     _info.detail = detail_dict[_state]
+                _info.infoStr = _info_str
                 _r_list.push(_info)
         return _r_list
 
