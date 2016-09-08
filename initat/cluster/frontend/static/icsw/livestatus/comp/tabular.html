@@ -1,5 +1,5 @@
 <script type="text/ng-template" id="icsw.livestatus.mon.table.view">
-    <h3 ng-show="!struct.monitoring_data.services.length">No checks</h3>
+    <div uib-alert class="alert-warning" ng-show="!struct.monitoring_data.services.length">No service results</div>
     <table
         st-table="entries_displayed"
         st-safe-src="struct.monitoring_data.services"
@@ -79,7 +79,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.livestatus.device.table.view">
-    <h3 ng-show="!struct.monitoring_data.hosts.length">No devices</h3>
+    <div uib-alert class="alert-warning" ng-show="!struct.monitoring_data.hosts.length">No device results</div>
     <table
         st-table="entries_displayed"
         st-safe-src="struct.monitoring_data.hosts"
