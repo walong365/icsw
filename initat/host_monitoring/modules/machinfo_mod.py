@@ -807,7 +807,7 @@ class _general(hm_classes.hm_module):
                 part_bin = self.parted_path
                 if part_bin:
                     self.log("getting partition info via parted")
-                    cur_stat, out = commands.getstatusoutput("{} -l".format(part_bin))
+                    cur_stat, out = commands.getstatusoutput("{} -sl".format(part_bin))
                     skip_until_next_blank_line = False
                     parted_dict = {}
                     dev_dict = {}
