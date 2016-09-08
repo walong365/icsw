@@ -1,13 +1,13 @@
 <script type="text/ng-template" id="icsw.device.network.overview">
     <h3>
-        Network config for {{ devices.length }} devices ({{ local_helper_obj.netdevice_list.length }} netdevices, {{ local_helper_obj.net_ip_list.length }} IPs, {{ local_helper_obj.peer_list.length }} peers)
-        <icsw-tools-button ng-if="show_copy_button" type="modify" size="xs" value="Copy networks" ng-click="copy_network()"></icsw-tools-button>
+        Network Configuration for {{ devices.length }} Devices ({{ local_helper_obj.netdevice_list.length }} Netdevices, {{ local_helper_obj.net_ip_list.length }} IPs, {{ local_helper_obj.peer_list.length }} Peers)
+        <icsw-tools-button ng-if="show_copy_button" type="modify" size="xs" value="Copy Networks" ng-click="copy_network()"></icsw-tools-button>
     </h3>
     <uib-accordion close-others="no">
         <div uib-accordion-group class="panel-default" is-open="device_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': device_open, 'glyphicon-chevron-right': !device_open}"></i>
-                {{ devices.length }} devices
+                {{ devices.length }} Devices
             </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
@@ -15,11 +15,11 @@
                         <th>Device</th>
                         <th>Coms</th>
                         <th>BootInfo</th>
-                        <th>#Ports</th>
-                        <th>#IPs</th>
-                        <th>#peers</th>
-                        <th>SNMP schemes</th>
-                        <th colspan="2">action</th>
+                        <th class="text-right">#Ports</th>
+                        <th class="text-right">#IPs</th>
+                        <th class="text-right">#Peers</th>
+                        <th>SNMP Schemes</th>
+                        <th colspan="2">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -30,44 +30,43 @@
         <div uib-accordion-group class="panel-default" is-open="netdevice_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netdevice_open, 'glyphicon-chevron-right': !netdevice_open}"></i>
-                {{ local_helper_obj.netdevice_list.length }} netdevices
+                {{ local_helper_obj.netdevice_list.length }} Netdevices
             </uib-accordion-heading>
             <icsw-tools-show-hide-columns ng-show="devices.length" columns="idx port ips peers bridge bond mac devtype mtu speed penalty flags status desired" create-show-column="true">
             </icsw-tools-show-hide-columns>
-            <table st-table="display_entries" st-safe-src="local_helper_obj.netdevice_list" ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
+            <table st-table="display_entries" st-safe-src="local_helper_obj.netdevice_list" ng-show="devices.length" class="table table-condensed table-hover table-striped">
                 <thead>
                     <tr>
-                        <th>Device</th>
-                        <th ng-show="show_column.idx">idx</th>
-                        <th ng-show="show_column.port">Port</th>
-                        <th ng-show="show_column.ips">#IPs</th>
-                        <th ng-show="show_column.peers">#peers</th>
-                        <th ng-show="show_column.bridge">Bridge</th>
-                        <th ng-show="show_column.bond">Bond</th>
-                        <th ng-show="show_column.mac">MAC</th>
-                        <th ng-show="show_column.devtype">Devtype</th>
-                        <th ng-show="show_column.mtu">MTU</th>
-                        <th ng-show="show_column.speed">speed</th>
-                        <th ng-show="show_column.penalty">penalty</th>
-                        <th ng-show="show_column.flags">flags</th>
-                        <th ng-show="show_column.status">status</th>
-                        <th ng-show="show_column.desired">desired</th>
-                        <th colspan="4">action</th>
-                    </tr>
-                    <tr>
                         <td colspan="99">
-                            <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td colspan="99">
+                            <div class="col-sm-3" style="padding-left:0px;">
+                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                            </div>
                             <div
                                 icsw-tools-pagination
                                 st-items-by-page="10"
                                 st-displayed-pages="11"
+                                class="col-sm-9"
                                 possible-items-by-page="10,20,50,100,200,500,1000"
                             ></div>
                         </td>
+                    </tr>
+                    <tr>
+                        <th>Device</th>
+                        <th ng-show="show_column.idx" class="text-right">Idx</th>
+                        <th ng-show="show_column.port">Port</th>
+                        <th ng-show="show_column.ips" class="text-right">#IPs</th>
+                        <th ng-show="show_column.peers" class="text-right">#Peers</th>
+                        <th ng-show="show_column.bridge">Bridge</th>
+                        <th ng-show="show_column.bond">Bond</th>
+                        <th ng-show="show_column.mac">MAC</th>
+                        <th ng-show="show_column.devtype">Device Type</th>
+                        <th ng-show="show_column.mtu" class="text-right">MTU</th>
+                        <th ng-show="show_column.speed">Speed</th>
+                        <th ng-show="show_column.penalty" class="text-right">Penalty</th>
+                        <th ng-show="show_column.flags">Flags</th>
+                        <th ng-show="show_column.status" class="text-center">Status</th>
+                        <th ng-show="show_column.desired" class="text-center">Desired</th>
+                        <th colspan="4">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -78,7 +77,7 @@
         <div uib-accordion-group class="panel-default" is-open="netip_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
-                {{ local_helper_obj.net_ip_list.length }} IPs
+                {{ local_helper_obj.net_ip_list.length }} IP Adresses
             </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
@@ -88,8 +87,8 @@
                         <th>IP</th>
                         <th>Network</th>
                         <th>DTN</th>
-                        <th>alias</th>
-                        <th colspan="2">action</th>
+                        <th>Alias</th>
+                        <th colspan="2">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -100,7 +99,7 @@
         <div uib-accordion-group class="panel-default" is-open="peer_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': peer_open, 'glyphicon-chevron-right': !peer_open}"></i>
-                {{ local_helper_obj.peer_list.length }} peer connections
+                {{ local_helper_obj.peer_list.length }} Peer Connections
             </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
@@ -108,14 +107,14 @@
                         <th>Device</th>
                         <th>Port</th>
                         <th>IPs</th>
-                        <th>cost</th>
+                        <th>Cost</th>
                         <th>Device</th>
                         <th>Port</th>
                         <th>IPs</th>
-                        <th>type</th>
+                        <th>Type</th>
                         <th>Autocreated</th>
                         <th>Info</th>
-                        <th colspan="2">action</th>
+                        <th colspan="2">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -128,7 +127,7 @@
 
 <script type="text/ng-template" id="icsw.device.network.copy">
     <form class="form-horizontal" name="form_data">
-        Copy network from
+        Copy Network From
         <ui-select ng-model="settings.src_device" style="max-width:400px; min-width:240px;">
             <ui-select-match class="ui-select-match" placeholder="select a target netdevice speed">{{$select.selected.full_name}}</ui-select-match>
             <ui-select-choices class="ui-select-choices" repeat="value.idx as value in devices">
@@ -160,13 +159,13 @@
         </input>
         <span ng-show="!ndip_obj.num_boot_ips">N/A</span>
     </td>
-    <td>
+    <td class="text-right">
         {{ ndip_obj.num_netdevices }}
     </td>
-    <td>
+    <td class="text-right">
         {{ ndip_obj.num_netips }}
     </td>
-    <td>
+    <td class="text-right">
         {{ ndip_obj.num_peers }}
     </td>
     <td>
@@ -186,7 +185,7 @@
             <div class="btn-group btn-xs">
 
                 <button type="button" ng-attr-class="btn btn-xs dropdown-toggle {{ icswToolsButtonConfigService.get_css_class('create') }}" data-toggle="dropdown">
-                    Create new <span class="caret"></span>
+                    create <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
                     <li ng-click="edit_netdevice(ndip_obj, $event, true)"><a>Netdevice</a></li>
@@ -206,7 +205,7 @@
     <td>
         {{ device_tree.all_lut[ndip_obj.device].full_name }}
     </td>
-    <td ng-show="show_column.idx">
+    <td ng-show="show_column.idx" class="text-right">
         <span ng-show="ndip_obj.snmp_idx">{{ ndip_obj.snmp_idx }}</span>
     <td ng-show="show_column.port">
         <span ng-show="ndip_obj.enabled">
@@ -216,10 +215,10 @@
             <em><strike>{{ get_netdevice_name(ndip_obj) }}</strike></em>
         </span>
     </td>
-    <td ng-show="show_column.ips">
+    <td ng-show="show_column.ips" class="text-right">
         {{ ndip_obj.num_netips }}
     </td>
-    <td ng-show="show_column.peers">
+    <td ng-show="show_column.peers" class="text-right">
         {{ get_num_peers_nd(ndip_obj) }}
     </td>
     <td ng-show="show_column.bridge">{{ get_bridge_info(ndip_obj) }}</td>
@@ -265,7 +264,7 @@
     <td>
         <div class="btn-group btn-xs" ng-show="acl_create(obj, 'backbone.device.change_network') && no_scan_running(ndip_obj)">
             <button type="button" class="btn {{ icswToolsButtonConfigService.get_css_class('create') }} btn-xs dropdown-toggle" data-toggle="dropdown">
-                Create new <span class="caret"></span>
+                create <span class="caret"></span>
             </button>
             <ul class="dropdown-menu">
                 <li ng-show="network_tree.nw_list.length" ng-click="edit_netip(ndip_obj, 'nd', $event, true)">
@@ -334,117 +333,119 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.network.total">
-    <uib-tabset icsw-tools-add-acl-functions>
-        <uib-tab heading="Device settings">
-            <icsw-device-network-overview icsw-sel-man="0" show-copy-button="1">
-            </icsw-device-network-overview>
-        </uib-tab>
+    <div class="container-fluid">
+        <uib-tabset icsw-tools-add-acl-functions>
+            <uib-tab heading="Device Settings">
+                <icsw-device-network-overview icsw-sel-man="0" show-copy-button="1">
+                </icsw-device-network-overview>
+            </uib-tab>
 
-         <uib-tab heading="Network topology">
-            <div>
-                <icsw-device-livestatus icsw-livestatus-view="'nettop'"></icsw-device-livestatus>
-            </div>
-        </uib-tab>
-        <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')" select="select_tab('cluster')">
-            <div ng-controller="icswDeviceNetworkClusterCtrl">
-                <h3>Network clusters ({{ clusters.length }})</h3>
-                <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
-                <table class="table table-condensed table-hover table-striped" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <th>Index</th>
-                            <th>has netdevices</th>
-                            <th>devices</th>
-                            <th>netdevices</th>
-                            <th>selected</th>
-                            <th>action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="cluster in clusters">
-                            <td>{{ $index + 1 }}</td>
-                            <td>{{ cluster.with_netdevices | yesno2 }}</td>
-                            <td class="text-right">{{ cluster.devices }}</td>
-                            <td class="text-right">{{ cluster.net_devices }}</td>
-                            <td class="text-center">{{ is_selected(cluster) }}</td>
-                            <td>
-                                <input type="button" class="btn btn-xs btn-primary" value="show" ng-click="show_cluster(cluster)"/>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </uib-tab>
+             <uib-tab heading="Network Topology">
+                <div>
+                    <icsw-device-livestatus icsw-livestatus-view="'nettop'"></icsw-device-livestatus>
+                </div>
+            </uib-tab>
+            <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')" select="select_tab('cluster')">
+                <div ng-controller="icswDeviceNetworkClusterCtrl">
+                    <h3>Network clusters ({{ clusters.length }})</h3>
+                    <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
+                    <table class="table table-condensed table-hover table-striped" style="width:auto;">
+                        <thead>
+                            <tr>
+                                <th>Index</th>
+                                <th>Has Netdevices</th>
+                                <th>Devices</th>
+                                <th>Netdevices</th>
+                                <th>Selected</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="cluster in clusters">
+                                <td>{{ $index + 1 }}</td>
+                                <td>{{ cluster.with_netdevices | yesno2 }}</td>
+                                <td class="text-right">{{ cluster.devices }}</td>
+                                <td class="text-right">{{ cluster.net_devices }}</td>
+                                <td class="text-center">{{ is_selected(cluster) }}</td>
+                                <td>
+                                    <input type="button" class="btn btn-xs btn-primary" value="show" ng-click="show_cluster(cluster)"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </uib-tab>
 
-        <uib-tab heading="Networks">
-            <icsw-network-list></icsw-network-list>
-        </uib-tab>
+            <uib-tab heading="Networks">
+                <icsw-network-list></icsw-network-list>
+            </uib-tab>
 
-        <uib-tab heading="Network types">
-            <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkTypeService">
-                <h3>Network types ({{ entries.length }} entries)</h3>
-                <icsw-tools-button type="create" value="create new" ng-click="create($event)" size="sm"/>
-                <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-hover table-condensed table-striped" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <th st-sort="identifier" st-sort-default="true">Type</th>
-                            <th st-sort="description">Description</th>
-                            <th colspan="2" class="text-center">action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ config_service.resolve_type(obj.identifier) }} ({{ obj.identifier }})</td>
-                            <td>{{ obj.description }}</td>
-                            <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </icsw-tools-rest-table-new>
-        </uib-tab>
+            <uib-tab heading="Network Types">
+                <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkTypeService">
+                    <h3>Network types ({{ entries.length }} entries)</h3>
+                    <icsw-tools-button type="create" value="create" ng-click="create($event)" size="sm"/>
+                    <table st-table="entries_displayed" st-safe-src="entries"
+                           class="table table-hover table-condensed table-striped" style="width:auto;">
+                        <thead>
+                            <tr>
+                                <th st-sort="identifier" st-sort-default="true">Type</th>
+                                <th st-sort="description">Description</th>
+                                <th colspan="2" class="text-center">action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="obj in entries_displayed">
+                                <td>{{ config_service.resolve_type(obj.identifier) }} ({{ obj.identifier }})</td>
+                                <td>{{ obj.description }}</td>
+                                <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
+                                <td><icsw-tools-button type="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </icsw-tools-rest-table-new>
+            </uib-tab>
 
-        <uib-tab heading="Network device types">
-            <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkDeviceTypeService">
-                <h3>Network device types ({{entries.length}} entries)</h3>
-                <icsw-tools-button type="create" ng-click="create($event)" size="sm"/>
-                <table st-table="entries_displayed" st-safe-src="entries"
-                       class="table table-hover table-condensed table-striped" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <td colspan="99">
-                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th st-sort="identifier" st-sort-default="true">Id</th>
-                            <th st-sort="description">Description</th>
-                            <th st-sort="name_re">RegExp</th>
-                            <th st-sort="mac_bytes">MAC bytes</th>
-                            <th st-sort="allow_virtual_interfaces">virtIF allowed</th>
-                            <th st-sort="for_matching">for matching</th>
-                            <th st-sort="auto_created">Autocreated</th>
-                            <th colspan="2" class="text-center">action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="obj in entries_displayed">
-                            <td>{{ obj.identifier }}</td>
-                            <td>{{ obj.description  }}</td>
-                            <td>{{ obj.name_re }}</td>
-                            <td class="text-center">{{ obj.mac_bytes }}</td>
-                            <td class="text-center">{{ obj.allow_virtual_interfaces | yesno1 }}</td>
-                            <td class="text-center">{{ obj.for_matching | yesno2 }}</td>
-                            <td class="text-center">{{ obj.auto_created | yesno2 }}</td>
-                            <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button></td>
-                        </tr>
-                    </tbody>
-                </table>
-            </icsw-tools-rest-table-new>
-        </uib-tab>
-    </uib-tabset>
+            <uib-tab heading="Network Device Types">
+                <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkDeviceTypeService">
+                    <h3>Network device types ({{entries.length}} entries)</h3>
+                    <icsw-tools-button type="create" ng-click="create($event)" size="sm"/>
+                    <table st-table="entries_displayed" st-safe-src="entries"
+                           class="table table-hover table-condensed table-striped" style="width:auto;">
+                        <thead>
+                            <tr>
+                                <td colspan="99">
+                                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th st-sort="identifier" st-sort-default="true">ID</th>
+                                <th st-sort="description">Description</th>
+                                <th st-sort="name_re">RegExp</th>
+                                <th st-sort="mac_bytes">MAC bytes</th>
+                                <th st-sort="allow_virtual_interfaces">virtIF allowed</th>
+                                <th st-sort="for_matching">for matching</th>
+                                <th st-sort="auto_created">Autocreated</th>
+                                <th colspan="2" class="text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="obj in entries_displayed">
+                                <td>{{ obj.identifier }}</td>
+                                <td>{{ obj.description  }}</td>
+                                <td>{{ obj.name_re }}</td>
+                                <td class="text-center">{{ obj.mac_bytes }}</td>
+                                <td class="text-center">{{ obj.allow_virtual_interfaces | yesno1 }}</td>
+                                <td class="text-center">{{ obj.for_matching | yesno2 }}</td>
+                                <td class="text-center">{{ obj.auto_created | yesno2 }}</td>
+                                <td><icsw-tools-button type="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button></td>
+                                <td><icsw-tools-button type="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </icsw-tools-rest-table-new>
+            </uib-tab>
+        </uib-tabset>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.network.list">
@@ -470,19 +471,19 @@
                     </td>
                 </tr>
                 <tr>
-                    <th st-sort="identifier" st-sort-default="true">Id</th>
-                    <th ng-show="show_column.network" st-sort="network">Network definition</th>
+                    <th st-sort="identifier" st-sort-default="true">ID</th>
+                    <th ng-show="show_column.network" st-sort="network">Network Definition</th>
                     <th ng-show="show_column.gateway" st-sort="gateway">Gateway</th>
-                    <th ng-show="show_column.gateway" st-sort="gw_pri">gw pri</th>
+                    <th ng-show="show_column.gateway" st-sort="gw_pri">GW Pri</th>
                     <th ng-show="show_column.autorange">AutoRange</th>
                     <th st-sort="num_ip">#IPs</th>
                     <th st-sort="penalty">Penalty</th>
-                    <th st-sort="enforce_unique_ips">uniqueIP</th>
+                    <th st-sort="enforce_unique_ips">Unique IP</th>
                     <th st-sort="network_type">Type</th>
                     <th st-sort="master_network">Master</th>
-                    <th ng-show="show_column.prefDTN">preferred DTN</th>
-                    <th st-sort="network_device_type">devtype(s)</th>
-                    <th colspan="2" class="text-center">action</th>
+                    <th ng-show="show_column.prefDTN">Preferred DTN</th>
+                    <th st-sort="network_device_type">Devtype(s)</th>
+                    <th colspan="2" class="text-center">Actions</th>
                 </tr>
             </thead>
 
@@ -571,35 +572,35 @@
 <script type="text/ng-template" id="network.device.type.form">
     <form class="form-horizontal" name="form_data">
         <fieldset>
-            <legend>Base data</legend>
+            <legend>Base Data</legend>
             <div class="form-group ng-class:form_error('identifier')">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Identifier<span class="asteriskField">*</span></label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="48" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="48" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group ng-class:form_error('description')">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Description<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="192" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group ng-class:form_error('name_re')">
-                <label class="control-label col-sm-3 requiredField">
-                    Name regexp<span class="asteriskField">*</span></label>
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Name Regexp<span class="asteriskField">*</span></label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="128" ng-model="edit_obj.name_re" placeholder="Regular expression" required="True" type="text" value="^.*$"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="128" ng-model="edit_obj.name_re" placeholder="Regular expression" required="True" type="text" value="^.*$"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
-                    #MAC bytes<span class="asteriskField">*</span>
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    #MAC Bytes<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="numberinput form-control" max="24" min="6" ng-model="edit_obj.mac_bytes" placeholder="MAC bytes" required="True" type="number" value="6"/>
+                    <input class="numberinput form-control maxwidth500" max="24" min="6" ng-model="edit_obj.mac_bytes" placeholder="MAC bytes" required="True" type="number" value="6"/>
                 </div>
             </div>
         </fieldset>
@@ -607,16 +608,18 @@
             <legend>Flags</legend>
             <div class="form-group">
                 <div class="checkbox">
+                    <div class="col-sm-5 icsw-formlabel"></div>
                     <div class="controls col-sm-7">
                         <label>
                             <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.allow_virtual_interfaces" type="checkbox"/>
-                            Allow virtual interfaces
+                            Allow Virtual Interfaces
                         </label>
                     </div>
                 </div>
             </div>
             <div class="form-group">
                 <div class="checkbox">
+                    <div class="col-sm-5 icsw-formlabel"></div>
                     <div class="controls col-sm-7">
                         <label>
                             <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.for_matching" type="checkbox"/>
@@ -633,37 +636,37 @@
     <form class="form-horizontal" name="form_data">
         <uib-tabset>
             <uib-tab heading="Basic settings">
-                <fieldset>
+                <fieldset style="margin-top:15px;">
                     <div class="form-group  ng-class:form_error('devname')">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Devname<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="64" ng-model="edit_obj.devname" placeholder="devicename" required="True" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" maxlength="64" ng-model="edit_obj.devname" placeholder="devicename" required="True" type="text"/>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
+                        <label class="control-label col-sm-3 icsw-formlabel">
                             Description
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="765" ng-model="edit_obj.description" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" maxlength="765" ng-model="edit_obj.description" type="text"/>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             MTU<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="numberinput form-control" ng-model="edit_obj.mtu" required="True" type="number" value="1500"/>
+                            <input class="numberinput form-control maxwidth500" ng-model="edit_obj.mtu" required="True" type="number" value="1500"/>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
+                        <label class="control-label col-sm-3 icsw-formlabel">
                             Netdevice speed
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select ng-model="edit_obj.netdevice_speed" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                            <ui-select ng-model="edit_obj.netdevice_speed" class="maxwidth500" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="select a target netdevice speed">{{$select.selected.info_string}}</ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.idx as value in network_tree.nw_speed_list">
                                     <div ng-bind-html="value.info_string | highlight: $select.search"></div>
@@ -673,6 +676,7 @@
                     </div>
                     <div class="form-group">
                         <div class="checkbox">
+                            <div class="col-sm-3 icsw-formlabel"></div>
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.ignore_netdevice_speed" type="checkbox"/>
@@ -683,6 +687,7 @@
                     </div>
                     <div class="form-group">
                         <div class="checkbox">
+                            <div class="col-sm-3 icsw-formlabel"></div>
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.enabled" type="checkbox"/>
@@ -692,11 +697,11 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
+                        <label class="control-label col-sm-3 icsw-formlabel">
                             Desired status
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select ng-model="edit_obj.desired_status" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                            <ui-select ng-model="edit_obj.desired_status" class="maxwidth500" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="select the desired status">{{$select.selected.info_string}}</ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.short as value in desired_stati">
                                     <div ng-bind-html="value.info_string | highlight: $select.search"></div>
@@ -706,44 +711,46 @@
                     </div>
                 </fieldset>
                 <fieldset>
-                    <legend>Routing settings</legend>
+                    <legend>Routing Settings</legend>
                     <div class="form-group">
                         <div class="checkbox">
+                            <div class="col-sm-3 icsw-formlabel"></div>
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.routing" type="checkbox"/>
-                                    network topology central node
+                                    Network Topology Central Node
                                 </label>
                             </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
+                        <label class="control-label col-sm-3 icsw-formlabel">
                             Cost
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="numberinput form-control" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" type="number" value="1"/>
+                            <input class="numberinput form-control maxwidth500" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" type="number" value="1"/>
                         </div>
                     </div>
                     <div class="form-group">
                         <div class="checkbox">
+                            <div class="col-sm-3 icsw-formlabel"></div>
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.inter_device_routing" type="checkbox"/>
-                                    Inter device routing
+                                    Inter Device Routing
                                 </label>
                             </div>
                         </div>
                     </div>
                 </fieldset>
                 <fieldset ng-show="!edit_obj.is_bridge && !edit_obj.is_bond && !edit_obj.bond_master && !edit_obj.bridge_device && get_vlan_masters(edit_obj).length">
-                    <legend>VLAN settings</legend>
+                    <legend>VLAN Settings</legend>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
-                            Master device
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            Master Device
                         </label>
                         <div class="controls col-sm-8">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                            <div class="input-group maxwidth500">
                                 <ui-select ng-model="_dit_obj.master_device" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="VLAN master device">{{$select.selected.devname}}</ui-select-match>
                                     <ui-select-choices class="ui-select-choices" repeat="value.idx as value in get_vlan_masters(edit_obj)">
@@ -759,31 +766,31 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
-                            VLAN id
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            VLAN ID
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="numberinput form-control" max="255" min="0" ng-model="edit_obj.vlan_id" type="number" value="0"/>
+                            <input class="numberinput form-control maxwidth500" max="255" min="0" ng-model="edit_obj.vlan_id" type="number" value="0"/>
                         </div>
                     </div>
                 </fieldset>
             </uib-tab>
             <uib-tab heading="Bridge / Bond">
                 <fieldset ng-show="!edit_obj.vlan_id && !edit_obj.bond_master && !edit_obj.is_bond">
-                    <legend>Bridge settings</legend>
+                    <legend>Bridge Settings</legend>
                     <div class="form-group">
                         <div class="checkbox" ng_show="!edit_obj.bridge_device">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-disabled="has_bridge_slaves(edit_obj)" ng-model="edit_obj.is_bridge" type="checkbox"/>
-                                    Is bridge device
+                                    Is Bridge Device
                                 </label>
                             </div>
                         </div>
                     </div>
                     <div class="form-group" ng_show="!edit_obj.is_bridge && get_bridge_masters(edit_obj).length">
                         <label class="control-label col-sm-3">
-                            Bridge device
+                            Bridge Device
                         </label>
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
@@ -803,7 +810,7 @@
                     </div>
                 </fieldset>
                 <fieldset ng-show="!edit_obj.vlan_id && !edit_obj.bridge_device && !edit_obj.is_bridge">
-                    <legend>Bond settings</legend>
+                    <legend>Bond Settings</legend>
                     <div class="form-group">
                         <div class="checkbox" ng_show="!edit_obj.bond_master">
                             <div class="controls col-lg-offset-0 col-sm-8">
@@ -816,7 +823,7 @@
                     </div>
                     <div class="form-group" ng_show="!edit_obj.is_bond && get_bond_masters(edit_obj).length">
                         <label class="control-label col-sm-3">
-                            Bond master
+                            Bond Master
                         </label>
                         <div class="controls col-sm-8">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
@@ -837,73 +844,73 @@
                 </fieldset>
             </uib-tab>
             <uib-tab heading="Hardware">
-                <fieldset>
+                <fieldset style="margin-top:15px;">
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
+                        <label class="control-label col-sm-3 icsw-formlabel">
                             Driver
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="384" ng-model="edit_obj.driver" type="text" value="e1000e"/>
+                            <input class="textinput textInput form-control maxwidth500" maxlength="384" ng-model="edit_obj.driver" type="text" value="e1000e"/>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
-                            Driver options
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            Driver Options
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" maxlength="672" ng-model="edit_obj.driver_options" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" maxlength="672" ng-model="edit_obj.driver_options" type="text"/>
                         </div>
                     </div>
                 </fieldset>
                 <fieldset>
-                    <legend>ethtool settings (for cluster boot)</legend>
+                    <legend>Ethtool Settings (for Cluster Boot)</legend>
                     <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
-                            Ethtool autoneg<span class="asteriskField">*</span>
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                            Ethtool Autonegotiation<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <select class="select form-control" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_autoneg" ng-options="a.id as a.option for a in ethtool_autoneg">
+                            <select class="select form-control maxwidth500" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_autoneg" ng-options="a.id as a.option for a in ethtool_autoneg">
                             </select>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
-                            Ethtool duplex<span class="asteriskField">*</span>
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                            Ethtool Duplex<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <select class="select form-control" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_duplex" ng-options="a.id as a.option for a in ethtool_duplex">
+                            <select class="select form-control maxwidth500" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_duplex" ng-options="a.id as a.option for a in ethtool_duplex">
                             </select>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
-                            Ethtool speed<span class="asteriskField">*</span>
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                            Ethtool Speed<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <select class="select form-control" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_speed" ng-options="a.id as a.option for a in ethtool_speed">
+                            <select class="select form-control maxwidth500" ng-change="update_ethtool(edit_obj)" ng-model="edit_obj.ethtool_speed" ng-options="a.id as a.option for a in ethtool_speed">
                             </select>
                         </div>
                     </div>
                 </fieldset>
                 <fieldset>
-                    <legend>MAC Address settings</legend>
+                    <legend>MAC Address Settings</legend>
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-6" style="width:390px;">
                             <div class="form-group">
-                                <label class="control-label col-sm-3">
+                                <label class="control-label col-sm-3" style="text-align:left;width:120px;">
                                     MAC-Address
                                 </label>
-                                <div class="controls col-sm-8">
+                                <div class="controls col-sm-8" style="width:240px;">
                                     <input class="textinput textInput form-control" maxlength="177" name="macaddr" ng-model="edit_obj.macaddr" type="text"/>
                                 </div>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label class="control-label col-sm-3">
+                                <label class="control-label col-sm-3" style="text-align:left;width:150px;">
                                     Fake MAC-Address
                                 </label>
-                                <div class="controls col-sm-8">
+                                <div class="controls col-sm-8" style="width:240px;">
                                     <input class="textinput textInput form-control" maxlength="177" name="fake_macaddr" ng-model="edit_obj.fake_macaddr" type="text"/>
                                 </div>
                             </div>
@@ -928,58 +935,58 @@
 <script type="text/ng-template" id="network.form">
     <form class="form-horizontal" name="form_data">
         <uib-tabset>
-            <uib-tab heading="Base data">
+            <uib-tab heading="Base Data">
                 <fieldset>
-                    <legend>Base data</legend>
+                    <legend>Base Data</legend>
                     <div class="form-group ng-class:form_error('identifier')">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Identifier<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="255" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" maxlength="255" name="identifier" ng-model="edit_obj.identifier" placeholder="Identifier" required="True" type="text"/>
                         </div>
                     </div>
                     <div class="form-group  ng-class:form_error('network')">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Network<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" name="network" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" required="True" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" name="network" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.network" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Network" required="True" type="text"/>
                         </div>
                     </div>
                     <div class="form-group  ng-class:form_error('netmask')">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Netmask<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" name="netmask" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" required="True" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" name="netmask" ng-blur="config_service.network_or_netmask_blur(edit_obj)" ng-model="edit_obj.netmask" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Netmask" required="True" type="text"/>
                         </div>
                     </div>
                     <div class="form-group  ng-class:form_error('broadcast')">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Broadcast<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" name="broadcast" ng-model="edit_obj.broadcast" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Broadcast" required="True" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" name="broadcast" ng-model="edit_obj.broadcast" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Broadcast" required="True" type="text"/>
                         </div>
                     </div>
                     <div class="form-group  ng-class:form_error('gateway')">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Gateway<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" name="gateway" ng-model="edit_obj.gateway" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Gateway" required="True" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" name="gateway" ng-model="edit_obj.gateway" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Gateway" required="True" type="text"/>
                         </div>
                     </div>
                 </fieldset>
                 <fieldset>
-                    <legend>Network type (master / slave)</legend>
+                    <legend>Network Type (Master / Worker)</legend>
                     <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
-                            Network type<span class="asteriskField">*</span>
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                            Network Type<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
-                            <ui-select ng-model="edit_obj.network_type" style="max-width:400px; min-width:240px;" ng-disabled="config_service.has_master_network(edit_obj)">
+                            <ui-select ng-model="edit_obj.network_type" class=" maxwidth500" ng-disabled="config_service.has_master_network(edit_obj)">
                                 <ui-select-match class="ui-select-match" placeholder="network type">{{$select.selected.description}}</ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.nw_tree().nw_type_list | props_filter:{description:$select.search}">
                                     <div ng-bind-html="value.description | highlight: $select.search"></div>
@@ -988,11 +995,11 @@
                         </div>
                     </div>
                     <div class="form-group" ng_show="config_service.is_slave_network(edit_obj.network_type)">
-                        <label class="control-label col-sm-3">
-                            Master network
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            Master Network
                         </label>
                         <div class="controls col-sm-7">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                            <div class="input-group maxwidth500">
                                 <ui-select ng-model="edit_obj.master_network" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="master network">{{$select.selected.identifier}}
                                     </ui-select-match>
@@ -1012,31 +1019,32 @@
             </uib-tab>
             <uib-tab heading="Flags / Range">
                 <fieldset>
-                    <legend>Flags and priority</legend>
+                    <legend>Flags and Priority</legend>
                     <div class="form-group">
                         <div class="checkbox">
+                            <div class="col-sm-3 icsw-formlabel"></div>
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.enforce_unique_ips" type="checkbox"/>
-                                    Enforce unique ips
+                                    Enforce Unique IP Addresses
                                 </label>
                             </div>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
-                            Gw pri
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            Gateway Priority
                         </label>
                         <div class="controls col-sm-7">
-                            <input class="numberinput form-control" name="gw_pri" ng-model="edit_obj.gw_pri" type="number" value="1"/>
+                            <input class="numberinput form-control maxwidth500" name="gw_pri" ng-model="edit_obj.gw_pri" type="number" value="1"/>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
-                            Preferred domain tree node
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            Preferred Domain Tree Node
                         </label>
                         <div class="controls col-sm-7">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                            <div class="input-group maxwidth500">
                                 <ui-select ng-model="edit_obj.preferred_domain_tree_node">
                                     <ui-select-match class="ui-select-match" placeholder="preferred DTN">{{ $select.selected.full_name }}</ui-select-match>
                                     <ui-select-choices
@@ -1054,11 +1062,11 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
-                            Network device type
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            Network Device Type
                         </label>
                         <div class="controls col-sm-7">
-                            <ui-select multiple="multiple" ng-model="edit_obj.network_device_type" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                            <ui-select multiple="multiple" ng-model="edit_obj.network_device_type" class="maxwidth500" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="network device types">{{$item.identifier}}</ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_service.nw_tree().nw_device_type_list | props_filter:{identifier:$select.search}">
                                     <div ng-bind-html="value.identifier | highlight: $select.search"></div>
@@ -1070,11 +1078,11 @@
                 <fieldset>
                     <legend>Range</legend>
                     <div class="form-group ng-class:form_error('start_range')">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Range Start (incl.)
                         </label>
                         <div class="controls col-sm-7">
-                            <div class="input-group">
+                            <div class="input-group maxwidth500">
                                 <input class="textinput textInput form-control" ng-focus="config_service.enter_range(edit_obj)" ng-blur="config_service.range_check(edit_obj)" ng-model="edit_obj.start_range" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Range start"  type="text"/>
                                 <span class="input-group-btn">
                                     <button type="button" ng-click="config_service.clear_range(edit_obj)" class="btn btn-default">
@@ -1085,11 +1093,11 @@
                         </div>
                     </div>
                     <div class="form-group ng-class:form_error('end_range')">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Range End (incl.)
                         </label>
                         <div class="controls col-sm-7">
-                            <div class="input-group">
+                            <div class="input-group maxwidth500">
                                 <input class="textinput textInput form-control" ng-focus="config_service.enter_range(edit_obj)" ng-blur="config_service.range_check(edit_obj)" ng-model="edit_obj.end_range" ng-pattern="/^\d+\.\d+\.\d+\.\d+$/" placeholder="Range end" type="text"/>
                                 <span class="input-group-btn">
                                     <button type="button" ng-click="config_service.clear_range(edit_obj)" class="btn btn-default">
@@ -1108,21 +1116,21 @@
 <script type="text/ng-template" id="network.type.form">
     <form id="form" class="form-horizontal" name="form_data">
         <fieldset>
-            <legend>Base data</legend>
+            <legend>Base Data</legend>
             <div class="form-group  ng-class:form_error('description')">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Description<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="192" ng-model="edit_obj.description" placeholder="Description" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Identifier<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.identifier" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.identifier" class="maxwidth500" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="network type type">{{$select.selected.name}}</ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value.value as value in config_service.network_types">
                             <div ng-bind-html="value.name | highlight: $select.search"></div>
@@ -1139,11 +1147,11 @@
         <fieldset>
             <legend>Basic settings</legend>
             <div class="form-group">
-                <label class="control-label col-sm-4 requiredField">
+                <label class="control-label col-sm-4 requiredField icsw-formlabel">
                     Netdevice<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="edit_obj.netdevice" style="max-width:400px; min-width:240px;" ng-disabled="!create_mode">-->
+                    <ui-select ng-model="edit_obj.netdevice" class="maxwidth500" ng-disabled="!create_mode">-->
                         <ui-select-match class="ui-select-match" placeholder="netdevice">{{$select.selected.devname}}</ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device.netdevice_set">
                             <div ng-bind-html="value.devname | highlight: $select.search"></div>
@@ -1152,11 +1160,11 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-4 requiredField">
+                <label class="control-label col-sm-4 requiredField icsw-formlabel">
                     Network<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="edit_obj.network" ng-change="network_changed(edit_obj)" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.network" ng-change="network_changed(edit_obj)" class="maxwidth500" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="network">{{$select.selected.info_string}}</ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value.idx as value in network_tree.nw_list | props_filter:{info_string:$select.search}" position="down">
                             <div ng-bind-html="value.info_string | highlight: $select.search"></div>
@@ -1165,22 +1173,22 @@
                 </div>
             </div>
             <div class="form-group  ng-class:form_error('devname')">
-                <label class="control-label col-sm-4 requiredField">
-                    IP<span class="asteriskField">*</span>
+                <label class="control-label col-sm-4 requiredField icsw-formlabel">
+                    IP Address<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <div class="input-group" style="max-width:400px; min-width:240px;">
-                        <input class="textinput textInput form-control" maxlength="16" name="ip" ng-model="edit_obj.ip" placeholder="IP address" required="True" type="text"/>
+                    <div class="input-group" style="width:100%;">
+                        <input class="textinput textInput form-control maxwidth500" maxlength="16" name="ip" ng-model="edit_obj.ip" placeholder="IP Address" required="True" type="text" />
                         <icsw-tools-button type="create" value="Get free IP" size="sm" ng-click="get_free_ip(edit_obj)"></icsw-tools-button>
                     </div>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-4 requiredField">
-                    Domain tree node<span class="asteriskField">*</span>
+                <label class="control-label col-sm-4 requiredField icsw-formlabel">
+                    Domain Tree Node<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-8">
-                    <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.domain_tree_node" class="maxwidth500" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="Domain tree node">{{$select.selected.tree_info}}</ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value.idx as value in domain_tree.list | props_filter:{tree_info:$select.search}">
                             <div ng-bind-html="value.tree_info | highlight: $select.search"></div>
@@ -1192,16 +1200,17 @@
         <fieldset>
             <legend>Alias settings (will be written without node postfixes)</legend>
             <div class="form-group">
-                <label class="control-label col-sm-4">
+                <label class="control-label col-sm-4 icsw-formlabel">
                     Alias
                 </label>
                 <div class="controls col-sm-8">
-                    <input class="textinput textInput form-control" maxlength="765" name="alias" ng-model="edit_obj.alias" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="765" name="alias" ng-model="edit_obj.alias" type="text"/>
                 </div>
             </div>
             <div class="form-group">
                 <div class="checkbox">
-                    <div class="controls col-sm-offset-4 col-sm-7">
+                    <div class="controls col-sm-5 icsw-formlabel"></div>
+                    <div class="controls col-sm-7">
                         <label>
                             <input class="checkboxinput checkbox" name="alias_excl" ng-model="edit_obj.alias_excl" type="checkbox"/>
                             Alias is exclusive
@@ -1215,26 +1224,23 @@
 
 <script type="text/ng-template" id="icsw.peer.form">
     <form class="form-horizontal" name="form_data">
-        <h2>
-            Network topology connection (peer)
-        </h2>
         <fieldset>
-            <legend>Settings</legend>
+            <legend>Network topology connection (peer)</legend>
             <div class="form-group">
-                <label class="control-label col-sm-2 requiredField">
+                <label class="control-label col-sm-4 requiredField icsw-formlabel">
                     Cost<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-9">
-                    <input class="numberinput form-control" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" required="True" type="number" value="0"/>
+                <div class="controls col-sm-8">
+                    <input class="numberinput form-control maxwidth500" max="128" min="1" name="penalty" ng-model="edit_obj.penalty" required="True" type="number" value="0"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-2">
+                <label class="control-label col-sm-4 icsw-formlabel">
                     Source
                 </label>
 
-                <div class="col-sm-9">
-                    <ui-select ng-model="edit_obj.s_netdevice">
+                <div class="col-sm-8">
+                    <ui-select ng-model="edit_obj.s_netdevice" class="maxwidth500">
                         <ui-select-match class="ui-select-match" placeholder="select a netdevice">
                             {{ $select.selected.info_string }}
                         </ui-select-match>
@@ -1245,11 +1251,11 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-2">
+                <label class="control-label col-sm-4 icsw-formlabel">
                     Destination
                 </label>
-                <div class="col-sm-9">
-                    <ui-select ng-model="edit_obj.d_netdevice">
+                <div class="col-sm-8">
+                    <ui-select ng-model="edit_obj.d_netdevice" class="maxwidth500">
                         <ui-select-match class="ui-select-match" placeholder="select a target device">
                             {{$select.selected.info_string}}
                         </ui-select-match>
@@ -1260,36 +1266,36 @@
                 </div>
             </div>
             <div id="div_id_s_spec" class="form-group">
-                <label for="id_s_spec" class="control-label col-sm-2">
-                    Source spec
+                <label for="id_s_spec" class="control-label col-sm-4 icsw-formlabel">
+                    Source Specification
                 </label>
-                <div class="controls col-sm-9">
-                    <input class="textinput textInput form-control" maxlength="128" name="s_spec" ng-model="edit_obj.s_spec" type="text"/>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control maxwidth500" maxlength="128" name="s_spec" ng-model="edit_obj.s_spec" type="text"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-2">
-                    Dest spec
+                <label class="control-label col-sm-4 icsw-formlabel">
+                    Destination specification
                 </label>
-                <div class="controls col-sm-9">
-                    <input class="textinput textInput form-control" maxlength="128" name="d_spec" ng-model="edit_obj.d_spec" type="text"/>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control maxwidth500" maxlength="128" name="d_spec" ng-model="edit_obj.d_spec" type="text"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-2">
-                    Info
+                <label class="control-label col-sm-4 icsw-formlabel">
+                    Information
                 </label>
-                <div class="controls col-sm-9">
-                    <input class="textinput textInput form-control" maxlength="256" name="info" ng-model="edit_obj.info" type="text"/>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control maxwidth500" maxlength="256" name="info" ng-model="edit_obj.info" type="text"/>
                 </div>
             </div>
             <div class="form-group" ng-if="!create_mode">
-                <label class="control-label col-sm-2">
-                    Creation info
+                <label class="control-label col-sm-4 icsw-formlabel">
+                    Creation Information
                 </label>
-                <div class="col-sm-9">
-                    <span ng-show="edit_obj.autocreated" class="label label-warning">autocreated</span>
-                    <span ng-show="!edit_obj.autocreated" class="label label-success">manually created</span>
+                <div class="col-sm-8">
+                    <span ng-show="edit_obj.autocreated" class="label label-warning">Automatically Created</span>
+                    <span ng-show="!edit_obj.autocreated" class="label label-success">Manually Created</span>
                 </div>
             </div>
         </fieldset>
