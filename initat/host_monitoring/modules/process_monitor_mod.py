@@ -23,6 +23,7 @@ import os
 import re
 import signal
 import time
+import sys
 
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import affinity_tools, logging_tools, process_tools, config_store, \
@@ -539,13 +540,21 @@ class proclist_command(hm_classes.hm_command):
     def __call__(self, srv_com, cur_ns):
         srv_com["psutil"] = "yes"
         srv_com["num_cores"] = psutil.cpu_count(logical=True)
-        srv_com["process_tree"] = process_tools.compress_struct(
-            process_tools.get_proc_list(
-                attrs=[
-                    "pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid", "cpu_affinity",
-                ]
-            )
-        )
+
+        _attrs = ["pid", "ppid", "uids", "gids", "name", "exe", "cmdline", "status", "ppid"]
+
+        if sys.platform == "darwin":
+            process_dict = process_tools.get_proc_list(attrs=_attrs)
+
+            cpu_affinity_list = [i for i in range(psutil.cpu_count())]
+
+            for pid in process_dict:
+                process_dict[pid]["cpu_affinity"] = cpu_affinity_list
+        else:
+            _attrs.append("cpu_affinity")
+            process_dict = process_tools.get_proc_list(attrs=_attrs)
+
+        srv_com["process_tree"] = process_tools.compress_struct(process_dict)
 
     def interpret(self, srv_com, cur_ns):
         _fe = logging_tools.form_entry
