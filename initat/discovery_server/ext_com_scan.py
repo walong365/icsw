@@ -676,11 +676,6 @@ class PlannedRunState(object):
         s, _error_string = (None, "")
 
         if result is not None:
-#             print 'store_zmq_result'
-#             print 'result:', result
-#             print '_db_obj.run_type', _db_obj.run_type
-#             print 'result.tostring():', etree.tostring(result.tree)
-#             print
             try:
                 if _db_obj.run_type not in AssetType:
                     raise ValueError(
