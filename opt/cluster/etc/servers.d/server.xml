@@ -99,7 +99,7 @@
             <config_name contact='0'>server</config_name>
         </config_names>
     </instance>
-    <instance name="icinga" check_type="simple" pid_file_name="/opt/icinga/var/icinga.lock" any_threads_ok="1" runs_on="system" wait_time="20">
+    <instance name="icinga" check_type="simple" pid_file_name="/opt/icinga/var/icinga.lock" any_threads_ok="1" startstop="0" runs_on="system">
         <config_names>
             <config_name contact='0'>monitor_server</config_name>
             <config_name contact='0'>monitor_master</config_name>
