@@ -28,8 +28,8 @@ from initat.md_sync_server.config import global_config
 from initat.tools import configfile, logging_tools
 
 
-class version_check_mixin(object):
-    def _check_md_version(self):
+class VersionCheckMixin(object):
+    def VCM_check_md_version(self):
         start_time = time.time()
         self.log("checking type and version of installed monitoring daemon")
         md_version, md_type = ("unknown", "unknown")
@@ -91,7 +91,7 @@ class version_check_mixin(object):
         end_time = time.time()
         self.log("monitor-daemon version discovery took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
 
-    def _check_relay_version(self):
+    def VCM_check_relay_version(self):
         from initat.client_version import VERSION_STRING as relay_version
         global_config.add_config_entries(
             [

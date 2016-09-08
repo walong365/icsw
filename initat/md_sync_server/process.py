@@ -113,11 +113,11 @@ class ExternalProcess(object):
 
 
 class ProcessControl(object):
-    def __init__(self, proc, proc_name, pid_file_name):
+    def __init__(self, proc, proc_name, pid_file_name, target_state=True):
         self.__process = proc
         self.__proc_name = proc_name
         self.__pid_file_name = pid_file_name
-        self._target_state = True
+        self._target_state = target_state
         self.log("init (pid_file_name={})".format(self.__pid_file_name))
         self.__ext_process = None
         self.check_state()
@@ -130,10 +130,12 @@ class ProcessControl(object):
 
     def check_state(self):
         _proc = self._get_proc()
-        if _proc is None and self._target_state:
+        if _proc is None:
+            return False
             self.log("No process found, starting {} ...".format(self.__proc_name))
             self.start()
-        elif _proc is not None and not self._target_state:
+        elif _proc is not None:
+            return True
             self.log("Process found, stopping ...")
             self.stop()
 
@@ -176,6 +178,7 @@ class ProcessControl(object):
         return _proc
 
     def stop(self):
+        self.log("stopping process")
         if self.__ext_process:
             self.__ext_process.communicate()
             self.__ext_process.terminate()
@@ -202,7 +205,7 @@ class ProcessControl(object):
                     _s_time = time.time()
                     while True:
                         try:
-                            cur_proc = psutil.Process(pid=_pid)
+                            _cur_proc = psutil.Process(pid=_pid)
                         except:
                             break
                         else:
@@ -220,6 +223,7 @@ class ProcessControl(object):
     def start(self):
         if self.__ext_process:
             self.stop()
+        self.log("starting process")
         _com = "{} -d {}".format(
             os.path.join(
                 global_config["MD_BASEDIR"],

@@ -26,20 +26,20 @@ import time
 import zmq
 
 from initat.host_monitoring.hm_classes import mvect_entry
-from initat.md_sync_server.mixins import version_check_mixin
-from initat.md_sync_server.config import global_config
+from initat.md_sync_server.mixins import VersionCheckMixin
+from initat.md_sync_server.config import global_config, CS_NAME
 from initat.md_sync_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
-    threading_tools, server_mixins
+    threading_tools, server_mixins, config_store
 from initat.tools.server_mixins import RemoteCall
 
 
 @server_mixins.RemoteCallProcess
 class server_process(
-    server_mixins.ICSWBasePool,
+    server_mixins.ICSWBasePoolClient,
     server_mixins.RemoteCallMixin,
     server_mixins.SendToRemoteServerMixin,
-    version_check_mixin,
+    VersionCheckMixin,
 ):
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
@@ -48,6 +48,7 @@ class server_process(
         self.__enable_livestatus = True  # global_config["ENABLE_LIVESTATUS"]
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
+        self.read_config_store()
         self._init_msi_block()
         # log config
         self.CC.log_config()
@@ -57,8 +58,8 @@ class server_process(
         # from mixins
         self._icinga_pc = None
         self.register_timer(self._check_for_pc_control, 10, instant=True)
-        self._check_md_version()
-        self._check_relay_version()
+        self.VCM_check_md_version()
+        self.VCM_check_relay_version()
         self._init_network_sockets()
         _srv_com = server_command.srv_command(command="status")
         self.send_to_remote_server_ip("127.0.0.1", "cluster-server", unicode(_srv_com))
@@ -76,6 +77,7 @@ class server_process(
                     self,
                     global_config["MD_TYPE"],
                     _lock_file_name,
+                    target_state=self.config_store["mon_is_running"],
                 )
             else:
                 self.log(
@@ -83,10 +85,39 @@ class server_process(
                     logging_tools.LOG_LEVEL_WARN
                 )
         else:
-            self._icinga_pc.check_state()
+            self._check_mon_state()
+
+    def _check_mon_state(self):
+        if self._icinga_pc is not None:
+            _is_running = self._icinga_pc.check_state()
+            global_config["MON_CURRENT_STATE"] = _is_running
+            if global_config["MON_TARGET_STATE"] != global_config["MON_CURRENT_STATE"]:
+                self.log(
+                    "current state differs: {} (target) != {} (current)".format(
+                        global_config["MON_TARGET_STATE"],
+                        global_config["MON_CURRENT_STATE"],
+                    )
+                )
+                if global_config["MON_TARGET_STATE"]:
+                    self._icinga_pc.start()
+                else:
+                    self._icinga_pc.stop()
 
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
+
+    def read_config_store(self):
+        self.config_store = config_store.ConfigStore(CS_NAME, log_com=self.log, access_mode=config_store.AccessModeEnum.LOCAL)
+        self.config_store["mon_is_running"] = self.config_store.get("mon_is_running", True)
+        global_config.add_config_entries(
+            [
+                ("MON_TARGET_STATE", configfile.bool_c_var(self.config_store["mon_is_running"])),
+                # just a guess
+                ("MON_CURRENT_STATE", configfile.bool_c_var(False)),
+            ]
+        )
+        self.config_store.write()
+        # self.config_store
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -216,6 +247,25 @@ class server_process(
         )
 
         self.__slaves = {}
+
+    @RemoteCall()
+    def stop_mon_process(self, srv_com, **kwargs):
+        self.config_store["mon_is_running"] = False
+        return self._start_stop_mon_process(srv_com)
+
+    @RemoteCall()
+    def start_mon_process(self, srv_com, **kwargs):
+        self.config_store["mon_is_running"] = True
+        return self._start_stop_mon_process(srv_com)
+
+    def _start_stop_mon_process(self, srv_com):
+        global_config["MON_TARGET_STATE"] = self.config_store["mon_is_running"]
+        self.config_store.write()
+        if self._icinga_pc:
+            self._icinga_pc._target_state = self.config_store["mon_is_running"]
+            self._check_mon_state()
+        srv_com.set_result("set mon_is_running to {}".format(self.config_store["mon_is_running"]))
+        return srv_com
 
     @RemoteCall(target_process="KpiProcess")
     def calculate_kpi_preview(self, srv_com, **kwargs):
