@@ -1,14 +1,14 @@
 <script type="text/ng-template" id="icsw.device.location.overview">
     <h3>
-        Device location for
-        <ng-pluralize count="struct.devices.length" when="{'one':'1 device', 'other':'{} devices'}"></ng-pluralize>
+        Device Location for
+        <ng-pluralize count="struct.devices.length" when="{'one':'1 Device', 'other':'{} Devices'}"></ng-pluralize>
     </h3>
 
     <!-- <div>
         ReactTree:
         <icsw-react-tree></icsw-react-tree>
     </div> -->
-    <div uib-alert class="alert-warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Available locations'.</div>
+    <div uib-alert class="alert-warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Available Locations'.</div>
 
     <div class="row" ng-if="struct.device_list_ready">
         <div class="col-md-6">

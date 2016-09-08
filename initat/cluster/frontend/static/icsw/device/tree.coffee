@@ -295,6 +295,8 @@ angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get(template_name))(sub_scope)
+                title: "Device Setup"
+                closable: true
                 ok_label: if create_mode then "Create" else "Modify"
                 ok_callback: (modal) ->
                     d = $q.defer()
