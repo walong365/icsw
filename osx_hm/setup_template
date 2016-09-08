@@ -1,0 +1,117 @@
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This file is part of icsw
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+""" setup.py for icsw-host-monitor """
+
+from distutils.core import setup
+
+setup(
+    name="icsw-host-monitor",
+    version=VERSION_PLACEHOLDER,
+    description="The init.at host monitoring server",
+    license="GPL",
+    url="http://www.init.at",
+    author="Andreas Lang-Nevyjel",
+    author_email="lang-nevyjel@init.at",
+    packages=[
+        "initat",
+        "initat.icsw",
+        "initat.icsw.logwatch",
+        "initat.icsw.setup",
+        "initat.icsw.service",
+        "initat.icsw.license",
+        "initat.icsw.device",
+        "initat.icsw.lse",
+        "initat.icsw.info",
+        "initat.icsw.cstore",
+        "initat.icsw.relay",
+        "initat.icsw.image",
+        "initat.icsw.job",
+        "initat.icsw.config",
+        "initat.icsw.collectd",
+        "initat.icsw.user",
+        "initat.tools",
+        "initat.tools.bgnotify",
+        "initat.tools.bgnotify.tasks",
+        "initat.tools.nameserver_tools",
+        "initat.tools.prd_tools",
+        "initat.tools.mongodb",
+        "initat.rms",
+        "initat.cluster",
+        "initat.cluster.backbone",
+        "initat.cluster.backbone.tools",
+        "initat.cluster.backbone.0800_models",
+        "initat.cluster.backbone.models",
+        "initat.cluster.backbone.exceptions",
+        "initat.cluster.backbone.migrations",
+        "initat.cluster.backbone.serializers",
+        "initat.cluster.backbone.management",
+        "initat.cluster.backbone.management.commands",
+        "initat.cluster.backbone.management.commands.fixtures",
+        "initat.cluster.frontend",
+        "initat.cluster.frontend.ext",
+        "initat.cluster.frontend.management",
+        "initat.cluster.frontend.management.commands",
+        "initat.cluster.frontend.rms_addons",
+        "initat.cluster.urls",
+        "initat.cluster_config_server",
+        "initat.cluster_server",
+        "initat.cluster_server.capabilities",
+        "initat.cluster_server.modules",
+        "initat.collectd",
+        "initat.collectd.collectd_types",
+        "initat.discovery_server",
+        "initat.discovery_server.event_log",
+        "initat.logcheck_server",
+        "initat.logcheck_server.logcheck",
+        "initat.logging_server",
+        "initat.md_config_server",
+        "initat.md_config_server.config",
+        "initat.md_config_server.icinga_log_reader",
+        "initat.md_config_server.special_commands",
+        "initat.md_config_server.special_commands.instances",
+        "initat.md_config_server.kpi",
+        "initat.md_sync_server",
+        "initat.package_install",
+        "initat.package_install.server",
+        "initat.package_install.client",
+        "initat.rrd_grapher",
+        "initat.rrd_grapher.graph",
+        "initat.mother",
+        "initat.snmp",
+        "initat.snmp.handler",
+        "initat.snmp.handler.instances",
+        "initat.snmp.process",
+        "initat.snmp.sink",
+        "initat.snmp_relay",
+        "initat.snmp_relay.schemes",
+        "initat.snmp_relay.schemes.instances",
+        "initat.meta_server",
+        "initat.host_monitoring",
+        "initat.host_monitoring.modules",
+        "initat.host_monitoring.exe",
+        "initat.host_monitoring.modules.raidcontrollers"
+    ],
+    entry_points={
+          'console_scripts': [
+              'icsw-host-monitoring = initat.host_monitoring.main:main_server'
+          ]
+    }
+)

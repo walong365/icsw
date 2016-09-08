@@ -25,13 +25,20 @@
 import sys
 import subprocess
 import socket
+import time
 
 if sys.platform == "darwin":
     subprocess.call(["/usr/local/bin/memcached", "-l", "localhost", "-p", "8001", "-u", "root", "-d"])
 
+    start_time = time.time()
+
     while True:
+        if (time.time() - start_time) > 5.0:
+            break
+
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         result = sock.connect_ex(('127.0.0.1', 8001))
+        sock.close()
         if result == 0:
             break
 
