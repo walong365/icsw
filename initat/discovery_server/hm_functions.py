@@ -253,9 +253,9 @@ class HostMonitoringMixin(object):
                                     mp_id = part_stuff["multipath"]["id"]
                                     real_disk = real_disk[0]
                                     if part is None:
-                                        real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part)
+                                        real_disk, real_part = ("/dev/{}".format(real_disk["device"]), part)
                                     else:
-                                        real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part[4:])
+                                        real_disk, real_part = ("/dev/{}".format(real_disk["device"]), part[4:])
                                     if real_disk in dev_dict:
                                         # LVM between
                                         real_part = dev_dict[real_disk][real_part]

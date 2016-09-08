@@ -34,6 +34,8 @@ from lxml import etree
 
 from initat.tools import server_command, pci_database, dmi_tools
 from initat.cluster.backbone.tools.hw import Hardware
+from initat.cluster.backbone.models.partition import (partition_disc,
+    partition_table, partition, partition_fs, LogicalDisc)
 
 
 ########################################################################################################################
@@ -1318,7 +1320,6 @@ class AssetBatch(models.Model):
             self.gpus.add(new_gpu)
 
         # set the discs and partitions
-        from initat.cluster.backbone.models.partition import partition_disc, partition_table, partition, sys_partition, partition_fs;
         fs_dict = {fs.name: fs for fs in partition_fs.objects.all()}
 
         name = "_".join([self.device.name, "part", str(self.idx)])
@@ -1347,6 +1348,15 @@ class AssetBatch(models.Model):
                     partition_fs_ = fs_dict["empty"]
                 partition_.partition_fs = partition_fs_
                 partition_.save()
+                if hdd_partition.logical:
+                    logical = LogicalDisc(
+                        device_name=hdd_partition.logical.device_name,
+                        partition_fs=partition_fs_,
+                        size=hdd_partition.logical.size,
+                        free_space=hdd_partition.logical.free_space,
+                    )
+                    logical.save()
+                    logical.partitions.add(partition_)
         self.partition_table = partition_table_
         # set the partition info on the device
         self.device.act_partition_table = partition_table_

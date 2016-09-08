@@ -1,18 +1,22 @@
 <script type="text/ng-template" id="icsw/main/user/account.html">
     <div ng-controller="icswUserAccountCtrl">
         <icsw-user-account-detail></icsw-user-account-detail>
-        <hr/>
-        <h2>Permissions</h2>
-        <icsw-user-group-role-permissions
-            icsw-object-type="user"
-            icsw-object="struct.user"
-        ></icsw-user-group-role-permissions>
-        <h2>Quota info</h2>
-        <icsw-user-quota-settings
-            icsw-object="struct.user"
-            icsw-object-type="'user'"
-            icsw-user-group-role-settings-tree="struct.settings_tree">
-        </icsw-user-quota-settings>
+        <div class="container-fluid">
+            <div  style="max-width:910px;">
+                <hr/>
+                <h2>Permissions</h2>
+                <icsw-user-group-role-permissions
+                    icsw-object-type="user"
+                    icsw-object="struct.user"
+                ></icsw-user-group-role-permissions>
+                <h2>Quota info</h2>
+                <icsw-user-quota-settings
+                    icsw-object="struct.user"
+                    icsw-object-type="'user'"
+                    icsw-user-group-role-settings-tree="struct.settings_tree">
+                </icsw-user-quota-settings>
+            </div>
+        </div>
     </div>
 </script>
 

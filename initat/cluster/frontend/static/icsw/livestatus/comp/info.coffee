@@ -25,7 +25,9 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service("icswLivestatusInfoDisplay",
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegsterProvider) ->
+    icswLivestatusPipeRegsterProvider.add("icswLivestatusInfoDisplay", true)
+]).service("icswLivestatusInfoDisplay",
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase", "icswMonitoringResult", "$timeout",
 (
@@ -79,20 +81,24 @@ angular.module(
                 React.createElement(
                     icswLivestatusCircleInfoReact
                     {
-                        size: 96
-                        data: _md.service_circle_data_details
+                        size: 140
+                        data: _md.service_circle_data
                         title: "#{_md.services.length} Services"
                         titleSize: 14
                         focusMode: "simple"
+                        showInfo: true
+                        showDetails: true
                     }
                 )
                 React.createElement(
                     icswLivestatusCircleInfoReact
                     {
-                        size: 96
-                        data: _md.device_circle_data_details
+                        size: 140
+                        data: _md.device_circle_data
                         title: "#{_md.hosts.length} Devices"
                         titleSize: 14
+                        showInfo: true
+                        showDetails: true
                     }
                 )
             )

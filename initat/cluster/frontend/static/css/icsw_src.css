@@ -242,3 +242,20 @@ ul.fancytree-container {
     background-color: transparent;
     margin: 10px;
 }
+.icsw-formlabel {
+    width: 250px;
+    text-align: left!important;
+}
+.maxwidth500 {
+    max-width: 500px;
+    min-size: 240px;
+}
+.modal-form .modal-dialog {
+    max-width:700px!important;
+}
+.table-paging-tools .form-group {
+    margin:0px;
+}
+div[class*="col-"] > ul {
+    padding: 0px 0px 0px 15px;
+}

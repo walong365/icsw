@@ -542,12 +542,22 @@ menu_module = angular.module(
 ) ->
     $scope.struct = {
         current_user: undefined
-        # number of selected devices
-        num_selected: 0
+        # any devices / groups selected
+        any_selected: false
         # selection string
-        select_txt: "No devices selected"
+        select_txt: "---"
         # breadcrumb list
         bc_list: []
+        # device tree is valid
+        tree_valid: false
+        # selection
+        selection_list: []
+        # emitted selection
+        em_selection_list: []
+        # emitted and selected list in sync
+        in_sync: false
+        # selection button title
+        title_str: ""
     }
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
@@ -566,11 +576,43 @@ menu_module = angular.module(
         for entry in bc_list
             $scope.struct.bc_list.push(entry)
     )
+
+    _fetch_selection_list = () ->
+        $scope.struct.selection_list.length = 0
+        for entry in icswActiveSelectionService.current().get_devsel_list()
+            $scope.struct.selection_list.push(entry)
+
+    _fetch_em_selection_list = () ->
+        $scope.struct.em_selection_list.length = 0
+        for entry in icswActiveSelectionService.current().get_devsel_list()
+            $scope.struct.em_selection_list.push(entry)
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event, tree) =>
+        $scope.struct.tree_valid = true
+        _fetch_selection_list()
+        _fetch_em_selection_list()
+        _update_selection_txt()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"), (event) ->
+        if $scope.struct.tree_valid
+            _fetch_selection_list()
+            _update_selection_txt()
+    )
+
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-        _cur_sel = icswActiveSelectionService.current()
-        #sel_groups = _cur_sel.get_devsel_list()[3].length
-        sel_groups = 0
-        sel_devices = _cur_sel.get_devsel_list()[1].length
+        if $scope.struct.tree_valid
+            _fetch_em_selection_list()
+            _update_selection_txt()
+    )
+
+    _get_list = (in_sel) ->
+        if in_sel.length
+            sel_groups = in_sel[3].length
+            sel_devices = in_sel[1].length
+        else
+            sel_groups = 0
+            sel_devices = 0
         group_plural = if sel_groups == 1 then "group" else "groups"
         device_plural = if sel_devices == 1 then "device" else "devices"
         group_plural = if sel_groups == 1 then "group" else "groups"
@@ -580,21 +622,22 @@ menu_module = angular.module(
             _list.push("#{sel_devices} #{device_plural}")
         if sel_groups
             _list.push("#{sel_groups} #{group_plural}")
-        $scope.struct.num_selected = _list.length
-        $scope.struct.select_txt = _list.join(", ")
-    )
+        return _list
 
-    $scope.new_devsel = (devs) ->
-        # never called....
-        console.log "*", devs
-        console.log icswActiveSelectionService.current()
-        sel_groups = 0
-        sel_devices = 0
-        for dev in devs
-            if dev.is_meta_device
-                sel_devices++
-            else
-                sel_groups++
+    _update_selection_txt = () ->
+        _em_list = _get_list($scope.struct.em_selection_list)
+        _list = _get_list($scope.struct.selection_list)
+        $scope.struct.in_sync = _.isEqual($scope.struct.selection_list, $scope.struct.em_selection_list)
+        if $scope.struct.in_sync
+            $scope.struct.title_str = "Current selection, in sync"
+        else
+            $scope.struct.title_str = "Current selection, not in sync}"
+        $scope.struct.any_selected = if _em_list.length > 0 then true else false
+        $scope.struct.select_txt = _em_list.join(", ")
+
+    $scope.select_all = ($event) ->
+        icswActiveSelectionService.current().select_all()
+        icswActiveSelectionService.send_selection(icswActiveSelectionService.current())
 
     $scope.activate_state = (entry) ->
         $state.go(entry.sref, null, {icswRegister: false})

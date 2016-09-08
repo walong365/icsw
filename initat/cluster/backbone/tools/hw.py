@@ -276,6 +276,7 @@ class Partition(HardwareBase):
         'device_name': ('logicalname', str),
         'type': (None, str),
     }
+    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394135(v=vs.85).aspx
     WIN32_ELEMENTS = {
         'size': ('Size', int),
         'index': ('Index', int),
@@ -303,14 +304,19 @@ class Partition(HardwareBase):
 class LogicalDisc(HardwareBase):
     """Represents the file system level information."""
 
+    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394173(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'free_space': ('FreeSpace', int),
+        'device_name': ('DeviceID', str),
         'file_system': ('FileSystem', str),
+        'size': ('Size', int),
+        'free_space': ('FreeSpace', int),
     }
 
     def __init__(self, lshw_tree=None, win32_tree=None):
-        self.free_space = None
+        self.device_name = None
         self.file_system = None
+        self.size = None
+        self.free_space = None
         super(LogicalDisc, self).__init__(lshw_tree=lshw_tree,
             win32_tree=win32_tree)
 

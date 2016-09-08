@@ -1,0 +1,128 @@
+/*!
+ * Yamm!3
+ * Yet another megamenu for Bootstrap
+ * http://geedmo.github.com/yamm3
+ *
+ * Demo styles
+ */
+
+/* layout */
+body {
+  padding-bottom: 40px;
+  color: #666;
+}
+pre { margin: 0; padding: 10px 20px !important;}
+
+.container { width: 100%; }
+.navbar {
+    min-height: 70px;
+}
+
+/* menu styes */
+.list-unstyled,
+.list-unstyled ul { min-width: 120px }
+
+/* Grid demo styles */
+.grid-demo {
+  padding: 10px 30px;
+}
+
+  .grid-demo [class*="col-"] {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    font-size: 1em;
+    text-align: center;
+    line-height: 2;
+    background-color: #e5e1ea;
+    border: 1px solid #d1d1d1;
+  }
+
+.navbar-brand {
+    padding: 5px 15px 0px 15px!important;
+}
+.fa {margin-right:7px;}
+
+.submenu-bar {
+    display: block;
+    padding-left: 10px;
+    background-color: #eeeeee;
+    margin-bottom: 17px;
+    min-height: 25px;
+    vertical-align: 10;
+    border-bottom: 1px solid #dddddd;
+}
+.submenu-bar .sub-breadcrumb,
+.submenu-bar .sub-shortlinks{
+    font-size: 12px;
+    font-weight: 400;
+    color:#666666;
+    list-style: outside none none;
+    margin-top: 4px;
+    padding-left: 0;
+    margin-bottom: 0px;
+
+}
+.submenu-bar .sub-breadcrumb > li,
+.submenu-bar .sub-shortlinks > li  {
+    display: block;
+    position: relative;
+    float:left;
+    padding-right:10px;
+}
+.submenu-bar .sub-breadcrumb > li{
+    color: #555555;
+    font-weight:bold;
+}
+.submenu-bar .sub-shortlinks > li a{
+    color: #555555;
+    margin: 0px;
+}
+.sub-shortlinks .fa {
+    margin: 0 2px 0 0;
+}
+.submenu-bar .label {
+    font-size: 100%;
+}
+.submenu-bar .quickselect a {
+    color: #666666;
+}
+.navbar-fixed-top {
+    border-width: 0;
+}
+.label {
+    border-radius: 1px;
+}
+.submenu-bar a {
+    padding: 0px;
+}
+.dropdown-menu {
+    box-shadow:none;
+}
+.dropdown-menu a {
+    color: #777777;
+    white-space: nowrap;
+}
+.yamm-content li > p {
+    margin: 0px 0 2px 0;
+}
+.yamm-content [class*="col-"] {
+    padding: 0px 5px 0px 15px;
+}
+.menusearch {
+    margin-top:24px;
+    width: 200px;
+    margin-left: 15px;
+}
+.yamm .yamm-content {
+    padding: 10px 15px;
+}
+.navbar-nav > li > a {
+    padding-bottom: 26.5px;
+    padding-top: 26.5px;
+    font-size: 18px;
+    color: #818181;
+}
+.navbar-default .navbar-nav > li > a {
+    color: #818181;
+}
+

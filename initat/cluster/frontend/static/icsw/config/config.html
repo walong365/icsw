@@ -3,27 +3,29 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.config.overview">
-    <uib-tabset>
-        <uib-tab heading="Configurations">
-            <icsw-config-config-table></icsw-config-config-table>
-            <!-- removed temporarily due to CSW-576
-            <icsw-config-uploader></icsw-config-uploader>
-            -->
-            <icsw-config-generate-config icsw-sel-man="0"></icsw-config-generate-config>
-        </uib-tab>
-        <uib-tab heading="Configuration catalogs">
-            <icsw-config-catalog-table></icsw-config-catalog-table>
-        </uib-tab>
-        <uib-tab heading="Monitoring categories">
-            <icsw-config-category-tree-edit mode="mon"></icsw-config-category-tree-edit>
-        </uib-tab>
-        <uib-tab heading="Configuration categories">
-            <icsw-config-category-tree-edit mode="config"></icsw-config-category-tree-edit>
-        </uib-tab>
-        <uib-tab heading="Uploads ({{ config_tree.uploaded_configs.length }})" ng-if="config_tree.uploaded_configs.length">
-            <icsw-config-uploaded></icsw-config-uploaded>
-        </uib-tab>
-    </uib-tabset>
+    <div class="container-fluid">
+        <uib-tabset>
+            <uib-tab heading="Configurations">
+                <icsw-config-config-table></icsw-config-config-table>
+                <!-- removed temporarily due to CSW-576
+                <icsw-config-uploader></icsw-config-uploader>
+                -->
+                <icsw-config-generate-config icsw-sel-man="0"></icsw-config-generate-config>
+            </uib-tab>
+            <uib-tab heading="Configuration Catalogs">
+                <icsw-config-catalog-table></icsw-config-catalog-table>
+            </uib-tab>
+            <uib-tab heading="Monitoring Categories">
+                <icsw-config-category-tree-edit mode="mon"></icsw-config-category-tree-edit>
+            </uib-tab>
+            <uib-tab heading="Configuration Categories">
+                <icsw-config-category-tree-edit mode="config"></icsw-config-category-tree-edit>
+            </uib-tab>
+            <uib-tab heading="Uploads ({{ config_tree.uploaded_configs.length }})" ng-if="config_tree.uploaded_configs.length">
+                <icsw-config-uploaded></icsw-config-uploaded>
+            </uib-tab>
+        </uib-tabset>
+    </div>
 </script>
 
 <script type="text/ng-template" id="config.catalog.form">
@@ -32,7 +34,7 @@
         <fieldset>
             <legend>Basic settings</legend>
             <div class="form-group  ng-class:form_error('name')">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Name<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
@@ -40,7 +42,7 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Author
                 </label>
                 <div class="controls col-sm-7">
@@ -48,7 +50,7 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Url
                 </label>
                 <div class="controls col-sm-7">
@@ -89,9 +91,9 @@
         <ul class="list-group">
             <li class="list-group-item" ng-repeat="config in upload.list">
                 {{ config.name }} ({{ config.description }})
-                <span class="label label-primary" title="number of config vars">{{ get_num_vars(config) }}</span>
-                <span class="label label-primary" title="number of config script">{{ get_num_scripts(config) }}</span>
-                <span class="label label-primary" title="number of monitoring check commands">{{ get_num_check_commands(config) }}</span>
+                <span class="label label-info" title="number of config vars">{{ get_num_vars(config) }}</span>
+                <span class="label label-info" title="number of config script">{{ get_num_scripts(config) }}</span>
+                <span class="label label-info" title="number of monitoring check commands">{{ get_num_check_commands(config) }}</span>
                 <span class="pull-right">
                     <input type="button" ng-show="!config._taken" class="btn btn-xs btn-success" value="take" ng-click="take_config(config)"/>
                     <input type="button" ng-show="!config._taken" class="btn btn-xs btn-danger" value="delete" ng-click="delete_config(config)"/>
@@ -160,10 +162,10 @@
                                             >
                                             </input>
                                             <div class="input-group-btn">
-                                                <input type="button" title="Add config to search scope" ng-class="struct.filter_settings.$$config_class" value="name" ng-click="change_filter_setting($event, 'config')"/>
-                                                <input type="button" title="Add script(s) to search scope" ng-class="struct.filter_settings.$$script_class" value="script" ng-click="change_filter_setting($event, 'script')"/>
-                                                <input type="button" title="Add variable(s) to search scope" ng-class="struct.filter_settings.$$var_class" value="var" ng-click="change_filter_setting($event, 'var')"/>
-                                                <input type="button" title="Add monitoring config(s) to search scope" ng-class="struct.filter_settings.$$mon_class" value="mon" ng-click="change_filter_setting($event, 'mon')"/>
+                                                <input type="button" title="Add config to search scope" ng-class="struct.filter_settings.$$config_class" value="Name" ng-click="change_filter_setting($event, 'config')"/>
+                                                <input type="button" title="Add script(s) to search scope" ng-class="struct.filter_settings.$$script_class" value="Script" ng-click="change_filter_setting($event, 'script')"/>
+                                                <input type="button" title="Add variable(s) to search scope" ng-class="struct.filter_settings.$$var_class" value="Variable" ng-click="change_filter_setting($event, 'var')"/>
+                                                <input type="button" title="Add monitoring config(s) to search scope" ng-class="struct.filter_settings.$$mon_class" value="MonCheck" ng-click="change_filter_setting($event, 'mon')"/>
                                             </div>
                                         </div>
                                     </div>
@@ -179,16 +181,16 @@
                         </tr>
                         <tr>
                             <th st-sort="name">Name</th>
-                            <th st-sort="priority">Pri</th>
+                            <th st-sort="priority">Priority</th>
                             <th>Flags</th>
                             <th st-sort="config_catalog">Catalog</th>
-                            <th>enabled</th>
+                            <th class="text-center">Enabled</th>
                             <th>Description</th>
-                            <th class="text-center">var</th>
-                            <th class="text-center">script</th>
-                            <th class="text-center">mon</th>
-                            <th>cats</th>
-                            <th colspan="2">action</th>
+                            <th class="text-center">Variables</th>
+                            <th class="text-center">Scripts</th>
+                            <th class="text-center">MonChecks</th>
+                            <th>Categories</th>
+                            <th colspan="2">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -220,12 +222,12 @@
                 <fieldset>
                     <legend>Basic settings</legend>
                     <div class="form-group ng-class:form_error('name')">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Name<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
                             <input
-                                class="textinput textInput form-control"
+                                class="textinput textInput form-control maxwidth500"
                                 maxlength="192"
                                 name="name"
                                 ng-model="edit_obj.name"
@@ -239,11 +241,11 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
+                        <label class="control-label col-sm-3 icsw-formlabel">
                             Description
                         </label>
                         <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="765" name="description" ng-model="edit_obj.description" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" maxlength="765" name="description" ng-model="edit_obj.description" type="text"/>
                         </div>
                     </div>
                 </fieldset>
@@ -251,27 +253,27 @@
                 <fieldset>
                     <legend>other settings</legend>
                     <div class="form-group">
-                        <label class="col-sm-3 control-label">
+                        <label class="col-sm-3 control-label icsw-formlabel">
                             Enabled
                         </label>
-                        <div class="col-sm-9 controls">
+                        <div class="col-sm-7 controls">
                             <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Priority<span class="asteriskField">*</span>
                         </label>
-                        <div class="controls col-sm-9">
-                            <input class="numberinput form-control" type="number" name="priority" ng-model="edit_obj.priority" required="True" type="number" value="0"/>
+                        <div class="controls col-sm-7">
+                            <input class="numberinput form-control maxwidth500" type="number" name="priority" ng-model="edit_obj.priority" required="True" type="number" value="0"/>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Configuration catalog<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
-                            <ui-select ng-model="edit_obj.config_catalog" style="max-width:400px; min-width:240px;">
+                            <ui-select ng-model="edit_obj.config_catalog" class="maxwidth500">
                                 <ui-select-match class="ui-select-match" placeholder="select config catalog">
                                     {{ $select.selected.name }}
                                 </ui-select-match>
@@ -282,10 +284,10 @@
                         </div>
                     </div>
                     <div class="form-group" ng-show="!edit_obj.system_config">
-                        <label class="col-sm-3 control-label">
-                            Server config
+                        <label class="col-sm-3 control-label icsw-formlabel">
+                            Server configuration
                         </label>
-                        <div class="col-sm-9 controls">
+                        <div class="col-sm-7 controls">
                             <icsw-tools-yes-no flag="edit_obj.server_config"></icsw-tools-yes-no>
                         </div>
                     </div>
@@ -304,14 +306,15 @@
         </div>
         <fieldset>
             <legend>Actions</legend>
-            <div class="form-actions">
-                <icsw-tools-button type="modify" ng-show="!create_mode && changed()" ng-click="modify()"></icsw-tools-button>
-                <icsw-tools-button type="create" ng-show="create_mode" ng-click="modify()"></icsw-tools-button>
+            <div class="form-actions pull-right" style="margin-bottom:15px;">
+                <icsw-tools-button type="delete" ng-click="delete_config()"></icsw-tools-button>
                 &nbsp;
                 <icsw-tools-button type="close" ng-click="close_config()"></icsw-tools-button>
                 &nbsp;
-                <icsw-tools-button type="delete" ng-click="delete_config()"></icsw-tools-button>
+                <icsw-tools-button type="modify" ng-show="!create_mode && changed()" ng-click="modify()"></icsw-tools-button>
+                <icsw-tools-button type="create" ng-show="create_mode" ng-click="modify()"></icsw-tools-button>
             </div>
+
         </fieldset>
         <fieldset ng-if="!create_mode">
             <legend>Variables, Config Scripts and Monitoring check commands</legend>
@@ -370,7 +373,7 @@
                     <th st-sort="author">Author</th>
                     <th>Version</th>
                     <th>#configs<th>
-                    <th colspan="2">action</th>
+                    <th colspan="2">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -401,8 +404,8 @@
         </span>
         {{ config.name }}
     </td>
-    <td class="text-right">{{ config.priority }}</td>
-    <td class="text-center">
+    <td>{{ config.priority }}</td>
+    <td>
         <div class="label-group">
             <span class="label" ng-class="config.server_config && 'label-success' || 'label-default'" uib-tooltip="is server config">S</span><!--
             --><span class="label" ng-class="config.system_config && 'label-success' || 'label-default'" uib-tooltip="is system config">Y</span>
@@ -428,7 +431,7 @@
             {{ config.$$mon_span_str }}
         </span>
     </td>
-    <td class="text-center">{{ config.$$cat_info_str }}</td>
+    <td>{{ config.$$cat_info_str }}</td>
     <td>
         <icsw-tools-button-static type="modify" value="modify" ng-click="modify_config($event, config, true)" size="xs"/>
     </td>
@@ -525,10 +528,10 @@
                 </tr>
                 <tr>
                     <th st-sort="name">Name</th>
-                    <th>value</th>
-                    <th st-sort="description">descr</th>
-                    <th>priority</th>
-                    <th>enabled</th>
+                    <th>Value</th>
+                    <th st-sort="description">Description</th>
+                    <th>Priority</th>
+                    <th>Enabled</th>
                     <th colspan="2">Action</th>
                 </tr>
             </thead>
@@ -559,7 +562,7 @@
                 <tr>
                     <td colspan="99">
                         <div class="row">
-                            <div class="col-sm-5">
+                            <div class="col-sm-3" style="width:250px;">
                                 <div class="input-group">
                                     <input st-search="" class="form-control" placeholder="filter">
                                     </input>
@@ -571,24 +574,25 @@
                                 st-displayed-pages="11"
                                 possible-items-by-page="15,30,100,200"
                                 class="col-sm-7"
+                                style="width:350px;"
                             ></div>
                         </div>
                     </td>
                 </tr>
                 <tr>
                     <th st-sort="name">Name</th>
-                    <th>template</th>
-                    <th st-sort="description">description</th>
-                    <th>special</th>
-                    <th>command line</th>
+                    <th>Template</th>
+                    <th st-sort="description">Description</th>
+                    <th>Special</th>
+                    <th>Command Line</th>
                     <!-- <th>active</th> -->
-                    <th>vol</th>
-                    <th>perf</th>
-                    <th>is event</th>
-                    <th>event handler</th>
-                    <th>eh enabled</th>
-                    <th>cats</th>
-                    <th colspan="2">Action</th>
+                    <th>Vol</th>
+                    <th>Perf</th>
+                    <th>Is Event</th>
+                    <th>Event Handler</th>
+                    <th>EH Enabled</th>
+                    <th>Categories</th>
+                    <th colspan="4">Actions</th>
                 </tr>
             </thead>
             <tbody>
@@ -674,7 +678,7 @@
                 <fieldset>
                     <legend>Basic settings</legend>
                     <div class="form-group  ng-class:form_error('name')">
-                        <label class="control-label col-sm-2 requiredField">
+                        <label class="control-label col-sm-2 requiredField icsw-formlabel">
                             Name<span class="asteriskField">*</span>
                         </label>
 
@@ -683,7 +687,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-2">
+                        <label class="control-label col-sm-2 icsw-formlabel">
                             Description
                         </label>
 
@@ -692,7 +696,7 @@
                         </div>
                     </div>
                     <div class="form-group" ng_show="edit_obj.is_active">
-                        <label class="control-label col-sm-2">
+                        <label class="control-label col-sm-2 icsw-formlabel">
                             Special MonCheck command
                         </label>
 
@@ -719,7 +723,7 @@
                         {{ get_mccs_already_used_warning(edit_obj) }}
                     </div>
                     <div class="form-group" ng_show="!edit_obj.mon_check_command_special && edit_obj.is_active">
-                        <label class="control-label col-sm-2 requiredField">
+                        <label class="control-label col-sm-2 requiredField icsw-formlabel">
                             Command line<span class="asteriskField">*</span>
                         </label>
 
@@ -728,7 +732,7 @@
                         </div>
                     </div>
                     <div class="form-group" ng-show="edit_obj.mon_check_command_special">
-                        <label class="control-label col-sm-2">Info</label>
+                        <label class="control-label col-sm-2 icsw-formlabel">Info</label>
 
                         <div class="col-sm-9 list-group">
                             <ul>
@@ -738,20 +742,20 @@
                         </div>
                     </div>
                     <div class="form-group" ng-show="!edit_obj.mon_check_command_special && edit_obj.is_active">
-                        <label class="control-label col-sm-2">Tools</label>
+                        <label class="control-label col-sm-2 icsw-formlabel">Tools</label>
 
                         <div class="controls col-sm-9">
                             <div class="form-inline">
                                 <input type="button" ng-class='"btn btn-sm btn-primary"' ng-click="add_argument(edit_obj)" ng-value='"add argument"'/>
-                                name:
+                                Name:
                                 <input type="text" class="form-control input-sm" title="default value" ng-model="edit_obj.arg_name"/>
-                                value:
+                                Value:
                                 <input type="text" class="form-control input-sm" title="default value" ng-model="edit_obj.arg_value"/>
                             </div>
                         </div>
                     </div>
                     <div class="form-group" ng-show="!edit_obj.mon_check_command_special && edit_obj.is_active">
-                        <label class="control-label col-sm-2">Info</label>
+                        <label class="control-label col-sm-2 icsw-formlabel">Info</label>
 
                         <div class="col-sm-9 list-group">
                             <ul>
@@ -765,8 +769,8 @@
                 <fieldset>
                     <legend>Additional settings</legend>
                     <div class="form-group">
-                        <label class="control-label col-sm-2">
-                            Mon service templ
+                        <label class="control-label col-sm-2 icsw-formlabel">
+                            Monitoring Service Template
                         </label>
                         <div class="controls col-sm-9">
                             <div class="input-group" style="max-width:400px; min-width:240px;">
@@ -783,7 +787,7 @@
                         </div>
                     </div>
                     <div class="form-group" ng_show="!edit_obj.is_event_handler && get_event_handlers(edit_obj).length">
-                        <label class="control-label col-sm-2">
+                        <label class="control-label col-sm-2 icsw-formlabel">
                             Event handler
                         </label>
 
@@ -809,7 +813,7 @@
                             <div class="controls col-lg-offset-0 col-sm-9">
                                 <label>
                                     <input checked="checked" class="checkboxinput checkbox" name="is_active" ng-model="edit_obj.is_active" type="checkbox"/>
-                                    Is active
+                                    Is Active
                                 </label>
                             </div>
                         </div>
@@ -825,7 +829,7 @@
                 <fieldset>
                     <legend>Flags</legend>
                     <div class="row">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <div class="form-group">
                                 <div class="checkbox">
                                     <div class="controls col-lg-offset-0 col-sm-9">
@@ -841,7 +845,7 @@
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
                                             <input class="checkboxinput checkbox" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox"/>
-                                            Enable perfdata
+                                            Enable Perfdata
                                         </label>
                                     </div>
                                 </div>
@@ -853,7 +857,7 @@
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
                                             <input checked="checked" class="checkboxinput checkbox" name="event_handler_enabled" ng-model="edit_obj.event_handler_enabled" type="checkbox"/>
-                                            Event handler enabled
+                                            Event Handler Enabled
                                         </label>
                                     </div>
                                 </div>
@@ -863,7 +867,7 @@
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
                                             <input class="checkboxinput checkbox" name="is_event_handler" ng-model="edit_obj.is_event_handler" type="checkbox"/>
-                                            Is event handler
+                                            Is Event Handler
                                         </label>
                                     </div>
                                 </div>
@@ -892,13 +896,13 @@
 
 <script type="text/ng-template" id="icsw.config.script.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Config script '{{ edit_obj.name }}'</h2>
+        <h2>Configure script '{{ edit_obj.name }}'</h2>
         <uib-tabset>
             <uib-tab heading="Settings">
                 <fieldset>
                     <legend>Basic settings</legend>
                     <div class="form-group  ng-class:form_error('name')">
-                        <label class="control-label col-sm-2 requiredField">
+                        <label class="control-label col-sm-2 requiredField icsw-formlabel">
                             Name<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-9">
@@ -906,7 +910,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-2">
+                        <label class="control-label col-sm-2 icsw-formlabel">
                             Description
                         </label>
                         <div class="controls col-sm-9">
@@ -923,10 +927,10 @@
                     <div class="row">
                         <div class="col-md-6">
                             <div class="form-group">
-                                <label class="control-label col-sm-2">
+                                <label class="control-label col-sm-2 icsw-formlabel">
                                     Priority
                                 </label>
-                                <div class="controls col-sm-9">
+                                <div class="controls col-sm-5">
                                     <input class="numberinput form-control" name="priority" ng-model="edit_obj.priority" type="number" value="0"/>
                                 </div>
                             </div>
@@ -958,16 +962,16 @@
         <h2>{{ long_var_type_name }} variable '{{ edit_obj.name }}'</h2>
         <uib-tabset>
             <uib-tab heading="Settings">
-                <fieldset>
-                    <legend>Basic settings</legend>
+                <fieldset style="margin-top:15px;">
+
                     <div class="form-group  ng-class:form_error('name')">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Name<span class="asteriskField">*</span>
                         </label>
-                        {{ config_var_hints }}
                         <div class="controls col-sm-7">
+                            <div ng-show="config_var_hints.length">{{ config_var_hints }}</div>
                             <input
-                                class="textinput textInput form-control"
+                                class="textinput textInput form-control maxwidth500"
                                 maxlength="192"
                                 name="name"
                                 ng-model="edit_obj.name"
@@ -981,22 +985,22 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField icsw-formlabel">
                             Description<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
-                            <input class="textinput textInput form-control" maxlength="765" name="description" ng-model="edit_obj.description" required="True" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" maxlength="765" name="description" ng-model="edit_obj.description" required="True" type="text"/>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-sm-3">
+                        <label class="control-label col-sm-3 icsw-formlabel">
                             Value
                         </label>
                         <div class="controls col-sm-7" ng-if="var_type == 'str'">
-                            <textarea class="textarea form-control" cols="40" name="value" ng-model="edit_obj.value" rows="10"></textarea>
+                            <textarea class="textarea form-control maxwidth500" cols="40" name="value" ng-model="edit_obj.value" rows="10"></textarea>
                         </div>
                         <div class="controls col-sm-7" ng-if="var_type == 'int'">
-                            <input class="numberinput form-control" name="value" ng-model="edit_obj.value" type="number"/>
+                            <input class="numberinput form-control maxwidth500" name="value" ng-model="edit_obj.value" type="number"/>
                         </div>
                         <div class="controls col-sm-7" ng-if="var_type == 'bool'">
                             <input

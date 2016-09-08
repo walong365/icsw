@@ -1,17 +1,19 @@
 /* device colors */
-.svg_dev_up { fill: #66dd66; }
-.svg_dev_down { fill: #ff7777; }
-.svg_dev_unreach { fill: #ff0000; }
-.svg_dev_unknown { fill: #dddddd; }
-.svg_dev_notmonitored { fill: #888888; }
+.svg-dev-up { fill: #66dd66; }
+.svg-dev-down { fill: #ff7777; }
+.svg-dev-unreach { fill: #ff0000; }
+.svg-dev-unknown { fill: #ffcccc; }
+.svg-dev-notmonitored { fill: #888888; }
+.svg-dev-pending { fill: #ccccff; }
 .svg-dev-unselected { fill: #dddddd; }
 
 /* service colors */
-.svg_srv_ok { fill: #66dd66; }
-.svg_srv_warn { fill: #dddd88; }
-.svg_srv_crit { fill: #ff7777; }
-.svg_srv_unknown { fill: #ff0000; }
-.svg_srv_notmonitored { fill: #888888; }
+.svg-srv-ok { fill: #66dd66; }
+.svg-srv-warn { fill: #dddd88; }
+.svg-srv-crit { fill: #ff7777; }
+.svg-srv-unknown { fill: #ffcccc; }
+.svg-srv-notmonitored { fill: #888888; }
+.svg-srv-pending { fill: #ccccff; }
 .svg-srv-unselected { fill: #dddddd; }
 
 .svg-sh-type { fill: #8888ff ; }
@@ -37,23 +39,23 @@
 }
 .svg-outline { stroke-width: 0.5px; stroke: #000000; }
 /* others */
-.svg_plandown { fill: #5bc0de; }
-.svg_active { fill: #9999ff; }
-.svg_inactive { fill: #eeeeee; }
-.svg_white { fill: #ffffff; }
-.svg_danger { fill: #ff0000; } /* prepare removal */
+.svg-plandown { fill: #5bc0de; }
+.svg-active { fill: #9999ff; }
+.svg-inactive { fill: #eeeeee; }
+.svg-white { fill: #ffffff; }
+.svg-danger { fill: #ff0000; } /* prepare removal */
 
-.svg_txt_color { fill: black; }
-.default_text { fill: black; font-size: 10px; }
+.svg-txt_color { fill: black; }
+.default-text { fill: black; font-size: 10px; }
 
-.sb_lines { stroke: #ffffff; stroke-width: 0.3; }
+.sb-lines { stroke: #ffffff; stroke-width: 0.3; }
 .sb-lines-selected { stroke: #000000 ; stroke-width: 2; }
-.svg_stroke { stroke: #ffffff; stroke-width: 0.5; }
-.pieSegment { stroke-width: 1; stroke-miterlimit: 2; stroke: #ffffff; }
-.svg_sel { opacity: 0.7; }
-.svg_clicked { stroke-width: 2px !important; }
+.svg-stroke { stroke: #ffffff; stroke-width: 0.5; }
+.pie-segment { stroke-width: 1; stroke-miterlimit: 2; stroke: #ffffff; }
+.svg-sel { opacity: 0.7; }
+.svg-clicked { stroke-width: 2px !important; }
 
-.svg_d3link { stroke: #ff7788; stroke-width: 4px; opacity: 1; }
-.svg_d3circle { stroke-width: 2px; stroke: grey; fill: white; }
-.svg_d3circle_selected { stroke-width: 2px; stroke: grey; fill: red; }
-.svg_d3text { stroke-width:2px; stroke:white; paint-order:stroke; text-anchor:middle; alignment-baseline:middle; }
+.svg-d3link { stroke: #ff7788; stroke-width: 4px; opacity: 1; }
+.svg-d3circle { stroke-width: 2px; stroke: grey; fill: white; }
+.svg-d3circle-selected { stroke-width: 2px; stroke: grey; fill: red; }
+.svg-d3text { stroke-width:2px; stroke:white; paint-order:stroke; text-anchor:middle; alignment-baseline:middle; }

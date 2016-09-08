@@ -40,10 +40,6 @@ angular.module(
     class icswSelection
         # only instantiated once (for now), also handles saved selections
         constructor: (@cat_sel, @devg_sel, @dev_sel, @tot_dev_sel) ->
-            $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event, tree) =>
-                @tree = tree
-                # console.log "tree set for icswSelection", @tree
-            )
             # init
             @cat_sel = []
             @devg_sel = []
@@ -66,9 +62,17 @@ angular.module(
                             @dev_sel = _stored.dev_sel
                             @tot_dev_sel = _stored.tot_dev_sel
                             @sync_with_db(undefined)
+                            $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
                     else
                         @_last_stored = ""
             )
+            $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event, tree) =>
+                @tree = tree
+                # console.log "tree set for icswSelection", @tree
+            )
+
+        select_all: () =>
+            @update([], [], [], (entry.idx for entry in @tree.enabled_list))
 
         update: (cat_sel, devg_sel, dev_sel, tot_dev_sel) ->
             _changed = false
@@ -85,6 +89,8 @@ angular.module(
                 if not _.isEqual(prev_list, @[attr_name])
                     _changed = true
             @selection_changed()
+            if _changed
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
             return _changed
 
         selection_changed: () =>
@@ -942,7 +948,7 @@ angular.module(
         if $scope.struct.modal?
             _str = "Selected: #{$scope.struct.selection.tot_dev_sel.length} devices"
             if $scope.struct.changed_timeout
-                _str = "#{_str} <i class='fa fa-spinner fa-3x fa-spin'></i> <span class='label label-warning'>Selection changed...</span>"
+                _str = "#{_str} <span class='label label-warning'>Selection changed...</span>"
             $scope.struct.modal.setTitle(_str)
 
     _stop_changed_timeout = () ->

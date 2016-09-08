@@ -45,9 +45,9 @@ angular.module(
             _bn = @props.element.$$segment
             _cls = _path_el.className
             if _bn.sel_by_child or _bn.sel_by_parent
-                _cls = "#{_cls} svg_sel"
+                _cls = "#{_cls} svg-sel"
             if _bn.clicked
-                _cls = "#{_cls} svg_clicked"
+                _cls = "#{_cls} svg-clicked"
             _segment = {
                 key: _path_el.key
                 d: _path_el.d
