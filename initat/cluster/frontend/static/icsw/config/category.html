@@ -30,23 +30,23 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.tree">
-    <h2>
-        {{ mode_display | capitalize }} categories ({{ struct.dn_tree.mode_entries.length }}
-        <ng-pluralize count="struct.dn_tree.mode_entries.length" when="{'1': 'entry', 'other': 'entries'}")></ng-pluralize>)
-    </h2>
+    <h3>
+        {{ mode_display | capitalize }} Categories ({{ struct.dn_tree.mode_entries.length }}
+        <ng-pluralize count="struct.dn_tree.mode_entries.length" when="{'1': 'Entry', 'other': 'Entries'}")></ng-pluralize>)
+    </h3>
     <div class="panel panel-default">
         <div class="panel-body" ng-if="struct.tree">
             <icsw-tools-rest-table-new target-list="tree_nodes" config-service="icswConfigCategoryListService" icsw-config-object="struct">
                 <p>
                     Actions:
-                    <icsw-tools-button type="create" value="create new" size="sm" ng-click="create($event, null)"></icsw-tools-button>
+                    <icsw-tools-button type="create" value="create" size="sm" ng-click="create($event, null)"></icsw-tools-button>
                     <icsw-tools-button type="modify" value="prune tree" size="sm" ng-click="prune_tree()"/>
                     <icsw-tools-button type="delete" ng-show="icsw_config_object.num_active" size="sm" value="delete selected" ng-click="special_fn($event, 'delete_many', null)"/>
                     <icsw-tools-button type="close" ng-show="icsw_config_object.num_active" size="sm" value="clear selection" ng-click="special_fn($event, 'clear_selection', null)"/>
                 </p>
                 <div class="row">
                     <div class="col-sm-4">
-                        <h3>Tree view</h3>
+                        <h3>Tree View</h3>
                         <icsw-react-tree
                             icsw-tree-config="dn_tree"
                         ></icsw-react-tree>
@@ -54,7 +54,7 @@
                             icsw-config-object="icsw_config_object"-->
                     </div>
                     <div class="col-sm-8">
-                        <h3>Table view</h3>
+                        <h3>Table View</h3>
                         <table st-table="tree_nodes_displayed" st-safe-src="tree_nodes" class="table table-condensed table-hover table-striped" style="width:auto;">
                             <thead>
                                 <tr>
@@ -71,15 +71,15 @@
                                     <th>Name</th>
                                     <th>Full name</th>
                                     <th>Comment</th>
-                                    <th>refs</th>
+                                    <th>#Refs</th>
                                     <th>Useable</th>
-                                    <th ng-if="mode_is_location">lat</th>
-                                    <th ng-if="mode_is_location">long</th>
-                                    <th ng-if="mode_is_location">lockstate</th>
-                                    <th ng-if="mode_is_location">type</th>
-                                    <th ng-if="mode_is_location">#gfx</th>
+                                    <th ng-if="mode_is_location">Latitude</th>
+                                    <th ng-if="mode_is_location">Longitude</th>
+                                    <th ng-if="mode_is_location">Lock Status</th>
+                                    <th ng-if="mode_is_location">Type</th>
+                                    <th ng-if="mode_is_location">#Images</th>
                                     <th ng-if="mode_is_device">Asset</th>
-                                    <th colspan="2">Action</th>
+                                    <th colspan="2">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -103,7 +103,7 @@
 <script type="text/ng-template" id="icsw.config.category.contents_viewer">
     <div class="panel panel-default" ng-if="struct.enabled">
         <div class="panel-heading">
-            Contents of category {{ icsw_category.full_name }}
+            Contents of Category: {{ icsw_category.full_name }}
         </div>
         <div class="panel-body" ng-if="struct.data_ready">
             <div uib-alert class="alert-warning" ng-if="struct.enabled && icsw_category.num_refs == 0">
@@ -129,7 +129,7 @@
                         <th ng-if="struct.selection_supported">Selected</th>
                         <th>Type</th>
                         <th>Name</th>
-                        <th>Info</th>
+                        <th>Information</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -149,15 +149,14 @@
 
 <script type="text/ng-template" id="icsw.category.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Category details for '{{ edit_obj.name }}'</h2>
         <fieldset>
-            <legend>Basic settings</legend>
+            <legend>Category Settings for: '{{ edit_obj.name }}'</legend>
             <div id="div_id_name" class="form-group  ng-class:form_error('name')">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Name<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text" ng-disabled="edit_obj.depth < 2"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text" ng-disabled="edit_obj.depth < 2"/>
                 </div>
             </div>
             <div class="form-group">
@@ -165,7 +164,7 @@
                     Parent<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.parent" style="max-width:500px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.parent" class="maxwidth500" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="Select a parent node">
                             {{ $select.selected.info_string }}
                         </ui-select-match>
@@ -177,13 +176,13 @@
             </div>
         </fieldset>
         <fieldset>
-            <legend>Additional fields</legend>
+            <legend>Additional Fields</legend>
             <div class="form-group">
                 <label class="control-label col-sm-3 icsw-formlabel">
                     Comment
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
                 </div>
             </div>
             <div class="form-group row" ng-show="edit_obj.was_unuseable">
@@ -196,13 +195,13 @@
             </div>
         </fieldset>
         <fieldset ng-if="is_location(edit_obj)">
-            <legend>Positional data</legend>
+            <legend>Positional Data</legend>
             <div class="form-group  ng-class:form_error('latitude')">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Latitude<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="numberinput form-control" name="latitude" ng-model="edit_obj.latitude" ng-pattern="/^\d+(\.\d+)*$/" required="True" step="any" type="number" value="48.1"/>
+                    <input class="numberinput form-control maxwidth500" name="latitude" ng-model="edit_obj.latitude" ng-pattern="/^\d+(\.\d+)*$/" required="True" step="any" type="number" value="48.1"/>
                 </div>
             </div>
             <div class="form-group  ng-class:form_error('longitude')">
@@ -214,7 +213,7 @@
                 </div>
             </div>
             <div class="form-group row">
-                <div class="control-label col-sm-3">
+                <div class="control-label col-sm-3 icsw-formlabel">
                     Locked
                 </div>
                 <div class="controls col-sm-7">
@@ -222,7 +221,7 @@
                 </div>
             </div>
             <div class="form-group row" ng-if="!edit_obj.$gfx_list.length">
-                <div class="control-label col-sm-3">
+                <div class="control-label col-sm-3 icsw-formlabel">
                     Physical
                 </div>
                 <div class="controls col-sm-7">
@@ -231,10 +230,10 @@
             </div>
         </fieldset>
         <fieldset ng-if="is_device(edit_obj)">
-            <legend>Asset flags</legend>
+            <legend>Asset Flags</legend>
             <div class="form-group  ng-class:form_error('latitude')">
-                <label class="control-label col-sm-3 requiredField">
-                    For AssetManagement
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    For Asset Management
                 </label>
                 <div class="controls col-sm-7">
                     <icsw-tools-yes-no flag="edit_obj.asset"></icsw-tools-yes-no>
@@ -246,26 +245,25 @@
 
 <script type="text/ng-template" id="icsw.category.location.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Category details for '{{ edit_obj.name }}'</h2>
         <fieldset>
-            <legend>Basic settings</legend>
+            <legend>Category Settings for: '{{ edit_obj.name }}'</legend>
             <div id="div_id_name" class="form-group  ng-class:form_error('name')">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Name<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text" ng-disabled="edit_obj.depth < 2"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text" ng-disabled="edit_obj.depth < 2"/>
                 </div>
             </div>
         </fieldset>
         <fieldset>
-            <legend>Additional fields</legend>
+            <legend>Additional Fields</legend>
             <div class="form-group">
                 <label class="control-label col-sm-3 icsw-formlabel">
                     Comment
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
                 </div>
             </div>
             <!-- <div class="form-group row" ng-show="edit_obj.was_unuseable">
@@ -278,9 +276,9 @@
             </div> -->
         </fieldset>
         <fieldset>
-            <legend>Positional data</legend>
+            <legend>Positional Data</legend>
             <div class="form-group row">
-                <div class="control-label col-sm-3">
+                <div class="control-label col-sm-3 icsw-formlabel" style="font-weight:bold;">
                     Locked
                 </div>
                 <div class="controls col-sm-7">
@@ -288,7 +286,7 @@
                 </div>
             </div>
             <div class="form-group row" ng-if="!edit_obj.$gfx_list.length">
-                <div class="control-label col-sm-3">
+                <div class="control-label col-sm-3 icsw-formlabel" style="font-weight:bold;">
                     Physical
                 </div>
                 <div class="controls col-sm-7">

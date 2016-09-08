@@ -1,5 +1,7 @@
 <script type="text/ng-template" id="icsw/main/device/domaintree.html">
-    <icsw-config-domain-name-tree></icsw-config-domain-name-tree>
+    <div class="container-fluid">
+        <icsw-config-domain-name-tree></icsw-config-domain-name-tree>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.config.domain.name.tree.row">
@@ -20,7 +22,7 @@
 
 <script type="text/ng-template" id="icsw.config.domain.name.tree">
     <h2>
-        Domain name tree ({{ struct.tree.list.length}} entries)
+        Domain Name Tree ({{ struct.tree.list.length}} Entries)
     </h2>
     <div class="panel panel-default">
         <div class="panel-body" ng-if="struct.tree">
@@ -33,25 +35,15 @@
                 </p>
                 <div class="row">
                     <div class="col-sm-4">
-                        <h3>Tree view</h3>
+                        <h3>Tree View</h3>
                         <icsw-react-tree
                             icsw-tree-config="dn_tree"
                         ></icsw-react-tree>
                     </div>
                     <div class="col-sm-8">
-                        <h3>Table view</h3>
+                        <h3>Table View</h3>
                         <table st-table="tree_nodes_displayed" st-safe-src="tree_nodes" class="table table-condensed table-hover table-striped" style="width:auto;">
                             <thead>
-                                <tr>
-                                    <th>Name</th>
-                                    <th>Nodename</th>
-                                    <th>depth</th>
-                                    <th>comment</th>
-                                    <th>SN</th>
-                                    <th>IP</th>
-                                    <th>NS</th>
-                                    <th colspan="2">Action</th>
-                                </tr>
                                 <tr>
                                     <td colspan="99">
                                         <div
@@ -61,6 +53,16 @@
                                             possible-items-by-page="15,30,100,200"
                                         ></div>
                                     </td>
+                                </tr>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Nodename</th>
+                                    <th>Depth</th>
+                                    <th>Comment</th>
+                                    <th>SN</th>
+                                    <th>IP</th>
+                                    <th>NS</th>
+                                    <th colspan="2">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -77,23 +79,22 @@
 <script type="text/ng-template" id="icsw.config.domain.tree.node.form">
     <form class="form-horizontal" name="form_data">
         <div>
-            <h2>Domain tree node details for {{ edit_obj.full_name }}</h2>
             <fieldset>
-                <legend>Basic settings</legend>
+                <legend>Basic Settings for Domain Tree Node {{ edit_obj.full_name }}</legend>
                 <div class="form-group">
-                    <label class="control-label col-sm-3 requiredField">
+                    <label class="control-label col-sm-3 requiredField icsw-formlabel">
                         Name<span class="asteriskField">*</span>
                     </label>
-                    <div class="controls col-sm-9">
-                        <input class="textinput textInput form-control" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                    <div class="controls col-sm-8">
+                        <input class="textinput textInput form-control maxwidth500" maxlength="64" name="name" ng-model="edit_obj.name" required="True" type="text"/>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="control-label col-sm-3 requiredField">
+                    <label class="control-label col-sm-3 requiredField icsw-formlabel">
                         Parent<span class="asteriskField">*</span>
                     </label>
-                    <div class="controls col-sm-9">
-                        <ui-select ng-model="edit_obj.parent" style="max-width:400px; min-width:240px;">
+                    <div class="controls col-sm-8">
+                        <ui-select ng-model="edit_obj.parent" class="maxwidth500">
                             <ui-select-match class="ui-select-match" placeholder="Select a parent node">
                                 {{ $select.selected.tree_info }}
                             </ui-select-match>
@@ -105,29 +106,29 @@
                 </div>
             </fieldset>
             <fieldset>
-                <legend>Info</legend>
+                <legend>Information</legend>
                 <div class="row">
                     <div class="col-md-12">
                         Device <code>node01</code> will get the name <code>node01{{ edit_obj.node_postfix }}.{{ edit_obj.name }}<span ng-show="tree.lut[edit_obj.parent].depth">.{{ tree.lut[edit_obj.parent].full_name }}</span></code>
                     </div>
                 </div>
             </fieldset>
-            <fieldset>
-                <legend>Additional settings</legend>
+            <fieldset style="margin-top:15px;">
+                <legend>Additional Settings</legend>
                 <div class="form-group">
-                    <label class="control-label col-sm-3">
-                        Node postfix
+                    <label class="control-label col-sm-3 icsw-formlabel">
+                        Node Postfix
                     </label>
-                    <div class="controls col-sm-9">
-                        <input class="textinput textInput form-control" maxlength="16" ng-model="edit_obj.node_postfix" type="text"/>
+                    <div class="controls col-sm-8">
+                        <input class="textinput textInput form-control maxwidth500" maxlength="16" ng-model="edit_obj.node_postfix" type="text"/>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="control-label col-sm-3">
+                    <label class="control-label col-sm-3 icsw-formlabel">
                         Comment
                     </label>
-                    <div class="controls col-sm-9">
-                        <input class="textinput textInput form-control" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
+                    <div class="controls col-sm-8">
+                        <input class="textinput textInput form-control maxwidth500" maxlength="256" name="comment" ng-model="edit_obj.comment" type="text"/>
                     </div>
                 </div>
             </fieldset>
@@ -135,11 +136,9 @@
                 <legend>Flags</legend>
                 <div class="form-group">
                     <div class="checkbox">
-                        <div class="control-label col-lg-offset-0 col-sm-3">
-                            <label>
-                                Create short names
-                            </label>
-                        </div>
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            Create short names
+                        </label>
                         <div class="controls col-lg-offset-0 col-sm-2">
                             <icsw-tools-yes-no flag="edit_obj.create_short_names"></icsw-tools-yes-no>
                         </div>
@@ -147,11 +146,9 @@
                 </div>
                 <div class="form-group">
                     <div class="checkbox">
-                        <div class="control-label col-lg-offset-0 col-sm-3">
-                            <label>
-                                Always create ip
-                            </label>
-                        </div>
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            Always Create IP Address
+                        </label>
                         <div class="controls col-lg-offset-0 col-sm-2">
                             <icsw-tools-yes-no flag="edit_obj.always_create_ip"></icsw-tools-yes-no>
                         </div>
@@ -159,11 +156,9 @@
                 </div>
                 <div class="form-group">
                     <div class="checkbox">
-                        <div class="control-label col-lg-offset-0 col-sm-3">
-                            <label>
-                                Write nameserver config
-                            </label>
-                        </div>
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            Write Nameserver Configuration
+                        </label>
                         <div class="controls col-lg-offset-0 col-sm-2">
                             <icsw-tools-yes-no flag="edit_obj.write_nameserver_config"></icsw-tools-yes-no>
                         </div>
