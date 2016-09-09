@@ -94,7 +94,6 @@ class server_code(ICSWBasePool, HMHRMixin):
         self.register_func("callback_result", self._callback_result)
         if not self.CC.CS["hm.disable.inotify.process"] and sys.platform != "darwin":
             self.add_process(HMInotifyProcess("inotify", busy_loop=True, kill_myself=True), start=True)
-        global_config["LOG_NAME"] = "bla"
         self._show_config()
         self.__debug = global_config["DEBUG"]
         if self.objgraph:

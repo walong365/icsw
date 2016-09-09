@@ -200,10 +200,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         return self.server_status(srv_com, self.__msi_block, global_config, spc=self.spc)
 
     @RemoteCall(target_process="discovery")
-    def fetch_partition_info(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall(target_process="discovery")
     def scan_system_info(self, srv_com, **kwargs):
         return srv_com
 

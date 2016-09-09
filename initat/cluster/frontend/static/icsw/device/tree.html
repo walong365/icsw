@@ -1,5 +1,7 @@
 <script type="text/ng-template" id="icsw/main/device/tree.html">
-    <icsw-device-tree-overview></icsw-device-tree-overview>
+    <div class="container-fluid">
+        <icsw-device-tree-overview></icsw-device-tree-overview>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.device.tree.filters">
@@ -106,7 +108,7 @@
 
 <script type="text/ng-template" id="icsw.device.tree.row">
     <td>{{ obj.name }}</td>
-    <td>
+    <td class="text-center">
         <input type="button" ng-class="get_dev_sel_class()" ng-click="toggle_dev_sel()" value="sel"/>
     </td>
     <td>{{ struct.device_tree.device_class_tree.lut[obj.device_class].name }}</td>
@@ -131,7 +133,7 @@
 
 <script type="text/ng-template" id="icsw.device.tree.overview">
     <h2>
-        Device tree ({{ struct.device_tree.all_list.length }} entries, {{ entries_filtered.length }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
+        Device Tree ({{ struct.device_tree.all_list.length }} Entries, {{ entries_filtered.length }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
     </h2>
 
     <icsw-device-tree-filters ng-if="struct.tree_loaded"></icsw-device-tree-filters>
@@ -166,7 +168,7 @@
 
                     <tr>
                         <td colspan="99">
-                            Additional columns:
+                            Additional Columns:
                             <div class="btn-group btn-group-xs">
                                 <input
                                     type="button"
@@ -181,13 +183,13 @@
                     </tr>
                     <tr>
                         <th st-sort='st_attrs.name'>Name</th>
-                        <th>Sel</th>
+                        <th class="text-center">Selection</th>
                         <th st-sort='st_attrs.class'>Class</th>
                         <th st-sort='st_attrs.description'>Description</th>
-                        <th st-sort='st_attrs.enabled'>Enabled</th>
-                        <th st-sort='st_attrs.type'>#devs</th>
+                        <th st-sort='st_attrs.enabled' class="text-center">Enabled</th>
+                        <th st-sort='st_attrs.type' class="text-right">#Devices</th>
                         <th ng-repeat="entry in hide_list" ng-show="hide_lut[entry[0]]" st-sort="{{'st_attrs.'+entry[0]}}">{{ entry[1] }}</th>
-                        <th colspan="2" class="text-center">Action</th>
+                        <th colspan="2">Actions</th>
                     </tr>
                 </thead>
 
@@ -204,7 +206,7 @@
     <form class="form-horizontal" name="form_data">
         <h2>Change settings of {{ num_selected() }} devices</h2>
         <fieldset>
-            <legend>Basic settings</legend>
+            <legend>Basic Settings</legend>
             <div class="row">
                 <div class="col-md-2">
                     <div class="form-group">
@@ -212,7 +214,7 @@
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.change_device_group" type="checkbox"/>
-                                    DeviceGroup
+                                    Device Group
                                 </label>
                             </div>
                         </div>
@@ -243,7 +245,7 @@
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.change_device_class" type="checkbox"/>
-                                    DeviceClass
+                                    Device Class
                                 </label>
                             </div>
                         </div>
@@ -252,7 +254,7 @@
                 <div class="col-md-10">
                     <div class="form-group" ng_show="edit_obj.change_device_class">
                         <label class="control-label col-sm-3 requiredField">
-                            Device class<span class="asteriskField">*</span>
+                            Device Class<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
                             <ui-select ng-model="edit_obj.device_class" style="max-width:400px; min-width:240px;" ng-disabled="false">
@@ -269,7 +271,7 @@
             </div>
         </fieldset>
         <fieldset>
-            <legend>Additional settings</legend>
+            <legend>Additional Settings</legend>
             <div class="row">
                 <div class="col-md-2">
                     <div class="form-group">
@@ -286,7 +288,7 @@
                 <div class="col-md-10">
                     <div class="form-group" ng_show="edit_obj.change_domain_tree_node">
                         <label class="control-label col-sm-3 requiredField">
-                            Domain tree node<span class="asteriskField">*</span>
+                            Domain Tree Node<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
                             <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
@@ -347,7 +349,7 @@
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" name="change_monitor_server" ng-model="edit_obj.change_monitor_server" type="checkbox"/>
-                                    MonitorServer
+                                    Monitor Server
                                 </label>
                             </div>
                         </div>
@@ -415,7 +417,7 @@
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.change_enabled" type="checkbox"/>
-                                    EnabledFlag
+                                    Enabled Flag
                                 </label>
                             </div>
                         </div>
@@ -467,7 +469,7 @@
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.change_store_rrd_data" type="checkbox"/>
-                                    store RRD data
+                                    Store RRD Data
                                 </label>
                             </div>
                         </div>
@@ -493,7 +495,7 @@
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.change_flap_detection_enabled" type="checkbox"/>
-                                    FlapdetectionFlag
+                                    Flapdetection Flag
                                 </label>
                             </div>
                         </div>
@@ -505,7 +507,7 @@
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.flap_detection_enabled" type="checkbox"/>
-                                    Enable flap detection
+                                    Enable Flap Detection
                                 </label>
                             </div>
                         </div>
@@ -518,34 +520,33 @@
 
 <script type="text/ng-template" id="icsw.device.group.tree.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Settings for devicegroup {{ edit_obj.name }}</h2>
         <fieldset>
-            <legend>Basic settings</legend>
+            <legend>Basic Settings for Devicegroup: {{ edit_obj.name }}<</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Name<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.name" required="True" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="192" ng-model="edit_obj.name" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Description<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="384" name="description" ng-model="edit_obj.description" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="384" name="description" ng-model="edit_obj.description" type="text"/>
                 </div>
             </div>
         </fieldset>
         <fieldset>
-            <legend>Additional settings</legend>
+            <legend>Additional Settings</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Domain tree node<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.domain_tree_node" class="maxwidth500" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="Select the domain tree node (for FQDN)">
                             {{ $select.selected.tree_info }}
                         </ui-select-match>
@@ -579,33 +580,30 @@
 
 <script type="text/ng-template" id="icsw.device.tree.form">
     <form class="form-horizontal" name="form_data">
-        <h2>
-            Device settings for {{ edit_obj.name }}
-        </h2>
         <fieldset>
-            <legend>Basic settings</legend>
+            <legend>Basic Device Settings for {{ edit_obj.name }}</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
-                    Name<span class="asteriskField">*</span>
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Device Name<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="192" ng-model="edit_obj.name" required="True" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="192" ng-model="edit_obj.name" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Comment
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="384" ng-model="edit_obj.comment" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="384" ng-model="edit_obj.comment" type="text"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
-                    Device group<span class="asteriskField">*</span>
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Device Group<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.device_group" style="max-width:400px; min-width:240px;">
+                    <ui-select ng-model="edit_obj.device_group" class="maxwidth500">
                         <ui-select-match class="ui-select-match" placeholder="Select the device group">
                             {{ $select.selected.name }}
                         </ui-select-match>
@@ -616,11 +614,11 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
-                    DeviceClass<span class="asteriskField">*</span>
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Device Class<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.device_class" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                    <ui-select ng-model="edit_obj.device_class" class="maxwidth500" ng-disabled="false">
                         <ui-select-match class="ui-select-match" placeholder="Select the DeviceClass">
                             {{ $select.selected.name }}
                         </ui-select-match>
@@ -632,14 +630,14 @@
             </div>
         </fieldset>
         <fieldset>
-            <legend>Additional settings</legend>
+            <legend>Additional Settings</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
-                    Domain tree node<span class="asteriskField">*</span>
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Domain Tree Node<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;">
-                        <ui-select-match class="ui-select-match" placeholder="Select the domain tree node (for FQDN)">
+                    <ui-select ng-model="edit_obj.domain_tree_node" class="maxwidth500">
+                        <ui-select-match class="ui-select-match" placeholder="Select the Domain Tree Node (for FQDN)">
                             {{ $select.selected.tree_info }}
                         </ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.domain_tree.list | props_filter:{tree_info:$select.search}">
@@ -649,11 +647,11 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Bootserver
                 </label>
                 <div class="controls col-sm-7">
-                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                    <div class="input-group" class="maxwidth500">
                         <ui-select ng-model="edit_obj.bootserver" ng-disabled="false">
                             <ui-select-match class="ui-select-match" placeholder="Select the bootserver">
                                 {{ $select.selected.full_name }}
@@ -671,11 +669,11 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3">
-                    Monitor server
+                <label class="control-label col-sm-3 icsw-formlabel">
+                    Monitor Server
                 </label>
                 <div class="controls col-sm-7">
-                    <div class="input-group" style="max-width:400px; min-width:240px;">
+                    <div class="input-group" class="maxwidth500">
                         <ui-select ng-model="edit_obj.monitor_server" ng-disabled="false">
                             <ui-select-match class="ui-select-match" placeholder="Select the monitor server">
                                 {{ $select.selected.$$full_name_with_type }}
@@ -696,11 +694,11 @@
         <fieldset>
             <legend>Security</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3">
-                    Root passwd
+                <label class="control-label col-sm-3 icsw-formlabel">
+                    Root Password
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" ng-model="edit_obj.root_passwd" type="password"/>
+                    <input class="textinput textInput form-control maxwidth500" ng-model="edit_obj.root_passwd" type="password"/>
                 </div>
             </div>
         </fieldset>
@@ -720,7 +718,7 @@
                     </div>
                     <div class="form-group">
                         <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
+                            <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.enable_perfdata" type="checkbox"/>
                                     Enable perfdata, check IPMI and SNMP
@@ -735,7 +733,7 @@
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.store_rrd_data" type="checkbox"/>
-                                    Store rrd data
+                                    Store RRD Data
                                 </label>
                             </div>
                         </div>
@@ -745,7 +743,7 @@
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
                                     <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.flap_detection_enabled" type="checkbox"/>
-                                    Flap detection enabled
+                                    Flap Detection Enabled
                                 </label>
                             </div>
                         </div>
