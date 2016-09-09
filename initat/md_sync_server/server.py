@@ -84,8 +84,7 @@ class server_process(
                     "MD_TYPE not found in global_config, packages missing",
                     logging_tools.LOG_LEVEL_WARN
                 )
-        else:
-            self._check_mon_state()
+        self._check_mon_state()
 
     def _check_mon_state(self):
         if self._icinga_pc is not None:

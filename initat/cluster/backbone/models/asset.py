@@ -761,7 +761,9 @@ class AssetRun(models.Model):
 
     @property
     def hdds(self):
-        return self.asset_batch.partition_table.partition_disc_set.all()
+        if self.asset_batch and self.asset_batch.partition_table:
+            return self.asset_batch.partition_table.partition_disc_set.all()
+        return []
 
     @property
     def cpus(self):
