@@ -26,9 +26,7 @@ import os
 import time
 import bz2
 import pickle
-
-from initat.host_monitoring import hm_classes
-from initat.tools import logging_tools, server_command
+import subprocess
 
 from initat.host_monitoring import hm_classes
 from initat.host_monitoring import limits
@@ -298,6 +296,45 @@ class updatelist_command(hm_classes.hm_command):
             return limits.nag_STATE_OK, "No updates found"
 
 
+class darwinapplist_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
+    def __call__(self, srv_com, cur_ns):
+        s_time = time.time()
+        app_list = get_darwin_app_list()
+        e_time = time.time()
+        srv_com.set_result(
+            "ok got list in {}".format(logging_tools.get_diff_time_str(e_time - s_time)),
+        )
+        srv_com["darwinapplist"] = server_command.compress(app_list, pickle=True)
+
+    def interpret(self, srv_com, cur_ns):
+        app_list = server_command.decompress(srv_com["darwinapplist"].text, pickle=True)
+
+        for app in app_list:
+            version = "N/A"
+            if "plist_xml" in app:
+                plist_xml = app["plist_xml"]
+                gimme_next = False
+                for comp in plist_xml.split("\n"):
+                    if gimme_next:
+                        try:
+                            version = comp.split("<string>")[1].split("</string>")[0]
+                        except Exception as e:
+                            pass
+                        break
+                    if "CFBundleShortVersionString" in comp:
+                        gimme_next = True
+
+            app["version"] = version
+
+        if app_list:
+            return limits.nag_STATE_OK, "{}".format("\n".join(
+                ["{:} {:} {:}".format(app['name'], app['version'], app['size']) for app in app_list]))
+        else:
+            return limits.nag_STATE_OK, "No apps found"
+
 def rpmlist_int(rpm_root_dir, re_strs, is_debian):
     if is_debian:
         log_list = ["doing dpkg -l command in dir {}".format(rpm_root_dir)]
@@ -460,3 +497,53 @@ def get_update_list():
                 update_list.append((comps[1], comps[3][1:]))
 
     return update_list
+
+def get_darwin_app_list():
+    darwin_app_path = "/Applications"
+    app_list = []
+    app_dict_list = []
+
+    def get_size(start_path='.'):
+        total_size = 0
+        for dirpath, dirnames, filenames in os.walk(start_path):
+            for f in filenames:
+                fp = os.path.join(dirpath, f)
+                total_size += os.path.getsize(fp)
+        return total_size
+
+    for dirpath, dirnames, filenames in os.walk(darwin_app_path):
+        for dirname in dirnames:
+            root, ext = os.path.splitext(dirname)
+            if ext == ".app":
+                app = os.path.join(dirpath, dirname)
+
+                apps_in_path = 0
+                head = app
+                while True:
+                    head, tail = os.path.split(head)
+
+                    if tail:
+                        root, ext = os.path.splitext(tail)
+                        if ext.lower() == ".app":
+                            apps_in_path += 1
+
+                    if head == "/":
+                        break
+
+                if apps_in_path == 1:
+                    app_list.append(app)
+
+    for app in app_list:
+        o = {}
+        o["name"] = app
+        o["size"] = get_size(app)
+
+        plist_path = os.path.join(app, "Contents", "Info.plist")
+
+        if os.path.exists(plist_path):
+            o["plist_xml"] = subprocess.check_output(["/usr/bin/plutil", "-convert", "xml1", "-o", "-", plist_path])
+
+        app_dict_list.append(o)
+
+
+    return app_dict_list

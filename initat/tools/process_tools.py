@@ -255,6 +255,11 @@ LOCAL_ZMQ_DIR = "/var/run/icsw/zmq/.zmq_{:d}:{:d}".format(
 )
 
 LOCAL_ROOT_ZMQ_DIR = "/var/run/icsw/sockets"
+
+if sys.platform == "darwin":
+    if not os.path.exists("/var/run/icsw"):
+        os.mkdir("/var/run/icsw")
+
 INIT_ZMQ_DIR_PID = "{:d}".format(os.getpid())
 ALLOW_MULTIPLE_INSTANCES = True
 
