@@ -63,6 +63,7 @@ class ExternalProcess(object):
                 else:
                     self.log("created {}".format(_name))
         self.start_time = time.time()
+        self.log("starting command '{}'".format(self.__command))
         self.popen = subprocess.Popen(
             self.__command,
             bufsize=128,
@@ -120,6 +121,7 @@ class ProcessControl(object):
         self._target_state = target_state
         self.log("init (pid_file_name={})".format(self.__pid_file_name))
         self.__ext_process = None
+        self._kill_old_instances()
         self.check_state()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -132,12 +134,8 @@ class ProcessControl(object):
         _proc = self._get_proc()
         if _proc is None:
             return False
-            self.log("No process found, starting {} ...".format(self.__proc_name))
-            self.start()
         elif _proc is not None:
             return True
-            self.log("Process found, stopping ...")
-            self.stop()
 
     def _get_pid_from_file(self):
         _pid_present = os.path.isfile(self.__pid_file_name)
@@ -146,7 +144,7 @@ class ProcessControl(object):
                 _pid = int(file(self.__pid_file_name, "r").read().strip().split()[0])
             except:
                 self.log(
-                    "error getting pid from {] :{}".format(
+                    "error getting pid from {} :{}".format(
                         self.__pid_file_name,
                         process_tools.get_except_info(),
                     ),
@@ -156,6 +154,20 @@ class ProcessControl(object):
         else:
             _pid = None
         return _pid
+
+    def _kill_old_instances(self):
+        self.log("checking for old instances")
+        for _proc in psutil.process_iter():
+            try:
+                if _proc.name().count("icinga"):
+                    _cmdline = _proc.cmdline()
+                    _path = _cmdline[0]
+                    if _path.startswith("/opt/") and _path.count("icinga"):
+                        self.log("trying to kill process {} ({})".format(_proc.pid, _proc.name()))
+                        _proc.send_signal(9)
+            except:
+                self.log("error in handing process entry: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+        self.log("done")
 
     def _get_proc(self):
         _pid = self._get_pid_from_file()
