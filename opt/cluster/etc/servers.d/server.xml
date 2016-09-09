@@ -99,7 +99,7 @@
             <config_name contact='0'>server</config_name>
         </config_names>
     </instance>
-    <instance name="icinga" check_type="simple" pid_file_name="/opt/icinga/var/icinga.lock" any_threads_ok="1" runs_on="system" wait_time="20">
+    <instance name="icinga-init" check_type="pid_file" pid_file_name="/opt/cluster/icinga/var/icinga.lock" any_threads_ok="1" startstop="0" runs_on="system">
         <config_names>
             <config_name contact='0'>monitor_server</config_name>
             <config_name contact='0'>monitor_master</config_name>
@@ -287,7 +287,7 @@
             <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
         <start-argument>
-            <arg key="user">idnagios</arg>
+            <arg key="user">idmon</arg>
             <arg key="group">idg</arg>
         </start-argument>
         <network>
@@ -296,7 +296,8 @@
             </ports>
         </network>
         <access-rights>
-            <dir value="/opt/icinga/" user="idnagios" group="idg"/>
+            <file value="/opt/cluster/etc/cstores.d/icsw.md-sync_config.xml" user="idmon" group="idg"/>
+            <dir value="/opt/cluster/icinga/" user="idmon" group="idg"/>
         </access-rights>
     </instance>
     <instance check_type="meta" name="md-config-server" alias="md-config" pid_file_name="md-config-server/md-config-server.pid" has_force_stop="1" reload="1" uuid-postfix="md-config-server">
@@ -305,7 +306,7 @@
             <config_name>monitor_master</config_name>
         </config_names>
         <start-argument>
-            <arg key="user">idnagios</arg>
+            <arg key="user">idmon</arg>
             <arg key="group">idg</arg>
         </start-argument>
         <dependencies>
@@ -320,12 +321,12 @@
         <required-license>md_config_server</required-license>
         <old-binary>md-config-server</old-binary>
         <access-rights>
-            <dir value="/var/run/md-config-server" user="idnagios" group="idg" create="1"/>
-            <dir value="/opt/nagvis4icinga/etc/" user="idnagios" group="idg"/>
-            <dir value="/opt/nagvis4icinga/etc/maps" user="idnagios" group="idg"/>
-            <file value="/opt/nagvis4icinga/etc/auth.db" user="idnagios" group="idg"/>
-            <file value="/opt/nagvis4icinga/etc/nagvis.ini.php" user="idnagios" group="idg"/>
-            <file value="/opt/nagvis4icinga/share/server/core/defined/global.php" user="idnagios" group="idg"/>
+            <dir value="/var/run/md-config-server" user="idmon" group="idg" create="1"/>
+            <dir value="/opt/nagvis4icinga/etc/" user="idmon" group="idg"/>
+            <dir value="/opt/nagvis4icinga/etc/maps" user="idmon" group="idg"/>
+            <file value="/opt/nagvis4icinga/etc/auth.db" user="idmon" group="idg"/>
+            <file value="/opt/nagvis4icinga/etc/nagvis.ini.php" user="idmon" group="idg"/>
+            <file value="/opt/nagvis4icinga/share/server/core/defined/global.php" user="idmon" group="idg"/>
         </access-rights>
     </instance>
     <instance name="mongodb-init" check_type="simple" pid_file_name="mongodb-init/mongodb-init.pid" any_threads_ok="1" runs_on="system">

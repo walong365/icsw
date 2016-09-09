@@ -128,9 +128,20 @@ class device(models.Model):
     # image version running
     # imageversion = models.CharField(max_length=192, blank=True, default="")
     # new partition table
-    partition_table = models.ForeignKey("backbone.partition_table", null=True, related_name="new_partition_table")
+    partition_table = models.ForeignKey(
+        "backbone.partition_table",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="new_partition_table",
+    )
     # current partition table
-    act_partition_table = models.ForeignKey("backbone.partition_table", null=True, related_name="act_partition_table", blank=True)
+    act_partition_table = models.ForeignKey(
+        "backbone.partition_table",
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="act_partition_table",
+        blank=True,
+    )
     partdev = models.CharField(max_length=192, blank=True)
     fixed_partdev = models.IntegerField(null=True, blank=True)
     bz2_capable = models.IntegerField(null=True, blank=True)

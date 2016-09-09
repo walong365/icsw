@@ -487,7 +487,7 @@ class main_config(object):
                     resource_cfg.get_name()
                 )
             ),
-            ("%s_user" % (global_config["MD_TYPE"]), "idnagios"),
+            ("%s_user" % (global_config["MD_TYPE"]), "idmond"),
             ("%s_group" % (global_config["MD_TYPE"]), "idg"),
             ("check_external_commands", 1),
             ("command_check_interval", 1),
