@@ -1487,7 +1487,11 @@ class AssetBatch(models.Model):
     cpus = models.ManyToManyField(AssetHWCPUEntry)
     memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
     gpus = models.ManyToManyField(AssetHWGPUEntry)
-    partition_table = models.ForeignKey("backbone.partition_table", null=True)
+    partition_table = models.ForeignKey(
+        "backbone.partition_table",
+        on_delete=models.SET_NULL,
+        null=True,
+    )
     network_devices = models.ManyToManyField(AssetHWNetworkDevice)
     # TODO: Remove this.
     partitions = models.ManyToManyField(AssetHWLogicalEntry)
