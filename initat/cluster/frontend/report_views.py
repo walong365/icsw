@@ -2488,7 +2488,7 @@ class GenerateReportXlsx(View):
 class ReportDataAvailable(View):
     @method_decorator(login_required)
     def post(self, request):
-        idx_list = None
+        idx_list = []
         for item in request.POST.iterlists():
             key, _list = item
             if key == "idx_list[]":
