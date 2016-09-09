@@ -362,7 +362,7 @@ device_variable_module = angular.module(
             create_or_edit(scope, event, create, obj_or_parent)
 
         delete: (scope, event, d_var) ->
-            icswToolsSimpleModalService("Really delete DeviceVariable #{d_var.name} ?").then(
+            icswToolsSimpleModalService("Really delete Device Variable '#{d_var.name}' ?").then(
                 () =>
                     blockUI.start()
                     scope.device_tree.delete_device_variable(d_var).then(
