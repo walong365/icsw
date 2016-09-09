@@ -16,10 +16,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import commands
-import os
 import re
-import time
 import base64
 import commands
 import os
@@ -334,6 +331,71 @@ class darwinapplist_command(hm_classes.hm_command):
                 ["{:} {:} {:}".format(app['name'], app['version'], app['size']) for app in app_list]))
         else:
             return limits.nag_STATE_OK, "No apps found"
+
+
+class darwinupdatelist_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
+    def __call__(self, srv_com, cur_ns):
+        s_time = time.time()
+        update_list = subprocess.check_output(["/usr/sbin/softwareupdate", "-l"])
+        e_time = time.time()
+        srv_com.set_result(
+            "ok got list in {}".format(logging_tools.get_diff_time_str(e_time - s_time)),
+        )
+        srv_com["darwinupdatelist"] = server_command.compress(update_list, pickle=True)
+
+    def interpret(self, srv_com, cur_ns):
+        print server_command.decompress(srv_com["darwinupdatelist"].text, pickle=True)
+        update_list = darwinupdatelist_command.parse_command(
+            server_command.decompress(srv_com["darwinupdatelist"].text, pickle=True))
+
+        if update_list:
+            return limits.nag_STATE_OK, "{}".format("\n".join(
+                ["{} {} {}".format(up['updatedetailname'], up['version'], up['optional']) for up in update_list]))
+        else:
+            return limits.nag_STATE_OK, "No updates found"
+
+    @staticmethod
+    def parse_command(command_output):
+        softwareupdate_output = command_output
+
+        lines = softwareupdate_output.split("\n")
+
+        gimme_next_line = False
+
+        update_list = []
+
+        current_update = {}
+        for line in lines:
+            if line.strip().startswith("*"):
+                try:
+                    current_update["updatename"] = line.strip()[1:].strip()
+                    current_update['version'] = line.strip().split("-")[-1]
+
+                    gimme_next_line = True
+                except:
+                    current_update = {}
+
+            elif gimme_next_line:
+                gimme_next_line = False
+
+                try:
+                    head, tail = line.strip().split(",")
+
+                    current_update["updatedetailname"] = head[:head.rfind("(")].strip()
+
+                    current_update["optional"] = True
+                    if "[recommended]" in tail:
+                        current_update["optional"] = False
+
+                    update_list.append(current_update)
+                    current_update = {}
+                except:
+                    current_update = {}
+
+        return update_list
 
 def rpmlist_int(rpm_root_dir, re_strs, is_debian):
     if is_debian:
