@@ -449,6 +449,7 @@ angular.module(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.monitoring_tree = data[1]
+                console.log data[1]
                 $scope.struct.domain_tree = data[2]
                 $scope.struct.category_tree = data[3]
                 if $scope.icsw_struct.is_devicegroup
@@ -456,6 +457,7 @@ angular.module(
                 else
                     $scope.edit_obj = $scope.icsw_struct.edit_obj
                 create_info_fields($scope.edit_obj)
+                console.log $scope.edit_obj
                 $scope.struct.data_valid = true
                 defer.resolve("done")
         )
@@ -472,8 +474,9 @@ angular.module(
             template_name = "icsw.device.info.edit.form"
             title = "Modify Device settings"
         dbu.create_backup($scope.edit_obj)
-        sub_scope = $scope.$new(false)
+        sub_scope = $scope.$new(true)
         sub_scope.edit_obj = $scope.edit_obj
+        sub_scope.struct = $scope.struct
 
         # for fields, tree can be the basic or the cluster tree
 

@@ -98,7 +98,7 @@
     <fieldset>
         <legend>Device Settings for: '{{ edit_obj.$$full_device_name }}'<img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16"></img></legend>
         <div class="form-group row">
-            <div class="col-sm-4">
+            <div class="col-sm-6 col-xs-12">
                 <div class="row">
                     <label class="control-label col-sm-3 requiredField icsw-formlabel">
                         FQDN
@@ -131,16 +131,25 @@
                         {{ edit_obj.comment }}
                     </div>
                 </div>
-                <div class="row">
-                    <label class="control-label col-xs-3 icsw-formlabel" ng-show="edit_obj.alias">
+                <div class="row" ng-show="edit_obj.alias">
+                    <label class="control-label col-xs-3 icsw-formlabel">
                         Alias
                     </label>
-                    <div class="col-sm-6" ng-show="edit_obj.alias">
+                    <div class="col-sm-6">
                         {{ edit_obj.alias }}
                     </div>
                 </div>
+                <div class="row">
+                    <label class="control-label col-xs-3 icsw-formlabel">
+                        <!-- todo, add some helpfull information via info button -->
+                        UUID <icsw-tools-button size="xs" type="info"></icsw-tools-button>
+                    </label>
+                    <div class="col-xs-8">
+                        <code>{{ edit_obj.uuid }}</code>
+                    </div>
+                </div>
             </div>
-            <div class="col-sm-6">
+            <div class="col-sm-6 col-xs-12">
                 <div class="row">
                     <label class="control-label col-xs-3 icsw-formlabel">
                         ComCapabilities
@@ -199,29 +208,28 @@
         <icsw-device-static-asset-overview icsw-device="edit_obj"></icsw-device-static-asset-overview>
     </fieldset>
     <fieldset>
-        <legend>Monitor settings</legend>
-        <div class="row">
-            <div class="col-sm-4">
-                <div class="row" ng_show="mon_device_templ_list">
-                    <label class="control-label col-xs-2 icsw-formlabel" ng_show="mon_device_templ_list">
-                        Monitoring Device Template
-                    </label>
-                    <div class="col-sm-6" ng_show="mon_device_templ_list">
-                        {{ struct.monitoring_tree.mon_device_templ_lut[edit_obj.mon_device_templ].name }}
-                    </div>
-                </div>
-                <div class="row">
-                    <label class="control-label col-xs-2 icsw-formlabel">
-                        Monitoring hints
-                    </label>
-                    <div class="col-sm-6">
-                        {{ edit_obj.$$monitoring_hint_info }}
-                    </div>
-                </div>
+        <legend>Device flags</legend>
+        <div class="row" ng_show="struct.monitoring_tree.mon_device_templ_list">
+            <label class="control-label col-xs-2 icsw-formlabel">
+                Monitoring Device Template
+            </label>
+            <div class="col-sm-6">
+                <span ng-show="edit_obj.mon_device_templ">
+                    {{ struct.monitoring_tree.mon_device_templ_lut[edit_obj.mon_device_templ].name }}
+                </span>
+                <span ng-show="!edit_obj.mon_device_templ">---</span>
             </div>
         </div>
         <div class="row">
-            <div class="col-sm-4">
+            <label class="control-label col-xs-2 icsw-formlabel">
+                Monitoring hints
+            </label>
+            <div class="col-sm-6">
+                {{ edit_obj.$$monitoring_hint_info }}
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-sm-6 col-xs-12">
                 <div class="row">
                     <label class="control-label col-xs-2 icsw-formlabel">Monitoringchecks enabled</label>
                     <div class="col-xs-3">
@@ -235,7 +243,7 @@
                     </div>
                 </div>
             </div>
-            <div class="col-sm-6">
+            <div class="col-sm-6 col-xs-12">
                 <div class="row">
                     <label class="control-label col-xs-2 icsw-formlabel">Flap-detection Enabled</label>
                     <div class="col-xs-3">
@@ -250,9 +258,6 @@
                 </div>
             </div>
         </div>
-    </fieldset>
-    <fieldset>
-        <legend>RRD / Graph Settings</legend>
         <div class="row">
             <label class="ontrol-label col-xs-2 icsw-formlabel">Store RRD Data</label>
             <div class="col-xs-3">
@@ -261,6 +266,11 @@
         </div>
     </fieldset>
     <fieldset>
+        <div class="pull-right" ng-show="acl_modify(edit_obj, 'backbone.device.change_basic')">
+            <icsw-tools-button type="modify" button-type="submit" ng-click="modify()"></icsw-tools-button>
+        </div>
+    </fieldset>
+    <!-- <fieldset>
         <legend>UUID Info</legend>
         <h4>Copy the following snippet to <code>/opt/cluster/etc/cstores.d/icsw.device_config.xml</code> :</h4>
         <pre><code>&lt;?xml version='1.0' encoding='ASCII'?&gt;
@@ -271,10 +281,7 @@
 &lt;/config-store&gt;
 </code></pre>
         <h4>and restart host-monitoring with <code>icsw service restart host-monitoring</code></h4>
-    </fieldset>
-    <div class="pull-right" ng-show="acl_modify(edit_obj, 'backbone.device.change_basic')">
-        <icsw-tools-button type="modify" button-type="submit" ng-click="modify()"></icsw-tools-button>
-    </div>
+    </fieldset> -->
 </script>
 
 <script type="text/ng-template" id="icsw.device.info.edit.form">
@@ -364,11 +371,10 @@
         </fieldset>
         <fieldset>
             <legend>Monitor settings</legend>
-            <div class="form-group" ng_show="mon_device_templ_list">
+            <div class="form-group" ng_show="struct.monitoring_tree.mon_device_templ_list">
                 <label class="control-label col-xs-3">
                     Mon device templ
                 </label>
-
                 <div class="controls col-xs-9">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
                         <ui-select ng-model="edit_obj.mon_device_templ" ng-disabled="false">
@@ -425,9 +431,6 @@
                     </div>
                 </div>
             </div>
-        </fieldset>
-        <fieldset>
-            <legend>RRD / Graph Settings</legend>
             <div class="row">
                 <div class="col-xs-6">
                     <div class="form-group row">
