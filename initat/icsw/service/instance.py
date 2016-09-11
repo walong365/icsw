@@ -247,6 +247,8 @@ class InstanceXML(object):
 
     # access functions
     def get_config_names(self, inst, only_contact=True):
+        if not only_contact:
+            raise ValueError("called with only_contact=False")
         if isinstance(inst, basestring):
             inst = self[inst]
         # if only_contact is set to True only config_names where @contact=1 (or contact is not set) will be returned
