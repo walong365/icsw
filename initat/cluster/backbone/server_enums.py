@@ -54,6 +54,7 @@ def init_app_enum():
         _all = []
         for _enum in settings.ICSW_SERVICE_ENUM_LIST:
             for entry in _enum:
+                entry.value.clear_instance_names()
                 _all.append((entry.name, entry.value))
         icswServiceEnum = Enum(value="icswServerEnum", names=_all, type=icswAppBaseServiceEnumClass)
     _xml = instance.InstanceXML(quiet=True)
