@@ -103,7 +103,7 @@ sources = {
             "frontend/static/css/angular-gridster.min.css",
             "frontend/static/css/hotkeys.css",
             # yamm3 mega menu, not used right now
-            # "frontend/static/css/yamm.css",
+            "frontend/static/css/yamm.css",
             # not needed right now, not working with tree-code
             # "frontend/static/css/awesome-bootstrap-checkbox.css",
         ]

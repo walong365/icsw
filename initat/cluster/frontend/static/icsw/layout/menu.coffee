@@ -284,10 +284,10 @@ menu_module = angular.module(
         render: () ->
             state = @props.state
             data = state.icswData
-            # console.log "D=", data
+            console.log "D=", data
             a_attrs = {
                 key: "a"
-                className: "dropdown-toggle cursorpointer"
+                className: "icswMenuColor"
             }
             if data.menuEntry.href?
                 a_attrs.href = data.menuEntry.href
@@ -334,11 +334,22 @@ menu_module = angular.module(
         getDefaultProps: () ->
         render: () ->
             _idx = 0
-            _items = []
+            #_items = []
             # _idx = 0
             # flag for last entry was a valid one
             valid_entry = false
             _post_spacer = false
+
+            items_per_column = {}
+
+            for state in @props.entries
+                data = state.icswData
+
+                if data.menuEntry.column?
+                    items_per_column[data.menuEntry.column] = []
+                else
+                    items_per_column[0] = []
+
             for state in @props.entries
                 _idx++
                 data = state.icswData
@@ -346,28 +357,72 @@ menu_module = angular.module(
                 if data.menuEntry.isHidden? and data.menuEntry.isHidden
                     continue
                 if data.$$allowed
-                    # console.log _key
-                    if (data.menuEntry.preSpacer? and valid_entry) or _post_spacer
-                        _items.push(
-                            li({className: "divider", key: _key + "_pre"})
-                        )
+                    column = 0
+                    if data.menuEntry.column?
+                        column = data.menuEntry.column
+
                     if angular.isFunction(state.name)
-                        _items.push(
+                        items_per_column[column].push(
                             React.createElement(state.name, {key: _key})
                         )
                     else
-                        _items.push(
+                        items_per_column[column].push(
                             React.createElement(menu_line, {key: _key, state: state})
                         )
-                    valid_entry = true
-                    if data.menuEntry.postSpacer?
-                        _post_spacer = true
-                    else
-                        _post_spacer = false
-            if _items.length
+
+#            for state in @props.entries
+#                _idx++
+#                data = state.icswData
+#                _key = data.key
+#                if data.menuEntry.isHidden? and data.menuEntry.isHidden
+#                    continue
+#                if data.$$allowed
+#                    column = 0
+#                    if data.menuEntry.column?
+#                        column = data.menuEntry.column
+#
+#                    if (data.menuEntry.preSpacer? and valid_entry) or _post_spacer
+#                        items_per_column[column].push(
+#                            li({className: "divider", key: _key + "_pre"})
+#                        )
+#                    if angular.isFunction(state.name)
+#                        items_per_column[column].push(
+#                            React.createElement(state.name, {key: _key})
+#                        )
+#                    else
+#                        items_per_column[column].push(
+#                            React.createElement(menu_line, {key: _key, state: state})
+#                        )
+#                    valid_entry = true
+#                    if data.menuEntry.postSpacer?
+#                        _post_spacer = true
+#                    else
+#                        _post_spacer = false
+
+            if true
                 state = @props.state
                 header = state.icswData.menuHeader
                 key= "mh_#{state.icswData.key}"
+
+                ul_items = []
+
+                columns = 0
+
+                for column in Object.keys(items_per_column)
+                    columns += 1
+
+                for column in Object.keys(items_per_column)
+                    items = items_per_column[column]
+
+                    ul_item = ul(
+                        {
+                            className: "col-sm-" + 12 / columns + " list-unstyled"
+                        }
+                        items
+                    )
+
+                    ul_items.push(ul_item)
+
                 _res = li(
                     {
                         key: "menu_" + key
@@ -398,9 +453,29 @@ menu_module = angular.module(
                         ul(
                             {
                                 className: "dropdown-menu"
-                                key: "ul_" + key
+
                             }
-                            _items
+                            li(
+                                {
+
+                                }
+                                [
+
+                                    div(
+                                        {
+                                            className: "yamm-content"
+                                        }
+                                        [
+                                            div(
+                                                {
+                                                    className: "row"
+                                                }
+                                                ul_items
+                                            )
+                                        ]
+                                    )
+                                ]
+                            )
                         )
                     ]
                 )
@@ -473,15 +548,23 @@ menu_module = angular.module(
                 menus = []
 
             if menus.length
-                _res = ul(
-                    {
-                        key: "topmenu"
-                        className: "nav navbar-nav"
-                    }
-                    (
-                        menu.get_react() for menu in _.orderBy(menus, "state.icswData.menuHeader.ordering")
+                _res =
+                    div(
+                        {
+                            className: "yamm"
+                        }
+                        [
+                            ul(
+                                {
+                                    key: "topmenu"
+                                    className: "nav navbar-nav"
+                                }
+                                (
+                                    menu.get_react() for menu in _.orderBy(menus, "state.icswData.menuHeader.ordering")
+                                )
+                            )
+                        ]
                     )
-                )
             else
                 _res = null
             return _res

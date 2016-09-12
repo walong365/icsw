@@ -1,15 +1,37 @@
 <routes>
-    <routeGroup name="config">
-        <menuHeader type="dict" name_str="Configuration" icon_str="fa-hdd-o"/>
+    <routeGroup name="mm_devices">
+        <menuHeader type="dict" name_str="Devices" icon_str="fa-hdd-o"/>
         <route name="main.devicecreate">
             <stateData type="dict" url_str="/devicecreate" templateUrl_str="icsw/main/device/create.html"/>
             <icswData type="dict" pageTitle_str="Create new Device" validForQuicklink_bool="yes">
-                <menuEntry type="dict" icon_str="fa-plus-circle" name_str="Create new device"/>
+                <menuEntry type="dict" icon_str="fa-plus-circle" name_str="Create new device" column_int="0"/>
                 <rights type="list">
                     <value>backbone.user.modify_tree</value>
                 </rights>
             </icswData>
         </route>
+        <route name="main.devvars">
+            <stateData type="dict" url_str="/variables"
+                       templateUrl_str="icsw/device/variable.html"/>
+            <icswData type="dict" pageTitle_str="Device variables" hasDevselFunc_bool="yes">
+                <menuEntry type="dict" icon_str="fa-code" name_str="Variables" column_int="1"/>
+                <rights type="list">
+                    <value>backbone.device.change_variables</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.deviceconnection">
+            <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
+            <icswData type="dict" pageTitle_str="Device Connections" hasDevselFunc_bool="yes">
+                <menuEntry type="dict" icon_str="fa-plug" name_str="Connections" column_int="2"/>
+                <rights type="list">
+                    <value>backbone.device.change_connection</value>
+                </rights>
+            </icswData>
+        </route>
+    </routeGroup>
+    <routeGroup name="config">
+        <menuHeader type="dict" name_str="Configuration" icon_str="fa-hdd-o"/>
         <route name="main.configoverview">
             <stateData type="dict" url_str="/configoverview" templateUrl_str="icsw/main/config/overview.html"/>
             <icswData type="dict" pageTitle_str="Overview">
@@ -28,31 +50,12 @@
                 </rights>
             </icswData>
         </route>
-        <route name="main.deviceconnection">
-            <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
-            <icswData type="dict" pageTitle_str="Device Connections" hasDevselFunc_bool="yes">
-                <menuEntry type="dict" icon_str="fa-plug" name_str="Connections"/>
-                <rights type="list">
-                    <value>backbone.device.change_connection</value>
-                </rights>
-            </icswData>
-        </route>
         <route name="main.devicenetwork">
             <stateData type="dict" url_str="/network" template_str="&lt;icsw-device-network-total&gt;&lt;/icsw-device-network-total&gt;"/>
             <icswData type="dict" pageTitle_str="Network" hasDevselFunc_bool="yes">
                 <menuEntry type="dict" icon_str="fa-sitemap"/>
                 <rights type="list">
                     <value>backbone.device.change_network</value>
-                </rights>
-            </icswData>
-        </route>
-        <route name="main.devvars">
-            <stateData type="dict" url_str="/variables"
-                       templateUrl_str="icsw/device/variable.html"/>
-            <icswData type="dict" pageTitle_str="Device variables" hasDevselFunc_bool="yes">
-                <menuEntry type="dict" icon_str="fa-code" name_str="Variables"/>
-                <rights type="list">
-                    <value>backbone.device.change_variables</value>
                 </rights>
             </icswData>
         </route>

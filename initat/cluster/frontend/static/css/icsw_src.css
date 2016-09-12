@@ -111,6 +111,10 @@ del {
     color: #a00;
 }
 
+.icswMenuColor {
+    color: #333;
+}
+
 .fa_icsw {
     width: 1.5em;
     text-align: center;
