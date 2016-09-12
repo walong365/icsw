@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2001-2006,2012-2014 Andreas Lang, init.at
+    Copyright (C) 2001-2006,2012-2016 Andreas Lang, init.at
 
     Send feedback to: <lang@init.at>
 
@@ -173,7 +173,7 @@ int main(int argc, char **argv)
     char *identity_str = parse_uuid(src_ip);
     struct stat my_stat;
     struct sysinfo s_info;
-    int64_t tcp_keepalive, tcp_keepalive_idle, zmq_linger;
+    int tcp_keepalive, tcp_keepalive_idle, zmq_linger;
     tcp_keepalive = 1;
     tcp_keepalive_idle = 300;
     zmq_linger = 10;

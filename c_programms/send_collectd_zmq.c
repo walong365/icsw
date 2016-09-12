@@ -186,7 +186,7 @@ int main(int argc, char **argv)
     void *context = zmq_init(1);
     void *requester = zmq_socket(context, ZMQ_PUSH);
     char *identity_str = parse_uuid();
-    int64_t tcp_keepalive, tcp_keepalive_idle;
+    int tcp_keepalive, tcp_keepalive_idle;
     tcp_keepalive = 1;
     tcp_keepalive_idle = 300;
     zmq_setsockopt(requester, ZMQ_IDENTITY, identity_str, strlen(identity_str));

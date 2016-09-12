@@ -1,12 +1,14 @@
 <script type="text/ng-template" id="icsw/device/variable.html">
-    <uib-tabset>
-        <uib-tab heading="DeviceVariables">
-            <icsw-device-variable-overview icsw-sel-man="0"></icsw-device-variable-overview>
-        </uib-tab>
-        <uib-tab heading="VariableScopes">
-            <icsw-variable-scope-overview></icsw-variable-scope-overview>
-        </uib-tab>
-    </uib-tabset>
+    <div class="container-fluid">
+        <uib-tabset>
+            <uib-tab heading="Device Variables">
+                <icsw-device-variable-overview icsw-sel-man="0"></icsw-device-variable-overview>
+            </uib-tab>
+            <uib-tab heading="Variable Scopes">
+                <icsw-variable-scope-overview></icsw-variable-scope-overview>
+            </uib-tab>
+        </uib-tabset>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.variable.scope.overview">
@@ -25,9 +27,9 @@
 
 <script type="text/ng-template" id="icsw.variable.scope.table.overview">
     <h3>
-        Variable scope '{{ var_scope.name }}',
+        Variable Scope '{{ var_scope.name }}',
         <span ng-show="var_scope.description">({{ var_scope.description }})</span>
-        number of entries: {{ var_scope.dvs_allowed_name_set.length }}
+        Number of Entries: {{ var_scope.dvs_allowed_name_set.length }}
         <icsw-tools-button size="xs" type="create" ng-click="create_dvs_an($event, var_scope)"></icsw-tools-button>
     </h3>
     <table st-table="entries" st-safe-src="var_scope.dvs_allowed_name_set" class="table table-condensed table-striped" style="width:auto;">
@@ -48,7 +50,7 @@
                 <th>Unique</th>
                 <th>ForcedType</th>
                 <th>Description</th>
-                <th colspan="1">Action</th>
+                <th colspan="1">Actions</th>
             </tr>
         </thead>
         <tbody>
