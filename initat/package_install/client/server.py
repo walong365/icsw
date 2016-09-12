@@ -24,6 +24,7 @@ import time
 
 import zmq
 
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, uuid_tools, server_mixins
 from initat.tools.server_mixins import RemoteCall
@@ -40,7 +41,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             "main",
             zmq=True,
         )
-        self.CC.init("package-client", global_config)
+        self.CC.init(icswServiceEnum.package_client, global_config)
         self.CC.check_config(client=True)
         self.install_signal_handlers()
         # init environment
@@ -50,7 +51,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.register_exception("term_error", self._int_error)
         self.register_exception("alarm_error", self._alarm_error)
         # log buffer
-        self._show_config()
+        self.CC.log_config()
         # log limits
         self._log_limits()
         self._set_resend_timeout(None)
@@ -85,14 +86,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         else:
             msi_block = None
         self.__msi_block = msi_block
-
-    def _show_config(self):
-        for log_line, log_level in global_config.get_log():
-            self.log("Config info : [{:d}] {}".format(log_level, log_line))
-        conf_info = global_config.get_config_info()
-        self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
 
     def _log_limits(self):
         # read limits

@@ -253,6 +253,9 @@
             <config_name contact='0'>monitor_master</config_name>
             <config_name>monitor_slave</config_name>
         </config_names> -->
+        <config-enums>
+            <config-enum>host_relay</config-enum>
+        </config-enums>
         <!-- special flag: ignore missing database connection, for relayer operation -->
         <ignore-missing-database/>
         <programm-name>collrelay</programm-name>
@@ -273,6 +276,9 @@
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
             <needed-for-start symmetrical="1">memcached</needed-for-start>
         </dependencies>
+        <config-enums>
+            <config-enum>snmp_relay</config-enum>
+        </config-enums>
         <!-- <config_names>
             <config_name contact='0'>monitor_server</config_name>
             <config_name contact='0'>monitor_master</config_name>

@@ -46,6 +46,14 @@ class client_enums(Enum):
         "host-monitoring",
         "Monitoring base",
     )
+    host_relay = icswServiceEnumBaseClient(
+        "host-relayer",
+        "Relayer for host-monitoring calls",
+    )
+    snmp_relay = icswServiceEnumBaseClient(
+        "SNMP-relayer",
+        "Relayer for SNMP calls",
+    )
     meta_server = icswServiceEnumBaseClient(
         "meta-server",
         "Takes care about all running processes"
@@ -58,6 +66,10 @@ class client_enums(Enum):
         "package-client",
         "controls the installation of packages (RPMs / debs)",
     )
+    monitor_slave = icswServiceEnumBaseClient(
+        "monitor-slave",
+        "sets device as a monitor slave (sattelite)",
+    )
 
 
 def init_app_enum():
@@ -66,7 +78,8 @@ def init_app_enum():
     icswServiceEnum = Enum(value="icswClientEnum", names=[(entry.name, entry.value) for entry in client_enums], type=icswAppBaseServiceEnumClass)
     _xml = instance.InstanceXML(quiet=True)
     for _inst in _xml.get_all_instances():
-        if _xml.get_attrib(_inst)["runs_on"] in ["client"]:
+        if _xml.get_attrib(_inst)["runs_on"] in ["client"] or _inst.find("ignore-missing-database") is not None:
+            _attr = _xml.get_attrib(_inst)
             _enums = _xml.get_config_enums(_inst)
             for _enum_str in _enums:
                 if _enum_str.count("-"):
@@ -78,5 +91,7 @@ def init_app_enum():
                     _enum = getattr(icswServiceEnum, _enum_str)
                 except AttributeError:
                     print("Unknown ClientEnum '{}'".format(_enum_str))
+                else:
+                    _enum.value.add_instance_name(_attr["name"])
 
 init_app_enum()

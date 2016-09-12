@@ -90,12 +90,14 @@ class ConfigCheckObject(object):
     def Instance(self):
         return self._inst_xml
 
-    def check_config(self, client=False):
+    def check_config(self):
         # late import (for clients without django)
-        if not client:
+        if self.srv_type_enum.value.server_service:
             from initat.tools import config_tools
             from initat.cluster.backbone.models import LogSource
         self._inst_xml = InstanceXML(self.log)
+        if self.srv_type_enum.value.instance_name is None:
+            raise KeyError("No instance_name set for srv_type_enum '{}'".format(self.srv_type_enum.name))
         self._instance = self._inst_xml[self.srv_type_enum.value.instance_name]
         # conf_names = self._inst_xml.get_config_names(self._instance)
         self.log(
@@ -116,7 +118,7 @@ class ConfigCheckObject(object):
                     configfile.int_c_var(_value, source="instance", database=False)
                 ),
             )
-        if not client:
+        if self.srv_type_enum.value.server_service:
             self.__sql_info = config_tools.server_check(service_type_enum=self.srv_type_enum)
             if self.__sql_info is None or not self.__sql_info.effective_device:
                 self.log("Not a valid {}".format(self.srv_type_enum.name), logging_tools.LOG_LEVEL_ERROR)

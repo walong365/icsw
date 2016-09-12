@@ -44,10 +44,6 @@ class AppEnum(Enum):
         "monitor-server",
         "sets device as the monitor master server",
     )
-    monitor_slave = icswServiceEnumBase(
-        "monitor-slave",
-        "sets device as a monitor slave (sattelite)",
-    )
     discovery_server = icswServiceEnumBase(
         "discovery-server",
         "enables network discovery and inventory",

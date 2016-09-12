@@ -56,6 +56,7 @@ def enum_show_command(options):
                 logging_tools.form_entry(entry.name, header="EnumName"),
                 logging_tools.form_entry(entry.value.name, header="Name"),
                 logging_tools.form_entry_center("yes" if entry.value.root_service else "no", header="Root Service"),
+                logging_tools.form_entry_center("yes" if entry.value.server_service else "no", header="Server"),
                 logging_tools.form_entry(entry.value.info, header="Info"),
                 logging_tools.form_entry_center(_db_str, header="DB info"),
             ]

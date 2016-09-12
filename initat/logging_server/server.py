@@ -33,6 +33,7 @@ import time
 
 import zmq
 
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.icsw.service import clusterid
 from initat.logging_server.config import global_config
 from initat.tools import io_stream_helper, logging_tools, mail_tools, process_tools, threading_tools, \
@@ -55,11 +56,11 @@ class main_process(ICSWBasePool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)
-        self.CC.init("logging-server", global_config, init_logging=False)
-        self.CC.check_config(client=True)
+        self.CC.init(icswServiceEnum.logging_server, global_config, init_logging=False)
+        self.CC.check_config()
         self.change_resource()
         self._init_msi_block()
-        self._log_config()
+        self.CC.log_config()
         self._init_network_sockets()
         self.register_timer(self._update, 60)
         os.umask(2)
@@ -139,15 +140,6 @@ class main_process(ICSWBasePool):
         else:
             self.log("exit requested", logging_tools.LOG_LEVEL_WARN)
             self["exit_requested"] = True
-
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [{:d}] {}".format(log_level, line))
-        conf_info = global_config.get_config_info()
-        self.log("Found {:d} valid config-lines:".format(len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
 
     def _remove_handles(self):
         any_removed = False
