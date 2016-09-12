@@ -38,7 +38,7 @@ setup(
         "initat.icsw.service",
         "initat.icsw.license",
         "initat.icsw.device",
-        "initat.icsw.lse",
+        "initat.icsw.error",
         "initat.icsw.info",
         "initat.icsw.cstore",
         "initat.icsw.relay",
