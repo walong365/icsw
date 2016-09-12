@@ -226,7 +226,7 @@ angular.module(
         constructor: () ->
             super()
             @simple_attributes = [
-                "name", "author", "url",
+                "name", "author", "url", "version", "system_catalog", "priority",
             ]
 
 ]).service("icswConfigBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
@@ -236,7 +236,7 @@ angular.module(
         constructor: () ->
             super()
             @simple_attributes = [
-                "name", "config_catalog", "description", "priority", "service_config", "system_config", "enabled",
+                "name", "config_catalog", "description", "priority", "service_config", "enabled", # "system_config",
                 "config_service_enum",
             ]
             @list_attributes = [

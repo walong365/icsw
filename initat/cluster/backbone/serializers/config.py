@@ -132,5 +132,5 @@ class config_dump_serializer(serializers.ModelSerializer):
         fields = (
             "idx", "name", "description", "priority", "enabled", "categories",
             "config_str_set", "config_int_set", "config_blob_set", "config_bool_set",
-            "config_script_set", "mon_check_command_set", "server_config", "system_config",
+            "config_script_set", "mon_check_command_set", "server_config", # "system_config",
         )

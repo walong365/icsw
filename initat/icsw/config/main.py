@@ -103,7 +103,7 @@ def enum_show_command(options):
                         config_service_enum=db_enum,
                         config_catalog=sys_cc,
                         server_config=True,
-                        system_config=True,
+                        # system_config=True,
                     )
                 )
 

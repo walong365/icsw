@@ -59,6 +59,8 @@ class config_catalog(models.Model):
     version = models.IntegerField(default=1)
     # is system catalog
     system_catalog = models.BooleanField(default=False)
+    # priority
+    priorty = models.IntegerField(default=0)
     # extraction time
     extraction_time = models.DateTimeField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -131,8 +133,8 @@ class config(models.Model):
     priority = models.IntegerField(null=True, default=0)
     # valid for servers (activate special functionalities)
     server_config = models.BooleanField(default=False)
-    # system config, not user generated
-    system_config = models.BooleanField(default=False)
+    # system config, not user generated, now deprecated
+    # system_config = models.BooleanField(default=False)
     # link to ConfigServerEnum to activate server services
     config_service_enum = models.ForeignKey("backbone.configserviceenum", null=True)
     enabled = models.BooleanField(default=True)
@@ -179,20 +181,20 @@ def config_pre_save(sender, **kwargs):
         check_empty_string(cur_inst, "name")
         # priority
         check_integer(cur_inst, "priority", min_val=-9999, max_val=9999)
-        if cur_inst.system_config:
-            if cur_inst.config_catalog is None:
-                try:
-                    sys_cc = config_catalog.objects.get(Q(system_catalog=True))
-                except config_catalog.DoesNotExist:
-                    raise ValidationError("no System catalog available")
-                else:
-                    cur_inst.config_catalog = sys_cc
-            if not cur_inst.config_catalog.system_catalog:
-                raise ValidationError(
-                    "System config '{}' has to reside inside the system config_catalog".format(
-                        cur_inst.name,
-                    )
-                )
+        # if cur_inst.system_config:
+        #    if cur_inst.config_catalog is None:
+        #        try:
+        #            sys_cc = config_catalog.objects.get(Q(system_catalog=True))
+        #        except config_catalog.DoesNotExist:
+        #            raise ValidationError("no System catalog available")
+        #        else:
+        #            cur_inst.config_catalog = sys_cc
+        #    if not cur_inst.config_catalog.system_catalog:
+        #        raise ValidationError(
+        #            "System config '{}' has to reside inside the system config_catalog".format(
+        #                cur_inst.name,
+        #            )
+        #        )
 
 
 @receiver(signals.post_save, sender=config)
