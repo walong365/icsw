@@ -23,7 +23,6 @@
 import os
 
 from initat.md_sync_server.config import global_config
-from initat.server_version import VERSION_STRING
 from initat.tools import configfile
 
 
@@ -33,20 +32,12 @@ def run_code():
 
 
 def main():
-    prog_name = global_config.name()
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1", help_string="memcache address")),
         ]
-    )
-    _options = global_config.handle_commandline(
-        description="{}, version is {}".format(
-            prog_name,
-            VERSION_STRING
-        ),
-        positional_arguments=False
     )
     # enable connection debugging
     run_code()

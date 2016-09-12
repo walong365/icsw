@@ -46,11 +46,11 @@ system_timezone = pytz.timezone(time.tzname[0])
 _enums_added = set()
 
 
-def register_app_config_enum(enum, name):
+def register_service_enum(enum, name):
     if name not in _enums_added:
         from django.conf import settings
         _enums_added.add(name)
-        settings.ICSW_CONFIG_ENUM_LIST.append(enum)
+        settings.ICSW_SERVICE_ENUM_LIST.append(enum)
 
 
 def db_limit_1():

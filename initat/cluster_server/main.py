@@ -25,7 +25,7 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.tools import cluster_location, configfile, process_tools
+from initat.tools import configfile
 from initat.cluster_server.config import global_config
 
 from initat.server_version import VERSION_STRING
@@ -37,7 +37,6 @@ def run_code(options):
 
 
 def main(opt_args=None):
-    long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
@@ -84,28 +83,6 @@ def main(opt_args=None):
     )
     # enable connection debugging
     settings.DEBUG = global_config["DATABASE_DEBUG"]
-    cluster_location.read_config_from_db(
-        global_config,
-        "server",
-        [
-            ("IMAGE_SOURCE_DIR", configfile.str_c_var("/opt/cluster/system/images")),
-            ("MAILSERVER", configfile.str_c_var("localhost")),
-            ("FROM_NAME", configfile.str_c_var("quotawarning")),
-            ("FROM_ADDR", configfile.str_c_var(long_host_name)),
-            ("VERSION", configfile.str_c_var(VERSION_STRING, database=False)),
-            ("QUOTA_ADMINS", configfile.str_c_var("cluster@init.at")),
-            ("MONITOR_QUOTA_USAGE", configfile.bool_c_var(False, info="enabled quota usage tracking")),
-            ("TRACK_ALL_QUOTAS", configfile.bool_c_var(False, info="also track quotas without limit")),
-            ("QUOTA_CHECK_TIME_SECS", configfile.int_c_var(3600)),
-            ("USER_MAIL_SEND_TIME", configfile.int_c_var(3600, info="time in seconds between two mails")),
-            ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name, database=False)),
-            ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name, database=False)),
-            ("DATABASE_DUMP_DIR", configfile.str_c_var("/opt/cluster/share/db_backup")),
-            ("DATABASE_KEEP_DAYS", configfile.int_c_var(30)),
-            ("USER_SCAN_TIMER", configfile.int_c_var(7200, info="time in seconds between two user_scan runs")),
-            ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True, info="raise an error if not all bind() calls are successfull")),
-        ]
-    )
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     run_code(options)
     return 0

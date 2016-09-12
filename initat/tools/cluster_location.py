@@ -22,13 +22,12 @@
 import array
 import datetime
 import netifaces
-import socket
 
 from django.db.models import Q
 
-from initat.cluster.backbone.models import device_variable, config, device, config_blob, \
+from initat.cluster.backbone.models import device_variable, device, config_blob, \
     config_bool, config_int, config_str, net_ip
-from initat.tools import config_tools, configfile, process_tools
+from initat.tools import configfile, process_tools
 
 _VAR_LUT = {
     "int": config_int,
@@ -38,73 +37,61 @@ _VAR_LUT = {
 }
 
 
-def read_config_from_db(g_config, server_type, init_list=[], host_name="", **kwargs):
-    if not host_name:
-        # AL 20120401 **kwargs delete, FIXME ?
-        host_name = process_tools.get_machine_name()
+def read_config_from_db(g_config, server_type_enum, sql_info, init_list=[]):
     g_config.add_config_entries(init_list, database=True)
-    if not kwargs.get("dummy_run", False):
-        num_serv, serv_idx, _s_type, _s_str, _config_idx, real_config_name = is_server(
-            server_type,
-            True,
-            False,
-            host_name.split(".")[0]
-        )
-        # print num_serv, serv_idx, s_type, s_str, config_idx, real_config_name
-        if num_serv:
-            # dict of local vars without specified host
-            l_var_wo_host = {}
-            for short in [
-                "str",
-                "int",
-                "blob",
-                "bool"
-            ]:
-                # very similiar code appears in config_tools.py
-                src_sql_obj = _VAR_LUT[short].objects
-                if init_list and not kwargs.get("read_all", False):
-                    src_sql_obj = src_sql_obj.filter(
-                        Q(name__in=[var_name for var_name, _var_value in init_list])
-                    )
-                for db_rec in src_sql_obj.filter(
-                    (Q(device=0) | Q(device=None) | Q(device=serv_idx)) &
-                    Q(config__name=real_config_name) &
-                    Q(config__device_config__device=serv_idx)
-                ).order_by("name"):
-                    if db_rec.name.count(":"):
-                        var_global = False
-                        local_host_name, var_name = db_rec.name.split(":", 1)
-                    else:
-                        var_global = True
-                        local_host_name, var_name = (host_name, db_rec.name)
-                    source = "{}_table::{}".format(short, db_rec.pk)
-                    if isinstance(db_rec.value, array.array):
-                        new_val = configfile.str_c_var(db_rec.value.tostring(), source=source)
-                    elif short == "int":
-                        new_val = configfile.int_c_var(int(db_rec.value), source=source)
-                    elif short == "bool":
-                        new_val = configfile.bool_c_var(bool(db_rec.value), source=source)
-                    else:
-                        new_val = configfile.str_c_var(db_rec.value, source=source)
+    if sql_info.effective_device:
+        # dict of local vars without specified host
+        l_var_wo_host = {}
+        for short in [
+            "str",
+            "int",
+            "blob",
+            "bool"
+        ]:
+            # very similiar code appears in config_tools.py
+            src_sql_obj = _VAR_LUT[short].objects
+            if init_list:
+                src_sql_obj = src_sql_obj.filter(
+                    Q(name__in=[var_name for var_name, _var_value in init_list])
+                )
+            for db_rec in src_sql_obj.filter(
+                Q(config=sql_info.config) &
+                Q(config__device_config__device=sql_info.effective_device)
+            ).order_by("name"):
+                if db_rec.name.count(":"):
+                    var_global = False
+                    local_host_name, var_name = db_rec.name.split(":", 1)
+                else:
+                    var_global = True
+                    local_host_name, var_name = (sql_info.short_host_name, db_rec.name)
+                source = "{}_table::{}".format(short, db_rec.pk)
+                if isinstance(db_rec.value, array.array):
+                    new_val = configfile.str_c_var(db_rec.value.tostring(), source=source)
+                elif short == "int":
+                    new_val = configfile.int_c_var(int(db_rec.value), source=source)
+                elif short == "bool":
+                    new_val = configfile.bool_c_var(bool(db_rec.value), source=source)
+                else:
+                    new_val = configfile.str_c_var(db_rec.value, source=source)
+                new_val.is_global = var_global
+                present_in_config = var_name in g_config
+                if present_in_config:
+                    # copy settings from config
+                    new_val.database = g_config.database(var_name)
                     new_val.is_global = var_global
-                    present_in_config = var_name in g_config
-                    if present_in_config:
-                        # copy settings from config
-                        new_val.database = g_config.database(var_name)
-                        new_val.is_global = var_global
-                        new_val._help_string = g_config.help_string(var_name)
-                    if local_host_name == host_name:
-                        if var_name.upper() in g_config and g_config.fixed(var_name.upper()):
-                            # present value is fixed, keep value, only copy global / local status
-                            g_config.set_global(var_name.upper(), new_val.is_global)
-                        else:
-                            g_config.add_config_entries([(var_name.upper(), new_val)])
-                    elif local_host_name == "":
-                        l_var_wo_host[var_name.upper()] = new_val
-            # check for vars to insert
-            for wo_var_name, wo_var in l_var_wo_host.iteritems():
-                if wo_var_name not in g_config or g_config.get_source(wo_var_name) == "default":
-                    g_config.add_config_entries([(wo_var_name, wo_var)])
+                    new_val._help_string = g_config.help_string(var_name)
+                if local_host_name == sql_info.short_host_name:
+                    if var_name.upper() in g_config and g_config.fixed(var_name.upper()):
+                        # present value is fixed, keep value, only copy global / local status
+                        g_config.set_global(var_name.upper(), new_val.is_global)
+                    else:
+                        g_config.add_config_entries([(var_name.upper(), new_val)])
+                elif local_host_name == "":
+                    l_var_wo_host[var_name.upper()] = new_val
+        # check for vars to insert
+        for wo_var_name, wo_var in l_var_wo_host.iteritems():
+            if wo_var_name not in g_config or g_config.get_source(wo_var_name) == "default":
+                g_config.add_config_entries([(wo_var_name, wo_var)])
 
 
 def read_global_config(dc, server_type, init_dict=None, host_name=""):
@@ -206,21 +193,16 @@ def strip_description(descr):
     return descr
 
 
-def write_config(server_type, g_config, **kwargs):
+def write_config_to_db(g_config, server_type_enum, sql_info, **kwargs):
     log_lines = []
-    full_host_name = socket.gethostname()
-    host_name = full_host_name.split(".")[0]
-    srv_info = kwargs.get("srv_info", None)
     log_com = kwargs.get("log_com", None)
-    if srv_info is None:
-        srv_info = config_tools.server_check(server_type=server_type, short_host_name=host_name)
     type_dict = {
         "i": config_int,
         "s": config_str,
         "b": config_bool,
         "B": config_blob,
     }
-    if srv_info.device and srv_info.config:
+    if sql_info.effective_device and sql_info.config:
         for key in sorted(g_config.keys()):
             # print k,config.get_source(k)
             # print "write", k, config.get_source(k)
@@ -233,12 +215,12 @@ def write_config(server_type, g_config, **kwargs):
                 # var global / local
                 var_range_name = g_config.is_global(key) and "global" or "local"
                 # build real var name
-                real_k_name = g_config.is_global(key) and key or "{}:{}".format(host_name, key)
+                real_k_name = g_config.is_global(key) and key or "{}:{}".format(sql_info.short_host_name, key)
                 try:
                     cur_var = var_obj.objects.get(
                         Q(name=real_k_name) &
-                        Q(config=srv_info.config) &
-                        (Q(device=0) | Q(device=None) | Q(device=srv_info.effective_device.pk))
+                        Q(config=sql_info.config) &
+                        (Q(device=0) | Q(device=None) | Q(device=sql_info.effective_device.pk))
                         # removed config via meta_device, AL 20121125
                         # Q(config__device_config__device__device_group__device_group=srv_info.effective_device.pk)
                     )
@@ -248,8 +230,8 @@ def write_config(server_type, g_config, **kwargs):
                     for other_var_obj in other_types:
                         try:
                             other_var = other_var_obj.objects.get(
-                                Q(name=real_k_name) & Q(config=srv_info.config) & (
-                                    Q(device=0) | Q(device=None) | Q(device=srv_info.effective_device.pk)
+                                Q(name=real_k_name) & Q(config=sql_info.config) & (
+                                    Q(device=0) | Q(device=None) | Q(device=sql_info.effective_device.pk)
                                 )
                             )
                         except other_var_obj.DoesNotExist:
@@ -266,13 +248,13 @@ def write_config(server_type, g_config, **kwargs):
                     else:
                         description = "{} default value from {} on {}".format(
                             var_range_name,
-                            srv_info.config_name,
-                            full_host_name,
+                            sql_info.config_name,
+                            sql_info.short_host_name,
                         )
                     _new_var = var_obj(
                         name=real_k_name,
                         description=description,
-                        config=srv_info.config,
+                        config=sql_info.config,
                         device=None,
                         value=g_config[key],
                     )
@@ -340,80 +322,3 @@ class device_recognition(object):
                 self.ip_r_lut[_dev] = _dev_ips
         else:
             self.device_dict = {}
-
-
-def is_server(server_type, long_mode=False, report_real_idx=False, short_host_name="", **kwargs):
-    _co = config.objects  # @UndefinedVariable
-    # we dont check meta-settings (settings via group)
-    server_idx, s_type, s_str, config_idx, real_server_name = (0, "unknown", "not configured", 0, server_type)
-    server_info_str = server_type
-    if not short_host_name:
-        short_host_name = socket.getfqdn(socket.gethostname()).split(".")[0]
-    # old version
-    try:
-        dev_pk = device.objects.get(Q(name=short_host_name)).pk
-    except device.DoesNotExist:
-        dev_pk = 0
-    my_confs = _co.filter(
-        Q(device_config__device__name=short_host_name) &
-        Q(name=server_type)
-    ).distinct().values_list(
-        "device_config__device", "pk", "name"
-    )
-    num_servers = len(my_confs)
-    # print "*", num_servers
-    if num_servers == 1:
-        my_conf = my_confs[0]
-        if my_conf[0] == dev_pk:
-            s_type = "real"
-        else:
-            s_type = "meta"
-        server_idx, s_type, s_str, config_idx, real_server_name = (
-            my_conf[0] if report_real_idx else dev_pk,
-            s_type,
-            u"{} '{}'-server via hostname '{}'".format(s_type, server_type, short_host_name),
-            my_conf[1],
-            my_conf[2])
-    else:
-        # get local devices
-        _local_ips = net_ip.objects.filter(Q(netdevice__device__name=short_host_name)).values_list("ip", flat=True)
-        # get all ips for the given config
-        my_confs = _co.filter(
-            Q(name=server_type)
-        ).values_list(
-            "device_config__device",
-            "pk",
-            "name",
-            "device_config__device__device_group__device_group",
-            "device_config__device__device_group__device_group__name",
-            "device_config__device__device_group__device_group__netdevice__net_ip__ip"
-        )
-        my_confs = [entry for entry in my_confs if entry[-1] and entry[-1] not in ["127.0.0.1"]]
-        # check for virtual-device
-        all_ips = {}
-        _if_names = netifaces.interfaces()
-        ipv4_dict = {
-            cur_if_name: [
-                ip_tuple["addr"] for ip_tuple in value[2]
-            ] for cur_if_name, value in [
-                (
-                    if_name, netifaces.ifaddresses(if_name)
-                ) for if_name in netifaces.interfaces()
-            ] if 2 in value
-        }
-        self_ips = sum(ipv4_dict.values(), [])
-        for ai in all_ips.keys():
-            if ai in self_ips:
-                # dc.execute("SELECT d.device_idx FROM device d WHERE d.name='%s'" % (short_host_name))
-                num_servers, server_idx, s_type, s_str, config_idx, real_server_name = (
-                    1,
-                    all_ips[ai][0],
-                    "virtual",
-                    "virtual '%s'-server via IP-address %s" % (server_info_str, ai),
-                    all_ips[ai][1],
-                    all_ips[ai][2]
-                )
-    if long_mode:
-        return num_servers, server_idx, s_type, s_str, config_idx, real_server_name
-    else:
-        return num_servers, server_idx

@@ -182,6 +182,7 @@
                         <tr>
                             <th st-sort="name">Name</th>
                             <th st-sort="priority">Priority</th>
+                            <th>Service</th>
                             <th>Flags</th>
                             <th st-sort="config_catalog">Catalog</th>
                             <th class="text-center">Enabled</th>
@@ -246,6 +247,28 @@
                         </label>
                         <div class="controls col-sm-7">
                             <input class="textinput textInput form-control maxwidth500" maxlength="765" name="description" ng-model="edit_obj.description" type="text"/>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label class="control-label col-sm-3 icsw-formlabel">
+                            ConfigService
+                        </label>
+                        <div class="controls col-sm-7">
+                            <div class="input-group">
+                                <ui-select ng-model="edit_obj.config_service_enum" class="maxwidth500">
+                                    <ui-select-match class="ui-select-match" placeholder="select Config Service">
+                                        {{ $select.selected.name }}
+                                    </ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_tree.cse_list | props_filter:{$$info_str:$select.search}">
+                                        <div ng-bind-html="value.$$info_str | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                                <span class="input-group-btn">
+                                    <button type="button" ng-click="edit_obj.config_service_enum = undefined" class="btn btn-default">
+                                        <span class="glyphicon glyphicon-trash"></span>
+                                    </button>
+                                </span>
+                            </div>
                         </div>
                     </div>
                 </fieldset>
@@ -405,6 +428,11 @@
         {{ config.name }}
     </td>
     <td>{{ config.priority }}</td>
+    <td class="text-center">
+        <span ng-show="config.$$cse">
+            <span class="label label-success">{{ config.$$cse.name }}</span>
+        </span>
+    </td>
     <td>
         <div class="label-group">
             <span class="label" ng-class="config.server_config && 'label-success' || 'label-default'" uib-tooltip="is server config">S</span><!--
@@ -782,7 +810,11 @@
                                         <div ng-bind-html="value.name | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
-                                <span class="input-group-btn"><button type="button" ng-click="edit_obj.mon_service_templ = undefined" class="btn btn-default"><span class="glyphicon glyphicon-trash"></span></button> </span>
+                                <span class="input-group-btn">
+                                    <button type="button" ng-click="edit_obj.mon_service_templ = undefined" class="btn btn-default">
+                                        <span class="glyphicon glyphicon-trash"></span>
+                                    </button>
+                                </span>
                             </div>
                         </div>
                     </div>

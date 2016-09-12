@@ -30,56 +30,18 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.cluster.backbone.models import LogSource
-from initat.server_version import VERSION_STRING
-from initat.tools import cluster_location, configfile, process_tools
+from initat.tools import configfile
 import initat.mother.server
 from initat.mother.config import global_config
-from initat.constants import CLUSTER_DIR
 
 
 def main():
-    _long_host_name, mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("DATABASE_DEBUG", configfile.bool_c_var(False, help_string="enable database debug mode [%(default)s]", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ]
-    )
-    _options = global_config.handle_commandline(
-        description="{}, version is {}".format(
-            prog_name,
-            VERSION_STRING
-        ),
-        positional_arguments=False,
-    )
-    cluster_location.read_config_from_db(
-        global_config,
-        "mother_server",
-        [
-            ("TFTP_LINK", configfile.str_c_var("/tftpboot")),
-            ("TFTP_DIR", configfile.str_c_var(os.path.join(CLUSTER_DIR, "system", "tftpboot"))),
-            ("CLUSTER_DIR", configfile.str_c_var(CLUSTER_DIR)),
-            # in 10th of seconds
-            ("NODE_BOOT_DELAY", configfile.int_c_var(50)),
-            ("FANCY_PXE_INFO", configfile.bool_c_var(False)),
-            ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
-            ("WRITE_DHCP_CONFIG", configfile.bool_c_var(True)),
-            ("DHCP_AUTHORITATIVE", configfile.bool_c_var(False)),
-            ("DHCP_ONLY_BOOT_NETWORKS", configfile.bool_c_var(True)),
-            ("MODIFY_NFS_CONFIG", configfile.bool_c_var(True)),
-            ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True)),
-        ]
-    )
-    global_config.add_config_entries(
-        [
-            ("CONFIG_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "config"))),
-            ("ETHERBOOT_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "etherboot"))),
-            ("KERNEL_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "kernels"))),
-            ("SHARE_DIR", configfile.str_c_var(os.path.join(global_config["CLUSTER_DIR"], "share", "mother"))),
-            ("NODE_SOURCE_IDX", configfile.int_c_var(LogSource.new("node").pk)),
         ]
     )
     settings.DEBUG = global_config["DATABASE_DEBUG"]

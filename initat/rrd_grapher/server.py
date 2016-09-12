@@ -20,13 +20,17 @@
 """ server-part of rrd-grapher """
 
 import json
+import os
+
+from django.conf import settings
 
 from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.rrd_grapher.config import global_config
 from initat.rrd_grapher.graph import GraphProcess
 from initat.rrd_grapher.rrd_grapher_struct import DataStore
 from initat.rrd_grapher.stale import GraphStaleProcess
-from initat.tools import cluster_location, configfile, logging_tools, \
+from initat.tools import configfile, logging_tools, \
     process_tools, server_mixins, threading_tools
 
 
@@ -37,15 +41,46 @@ class server_process(
 ):
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.CC.init("rrd-grapher", global_config)
+        self.CC.init(icswServiceEnum.grapher_server, global_config)
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
         # close connection (daemonizing)
         db_tools.close_connection()
         self.__msi_block = self._init_msi_block()
+        self.CC.read_config_from_db(
+            [
+                (
+                    "GRAPH_ROOT_DEBUG",
+                    configfile.str_c_var(
+                        os.path.abspath(
+                            os.path.join(
+                                settings.STATIC_ROOT_DEBUG,
+                                "graphs"
+                            )
+                        ),
+                        database=True
+                    )
+                ),
+                (
+                    "GRAPH_ROOT",
+                    configfile.str_c_var(
+                        os.path.abspath(
+                            os.path.join(
+                                settings.STATIC_ROOT_DEBUG if global_config["DEBUG"] else settings.STATIC_ROOT,
+                                "graphs"
+                            )
+                        ),
+                        database=True
+                    )
+                ),
+            ]
+        )
+        if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
+            global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
+        self.CC.log_config()
         # re-insert config
-        self._re_insert_config()
+        self.CC.re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
@@ -65,9 +100,6 @@ class server_process(
         self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
-
-    def _re_insert_config(self):
-        cluster_location.write_config("rrd_server", global_config)
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
