@@ -43,6 +43,16 @@ cluster_timezone = pytz.timezone(settings.TIME_ZONE)
 system_timezone = pytz.timezone(time.tzname[0])
 
 
+_enums_added = set()
+
+
+def register_app_config_enum(enum, name):
+    if name not in _enums_added:
+        from django.conf import settings
+        _enums_added.add(name)
+        settings.ICSW_CONFIG_ENUM_LIST.append(enum)
+
+
 def db_limit_1():
     # return True if databases do not support some unique_together combinations
     return True if settings.DATABASES["default"]["ENGINE"].lower().count("oracle") else False

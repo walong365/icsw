@@ -70,6 +70,7 @@ from initat.cluster.backbone.models.kpi import *
 from initat.cluster.backbone.models.license import *
 from initat.cluster.backbone.models.status_history import *
 from initat.cluster.backbone.models.dispatch import *
+from initat.cluster.backbone.models.config_enum import *
 from initat.cluster.backbone.signals import UserChanged, GroupChanged, \
     BootsettingsChanged, VirtualDesktopUserSettingChanged, SensorThresholdChanged, \
     RoleChanged

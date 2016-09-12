@@ -64,7 +64,7 @@ SC_MAPPING = {
     "setup": ".setup.parser",
     "license": ".license.license_parser",
     "info": ".info.info_parser",
-    "lse": ".lse.lse_parser",
+    "error": ".error.error_parser",
     "relay": ".relay.relay_parser",
     "cstore": ".cstore.cstore_parser",
     "logwatch": ".logwatch.logwatch_parser",
