@@ -35,6 +35,7 @@ def enum_show_command(options):
     from initat.cluster.backbone.server_enums import icswServiceEnum
     from initat.cluster.backbone.models import ConfigServiceEnum, config, config_catalog
     from initat.cluster.backbone import factories
+    from django.core.exceptions import ValidationError
     from django.db.models import Q
 
     _c_dict = {entry.enum_name: entry for entry in ConfigServiceEnum.objects.all()}
@@ -79,9 +80,18 @@ def enum_show_command(options):
                 for _check_name in _check_names:
                     if _check_name in _c_dict:
                         c_con.config_service_enum = _c_dict[_check_name]
-                        _change_list.append(c_con)
-                        c_con.save(update_fields=["config_service_enum"])
-                        break
+                        try:
+                            c_con.save(update_fields=["config_service_enum"])
+                        except ValidationError:
+                            print(
+                                "cannot save {}: {}".format(
+                                    unicode(c_con),
+                                    process_tools.get_except_info()
+                                )
+                            )
+                        else:
+                            _change_list.append(c_con)
+                            break
         _create_list = []
         sys_cc = config_catalog.objects.get(Q(system_catalog=True))
         for db_enum in _c_dict.itervalues():

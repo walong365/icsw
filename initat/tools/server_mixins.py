@@ -101,7 +101,8 @@ class ConfigCheckObject(object):
         self._instance = self._inst_xml[self.srv_type_enum.value.instance_name]
         # conf_names = self._inst_xml.get_config_names(self._instance)
         self.log(
-            "check for service_type {}".format(
+            "check for service_type {} (==enum {})".format(
+                self.srv_type_enum.value.name,
                 self.srv_type_enum.name,
             )
         )
