@@ -29,6 +29,7 @@ import statvfs
 import sys
 import tempfile
 import time
+import subprocess
 
 import psutil
 from lxml import etree
@@ -2434,6 +2435,25 @@ class lshw_command(hm_classes.hm_command):
         dump = etree.fromstring(server_command.decompress(
                 srv_com["*lshw_dump"]))
         return limits.nag_STATE_OK, "received lshw output"
+
+
+class darwinsystemprofile_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+
+    def __call__(self, srv_com, cur_ns):
+        s_time = time.time()
+        xml = subprocess.check_output(["/usr/sbin/system_profiler", "-xml", "-detailLevel", "full"])
+        e_time = time.time()
+        srv_com.set_result(
+            "ok got list in {}".format(logging_tools.get_diff_time_str(e_time - s_time)),
+        )
+        srv_com["darwinsystemprofile"] = server_command.compress(xml, pickle=True)
+
+    def interpret(self, srv_com, cur_ns):
+        xml = server_command.decompress(srv_com["darwinsystemprofile"].text, pickle=True)
+
+        return limits.nag_STATE_OK, "received darwinsystemprofile output"
 
 
 class dmiinfo_command(hm_classes.hm_command):
