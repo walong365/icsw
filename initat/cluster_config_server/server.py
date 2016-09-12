@@ -19,15 +19,19 @@
 #
 """ cluster-config-server, server part """
 
+import os
+
 import zmq
 from django.db.models import Q
-from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
+from lxml import etree
+from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.tools import cluster_location, configfile, logging_tools, process_tools, server_command, \
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.icsw.service.instance import InstanceXML
+from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins
 from .build_process import build_process
 from .config import global_config
@@ -39,12 +43,29 @@ class server_process(server_mixins.ICSWBasePool):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
-        self.CC.init("cluster-config-server", global_config)
+        self.CC.init(icswServiceEnum.config_server, global_config)
         self.CC.check_config()
+        self.CC.read_config_from_db(
+            [
+                ("TFTP_DIR", configfile.str_c_var("/tftpboot")),
+                ("MONITORING_PORT", configfile.int_c_var(InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True))),
+                ("LOCALHOST_IS_EXCLUSIVE", configfile.bool_c_var(True)),
+                ("HOST_CACHE_TIME", configfile.int_c_var(10 * 60)),
+                ("WRITE_REDHAT_HWADDR_ENTRY", configfile.bool_c_var(True)),
+                ("ADD_NETDEVICE_LINKS", configfile.bool_c_var(False)),
+            ]
+        )
+        global_config.add_config_entries(
+            [
+                ("CONFIG_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "config"))),
+                ("IMAGE_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "images"))),
+                ("KERNEL_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "kernels"))),
+            ]
+        )
         self.__pid_name = global_config["PID_NAME"]
         # close DB connection (daemonize)
         db_tools.close_connection()
-        self._re_insert_config()
+        self.CC.re_insert_config()
         self._log_config()
         self.__msi_block = self._init_msi_block()
         self._init_subsys()
@@ -65,9 +86,6 @@ class server_process(server_mixins.ICSWBasePool):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self["exit_requested"] = True
-
-    def _re_insert_config(self):
-        cluster_location.write_config("config_server", global_config)
 
     def _log_config(self):
         self.log("Config info:")

@@ -36,6 +36,7 @@ from initat.cluster.backbone.models.license import LicenseEnum, LicenseUsage, Li
 __all__ = [
     "config_catalog",
     "config",
+    "ConfigServiceEnum",
     "config_str",
     "config_int",
     "config_blob",
@@ -89,6 +90,39 @@ def config_catalog_pre_save(sender, **kwargs):
                 raise ValidationError("Only one config_catalog with system_catalog=True allowed")
 
 
+class ConfigServiceEnum(models.Model):
+    # mirrors icswServiceEnumBase
+    idx = models.AutoField(primary_key=True)
+    enum_name = models.CharField(max_length=255, default="", unique=True)
+    name = models.CharField(max_length=255, default="", unique=True)
+    info = models.TextField(default="", blank=True)
+    # is a root service and not a subservice (like image or kernel server)
+    root_service = models.BooleanField(default=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def create_db_entry(srv_enum):
+        _new_entry = ConfigServiceEnum.objects.create(
+            enum_name=srv_enum.name,
+            name=srv_enum.value.name,
+            info=srv_enum.value.info,
+            root_service=srv_enum.value.root_service,
+        )
+        return _new_entry
+
+    def update_values(self, srv_enum):
+        _changed = False
+        for _attr_name in ["name", "info", "root_service"]:
+            if getattr(self, _attr_name) != getattr(srv_enum.value, _attr_name):
+                _changed = True
+                setattr(self, _attr_name, getattr(srv_enum.value, _attr_name))
+        if _changed:
+            self.save()
+
+    def __unicode__(self):
+        return u"ConfigServerEnum {}".format(self.name)
+
+
 class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
     name = models.CharField(max_length=192, blank=False)
@@ -99,6 +133,8 @@ class config(models.Model):
     server_config = models.BooleanField(default=False)
     # system config, not user generated
     system_config = models.BooleanField(default=False)
+    # link to ConfigServerEnum to activate server services
+    config_service_enum = models.ForeignKey("backbone.configserviceenum", null=True)
     enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     # categories for this config

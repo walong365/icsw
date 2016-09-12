@@ -98,9 +98,23 @@ def selinux_enabled():
 
 @SetupLogger
 def call_manage(args, **kwargs):
+    return call_ext_programm(args, prog="manage", **kwargs)
+
+
+@SetupLogger
+def call_icsw(args, **kwargs):
+    return call_ext_programm(args, prog="icsw", **kwargs)
+
+
+@SetupLogger
+def call_ext_programm(args, **kwargs):
+    prog = kwargs.pop("prog")
     _output = kwargs.get("output", False)
     _show_output = kwargs.get("show_output", False)
-    command = [os.path.join(ICSW_ROOT, "initat", "cluster", "manage.py")] + args
+    if prog == "manage":
+        command = [os.path.join(ICSW_ROOT, "initat", "cluster", "manage.py")] + args
+    else:
+        command = [os.path.join(ICSW_ROOT, "initat", "icsw", "main.py")] + args
     com_str = " ".join(command)
     s_time = time.time()
     c_stat = 0
@@ -657,6 +671,7 @@ def call_update_funcs(opts):
     call_manage(["create_cdg", "--name", opts.system_group_name])
     call_manage(["migrate_to_domain_name"])
     call_manage(["migrate_to_config_catalog"])
+    call_icsw(["config", "enum", "--sync"])
 
 
 @SetupLogger

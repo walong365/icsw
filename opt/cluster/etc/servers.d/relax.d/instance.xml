@@ -172,6 +172,7 @@
                         </interleave>
                     </element>
                 </optional>
+                <!-- old version -->
                 <optional>
                     <element name="config_names">
                         <oneOrMore>
@@ -183,6 +184,16 @@
                                         </choice>
                                     </attribute>
                                 </optional>
+                                <text/>
+                            </element>
+                        </oneOrMore>
+                    </element>
+                </optional>
+                <!-- new version using enums in backbone -->
+                <optional>
+                    <element name="config-enums">
+                        <oneOrMore>
+                            <element name="config-enum">
                                 <text/>
                             </element>
                         </oneOrMore>

@@ -425,7 +425,12 @@ class server_check(object):
     """ is called server_check, but can also be used for nodes """
     def __init__(self, **kwargs):
         # server_type: name of server, no wildcards supported (!)
-        self.__server_type = kwargs["server_type"]
+        if "service_type_enum" in kwargs:
+            self.__service_type_enum = kwargs["service_type_enum"]
+            self.__server_type = None
+        else:
+            self.__service_type_enum = None
+            self.__server_type = kwargs["server_type"]
         if "db_version_dict" in kwargs:
             self.__db_version_dict = kwargs["db_version_dict"]
         else:
@@ -483,9 +488,13 @@ class server_check(object):
         self.nd_lut = {}
         # lookup table network_identifier -> ip_list
         self.identifier_ip_lut = {}
-        self.real_server_name = self.__server_type
-        # set dummy config_name
-        self.config_name = self.__server_type
+        if self.__server_type is None:
+            self.real_server_name = self.__service_type_enum.name
+            self.config_name = None
+        else:
+            # set dummy config_name
+            self.real_server_name = self.__server_type
+            self.config_name = self.__server_type
         # config variable dict
         self.__config_vars = {}
         if self._vers_check():
@@ -540,49 +549,75 @@ class server_check(object):
                 self.device = None
             else:
                 if self.device:
+                    # get config
                     _co = config.objects  # @UndefinedVariable
-                    try:
-                        # search config in system_catalog
-                        self.config = _co.get(
-                            Q(name=self.__server_type) &
-                            Q(device_config__device=self.device) &
-                            Q(config_catalog__system_catalog=True)
-                        )
-                    except config.DoesNotExist:  # @UndefinedVariable
-                        try:
-                            # search config in non-system_catalog
-                            self.config = _co.get(
+                    if self.__server_type is None:
+                        _queries = [
+                            (
+                                True,
+                                Q(config_service_enum__enum_name=self.__service_type_enum.name) &
+                                Q(device_config__device=self.device) &
+                                Q(config_catalog__system_catalog=True)
+                            ),
+                            (
+                                True,
+                                Q(config_service_enum__enum_name=self.__service_type_enum.name) &
+                                Q(device_config__device=self.device) &
+                                Q(config_catalog__system_catalog=False),
+                            ),
+                            (
+                                False,
+                                Q(config_service_enum__enum_name=self.__service_type_enum.name) &
+                                Q(device_config__device__is_meta_device=True) &
+                                Q(device_config__device__device_group=self.device.device_group_id)
+                            ),
+                        ]
+                    else:
+                        _queries = [
+                            (
+                                True,
                                 Q(name=self.__server_type) &
                                 Q(device_config__device=self.device) &
-                                Q(config_catalog__system_catalog=False)
-                            )
-                        except config.DoesNotExist:  # @UndefinedVariable
-                            try:
-                                self.config = _co.get(
-                                    Q(name=self.__server_type) &
-                                    Q(device_config__device__is_meta_device=True) &
-                                    Q(device_config__device__device_group=self.device.device_group_id)
-                                )
-                            except config.DoesNotExist:  # @UndefinedVariable
-                                self.config = None
+                                Q(config_catalog__system_catalog=True),
+                            ),
+                            (
+                                True,
+                                Q(name=self.__server_type) &
+                                Q(device_config__device=self.device) &
+                                Q(config_catalog__system_catalog=False),
+                            ),
+                            (
+                                False,
+                                Q(name=self.__server_type) &
+                                Q(device_config__device__is_meta_device=True) &
+                                Q(device_config__device__device_group=self.device.device_group_id)
+                            ),
+                        ]
+                    self.config = None
+                    for _direct_device, _query in _queries:
+                        try:
+                            _config = _co.get(_query)
+                        except config.DoesNotExist:
+                            _config = None
+                        except config.MultipleObjectsReturned:
+                            # take first config
+                            _config = _co.filter(_query)[0]
+                        if _config is not None:
+                            self.config = _config
+                            self.config_name = self.config.name
+                            # found
+                            if _direct_device:
+                                # direct device
+                                self.effective_device = self.device
                             else:
+                                # via meta device
                                 self.effective_device = device.objects.select_related(
                                     "domain_tree_node"
                                 ).get(
                                     Q(device_group=self.device.device_group_id) &
                                     Q(is_meta_device=True)
                                 )
-                        else:
-                            self.effective_device = device.objects.select_related(
-                                "domain_tree_node"
-                            ).get(
-                                Q(device_group=self.device.device_group_id) &
-                                Q(is_meta_device=True)
-                            )
-                    except:
-                        raise
-                    else:
-                        self.effective_device = self.device
+                            break
                 else:
                     self.config = None
         # self.num_servers = len(all_servers)
@@ -634,11 +669,19 @@ class server_check(object):
 
     def _set_srv_info(self, sdsc, s_info_str):
         self.server_origin = sdsc
-        self.server_info_str = "{} '{}'-server via {}".format(
-            self.server_origin,
-            self.__server_type,
-            s_info_str
-        )
+        if self.__server_type:
+            self.server_info_str = "{} '{}'-server via server_type {}".format(
+                self.server_origin,
+                self.__server_type,
+                s_info_str
+            )
+        else:
+            self.server_info_str = "{} '{}'-server via sevice_type_enum {}".format(
+                self.server_origin,
+                self.__service_type_enum.name,
+                s_info_str
+            )
+
     # utility funcitions
 
     @property
@@ -684,7 +727,14 @@ class server_check(object):
         my_ips = set(sum(ipv4_dict.values(), []))
         # check for virtual-device
         # get all real devices with the requested config, no meta-device handling possible
-        dev_list = device.objects.select_related("domain_tree_node").filter(Q(device_config__config__name=self.__server_type))
+        if self.__server_type is None:
+            dev_list = device.objects.select_related("domain_tree_node").filter(
+                Q(device_config__config__config_service_enum__enum_name=self.__service_type_enum.name)
+            )
+        else:
+            dev_list = device.objects.select_related("domain_tree_node").filter(
+                Q(device_config__config__name=self.__server_type)
+            )
         if not dev_list:
             # no device(s) found with IP and requested config
             return
@@ -699,10 +749,27 @@ class server_check(object):
             if match_ips:
                 self.device = cur_dev
                 # always working ?
-                try:
-                    self.config = config.objects.get(Q(name=self.__server_type))  # @UndefinedVariable
-                except config.MultipleObjectsReturned:
-                    self.config = config.objects.get(Q(name=self.__server_type) & Q(config_catalog__system_catalog=True))  # @UndefinedVariable
+                if self.__server_type is None:
+                    _queries = [
+                        Q(config_service_enum__enum_name=self.__service_type_enum.name),
+                        Q(config_service_enum__enum_name=self.__service_type_enum.name) & Q(config_catalog__system_catalog=True),
+                    ]
+                else:
+                    _queries = [
+                        Q(name=self.__server_type),
+                        Q(name=self.__server_type) & Q(config_catalog__system_catalog=True),
+                    ]
+                self.config = None
+                for _query in _queries:
+                    try:
+                        _config = config.objects.get(_query)
+                    except config.DoesNotExist:
+                        pass
+                    except config.MultipleObjectsReturned:
+                        raise
+                    else:
+                        self.config = _config
+                        break
                 self.effective_device = cur_dev
                 self.short_host_name = cur_dev.name
                 self._set_srv_info("virtual", "IP address '{}'".format(list(match_ips)[0]))

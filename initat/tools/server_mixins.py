@@ -43,8 +43,8 @@ class ConfigCheckObject(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log("[CC] {}".format(what), log_level)
 
-    def init(self, srv_type, global_config, add_config_store=True, init_logging=True, native_logging=False):
-        self.srv_type = srv_type
+    def init(self, srv_type_enum, global_config, add_config_store=True, init_logging=True, native_logging=False):
+        self.srv_type_enum = srv_type_enum
         self.global_config = global_config
         self.__native_logging = native_logging
         if add_config_store:
@@ -60,7 +60,7 @@ class ConfigCheckObject(object):
             if "LOG_NAME" not in global_config:
                 global_config.add_config_entries(
                     [
-                        ("LOG_NAME", configfile.str_c_var(self.srv_type, source="instance")),
+                        ("LOG_NAME", configfile.str_c_var(self.srv_type_enum.value.name, source="instance")),
                     ]
                 )
             if self.__native_logging:
@@ -90,19 +90,19 @@ class ConfigCheckObject(object):
     def Instance(self):
         return self._inst_xml
 
-    def check_config(self, client=False):
+    def check_config(self):
         # late import (for clients without django)
-        if not client:
+        if self.srv_type_enum.value.server_service:
             from initat.tools import config_tools
             from initat.cluster.backbone.models import LogSource
         self._inst_xml = InstanceXML(self.log)
-        self._instance = self._inst_xml[self.srv_type]
-        conf_names = self._inst_xml.get_config_names(self._instance)
+        if self.srv_type_enum.value.instance_name is None:
+            raise KeyError("No instance_name set for srv_type_enum '{}'".format(self.srv_type_enum.name))
+        self._instance = self._inst_xml[self.srv_type_enum.value.instance_name]
+        # conf_names = self._inst_xml.get_config_names(self._instance)
         self.log(
-            "check for srv_type {} ({}: {})".format(
-                self.srv_type,
-                logging_tools.get_plural("config name", len(conf_names)),
-                ", ".join(conf_names),
+            "check for service_type {}".format(
+                self.srv_type_enum.name,
             )
         )
         _opts = [
@@ -118,37 +118,35 @@ class ConfigCheckObject(object):
                     configfile.int_c_var(_value, source="instance", database=False)
                 ),
             )
-        if not client:
-            self.__sql_info = None
-            sql_info = None
-            for _conf_name in conf_names:
-                sql_info = config_tools.server_check(server_type=_conf_name)
-                if sql_info is not None and sql_info.effective_device:
-                    self.__sql_info = sql_info
-                    break
-            if sql_info is None or not sql_info.effective_device:
-                self.log("Not a valid {}".format(self.srv_type), logging_tools.LOG_LEVEL_ERROR)
+        if self.srv_type_enum.value.server_service:
+            self.__sql_info = config_tools.server_check(service_type_enum=self.srv_type_enum)
+            if self.__sql_info is None or not self.__sql_info.effective_device:
+                self.log("Not a valid {}".format(self.srv_type_enum.name), logging_tools.LOG_LEVEL_ERROR)
                 sys.exit(5)
             else:
                 # set values
                 _opts.extend(
                     [
                         (
+                            "SERVER_SHORT_NAME",
+                            configfile.str_c_var(process_tools.get_machine_name(True)),
+                        ),
+                        (
                             "SERVER_IDX",
-                            configfile.int_c_var(sql_info.device.pk, database=False, source="instance")
+                            configfile.int_c_var(self.__sql_info.device.pk, database=False, source="instance")
                         ),
                         (
                             "CONFIG_IDX",
-                            configfile.int_c_var(sql_info.config.pk, database=False, source="instance")
+                            configfile.int_c_var(self.__sql_info.config.pk, database=False, source="instance")
                         ),
                         (
                             "EFFECTIVE_DEVICE_IDX",
-                            configfile.int_c_var(sql_info.effective_device.pk, database=False, source="instance")
+                            configfile.int_c_var(self.__sql_info.effective_device.pk, database=False, source="instance")
                         ),
                         (
                             "LOG_SOURCE_IDX",
                             configfile.int_c_var(
-                                LogSource.new(self.srv_type, device=sql_info.effective_device).pk,
+                                LogSource.new(self.srv_type_enum.name, device=self.__sql_info.effective_device).pk,
                                 source="instance",
                             )
                         ),
@@ -194,19 +192,28 @@ class ConfigCheckObject(object):
         for conf in conf_info:
             self.log("Config : {}".format(conf))
 
+    def read_config_from_db(self, default_list=[]):
+        from initat.tools import cluster_location
+        cluster_location.read_config_from_db(
+            self.global_config,
+            self.srv_type_enum,
+            self.__sql_info,
+            default_list,
+        )
+
     def re_insert_config(self):
         if self.__sql_info:
             from initat.tools import cluster_location
             self.log(
                 "re-inserting config for srv_type {} (config_name is {})".format(
-                    self.srv_type,
+                    self.srv_type_enum.name,
                     self.__sql_info.config_name,
                 )
             )
-            cluster_location.write_config(
-                self.__sql_info.config_name,
+            cluster_location.write_config_to_db(
                 self.global_config,
-                srv_info=self.__sql_info,
+                self.srv_type_enum,
+                self.__sql_info,
                 log_com=self.log,
             )
         else:

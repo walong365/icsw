@@ -26,10 +26,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from django.conf import settings
 from initat.rrd_grapher.config import global_config
-from initat.server_version import VERSION_STRING
-from initat.tools import configfile, process_tools
+from initat.tools import configfile
 import sys
 
 
@@ -39,8 +37,6 @@ def run_code():
 
 
 def main():
-    long_host_name, _mach_name = process_tools.get_fqdn()
-    prog_name = global_config.name()
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
@@ -54,41 +50,5 @@ def main():
             ("COMPOUND_DIR", configfile.str_c_var("/opt/cluster/share/rrd_grapher/", help_string="include dir for compound XMLs")),
         ]
     )
-    _options = global_config.handle_commandline(
-        description="{}, version is {}".format(
-            prog_name,
-            VERSION_STRING),
-        positional_arguments=False
-    )
-    global_config.add_config_entries(
-        [
-            (
-                "GRAPH_ROOT_DEBUG",
-                configfile.str_c_var(
-                    os.path.abspath(
-                        os.path.join(
-                            settings.STATIC_ROOT_DEBUG,
-                            "graphs"
-                        )
-                    ),
-                    database=True
-                )
-            ),
-            (
-                "GRAPH_ROOT",
-                configfile.str_c_var(
-                    os.path.abspath(
-                        os.path.join(
-                            settings.STATIC_ROOT_DEBUG if global_config["DEBUG"] else settings.STATIC_ROOT,
-                            "graphs"
-                        )
-                    ),
-                    database=True
-                )
-            ),
-        ]
-    )
-    if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
-        global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
     run_code()
     sys.exit(0)

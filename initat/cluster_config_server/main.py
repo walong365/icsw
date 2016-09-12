@@ -27,10 +27,8 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 import django
 django.setup()
 
-from initat.server_version import VERSION_STRING
 from initat.cluster_config_server.config import global_config
-from initat.tools import cluster_location, configfile, process_tools
-from initat.icsw.service.instance import InstanceXML
+from initat.tools import configfile
 
 
 def run_code():
@@ -39,38 +37,10 @@ def run_code():
 
 
 def main():
-    long_host_name, _mach_name = process_tools.get_fqdn()
-    prog_name = global_config.name()
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ]
-    )
-    _options = global_config.handle_commandline(
-        description="%s, version is %s" % (
-            prog_name,
-            VERSION_STRING
-        ),
-        positional_arguments=False
-    )
-    cluster_location.read_config_from_db(
-        global_config,
-        "config_server",
-        [
-            ("TFTP_DIR", configfile.str_c_var("/tftpboot")),
-            ("MONITORING_PORT", configfile.int_c_var(InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True))),
-            ("LOCALHOST_IS_EXCLUSIVE", configfile.bool_c_var(True)),
-            ("HOST_CACHE_TIME", configfile.int_c_var(10 * 60)),
-            ("WRITE_REDHAT_HWADDR_ENTRY", configfile.bool_c_var(True)),
-            ("ADD_NETDEVICE_LINKS", configfile.bool_c_var(False)),
-        ]
-    )
-    global_config.add_config_entries(
-        [
-            ("CONFIG_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "config"))),
-            ("IMAGE_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "images"))),
-            ("KERNEL_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "kernels"))),
         ]
     )
     run_code()

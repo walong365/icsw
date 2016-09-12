@@ -32,6 +32,7 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import device, snmp_scheme
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.snmp.process import snmp_process_container
@@ -52,8 +53,9 @@ RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendToRemoteServerMixin):
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
+        long_host_name, _mach_name = process_tools.get_fqdn()
         threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.CC.init("collectd", global_config)
+        self.CC.init(icswServiceEnum.collectd_server, global_config)
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         # override default
@@ -66,8 +68,46 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         # close connection (daemonizing)
         db_tools.close_connection()
         self.__msi_block = self._init_msi_block()
+        self.CC.read_config_from_db(
+            [
+                (
+                    "RRD_DISK_CACHE",
+                    configfile.str_c_var(
+                        "/opt/cluster/system/rrd",
+                        help_string="persistent directory to use when /var/cache/rrd is a RAM-disk",
+                        database=True
+                    )
+                ),
+                ("RRD_DISK_CACHE_SYNC", configfile.int_c_var(3600, help_string="seconds between syncs from RAM to disk", database=True)),
+                ("RRD_COVERAGE_1", configfile.str_c_var("1min for 2days", database=True)),
+                ("RRD_COVERAGE_2", configfile.str_c_var("5min for 2 week", database=True)),
+                ("RRD_COVERAGE_3", configfile.str_c_var("15mins for 1month", database=True)),
+                ("RRD_COVERAGE_4", configfile.str_c_var("4 hours for 1 year", database=True)),
+                ("RRD_COVERAGE_5", configfile.str_c_var("1day for 5 years", database=True)),
+                (
+                    "MODIFY_RRD_COVERAGE",
+                    configfile.bool_c_var(False, help_string="alter RRD files on disk when coverage differs from configured one", database=True)
+                ),
+                ("ENABLE_SENSOR_THRESHOLDS", configfile.bool_c_var(True, help_string="globaly enable sensor thresholds [%(default)s]")),
+                ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name)),
+                ("FROM_NAME", configfile.str_c_var("collectd", help_string="from address for event (threshold) mails [%(default)s]")),
+                ("FROM_ADDRESS", configfile.str_c_var(long_host_name)),
+                ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1", help_string="memcache address")),
+                ("SNMP_PROCS", configfile.int_c_var(4, help_string="number of SNMP processes to use [%(default)s]")),
+                ("MAX_SNMP_JOBS", configfile.int_c_var(40, help_string="maximum number of jobs a SNMP process shall handle [%(default)s]")),
+                # ("RECV_PORT", configfile.int_c_var(8002, help_string="receive port, do not change [%(default)s]")),
+                ("MD_SERVER_HOST", configfile.str_c_var("127.0.0.1", help_string="md-config-server host [%(default)s]")),
+                # ("MD_SERVER_PORT", configfile.int_c_var(8010, help_string="md-config-server port, do not change [%(default)s]")),
+                ("MEMCACHE_HOST", configfile.str_c_var("127.0.0.1", help_string="host where memcache resides [%(default)s]")),
+                ("MEMCACHE_TIMEOUT", configfile.int_c_var(2 * 60, help_string="timeout in seconds for values stored in memcache [%(default)s]")),
+                ("RRD_CACHED_WRITETHREADS", configfile.int_c_var(4, help_string="number of write threads for RRD-cached")),
+                ("AGGREGATE_STRUCT_UPDATE", configfile.int_c_var(600, help_string="timer for aggregate struct updates")),
+            ]
+        )
+        if global_config["RRD_CACHED_SOCKET"] == "/var/run/rrdcached.sock":
+            global_config["RRD_CACHED_SOCKET"] = os.path.join(global_config["RRD_CACHED_DIR"], "rrdcached.sock")
         # re-insert config
-        self._re_insert_config()
+        self.CC.re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
@@ -132,9 +172,6 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
-
-    def _re_insert_config(self):
-        cluster_location.write_config("rrd_collector", global_config)
 
     def _int_error(self, err_cause):
         if not self.__snmp_running:

@@ -237,6 +237,7 @@ angular.module(
             super()
             @simple_attributes = [
                 "name", "config_catalog", "description", "priority", "service_config", "system_config", "enabled",
+                "config_service_enum",
             ]
             @list_attributes = [
                 "categories"
