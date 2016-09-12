@@ -259,3 +259,6 @@ ul.fancytree-container {
 div[class*="col-"] > ul {
     padding: 0px 0px 0px 15px;
 }
+.tab-pane icsw-simple-device-info > .container-fluid {
+    padding: 5px 0px;
+}

@@ -67,7 +67,7 @@
 
 <script type="text/ng-template" id="icsw.config.uploader">
     <div class="input-group">
-        <label class="control-label">Upload configuration</label><br/>
+        <label class="control-label">Upload Configuration</label><br/>
         <input type="file" class="btn btn-sm btn-primary form-control-inline" nv-file-select="" uploader="uploader"/>
         <icsw-tools-button type="upload" ng-show="uploader.queue.length" size="sm" value="upload" ng-click="uploader.uploadAll()"></icsw-tools-button>
     </div>
@@ -110,7 +110,7 @@
     </div>
     <div ng-if="struct.data_valid">
         <h2>
-            {{ struct.config_tree.list.length }} configurations, {{ filtered.length }} shown, {{ struct.config_tree.$selected }} selected
+            {{ struct.config_tree.list.length }} Configurations, {{ filtered.length }} shown, {{ struct.config_tree.$selected }} selected
             <icsw-tools-button-static
                 type="create"
                 value="create new config"
@@ -138,7 +138,7 @@
         <uib-tabset active="struct.active_tab">
             <uib-tab index="0">
                 <uib-tab-heading>
-                    Config List
+                    Configuration List
                 </uib-tab-heading>
                 <table
                     st-table="configs_displayed"
@@ -285,7 +285,7 @@
                     </div>
                     <div class="form-group" ng-show="!edit_obj.system_config">
                         <label class="col-sm-3 control-label icsw-formlabel">
-                            Server configuration
+                            Server Configuration
                         </label>
                         <div class="col-sm-7 controls">
                             <icsw-tools-yes-no flag="edit_obj.server_config"></icsw-tools-yes-no>
@@ -317,7 +317,7 @@
 
         </fieldset>
         <fieldset ng-if="!create_mode">
-            <legend>Variables, Config Scripts and Monitoring check commands</legend>
+            <legend>Variables, Configuration Scripts and Monitoring Check Commands</legend>
             <uib-tabset>
                 <uib-tab>
                     <uib-tab-heading>
@@ -356,9 +356,9 @@
 
 <script type="text/ng-template" id="icsw.config.catalog.table">
     <div ng-if="struct.data_present">
-        <h2>{{ struct.config_tree.catalog_list.length }} catalogs,
-            <icsw-tools-button-static type="create" value="create new catalog" ng-click="create_or_edit($event, true, null)" size="xs"></icsw-tools-button-static>
-        </h2>
+        <h3>{{ struct.config_tree.catalog_list.length }} Catalogs
+            <icsw-tools-button-static type="create" value="create new Catalog" ng-click="create_or_edit($event, true, null)" size="xs"></icsw-tools-button-static>
+        </h3>
         <table
             st-table="entries_displayed"
             st-safe-src="struct.config_tree.catalog_list"
@@ -367,12 +367,12 @@
         >
             <thead>
                 <tr>
-                    <th st-sort="name">name</th>
-                    <th>SysConfig</th>
+                    <th st-sort="name">Name</th>
+                    <th class="text-center">System Configuration</th>
                     <th st-sort="url">URL</th>
                     <th st-sort="author">Author</th>
-                    <th>Version</th>
-                    <th>#configs<th>
+                    <th class="text-right">Version</th>
+                    <th class="text-right">#Configurations</th>
                     <th colspan="2">Actions</th>
                 </tr>
             </thead>
@@ -382,7 +382,7 @@
                     <td class="text-center"><span ng-bind-html="catalog.system_catalog | yesno3"></span></td>
                     <td>{{ catalog.url }}</td>
                     <td>{{ catalog.author }}</td>
-                    <td>{{ catalog.version }}</td>
+                    <td class="text-right">{{ catalog.version }}</td>
                     <td class="text-center">{{ catalog.configs.length }}</td>
                     <td>
                         <icsw-tools-button-static type="modify" value="modify" ng-click="create_or_edit($event, false, catalog)" size="xs"/>
@@ -437,7 +437,7 @@
     </td>
     <td class="text-center">
         <span ng-if="config.$$usecount" class="text-warning">
-            usecount: {{ config.$$usecount }}
+            used: {{ config.$$usecount }}
         </span>
         <span ng-if="!config.$$usecount">
             <icsw-tools-button-static type="delete" value="delete" ng-click="delete_config($event, config)" size="xs"/>
@@ -633,7 +633,7 @@
 
 <script type="text/ng-template" id="icsw.config.generate.config">
     <div ng-show="has_valid_license('netboot')">
-        <br/ ><input type="button" class="btn btn-info btn-sm" value="show device config" ng-show="devsel_list.length" ng-click="generate_config()"/>
+        <br/ ><input type="button" class="btn btn-info btn-sm" value="Show Device Configuration" ng-show="devsel_list.length" ng-click="generate_config()"/>
         <span ng-show="devsel_list.length">
             <!--for {{ dev_names() }}-->
         </span>

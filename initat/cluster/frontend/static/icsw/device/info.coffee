@@ -143,7 +143,7 @@ angular.module(
     $q, $templateCache,
 ) ->
     class icswDeviceOverviewTabTemplate
-        constructor: (@name, @with_meta, @right) ->
+        constructor: (@name, @with_meta, @right, @shownname) ->
             @template = $templateCache.get("icsw.device.info.tab.#{@name}")
 
 ]).service("icswDeviceOverviewTabs",
@@ -153,12 +153,12 @@ angular.module(
     icswDeviceOverviewTabTemplate,
 ) ->
     _list = [
-        new icswDeviceOverviewTabTemplate("general", true, "")
-        new icswDeviceOverviewTabTemplate("network", false, "backbone.device.change_network")
-        new icswDeviceOverviewTabTemplate("config", true, "backbone.device.change_config")
-        new icswDeviceOverviewTabTemplate("category", false, "backbone.device.change_category")
-        new icswDeviceOverviewTabTemplate("location", false, "backbone.device.change_location")
-        new icswDeviceOverviewTabTemplate("variable", true, "backbone.device.change_variables")
+        new icswDeviceOverviewTabTemplate("general", true, "", "General")
+        new icswDeviceOverviewTabTemplate("network", false, "backbone.device.change_network", "Network")
+        new icswDeviceOverviewTabTemplate("config", true, "backbone.device.change_config", "Configuration")
+        new icswDeviceOverviewTabTemplate("category", false, "backbone.device.change_category", "Categories")
+        new icswDeviceOverviewTabTemplate("location", false, "backbone.device.change_location", "Locations")
+        new icswDeviceOverviewTabTemplate("variable", true, "backbone.device.change_variables", "Device Variables")
     ]
     return _list
 ]).directive("icswDeviceOverview",
@@ -293,6 +293,7 @@ angular.module(
                 {
                     name: entry.name
                     $$active: entry.name not in disabled_tabs
+                    shownname: entry.shownname
                 }
             )
 
@@ -472,7 +473,7 @@ angular.module(
         else
             dbu = new icswDeviceBackup()
             template_name = "icsw.device.info.edit.form"
-            title = "Modify Device settings"
+            title = "Modify Device Settings"
         dbu.create_backup($scope.edit_obj)
         sub_scope = $scope.$new(true)
         sub_scope.edit_obj = $scope.edit_obj

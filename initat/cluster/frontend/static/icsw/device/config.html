@@ -6,9 +6,9 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.configuration.overview">
-    <h2>
-        Device config ({{ helper.devices.length }} devices), {{ configs.length }} configurations ({{ helper.active_configs.length }} shown)
-    </h2>
+    <h3>
+        Device Configuration ({{ helper.devices.length }} Devices), {{ configs.length }} Configurations ({{ helper.active_configs.length }} shown)
+    </h3>
     <div class="form-inline">
         <input class="form-control" ng-model="name_filter" placeholder="filter"/>
         <icsw-tools-button type="show" is-show="struct.only_selected" show-value="only selected" hide-value="all" ng-click="toggle_only_selected()"></icsw-tools-button>
@@ -17,7 +17,7 @@
             <input placeholder="new config" ng-model="new_config_name" class="form-control"/>
             <div class="btn-group" ng-show="new_config_name">
                 <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
-                    Create in catalog <span class="caret"></span>
+                    Create in Catalog <span class="caret"></span>
                 </button>
                 <ul class="dropdown-menu">
                     <li ng-repeat="entry in helper.config_tree.catalog_list" ng-click="create_config(entry)"><a>{{ entry.name }}</a></li>
@@ -29,7 +29,7 @@
         <div uib-accordion-group class="panel-default" is-open="matrix">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': matrix, 'glyphicon-chevron-right': !matrix}"></i>
-                Config matrix
+                Configuration Matrix
             </uib-accordion-heading>
             <table ng-show="helper.devices.length" class="table rotateheaders table-condensed table-hover colhover" style="width:auto;">
                 <thead>
@@ -41,8 +41,8 @@
                     </tr>
                     <tr>
                         <th>Type</th>
-                        <td>local</td>
-                        <td>meta</td>
+                        <td>Local</td>
+                        <td>Meta</td>
                         <th ng-repeat="conf in helper.active_configs">
                              <span class="badge">{{ conf.config_type_str }}</span>
                         </th>
