@@ -1448,8 +1448,6 @@ def get_done_headers():
 
 
 def build_waiting_list(s_info, options, **kwargs):
-
-    print options
     user = kwargs.get("user", None)
     w_jobs = sorted(s_info.waiting_jobs, key=lambda x: x.get("full_id"))
     show_ids = []
