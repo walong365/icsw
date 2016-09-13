@@ -655,7 +655,6 @@ class meta_server_info(object):
             process_name = "proc{:d}".format(len(self.__pid_names) + 1)
         self.__pid_names[act_pid] = process_name
         self.__pid_proc_names[act_pid] = _ps_name
-        self.__pids.sort()
 
     def remove_actual_pid(self, act_pid=None, mult=0):
         if not act_pid:
