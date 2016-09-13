@@ -60,7 +60,7 @@ class config_catalog(models.Model):
     # is system catalog
     system_catalog = models.BooleanField(default=False)
     # priority
-    priorty = models.IntegerField(default=0)
+    priority = models.IntegerField(default=0)
     # extraction time
     extraction_time = models.DateTimeField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)

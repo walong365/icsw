@@ -27,7 +27,7 @@ import zmq
 
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_sync_server.mixins import VersionCheckMixin
-from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.md_sync_server.config import global_config, CS_NAME
 from initat.md_sync_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
@@ -45,7 +45,7 @@ class server_process(
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.monitor_slave, global_config)
-        self.CC.check_config(client=True)
+        self.CC.check_config()
         self.__enable_livestatus = True  # global_config["ENABLE_LIVESTATUS"]
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
@@ -53,7 +53,6 @@ class server_process(
         self._init_msi_block()
         # log config
         self.CC.log_config()
-        self.CC.re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
