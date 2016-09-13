@@ -20,6 +20,16 @@
                     </optional>
                 </element>
             </optional>
+            <optional>
+                <element name="menuColumns">
+                    <oneOrMore>
+                        <element name="menuColumn">
+                            <attribute name="index"></attribute>
+                            <text/>
+                        </element>
+                    </oneOrMore>
+                </element>
+            </optional>
             <oneOrMore>
                 <element name="route">
                     <attribute name="name"/>

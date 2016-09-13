@@ -1,12 +1,44 @@
 <routes>
     <routeGroup name="mm_devices">
         <menuHeader type="dict" name_str="Devices" icon_str="fa-hdd-o"/>
+        <menuColumns>
+            <menuColumn index="0">Settings</menuColumn>
+            <menuColumn index="1">Misc</menuColumn>
+        </menuColumns>
         <route name="main.devicecreate">
             <stateData type="dict" url_str="/devicecreate" templateUrl_str="icsw/main/device/create.html"/>
             <icswData type="dict" pageTitle_str="Create new Device" validForQuicklink_bool="yes">
-                <menuEntry type="dict" icon_str="fa-plus-circle" name_str="Create new device" column_int="0"/>
+                <menuEntry type="dict" icon_str="fa-plus-circle" name_str="Add new device" column_int="0"/>
                 <rights type="list">
                     <value>backbone.user.modify_tree</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.devtree">
+            <stateData type="dict" url_str="/devtree" templateUrl_str="icsw/main/device/tree.html"/>
+            <icswData type="dict" pageTitle_str="Device tree">
+                <menuEntry type="dict" postSpacer_bool="yes" icon_str="fa-list" name_str="Device Tree" column_int="0"/>
+                <dashboardEntry type="dict" sizeX_int="2" sizeY_int="5"/>
+                <rights type="list">
+                    <value>backbone.user.modify_tree</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.deviceconfig">
+            <stateData type="dict" url_str="/deviceconfig" templateUrl_str="icsw/main/device/config.html"/>
+            <icswData type="dict" pageTitle_str="Configure Device" hasDevselFunc_bool="yes">
+                <menuEntry type="dict" icon_str="fa-check-square" name_str="Device Configurations" column_int="0"/>
+                <rights type="list">
+                    <value>backbone.device.change_config</value>
+                </rights>
+            </icswData>
+        </route>
+        <route name="main.deviceconnection">
+            <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
+            <icswData type="dict" pageTitle_str="Device Connections" hasDevselFunc_bool="yes">
+                <menuEntry type="dict" icon_str="fa-plug" name_str="Connections" column_int="1"/>
+                <rights type="list">
+                    <value>backbone.device.change_connection</value>
                 </rights>
             </icswData>
         </route>
@@ -20,36 +52,18 @@
                 </rights>
             </icswData>
         </route>
-        <route name="main.deviceconnection">
-            <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
-            <icswData type="dict" pageTitle_str="Device Connections" hasDevselFunc_bool="yes">
-                <menuEntry type="dict" icon_str="fa-plug" name_str="Connections" column_int="2"/>
+        <route name="main.configoverview">
+            <stateData type="dict" url_str="/configoverview" templateUrl_str="icsw/main/config/overview.html"/>
+            <icswData type="dict" pageTitle_str="Overview">
+                <menuEntry type="dict" preSpacer_bool="yes" icon_str="fa-check-square-o" name_str="Base" column_int="1"/>
                 <rights type="list">
-                    <value>backbone.device.change_connection</value>
+                    <value>backbone.device.change_config</value>
                 </rights>
             </icswData>
         </route>
     </routeGroup>
     <routeGroup name="config">
         <menuHeader type="dict" name_str="Configuration" icon_str="fa-hdd-o"/>
-        <route name="main.configoverview">
-            <stateData type="dict" url_str="/configoverview" templateUrl_str="icsw/main/config/overview.html"/>
-            <icswData type="dict" pageTitle_str="Overview">
-                <menuEntry type="dict" preSpacer_bool="yes" icon_str="fa-check-square-o" name_str="Base"/>
-                <rights type="list">
-                    <value>backbone.device.change_config</value>
-                </rights>
-            </icswData>
-        </route>
-        <route name="main.deviceconfig">
-            <stateData type="dict" url_str="/deviceconfig" templateUrl_str="icsw/main/device/config.html"/>
-            <icswData type="dict" pageTitle_str="Configure Device" hasDevselFunc_bool="yes">
-                <menuEntry type="dict" icon_str="fa-check-square" name_str="Device Configurations"/>
-                <rights type="list">
-                    <value>backbone.device.change_config</value>
-                </rights>
-            </icswData>
-        </route>
         <route name="main.devicenetwork">
             <stateData type="dict" url_str="/network" template_str="&lt;icsw-device-network-total&gt;&lt;/icsw-device-network-total&gt;"/>
             <icswData type="dict" pageTitle_str="Network" hasDevselFunc_bool="yes">
@@ -63,16 +77,6 @@
     <!-- trees -->
     <routeGroup name="tree">
         <menuHeader type="dict" name_str="Trees" icon_str="fa-tree"/>
-        <route name="main.devtree">
-            <stateData type="dict" url_str="/devtree" templateUrl_str="icsw/main/device/tree.html"/>
-            <icswData type="dict" pageTitle_str="Device tree">
-                <menuEntry type="dict" postSpacer_bool="yes" icon_str="fa-list" name_str="Devices"/>
-                <dashboardEntry type="dict" sizeX_int="2" sizeY_int="5"/>
-                <rights type="list">
-                    <value>backbone.user.modify_tree</value>
-                </rights>
-            </icswData>
-        </route>
         <route name="main.domaintree">
             <stateData type="dict" url_str="/domaintree" templateUrl_str="icsw/main/device/domaintree.html"/>
             <icswData type="dict" pageTitle_str="Domain names">

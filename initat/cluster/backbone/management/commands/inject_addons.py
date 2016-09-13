@@ -168,6 +168,13 @@ class FileModify(object):
                 menu_head_el.attrib["ordering_int"] = "{:d}".format((menu_idx + 1) * 10)
                 menu_head_el.attrib["key_str"] = key_str
             _header_added = False
+            menu_columns_el = group.find(".//menuColumns")
+            menu_column_names = {}
+            if menu_columns_el:
+                for menu_column_el in menu_columns_el.findall(".//menuColumn"):
+                    _index = int(menu_column_el.attrib["index"])
+                    _column_header_name = menu_column_el.text
+                    menu_column_names[_index] = _column_header_name
             for route_idx, route in enumerate(group.findall(".//route")):
                 _me = route.find(".//icswData/menuEntry")
                 if _me is not None:
@@ -176,6 +183,9 @@ class FileModify(object):
                     _data = route.find(".//icswData")
                     _me.attrib["menukey_str"] = key_str
                     _me.attrib["ordering_int"] = "{:d}".format((route_idx + 1) * 10)
+                    if "column_int" in _me.attrib and menu_column_names:
+                        _me.attrib["columnname_str"] = menu_column_names[int(_me.attrib["column_int"])]
+
                     if not _header_added:
                         # add header to first route entry with menuEntry
                         _header_added = True

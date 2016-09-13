@@ -277,14 +277,14 @@ menu_module = angular.module(
     icswMenuProgressService, $state, icswRouteHelper,
 ) ->
     # console.log icswAcessLevelService
-    {input, ul, li, a, span, h4, div} = React.DOM
+    {input, ul, li, a, span, h4, div, p, strong} = React.DOM
     react_dom = ReactDOM
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
             state = @props.state
             data = state.icswData
-            console.log "D=", data
+            #console.log "D=", data
             a_attrs = {
                 key: "a"
                 className: "icswMenuColor"
@@ -333,25 +333,42 @@ menu_module = angular.module(
         displayName: "menuheader"
         getDefaultProps: () ->
         render: () ->
-            _idx = 0
-            #_items = []
-            # _idx = 0
-            # flag for last entry was a valid one
-            valid_entry = false
-            _post_spacer = false
-
+            items_added = 0
             items_per_column = {}
 
             for state in @props.entries
                 data = state.icswData
 
                 if data.menuEntry.column?
-                    items_per_column[data.menuEntry.column] = []
+                    items_per_column[data.menuEntry.column] =
+                    [
+                        li(
+                            {
+                                key: data.key + data.menuEntry.columnname + "_li"
+                            }
+                            [
+                                p(
+                                    {
+                                        key: data.key + data.menuEntry.columnname + "_p"
+                                    }
+                                    [
+                                        strong(
+                                            {
+                                                key: data.key + data.menuEntry.columnname + "_strong"
+                                            }
+                                            [
+                                              data.menuEntry.columnname
+                                            ]
+                                        )
+                                    ]
+                                )
+                            ]
+                        )
+                    ]
                 else
                     items_per_column[0] = []
 
             for state in @props.entries
-                _idx++
                 data = state.icswData
                 _key = data.key
                 if data.menuEntry.isHidden? and data.menuEntry.isHidden
@@ -365,41 +382,14 @@ menu_module = angular.module(
                         items_per_column[column].push(
                             React.createElement(state.name, {key: _key})
                         )
+                        items_added += 1
                     else
                         items_per_column[column].push(
                             React.createElement(menu_line, {key: _key, state: state})
                         )
+                        items_added += 1
 
-#            for state in @props.entries
-#                _idx++
-#                data = state.icswData
-#                _key = data.key
-#                if data.menuEntry.isHidden? and data.menuEntry.isHidden
-#                    continue
-#                if data.$$allowed
-#                    column = 0
-#                    if data.menuEntry.column?
-#                        column = data.menuEntry.column
-#
-#                    if (data.menuEntry.preSpacer? and valid_entry) or _post_spacer
-#                        items_per_column[column].push(
-#                            li({className: "divider", key: _key + "_pre"})
-#                        )
-#                    if angular.isFunction(state.name)
-#                        items_per_column[column].push(
-#                            React.createElement(state.name, {key: _key})
-#                        )
-#                    else
-#                        items_per_column[column].push(
-#                            React.createElement(menu_line, {key: _key, state: state})
-#                        )
-#                    valid_entry = true
-#                    if data.menuEntry.postSpacer?
-#                        _post_spacer = true
-#                    else
-#                        _post_spacer = false
-
-            if true
+            if items_added > 0
                 state = @props.state
                 header = state.icswData.menuHeader
                 key= "mh_#{state.icswData.key}"
@@ -416,6 +406,7 @@ menu_module = angular.module(
 
                     ul_item = ul(
                         {
+                            key: key + column + "_ul"
                             className: "col-sm-" + 12 / columns + " list-unstyled"
                         }
                         items
@@ -452,22 +443,23 @@ menu_module = angular.module(
                         )
                         ul(
                             {
-                                className: "dropdown-menu"
-
+                                key: key + "dropdown-menu_ul"
+                                className: "dropdown-menu col-sm-5"
                             }
                             li(
                                 {
-
                                 }
                                 [
 
                                     div(
                                         {
+                                            key: key + "yamm-content_div"
                                             className: "yamm-content"
                                         }
                                         [
                                             div(
                                                 {
+                                                    key: key + "row_div"
                                                     className: "row"
                                                 }
                                                 ul_items
