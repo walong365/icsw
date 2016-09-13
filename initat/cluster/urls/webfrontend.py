@@ -125,6 +125,8 @@ rms_patterns = [
     url(r"control_queue", rms_views.control_queue.as_view(), name="control_queue"),
     url(r"get_file_content", rms_views.get_file_content.as_view(), name="get_file_content"),
     url(r"change_job_pri$", rms_views.change_job_priority.as_view(), name="change_job_priority"),
+    # for liebherr
+    url(r"job_list$", rms_views.RmsJobViewSet.as_view({"get": "simple_get"}), name="job_list"),
 ]
 
 # license overview
