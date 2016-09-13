@@ -96,17 +96,15 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
     def _snmp_process_start(self, **kwargs):
         self.__msi_block.add_actual_pid(
             kwargs["pid"],
-            mult=kwargs.get("mult", 3),
             process_name=kwargs["process_name"],
-            fuzzy_ceiling=kwargs.get("fuzzy_ceiling", 3)
         )
         self.__msi_block.save_block()
-        process_tools.append_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
+        process_tools.append_pids(self.__pid_name, kwargs["pid"])
 
     def _snmp_process_exit(self, **kwargs):
-        self.__msi_block.remove_actual_pid(kwargs["pid"], mult=kwargs.get("mult", 3))
+        self.__msi_block.remove_actual_pid(kwargs["pid"])
         self.__msi_block.save_block()
-        process_tools.remove_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
+        process_tools.remove_pids(self.__pid_name, kwargs["pid"])
 
     def _init_processes(self):
         self.spc = snmp_process_container(
@@ -141,19 +139,15 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self.log("Config : {}".format(conf))
 
     def process_start(self, src_process, src_pid):
-        mult = 3
-        fuzzy_ceiling = 0
-        if src_process == EventLogPollerProcess.PROCESS_NAME:
-            fuzzy_ceiling = 5
-        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
-        self.__msi_block.add_actual_pid(src_pid, mult=mult, fuzzy_ceiling=fuzzy_ceiling, process_name=src_process)
+        process_tools.append_pids(self.__pid_name, src_pid)
+        self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
         self.__msi_block.save_block()
 
     def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name, mult=4)
+        process_tools.save_pid(self.__pid_name)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("discovery-server")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4)
+        msi_block.add_actual_pid()
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block

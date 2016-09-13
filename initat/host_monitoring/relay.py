@@ -321,10 +321,10 @@ class relay_code(ICSWBasePool, HMHRMixin):
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
-        process_tools.save_pids(global_config["PID_NAME"], mult=3)
+        process_tools.save_pids(global_config["PID_NAME"])
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("collrelay")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+        msi_block.add_actual_pid(process_name="main")
         msi_block.kill_pids = True
         # msi_block.heartbeat_timeout = 60
         msi_block.save_block()
@@ -332,17 +332,9 @@ class relay_code(ICSWBasePool, HMHRMixin):
 
     def process_start(self, src_process, src_pid):
         # twisted needs 4 threads if connecting to TCP clients, 3 if not (???)
-        if src_process == "socket":
-            if src_pid in self.__msi_block.get_pids():
-                # add one extra thread
-                mult = 1
-            else:
-                mult = 3
-        else:
-            mult = 3
-        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
+        process_tools.append_pids(self.__pid_name, src_pid)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
+            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
             self.__msi_block.save_block()
 
     def _check_timeout(self):

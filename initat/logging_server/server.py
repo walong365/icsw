@@ -188,11 +188,11 @@ class main_process(ICSWBasePool):
         self.std_client = client
 
     def _init_msi_block(self):
-        process_tools.save_pids("logserver/logserver", mult=3)
+        process_tools.save_pids("logserver/logserver")
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("logserver")
         # increased ceiling to 4, ALN 20150812
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+        msi_block.add_actual_pid(process_name="main")
         msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block

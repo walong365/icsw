@@ -111,17 +111,16 @@ class server_process(
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
 
     def process_start(self, src_process, src_pid):
-        mult = 3
-        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
+        process_tools.append_pids(self.__pid_name, src_pid)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult, process_name=src_process)
+            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
             self.__msi_block.save_block()
 
     def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name, mult=3)
+        process_tools.save_pid(self.__pid_name)
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("rrd-grapher")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+        msi_block.add_actual_pid(process_name="main")
         msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block

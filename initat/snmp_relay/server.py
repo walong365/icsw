@@ -115,17 +115,15 @@ class server_process(server_mixins.ICSWBasePool):
     def _snmp_process_start(self, **kwargs):
         self.__msi_block.add_actual_pid(
             kwargs["pid"],
-            mult=kwargs.get("mult", 3),
             process_name=kwargs["process_name"],
-            fuzzy_ceiling=kwargs.get("fuzzy_ceiling", 3)
         )
         self.__msi_block.save_block()
-        process_tools.append_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
+        process_tools.append_pids(self.__pid_name, kwargs["pid"])
 
     def _snmp_process_exit(self, **kwargs):
-        self.__msi_block.remove_actual_pid(kwargs["pid"], mult=kwargs.get("mult", 3))
+        self.__msi_block.remove_actual_pid(kwargs["pid"])
         self.__msi_block.save_block()
-        process_tools.remove_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
+        process_tools.remove_pids(self.__pid_name, kwargs["pid"])
 
     def _get_host_object(self, host_name, snmp_community, snmp_version):
         host_tuple = (host_name, snmp_community, snmp_version)
@@ -135,11 +133,11 @@ class server_process(server_mixins.ICSWBasePool):
 
     def _init_msi_block(self):
         self.__pid_name = global_config["PID_NAME"]
-        process_tools.save_pids(global_config["PID_NAME"], mult=3)
+        process_tools.save_pids(global_config["PID_NAME"])
         cf_pids = 2  # + global_config["SNMP_PROCESSES"]
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("snmp-relay")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+        msi_block.add_actual_pid(process_name="main")
         msi_block.kill_pids = True
         # msi_block.heartbeat_timeout = 120
         msi_block.save_block()

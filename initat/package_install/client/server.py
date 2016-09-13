@@ -76,11 +76,11 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
-        process_tools.save_pids(global_config["PID_NAME"], mult=3)
+        process_tools.save_pids(global_config["PID_NAME"])
         if True:  # not self.__options.DEBUG:
             self.log("Initialising meta-server-info block")
             msi_block = process_tools.meta_server_info("package-client")
-            msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
+            msi_block.add_actual_pid(process_name="main")
             msi_block.kill_pids = True
             msi_block.save_block()
         else:

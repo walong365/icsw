@@ -264,9 +264,7 @@ class snmp_process_container(object):
             self._event(
                 "process_start",
                 pid=data["pid"],
-                mult=3,
                 process_name=self.__snmp_dict[snmp_idx]["msi_name"],
-                fuzzy_ceiling=3
             )
             if not self.__run_flag:
                 # call stop
@@ -280,7 +278,6 @@ class snmp_process_container(object):
             self._event(
                 "process_exit",
                 pid=data["pid"],
-                mult=3,
             )
             if self.__run_flag:
                 # spawn new processes

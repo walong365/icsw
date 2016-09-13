@@ -517,7 +517,6 @@ class meta_server_info(object):
         self.__pids = set()
         self.__pid_names = {}
         self.__pid_proc_names = {}
-        # self.__pid_fuzzy = {}
         # when the MSI-block was startet (== main process start)
         self.__start_time = {}
 
@@ -548,10 +547,6 @@ class meta_server_info(object):
                 self.__pids.add(int(pid_struct.text))
                 self.__pid_names[int(pid_struct.text)] = pid_struct.get("name", "proc{:d}".format(cur_idx + 1))
                 self.__pid_proc_names[int(pid_struct.text)] = pid_struct.get("proc_name", "")
-                # self.__pid_fuzzy[int(pid_struct.text)] = (
-                #     int(pid_struct.get("fuzzy_floor", "0")),
-                #     int(pid_struct.get("fuzzy_ceiling", "0")),
-                # )
             for opt, val_type, def_val in self.__prop_list:
                 cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='{}']".format(opt), smart_strings=False)
                 if cur_prop:
@@ -635,7 +630,7 @@ class meta_server_info(object):
         self.__check_memory = cm
     check_memory = property(check_memory_get, check_memory_set)
 
-    def add_actual_pid(self, act_pid=None, mult=1, fuzzy_floor=0, fuzzy_ceiling=0, process_name=""):
+    def add_actual_pid(self, act_pid=None, process_name=""):
         if not act_pid:
             act_pid = os.getpid()
         try:
@@ -650,13 +645,12 @@ class meta_server_info(object):
             )
             _ps_name = ""
         self.__pids.add(act_pid)
-        # self.__pid_fuzzy[act_pid] = (fuzzy_floor, fuzzy_ceiling)
         if not process_name:
             process_name = "proc{:d}".format(len(self.__pid_names) + 1)
         self.__pid_names[act_pid] = process_name
         self.__pid_proc_names[act_pid] = _ps_name
 
-    def remove_actual_pid(self, act_pid=None, mult=0):
+    def remove_actual_pid(self, act_pid=None):
         if not act_pid:
             act_pid = os.getpid()
         self.__pids.remove(act_pid)
@@ -687,7 +681,6 @@ class meta_server_info(object):
         return pid_list
 
     def set_pids(self, in_pids):
-        # dangerous, pid_fuzzy not set
         self.__pids = set(in_pids)
     pids = property(get_pids, set_pids)
 
@@ -804,7 +797,6 @@ class meta_server_info(object):
             self.__pids = set(pids_found)
             self.__pid_names.update({key: self.__exe_name for key in pids_found})
             self.__pid_proc_names.update({key: psutil.Process(key).name() for key in pids_found})
-        # # thread multiply dict
         self.__pids_found = {}
         # print "*", self.__pids
         for cur_pid in self.__pids:
@@ -959,13 +951,13 @@ class cached_file(object):
             self.changed()
 
 
-def save_pid(name, pid=None, mult=1):
+def save_pid(name, pid=None):
     return append_pids(name, pid=pid, mode="w")
 
 save_pids = save_pid
 
 
-def append_pids(name, pid=None, mult=1, mode="a"):
+def append_pids(name, pid=None, mode="a"):
     if pid is None:
         actp = [os.getpid()]
     else:
@@ -1014,10 +1006,7 @@ def append_pids(name, pid=None, mult=1, mode="a"):
             )
 
 
-def remove_pids(name, pid=None, mult=0):
-    """
-    mult: number of pids to remove, defaults to 0 (means all)
-    """
+def remove_pids(name, pid=None):
     if pid is None:
         actp = [os.getpid()]
     else:

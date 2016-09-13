@@ -335,19 +335,19 @@ class server_code(ICSWBasePool, HMHRMixin):
     def _init_msi_block(self):
         # store pid name because global_config becomes unavailable after SIGTERM
         self.__pid_name = global_config["PID_NAME"]
-        process_tools.save_pids(global_config["PID_NAME"], mult=3)
+        process_tools.save_pids(global_config["PID_NAME"])
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("collserver")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=7, process_name="main")
+        msi_block.add_actual_pid(process_name="main")
         msi_block.kill_pids = True
         # msi_block.heartbeat_timeout = 60
         msi_block.save_block()
         self.__msi_block = msi_block
 
     def process_start(self, src_process, src_pid):
-        process_tools.append_pids(self.__pid_name, src_pid, mult=3)
+        process_tools.append_pids(self.__pid_name, src_pid)
         if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=3, process_name=src_process, fuzzy_ceiling=3)
+            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
             self.__msi_block.save_block()
 
     def _init_network_sockets(self):
