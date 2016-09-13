@@ -366,7 +366,7 @@ class ServiceContainer(object):
                     else:
                         num_diff, any_ok = (
                             int(s_info.get("num_diff")),
-                            True if int(act_struct.attrib["any_threads_ok"]) else False
+                            True if int(act_struct.attrib["any-processes-ok"]) else False
                         )
                         # print etree.tostring(act_struct, pretty_print=True)
                         num_pids = len(_res.findall(".//pids/pid"))
@@ -378,7 +378,7 @@ class ServiceContainer(object):
                                 da_name = "critical"
                             elif num_diff > 0:
                                 da_name = "warning"
-                        cur_line.append(logging_tools.form_entry(s_info.attrib["proc_info_str"], header="Thread info", display_attribute=da_name))
+                        cur_line.append(logging_tools.form_entry(s_info.attrib["proc_info_str"], header="Process info", display_attribute=da_name))
                 if opt_ns.started:
                     start_time = int(act_struct.find(".//process_state_info").get("start_time", "0"))
                     if start_time:

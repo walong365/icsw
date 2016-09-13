@@ -70,8 +70,16 @@
                 <attribute name="wait_time">
                 </attribute>
             </optional>
+            <!-- deprecated -->
             <optional>
                 <attribute name="any_threads_ok">
+                    <choice>
+                        <value>1</value>
+                    </choice>
+                </attribute>
+            </optional>
+            <optional>
+                <attribute name="any-processes-ok">
                     <choice>
                         <value>1</value>
                     </choice>

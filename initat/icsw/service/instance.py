@@ -310,7 +310,7 @@ class InstanceXML(object):
             name = cur_el.attrib["name"]
             for key, def_value in [
                 ("runs_on", "server"),
-                ("any_threads_ok", "0"),
+                ("any-processes-ok", "0"),
                 ("pid_file_name", "{}.pid".format(name)),
                 ("init_script_name", name),
                 ("startstop", "1"),

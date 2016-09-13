@@ -45,7 +45,7 @@ class Parser(object):
         _srvc = sub_parser.add_parser("status", help="service status")
         _srvc.set_defaults(childcom="status")
         _srvc.add_argument("-i", dest="interactive", action="store_true", default=False, help="enable interactive mode [%(default)s]")
-        _srvc.add_argument("-t", dest="thread", action="store_true", default=False, help="thread overview [%(default)s]")
+        _srvc.add_argument("-t", dest="thread", action="store_true", default=False, help="Process overview [%(default)s]")
         _srvc.add_argument("-s", dest="started", action="store_true", default=False, help="start info [%(default)s]")
         _srvc.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info [%(default)s]")
         _srvc.add_argument("-c", dest="config", action="store_true", default=False, help="show config info [%(default)s]")

@@ -271,60 +271,71 @@ class Service(object):
             except:
                 _result.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
 
-    def _get_proc_info_str(self, unique_pids, num_started, num_found, num_diff, num_pids, diff_dict, any_ok):
+    def _get_proc_info_str(self, unique_pids, num_found, diff_dict, any_ok):
         num_procs = len(unique_pids)
-        if any_ok:
-            ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))
+        ret_f = []
+        if any_ok and False:
+            ret_f.append(
+                "{} running".format(logging_tools.get_plural("process", num_found))
+            )
         else:
-            if diff_dict:
-                diff_str = ", [diff: {}]".format(
-                    ", ".join(
-                        [
-                            "{:d}: {:d}".format(
-                                _key,
-                                _value
-                            ) for _key, _value in diff_dict.iteritems()
-                        ]
+            num_under, num_over = (
+                len([_v for _v in diff_dict.itervalues() if _v < 0]),
+                len([_v for _v in diff_dict.itervalues() if _v > 0]),
+            )
+            if num_under:
+                ret_f.append(
+                    "{} {} missing".format(
+                        logging_tools.get_plural("process", num_under),
+                        num_under == 1 and "is" or "are",
                     )
                 )
-            else:
-                diff_str = ""
-            if num_diff < 0:
-                ret_str = "{} {} missing{}".format(
-                    logging_tools.get_plural("thread", -num_diff),
-                    num_diff == 1 and "is" or "are",
-                    diff_str,
+            if num_over:
+                ret_f.append(
+                    "{} too much".format(
+                        logging_tools.get_plural("process", num_over),
+                    )
                 )
-                da_name = "critical"
-            elif num_diff > 0:
-                ret_str = "{} too much{}".format(
-                    logging_tools.get_plural("thread", num_diff),
-                    diff_str,
+            if not num_under and not num_over:
+                ret_f.append(
+                    "the process is running" if num_procs == 1 else "{}{} running".format(
+                        "all " if num_procs > 1 else "",
+                        logging_tools.get_plural("process", num_procs),
+                    )
                 )
-                da_name = "warning"
-            else:
-                ret_str = "the process is running" if num_started == 1 else "{}{} ({}) running".format(
-                    "all " if num_procs > 1 else "",
-                    logging_tools.get_plural("process", num_procs),
-                    logging_tools.get_plural("thread", num_started),
+            if diff_dict:
+                ret_f.append(
+                    "[diff: {}]".format(
+                        ", ".join(
+                            [
+                                "{:d}: {:d}".format(
+                                    _key,
+                                    _value
+                                ) for _key, _value in diff_dict.iteritems()
+                            ]
+                        )
+                    )
                 )
-        return ret_str
+        return ", ".join(ret_f)
 
     def _check_processes(self, pids, act_proc_dict):
-        name = self.name
-        any_ok = True if int(self.attrib["any_threads_ok"]) else False
+        # name = self.name
+        any_ok = True if int(self.attrib["any-processes-ok"]) else False
         unique_pids = {
             key: pids.count(key) for key in set(pids)
         }
-        pids_found = {}
-        for key in set(pids):
-            if key in act_proc_dict:
-                try:
-                    pids_found[key] = act_proc_dict[key].num_threads()
-                except psutil.NoSuchProcess:
-                    pass
-        num_started = sum(unique_pids.values()) if unique_pids else 0
-        num_found = sum(pids_found.values()) if pids_found else 0
+        pids_found = {key: True for key in set(pids) if key in act_proc_dict}
+        # for key in set(pids):
+        #    if key in act_proc_dict:
+        #        try:
+        #            pids_found[key] = act_proc_dict[key].num_threads()
+        #        except psutil.NoSuchProcess:
+        #            pass
+        # num_started = sum(unique_pids.values()) if unique_pids else 0
+        # num_found = sum(pids_found.values()) if pids_found else 0
+        num_started = len(unique_pids)
+        num_found = len(pids_found)
+        # print num_started, num_found, unique_pids, pids_found
         # check for extra Nagios2.x thread
         if any_ok and num_found:
             ret_state = SERVICE_OK
@@ -577,7 +588,7 @@ class PIDService(Service):
             start_time = os.stat(pid_file_name)[stat.ST_CTIME]
             act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
             act_state, num_started, num_found = self._check_processes(act_pids, act_proc_dict)
-            num_diff = 0
+            unique_pids = set(act_pids)
             diff_dict = {}
             result.append(
                 E.process_state_info(
@@ -590,17 +601,14 @@ class PIDService(Service):
                     check_source="pid",
                     num_started="{:d}".format(num_started),
                     num_found="{:d}".format(num_found),
-                    num_diff="{:d}".format(num_diff),
+                    num_diff="{:d}".format(abs(num_started - num_found)),
                     start_time="{:d}".format(start_time),
                     state="{:d}".format(act_state),
                     proc_info_str=self._get_proc_info_str(
-                        set(act_pids),
-                        num_started,
+                        unique_pids,
                         num_found,
-                        num_diff,
-                        len(act_pids),
                         diff_dict,
-                        True if int(self.entry.attrib["any_threads_ok"]) else False,
+                        True if int(self.entry.attrib["any-processes-ok"]) else False,
                     )
                 ),
             )
@@ -621,17 +629,18 @@ class MetaService(Service):
             start_time = ms_block.start_time
             _check = ms_block.check_block(act_proc_dict)
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
-            diff_threads = sum(ms_block.bound_dict.values())
+            diff_procs = sum([abs(_v) for _v in diff_dict.values()]) if diff_dict else 0
             act_pids = ms_block.pids_found
+            # print "*", act_pids
             unique_pids = set(act_pids)
             num_started = len(act_pids)
-            if diff_threads:
+            if diff_procs:
                 act_state = SERVICE_INCOMPLETE
+                # hm, not correct, FIXME
                 num_found = num_started
             else:
                 act_state = SERVICE_OK
                 num_found = num_started
-            num_diff = diff_threads
             result.append(
                 E.process_state_info(
                     *[
@@ -643,17 +652,14 @@ class MetaService(Service):
                     check_source="meta",
                     num_started="{:d}".format(num_started),
                     num_found="{:d}".format(num_found),
-                    num_diff="{:d}".format(num_diff),
+                    num_diff="{:d}".format(diff_procs),
                     start_time="{:d}".format(int(start_time)),
                     state="{:d}".format(act_state),
                     proc_info_str=self._get_proc_info_str(
                         unique_pids,
-                        num_started,
                         num_found,
-                        num_diff,
-                        len(act_pids),
                         diff_dict,
-                        True if int(self.entry.attrib["any_threads_ok"]) else False,
+                        True if int(self.entry.attrib["any-processes-ok"]) else False,
                     )
                 ),
             )
