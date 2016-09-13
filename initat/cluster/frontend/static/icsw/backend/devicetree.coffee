@@ -189,7 +189,6 @@ angular.module(
             )
 
         post_g_static_asset_info: () ->
-
             console.log "post_g static_asset_info"
 
         post_g_device_connection_info: () ->
@@ -346,9 +345,9 @@ angular.module(
 
 ]).service("icswEnrichmentInfo",
 [
-    "icswNetworkTreeService", "icswTools",
+    "icswNetworkTreeService", "icswTools", "$q",
 (
-    icswNetworkTreeService, icswTools
+    icswNetworkTreeService, icswTools, $q,
 ) ->
     # stores info about already fetched additional info from server
     class icswEnrichmentInfo
@@ -475,16 +474,33 @@ angular.module(
             return [@device.idx, fetch_list]
 
         add_netdevice: (new_nd) =>
+            defer = $q.defer()
             # insert the new netdevice nd to the local device
             dev = @device
             dev.netdevice_set.push(new_nd)
-            @post_network_info()
+            # check if something is missing (new network_device_type or so)
+            current = icswNetworkTreeService.current()
+            if new_nd.network_device_type of current.nw_device_type_lut
+                # network device type present, no problem
+            else
+                # reload network_device_type
+                current.reload_network_device_types().then(
+                    (done) =>
+                        @post_network_info()
+                        defer.resolve("done")
+                )
+            return defer.promise
 
         delete_netdevice: (del_nd) =>
             # insert the new netdevice nd to the local device
             dev = @device
             _.remove(dev.netdevice_set, (entry) -> return entry.idx == del_nd.idx)
             @post_network_info()
+
+        replace_netdevice: (del_nd, new_nd) =>
+            # replace the netdevice del_nd with new_nd
+            _.remove(@device.netdevice_set, (entry) -> return entry.idx == del_nd.idx)
+            return @add_netdevice(new_nd)
 
         add_netip: (new_ip, cur_nd) =>
             # insert the new IP new_ip to the local device
@@ -811,6 +827,23 @@ angular.module(
             )
             return defer.promise
 
+        modify_netdevice: (mod_obj) =>
+            # modify netdevice
+            defer = $q.defer()
+            Restangular.restangularizeElement(null, mod_obj, ICSW_URLS.REST_NETDEVICE_DETAIL.slice(1).slice(0, -2))
+            mod_obj.put().then(
+                (new_obj) =>
+                    # ToDo, FIXME, handle change (test?), move to DeviceTreeService
+                    dev = @all_lut[new_obj.device]
+                    dev.$$_enrichment_info.replace_netdevice(mod_obj, new_obj).then(
+                        (done) =>
+                            defer.resolve("save")
+                    )
+                (reject) =>
+                    defer.reject("not saved")
+            )
+            return defer.promise
+
         delete_netdevice: (del_nd) =>
             # ensure REST hooks
             Restangular.restangularizeElement(null, del_nd, ICSW_URLS.REST_NETDEVICE_DETAIL.slice(1).slice(0, -2))
@@ -830,8 +863,10 @@ angular.module(
                 (new_nd) =>
                     new_nd = new_nd[0]
                     dev = @all_lut[new_nd.device]
-                    dev.$$_enrichment_info.add_netdevice(new_nd)
-                    defer.resolve(msg)
+                    dev.$$_enrichment_info.add_netdevice(new_nd).then(
+                        (done) =>
+                            defer.resolve(msg)
+                    )
             )
 
         # for netIP

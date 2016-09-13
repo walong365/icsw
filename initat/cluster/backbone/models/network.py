@@ -83,9 +83,11 @@ class network_device_type(models.Model):
     def create_new_type(ndev):
         new_re = "^{}$".format("\d+".join(re.split("\d+", ndev.devname)))
         if ndev.macaddr:
-            mac_bytes = len(ndev.macaddr.replace(":", "").strip())
+            mac_bytes = ndev.macaddr.replace("-", ":").count(":") + 1
         else:
             mac_bytes = 6
+        # mac_bytes must have at least 6 bytes
+        mac_bytes = min(6, mac_bytes)
         GN = "autogen-"
         gen_names = [
             _val for _val in network_device_type.objects.all().values_list("identifier", flat=True) if _val.startswith(GN)
@@ -797,6 +799,7 @@ def netdevice_pre_save(sender, **kwargs):
         if cur_inst.devname in all_nd_names:
             raise ValidationError("devname '{}' already used".format(cur_inst.devname))
         # change network_device_type
+        _cur_nw_type = cur_inst.network_device_type_id
         if cur_inst.force_network_device_type_match:
             nd_type = cur_inst.find_matching_network_device_type()
             if nd_type is not None:
@@ -816,6 +819,7 @@ def netdevice_pre_save(sender, **kwargs):
             if not cur_inst.network_device_type_id:
                 # take the first one which is not used for matching
                 cur_inst.network_device_type = network_device_type.objects.filter(Q(for_matching=False))[0]
+        _nw_type_changed = _cur_nw_type != cur_inst.network_device_type_id
         # fix None as vlan_id
         check_integer(cur_inst, "vlan_id", none_to_zero=True, min_val=0)
         # penalty
@@ -844,20 +848,26 @@ def netdevice_pre_save(sender, **kwargs):
             mac_re = re.compile(mac_re_str)
             # set empty if not set
             try:
-                if not cur_inst.macaddr.strip() or int(cur_inst.macaddr.replace(":", ""), 16) == 0:
-                    cur_inst.macaddr = dummy_mac
-            except:
-                raise ValidationError("MACaddress '{}' has illegal format".format(cur_inst.macaddr))
-            # set empty if not set
-            try:
-                if not cur_inst.fake_macaddr.strip() or int(cur_inst.fake_macaddr.replace(":", ""), 16) == 0:
-                    cur_inst.fake_macaddr = dummy_mac
-            except:
-                raise ValidationError("fake MACaddress '{}' has illegal format".format(cur_inst.fake_macaddr))
-            if not mac_re.match(cur_inst.macaddr):
-                raise ValidationError("MACaddress '{}' has illegal format for RE '{}'".format(cur_inst.macaddr, mac_re_str))
-            if not mac_re.match(cur_inst.fake_macaddr):
-                raise ValidationError("fake MACaddress '{}' has illegal format".format(cur_inst.fake_macaddr))
+                try:
+                    if not cur_inst.macaddr.strip() or int(cur_inst.macaddr.replace(":", ""), 16) == 0:
+                        cur_inst.macaddr = dummy_mac
+                except:
+                    raise ValidationError("MACaddress '{}' has illegal format".format(cur_inst.macaddr))
+                # set empty if not set
+                try:
+                    if not cur_inst.fake_macaddr.strip() or int(cur_inst.fake_macaddr.replace(":", ""), 16) == 0:
+                        cur_inst.fake_macaddr = dummy_mac
+                except:
+                    raise ValidationError("fake MACaddress '{}' has illegal format".format(cur_inst.fake_macaddr))
+                if not mac_re.match(cur_inst.macaddr):
+                    raise ValidationError("MACaddress '{}' has illegal format for RE '{}'".format(cur_inst.macaddr, mac_re_str))
+                if not mac_re.match(cur_inst.fake_macaddr):
+                    raise ValidationError("fake MACaddress '{}' has illegal format".format(cur_inst.fake_macaddr))
+            except ValidationError:
+                if _nw_type_changed:
+                    raise ValidationError("NetworkDeviceType has changed and so the MAC-format has changed to '{}'".format(dummy_mac))
+                else:
+                    raise
         if cur_inst.master_device_id:
             if not cur_inst.vlan_id:
                 raise ValidationError("VLAN id cannot be zero")
