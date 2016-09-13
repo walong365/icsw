@@ -182,7 +182,7 @@
                         <tr>
                             <th st-sort="name">Name</th>
                             <th st-sort="priority">Priority</th>
-                            <th>Service</th>
+                            <th class="text-center">Service</th>
                             <th>Flags</th>
                             <th st-sort="config_catalog">Catalog</th>
                             <th class="text-center">Enabled</th>
@@ -395,6 +395,7 @@
                     <th st-sort="url">URL</th>
                     <th st-sort="author">Author</th>
                     <th class="text-right">Version</th>
+                    <th class="text-center">Priority</th>
                     <th class="text-right">#Configurations</th>
                     <th colspan="2">Actions</th>
                 </tr>
@@ -406,6 +407,7 @@
                     <td>{{ catalog.url }}</td>
                     <td>{{ catalog.author }}</td>
                     <td class="text-right">{{ catalog.version }}</td>
+                    <td class="text-cneter">{{ catalog.priority }}</td>
                     <td class="text-center">{{ catalog.configs.length }}</td>
                     <td>
                         <icsw-tools-button-static type="modify" value="modify" ng-click="create_or_edit($event, false, catalog)" size="xs"/>
@@ -434,10 +436,8 @@
         </span>
     </td>
     <td>
-        <div class="label-group">
-            <span class="label" ng-class="config.server_config && 'label-success' || 'label-default'" uib-tooltip="is server config">S</span><!--
-            --><span class="label" ng-class="config.system_config && 'label-success' || 'label-default'" uib-tooltip="is system config">Y</span>
-        </div>
+        <span class="label label-success" ng-show="config.server_config" uib-tooltip="is a server config">S</span>
+        <span class="label label-default" ng-show="!config.server_config" uib-tooltip="not a server config">s</span>
     </td>
     <td>{{ config.$$catalog_name }}</td>
     <td class="text-center">

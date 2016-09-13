@@ -758,16 +758,10 @@ angular.module(
                                     d.reject("netdevice not created")
                             )
                         else
-                            Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_NETDEVICE_DETAIL.slice(1).slice(0, -2))
-                            sub_scope.edit_obj.put().then(
-                                (data) ->
-                                    # ToDo, FIXME, handle change (test?), move to DeviceTreeService
-                                    console.log "data", data
-                                    d.resolve("save")
+                            $scope.device_tree.modify_netdevice(sub_scope.edit_obj).then(
+                                (new_nd) ->
+                                    d.resolve("saved")
                                 (reject) ->
-                                    # ToDo, FIXME, handle rest (test?)
-                                    # two possibilites: restore and continue or reject, right now we use the second path
-                                    # dbu.restore_backup(obj)
                                     d.reject("not saved")
                             )
                     return d.promise

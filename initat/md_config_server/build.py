@@ -341,7 +341,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             self.log("created SNMP container class")
             _container = config.objects.create(
                 name="SNMP container",
-                system_config=True,
+                # system_config=True,
                 server_config=True,
                 config_catalog=config_catalog.objects.get(Q(system_catalog=True)),
                 enabled=False,

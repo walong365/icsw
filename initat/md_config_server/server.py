@@ -61,9 +61,7 @@ class server_process(
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.monitor_server, global_config)
         self.CC.check_config()
-        self.__enable_livestatus = global_config["ENABLE_LIVESTATUS"]
         self.__pid_name = global_config["PID_NAME"]
-        self.__verbose = global_config["VERBOSE"]
         self._init_msi_block()
         db_tools.close_connection()
         self.CC.read_config_from_db(
@@ -118,6 +116,9 @@ class server_process(
                 ),
             ]
         )
+        # copy flags
+        self.__enable_livestatus = global_config["ENABLE_LIVESTATUS"]
+        self.__verbose = global_config["VERBOSE"]
         # log config
         self.CC.log_config()
         # re-insert config

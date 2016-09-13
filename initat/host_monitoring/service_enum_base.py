@@ -34,6 +34,9 @@ class icswServiceEnumBaseClient(object):
         self.root_service = root_service
         self.client_service = True
         self.server_service = False
+        self.clear_instance_names()
+
+    def clear_instance_names(self):
         self.instance_name = None
         self.instance_names = []
 

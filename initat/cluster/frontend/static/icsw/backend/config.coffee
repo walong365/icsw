@@ -242,8 +242,8 @@ config_module = angular.module(
             r_v = []
             if config.server_config
                 r_v.push("S")
-            if config.system_config
-                r_v.push("Y")
+            # if config.system_config
+            #     r_v.push("Y")
             config.config_type_str = r_v.join("/")
 
         link: () =>
