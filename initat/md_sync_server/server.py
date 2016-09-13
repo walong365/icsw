@@ -27,6 +27,7 @@ import zmq
 
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_sync_server.mixins import VersionCheckMixin
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.md_sync_server.config import global_config, CS_NAME
 from initat.md_sync_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
@@ -43,8 +44,8 @@ class server_process(
 ):
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.CC.init("md-sync-server", global_config)
-        self.CC.check_config(client=True)
+        self.CC.init(icswServiceEnum.monitor_slave, global_config)
+        self.CC.check_config()
         self.__enable_livestatus = True  # global_config["ENABLE_LIVESTATUS"]
         self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]

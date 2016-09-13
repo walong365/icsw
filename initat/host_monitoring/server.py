@@ -35,8 +35,9 @@ from multiprocessing import Queue
 import zmq
 from lxml import etree
 
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring.hm_mixins import HMHRMixin
-from initat.tools import configfile, logging_tools, process_tools, \
+from initat.tools import logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
 from initat.tools.server_mixins import ICSWBasePool
 from .config import global_config
@@ -64,8 +65,8 @@ class server_code(ICSWBasePool, HMHRMixin):
             zmq_contexts=1,
             loop_granularity=IDLE_LOOP_GRANULARITY,
         )
-        self.CC.init("host-monitoring", global_config)
-        self.CC.check_config(client=True)
+        self.CC.init(icswServiceEnum.host_monitoring, global_config)
+        self.CC.check_config()
         if self.CC.CS["hm.enable.objgraph"]:
             try:
                 import objgraph

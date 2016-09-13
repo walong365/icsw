@@ -31,7 +31,7 @@ config_module = angular.module(
     icswTools, ICSW_URLS, $q, Restangular, $rootScope, icswSimpleAjaxCall, ICSW_SIGNALS,
 ) ->
     class icswConfigTree
-        constructor: (@list, @catalog_list, @hint_list, @cat_tree) ->
+        constructor: (@list, @cse_list, @catalog_list, @hint_list, @cat_tree) ->
             @uploaded_configs = []
             @filtered_list = []
             @build_luts()
@@ -40,6 +40,7 @@ config_module = angular.module(
             _start = new Date().getTime()
             # new entries added
             @lut = _.keyBy(@list, "idx")
+            @cse_lut = _.keyBy(@cse_list, "idx")
             @catalog_lut = _.keyBy(@catalog_list, "idx")
             @hint_lut = _.keyBy(@hint_list, "idx")
             @mcc_to_config_lut = {}
@@ -175,9 +176,15 @@ config_module = angular.module(
                 config.$$config_help_html = "<span>No help text</span>"
 
         _enrich_config: (config) =>
+            # console.log @cse_lut
             @_set_config_line_fields(config)
             if not config.$selected?
                 config.$selected = false
+            if config.config_service_enum
+                # link to config service enum
+                config.$$cse = @cse_lut[config.config_service_enum]
+            else
+                config.$$cse = null
             if config.config_catalog
                 @catalog_lut[config.config_catalog].configs.push(config.idx)
             else
@@ -235,12 +242,18 @@ config_module = angular.module(
             r_v = []
             if config.server_config
                 r_v.push("S")
-            if config.system_config
-                r_v.push("Y")
+            # if config.system_config
+            #     r_v.push("Y")
             config.config_type_str = r_v.join("/")
 
         link: () =>
             # hints
+            # add root service info to sce
+            for entry in @cse_list
+                info_str = entry.name
+                if entry.root_service
+                    info_str = "#{info_str} (Root service)"
+                entry.$$info_str = info_str
             # create links between elements
             # how often a config name is used
             @_multi_name_dict = _.countBy((config.name for config in @list))
@@ -588,22 +601,29 @@ config_module = angular.module(
 ]).service("icswConfigTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTools", "icswConfigTree",
-    "$rootScope", "ICSW_SIGNALS", "icswCategoryTreeService",
+    "$rootScope", "ICSW_SIGNALS", "icswCategoryTreeService", "icswTreeBase",
 (
     $q, Restangular, ICSW_URLS, icswCachingCall, icswTools, icswConfigTree,
-    $rootScope, ICSW_SIGNALS, icswCategoryTreeService
+    $rootScope, ICSW_SIGNALS, icswCategoryTreeService, icswTreeBase,
 ) ->
     rest_map = [
-        [
-            ICSW_URLS.REST_CONFIG_LIST,
-        ],
-        [
-            ICSW_URLS.REST_CONFIG_CATALOG_LIST,
-        ],
-        [
-            ICSW_URLS.REST_CONFIG_HINT_LIST,
-        ],
+        ICSW_URLS.REST_CONFIG_LIST,
+        ICSW_URLS.REST_CONFIG_SERVICE_ENUM_LIST,
+        ICSW_URLS.REST_CONFIG_CATALOG_LIST,
+        ICSW_URLS.REST_CONFIG_HINT_LIST,
     ]
+    class icswConfigTreeService extends icswTreeBase
+        extra_calls: (client) =>
+            return [
+                icswCategoryTreeService.load(client)
+            ]
+
+    return new icswConfigTreeService(
+        "icswConfigTree"
+        icswConfigTree
+        rest_map
+        "ICSW_CONFIG_TREE_LOADED"
+    )
     _fetch_dict = {}
     _result = undefined
     # load called

@@ -25,6 +25,9 @@
         <module-name>initat.logging_server.main</module-name>
         <programm-name>logserver</programm-name>
         <programm-title>icsw.logserver</programm-title>
+        <config-enums>
+            <config-enum>logging_server</config-enum>
+        </config-enums>
         <start-argument>
             <arg key="user">idlog</arg>
             <arg key="group">idg</arg>
@@ -61,6 +64,9 @@
                 <port type="command">8012</port>
             </ports>
         </network>
+        <config-enums>
+            <config-enum>meta_server</config-enum>
+        </config-enums>
         <access-rights>
             <dir value="/var/run/icsw/sockets" user="idlog" group="idg" create="1" mask="0777"/>
             <dir value="/var/run/icsw/zmq" user="idlog" group="idg" create="1" mask="0777"/>
@@ -83,6 +89,9 @@
         <programm-title>icsw.collserver</programm-title>
         <old-binary>collserver.py</old-binary>
         <nice-level>15</nice-level>
+        <config-enums>
+            <config-enum>host_monitoring</config-enum>
+        </config-enums>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
             <needed-for-start symmetrical="1">memcached</needed-for-start>
@@ -97,13 +106,15 @@
         check_type="meta"
         name="package-client"
         runs_on="client"
-        has_force_stop="1"
         pid_file_name="package-client/package-client.pid"
         uuid-postfix="package-client"
     >
         <module-name>initat.package_install.client.main</module-name>
         <old-binary>package-client</old-binary>
         <nice-level>15</nice-level>
+        <config-enums>
+            <config-enum>package_client</config-enum>
+        </config-enums>
         <dependencies>
             <needed-for-start symmetrical="1">logging-server</needed-for-start>
             <needed-for-start symmetrical="1">memcached</needed-for-start>

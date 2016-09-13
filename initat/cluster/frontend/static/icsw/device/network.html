@@ -77,7 +77,7 @@
         <div uib-accordion-group class="panel-default" is-open="netip_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': netip_open, 'glyphicon-chevron-right': !netip_open}"></i>
-                {{ local_helper_obj.net_ip_list.length }} IP Adresses
+                {{ local_helper_obj.net_ip_list.length }} IP Addresses
             </uib-accordion-heading>
             <table ng-show="devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
                 <thead>
@@ -347,8 +347,8 @@
             </uib-tab>
             <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')" select="select_tab('cluster')">
                 <div ng-controller="icswDeviceNetworkClusterCtrl">
-                    <h3>Network clusters ({{ clusters.length }})</h3>
-                    <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button>
+                    <h3>Network clusters ({{ clusters.length }} Entries)
+                    <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button></h3>
                     <table class="table table-condensed table-hover table-striped" style="width:auto;">
                         <thead>
                             <tr>
@@ -382,15 +382,15 @@
 
             <uib-tab heading="Network Types">
                 <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkTypeService">
-                    <h3>Network types ({{ entries.length }} entries)</h3>
-                    <icsw-tools-button type="create" value="create" ng-click="create($event)" size="sm"/>
+                    <h3>Network Types ({{ entries.length }} Entries)
+                    <icsw-tools-button type="create" value="create" ng-click="create($event)" size="sm"/></h3>
                     <table st-table="entries_displayed" st-safe-src="entries"
                            class="table table-hover table-condensed table-striped" style="width:auto;">
                         <thead>
                             <tr>
                                 <th st-sort="identifier" st-sort-default="true">Type</th>
                                 <th st-sort="description">Description</th>
-                                <th colspan="2" class="text-center">action</th>
+                                <th colspan="2">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -407,7 +407,7 @@
 
             <uib-tab heading="Network Device Types">
                 <icsw-tools-rest-table-new target-list="entries" config-service="icswNetworkDeviceTypeService">
-                    <h3>Network device types ({{entries.length}} entries)</h3>
+                    <h3>Network Device Types ({{entries.length}} Entries)</h3>
                     <icsw-tools-button type="create" ng-click="create($event)" size="sm"/>
                     <table st-table="entries_displayed" st-safe-src="entries"
                            class="table table-hover table-condensed table-striped" style="width:auto;">
@@ -423,9 +423,9 @@
                                 <th st-sort="name_re">RegExp</th>
                                 <th st-sort="mac_bytes">MAC bytes</th>
                                 <th st-sort="allow_virtual_interfaces">virtIF allowed</th>
-                                <th st-sort="for_matching">for matching</th>
+                                <th st-sort="for_matching">For matching</th>
                                 <th st-sort="auto_created">Autocreated</th>
-                                <th colspan="2" class="text-center">Actions</th>
+                                <th colspan="2">Actions</th>
                             </tr>
                         </thead>
                         <tbody>

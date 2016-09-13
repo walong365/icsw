@@ -22,6 +22,7 @@
 import zmq
 from django.db.models import Q
 
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, DeviceScanLock
 from initat.discovery_server.event_log.event_log_poller import EventLogPollerProcess
@@ -40,12 +41,18 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
-        self.CC.init("discovery-server", global_config)
+        self.CC.init(icswServiceEnum.discovery_server, global_config)
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         # close connection (daemonize)
         db_tools.close_connection()
-        self._re_insert_config()
+        self.CC.read_config_from_db(
+            [
+                ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
+                ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
+            ]
+        )
+        self.CC.re_insert_config()
         self._log_config()
         self.__msi_block = self._init_msi_block()
         self.add_process(DiscoveryProcess("discovery"), start=True)
@@ -100,10 +107,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.__msi_block.remove_actual_pid(kwargs["pid"], mult=kwargs.get("mult", 3))
         self.__msi_block.save_block()
         process_tools.remove_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
-
-    def _re_insert_config(self):
-        # print global_config["SERVER_IDX"], global_config["CONFIG_IDX"]
-        cluster_location.write_config("discovery_server", global_config)
 
     def _init_processes(self):
         self.spc = snmp_process_container(

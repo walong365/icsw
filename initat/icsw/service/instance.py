@@ -245,6 +245,13 @@ class InstanceXML(object):
     def get_all_instances(self):
         return self.tree.findall(".//instance")
 
+    def get_config_enums(self, inst):
+        # return all enums
+        if isinstance(inst, basestring):
+            inst = self[inst]
+        # if only_contact is set to True only config_names where @contact=1 (or contact is not set) will be returned
+        return inst.xpath(".//config-enums/config-enum/text()")
+
     # access functions
     def get_config_names(self, inst, only_contact=True):
         if not only_contact:
@@ -261,6 +268,11 @@ class InstanceXML(object):
         if isinstance(inst, basestring):
             inst = self[inst]
         return inst.attrib["pid_file_name"]
+
+    def get_attrib(self, inst):
+        if isinstance(inst, basestring):
+            inst = self[inst]
+        return dict(inst.attrib)
 
     def do_node_split(self, inst):
         if isinstance(inst, basestring):

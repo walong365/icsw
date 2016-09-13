@@ -158,12 +158,12 @@ class Config(factory.django.DjangoModelFactory):
             self.server_config = extracted
             self.save()
 
-    @factory.post_generation
-    def system_config(self, create, extracted, **kwargs):
-        extracted = extracted or False
-        if self.system_config != extracted:
-            self.system_config = extracted
-            self.save()
+    # @factory.post_generation
+    # def system_config(self, create, extracted, **kwargs):
+    #    extracted = extracted or False
+    #    if self.system_config != extracted:
+    #        self.system_config = extracted
+    #        self.save()
 
 
 class MonCheckCommand(factory.django.DjangoModelFactory):

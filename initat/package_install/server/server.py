@@ -28,6 +28,7 @@ from initat.cluster.backbone import db_tools
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import cluster_location, configfile, logging_tools, \
     config_tools, process_tools, server_command, server_mixins, threading_tools
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools.server_mixins import RemoteCall
 from .config import global_config
 from .repository_process import RepoProcess
@@ -45,15 +46,16 @@ class server_process(
             "main",
             zmq=True,
         )
-        self.CC.init("package-server", global_config)
+        self.CC.init(icswServiceEnum.package_server, global_config)
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         self.__pc_port = InstanceXML(quiet=True).get_port_dict("package-client", command=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
-        self._log_config()
-        self._re_insert_config()
+        db_tools.close_connection()
+        self.CC.log_config()
+        self.CC.re_insert_config()
         self.__msi_block = self._init_msi_block()
         self._init_clients()
         self._init_network_sockets()
@@ -67,10 +69,6 @@ class server_process(
     def _init_clients(self):
         Client.init(self)
 
-    def _re_insert_config(self):
-        self.log("re-insert config")
-        cluster_location.write_config("package_server", global_config)
-
     def _init_msi_block(self):
         process_tools.save_pid(self.__pid_name, mult=3)
         if not global_config["DEBUG"] or True:
@@ -82,15 +80,6 @@ class server_process(
         else:
             msi_block = None
         return msi_block
-
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = global_config.get_config_info()
-        self.log("Found %d valid config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:

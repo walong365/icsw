@@ -24,25 +24,26 @@ import time
 
 import zmq
 
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring import limits
 from initat.snmp.process import snmp_process_container
 from initat.snmp.sink import SNMPSink
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
 from initat.snmp_relay.schemes import SNMPNetObject, SNMPGeneralScheme, snmp_schemes, import_errors
 from initat.tools import configfile, logging_tools, process_tools, \
-    server_command, threading_tools
+    server_command, threading_tools, server_mixins
 
 
-class server_process(threading_tools.process_pool):
+class server_process(server_mixins.ICSWBasePool):
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
-        self.__log_cache, self.__log_template = ([], None)
         threading_tools.process_pool.__init__(
             self,
             "main",
             zmq=True,
         )
-        self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
+        self.CC.init(icswServiceEnum.snmp_relay, global_config)
+        self.CC.check_config()
         self._init_msi_block()
         self._init_ipc_sockets()
         self.register_exception("int_error", self._int_error)
@@ -52,7 +53,7 @@ class server_process(threading_tools.process_pool):
         self.register_func("snmp_finished", self._snmp_finished)
         self.__verbose = global_config["VERBOSE"]
         self.__max_calls = global_config["MAX_CALLS"]
-        self._log_config()
+        self.CC.log_config()
         # init luts
         self.__ip_lut, self.__forward_lut = ({}, {})
         self._check_schemes()
@@ -61,12 +62,6 @@ class server_process(threading_tools.process_pool):
         self.__ret_dict = {}
         self.__snmp_running = True
         self._init_processes()
-
-    def log(self, what, lev=logging_tools.LOG_LEVEL_OK):
-        if self.__log_template:
-            self.__log_template.log(lev, what)
-        else:
-            self.__log_cache.append((lev, what))
 
     def _check_schemes(self):
         self.__local_schemes = {}
@@ -137,17 +132,6 @@ class server_process(threading_tools.process_pool):
         if host_tuple not in self.__host_objects:
             self.__host_objects[host_tuple] = SNMPNetObject(self.log, self.__verbose, host_name, snmp_community, snmp_version)
         return self.__host_objects[host_tuple]
-
-    def _log_config(self):
-        self.log("Basic turnaround-time is %d seconds" % (global_config["MAIN_TIMER"]))
-        self.log("basedir_name is '%s'" % (global_config["BASEDIR_NAME"]))
-        self.log("Config info:")
-        for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = global_config.get_config_info()
-        self.log("Found %d valid config-lines:" % (len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : %s" % (conf))
 
     def _init_msi_block(self):
         self.__pid_name = global_config["PID_NAME"]
@@ -541,4 +525,4 @@ class server_process(threading_tools.process_pool):
             self.__msi_block.remove_meta_block()
 
     def loop_post(self):
-        self.__log_template.close()
+        self.CC.close()

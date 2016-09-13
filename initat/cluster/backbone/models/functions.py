@@ -46,11 +46,11 @@ system_timezone = pytz.timezone(time.tzname[0])
 _enums_added = set()
 
 
-def register_app_config_enum(enum, name):
+def register_service_enum(enum, name):
     if name not in _enums_added:
         from django.conf import settings
         _enums_added.add(name)
-        settings.ICSW_CONFIG_ENUM_LIST.append(enum)
+        settings.ICSW_SERVICE_ENUM_LIST.append(enum)
 
 
 def db_limit_1():
@@ -297,7 +297,10 @@ def get_change_reset_list(s_obj, d_obj, required_changes=None):
             if dr_val != required_changes[_f.name]:
                 # values was reset from pre / post save, store in r_list
                 r_list.append((_f.name, dr_val))
-        if cur_t in ["CharField", "TextField", "IntegerField", "PositiveIntegerField", "BooleanField", "NullBooleanField", "ForeignKey"]:
+        if cur_t in [
+            "CharField", "TextField", "BigIntegerField", "IntegerField",
+            "PositiveIntegerField", "BooleanField", "NullBooleanField", "ForeignKey"
+        ]:
             if s_val != d_val:
                 c_list.append((_f.verbose_name, u"changed from '{!s}' to '{!s}'".format(s_val, d_val)))
         # elif cur_t in ["ForeignKey"]:

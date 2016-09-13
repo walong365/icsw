@@ -24,7 +24,8 @@
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import config_catalog, config, config_str, \
-    config_int, config_bool, config_blob, config_script, device_config
+    config_int, config_bool, config_blob, config_script, device_config, \
+    ConfigServiceEnum
 from initat.cluster.backbone.serializers.monitoring import mon_check_command_serializer
 
 __all__ = [
@@ -37,6 +38,7 @@ __all__ = [
     "config_serializer",
     "config_dump_serializer",
     "device_config_serializer",
+    "ConfigServiceEnumSerializer",
 ]
 
 
@@ -86,6 +88,11 @@ class device_config_serializer(serializers.ModelSerializer):
         model = device_config
 
 
+class ConfigServiceEnumSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ConfigServiceEnum
+
+
 class config_serializer(serializers.ModelSerializer):
     config_str_set = config_str_serializer(many=True, read_only=True)
     config_int_set = config_int_serializer(many=True, read_only=True)
@@ -125,5 +132,5 @@ class config_dump_serializer(serializers.ModelSerializer):
         fields = (
             "idx", "name", "description", "priority", "enabled", "categories",
             "config_str_set", "config_int_set", "config_blob_set", "config_bool_set",
-            "config_script_set", "mon_check_command_set", "server_config", "system_config",
+            "config_script_set", "mon_check_command_set", "server_config", # "system_config",
         )

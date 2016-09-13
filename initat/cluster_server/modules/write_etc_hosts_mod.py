@@ -41,6 +41,7 @@ class write_etc_hosts(cs_base_class.server_com):
         server_idxs = [self.server_idx]
         # get additional idx if host is virtual server
 
+        print "*** IS_SERVER FIXME TODO"
         is_server, serv_idx, _server_type, _server_str, _config_idx, _real_server_name = cluster_location.is_server("server", True, False)
         if is_server and serv_idx != self.server_idx:
             server_idxs.append(serv_idx)

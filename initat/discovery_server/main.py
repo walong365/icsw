@@ -27,8 +27,7 @@ import django
 django.setup()
 
 from initat.discovery_server.config import global_config
-from initat.server_version import VERSION_STRING
-from initat.tools import cluster_location, configfile, process_tools
+from initat.tools import configfile
 
 
 def run_code():
@@ -37,27 +36,10 @@ def run_code():
 
 
 def main():
-    long_host_name, _mach_name = process_tools.get_fqdn()
-    prog_name = global_config.name()
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
-        ]
-    )
-    _options = global_config.handle_commandline(
-        description="{}, version is {}".format(
-            prog_name,
-            VERSION_STRING
-        ),
-        positional_arguments=False
-    )
-    cluster_location.read_config_from_db(
-        global_config,
-        "discovery_server",
-        [
-            ("SNMP_PROCESSES", configfile.int_c_var(4, help_string="number of SNMP processes [%(default)d]", short_options="n")),
-            ("MAX_CALLS", configfile.int_c_var(100, help_string="number of calls per helper process [%(default)d]")),
         ]
     )
     run_code()

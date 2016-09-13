@@ -27,13 +27,14 @@ import psutil
 import zmq
 from django.db.models import Q
 
+from initat.cluster.backbone.server_enums import icswServiceEnum
 import initat.mother
 import initat.mother.command
 import initat.mother.control
 import initat.mother.kernel
 import initat.tools.server_mixins
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import network, status
+from initat.cluster.backbone.models import network, status, LogSource
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.process import snmp_process
 from initat.tools import server_mixins, server_command, \
@@ -42,15 +43,17 @@ from initat.tools import server_mixins, server_command, \
 from initat.tools.server_mixins import RemoteCall, RemoteCallProcess, RemoteCallMixin
 from .config import global_config
 from .dhcp_config import DHCPConfigMixin
+from initat.constants import CLUSTER_DIR
 
 
 @RemoteCallProcess
 class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin):
     def __init__(self):
+        _long_host_name, mach_name = process_tools.get_fqdn()
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
-        self.CC.init("mother", global_config)
+        self.CC.init(icswServiceEnum.mother_server, global_config)
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         # close db connection (for daemonizing)
@@ -59,6 +62,31 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
         self.srv_helper = service_tools.ServiceHelper(self.log)
         self.__hs_port = InstanceXML(quiet=True).get_port_dict("hoststatus", command=True)
         # log config
+        self.CC.read_config_from_db(
+            [
+                ("TFTP_LINK", configfile.str_c_var("/tftpboot")),
+                ("TFTP_DIR", configfile.str_c_var(os.path.join(CLUSTER_DIR, "system", "tftpboot"))),
+                ("CLUSTER_DIR", configfile.str_c_var(CLUSTER_DIR)),
+                # in 10th of seconds
+                ("NODE_BOOT_DELAY", configfile.int_c_var(50)),
+                ("FANCY_PXE_INFO", configfile.bool_c_var(False)),
+                ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name)),
+                ("WRITE_DHCP_CONFIG", configfile.bool_c_var(True)),
+                ("DHCP_AUTHORITATIVE", configfile.bool_c_var(False)),
+                ("DHCP_ONLY_BOOT_NETWORKS", configfile.bool_c_var(True)),
+                ("MODIFY_NFS_CONFIG", configfile.bool_c_var(True)),
+                ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True)),
+            ]
+        )
+        global_config.add_config_entries(
+            [
+                ("CONFIG_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "config"))),
+                ("ETHERBOOT_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "etherboot"))),
+                ("KERNEL_DIR", configfile.str_c_var(os.path.join(global_config["TFTP_DIR"], "kernels"))),
+                ("SHARE_DIR", configfile.str_c_var(os.path.join(global_config["CLUSTER_DIR"], "share", "mother"))),
+                ("NODE_SOURCE_IDX", configfile.int_c_var(LogSource.new("node").pk)),
+            ]
+        )
         self.CC.log_config()
         self.CC.re_insert_config()
         # prepare directories
