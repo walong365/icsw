@@ -33,6 +33,15 @@
                 </rights>
             </icswData>
         </route>
+        <route name="main.devlocation">
+            <stateData type="dict" url_str="/devlocation" templateUrl_str="icsw/main/device/location.html"/>
+            <icswData type="dict" pageTitle_str="Locations">
+                <menuEntry type="dict" icon_str="fa-map-marker" name_str="Location Service" column_int="0"/>
+                <rights type="list">
+                    <value>backbone.user.modify_category_tree</value>
+                </rights>
+            </icswData>
+        </route>
         <route name="main.deviceconnection">
             <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
             <icswData type="dict" pageTitle_str="Device Connections" hasDevselFunc_bool="yes">
@@ -61,13 +70,10 @@
                 </rights>
             </icswData>
         </route>
-    </routeGroup>
-    <routeGroup name="config">
-        <menuHeader type="dict" name_str="Configuration" icon_str="fa-hdd-o"/>
         <route name="main.devicenetwork">
             <stateData type="dict" url_str="/network" template_str="&lt;icsw-device-network-total&gt;&lt;/icsw-device-network-total&gt;"/>
             <icswData type="dict" pageTitle_str="Network" hasDevselFunc_bool="yes">
-                <menuEntry type="dict" icon_str="fa-sitemap"/>
+                <menuEntry type="dict" icon_str="fa-sitemap" column_int="1"/>
                 <rights type="list">
                     <value>backbone.device.change_network</value>
                 </rights>
@@ -90,15 +96,6 @@
             <stateData type="dict" url_str="/categorytree" templateUrl_str="icsw/main/category/tree.html"/>
             <icswData type="dict" pageTitle_str="Category tree">
                 <menuEntry type="dict" icon_str="fa-table" name_str="Categories"/>
-                <rights type="list">
-                    <value>backbone.user.modify_category_tree</value>
-                </rights>
-            </icswData>
-        </route>
-        <route name="main.devlocation">
-            <stateData type="dict" url_str="/devlocation" templateUrl_str="icsw/main/device/location.html"/>
-            <icswData type="dict" pageTitle_str="Locations">
-                <menuEntry type="dict" icon_str="fa-map-marker"/>
                 <rights type="list">
                     <value>backbone.user.modify_category_tree</value>
                 </rights>

@@ -416,6 +416,7 @@ menu_module = angular.module(
 
                 _res = li(
                     {
+                        className: "dropdown"
                         key: "menu_" + key
                     }
                     [
@@ -444,7 +445,7 @@ menu_module = angular.module(
                         ul(
                             {
                                 key: key + "dropdown-menu_ul"
-                                className: "dropdown-menu col-sm-5"
+                                className: "dropdown-menu"
                             }
                             li(
                                 {
