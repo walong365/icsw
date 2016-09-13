@@ -247,9 +247,9 @@ class ScheduledRunViewSet(viewsets.ViewSet):
 class AssetRunsViewSet(viewsets.ViewSet):
     def list_all(self, request):
         if "pks" in request.query_params:
-           queryset = AssetRun.objects.filter(
-               Q(asset_batch__device__in=json.loads(request.query_params.getlist("pks")[0]))
-           )
+            queryset = AssetRun.objects.filter(
+                Q(asset_batch__device__in=json.loads(request.query_params.getlist("pks")[0]))
+            )
         else:
             queryset = AssetRun.objects.all()
 

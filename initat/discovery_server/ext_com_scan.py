@@ -1089,7 +1089,7 @@ class Dispatcher(object):
             if runtype == AssetType.PENDING_UPDATE:
                 timeout = 180
 
-            _com = "/opt/cluster/sbin/check_nrpe -H {} -p {} -n -c {} -t{}".format(
+            _com = "/opt/cluster/sbin/check_nrpe -H{} -2 -P1048576 -p{} -n -c{} -t{}".format(
                 planned_run.ip,
                 planned_run.nrpe_port,
                 _command,

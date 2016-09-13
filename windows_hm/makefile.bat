@@ -1,9 +1,9 @@
-SET CPUZ_VERSION=1.76
+SET CPUZ_VERSION=1.77
 SET PCIUTILS_VERSION=3.4.0
-SET NSCP_VERSION=0.4.4.23
+SET NSCP_VERSION=0.5.0.61
 SET WINPYTH_MAJOR=5
-SET WINPYTH_MINOR=1
-SET WINPYTH_MINORFIX=3
+SET WINPYTH_MINOR=2
+SET WINPYTH_MINORFIX=2
 SET WIX_BIN_PATH=C:\Program Files (x86)\WiX Toolset v3.10\bin\
 
 :: Fetch pciutils and move into script directory
@@ -57,7 +57,7 @@ SET nscp_path=nscp
 "%WIX_BIN_PATH%candle.exe" ICSW_Windows_Client.wxs
 "%WIX_BIN_PATH%candle.exe" Components.wxs
 "%WIX_BIN_PATH%candle.exe" HostEditingDlg.wxs
-"%WIX_BIN_PATH%light.exe" -ext WixUIExtension ICSW_Windows_Client.wixobj Components.wixobj HostEditingDlg.wixobj -o ICSW_Windows_Client.msi
+"%WIX_BIN_PATH%light.exe" -ext WixUIExtension -dWixUIExclamationIco=WixUIExclamationIco.ico -dWixUIDialogBmp=WixUIDialogBmp.bmp ICSW_Windows_Client.wixobj Components.wixobj HostEditingDlg.wixobj -o ICSW_Windows_Client.msi
 
 :: Cleanup temporary files
 RMDIR /s /q .\tmp

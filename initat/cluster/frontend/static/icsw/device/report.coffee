@@ -296,6 +296,9 @@ device_report_module = angular.module(
             for device in $scope.struct.devices
                 if device.device_group == obj.device_group && !device[button_disabled_attribute]
                     device[attribute] = obj[attribute]
+
+                    if obj[attribute]
+                        device.$selected_for_report = true
         else
             selected = false
             for device in $scope.struct.devices
@@ -305,6 +308,11 @@ device_report_module = angular.module(
             for device in $scope.struct.devices
                 if device.device_group == obj.device_group && device.is_meta_device
                     device[attribute] = selected
+                    if selected
+                        device.$selected_for_report = true
+
+            if selected
+                obj.$selected_for_report = selected
 
     $scope.select_device_modules = () ->
         selected = false
@@ -613,30 +621,48 @@ device_report_module = angular.module(
             if column_id == 0
                 if !device.$packages_selected_button_disabled
                     device.$packages_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
             else if column_id == 1
                 if !device.$licenses_selected_button_disabled
                     device.$licenses_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
             else if column_id == 2
                 if !device.$installed_updates_button_disabled
                     device.$installed_updates_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
             else if column_id == 3
                 if !device.$avail_updates_button_disabled
                     device.$avail_updates_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
             else if column_id == 4
                 if !device.$process_report_button_disabled
                     device.$process_report_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
             else if column_id == 5
                 if !device.$hardware_report_button_disabled
                     device.$hardware_report_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
             else if column_id == 6
                 if !device.$dmi_report_button_disabled
                     device.$dmi_report_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
             else if column_id == 7
                 if !device.$pci_report_button_disabled
                     device.$pci_report_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
             else if column_id == 8
                 if !device.$lstopo_report_button_disabled
                     device.$lstopo_report_selected = !this_column_selected
+                    if !this_column_selected
+                        device.$selected_for_report = true
 
     $scope.select_software_information = () ->
         selected = false

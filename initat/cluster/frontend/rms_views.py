@@ -30,8 +30,10 @@ import threading
 import time
 import re
 from collections import namedtuple
+from django.views.decorators.csrf import csrf_exempt
 
 import memcache
+from rest_framework import viewsets, status
 from initat.icsw.service.instance import InstanceXML
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -182,9 +184,27 @@ def _node_to_value(in_node):
     return _attrs
 
 
-def _sort_list(in_list, _post):
+def _sort_list(in_list):
     # interpret nodes according to optional type attribute, reformat if needed, preserve attributes
     return [[_node_to_value(sub_node) for sub_node in row] for row in in_list]
+
+
+def _xml_to_json(in_list):
+    def _get_id(in_dict):
+        if in_dict["task_id"]["value"]:
+            return "{}.{}".format(
+                in_dict["job_id"]["value"],
+                in_dict["task_id"]["value"],
+            )
+        else:
+            return "{}".format(
+                in_dict["job_id"]["value"],
+            )
+    _res_dict = {}
+    for row in in_list:
+        _dict = {sub_node.tag: _node_to_value(sub_node) for sub_node in row}
+        _res_dict[_get_id(_dict)] = _dict
+    return _res_dict
 
 
 def _salt_addons(request):
@@ -197,8 +217,12 @@ def _fetch_rms_info(request):
     # get rms info needed by several views
     # call my_sge_info.update() before calling this!
     if sge_tools:
-        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=request.user)
-        wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=request.user)
+        if request.user.is_authenticated():
+            _user = request.user
+        else:
+            _user = None
+        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=_user)
+        wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=_user)
 
         if RMS_ADDONS:
             for change_obj in RMS_ADDONS:
@@ -323,9 +347,9 @@ class get_rms_current_json(View):
         # print dir(rms_info.run_job_list)
         # pprint.pprint(_done_ser)
         json_resp = {
-            "run_table": _sort_list(rms_info.run_job_list, _post),
-            "wait_table": _sort_list(rms_info.wait_job_list, _post),
-            "node_table": _sort_list(node_list, _post),
+            "run_table": _sort_list(rms_info.run_job_list),
+            "wait_table": _sort_list(rms_info.wait_job_list),
+            "node_table": _sort_list(node_list),
             "sched_conf": sge_tools.build_scheduler_info(my_sge_info),
             "files": fc_dict,
             "fstree": sge_tools.build_fstree_info(my_sge_info),
@@ -355,6 +379,24 @@ class get_rms_jobinfo(View):
             "jobs_waiting": sorted(map(xml_to_jobid, rms_info.wait_job_list)),
             "jobs_finished": sorted([job.rms_job.jobid, job.rms_job.taskid if job.rms_job.taskid else ""] for job in done_jobs),
         }
+        return HttpResponse(json.dumps(json_resp), content_type="application/json")
+
+
+class RmsJobViewSet(viewsets.ViewSet):
+    @csrf_exempt
+    def simple_get(self, request):
+        my_sge_info.update()
+
+        _salt_addons(request)
+
+        rms_info = _fetch_rms_info(request)
+
+        json_resp = {
+            "jobs_running": _xml_to_json(rms_info.run_job_list),
+            "jobs_waiting": _xml_to_json(rms_info.wait_job_list),
+        }
+        # import pprint
+        # pprint.pprint(json_resp)
         return HttpResponse(json.dumps(json_resp), content_type="application/json")
 
 
