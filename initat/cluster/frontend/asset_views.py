@@ -40,7 +40,7 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 
-from initat.cluster.frontend.report_views import PDFReportGenerator, generate_csv_entry_for_assetrun
+from initat.report_server.report import PDFReportGenerator, generate_csv_entry_for_assetrun
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
     AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
     AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue

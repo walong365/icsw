@@ -1,8 +1,8 @@
-# Copyright (C) 2016 Marco Huymajer, init.at
+# Copyright (C) 2016 init.at
 #
 # this file is part of report-server
 #
-# Send feedback to: <huymajer@init.at>
+# Send feedback to: <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as

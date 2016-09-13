@@ -1,8 +1,8 @@
-# Copyright (C) 2016 Marco Huymajer, init.at
+# Copyright (C) 2016 init.at
 #
 # this file is part of report-server
 #
-# Send feedback to: <huymajer@init.at>
+# Send feedback to: <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -17,14 +17,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from initat.cluster.backbone import db_tools
 """ report-server, server process """
-
+from multiprocessing import Pool
 import zmq
 
-from initat.report_server.config import global_config
 from initat.tools import (logging_tools, process_tools, threading_tools,
     server_mixins)
+from initat.cluster.backbone.models.report import ReportHistory
 from initat.tools.server_mixins import RemoteCall
+from initat.cluster.backbone.models import device
+from .config import global_config
+from .report import PDFReportGenerator
+from .generation import ReportGenerationProcess
 
 
 @server_mixins.RemoteCallProcess
@@ -32,7 +37,6 @@ class server_process(server_mixins.ICSWBasePool,
         server_mixins.RemoteCallMixin, server_mixins.SendToRemoteServerMixin):
 
     def __init__(self):
-        print '__init__'
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init("report-server", global_config)
         self.CC.check_config()
@@ -43,6 +47,15 @@ class server_process(server_mixins.ICSWBasePool,
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
         self._init_network_sockets()
+        db_tools.close_connection()
+        self.add_process(
+            ReportGenerationProcess("report-generation"),
+            start=True
+        )
+        self.register_func("report_finished", self._report_finished)
+
+        self._job_queue = []
+        self._wait_result = False
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -76,23 +89,42 @@ class server_process(server_mixins.ICSWBasePool,
             pollin=self.remote_call,
         )
 
-        self.__slaves = {}
-
-        conn_str = process_tools.get_zmq_ipc_name(
-            "vector",
-            s_name="collserver",
-            connect_to_root_instance=True,
-        )
-        vector_socket = self.zmq_context.socket(zmq.PUSH)
-        vector_socket.setsockopt(zmq.LINGER, 0)
-        vector_socket.connect(conn_str)
-        self.vector_socket = vector_socket
-
     @RemoteCall()
-    def foo(self, srv_com, **kwargs):
-        print "Foo!"
+    def generate_report(self, srv_com, **kwargs):
+        # create an empty report history
+        report_history = ReportHistory()
+        report_history.save()
+        self.log(
+            'queued report {}'.format(report_history.idx),
+            logging_tools.LOG_LEVEL_OK,
+        )
+        self._job_queue.append(
+            {
+                'report_history_id': report_history.idx,
+                'pk_settings': srv_com['pk_settings'].text,
+                'device_ids': srv_com['devices'].text,
+            }
+        )
+        self._run_queue()
+        # return the id of the report history object
+        srv_com["report_id"] = report_history.idx
         srv_com.set_result("ok")
         return srv_com
+
+    def _report_finished(self, process, src_process, report_history_id):
+        self._wait_result = False
+        self._run_queue()
+
+    def _run_queue(self):
+        if self._job_queue and not self._wait_result:
+            # trigger the actual report generation process
+            job_args = self._job_queue.pop()
+            self._wait_result = True
+            self.send_to_process(
+                t_process="report-generation",
+                m_type="generate",
+                **job_args
+            )
 
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)
@@ -100,5 +132,4 @@ class server_process(server_mixins.ICSWBasePool,
 
     def loop_post(self):
         self.network_unbind()
-        self.vector_socket.close()
         self.CC.close()
