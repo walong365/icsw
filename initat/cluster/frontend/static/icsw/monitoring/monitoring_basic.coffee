@@ -495,7 +495,7 @@ monitoring_basic_module = angular.module(
                 {
                     message: $compile($templateCache.get(template_name))(sub_scope)
                     title: template_title
-                    css_class: "modal-wide"
+                    css_class: ""
                     ok_label: if create then "Create" else "Modify"
                     closable: true
                     ok_callback: (modal) ->
@@ -791,7 +791,7 @@ monitoring_basic_module = angular.module(
                 "host_check_command"
                 icswHostCheckCommandBackup
                 "icsw.host.check.command.form"
-                "Monitoring HostCheck Command"
+                "Monitoring Host Check Command"
             )
 
         delete: (scope, $event, obj) ->
