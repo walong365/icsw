@@ -34,10 +34,10 @@
                                 <select class="form-control" ng-model="struct.pdf_page_format">
                                     <option value="A4">A4</option>
                                     <option value="landscape(A4)">A4 landscape</option>
-                                    <option value="A3">A3</option>
+                                    <!--<option value="A3">A3</option>
                                     <option value="landscape(A3)">A3 landscape</option>
                                     <option value="letter">letter</option>
-                                    <option value="landscape(letter)">letter landscape</option>
+                                    <option value="landscape(letter)">letter landscape</option>-->
                                 </select>
                             </div>
                         </div>
@@ -155,14 +155,14 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th class="text-center" colspan=5>Software Information Modules</th>
+                                            <th class="text-center" colspan=4>Software Information Modules</th>
                                         </tr>
                                         <tr>
                                             <th class="text-center">Installed Packages</th>
                                             <th class="text-center">Available Licenses</th>
                                             <th class="text-center">Installed Updates</th>
                                             <th class="text-center">Available Updates</th>
-                                            <th class="text-center">Process Information</th>
+                                            <!--<th class="text-center">Process Information</th>-->
                                         </tr>
                                         <tr>
                                             <th>
@@ -177,9 +177,9 @@
                                             <th>
                                                 <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(3)" value="Select" style="display: block; margin: 0 auto;"/>
                                             </th>
-                                            <th>
+                                            <!--<th>
                                                 <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(4)" value="Select" style="display: block; margin: 0 auto;"/>
-                                            </th>
+                                            </th>-->
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -204,11 +204,13 @@
                                                     <input type="button" title="{{ obj.$avail_updates_button_title }}" ng-disabled="obj.$avail_updates_button_disabled" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
                                                 </div>
                                             </td>
+                                            <!--
                                             <td style="height:30px">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$process_report_button_title }}" ng-disabled="obj.$process_report_button_disabled" ng-class="obj.$process_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
                                                 </div>
                                             </td>
+                                            -->
                                         </tr>
                                     </tbody>
                                 </table>
@@ -223,13 +225,14 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th class="text-center" colspan=4>Hardware Information Modules</th>
+                                            <th class="text-center" colspan=3>Hardware Information Modules</th>
                                         </tr>
                                         <tr>
                                             <th class="text-center">Hardware Report</th>
                                             <th class="text-center">DMI Information</th>
                                             <th class="text-center">PCI Information</th>
-                                            <th class="text-center">LSTOPO Information</th>
+                                            <!--
+                                            <th class="text-center">LSTOPO Information</th>-->
                                         </tr>
                                         <tr>
                                             <th>
@@ -241,9 +244,9 @@
                                             <th>
                                                 <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(7)" value="Select" style="display: block; margin: 0 auto;"/>
                                             </th>
-                                            <th>
+                                            <!--<th>
                                                 <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(8)" value="Select" style="display: block; margin: 0 auto;"/>
-                                            </th>
+                                            </th>-->
                                         </tr>
                                     </thead>
 
@@ -264,11 +267,12 @@
                                                     <input type="button" title="{{ obj.$pci_report_button_title }}" ng-disabled="obj.$pci_report_button_disabled" ng-class="obj.$pci_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 7)"/>
                                                 </div>
                                             </td>
+                                            <!--
                                             <td style="height:30px">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$lstopo_report_button_title }}" ng-disabled="obj.$lstopo_report_button_disabled" ng-class="obj.$lstopo_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 8)"/>
                                                 </div>
-                                            </td>
+                                            </td>-->
                                         </tr>
                                     </tbody>
                                 </table>

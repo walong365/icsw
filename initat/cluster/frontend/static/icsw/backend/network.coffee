@@ -72,6 +72,19 @@ angular.module(
         link: () =>
             # create links between networks and types
 
+        # reload functions
+        reload_network_device_types: () =>
+            d = $q.defer()
+            Restangular.all(ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST.slice(1)).getList().then(
+                (data) =>
+                    @nw_device_type_list.length = 0
+                    for entry in data
+                        @nw_device_type_list.push(entry)
+                    @build_luts()
+                    d.resolve("loaded")
+            )
+            return d.promise
+
         # create functions
 
         create_network_type: (obj_def) =>
