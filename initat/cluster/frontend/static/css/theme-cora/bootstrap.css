@@ -6886,6 +6886,9 @@ select > option:hover{
 .input-sm {
   padding: 0 3px;
 }
+fieldset > legend {
+  font-size: 18px;
+}
 /**** Tabs start ****/
 .nav-tabs > li > a {
   position: relative;
