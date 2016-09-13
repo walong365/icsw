@@ -20,13 +20,17 @@
 
 """ rms-server, process definitions """
 
+import os
+
 from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.rms.functions import call_command
 from initat.rms.accounting import AccountingProcess
 from initat.rms.config import global_config
 from initat.rms.license import LicenseProcess
 from initat.rms.rmsmon import RMSMonProcess
 from initat.tools import cluster_location, configfile, logging_tools, process_tools, \
-    threading_tools, server_mixins
+    threading_tools, server_mixins, sge_license_tools
 
 
 @server_mixins.RemoteCallProcess
@@ -40,13 +44,54 @@ class ServerProcess(
             "main",
             zmq=True,
         )
-        self.CC.init("rms-server", global_config)
+        self.CC.init(icswServiceEnum.rms_server, global_config)
         self.CC.check_config()
         self.__pid_name = global_config["PID_NAME"]
         self.__msi_block = self._init_msi_block()
         db_tools.close_connection()
+        sge_dict = {}
+        _all_ok = True
+        for v_name, v_src, v_default in [
+            ("SGE_ROOT", "/etc/sge_root", "/opt/sge"),
+            ("SGE_CELL", "/etc/sge_cell", "default")
+        ]:
+            if os.path.isfile(v_src):
+                sge_dict[v_name] = file(v_src, "r").read().strip()
+            else:
+                _all_ok = False
+                sge_dict[v_name] = ""
+        if _all_ok:
+            stat, sge_dict["SGE_ARCH"], _log_lines = call_command(
+                "/{}/util/arch".format(sge_dict["SGE_ROOT"])
+            )
+            if stat:
+                sge_dict["SGE_ARCH"] = ""
+        else:
+            sge_dict["SGE_ARCH"] = ""
+        self.CC.read_config_from_db(
+            [
+                ("CHECK_ITERATIONS", configfile.int_c_var(3)),
+                ("RETRY_AFTER_CONNECTION_PROBLEMS", configfile.int_c_var(0)),
+                ("FROM_ADDR", configfile.str_c_var("rms_server")),
+                ("TO_ADDR", configfile.str_c_var("cluster@init.at")),
+                ("SGE_ARCH", configfile.str_c_var(sge_dict["SGE_ARCH"])),
+                ("SGE_ROOT", configfile.str_c_var(sge_dict["SGE_ROOT"])),
+                ("SGE_CELL", configfile.str_c_var(sge_dict["SGE_CELL"])),
+                ("FAIRSHARE_TREE_NODE_TEMPLATE", configfile.str_c_var("/{project}/{user}")),
+                ("FAIRSHARE_TREE_DEFAULT_SHARES", configfile.int_c_var(1000)),
+                ("TRACE_FAIRSHARE", configfile.bool_c_var(False)),
+                ("CLEAR_ITERATIONS", configfile.int_c_var(1)),
+                ("CHECK_ACCOUNTING_TIMEOUT", configfile.int_c_var(300)),
+                ("LICENSE_BASE", configfile.str_c_var("/etc/sysconfig/licenses")),
+                ("TRACK_LICENSES", configfile.bool_c_var(False)),
+                ("TRACK_LICENSES_IN_DB", configfile.bool_c_var(False)),
+                ("MODIFY_SGE_GLOBAL", configfile.bool_c_var(False)),
+            ],
+        )
+        # check modify_sge_global flag and set filesystem flag accordingly
+        sge_license_tools.handle_license_policy(global_config["LICENSE_BASE"], global_config["MODIFY_SGE_GLOBAL"])
         # re-insert config
-        self._re_insert_config()
+        self.CC.re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
@@ -76,10 +121,6 @@ class ServerProcess(
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
         self.send_to_process("rms_mon", "full_reload")
-
-    def _re_insert_config(self):
-        self.log("re-insert config")
-        cluster_location.write_config("rms_server", global_config)
 
     def process_start(self, src_process, src_pid):
         mult = 3

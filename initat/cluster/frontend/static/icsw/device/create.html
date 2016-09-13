@@ -14,7 +14,7 @@
         <h3>Create a new Device</h3>
         <form class="form-horizontal" name="form_data" novalidate ng-if="data_ready">
             <uib-accordion ng-cloak close-others="false">
-                <div uib-accordion-group class="panel-default" heading="Base data" is-open="base_open">
+                <div uib-accordion-group class="panel-default" heading="Base Data" is-open="base_open">
                     <!-- {{ form_data || json }} {{form_data.$valid}} -->
                     <div class="form-group">
                         <label class="control-label col-md-3 icsw-formlabel">
@@ -111,12 +111,12 @@
                     <div class="form-group">
                         <label class="control-label col-md-3 icsw-formlabel"></label>
                         <div class="controls col-md-6" ng-class="form_data.comment.$invalid && 'has-error'">
-                            <icsw-tools-button type="create" ng-show="form_data.$valid" value="create device" ng-click="create_device()"/>
+                            <icsw-tools-button type="create" ng-show="form_data.$valid" value="create Device" ng-click="create_device()"/>
                             <span ng-show="!form_data.$valid" class="text-danger">Formular data is not valid (some fields missing... ?)</span>
                         </div>
                     </div>
                 </div>
-                <div uib-accordion-group class="panel-default" heading="Optional data">
+                <div uib-accordion-group class="panel-default" heading="Optional Data">
                 </div>
             </uib-accordion>
         </form>

@@ -27,10 +27,7 @@ import django
 django.setup()
 
 from .config import global_config
-from initat.cluster.backbone import db_tools
-from initat.tools import configfile, process_tools
-
-from initat.server_version import VERSION_STRING
+from initat.tools import configfile
 
 
 def run_code():
@@ -39,7 +36,6 @@ def run_code():
 
 
 def main():
-    long_host_name, _mach_name = process_tools.get_fqdn()
     prog_name = global_config.name()
     global_config.add_config_entries(
         [
@@ -49,14 +45,5 @@ def main():
             ("SUPPORT_OLD_CLIENTS", configfile.bool_c_var(False, help_string="support old clients [%(default)s]", database=True)),
         ]
     )
-    _options = global_config.handle_commandline(
-        description="{}, version is {}".format(
-            prog_name,
-            VERSION_STRING
-        ),
-        positional_arguments=False,
-    )
-    # close DB connection
-    db_tools.close_connection()
     run_code()
     os._exit(0)

@@ -23,12 +23,75 @@
 
 from enum import Enum
 
-from initat.cluster.backbone.models.functions import register_app_config_enum
+from initat.cluster.backbone.models.service_enum_base import icswServiceEnumBase
+from initat.cluster.backbone.models.functions import register_service_enum
 
 
 class AppEnum(Enum):
-    config_server = "config-server"
-    cluster_server = "cluster-server"
+    config_server = icswServiceEnumBase(
+        "config-server",
+        "enables node provisioning features",
+    )
+    cluster_server = icswServiceEnumBase(
+        "cluster-server",
+        "sets device as a cluster-server (DB access)",
+    )
+    mother_server = icswServiceEnumBase(
+        "mother-server",
+        "enables basic nodeboot via PXE functionalities",
+    )
+    monitor_server = icswServiceEnumBase(
+        "monitor-server",
+        "sets device as the monitor master server",
+    )
+    discovery_server = icswServiceEnumBase(
+        "discovery-server",
+        "enables network discovery and inventory",
+    )
+    logcheck_server = icswServiceEnumBase(
+        "logcheck-server",
+        "store and check node logs",
+    )
+    package_server = icswServiceEnumBase(
+        "package-server",
+        "enables packge-server functionalities (RPM/deb distribution)",
+    )
+    collectd_server = icswServiceEnumBase(
+        "collectd-server",
+        "Collect MachineVectors from remote machines and store them"
+    )
+    rms_server = icswServiceEnumBase(
+        "rms-server",
+        "device hosts the RMS-server (Jobsystem)",
+    )
+    grapher_server = icswServiceEnumBase(
+        "grapher-server",
+        "Draw graphs, frontend to collectd"
+    )
+    image_server = icswServiceEnumBase(
+        "image-server",
+        "device holds images for nodes",
+        root_service=False,
+    )
+    kernel_server = icswServiceEnumBase(
+        "kernel-server",
+        "device holds kernels for nodes",
+        root_service=False,
+    )
+    virtual_desktop_client = icswServiceEnumBase(
+        "virtual-desktop-client",
+        "device has a virtual desktop client",
+        root_service=False,
+    )
+    auto_etc_hosts = icswServiceEnumBase(
+        "auto-etc-hosts",
+        "/etc/hosts file can be created from local cluster-server",
+        root_service=False,
+    )
+    mongodb_server = icswServiceEnumBase(
+        "monogdb-server",
+        "Starts a mongodb server",
+        root_service=True,
+    )
 
-
-register_app_config_enum(AppEnum, "backbone")
+register_service_enum(AppEnum, "backbone")

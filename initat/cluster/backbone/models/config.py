@@ -36,6 +36,7 @@ from initat.cluster.backbone.models.license import LicenseEnum, LicenseUsage, Li
 __all__ = [
     "config_catalog",
     "config",
+    "ConfigServiceEnum",
     "config_str",
     "config_int",
     "config_blob",
@@ -58,6 +59,8 @@ class config_catalog(models.Model):
     version = models.IntegerField(default=1)
     # is system catalog
     system_catalog = models.BooleanField(default=False)
+    # priority
+    priority = models.IntegerField(default=0)
     # extraction time
     extraction_time = models.DateTimeField(null=True, blank=True)
     date = models.DateTimeField(auto_now_add=True)
@@ -89,6 +92,39 @@ def config_catalog_pre_save(sender, **kwargs):
                 raise ValidationError("Only one config_catalog with system_catalog=True allowed")
 
 
+class ConfigServiceEnum(models.Model):
+    # mirrors icswServiceEnumBase
+    idx = models.AutoField(primary_key=True)
+    enum_name = models.CharField(max_length=255, default="", unique=True)
+    name = models.CharField(max_length=255, default="", unique=True)
+    info = models.TextField(default="", blank=True)
+    # is a root service and not a subservice (like image or kernel server)
+    root_service = models.BooleanField(default=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def create_db_entry(srv_enum):
+        _new_entry = ConfigServiceEnum.objects.create(
+            enum_name=srv_enum.name,
+            name=srv_enum.value.name,
+            info=srv_enum.value.info,
+            root_service=srv_enum.value.root_service,
+        )
+        return _new_entry
+
+    def update_values(self, srv_enum):
+        _changed = False
+        for _attr_name in ["name", "info", "root_service"]:
+            if getattr(self, _attr_name) != getattr(srv_enum.value, _attr_name):
+                _changed = True
+                setattr(self, _attr_name, getattr(srv_enum.value, _attr_name))
+        if _changed:
+            self.save()
+
+    def __unicode__(self):
+        return u"ConfigServerEnum {}".format(self.name)
+
+
 class config(models.Model):
     idx = models.AutoField(db_column="new_config_idx", primary_key=True)
     name = models.CharField(max_length=192, blank=False)
@@ -97,8 +133,10 @@ class config(models.Model):
     priority = models.IntegerField(null=True, default=0)
     # valid for servers (activate special functionalities)
     server_config = models.BooleanField(default=False)
-    # system config, not user generated
-    system_config = models.BooleanField(default=False)
+    # system config, not user generated, now deprecated
+    # system_config = models.BooleanField(default=False)
+    # link to ConfigServerEnum to activate server services
+    config_service_enum = models.ForeignKey("backbone.configserviceenum", null=True)
     enabled = models.BooleanField(default=True)
     date = models.DateTimeField(auto_now_add=True)
     # categories for this config
@@ -143,20 +181,20 @@ def config_pre_save(sender, **kwargs):
         check_empty_string(cur_inst, "name")
         # priority
         check_integer(cur_inst, "priority", min_val=-9999, max_val=9999)
-        if cur_inst.system_config:
-            if cur_inst.config_catalog is None:
-                try:
-                    sys_cc = config_catalog.objects.get(Q(system_catalog=True))
-                except config_catalog.DoesNotExist:
-                    raise ValidationError("no System catalog available")
-                else:
-                    cur_inst.config_catalog = sys_cc
-            if not cur_inst.config_catalog.system_catalog:
-                raise ValidationError(
-                    "System config '{}' has to reside inside the system config_catalog".format(
-                        cur_inst.name,
-                    )
-                )
+        # if cur_inst.system_config:
+        #    if cur_inst.config_catalog is None:
+        #        try:
+        #            sys_cc = config_catalog.objects.get(Q(system_catalog=True))
+        #        except config_catalog.DoesNotExist:
+        #            raise ValidationError("no System catalog available")
+        #        else:
+        #            cur_inst.config_catalog = sys_cc
+        #    if not cur_inst.config_catalog.system_catalog:
+        #        raise ValidationError(
+        #            "System config '{}' has to reside inside the system config_catalog".format(
+        #                cur_inst.name,
+        #            )
+        #        )
 
 
 @receiver(signals.post_save, sender=config)

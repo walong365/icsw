@@ -27,9 +27,11 @@ from django.db.models import Q
 import initat.cluster_server.modules
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.tools import cluster_location, logging_tools, process_tools, server_command, \
-    server_mixins, threading_tools, uuid_tools
+    server_mixins, threading_tools, uuid_tools, configfile
+from initat.server_version import VERSION_STRING
 from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 from .backup_process import backup_process
 from .capabilities import capability_process
@@ -40,8 +42,9 @@ from .license_checker import LicenseChecker
 class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
     def __init__(self, options):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
+        long_host_name, mach_name = process_tools.get_fqdn()
         self.__run_command = True if global_config["COMMAND"].strip() else False
-        self.CC.init("cluster-server", global_config)
+        self.CC.init(icswServiceEnum.cluster_server, global_config)
         self.CC.check_config()
         # close DB conncetion (daemonize)
         if self.__run_command:
@@ -58,7 +61,28 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
         self.__pid_name = global_config["PID_NAME"]
         self.__msi_block = self._init_msi_block()
         db_tools.close_connection()
-        self._re_insert_config()
+        self.CC.read_config_from_db(
+            [
+                ("IMAGE_SOURCE_DIR", configfile.str_c_var("/opt/cluster/system/images")),
+                ("MAILSERVER", configfile.str_c_var("localhost")),
+                ("FROM_NAME", configfile.str_c_var("quotawarning")),
+                ("FROM_ADDR", configfile.str_c_var(long_host_name)),
+                ("VERSION", configfile.str_c_var(VERSION_STRING, database=False)),
+                ("QUOTA_ADMINS", configfile.str_c_var("cluster@init.at")),
+                ("MONITOR_QUOTA_USAGE", configfile.bool_c_var(False, info="enabled quota usage tracking")),
+                ("TRACK_ALL_QUOTAS", configfile.bool_c_var(False, info="also track quotas without limit")),
+                ("QUOTA_CHECK_TIME_SECS", configfile.int_c_var(3600)),
+                ("USER_MAIL_SEND_TIME", configfile.int_c_var(3600, info="time in seconds between two mails")),
+                ("SERVER_FULL_NAME", configfile.str_c_var(long_host_name, database=False)),
+                ("SERVER_SHORT_NAME", configfile.str_c_var(mach_name, database=False)),
+                ("DATABASE_DUMP_DIR", configfile.str_c_var("/opt/cluster/share/db_backup")),
+                ("DATABASE_KEEP_DAYS", configfile.int_c_var(30)),
+                ("USER_SCAN_TIMER", configfile.int_c_var(7200, info="time in seconds between two user_scan runs")),
+                ("NEED_ALL_NETWORK_BINDS", configfile.bool_c_var(True, info="raise an error if not all bind() calls are successfull")),
+            ]
+        )
+        if not self.__run_command:
+            self.CC.re_insert_config()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("bg_finished", self._bg_finished)
@@ -118,13 +142,6 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
         self.log("Found {:d} valid config-lines:".format(len(conf_info)))
         for conf in conf_info:
             self.log("Config : {}".format(conf))
-
-    def _re_insert_config(self):
-        if self.__run_command:
-            self.log("running command, skipping re-insert of config", logging_tools.LOG_LEVEL_WARN)
-        else:
-            self.log("re-insert config")
-            cluster_location.write_config("server", global_config)
 
     @property
     def msi_block(self):

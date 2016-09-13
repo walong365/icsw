@@ -36,6 +36,7 @@ import time
 import zmq
 from lxml import etree
 
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.client_version import VERSION_STRING
 from initat.host_monitoring import limits, hm_classes
 from initat.host_monitoring.hm_mixins import HMHRMixin
@@ -63,8 +64,8 @@ class relay_code(ICSWBasePool, HMHRMixin):
         self.modules = modules
         self.global_config = global_config
         threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.CC.init("host-relay", global_config)
-        self.CC.check_config(client=True)
+        self.CC.init(icswServiceEnum.host_relay, global_config)
+        self.CC.check_config()
         if self.CC.CS["hr.enable.objgraph"]:
             try:
                 import objgraph

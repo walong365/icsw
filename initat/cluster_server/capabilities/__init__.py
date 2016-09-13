@@ -105,7 +105,7 @@ class capability_process(threading_tools.process_obj):
                         description=cap_descr,
                         config_catalog=sys_cc,
                         server_config=True,
-                        system_config=True,
+                        # system_config=True,
                     )
                     _sql_info = config_tools.server_check(server_type=cap_name)
                     if _sql_info.effective_device:

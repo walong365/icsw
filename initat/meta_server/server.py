@@ -29,6 +29,7 @@ import zmq
 from initat.tools import configfile, logging_tools, mail_tools, process_tools, server_command, \
     threading_tools, inotify_tools
 
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.client_version import VERSION_STRING
 from initat.host_monitoring import hm_classes
 from initat.icsw.service import container, transition, instance, service_parser, clusterid
@@ -41,8 +42,8 @@ class main_process(ICSWBasePoolClient):
     def __init__(self):
         self.__debug = global_config["DEBUG"]
         threading_tools.process_pool.__init__(self, "main")
-        self.CC.init("meta-server", global_config, native_logging=True)
-        self.CC.check_config(client=True)
+        self.CC.init(icswServiceEnum.meta_server, global_config, native_logging=True)
+        self.CC.check_config()
         self.CC.CS.copy_to_global_config(
             global_config, [
                 ("meta.track.icsw.memory", "TRACK_CSW_MEMORY"),
@@ -76,7 +77,7 @@ class main_process(ICSWBasePoolClient):
         self.__last_update_time = time.time() - 2 * global_config["MIN_CHECK_TIME"]
         self.__last_memcheck_time = time.time() - 2 * global_config["MIN_MEMCHECK_TIME"]
         self._init_meminfo()
-        self._show_config()
+        self.CC.log_config()
         self._init_statemachine()
         self.__next_stop_is_restart = False
         # wait for transactions if necessary
@@ -266,20 +267,6 @@ class main_process(ICSWBasePoolClient):
             )
         if trigger_sm:
             self._check_processes(force=True)
-
-    def _show_config(self):
-        try:
-            for log_line, log_level in global_config.get_log():
-                self.log("Config info : [{:d}] {}".format(log_level, log_line))
-        except:
-            self.log(
-                "error showing configfile log, old configfile ? ({})".format(process_tools.get_except_info()),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-        conf_info = global_config.get_config_info()
-        self.log("Found {}:".format(logging_tools.get_plural("valid configline", len(conf_info))))
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
 
     def loop_end(self):
         process_tools.delete_pid(self.__pid_name)

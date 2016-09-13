@@ -22,22 +22,36 @@
 """ logcheck-server (to be run on a syslog_server), server process """
 
 import os
+
 import zmq
 
 from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.logcheck_server.config import global_config
-from initat.logcheck_server.logcheck.struct import Machine
 from initat.logcheck_server.logcheck.scan import LogcheckScanner
+from initat.logcheck_server.logcheck.struct import Machine
 from initat.tools import server_mixins, configfile, logging_tools, \
     process_tools, threading_tools, service_tools, server_command
 
 
 @server_mixins.RemoteCallProcess
 class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, server_mixins.SendToRemoteServerMixin):
-    def __init__(self, options):
+    def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
-        self.CC.init("logcheck-server", global_config)
+        self.CC.init(icswServiceEnum.logcheck_server, global_config)
         self.CC.check_config()
+        self.CC.read_config_from_db(
+            [
+                ("SYSLOG_DIR", configfile.str_c_var("/var/log/hosts")),
+                ("KEEP_LOGS_UNCOMPRESSED", configfile.int_c_var(2)),
+                ("KEEP_LOGS_TOTAL", configfile.int_c_var(30)),
+                ("KEEP_LOGS_TOTDDAL", configfile.int_c_var(30)),
+                # maximum time in days to track logs
+                ("LOGS_TRACKING_DAYS", configfile.int_c_var(4, info="time to track logs in days")),
+                # cachesize for lineinfo (per file)
+                ("LINECACHE_ENTRIES_PER_FILE", configfile.int_c_var(50, info="line cache per file")),
+            ]
+        )
         self.__pid_name = global_config["PID_NAME"]
         # close connection (daemonizing)
         db_tools.close_connection()
