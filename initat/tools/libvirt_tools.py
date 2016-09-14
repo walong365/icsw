@@ -1,4 +1,4 @@
-# Copyright (C) 2010,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2010,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,9 +16,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-from lxml import etree
 import os
 import time
+
+from lxml import etree
 
 from initat.tools import logging_tools, process_tools
 
