@@ -71,6 +71,7 @@ class client_enums(Enum):
     monitor_slave = icswServiceEnumBaseClient(
         "monitor-slave",
         "sets device as a monitor slave (sattelite)",
+        msi_block_name="md-sync-server"
     )
 
 

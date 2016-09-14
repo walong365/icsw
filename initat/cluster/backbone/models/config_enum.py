@@ -40,10 +40,12 @@ class AppEnum(Enum):
     mother_server = icswServiceEnumBase(
         "mother-server",
         "enables basic nodeboot via PXE functionalities",
+        msi_block_name="mother"
     )
     monitor_server = icswServiceEnumBase(
         "monitor-server",
         "sets device as the monitor master server",
+        msi_block_name="md-config-server"
     )
     discovery_server = icswServiceEnumBase(
         "discovery-server",
@@ -59,7 +61,8 @@ class AppEnum(Enum):
     )
     collectd_server = icswServiceEnumBase(
         "collectd-server",
-        "Collect MachineVectors from remote machines and store them"
+        "Collect MachineVectors from remote machines and store them",
+        msi_block_name="collectd-server"
     )
     rms_server = icswServiceEnumBase(
         "rms-server",
@@ -67,7 +70,8 @@ class AppEnum(Enum):
     )
     grapher_server = icswServiceEnumBase(
         "grapher-server",
-        "Draw graphs, frontend to collectd"
+        "Draw graphs, frontend to collectd",
+        msi_block_name="rrd-grapher",
     )
     image_server = icswServiceEnumBase(
         "image-server",
