@@ -127,7 +127,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, 
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("logcheck-server")
         msi_block.add_actual_pid(process_name="main")
-        msi_block.kill_pids = True
         msi_block.save_block()
         return msi_block
 

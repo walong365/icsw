@@ -134,11 +134,9 @@ class server_process(server_mixins.ICSWBasePool):
     def _init_msi_block(self):
         self.__pid_name = global_config["PID_NAME"]
         process_tools.save_pids(global_config["PID_NAME"])
-        cf_pids = 2  # + global_config["SNMP_PROCESSES"]
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("snmp-relay")
         msi_block.add_actual_pid(process_name="main")
-        msi_block.kill_pids = True
         # msi_block.heartbeat_timeout = 120
         msi_block.save_block()
         self.__msi_block = msi_block

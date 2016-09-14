@@ -424,9 +424,6 @@ class server_process(
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("md-config-server")
         msi_block.add_actual_pid(process_name="main")
-        msi_block.start_command = "/etc/init.d/md-config-server start"
-        msi_block.stop_command = "/etc/init.d/md-config-server force-stop"
-        msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
 

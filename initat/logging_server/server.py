@@ -193,7 +193,6 @@ class main_process(ICSWBasePool):
         msi_block = process_tools.meta_server_info("logserver")
         # increased ceiling to 4, ALN 20150812
         msi_block.add_actual_pid(process_name="main")
-        msi_block.kill_pids = True
         msi_block.save_block()
         self.__msi_block = msi_block
 

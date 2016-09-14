@@ -325,8 +325,6 @@ class relay_code(ICSWBasePool, HMHRMixin):
         self.log("Initialising meta-server-info block")
         msi_block = process_tools.meta_server_info("collrelay")
         msi_block.add_actual_pid(process_name="main")
-        msi_block.kill_pids = True
-        # msi_block.heartbeat_timeout = 60
         msi_block.save_block()
         self.__msi_block = msi_block
 
