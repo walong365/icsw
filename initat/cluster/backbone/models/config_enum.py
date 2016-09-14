@@ -98,5 +98,10 @@ class AppEnum(Enum):
         "Starts a mongodb server",
         root_service=True,
     )
+    report_server = icswServiceEnumBase(
+        "report-server",
+        "Starts a report server",
+        root_service=True,
+    )
 
 register_service_enum(AppEnum, "backbone")
