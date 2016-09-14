@@ -59,7 +59,6 @@ class main_process(ICSWBasePool):
         self.CC.init(icswServiceEnum.logging_server, global_config, init_logging=False)
         self.CC.check_config()
         self.change_resource()
-        self._init_msi_block()
         self.CC.log_config()
         self._init_network_sockets()
         self.register_timer(self._update, 60)
@@ -187,15 +186,6 @@ class main_process(ICSWBasePool):
         self.register_poller(client, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
         self.std_client = client
 
-    def _init_msi_block(self):
-        process_tools.save_pids("logserver/logserver")
-        self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("logserver")
-        # increased ceiling to 4, ALN 20150812
-        msi_block.add_actual_pid(process_name="main")
-        msi_block.save_block()
-        self.__msi_block = msi_block
-
     def loop_end(self):
         self._check_error_dict(force=True)
         self.__num_write += 3
@@ -208,12 +198,11 @@ class main_process(ICSWBasePool):
 
     def loop_post(self):
         self._remove_handles()
-        process_tools.delete_pid("logserver/logserver")
-        self.__msi_block.remove_meta_block()
         if self.net_forwarder:
             self.net_forwarder.close()
         self.network_unbind()
         self.std_client.close()
+        self.CC.close()
 
     def _flush_log_cache(self):
         for dst, what, level in self.__log_cache:

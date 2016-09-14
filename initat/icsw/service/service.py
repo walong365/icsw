@@ -625,7 +625,7 @@ class MetaService(Service):
         ms_name = self.msi_name
         if os.path.exists(ms_name):
             # TODO : cache msi files
-            ms_block = process_tools.meta_server_info(ms_name)
+            ms_block = process_tools.MSIBlock(ms_name)
             start_time = ms_block.start_time
             _check = ms_block.check_block(act_proc_dict)
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}

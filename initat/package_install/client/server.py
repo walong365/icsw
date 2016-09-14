@@ -46,7 +46,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.install_signal_handlers()
         # init environment
         self._init_environment()
-        self._init_msi_block()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("alarm_error", self._alarm_error)
@@ -72,19 +71,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
     def _init_environment(self):
         # Debian fix to get full package names, sigh ...
         os.environ["COLUMNS"] = "2000"
-
-    def _init_msi_block(self):
-        # store pid name because global_config becomes unavailable after SIGTERM
-        self.__pid_name = global_config["PID_NAME"]
-        process_tools.save_pids(global_config["PID_NAME"])
-        if True:  # not self.__options.DEBUG:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("package-client")
-            msi_block.add_actual_pid(process_name="main")
-            msi_block.save_block()
-        else:
-            msi_block = None
-        self.__msi_block = msi_block
 
     def _log_limits(self):
         # read limits
@@ -319,7 +305,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):
-        return self.server_status(srv_com, self.__msi_block, global_config)
+        return self.server_status(srv_com, self.CC.msi_block, global_config)
 
     @RemoteCall()
     def get_0mq_id(self, srv_com, **kwargs):
@@ -391,9 +377,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.__comsend_queue.put("reload")
 
     def loop_end(self):
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
+        pass
 
     def loop_post(self):
         if self.main_socket:

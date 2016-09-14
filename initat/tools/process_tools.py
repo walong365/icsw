@@ -476,7 +476,7 @@ class int_error(error):
         error.__init__(self)
 
 
-class meta_server_info(object):
+class MSIBlock(object):
     def __init__(self, name, log_com=None):
         self.__log_com = log_com
         self._reset()
@@ -518,7 +518,7 @@ class meta_server_info(object):
             xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
         except:
             self.log(
-                "error parsing XML file {} (meta_server_info): {}".format(
+                "error parsing XML file {} (MSIBlock): {}".format(
                     name,
                     get_except_info()
                 ),
@@ -641,6 +641,9 @@ class meta_server_info(object):
         )
 
     def save_block(self):
+        return self.save()
+
+    def save(self):
         pid_list = E.pid_list()
         for cur_pid in sorted(self.__pids):
             cur_pid_el = E.pid(
@@ -653,7 +656,6 @@ class meta_server_info(object):
             E.name(self.__name),
             E.start_time("{:d}".format(int(self.__start_time))),
             pid_list,
-            E.properties()
         )
         file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)  # @UndefinedVariable
         if not self.__file_name:
@@ -662,7 +664,7 @@ class meta_server_info(object):
             open(self.__file_name, "w").write(file_content)
         except:
             self.log(
-                "error writing file {} (meta_server_info for {})".format(
+                "error writing file {} (MSIBlock for {})".format(
                     self.__file_name,
                     self.__name
                 ),
@@ -676,13 +678,16 @@ class meta_server_info(object):
         return self.__name != other.name or sorted(list(self.__pids)) != sorted(list(other.get_pids()))
 
     def remove_meta_block(self):
+        return self.remove()
+
+    def remove(self):
         if not self.__file_name:
             self.__file_name = os.path.join(self.__meta_server_dir, self.__name)
         try:
             os.unlink(self.__file_name)
         except:
             self.log(
-                "error removing file {} (meta_server_info for {}): {}".format(
+                "error removing file {} (MSIBlock for {}): {}".format(
                     self.__file_name,
                     self.__name,
                     get_except_info()

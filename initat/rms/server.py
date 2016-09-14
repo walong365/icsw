@@ -46,8 +46,6 @@ class ServerProcess(
         )
         self.CC.init(icswServiceEnum.rms_server, global_config)
         self.CC.check_config()
-        self.__pid_name = global_config["PID_NAME"]
-        self.__msi_block = self._init_msi_block()
         db_tools.close_connection()
         sge_dict = {}
         _all_ok = True
@@ -123,21 +121,7 @@ class ServerProcess(
         self.send_to_process("rms_mon", "full_reload")
 
     def process_start(self, src_process, src_pid):
-        process_tools.append_pids(self.__pid_name, src_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
-            self.__msi_block.save_block()
-
-    def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name)
-        if not global_config["DEBUG"] or True:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("rms-server")
-            msi_block.add_actual_pid(process_name="main")
-            msi_block.save_block()
-        else:
-            msi_block = None
-        return msi_block
+        self.CC.process_added(src_process, src_pid)
 
     def _init_network_sockets(self):
         self.network_bind(
@@ -175,7 +159,7 @@ class ServerProcess(
 
     @server_mixins.RemoteCall()
     def status(self, srv_com, **kwargs):
-        return self.server_status(srv_com, self.__msi_block, global_config)
+        return self.server_status(srv_com, self.CC.msi_block, global_config)
 
     @server_mixins.RemoteCall(target_process="license")
     def get_license_usage(self, srv_com, **kwargs):
@@ -211,7 +195,4 @@ class ServerProcess(
 
     def loop_post(self):
         self.network_unbind()
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
         self.CC.close()

@@ -79,7 +79,6 @@ class server_code(ICSWBasePool, HMHRMixin):
         self.install_signal_handlers()
         self._check_ksm()
         self._check_huge()
-        self._init_msi_block()
         self._change_socket_settings()
         self._init_network_sockets()
         self.register_exception("int_error", self._sigint)
@@ -332,22 +331,8 @@ class server_code(ICSWBasePool, HMHRMixin):
                         )
                     )
 
-    def _init_msi_block(self):
-        # store pid name because global_config becomes unavailable after SIGTERM
-        self.__pid_name = global_config["PID_NAME"]
-        process_tools.save_pids(global_config["PID_NAME"])
-        self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("collserver")
-        msi_block.add_actual_pid(process_name="main")
-        # msi_block.heartbeat_timeout = 60
-        msi_block.save_block()
-        self.__msi_block = msi_block
-
     def process_start(self, src_process, src_pid):
-        process_tools.append_pids(self.__pid_name, src_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
-            self.__msi_block.save_block()
+        self.CC.process_added(src_process, src_pid)
 
     def _init_network_sockets(self):
         zmq_id_name = "/etc/sysconfig/host-monitoring.d/0mq_id"
@@ -795,9 +780,6 @@ class server_code(ICSWBasePool, HMHRMixin):
     def loop_end(self):
         for cur_mod in self.modules.module_list:
             cur_mod.close_module()
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
 
     def _close_modules(self):
         for cur_mod in self.module_list:

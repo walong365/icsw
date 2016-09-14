@@ -55,7 +55,6 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
         self.register_exception("term_error", self._int_error)
         self.CC.init(icswServiceEnum.mother_server, global_config)
         self.CC.check_config()
-        self.__pid_name = global_config["PID_NAME"]
         # close db connection (for daemonizing)
         db_tools.close_connection()
         self.debug = global_config["DEBUG"]
@@ -101,7 +100,6 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
         self.write_dhcp_config()
         # check status entries
         self._check_status_entries()
-        self.__msi_block = self._init_msi_block()
         self.register_func("contact_hoststatus", self._contact_hoststatus)
         my_uuid = uuid_tools.get_uuid()
         self.log("cluster_device_uuid is '{}'".format(my_uuid.get_urn()))
@@ -126,18 +124,7 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
             self._int_error("bind problem")
 
     def process_start(self, src_process, src_pid):
-        process_tools.append_pids(self.__pid_name, src_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
-            self.__msi_block.save_block()
-
-    def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name)
-        self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("mother")
-        msi_block.add_actual_pid(process_name="main")
-        msi_block.save_block()
-        return msi_block
+        self.CC.process_added(src_process, src_pid)
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -148,9 +135,6 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
     def loop_end(self):
         # config_control.close_clients()
         self._disable_syslog_config()
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
 
     def loop_post(self):
         self.network_unbind()
@@ -218,7 +202,7 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):
-        return self.server_status(srv_com, self.__msi_block, global_config)
+        return self.server_status(srv_com, self.CC.msi_block, global_config)
 
     def _contact_hoststatus(self, src_id, src_pid, zmq_id, com_str, target_ip):
         dst_addr = "tcp://{}:{:d}".format(target_ip, self.__hs_port)
