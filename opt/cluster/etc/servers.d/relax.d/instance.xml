@@ -181,7 +181,7 @@
                         </interleave>
                     </element>
                 </optional>
-                <!-- old version -->
+                <!-- old version, deprecated -->
                 <optional>
                     <element name="config_names">
                         <oneOrMore>

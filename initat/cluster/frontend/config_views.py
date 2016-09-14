@@ -30,6 +30,7 @@ import logging
 import re
 import time
 
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.db.models import Q
@@ -309,7 +310,7 @@ class generate_config(View):
             "devices",
             *[srv_com.builder("device", pk="{:d}".format(cur_dev.pk)) for cur_dev in dev_list]
         )
-        result = contact_server(request, "config", srv_com, timeout=30, log_result=False)
+        result = contact_server(request, icswServiceEnum.config_server, srv_com, timeout=30, log_result=False)
         if result:
             _json_result = {"devices": []}
             # request.xml_response["result"] = E.devices()
@@ -626,7 +627,7 @@ class get_device_cvars(View):
         srv_com["devices"] = srv_com.builder(
             "devices",
             *[srv_com.builder("device", pk="{:d}".format(int(cur_pk))) for cur_pk in pk_list])
-        result = contact_server(request, "config", srv_com, timeout=30, log_result=False)
+        result = contact_server(request, icswServiceEnum.config_server, srv_com, timeout=30, log_result=False)
         if result:
             request.xml_response["result"] = E.devices()
             for dev_node in result.xpath(".//ns:device", smart_strings=False):

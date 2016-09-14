@@ -29,6 +29,7 @@ import sys
 import threading
 import time
 import re
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from collections import namedtuple
 from django.views.decorators.csrf import csrf_exempt
 
@@ -412,7 +413,7 @@ class control_job(View):
             "job_list",
             srv_com.builder("job", job_id=job_id)
         )
-        contact_server(request, "rms", srv_com, timeout=10)
+        contact_server(request, icswServiceEnum.rms_server, srv_com, timeout=10)
 
 
 class control_queue(View):
@@ -427,7 +428,7 @@ class control_queue(View):
             "queue_list",
             srv_com.builder("queue", queue_spec=queue_spec)
         )
-        contact_server(request, "rms", srv_com, timeout=10)
+        contact_server(request, icswServiceEnum.rms_server, srv_com, timeout=10)
 
 
 class get_file_content(View):
@@ -483,7 +484,7 @@ class get_file_content(View):
                     srv_com.builder("file", name=_file_name, encoding="utf-8") for _file_name in fetch_lut.iterkeys()
                 ]
             )
-            result = contact_server(request, "server", srv_com, timeout=60, connection_id="file_fetch_{}".format(str(job_id)))
+            result = contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, connection_id="file_fetch_{}".format(str(job_id)))
             if result is not None:
                 if result.get_result()[1] > server_command.SRV_REPLY_STATE_WARN:
                     request.xml_response.error(result.get_log_tuple()[0], logger)
@@ -554,4 +555,4 @@ class change_job_priority(View):
             "job_list",
             srv_com.builder("job", job_id=_post["job_id"], priority=_post["new_pri"])
         )
-        contact_server(request, "rms", srv_com, timeout=10)
+        contact_server(request, icswServiceEnum.rms_server, srv_com, timeout=10)

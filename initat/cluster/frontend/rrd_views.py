@@ -29,6 +29,7 @@ import logging
 
 import dateutil.parser
 import dateutil.tz
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.http.response import HttpResponse, HttpResponseGone
@@ -57,7 +58,7 @@ def _get_node_rrd(request, dev_pks):
         ],
         merge_results="1"
     )
-    result, _log_lines = contact_server(request, "rrd-grapher", srv_com, timeout=30)
+    result, _log_lines = contact_server(request, icswServiceEnum.grapher_server, srv_com, timeout=30)
     if result is not None:
         _log_str, _log_level = result.get_log_tuple()
         if _log_level <= logging_tools.LOG_LEVEL_WARN:
@@ -109,7 +110,7 @@ class graph_rrds(View):
             E.job_mode(_post.get("job_mode", "none")),
             E.selected_job(_post.get("selected_job", "0")),
         )
-        result = contact_server(request, "rrd-grapher", srv_com, timeout=30)
+        result = contact_server(request, icswServiceEnum.grapher_server, srv_com, timeout=30)
         if result:
             graph_list = result.xpath(".//graph_list", smart_strings=False)
             if len(graph_list):
@@ -133,7 +134,7 @@ class trigger_sensor_threshold(View):
             pk="{:d}".format(_pk),
             type=request.POST["type"],
         )
-        _result = contact_server(request, "collectd-server", srv_com, timeout=30)
+        _result = contact_server(request, icswServiceEnum.collectd_server, srv_com, timeout=30)
 
 
 class download_rrd(View):

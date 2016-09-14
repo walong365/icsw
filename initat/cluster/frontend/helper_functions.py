@@ -237,19 +237,18 @@ class xml_wrapper(object):
             return ret_value
 
 
-def contact_server(request, srv_type, send_com, **kwargs):
+def contact_server(request, srv_type_enum, send_com, **kwargs):
     # log lines
     _log_lines = []
     # xml request
     _xml_req = kwargs.get("xml_request", hasattr(request, "xml_response"))
     # simple mapping
     cur_router = routing.SrvTypeRouting()
-
-    if srv_type not in cur_router:
+    if srv_type_enum.name not in cur_router:
         # try again harder (rebuild routing table)
         cur_router = routing.SrvTypeRouting(force=True)
 
-    if srv_type in cur_router:
+    if srv_type_enum.name in cur_router:
         # print send_com.pretty_print()
         if request.user:
             send_com["user_id"] = request.user.pk
@@ -259,7 +258,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
         )
         # split to node-local servers ?
         if kwargs.get("split_send", True):
-            send_list = cur_router.check_for_split_send(srv_type, send_com)
+            send_list = cur_router.check_for_split_send(srv_type_enum.name, send_com)
             if cur_router.no_bootserver_devices:
                 # for _miss_pk, _miss_name in cur_router.no_bootserver_devices:
                 cur_router._log(
@@ -285,7 +284,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
                 #    _conn_str = cur_router.get_connection_string(srv_type, server_id=)
                 # else:
                 # print "*", _send_id
-                _conn_str = cur_router.get_connection_string(srv_type, server_id=_send_id)
+                _conn_str = cur_router.get_connection_string(srv_type_enum, server_id=_send_id)
                 _conn_strs.append(_conn_str)
                 _conn.add_connection(_conn_str, _send_com, multi=True, immediate=True)
             log_result = kwargs.get("log_result", True)
@@ -301,7 +300,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
                     _log_lines,
                     log_result,
                     log_error,
-                    srv_type,
+                    srv_type_enum,
                 ) for _res, _conn_str in zip(_conn.loop(), _conn_strs)
             ]
             result = cur_router.result
@@ -309,7 +308,7 @@ def contact_server(request, srv_type, send_com, **kwargs):
             result = None
     else:
         result = None
-        _err_str = u"ServerType '{}' not defined in routing".format(srv_type)
+        _err_str = u"ServiceType '{}' not defined in routing".format(srv_type_enum.name)
         cur_router._log(request, _log_lines, _err_str, logging_tools.LOG_LEVEL_ERROR)
     if _xml_req:
         return result

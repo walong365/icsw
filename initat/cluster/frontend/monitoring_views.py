@@ -36,6 +36,7 @@ from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
@@ -64,7 +65,7 @@ class create_config(View):
             command="rebuild_host_config",
             cache_mode=request.POST.get("cache_mode", "DYNAMIC")
         )
-        result = contact_server(request, "md-config", srv_com, connection_id="wf_mdrc")
+        result = contact_server(request, icswServiceEnum.monitor_server, srv_com, connection_id="wf_mdrc")
         if result:
             request.xml_response["result"] = E.devices()
 
@@ -102,7 +103,7 @@ class fetch_partition(View):
             }
         )
         srv_com["devices"] = _dev_node
-        _result = contact_server(request, "discovery", srv_com, timeout=30)
+        _result = contact_server(request, icswServiceEnum.discovery_server, srv_com, timeout=30)
 
 
 class clear_partition(View):
@@ -153,7 +154,7 @@ class get_node_config(View):
                 ) for cur_pk in pk_list
             ]
         )
-        result = contact_server(request, "md-config", srv_com, timeout=30)
+        result = contact_server(request, icswServiceEnum.monitor_server, srv_com, timeout=30)
         if result:
             node_results = result.xpath(".//config", smart_strings=False)
             if len(node_results):
@@ -179,7 +180,7 @@ class get_node_status(View):
                 ) for cur_pk in pk_list if cur_pk and cur_pk.isdigit()
             ]
         )
-        result = contact_server(request, "md-config", srv_com, timeout=30)
+        result = contact_server(request, icswServiceEnum.monitor_server, srv_com, timeout=30)
         if result:
             host_results = result.xpath(".//ns:host_result/text()", smart_strings=False)
             service_results = result.xpath(".//ns:service_result/text()", smart_strings=False)
