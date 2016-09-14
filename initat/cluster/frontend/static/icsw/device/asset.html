@@ -91,57 +91,120 @@
                     <uib-tab-heading>
                         {{ dev.full_name }}
                     </uib-tab-heading>
+                    <uib-tabset>
+                        </br>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                Scan Overview
+                            </uib-tab-heading>
+                            </br>
+                            <h3>
+                                <span ng-show="dev.asset_batch_list.length">
+                                    Scans for device '{{ dev.full_name }}' (group {{ dev.device_group_name }})
+                                </span>
+                                <span ng-show="!dev.asset_batch_list.length">
+                                    No scan for this device yet.
+                                </span>
+                            </h3>
 
-                    <h3>
-                        <span ng-show="dev.assetrun_set.length">
-                            AssetRun Overview for device '{{ dev.full_name }}' (group {{ dev.device_group_name }})
-                        </span>
-                        <span ng-show="!dev.assetrun_set.length">
-                            No AssetRuns for this device.
-                        </span>
-                        <span ng-show="struct.num_selected">
-                            , diff ({{ struct.num_selected }} selected)
-                            <icsw-tools-button ng-if="struct.num_selected == 2" type="reload" size="xs" ng-click="assetchangeset(dev)" value="Asset Changeset"/>
-                        </span>
-                    </h3>
+                            <!--<button type="button" class="btn btn-xs btn-warning" data-style="slide-left" ladda="dev.$$asset_run" ng-click="run_now($event, dev)">Run now</button>-->
 
-
-                    <button type="button" class="btn btn-xs btn-warning" data-style="slide-left" ladda="dev.$$asset_run" ng-click="run_now($event, dev)">Run now</button>
-
-                    <icsw-asset-asset-runs-table
-                        icsw-asset-run-list="dev.assetrun_set"
-                    ></icsw-asset-asset-runs-table>
-                    <div ng-if="dev.show_changeset">
-                        <h2>
-                            <span>
-                                Asset Changes
-                            </span>
-                        </h2>
-
-                        <span>
-                            Added:
-                        </span>
-                       <ul>
-                           <li ng-repeat="obj in dev.added_changeset">
-                               {{ obj }}
-                           </li>
-                       </ul>
-
-                        <span>
-                            Removed:
-                        </span>
-                        <ul>
-                            <li ng-repeat="obj in dev.removed_changeset">
-                                {{ obj }}
-                            </li>
-                        </ul>
-                    </div>
-
-                </uib-tab>
+                            <icsw-asset-asset-batch-table
+                                icsw-asset-batch-list="dev.asset_batch_list"
+                            ></icsw-asset-asset-batch-table>
+                        </uib-tab>
+                        <uib-tab ng-repeat="tab in dev.info_tabs">
+                            <uib-tab-heading>
+                                {{ tab.tab_heading_text }}
+                                <button ng-click="close_tab(tab, dev)" type="button" class="btn btn-default btn-sm">
+                                    <span class="glyphicon glyphicon-remove"></span>
+                                </button>
+                            </uib-tab-heading>
+                            </br>
+                            <icsw-asset-batch-details
+                                icsw-tab="tab"
+                            </icsw-asset-batch-details>
+                        </uib-tab>
+                    </uib-tabset>
             </uib-tabset>
         </div>
     </div>
 </script>
+
+
+<script type="text/ng-template" id="icsw.asset.asset.batch.table">
+    <table
+        class="table table-condensed table-striped"
+        st-table="assetbatches_shown"
+        ng-show="asset_batch_list.length > 0"
+        st-safe-src="asset_batch_list"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <span
+                        icsw-tools-pagination
+                        st-items-by-page="20"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100"
+                        class="pull-xs-left"
+                    ></span>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="idx" st-sort-default="reverse" class="text-center">Scan ID</th>
+                <th st-sort="$$run_start_day" class="text-center">Scan Day</th>
+                <th class="text-center">Scan Hour</th>
+                <th class="text-center">Scan Runtime</th>
+                <th class="text-center">#(Sub-)Scans</th>
+                <th class="text-center">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat-start="assetbatch in assetbatches_shown track by $index">
+                <td class="text-center">
+                    <span class="label label-success">{{assetbatch.idx}}</span>
+                </td>
+                <td class="text-center">{{ assetbatch.$$run_start_day }}</td>
+                <td class="text-center">{{ assetbatch.$$run_start_hour }}</td>
+                <td class="text-center">{{ assetbatch.$$run_time }}</td>
+                <td class="text-center">{{ assetbatch.num_completed }} / {{ assetbatch.num_runs }}</td>
+                <td>
+                    <icsw-tools-button size="xs" type="show" is-show="!assetbatch.$$expanded" ng-click="expand_assetbatch($event, assetbatch)"></icsw-tools-button>
+                </td>
+            </tr>
+            <tr ng-repeat-end ng-if="assetbatch.$$expanded">
+                <td colspan="99">
+                    <table
+                        class="table table-condensed table-striped simple-border"
+                    >
+                        <thead>
+                            <tr>
+                                <th>Information Type</th>
+                                <th class="text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-if="assetbatch.packages.length > 0">
+                                <td>Installed Packages</td>
+                                <td class="text-center">
+                                    <input type="button" class="btn btn-sm btn-primary" ng-click="open_in_new_tab(assetbatch, 0)" value="Open in new Tab"/>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>Pending Updates</td>
+                                <td class="text-center">
+                                    <input type="button" class="btn btn-sm btn-primary" ng-click="open_in_new_tab(assetbatch, 1)" value="Open in new Tab"/>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
 
 <script type="text/ng-template" id="icsw.asset.scheduled.runs.table">
     <table
@@ -412,10 +475,9 @@
 
 <script type="text/ng-template" id="icsw.asset.details.package">
     <table
-        class="table table-condensed table-striped simple-border"
-        style="width:auto;"
-        st-safe-src="asset_run.$$assets"
-        st-table="assets_shown"
+        class="table table-condensed table-striped"
+        st-safe-src="tab.packages"
+        st-table="packages_shown"
     >
         <thead>
             <tr>
@@ -430,15 +492,15 @@
             </tr>
             <tr>
                 <th st-sort="$$package.name">Name</th>
-                <th st-sort="version">Version</th>
+                <th class="text-right" st-sort="version">Version</th>
                 <th st-sort="release">Release</th>
-                <th st-sort="size">Size</th>
+                <th class="text-right" st-sort="size">Size</th>
                 <th st-sort="$$package.install_time">Installation Time</th>
-                <th st-sort="$$package.$$package_type">Package Type</th>
+                <th class="text-right" st-sort="$$package.$$package_type">Package Type</th>
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="vers in assets_shown track by $index">
+            <tr ng-repeat="vers in packages_shown track by $index">
                 <td>{{ vers.$$package.name }}</td>
                 <td class="text-right">{{ vers.version }}</td>
                 <td>{{ vers.release }}</td>

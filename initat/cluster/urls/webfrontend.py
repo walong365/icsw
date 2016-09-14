@@ -45,6 +45,7 @@ report_patterns = [
 ]
 
 asset_patterns = [
+    url("^get_assetbatch_list$", asset_views.AssetBatchViewSet.as_view({"get": "list"}), name="get_assetbatch_list"),
     url("^export_assetbatch_to_xlsx$", asset_views.export_assetbatch_to_xlsx.as_view(), name="export_assetbatch_to_xlsx"),
     url("^export_assetbatch_to_pdf$", asset_views.export_assetbatch_to_pdf.as_view(), name="export_assetbatch_to_pdf"),
     url("^export_scheduled_runs_to_csv$", asset_views.export_scheduled_runs_to_csv.as_view(), name="export_scheduled_runs_to_csv"),

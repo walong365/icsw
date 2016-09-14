@@ -47,7 +47,7 @@ from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
-    StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer
+    StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer, AssetBatchSerializer
 
 try:
     from openpyxl import Workbook
@@ -57,6 +57,17 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+
+class AssetBatchViewSet(viewsets.ViewSet):
+    def list(self, request):
+        if "pks" in request.query_params:
+            queryset = AssetBatch.objects.filter(
+                Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
+            )
+        else:
+            queryset = AssetBatch.objects.all()
+        serializer = AssetBatchSerializer(queryset, many=True)
+        return Response(serializer.data)
 
 
 class run_assetrun_for_device_now(View):

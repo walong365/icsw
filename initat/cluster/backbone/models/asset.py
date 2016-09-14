@@ -464,15 +464,6 @@ class AssetHWDisplayEntry(models.Model):
             self.manufacturer
         )
 
-class AssetPackageVersionInstallTime(models.Model):
-    idx = models.AutoField(primary_key=True)
-    package_version = models.ForeignKey("backbone.AssetPackageVersion")
-    timestamp = models.BigIntegerField()
-
-    @property
-    def install_time(self):
-        return datetime.datetime.fromtimestamp(float(self.timestamp))
-
 class AssetHWNetworkDevice(models.Model):
     idx = models.AutoField(primary_key=True)
     manufacturer = models.TextField(null=True)
@@ -490,6 +481,14 @@ class AssetHWNetworkDevice(models.Model):
                 self.speed,
             )
 
+class AssetPackageVersionInstallTime(models.Model):
+    idx = models.AutoField(primary_key=True)
+    package_version = models.ForeignKey("backbone.AssetPackageVersion")
+    timestamp = models.BigIntegerField()
+
+    @property
+    def install_time(self):
+        return datetime.datetime.fromtimestamp(float(self.timestamp))
 
 class AssetPackage(models.Model):
     idx = models.AutoField(primary_key=True)
