@@ -968,7 +968,7 @@ monitoring_basic_module = angular.module(
                 "mon_contactgroup"
                 icswMonContactgroupBackup
                 "icsw.mon.contactgroup.form"
-                "Monitoring ContactGroup"
+                "Monitoring Contact Group"
             )
 
         delete: (scope, $event, obj) ->

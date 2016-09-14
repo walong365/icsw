@@ -389,7 +389,7 @@
         <uib-tab heading="Contact Groups">
             <icsw-tools-rest-table-new target-list="entries" config-service="icswMonitoringBasicMonContactgroupService">
                 <h3>
-                    Contact Groups ({{ entries.length }} Entries),
+                    Contact Groups ({{ entries.length }} Entries)
                     <icsw-tools-button size="xs" type="create" value="create new" ng-click="create($event)"></icsw-tools-button>
                 </h3>
                 <table st-table="entries_displayed" st-safe-src="entries"
@@ -397,13 +397,9 @@
                     <thead>
                         <tr>
                             <td colspan="99">
+                                <div class="pull-left"><input st-search="" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="text"/></div>
                                 <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                                     possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="99">
-                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                                     possible-items-by-page="10,20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;"></div>
                             </td>
                         </tr>
                         <tr>
@@ -412,7 +408,7 @@
                             <th st-sort="members">Members</th>
                             <th st-sort="device_groups">Device Groups</th>
                             <th st-sort="service_templates">Service Templates</th>
-                            <th colspan="2">Actions</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
 
@@ -423,8 +419,9 @@
                             <td>{{ config_service.get_members(obj) }}</td>
                             <td>{{ config_service.get_device_groups(obj) }}</td>
                             <td>{{ config_service.get_service_templates(obj) }}</td>
-                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button></td>
-                            <td><icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button></td>
+                            <td><icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)"></icsw-tools-button>
+                                <icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)"></icsw-tools-button>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
@@ -825,15 +822,14 @@
 
 <script type="text/ng-template" id="icsw.mon.contact.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Contacts</h2>
         <fieldset>
-            <legend>Base Data</legend>
+            <legend>Contacts Base Data</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     User<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.user" style="max-width:400px; min-width:240px;">
+                    <ui-select ng-model="edit_obj.user" class="maxwidth500">
                         <ui-select-match class="ui-select-match" placeholder="please select an user">
                             {{ $select.selected.info }}
                         </ui-select-match>
@@ -844,11 +840,11 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3" title="Used notification templates">
+                <label class="control-label col-sm-3 icsw-formlabel" title="Used notification templates">
                     Notification Templates
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.notifications" style="max-width:400px; min-width:240px;" title="Used notification templates">
+                    <ui-select multiple="multiple" ng-model="edit_obj.notifications" class="maxwidth500" title="Used notification templates">
                         <ui-select-match class="ui-select-match" placeholder="Select one or more notifications">
                             {{ $item.name }}
                         </ui-select-match>
@@ -859,22 +855,22 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Alias
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="64" name="mon_alias" ng-model="edit_obj.mon_alias" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="64" name="mon_alias" ng-model="edit_obj.mon_alias" type="text"/>
                 </div>
             </div>
         </fieldset>
         <fieldset>
             <legend>Service Settings</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField" title="Notification service period">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel" title="Notification service period">
                     Service Period<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.snperiod" style="max-width:400px; min-width:240px;" title="Notification service period">
+                    <ui-select ng-model="edit_obj.snperiod" class="maxwidth500" title="Notification service period">
                         <ui-select-match class="ui-select-match" placeholder="please select a time period">
                             {{ $select.selected.name }}
                         </ui-select-match>
@@ -886,9 +882,9 @@
             </div>
         </fieldset>
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-6" style="width:376px;">
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case service recovers">
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case service recovers">
                         Notify on Service Recovery
                     </label>
                     <div class="col-sm-3 controls">
@@ -896,7 +892,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case service state is critical">
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case service state is critical">
                         Notify on Service Critical
                     </label>
                     <div class="col-sm-3 controls">
@@ -904,7 +900,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case service state is warning">
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case service state is warning">
                         Notify on Service Warning
                     </label>
                     <div class="col-sm-3 controls">
@@ -914,7 +910,7 @@
             </div>
             <div class="col-md-6">
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case service state is unknown">
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case service state is unknown">
                         Notify on Service Unknown
                     </label>
                     <div class="col-sm-3 controls">
@@ -922,7 +918,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case service state is flapping">
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case service state is flapping">
                         Notify on Service Flapping
                     </label>
                     <div class="col-sm-3 controls">
@@ -930,7 +926,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case service state is planned downtime">
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case service state is planned downtime">
                         Notify on Service Planned Downtime
                     </label>
                     <div class="col-sm-3 controls">
@@ -942,11 +938,11 @@
         <fieldset>
             <legend>Host Settings</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField" title="Notification host period">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel" title="Notification host period">
                     Host Period<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.hnperiod" style="max-width:400px; min-width:240px;" title="Notification host period">
+                    <ui-select ng-model="edit_obj.hnperiod" class="maxwidth500" title="Notification host period">
                         <ui-select-match class="ui-select-match" placeholder="please select a time period">
                             {{ $select.selected.name }}
                         </ui-select-match>
@@ -958,9 +954,9 @@
             </div>
         </fieldset>
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-md-6" style="width:376px;">
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case host recovers">
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case host recovers">
                         Notify on Host Recovery
                     </label>
                     <div class="col-sm-3 controls">
@@ -968,7 +964,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case host state is down">
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case host state is down">
                         Notify on Host Down
                     </label>
                     <div class="col-sm-3 controls">
@@ -976,7 +972,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case host state is unreachable">
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case host state is unreachable">
                         Notify on Host Unreachable
                     </label>
                     <div class="col-sm-3 controls">
@@ -986,7 +982,7 @@
             </div>
             <div class="col-md-6">
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case host state is flapping">
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case host state is flapping">
                         Notify on Host Flapping
                     </label>
                     <div class="col-sm-3 controls">
@@ -994,8 +990,8 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label class="col-sm-7 control-label" title="Receive notification in case host state is planned downtime">
-                        Notify on host Planned Downtime
+                    <label class="col-sm-7 control-label icsw-formlabel" title="Receive notification in case host state is planned downtime">
+                        Notify on Host Planned Downtime
                     </label>
                     <div class="col-sm-3 controls">
                         <icsw-tools-yes-no flag="edit_obj.hplanned_downtime"></icsw-tools-yes-no>
@@ -1278,34 +1274,33 @@
 
 <script type="text/ng-template" id="icsw.mon.contactgroup.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Contactgroup</h2>
         <fieldset>
-            <legend>Base data</legend>
+            <legend>Contact Group Base Data</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Name<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Alias
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="255" name="alias" ng-model="edit_obj.alias" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="255" name="alias" ng-model="edit_obj.alias" type="text"/>
                 </div>
             </div>
         </fieldset>
         <fieldset>
-            <legend>settings</legend>
+            <legend>Settings</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Members
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.members" style="max-width:400px; min-width:240px;">
+                    <ui-select multiple="multiple" ng-model="edit_obj.members" class="maxwidth500">
                         <ui-select-match class="ui-select-match" placeholder="please select one or more users">
                             {{ $item.user_name }}
                         </ui-select-match>
@@ -1316,11 +1311,11 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Device Groups
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.device_groups" style="max-width:400px; min-width:240px;">
+                    <ui-select multiple="multiple" ng-model="edit_obj.device_groups" class="maxwidth500">
                         <ui-select-match class="ui-select-match" placeholder="please select one or more device groups">
                             {{ $item.name }}
                         </ui-select-match>
@@ -1331,11 +1326,11 @@
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Service Templates
                 </label>
                 <div class="controls col-sm-7">
-                    <ui-select multiple="multiple" ng-model="edit_obj.service_templates" style="max-width:400px; min-width:240px;">
+                    <ui-select multiple="multiple" ng-model="edit_obj.service_templates" class="maxwidth500">
                         <ui-select-match class="ui-select-match" placeholder="please select one or more service templates">
                             {{ $item.name }}
                         </ui-select-match>

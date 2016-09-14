@@ -20,6 +20,7 @@
 
 import os
 import base64
+import hashlib
 
 from django.db import models
 
@@ -32,50 +33,62 @@ from initat.cluster.settings import REPORT_DATA_STORAGE_DIR
 ########################################################################################################################
 
 FILENAME_DATE_STRING = "%Y_%m_%d"#_%H_%M_%S"
+HASH_ALGORITHM = "sha256"
 
 
 class ReportHistory(models.Model):
     idx = models.AutoField(primary_key=True)
-
     created_by_user = models.ForeignKey("backbone.user", null=True)
-
     created_at_time = models.DateTimeField(null=True)
-
     number_of_pages = models.IntegerField(default=0)
-
     number_of_downloads = models.IntegerField(default=0)
-
     size = models.BigIntegerField(default=0)
-
     b64_size = models.BigIntegerField(default=0)
-
     type = models.TextField(null=True)
-
     filename = models.TextField(null=True)
-
     progress = models.IntegerField(default=0)
+    file_hash = models.TextField(null=True)
+    hash_algorithm = models.TextField(null=True)
 
     def write_data(self, data):
         b64data = base64.b64encode(data)
         self.b64_size = len(b64data)
 
-        f = open(os.path.join(REPORT_DATA_STORAGE_DIR, self.filename), "wb")
-        f.write(data)
-        f.close()
+        hash_algo = getattr(hashlib, HASH_ALGORITHM)()
+        hash_algo.update(data)
+        self.file_hash = hash_algo.hexdigest()
+        self.hash_algorithm = HASH_ALGORITHM
+
+        path = self._data_storage_path
+        try:
+            os.makedirs(os.path.dirname(path))
+        except OSError:
+            pass
+        with open(self._data_storage_path, "wb") as file_:
+            file_.write(data)
 
     def get_data(self):
-        f = open(os.path.join(REPORT_DATA_STORAGE_DIR, self.filename), "rb")
-        data = f.read()
-        f.close()
+        with open(self._data_storage_path, "rb") as file_:
+            data = file_.read()
+            return data
 
-        return data
+    @property
+    def _data_storage_path(self):
+        return os.path.join(
+            REPORT_DATA_STORAGE_DIR,
+            self.file_hash[0],
+            self.file_hash[1],
+            self.file_hash,
+        )
 
     def generate_filename(self):
         file_ending = "pdf" if self.type == "pdf" else "zip"
 
-        self.filename = "Report_{}_{}.{}".format(self.idx,
-                                                 self.created_at_time.strftime(FILENAME_DATE_STRING),
-                                                 file_ending)
+        self.filename = "Report_{}_{}.{}".format(
+            self.idx,
+            self.created_at_time.strftime(FILENAME_DATE_STRING),
+            file_ending
+        )
 
 
 ########################################################################################################################
