@@ -88,7 +88,7 @@ config_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         if create
@@ -597,7 +597,7 @@ config_module = angular.module(
                     ok_callback: (modal) ->
                         d = $q.defer()
                         if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "", 0)
+                            toaster.pop("warning", "form validation problem", "")
                             d.reject("form not valid")
                         else
                             if create
@@ -718,7 +718,7 @@ config_module = angular.module(
                     ok_callback: (modal) ->
                         d = $q.defer()
                         if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "", 0)
+                            toaster.pop("warning", "form validation problem", "")
                             d.reject("form not valid")
                         else
                             if create
@@ -948,7 +948,7 @@ config_module = angular.module(
                     ok_callback: (modal) ->
                         d = $q.defer()
                         if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "", 0)
+                            toaster.pop("warning", "form validation problem", "")
                             d.reject("form not valid")
                         else
                             if create

@@ -251,7 +251,7 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start("Starting scan")
@@ -316,7 +316,7 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start()
@@ -367,7 +367,7 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         $scope.device_tree.update_boot_settings(obj).then(
@@ -447,7 +447,7 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         if create_mode
@@ -588,7 +588,7 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         nd = $scope.local_helper_obj.netdevice_lut[sub_scope.edit_obj.netdevice]
@@ -747,7 +747,7 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         if create_mode
@@ -1328,7 +1328,7 @@ angular.module(
                     ok_callback: (modal) ->
                         d = $q.defer()
                         if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "", 0)
+                            toaster.pop("warning", "form validation problem", "")
                             d.reject("form not valid")
                         else
                             if create
@@ -1416,7 +1416,7 @@ angular.module(
                     ok_callback: (modal) ->
                         d = $q.defer()
                         if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "", 0)
+                            toaster.pop("warning", "form validation problem", "")
                             d.reject("form not valid")
                         else
                             if create
@@ -1592,7 +1592,7 @@ angular.module(
                     ok_callback: (modal) ->
                         d = $q.defer()
                         if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "", 0)
+                            toaster.pop("warning", "form validation problem", "")
                             d.reject("form not valid")
                         else
                             if create

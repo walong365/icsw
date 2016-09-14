@@ -225,6 +225,13 @@ angular.module(
 ) ->
     # close on click
     toasterConfig["tap-to-dismiss"] = true
+    toasterConfig.limit = 8
+    # hide close button
+    toasterConfig["close-button"] = false
+    toasterConfig["time-out"] = {
+        # timeout for error after 30 seconds
+        "toast-error": 30000
+    }
 ]).config([
     "$httpProvider",
 (
@@ -258,10 +265,10 @@ angular.module(
                         toaster.pop("warning", "", cur_mes.text())
                 else
                     if show_error
-                        toaster.pop("error", "An Error occured", cur_mes.text(), 0)
+                        toaster.pop("error", "An Error occured", cur_mes.text())
         else
             if xml != null
-                toaster.pop("error", "A critical error occured", "error parsing response", 0)
+                toaster.pop("error", "A critical error occured", "error parsing response")
         return success
 ]).provider("icswRouteExtension",
 [
@@ -1133,7 +1140,7 @@ angular.module(
         for _err in error_list
             if _err not in new_error_list
                 new_error_list.push(_err)
-                toaster.pop("error", _err, "", 0)
+                toaster.pop("error", _err, "")
         return true
     )
 ]).service("icswInfoModalService",

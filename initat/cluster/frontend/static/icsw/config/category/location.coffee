@@ -263,7 +263,7 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2))
@@ -366,10 +366,10 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else if sub_scope.uploader.queue.length == 0 and not sub_scope.edit_obj.image_stored
-                        toaster.pop("warning", "No graphic defined", "", 0)
+                        toaster.pop("warning", "No graphic defined", "")
                         d.reject("no gfx defined")
                     else
                         if create_mode
