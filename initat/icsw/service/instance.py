@@ -315,7 +315,6 @@ class InstanceXML(object):
                 ("init_script_name", name),
                 ("startstop", "1"),
                 ("process_name", name),
-                ("meta_server_name", name),
                 # default wait time before killing processes
                 ("wait_time", "10"),
             ]:

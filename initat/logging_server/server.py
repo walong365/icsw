@@ -56,7 +56,7 @@ class main_process(ICSWBasePool):
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_func("startup_error", self._startup_error)
-        self.CC.init(icswServiceEnum.logging_server, global_config, init_logging=False)
+        self.CC.init(icswServiceEnum.logging_server, global_config, init_logging=False, native_logging=True)
         self.CC.check_config()
         self.change_resource()
         self.CC.log_config()

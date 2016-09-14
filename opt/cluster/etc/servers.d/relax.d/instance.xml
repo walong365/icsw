@@ -29,9 +29,6 @@
                 <attribute name="uuid-postfix"/>
             </optional>
             <optional>
-                <attribute name="meta_server_name"/>
-            </optional>
-            <optional>
                 <attribute name="init_script_name"/>
             </optional>
             <optional>

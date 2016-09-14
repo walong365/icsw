@@ -77,7 +77,7 @@ class Service(object):
 
     @property
     def msi_name(self):
-        c_name = self.attrib["meta_server_name"]
+        c_name = self.attrib["name"]
         _path = os.path.join("/", "var", "lib", "meta-server", c_name)
         # compat layer for buggy specs
         if not os.path.exists(_path) and c_name in self._COMPAT_DICT:
@@ -620,8 +620,6 @@ class PIDService(Service):
 class MetaService(Service):
     # Service backup up by a meta-server file
     def _check(self, result, act_proc_dict):
-        init_script_name = self.init_script_name
-        c_name = self.attrib["meta_server_name"]
         ms_name = self.msi_name
         if os.path.exists(ms_name):
             # TODO : cache msi files
