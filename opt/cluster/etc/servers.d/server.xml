@@ -373,10 +373,21 @@
         <config_names>
             <config_name>report_server</config_name>
         </config_names>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
         <network>
             <ports>
                 <port type="command">8016</port>
             </ports>
         </network>
+        <start-argument>
+            <arg key="user">idreport</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <access-rights>
+            <dir value="/opt/cluster/share/reports" user="idreport" group="idg" create="1"/>
+        </access-rights>
     </instance>
 </instances>

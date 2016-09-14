@@ -33,10 +33,12 @@ import os
 from initat.tools import configfile
 from initat.report_server.config import global_config
 
+
 def run_code():
     from initat.report_server.server import server_process
     s = server_process()
     s.loop()
+
 
 def main():
     global_config.add_config_entries(
