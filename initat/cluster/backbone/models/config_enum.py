@@ -62,7 +62,7 @@ class AppEnum(Enum):
     collectd_server = icswServiceEnumBase(
         "collectd-server",
         "Collect MachineVectors from remote machines and store them",
-        msi_block_name="collectd-server"
+        msi_block_name="collectd"
     )
     rms_server = icswServiceEnumBase(
         "rms-server",

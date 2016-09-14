@@ -34,7 +34,6 @@ from initat.constants import VERSION_CS_NAME, INITAT_BASE
 from initat.tools import logging_tools, process_tools, config_store, threading_tools
 from .constants import *
 
-
 class Service(object):
     _COMPAT_DICT = {
         "rms-server": "rms_server",
@@ -155,19 +154,23 @@ class Service(object):
                 return
         dev_config, dev_config_error = ([], [])
         if config_tools is not None:
-            if self.entry.find(".//config_names/config_name") is not None:
-                # dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
-                _conf_names = [_entry.text for _entry in self.entry.findall(".//config_names/config_name")]
-                for _conf_name in _conf_names:
+            try:
+                from initat.cluster.backbone.server_enums import icswServiceEnum
+            except ImportError:
+                from initat.host_monitoring.client_enums import icswServiceEnum
+            if self.entry.find(".//config-enums/config-enum") is not None:
+                _enum_names = [_entry.text for _entry in self.entry.findall(".//config-enums/config-enum")]
+                for _enum_name in _enum_names:
+                    _enum = getattr(icswServiceEnum, _enum_name)
                     try:
-                        _cr = config_tools.server_check(server_type=_conf_name)
+                        _cr = config_tools.server_check(service_type_enum=_enum)
                     except (threading_tools.int_error, threading_tools.term_error):
                         self.log("got int or term error, reraising", logging_tools.LOG_LEVEL_ERROR)
                         raise
                     except:
                         config_tools.close_db_connection()
                         try:
-                            _cr = config_tools.server_check(server_type=_conf_name)
+                            _cr = config_tools.server_check(service_type_enum=_enum)
                         except:
                             # cannot get server_check instance, set config_check_ok to False
                             self.config_check_ok = False

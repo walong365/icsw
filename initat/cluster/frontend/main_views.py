@@ -22,10 +22,10 @@
 
 """ main views """
 
+import datetime
 import glob
 import json
 import logging
-import datetime
 import os
 
 from django.conf import settings
@@ -37,6 +37,7 @@ from django.views.generic import View
 
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import background_job, device_variable
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import server_command
 
@@ -103,11 +104,11 @@ class get_server_info(View):
     def post(self, request):
         cur_routing = routing.SrvTypeRouting(force=True)
         _server_list = []
-        for _server in cur_routing.resolv_dict.get("cluster-server", []):
+        for _server in cur_routing.resolv_dict.get(icswServiceEnum.cluster_server.name, []):
             srv_com = server_command.srv_command(command="server_status")
             _res = contact_server(
                 request,
-                "cluster-server",
+                icswServiceEnum.cluster_server,
                 srv_com,
                 timeout=10,
                 connection_id="server_status",
@@ -151,7 +152,7 @@ class server_control(View):
         # cur_routing = routing.SrvTypeRouting()
         request.xml_response["result"] = contact_server(
             request,
-            "server",
+            icswServiceEnum.cluster_server,
             srv_com,
             timeout=10,
             connection_id="server_control",

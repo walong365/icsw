@@ -26,6 +26,7 @@ import Queue
 from threading import Thread
 
 from django.conf import settings
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
@@ -49,8 +50,6 @@ if settings.DEBUG:
 else:
     _file_root = settings.ICSW_PROD_WEB_DIR
     NOCTUA_LOGO_PATH = os.path.join(settings.STATIC_ROOT, "noctua-flat-trans.png")
-
-
 
 
 ########################################################################################################################
@@ -141,7 +140,7 @@ class GenerateReportPdf(View):
 
         (result, _) = contact_server(
             request,
-            "report",
+            icswServiceEnum.report_server,
             srv_com,
         )
         report_id = result.get("report_id")
