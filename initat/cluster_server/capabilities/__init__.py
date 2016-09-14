@@ -23,10 +23,11 @@ import os
 import time
 
 import zmq
+from django.db.models import Q
 from lxml import etree
 
-from initat.cluster.backbone import db_tools
-from initat.cluster.backbone import factories
+from initat.cluster.backbone import db_tools, factories
+from initat.cluster.backbone.models import config_catalog
 from initat.cluster_server.capabilities import base
 from initat.cluster_server.config import global_config
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
@@ -92,7 +93,10 @@ class capability_process(threading_tools.process_obj):
             self.log("checking {}".format(logging_tools.get_plural("capability", len(SRV_CAPS))))
             self.__server_cap_dict = {}
             self.__cap_list = []
-            sys_cc = factories.ConfigCatalog(name="local", system_catalog=True)
+            try:
+                sys_cc = config_catalog.objects.get(Q(system_catalog=True))
+            except config_catalog.DoesNotExist:
+                sys_cc = factories.ConfigCatalog(name="local", system_catalog=True)
             for _srv_cap in SRV_CAPS:
                 cap_name = _srv_cap.Meta.name
                 try:
