@@ -366,4 +366,17 @@
         </config-enums>
         <required-license>discovery_server</required-license>
     </instance>
+    <instance check_type="meta" name="report-server" alias="report" pid_file_name="report-server/report-server.pid" has_force_stop="1" reload="1" uuid-postfix="report-server">
+        <config-enums>
+            <config-enum>report_server</config-enum>
+        </config-enums>
+        <config_names>
+            <config_name>report_server</config_name>
+        </config_names>
+        <network>
+            <ports>
+                <port type="command">8016</port>
+            </ports>
+        </network>
+    </instance>
 </instances>
