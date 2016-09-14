@@ -49,10 +49,12 @@ class client_enums(Enum):
     host_relay = icswServiceEnumBaseClient(
         "host-relayer",
         "Relayer for host-monitoring calls",
+        msi_block_name="host-relay"
     )
     snmp_relay = icswServiceEnumBaseClient(
         "SNMP-relayer",
         "Relayer for SNMP calls",
+        msi_block_name="snmp-relay"
     )
     meta_server = icswServiceEnumBaseClient(
         "meta-server",

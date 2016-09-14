@@ -167,7 +167,7 @@ class ConfigCheckObject(object):
             self.__pid_name = self.global_config["PID_NAME"]
             process_tools.save_pid(self.__pid_name)
             self.log("init MSI Block")
-            self.__msi_block = process_tools.MSIBlock(self.srv_type_enum.value.name)
+            self.__msi_block = process_tools.MSIBlock(self.srv_type_enum.value.msi_block_name)
             self.__msi_block.add_actual_pid(process_name="main")
             self.__msi_block.save()
 

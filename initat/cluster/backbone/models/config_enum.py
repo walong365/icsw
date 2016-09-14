@@ -31,6 +31,7 @@ class AppEnum(Enum):
     config_server = icswServiceEnumBase(
         "config-server",
         "enables node provisioning features",
+        msi_block_name="cluster-config-server"
     )
     cluster_server = icswServiceEnumBase(
         "cluster-server",

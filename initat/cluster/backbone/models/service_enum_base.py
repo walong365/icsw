@@ -29,7 +29,7 @@ __all__ = [
 
 
 class icswServiceEnumBase(icswServiceEnumBaseClient):
-    def __init__(self, name, info="N/A", root_service=True):
-        icswServiceEnumBaseClient.__init__(self, name, info, root_service)
+    def __init__(self, name, info="N/A", root_service=True, msi_block_name=None):
+        icswServiceEnumBaseClient.__init__(self, name, info, root_service, msi_block_name)
         self.client_service = False
         self.server_service = True
