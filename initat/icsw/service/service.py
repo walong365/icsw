@@ -34,12 +34,6 @@ from initat.constants import VERSION_CS_NAME, INITAT_BASE
 from initat.tools import logging_tools, process_tools, config_store, threading_tools
 from .constants import *
 
-try:
-    from initat.cluster.backbone.server_enums import icswServiceEnum
-except ImportError:
-    from initat.host_monitoring.client_enums import icswServiceEnum
-
-
 class Service(object):
     _COMPAT_DICT = {
         "rms-server": "rms_server",
@@ -160,6 +154,10 @@ class Service(object):
                 return
         dev_config, dev_config_error = ([], [])
         if config_tools is not None:
+            try:
+                from initat.cluster.backbone.server_enums import icswServiceEnum
+            except ImportError:
+                from initat.host_monitoring.client_enums import icswServiceEnum
             if self.entry.find(".//config-enums/config-enum") is not None:
                 _enum_names = [_entry.text for _entry in self.entry.findall(".//config-enums/config-enum")]
                 for _enum_name in _enum_names:
