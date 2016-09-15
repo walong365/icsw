@@ -235,7 +235,7 @@ class get_network_clusters(permission_required_mixin, View):
     all_required_permissions = []
 
     def post(self, request):
-        r_obj = config_tools.router_object(self.log)
+        r_obj = config_tools.RouterObject(self.log)
         return HttpResponse(json.dumps(r_obj.get_clusters()), content_type="application/json")
 
 

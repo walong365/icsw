@@ -201,7 +201,7 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         src_nds = src_dev.netdevice_set.all().values_list("pk", flat=True)
         self.log("device list: {}".format(", ".join([unicode(cur_dev) for cur_dev in dev_list])))
-        router_obj = config_tools.router_object(self.log)
+        router_obj = config_tools.RouterObject(self.log)
         for cur_dev in dev_list:
             routes = router_obj.get_ndl_ndl_pathes(
                 src_nds,

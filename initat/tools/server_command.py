@@ -25,6 +25,7 @@ import datetime
 import marshal
 import os
 import pickle
+import collections
 import re
 
 from lxml import etree
@@ -354,7 +355,7 @@ class srv_command(object):
         elif type(value) == bool:
             cur_element.text = str(value)
             cur_element.attrib["type"] = "bool"
-        elif type(value) == dict:
+        elif type(value) in [dict, collections.OrderedDict]:
             cur_element.attrib["type"] = "dict"
             for sub_key, sub_value in value.iteritems():
                 sub_el = self._element(sub_value, self.builder(sub_key))

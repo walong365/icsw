@@ -1321,7 +1321,7 @@ class NodeControlProcess(threading_tools.process_obj):
             )
         else:
             self.log("no IP address in boot-net", logging_tools.LOG_LEVEL_ERROR)
-        self.router_obj = config_tools.router_object(self.log)
+        self.router_obj = config_tools.RouterObject(self.log)
         self._setup_etherboot()
         self.dhcp_syncer = DHCPSyncer(self.log)
         self.device_state = DeviceState(self, self.log)

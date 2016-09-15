@@ -96,7 +96,7 @@ class build_process(threading_tools.process_obj):
         )
         # close database connection
         db_tools.close_connection()
-        self.router_obj = config_tools.router_object(self.log)
+        self.router_obj = config_tools.RouterObject(self.log)
         self.config_src = LogSource.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         self.register_func("generate_config", self._generate_config)
         # for requests from config_control

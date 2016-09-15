@@ -294,4 +294,4 @@ class EventLogPollerProcess(threading_tools.process_obj):
 
     @memoize_with_expiry(10)
     def _get_router_obj(self):
-        return config_tools.router_object(self.log)
+        return config_tools.RouterObject(self.log)

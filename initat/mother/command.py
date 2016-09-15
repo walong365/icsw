@@ -285,7 +285,7 @@ class ExternalCommandProcess(threading_tools.process_obj):
         # close database connection
         db_tools.close_connection()
         simple_command.setup(self)
-        self.router_obj = config_tools.router_object(self.log)
+        self.router_obj = config_tools.RouterObject(self.log)
         self.snmp_sink = SNMPSink(self.log)
         self.sc = config_tools.server_check(server_type="mother_server")
         self.register_func("delay_command", self._delay_command)

@@ -69,7 +69,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         self.version = int(time.time())
         self.log("initial config_version is {:d}".format(self.version))
-        self.router_obj = config_tools.router_object(self.log)
+        self.router_obj = config_tools.RouterObject(self.log)
         self.register_func("check_for_slaves", self._check_for_slaves)
 
         self.register_func("build_host_config", self._check_call)

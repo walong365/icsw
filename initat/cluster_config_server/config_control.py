@@ -509,7 +509,7 @@ class config_control(object):
         config_control.pending_config_requests = {}
         config_control.done_config_requests = {}
         config_control.router_last_update = time.time() - 3600
-        config_control.router_obj = config_tools.router_object(config_control.cc_log)
+        config_control.router_obj = config_tools.RouterObject(config_control.cc_log)
 
     @staticmethod
     def update_router():

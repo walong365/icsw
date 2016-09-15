@@ -347,7 +347,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
     def _check_database(self):
         if self._still_active("check database"):
             self._handle_disabled_hosts()
-            _router = config_tools.router_object(self.log)
+            _router = config_tools.RouterObject(self.log)
             for _send_com in [self._get_ipmi_hosts(_router), self._get_snmp_hosts(_router)]:
                 self._handle_xml(_send_com)
 
