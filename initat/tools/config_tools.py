@@ -51,7 +51,7 @@ except ImportError:
     pass
 
 
-class router_object(object):
+class RouterObject(object):
     def __init__(self, log_com):
         self.__log_com = log_com
         self.__cur_gen = 0
@@ -1089,6 +1089,6 @@ def _log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
 
 
 if __name__ == "__main__":
-    ro = router_object(_log_com)
+    ro = RouterObject(_log_com)
     # pprint.pprint(ro.get_clusters())
     print len(ro.get_clusters())

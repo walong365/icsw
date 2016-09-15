@@ -145,7 +145,7 @@ class server_process(
         return ok_list, error_list
 
     def reconnect_to_clients(self):
-        router_obj = config_tools.router_object(self.log)
+        router_obj = config_tools.RouterObject(self.log)
         self.log("reconnecting to {}".format(logging_tools.get_plural("client", len(Client.name_set))))
         all_servers = config_tools.device_with_config("package_server")
         if "package_server" not in all_servers:

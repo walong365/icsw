@@ -25,7 +25,7 @@ from django.db.models import Q
 import cs_base_class
 from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
 from initat.tools import ipvx_tools, logging_tools, process_tools, cluster_location
-from initat.tools.config_tools import router_object
+from initat.tools.config_tools import RouterObject
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME = "/etc/hosts"
@@ -57,7 +57,7 @@ class write_etc_hosts(cs_base_class.server_com):
             Q(device__device_group__enabled=True)
         ).values_list("pk", flat=True)
         # ref_table
-        route_obj = router_object(cur_inst.log)
+        route_obj = RouterObject(cur_inst.log)
         all_paths = []
         for s_ndev in my_idxs:
             all_paths.extend(networkx.shortest_path(route_obj.nx, s_ndev, weight="weight").values())

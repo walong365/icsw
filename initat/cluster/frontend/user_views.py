@@ -285,7 +285,7 @@ class get_device_ip(View):
         to_server_check = config_tools.server_check(device=to_dev, config=None, server_type="node")
 
         # calc route to it and use target ip
-        _router = config_tools.router_object(logger)
+        _router = config_tools.RouterObject(logger)
         route = from_server_check.get_route_to_other_device(_router, to_server_check, allow_route_to_other_networks=True, prefer_production_net=True)
 
         if route:
