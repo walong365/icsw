@@ -2,7 +2,7 @@
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
-# this file is part of discovery-server
+# this file is part of report-server
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -17,14 +17,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-from initat.report_server.report import PDFReportGenerator
-""" discovery-server, discovery part """
+""" report-server, report part """
+import traceback
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.report import ReportHistory
 from initat.tools import logging_tools, threading_tools
 from initat.report_server.config import global_config
+from initat.report_server.report import PDFReportGenerator
 
 
 class ReportGenerationProcess(threading_tools.process_obj):
@@ -58,12 +59,14 @@ class ReportGenerationProcess(threading_tools.process_obj):
 
         report_history = ReportHistory.objects.get(idx=report_history_id)
 
-        report_generator = PDFReportGenerator(
-            pk_settings,
-            devices,
-            report_history,
-        )
-        report_generator.generate_report()
+        try:
+            report_generator = PDFReportGenerator(
+                pk_settings,
+                devices,
+                report_history,
+            )
+            report_generator.generate_report()
+        except Exception:
+            self.log(traceback.format_exc(), logging_tools.LOG_LEVEL_CRITICAL)
 
         self.send_pool_message("report_finished", report_history_id)
-
