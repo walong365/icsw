@@ -33,7 +33,7 @@ from initat.cluster_server.config import global_config
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
 
 
-class capability_process(threading_tools.process_obj):
+class CapabilityProcess(threading_tools.process_obj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(
@@ -100,7 +100,7 @@ class capability_process(threading_tools.process_obj):
             for _srv_cap in SRV_CAPS:
                 cap_name = _srv_cap.Meta.name
                 try:
-                    cap_descr = _srv_cap.Meta.description,
+                    cap_descr = _srv_cap.Meta.description
                 except:
                     self.log("capability {} has no description set, ignoring...".format(cap_name), logging_tools.LOG_LEVEL_ERROR)
                 else:

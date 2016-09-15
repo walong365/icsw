@@ -31,6 +31,7 @@ from django.db.models import Q
 import cs_base_class
 from initat.cluster.backbone.models import user, group, device_config, \
     config_str, home_export_list, config
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, process_tools, server_command
 
@@ -291,6 +292,7 @@ class ldap_mixin(object):
             ),
         }
         try:
+            # FIXME, ToDo
             ldap_config = config.objects.get(Q(name="ldap_server"))
         except config.MultipleObjectsReturned:
             try:
@@ -347,7 +349,7 @@ class ldap_mixin(object):
 
 class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
     class Meta:
-        needed_configs = ["ldap_server"]
+        needed_configs = [icswServiceEnum.ldap_server]
 
     def _call(self, cur_inst):
         ldap_base = "/etc/openldap/slapd.d"
@@ -400,14 +402,14 @@ class command_mixin(object):
 
 # class create_ldap_certs(cs_base_class.server_com, ldap_mixin, command_mixin):
 #    class Meta:
-#        needed_configs = ["ldap_server"]
+#        needed_configs = [icswServiceEnum.ldap_server]
 #    def _call(self, cur_inst):
 #        pass
 
 
 class init_ldap_config(cs_base_class.server_com, ldap_mixin, command_mixin):
     class Meta:
-        needed_configs = ["ldap_server"]
+        needed_configs = [icswServiceEnum.ldap_server]
 
     def call_command(self, command, *args):
         success, result = (False, [])
@@ -593,7 +595,7 @@ class init_ldap_config(cs_base_class.server_com, ldap_mixin, command_mixin):
 
 class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
     class Meta:
-        needed_configs = ["ldap_server"]
+        needed_configs = [icswServiceEnum.ldap_server]
 
     def _call(self, cur_inst):
         # fetch configs

@@ -136,7 +136,7 @@ class user_scan_stuff(bg_stuff):
                     nfs_mounts.add(_main)
                     continue
                 elif any([_main.startswith(_nfs) for _nfs in nfs_mounts]):
-                    nfs_ignore.append(_nfs)
+                    nfs_ignore.append(_main)
                     continue
                 _last_dir = _main
                 _cur_depth = _main.count("/")

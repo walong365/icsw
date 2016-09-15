@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2008,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,6 +22,7 @@ import os
 
 from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, process_tools, server_command
+from initat.cluster.backbone.server_enums import icswServiceEnum
 
 import cs_base_class
 
@@ -30,7 +31,7 @@ NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
 
 class get_image_list(cs_base_class.server_com):
     class Meta:
-        needed_configs = ["image_server"]
+        needed_configs = [icswServiceEnum.image_server]
         needed_config_keys = ["IMAGE_SOURCE_DIR"]
 
     def _call(self, cur_inst):

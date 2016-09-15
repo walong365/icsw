@@ -34,7 +34,7 @@ from initat.tools import cluster_location, logging_tools, process_tools, server_
 from initat.server_version import VERSION_STRING
 from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 from .backup_process import backup_process
-from .capabilities import capability_process
+from .capabilities import CapabilityProcess
 from .config import global_config
 from .license_checker import LicenseChecker
 
@@ -95,7 +95,7 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
             self._init_network_sockets()
             if not self["exit_requested"]:
                 self.init_notify_framework(global_config)
-                self.add_process(capability_process("capability_process"), start=True)
+                self.add_process(CapabilityProcess("capability_process"), start=True)
                 self.add_process(LicenseChecker("license_checker"), start=True)
                 db_tools.close_connection()
                 self.register_timer(
@@ -426,7 +426,7 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
                             act_sc.name,
                             logging_tools.get_plural("config", len(act_sc.Meta.needed_configs)),
                             " ({})".format(
-                                ", ".join(act_sc.Meta.needed_configs)
+                                ", ".join([_enum.name for _enum in act_sc.Meta.needed_configs])
                             ) if act_sc.Meta.needed_configs else "",
                             "blocking" if act_sc.Meta.blocking else "not blocking",
                             "{}: {}".format(

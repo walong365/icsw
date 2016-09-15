@@ -32,11 +32,11 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import device, snmp_scheme
 from initat.cluster.backbone.routing import get_server_uuid
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.snmp.process import snmp_process_container
-from initat.tools import cluster_location, config_tools, configfile, logging_tools, process_tools, \
+from initat.tools import config_tools, configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools, uuid_tools
 from .aggregate import aggregate_process
 from .background import snmp_job, bg_job, ipmi_builder
@@ -352,16 +352,16 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
                 self._handle_xml(_send_com)
 
     def _check_reachability(self, devs, var_cache, _router, _type):
-        _srv_type = "rrd_server"
+        _srv_type = icswServiceEnum.collectd_server
         self.log(
             "Start reachability check for {} (srv {}, type {})".format(
                 logging_tools.get_plural("device", len(devs)),
-                _srv_type,
+                _srv_type.name,
                 _type,
             )
         )
         s_time = time.time()
-        _sc = config_tools.server_check(server_type=_srv_type)
+        _sc = config_tools.server_check(service_type_enum=_srv_type)
         res_dict = _sc.get_route_to_other_devices(_router, devs, allow_route_to_other_networks=True)
         _reachable, _unreachable = ([], [])
         for dev in devs:
@@ -374,7 +374,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self.log(
             "Reachability check for {} (srv {}, type {}) took {}".format(
                 logging_tools.get_plural("device", len(devs)),
-                _srv_type,
+                _srv_type.name,
                 _type,
                 logging_tools.get_diff_time_str(e_time - s_time),
             )

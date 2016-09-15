@@ -22,6 +22,7 @@ import time
 
 from django.db.models import Q
 from initat.cluster.backbone.models import network
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import config_tools, logging_tools
 
 from .config import global_config
@@ -111,7 +112,7 @@ class DHCPConfigMixin(object):
         is_authoritative = global_config["DHCP_AUTHORITATIVE"]
         self.log("writing dhcp-config, {}".format("auth" if is_authoritative else "not auth"))
 
-        my_c = config_tools.server_check(server_type="mother_server")
+        my_c = config_tools.server_check(service_type_enum=icswServiceEnum.mother_server)
         boot_ips = my_c.identifier_ip_lut.get("b", [])
         if not boot_ips:
             self.log(
