@@ -26,7 +26,7 @@ import zmq
 
 from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring import limits
-from initat.snmp.process import snmp_process_container
+from initat.snmp.process import SNMPProcessContainer
 from initat.snmp.sink import SNMPSink
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
 from initat.snmp_relay.schemes import SNMPNetObject, SNMPGeneralScheme, snmp_schemes, import_errors
@@ -87,7 +87,7 @@ class server_process(server_mixins.ICSWBasePool):
         self.__host_objects = {}
 
     def _init_processes(self):
-        self.spc = snmp_process_container(
+        self.spc = SNMPProcessContainer(
             IPC_SOCK_SNMP,
             self.log,
             global_config["SNMP_PROCESSES"],

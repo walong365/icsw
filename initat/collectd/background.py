@@ -30,6 +30,7 @@ from initat.collectd.collectd_struct import ext_com
 from initat.collectd.config import global_config
 from initat.snmp.sink import SNMPSink
 from initat.snmp.snmp_struct import value_cache
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, server_command, process_tools
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
@@ -94,10 +95,10 @@ def parse_ipmi(in_lines):
     return result
 
 
-class snmp_job(object):
+class SNMPJob(object):
     def __init__(self, id_str, ip, snmp_schemes, snmp_version, snmp_read_community, **kwargs):
         self.id_str = id_str
-        snmp_job.add_job(self)
+        SNMPJob.add_job(self)
         self.ip = ip
         self.snmp_version = snmp_version
         self.snmp_schemes = snmp_schemes
@@ -121,7 +122,7 @@ class snmp_job(object):
 
     def _init_snmp_handlers(self):
         # get snmp scheme object
-        self.snmp_handlers = snmp_job.snmp_sink.get_handlers(self.snmp_schemes)
+        self.snmp_handlers = SNMPJob.snmp_sink.get_handlers(self.snmp_schemes)
         self.log(
             "new SNMP {}, ip is {} (V{:d}, {}), {}".format(
                 self.id_str,
@@ -216,9 +217,16 @@ class snmp_job(object):
             self.bg_proc.process_data_xml(mv_tree, len(etree.tostring(mv_tree)))  # @UndefinedVariable
 
     def check_for_timeout(self):
-        diff_time = int(abs(time.time() - self.last_start))
+        diff_time = abs(time.time() - self.last_start)
         if diff_time > self.max_runtime:
-            self.log("timeout ({:d} > {:d})".format(diff_time, self.max_runtime), logging_tools.LOG_LEVEL_WARN)
+            self.log(
+                "timeout ({} > {})".format(
+                    logging_tools.get_diff_time_str(diff_time),
+                    logging_tools.get_diff_time_str(self.max_runtime)
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
+            self.bg_proc.spc.trigger_timeout(self.waiting_for)
             return True
         else:
             return False
@@ -244,14 +252,14 @@ class snmp_job(object):
         job_id = recv_data[0]
         _found = False
         _w_ignore = set()
-        for _job in snmp_job.ref_dict.itervalues():
+        for _job in SNMPJob.ref_dict.itervalues():
             if _job.waiting_for == job_id:
                 _job.feed(*recv_data[1:])
                 _found = True
             else:
                 _w_ignore.add(_job.waiting_for or "-")
         if not _found:
-            snmp_job.g_log(
+            SNMPJob.g_log(
                 "job_id {} unknown, present {:d}: {}".format(
                     job_id,
                     len(_w_ignore),
@@ -262,53 +270,55 @@ class snmp_job(object):
 
     @staticmethod
     def setup(bg_proc):
-        snmp_job.run_idx = 0
-        snmp_job.bg_proc = bg_proc
-        snmp_job.ref_dict = {}
-        snmp_job.snmp_sink = SNMPSink(bg_proc.log)
+        SNMPJob.run_idx = 0
+        SNMPJob.bg_proc = bg_proc
+        SNMPJob.ref_dict = {}
+        SNMPJob.snmp_sink = SNMPSink(bg_proc.log)
 
     @staticmethod
     def add_job(new_job):
-        snmp_job.run_idx += 1
-        new_job.idx = snmp_job.run_idx
-        snmp_job.ref_dict[new_job.id_str] = new_job
+        SNMPJob.run_idx += 1
+        new_job.idx = SNMPJob.run_idx
+        SNMPJob.ref_dict[new_job.id_str] = new_job
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        snmp_job.bg_proc.log(u"[SNMP] {}".format(what), log_level)
+        SNMPJob.bg_proc.log(u"[SNMP] {}".format(what), log_level)
 
     @staticmethod
     def get_job(job_id):
-        return snmp_job.ref_dict[job_id]
+        return SNMPJob.ref_dict[job_id]
 
     @staticmethod
     def sync_jobs_with_id_list(id_list):
         # sync the currently configured jobs with the new id_list
-        _cur = set(snmp_job.ref_dict.keys())
+        _cur = set(SNMPJob.ref_dict.keys())
         _new = set(id_list)
         _to_remove = _cur - _new
         _same = _cur & _new
         _to_create = _new - _cur
         if _to_remove:
-            snmp_job.g_log(
+            SNMPJob.g_log(
                 "{} to remove: {}".format(
                     logging_tools.get_plural("SNMP job", len(_to_remove)),
                     ", ".join(sorted(list(_to_remove)))
                 )
             )
             for _rem in _to_remove:
-                snmp_job.ref_dict[_rem].to_remove = True
+                SNMPJob.ref_dict[_rem].to_remove = True
         return _to_create, _to_remove, _same
 
     @staticmethod
     def check_jobs(start=True):
         _to_delete = []
-        for id_str, job in snmp_job.ref_dict.iteritems():
+        # print "-"
+        for id_str, job in SNMPJob.ref_dict.iteritems():
+            # print "*", id_str, job.ip, job.running
             job.check(start=start)
             if job.to_remove and not job.running:
                 _to_delete.append(id_str)
         if _to_delete:
-            snmp_job.g_log(
+            SNMPJob.g_log(
                 "removing {}: {}".format(
                     logging_tools.get_plural("SNMP job", len(_to_delete)),
                     ", ".join(sorted(_to_delete))
@@ -317,15 +327,15 @@ class snmp_job(object):
             )
             for _del in _to_delete:
                 try:
-                    del snmp_job.ref_dict[_del]
+                    del SNMPJob.ref_dict[_del]
                 except KeyError:
-                    snmp_job.g_log(
+                    SNMPJob.g_log(
                         "key {} not in ref_dict, strange...".format(_del),
                         logging_tools.LOG_LEVEL_CRITICAL
                     )
 
 
-class ipmi_builder(object):
+class IPMIBuilder(object):
     def __init__(self):
         pass
 
@@ -374,10 +384,10 @@ class ipmi_builder(object):
         )
 
 
-class bg_job(object):
+class BackgroundJob(object):
     def __init__(self, id_str, comline, builder, **kwargs):
         self.id_str = id_str
-        bg_job.add_job(self)
+        BackgroundJob.add_job(self)
         self.device_name = kwargs.get("device_name", "")
         self.uuid = kwargs.get("uuid", "")
         self.comline = comline
@@ -393,7 +403,7 @@ class bg_job(object):
         self.check()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        bg_job.bg_proc.log(u"[bgj {:d}] {}".format(self.idx, what), log_level)
+        BackgroundJob.bg_proc.log(u"[bgj {:d}] {}".format(self.idx, what), log_level)
 
     def update_attribute(self, attr_name, attr_value):
         if getattr(self, attr_name) != attr_value:
@@ -413,7 +423,7 @@ class bg_job(object):
         self.__ec = ext_com(
             self.log,
             self.comline,
-            debug=bg_job.debug,
+            debug=BackgroundJob.debug,
         )
         self.result = None
         self.__ec.run()
@@ -449,7 +459,7 @@ class bg_job(object):
             else:
                 self.running = False
                 stdout, stderr = self.__ec.communicate()
-                if bg_job.debug or self.result:
+                if BackgroundJob.debug or self.result:
                     self.log(
                         "done (RC={:d}) in {} (stdout: {}{})".format(
                             self.result,
@@ -464,14 +474,14 @@ class bg_job(object):
                     if self.builder is not None:
                         _tree, _mon_info = self.builder.build(stdout, name=self.device_name, uuid=self.uuid, time="{:d}".format(int(self.last_start)))
                         # graphing
-                        bg_job.bg_proc.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
+                        BackgroundJob.bg_proc.process_data_xml(_tree, len(etree.tostring(_tree)))  # @UndefinedVariable
                         # monitoring
-                        bg_job.bg_proc.send_to_remote_server(
-                            "md-config-server",
+                        BackgroundJob.bg_proc.send_to_remote_server(
+                            icswServiceEnum.monitor_server,
                             unicode(server_command.srv_command(command="monitoring_info", mon_info=_mon_info))
                         )
                     else:
-                        bg_job.log("no builder set", logging_tools.LOG_LEVEL_ERROR)
+                        BackgroundJob.log("no builder set", logging_tools.LOG_LEVEL_ERROR)
                 if stderr:
                     self.log("error output follows, cmdline was '{}'".format(self.comline))
                     for line_num, line in enumerate(stderr.strip().split("\n")):
@@ -485,53 +495,53 @@ class bg_job(object):
 
     @staticmethod
     def setup(bg_proc):
-        bg_job.run_idx = 0
-        bg_job.bg_proc = bg_proc
-        bg_job.debug = global_config["DEBUG"]
-        bg_job.ref_dict = {}
+        BackgroundJob.run_idx = 0
+        BackgroundJob.bg_proc = bg_proc
+        BackgroundJob.debug = global_config["DEBUG"]
+        BackgroundJob.ref_dict = {}
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        bg_job.bg_proc.log(u"[bgj] {}".format(what), log_level)
+        BackgroundJob.bg_proc.log(u"[bgj] {}".format(what), log_level)
 
     @staticmethod
     def add_job(new_job):
-        bg_job.run_idx += 1
-        new_job.idx = bg_job.run_idx
-        bg_job.ref_dict[new_job.id_str] = new_job
+        BackgroundJob.run_idx += 1
+        new_job.idx = BackgroundJob.run_idx
+        BackgroundJob.ref_dict[new_job.id_str] = new_job
 
     @staticmethod
     def get_job(job_id):
-        return bg_job.ref_dict[job_id]
+        return BackgroundJob.ref_dict[job_id]
 
     @staticmethod
     def sync_jobs_with_id_list(id_list):
         # sync the currently configures jobs with the new id_list
-        _cur = set(bg_job.ref_dict.keys())
+        _cur = set(BackgroundJob.ref_dict.keys())
         _new = set(id_list)
         _to_remove = _cur - _new
         _same = _cur & _new
         _to_create = _new - _cur
         if _to_remove:
-            bg_job.g_log(
+            BackgroundJob.g_log(
                 "{} to remove: {}".format(
                     logging_tools.get_plural("background job", len(_to_remove)),
                     ", ".join(sorted(list(_to_remove)))
                 )
             )
             for _rem in _to_remove:
-                bg_job.ref_dict[_rem].to_remove = True
+                BackgroundJob.ref_dict[_rem].to_remove = True
         return _to_create, _to_remove, _same
 
     @staticmethod
     def check_jobs(start=True):
         _to_delete = []
-        for id_str, job in bg_job.ref_dict.iteritems():
+        for id_str, job in BackgroundJob.ref_dict.iteritems():
             job.check(start=start)
             if job.to_remove and not job.running:
                 _to_delete.append(id_str)
         if _to_delete:
-            bg_job.g_log(
+            BackgroundJob.g_log(
                 "removing {}: {}".format(
                     logging_tools.get_plural(
                         "background job", len(_to_delete)
@@ -541,4 +551,4 @@ class bg_job(object):
                 logging_tools.LOG_LEVEL_WARN
             )
             for _del in _to_delete:
-                del bg_job.ref_dict[_del]
+                del BackgroundJob.ref_dict[_del]

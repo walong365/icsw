@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2014,2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,27 +17,28 @@
 #
 """ SNMP batch definition """
 
-from pyasn1.codec.ber import encoder, decoder  # @UnresolvedImport
-from pyasn1.type.error import ValueConstraintError  # @UnresolvedImport
-from pysnmp.carrier.asynsock.dgram import udp  # @UnresolvedImport
-from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher  # @UnresolvedImport
-from pysnmp.proto import rfc1155, rfc1902, api  # @UnresolvedImport
-from pysnmp.smi import exval  # @UnresolvedImport
-from pysnmp.smi.exval import noSuchInstance
-from initat.tools import logging_tools
-import pprint  # @UnusedImport
-import pyasn1  # @UnresolvedImport
 import time
 
+import pyasn1
+from pyasn1.codec.ber import encoder
+from pyasn1.type.error import ValueConstraintError
+from pysnmp.carrier.asynsock.dgram import udp
+from pysnmp.proto import api
+from pysnmp.smi import exval
+from pysnmp.smi.exval import noSuchInstance
 
-class snmp_batch(object):
+from initat.tools import logging_tools
+
+
+class SNMPBatch(object):
     batch_key = 0
 
     def __init__(self, proc, *scheme_data, **kwargs):
-        snmp_batch.batch_key += 1
-        self.key = snmp_batch.batch_key
+        SNMPBatch.batch_key += 1
+        self.key = SNMPBatch.batch_key
         self.proc = proc
         snmp_ver, snmp_host, snmp_community, self.envelope, self.transform_single_key, self.__timeout = scheme_data[0:6]
+        self.__forced_timeout = False
         self.__verbose = kwargs.pop("VERBOSE", False)
         self.__simplify_result = kwargs.get("simplify_result", False)
         self._clear_errors()
@@ -344,9 +345,12 @@ class snmp_batch(object):
         self.request_id = self.__p_mod.apiPDU.getRequestID(self.__req_pdu)
         self.proc.send_next(self, (encoder.encode(self.__req_msg), self.__act_domain, self.__act_address))
 
+    def trigger_timeout(self):
+        self.__forced_timeout = True
+
     def timer_func(self, act_time):
         diff_time = int(abs(act_time - self.__start_time))
-        trigger_timeout = False
+        trigger_timeout = self.__forced_timeout
         if not self.__data_got and self.__timer_count:  # and diff_time > self.__timeout / 2:
             if not self.__num_items and diff_time > self.__timeout:
                 self.log(

@@ -26,11 +26,11 @@ from pysnmp.carrier.asynsock.dispatch import AsynsockDispatcher
 from pysnmp.proto import api
 
 from initat.tools import logging_tools, process_tools, threading_tools
-from .batch import snmp_batch
+from .batch import SNMPBatch
 from .config import DEFAULT_RETURN_NAME
 
 
-class snmp_process(threading_tools.process_obj):
+class SNMPProcess(threading_tools.process_obj):
     def __init__(self, name, conf_dict, **kwargs):
         self.__snmp_name = name
         self.__log_name, self.__log_destination = (
@@ -48,12 +48,15 @@ class snmp_process(threading_tools.process_obj):
             self.__log_name,
             self.__log_destination,
             zmq=True,
-            context=self.zmq_context)
+            context=self.zmq_context
+        )
         self.__return_proc_name = None
         self.register_func("fetch_snmp", self._fetch_snmp)
         self.register_func("register_return", self._register_return)
+        self.register_func("trigger_timeout", self._trigger_timeout)
         self._init_dispatcher()
         self.__job_dict = {}
+        self.__envelope_dict = {}
         self.__req_id_lut = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -88,6 +91,7 @@ class snmp_process(threading_tools.process_obj):
                     ),
                 )
         del self.__job_dict[cur_batch.key]
+        del self.__envelope_dict[cur_batch.envelope]
         self.__disp.jobFinished(cur_batch.key)
 
     def loop(self):
@@ -138,7 +142,17 @@ class snmp_process(threading_tools.process_obj):
         self.send_pool_message("hellox", "hello2", "hello3", target=self.__return_proc_name)
 
     def _fetch_snmp(self, *scheme_data, **kwargs):
-        self._inject(snmp_batch(self, *scheme_data, verbose=self.__verbose, **kwargs))
+        new_batch = SNMPBatch(self, *scheme_data, verbose=self.__verbose, **kwargs)
+        self.__envelope_dict[new_batch.envelope] = new_batch
+        self._inject(new_batch)
+
+    def _trigger_timeout(self, *args, **kwargs):
+        batch_id = args[0]
+        if batch_id in self.__envelope_dict:
+            self.log("triggering timeout for batch_id {}".format(batch_id), logging_tools.LOG_LEVEL_WARN)
+            self.__envelope_dict[batch_id].trigger_timeout()
+        else:
+            self.log("unknown batch_id {}".format(batch_id), logging_tools.LOG_LEVEL_ERROR)
 
     def _timer_func(self, act_time):
         timed_out = [key for key, cur_job in self.__job_dict.iteritems() if cur_job.timer_func(act_time)]
