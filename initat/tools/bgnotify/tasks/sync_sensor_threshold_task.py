@@ -20,6 +20,7 @@
 import datetime
 
 from initat.cluster.backbone.models import background_job_run, cluster_timezone
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, config_tools, server_command
 from .base import BGInotifyTask
 
@@ -45,7 +46,7 @@ class SyncSensorThresholdTask(BGInotifyTask):
                         start=cluster_timezone.localize(datetime.datetime.now()),
                     ),
                     srv_com,
-                    "collectd",
+                    icswServiceEnum.collectd_server,
                 )
             )
         else:

@@ -22,6 +22,7 @@ import datetime
 from django.db.models import Q
 
 from initat.cluster.backbone.models import background_job_run, cluster_timezone, virtual_desktop_user_setting
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import server_command
 from .base import BGInotifyTask
 
@@ -51,7 +52,7 @@ class ReloadVirtualDesktopDispatcher(BGInotifyTask):
                     start=cluster_timezone.localize(datetime.datetime.now()),
                 ),
                 srv_com,
-                "server",
+                icswServiceEnum.cluster_server,
             )
         ]
         return to_run

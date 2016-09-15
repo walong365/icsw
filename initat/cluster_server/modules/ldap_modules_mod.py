@@ -290,7 +290,16 @@ class ldap_mixin(object):
                 "base of automounts",
             ),
         }
-        ldap_config = config.objects.get(Q(name="ldap_server"))  # @UndefinedVariable
+        try:
+            ldap_config = config.objects.get(Q(name="ldap_server"))
+        except config.MultipleObjectsReturned:
+            try:
+                ldap_config = config.objects.get(Q(name="ldap_server") & Q(config_catalog__system_catalog=True))
+            except:
+                ldap_config = None
+        if not ldap_config:
+            self.log("No ldap_config found (or more than one or none in system catalog)", logging_tools.LOG_LEVEL_ERROR)
+            return {}
         par_dict = {cur_var.name.lower(): cur_var.value for cur_var in config_str.objects.filter(Q(config=ldap_config))}
         needed_keys = set(["base_dn", "admin_cn", "root_passwd"])
         missed_keys = needed_keys - set(par_dict.keys())

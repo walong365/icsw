@@ -302,7 +302,7 @@
             <file value="/opt/nagvis4icinga/share/server/core/defined/global.php" user="idmon" group="idg"/>
         </access-rights>
     </instance>
-    <instance name="mongodb-init" check_type="simple" pid_file_name="mongodb-init/mongodb-init.pid" any-processes-ok="1" runs_on="system">
+    <instance name="mongodb-init" check_type="simple" pid_file_name="mongodb-init/mongodb-init.pid" any-processes-ok="1">
         <config-enums>
             <config-enum>mongodb_server</config-enum>
         </config-enums>

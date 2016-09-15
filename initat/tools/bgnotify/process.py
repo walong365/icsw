@@ -26,6 +26,7 @@ from django.db.models import Q
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import background_job, background_job_run, cluster_timezone
 from initat.cluster.backbone.routing import SrvTypeRouting, get_server_uuid
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, process_tools, server_command
 from .tasks import BG_TASKS
 
@@ -154,7 +155,7 @@ class ServerBackgroundNotifyMixin(object):
                 # set BackGroundJobRunID
                 _send_xml["bgjrid"] = "{:d}".format(_run_job.pk)
                 # add to waiting list
-                _is_local = _run_job.server_id == self.__server_idx and _srv_type == "server"
+                _is_local = _run_job.server_id == self.__server_idx and _srv_type == icswServiceEnum.cluster_server
                 _conn_str = self.srv_routing.get_connection_string(_srv_type, _run_job.server_id)
                 self.__waiting_ids.append(_run_job.pk)
                 if not _conn_str:
@@ -174,8 +175,9 @@ class ServerBackgroundNotifyMixin(object):
                 else:
                     _srv_uuid = get_server_uuid(_srv_type, _run_job.server.uuid)
                     self.log(
-                        u"command to {} {} ({}, command {}, {})".format(
-                            _srv_type,
+                        u"command to {} on {} {} ({}, command {}, {})".format(
+                            _srv_type.name,
+                            unicode(_run_job.server),
                             _conn_str,
                             _srv_uuid,
                             _send_xml["*command"],
