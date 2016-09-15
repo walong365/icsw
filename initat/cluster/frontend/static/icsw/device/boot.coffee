@@ -580,6 +580,7 @@ angular.module(
             if user.has_var(@var_name)
                 for key, value of angular.fromJson(user.get_var(@var_name).json_value)
                     @lut[key].set_enabled(value)
+                @build_selected_info()
 
         is_enabled: (short) =>
             return @lut[short].enabled
@@ -1176,7 +1177,7 @@ angular.module(
                     d = $q.defer()
                     # _prepare_post_data(sub_scope)
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         _bs.bo_enabled = $scope.struct.boot_options.get_bo_enabled()

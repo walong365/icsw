@@ -424,7 +424,7 @@ class SrvTypeRouting(object):
         else:
             log_lines.append((log_level, log_str))
 
-    def feed_srv_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error, srv_type):
+    def feed_srv_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error, srv_type_enum):
         # TODO: if log_error, log all msgs with log_level >= 40
         if result is None:
             # todo: beautify output
@@ -439,8 +439,8 @@ class SrvTypeRouting(object):
             log_str, log_level = result.get_log_tuple()
             if log_result or (log_error and log_level >= logging_tools.LOG_LEVEL_ERROR):
                 if log_str.lower().startswith("error sending"):
-                    log_str = "{} at {}".format(
-                        srv_type,
+                    log_str = "error contacting {} at {}".format(
+                        srv_type_enum.value.name,
                         conn_str.split("/")[-1].split(":")[0],
                     )
                 self._log(request, log_lines, log_str, log_level)

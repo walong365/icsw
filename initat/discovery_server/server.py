@@ -52,7 +52,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             ]
         )
         self.CC.re_insert_config()
-        self._log_config()
+        self.CC.log_config()
         self.add_process(DiscoveryProcess("discovery"), start=True)
         self.add_process(EventLogPollerProcess(EventLogPollerProcess.PROCESS_NAME), start=True)
         self.add_process(GenerateAssetsProcess("generate_assets"), start=True)
@@ -119,15 +119,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         _snmp_sock = self.spc.create_ipc_socket(self.zmq_context, IPC_SOCK_SNMP)
         self.register_poller(_snmp_sock, zmq.POLLIN, self.spc.handle_with_socket)  # @UndefinedVariable
         self.spc.check()
-
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = global_config.get_config_info()
-        self.log("Found {:d} valid config-lines:".format(len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
 
     def process_start(self, src_process, src_pid):
         self.CC.process_added(src_process, src_pid)

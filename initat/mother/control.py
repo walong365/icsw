@@ -221,7 +221,7 @@ class Host(object):
         if dev_spec in Host.__lut:
             return Host.__lut[dev_spec]
         else:
-            if not dev_spec.isdigit():
+            if isinstance(dev_spec, basestring) and not dev_spec.isdigit():
                 # try to resolve uuid
                 try:
                     pk = device.objects.get(Q(uuid=dev_spec))
