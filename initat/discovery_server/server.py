@@ -43,7 +43,6 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.register_exception("term_error", self._int_error)
         self.CC.init(icswServiceEnum.discovery_server, global_config)
         self.CC.check_config()
-        self.__pid_name = global_config["PID_NAME"]
         # close connection (daemonize)
         db_tools.close_connection()
         self.CC.read_config_from_db(
@@ -53,8 +52,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             ]
         )
         self.CC.re_insert_config()
-        self._log_config()
-        self.__msi_block = self._init_msi_block()
+        self.CC.log_config()
         self.add_process(DiscoveryProcess("discovery"), start=True)
         self.add_process(EventLogPollerProcess(EventLogPollerProcess.PROCESS_NAME), start=True)
         self.add_process(GenerateAssetsProcess("generate_assets"), start=True)
@@ -94,17 +92,10 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self["exit_requested"] = True
 
     def _snmp_process_start(self, **kwargs):
-        self.__msi_block.add_actual_pid(
-            kwargs["pid"],
-            process_name=kwargs["process_name"],
-        )
-        self.__msi_block.save_block()
-        process_tools.append_pids(self.__pid_name, kwargs["pid"])
+        self.CC.process_added(kwargs["process_name"], kwargs["pid"])
 
     def _snmp_process_exit(self, **kwargs):
-        self.__msi_block.remove_actual_pid(kwargs["pid"])
-        self.__msi_block.save_block()
-        process_tools.remove_pids(self.__pid_name, kwargs["pid"])
+        self.CC.process_removed(kwargs["pid"])
 
     def _init_processes(self):
         self.spc = snmp_process_container(
@@ -129,33 +120,11 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.register_poller(_snmp_sock, zmq.POLLIN, self.spc.handle_with_socket)  # @UndefinedVariable
         self.spc.check()
 
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [%d] %s" % (log_level, line))
-        conf_info = global_config.get_config_info()
-        self.log("Found {:d} valid config-lines:".format(len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
-
     def process_start(self, src_process, src_pid):
-        process_tools.append_pids(self.__pid_name, src_pid)
-        self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
-        self.__msi_block.save_block()
-
-    def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name)
-        self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("discovery-server")
-        msi_block.add_actual_pid()
-        msi_block.kill_pids = True
-        msi_block.save_block()
-        return msi_block
+        self.CC.process_added(src_process, src_pid)
 
     def loop_end(self):
         self.spc.close()
-        process_tools.delete_pid(self.__pid_name)
-        self.__msi_block.remove_meta_block()
 
     def loop_post(self):
         self.network_unbind()
@@ -194,7 +163,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):
-        return self.server_status(srv_com, self.__msi_block, global_config, spc=self.spc)
+        return self.server_status(srv_com, self.CC.msi_block, global_config, spc=self.spc)
 
     @RemoteCall(target_process="discovery")
     def scan_system_info(self, srv_com, **kwargs):

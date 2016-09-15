@@ -58,7 +58,6 @@ class main_process(ICSWBasePoolClient):
         )
         # check for correct rights
         self._check_dirs()
-        self._init_msi_block()
         self._init_network_sockets()
         self._init_inotify()
         self.register_exception("int_error", self._sigint)
@@ -154,17 +153,6 @@ class main_process(ICSWBasePoolClient):
                 )
             )
             os.chmod(main_dir, new_stat)
-
-    def _init_msi_block(self):
-        # store pid name because global_config becomes unavailable after SIGTERM
-        self.__pid_name = global_config["PID_NAME"]
-        process_tools.save_pids(self.__pid_name)
-        self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("meta-server")
-        msi_block.add_actual_pid(process_name="main")
-        msi_block.kill_pids = True
-        msi_block.save_block()
-        self.__msi_block = msi_block
 
     def _sigint(self, err_cause):
         if self.__exit_process:
@@ -269,9 +257,7 @@ class main_process(ICSWBasePoolClient):
             self._check_processes(force=True)
 
     def loop_end(self):
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
+        pass
 
     def _init_meminfo(self):
         self.__last_meminfo_keys, self.__act_meminfo_line = ([], 0)
@@ -397,7 +383,7 @@ class main_process(ICSWBasePoolClient):
             )
 
     def _read_msi_from_disk(self, file_name):
-        new_meta_info = process_tools.meta_server_info(file_name, self.log)
+        new_meta_info = process_tools.MSIBlock(file_name, self.log)
         if new_meta_info.name:
             self.log(
                 "read meta_info_block for {} (file {}, info: {})".format(

@@ -31,6 +31,7 @@ class AppEnum(Enum):
     config_server = icswServiceEnumBase(
         "config-server",
         "enables node provisioning features",
+        msi_block_name="cluster-config-server"
     )
     cluster_server = icswServiceEnumBase(
         "cluster-server",
@@ -39,10 +40,12 @@ class AppEnum(Enum):
     mother_server = icswServiceEnumBase(
         "mother-server",
         "enables basic nodeboot via PXE functionalities",
+        msi_block_name="mother"
     )
     monitor_server = icswServiceEnumBase(
         "monitor-server",
         "sets device as the monitor master server",
+        msi_block_name="md-config-server"
     )
     discovery_server = icswServiceEnumBase(
         "discovery-server",
@@ -58,7 +61,8 @@ class AppEnum(Enum):
     )
     collectd_server = icswServiceEnumBase(
         "collectd-server",
-        "Collect MachineVectors from remote machines and store them"
+        "Collect MachineVectors from remote machines and store them",
+        msi_block_name="collectd"
     )
     rms_server = icswServiceEnumBase(
         "rms-server",
@@ -66,7 +70,8 @@ class AppEnum(Enum):
     )
     grapher_server = icswServiceEnumBase(
         "grapher-server",
-        "Draw graphs, frontend to collectd"
+        "Draw graphs, frontend to collectd",
+        msi_block_name="rrd-grapher",
     )
     image_server = icswServiceEnumBase(
         "image-server",
@@ -91,6 +96,11 @@ class AppEnum(Enum):
     mongodb_server = icswServiceEnumBase(
         "monogdb-server",
         "Starts a mongodb server",
+        root_service=True,
+    )
+    report_server = icswServiceEnumBase(
+        "report-server",
+        "Starts a report server",
         root_service=True,
     )
 

@@ -48,7 +48,6 @@ class server_process(
         )
         self.CC.init(icswServiceEnum.package_server, global_config)
         self.CC.check_config()
-        self.__pid_name = global_config["PID_NAME"]
         self.__pc_port = InstanceXML(quiet=True).get_port_dict("package-client", command=True)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
@@ -56,7 +55,6 @@ class server_process(
         db_tools.close_connection()
         self.CC.log_config()
         self.CC.re_insert_config()
-        self.__msi_block = self._init_msi_block()
         self._init_clients()
         self._init_network_sockets()
         self.add_process(RepoProcess("repo"), start=True)
@@ -69,18 +67,6 @@ class server_process(
     def _init_clients(self):
         Client.init(self)
 
-    def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name)
-        if not global_config["DEBUG"] or True:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("package-server")
-            msi_block.add_actual_pid(process_name="main")
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
-        return msi_block
-
     def _int_error(self, err_cause):
         if self["exit_requested"]:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
@@ -92,10 +78,7 @@ class server_process(
         self.send_to_process("repo", "rescan_all")
 
     def process_start(self, src_process, src_pid):
-        process_tools.append_pids(self.__pid_name, src_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
-            self.__msi_block.save_block()
+        self.CC.process_added(src_process, src_pid)
 
     def loop_end(self):
         for c_name in Client.name_set:
@@ -104,9 +87,6 @@ class server_process(
                 self.log("no client found for '{}'".format(c_name), logging_tools.LOG_LEVEL_ERROR)
             else:
                 cur_c.close()
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
 
     def loop_post(self):
         self.network_unbind()
@@ -205,7 +185,7 @@ class server_process(
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):
-        return self.server_status(srv_com, self.__msi_block, global_config)
+        return self.server_status(srv_com, self.CC.msi_block, global_config)
 
     @RemoteCall(target_process="repo")
     def reload_searches(self, srv_com, **kwargs):

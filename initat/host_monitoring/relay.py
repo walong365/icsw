@@ -96,7 +96,6 @@ class relay_code(ICSWBasePool, HMHRMixin):
         self.install_signal_handlers()
         ZMQDiscovery.init(self, self.CC.CS["hm.socket.backlog.size"], self.__global_timeout, self.__verbose, self.__force_resolve)
         self._init_filecache()
-        self._init_msi_block()
         self._change_rlimits()
         self._init_network_sockets()
         self._init_ipc_sockets()
@@ -318,24 +317,8 @@ class relay_code(ICSWBasePool, HMHRMixin):
                 self.log("setting client '{}:{:d}' to '{}'".format(c_name, c_port, c_type))
                 self.__client_dict[c_name] = c_type
 
-    def _init_msi_block(self):
-        # store pid name because global_config becomes unavailable after SIGTERM
-        self.__pid_name = global_config["PID_NAME"]
-        process_tools.save_pids(global_config["PID_NAME"])
-        self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("collrelay")
-        msi_block.add_actual_pid(process_name="main")
-        msi_block.kill_pids = True
-        # msi_block.heartbeat_timeout = 60
-        msi_block.save_block()
-        self.__msi_block = msi_block
-
     def process_start(self, src_process, src_pid):
-        # twisted needs 4 threads if connecting to TCP clients, 3 if not (???)
-        process_tools.append_pids(self.__pid_name, src_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
-            self.__msi_block.save_block()
+        self.CC.process_added(src_process, src_pid)
 
     def _check_timeout(self):
         HostConnection.check_timeout_global(ZMQDiscovery)
@@ -770,7 +753,7 @@ class relay_code(ICSWBasePool, HMHRMixin):
             self._send_result(src_id, "cannot interpret", limits.nag_STATE_CRITICAL)
         self.__num_messages += 1
         if self.__num_messages % 1000 == 0:
-            pid_list = sorted(list(set(self.__msi_block.pids)))
+            pid_list = sorted(list(set(self.CC.msi_block.pids)))
             self.log("memory usage is {} after {}".format(
                 ", ".join(["{:d}={:s}".format(cur_pid, logging_tools.get_size_str(process_tools.get_mem_info(cur_pid))) for cur_pid in pid_list]),
                 logging_tools.get_plural("message", self.__num_messages))
@@ -1135,9 +1118,6 @@ class relay_code(ICSWBasePool, HMHRMixin):
         from initat.host_monitoring import modules
         for cur_mod in modules.module_list:
             cur_mod.close_module()
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
 
     def loop_post(self):
         self.CC.close()

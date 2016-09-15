@@ -43,6 +43,7 @@ from initat.cluster.backbone.models import device_variable, category, \
     category_tree, location_gfx, DeleteRequest, device_mon_location
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools import logging_tools, process_tools, server_command
@@ -321,7 +322,7 @@ class GetKpiSourceData(View):
         srv_com['dev_mon_cat_tuples'] = request.POST['dev_mon_cat_tuples']
         srv_com['time_range'] = request.POST['time_range']
         srv_com['time_range_parameter'] = request.POST['time_range_parameter']
-        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False)
+        result = contact_server(request, icswServiceEnum.monitor_server, srv_com, log_error=True, log_result=False)
         if result:
             # print result.pretty_print()
             request.xml_response['response'] = result['kpi_set']
@@ -335,7 +336,7 @@ class CalculateKpiPreview(View):
         srv_com = server_command.srv_command(command="calculate_kpi_preview")
         srv_com["kpi_serialized"] = request.POST['kpi_serialized']
         srv_com['dev_mon_cat_tuples'] = request.POST['dev_mon_cat_tuples']
-        result = contact_server(request, "md-config", srv_com, log_error=True, log_result=False, timeout=120)
+        result = contact_server(request, icswServiceEnum.monitor_server, srv_com, log_error=True, log_result=False, timeout=120)
         if result:
             request.xml_response['kpi_set'] = result.get('kpi_set', json.dumps(None))
             request.xml_response['kpi_error_report'] = result.get('kpi_error_report', json.dumps(None))
@@ -446,7 +447,7 @@ class AddDeleteRequest(View):
                     del_req.save()
 
         srv_com = server_command.srv_command(command="handle_delete_requests")
-        contact_server(request, "server", srv_com, log_result=False)
+        contact_server(request, icswServiceEnum.cluster_server, srv_com, log_result=False)
 
 
 class CheckDeletionStatus(View):

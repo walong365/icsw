@@ -34,6 +34,7 @@ from initat.cluster.backbone.models import device
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import uuid_tools, logging_tools, server_command
 from initat.tools.config_tools import server_check, device_with_config, router_object
+from initat.cluster.backbone.server_enums import icswServiceEnum
 
 logger = logging.getLogger("cluster.routing")
 
@@ -152,10 +153,10 @@ class SrvTypeRouting(object):
     def service_types(self):
         return [key for key in self._resolv_dict.keys() if not key.startswith("_")]
 
-    def get_server_address(self, srv_type, server_id=None):
-        if srv_type in self:
+    def get_server_address(self, srv_type_enum, server_id=None):
+        if srv_type_enum.name in self:
             # server list
-            _srv_list = self[srv_type]
+            _srv_list = self[srv_type_enum.name]
             if server_id:
                 # filter
                 _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
@@ -163,7 +164,7 @@ class SrvTypeRouting(object):
                     self.log(
                         "no server_id {:d} found for srv_type {}, taking first one".format(
                             server_id,
-                            srv_type
+                            srv_type_enum.name
                         ),
                         logging_tools.LOG_LEVEL_CRITICAL,
                     )
@@ -174,21 +175,21 @@ class SrvTypeRouting(object):
             return _found_srv[0][1]
         else:
             self.log(
-                "no ServerType {} defined".format(srv_type),
+                "no ServerType {} defined".format(srv_type_enum.name),
                 logging_tools.LOG_LEVEL_CRITICAL
             )
             return None
 
-    def get_connection_string(self, srv_type, server_id=None):
-        _srv_address = self.get_server_address(srv_type, server_id=server_id)
+    def get_connection_string(self, srv_type_enum, server_id=None):
+        _srv_address = self.get_server_address(srv_type_enum, server_id=server_id)
         if _srv_address is not None:
             return "tcp://{}:{:d}".format(
                 _srv_address,
-                _INSTANCE.get_port_dict(srv_type, command=True),
+                _INSTANCE.get_port_dict(srv_type_enum, command=True),
             )
         else:
             self.log(
-                "no ServerType {} defined".format(srv_type),
+                "no ServerType {} defined".format(srv_type_enum),
                 logging_tools.LOG_LEVEL_CRITICAL
             )
             return None
@@ -220,7 +221,7 @@ class SrvTypeRouting(object):
         # local device
         _myself = server_check(server_type="", fetch_network_info=True)
         _router = router_object(self.logger)
-        conf_names = sum([_INSTANCE.get_config_names(_inst.get("name")) for _inst in _INSTANCE.get_all_instances()], [])
+        enum_names = sum([_INSTANCE.get_config_enums(_inst.get("name")) for _inst in _INSTANCE.get_all_instances()], [])
         # build reverse lut
         _rv_lut = {}
         _INSTANCES_WITH_NAMES = set()
@@ -230,9 +231,9 @@ class SrvTypeRouting(object):
             _inst_name = _inst.attrib["name"]
             if _INSTANCE.do_node_split(_inst):
                 node_split_list.append(_inst_name)
-            for _conf_name in _INSTANCE.get_config_names(_inst):
+            for _enum_name in _INSTANCE.get_config_enums(_inst):
                 _INSTANCES_WITH_NAMES.add(_inst_name)
-                _rv_lut.setdefault(_conf_name, []).append(_inst_name)  # [_conf_name] = _inst_name
+                _rv_lut.setdefault(_enum_name, []).append(_inst_name)  # [_conf_name] = _inst_name
         # for key, value in _SRV_NAME_TYPE_MAPPING.iteritems():
         #     _rv_lut.update({_name: key for _name in value})
         # resolve dict
@@ -246,11 +247,11 @@ class SrvTypeRouting(object):
         # unroutable configs
         _unroutable_configs = {}
         # get all configs
-        for _conf_name in conf_names:
-            _srv_type_list = _rv_lut[_conf_name]
-            _sc = device_with_config(config_name=_conf_name)
-            if _conf_name in _sc:
-                for _dev in _sc[_conf_name]:
+        for _enum_name in enum_names:
+            _srv_type_list = _rv_lut[_enum_name]
+            _sc = device_with_config(service_type_enum=getattr(icswServiceEnum, _enum_name))
+            if _enum_name in _sc:
+                for _dev in _sc[_enum_name]:
                     if _dev.effective_device is None:
                         # may be the case when the local system is too old (database-wise)
                         continue
@@ -284,15 +285,18 @@ class SrvTypeRouting(object):
                             else:
                                 _first_ip = None
                         if _first_ip:
-                            for _srv_type in _srv_type_list:
-                                _add_t = (_srv_type, _conf_name, _dev.effective_device.pk)
+                            _srv_type = _enum_name
+                            # print "*", _srv_type_list
+                            # for _srv_type in _srv_type_list:
+                            if True:
+                                _add_t = (_srv_type, _enum_name, _dev.effective_device.pk)
                                 if _add_t not in _used_tuples:
                                     _used_tuples.add(_add_t)
                                     # lookup for simply adding new config names
                                     _dst_key = (_srv_type, _dev.effective_device.pk)
                                     if _dst_key in _dev_srv_type_lut:
                                         _ce = [_entry for _entry in _resolv_dict[_srv_type] if _entry[2] == _dev.effective_device.pk][0]
-                                        _ce[4].append(_conf_name)
+                                        _ce[4].append(_enum_name)
                                     else:
                                         _resolv_dict.setdefault(_srv_type, []).append(
                                             (
@@ -300,17 +304,17 @@ class SrvTypeRouting(object):
                                                 _first_ip,
                                                 _dev.effective_device.pk,
                                                 _penalty,
-                                                [_conf_name],
+                                                [_enum_name],
                                             )
                                         )
-                                    _dev_srv_type_lut.setdefault(_dst_key, []).append(_conf_name)
+                                    _dev_srv_type_lut.setdefault(_dst_key, []).append(_enum_name)
                                     self.log(
                                         "adding device '{}' (IP {}, EffPK={:d}) to srv_type {} (config {})".format(
                                             _dev.effective_device.full_name,
                                             _first_ip,
                                             _dev.effective_device.pk,
                                             _srv_type,
-                                            _conf_name,
+                                            _enum_name,
                                         )
                                     )
                         else:
@@ -319,11 +323,11 @@ class SrvTypeRouting(object):
                                     "no route to device '{}' found (srv_type_list {}, config {})".format(
                                         _dev.effective_device.full_name,
                                         self._srv_type_to_string(_srv_type_list),
-                                        _conf_name,
+                                        _enum_name,
                                     ),
                                     logging_tools.LOG_LEVEL_ERROR,
                                 )
-                            _unroutable_configs.setdefault(_conf_name, []).append(_dev.effective_device.full_name)
+                            _unroutable_configs.setdefault(_enum_name, []).append(_dev.effective_device.full_name)
         # missing routes
         _missing_srv = _INSTANCES_WITH_NAMES - set(_resolv_dict.keys())
         if _missing_srv:
@@ -343,6 +347,8 @@ class SrvTypeRouting(object):
         _resolv_dict["_alias_dict"] = _INSTANCE.get_alias_dict()
         _resolv_dict["_node_split_list"] = node_split_list
         _resolv_dict["_unroutable_configs"] = _unroutable_configs
+        # import pprint
+        # pprint.pprint(_resolv_dict)
         # valid for 15 minutes
         cache.set(self.ROUTING_KEY, json.dumps(_resolv_dict), 60 * 15)
         return _resolv_dict
@@ -418,7 +424,7 @@ class SrvTypeRouting(object):
         else:
             log_lines.append((log_level, log_str))
 
-    def feed_srv_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error, srv_type):
+    def feed_srv_result(self, orig_com, result, request, conn_str, log_lines, log_result, log_error, srv_type_enum):
         # TODO: if log_error, log all msgs with log_level >= 40
         if result is None:
             # todo: beautify output
@@ -433,8 +439,8 @@ class SrvTypeRouting(object):
             log_str, log_level = result.get_log_tuple()
             if log_result or (log_error and log_level >= logging_tools.LOG_LEVEL_ERROR):
                 if log_str.lower().startswith("error sending"):
-                    log_str = "{} at {}".format(
-                        srv_type,
+                    log_str = "error contacting {} at {}".format(
+                        srv_type_enum.value.name,
                         conn_str.split("/")[-1].split(":")[0],
                     )
                 self._log(request, log_lines, log_str, log_level)

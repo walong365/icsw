@@ -387,11 +387,11 @@ monitoring_cluster_module = angular.module(
                 "mon_host_cluster"
                 icswMonHostClusterBackup
                 "icsw.mon.host.cluster.form"
-                "Monitoring HostCluster"
+                "Monitoring Host Cluster"
             )
 
         delete: (scope, $event, obj) ->
-            icswToolsSimpleModalService("Really delete MonitoringHostCluster '#{obj.name}' ?").then(
+            icswToolsSimpleModalService("Really delete Monitoring Host Cluster '#{obj.name}' ?").then(
                 () =>
                     cluster_tree.delete_mon_host_cluster(obj).then(
                         () ->
@@ -449,11 +449,11 @@ monitoring_cluster_module = angular.module(
                 "mon_service_cluster"
                 icswMonServiceClusterBackup
                 "icsw.mon.service.cluster.form"
-                "Monitoring ServiceCluster"
+                "Monitoring Service Cluster"
             )
 
         delete: (scope, $event, obj) ->
-            icswToolsSimpleModalService("Really delete MonitoringServiceCluster '#{obj.name}' ?").then(
+            icswToolsSimpleModalService("Really delete Monitoring Service Cluster '#{obj.name}' ?").then(
                 () =>
                     cluster_tree.delete_mon_service_cluster(obj).then(
                         () ->
@@ -497,7 +497,7 @@ monitoring_cluster_module = angular.module(
             if create
                 obj = {
                     name: ""
-                    description: "new HostDependency template"
+                    description: "New Host Dependency Template"
                     priority: 0
                     dependency_period: cluster_tree.basic_tree.mon_period_list[0].idx
                     efc_up: true
@@ -513,11 +513,11 @@ monitoring_cluster_module = angular.module(
                 "mon_host_dependency_templ"
                 icswMonHostDependencyTemplBackup
                 "icsw.mon.host.dependency.templ.form"
-                "Monitoring HostDependencyTemplate"
+                "Monitoring Host Dependency Template"
             )
 
         delete: (scope, $event, obj) ->
-            icswToolsSimpleModalService("Really delete MonitoringHostDependencyTemplate '#{obj.name}' ?").then(
+            icswToolsSimpleModalService("Really delete Monitoring Host Dependency Template '#{obj.name}' ?").then(
                 () =>
                     cluster_tree.delete_mon_host_dependency_templ(obj).then(
                         () ->
@@ -561,7 +561,7 @@ monitoring_cluster_module = angular.module(
             if create
                 obj = {
                     name: ""
-                    description: "new ServiceDependency template"
+                    description: "New Service Dependency Template"
                     priority: 0
                     dependency_period: cluster_tree.basic_tree.mon_period_list[0].idx
                     efc_up: true
@@ -577,11 +577,11 @@ monitoring_cluster_module = angular.module(
                 "mon_service_dependency_templ"
                 icswMonServiceDependencyTemplBackup
                 "icsw.mon.service.dependency.templ.form"
-                "Monitoring ServiceDependencyTemplate"
+                "Monitoring Service Dependency Template"
             )
 
         delete: (scope, $event, obj) ->
-            icswToolsSimpleModalService("Really delete MonitoringServiceDependencyTemplate '#{obj.name}' ?").then(
+            icswToolsSimpleModalService("Really delete Monitoring Service Dependency Template '#{obj.name}' ?").then(
                 () =>
                     cluster_tree.delete_mon_service_dependency_templ(obj).then(
                         () ->
@@ -632,11 +632,11 @@ monitoring_cluster_module = angular.module(
                 "mon_host_dependency"
                 icswMonHostDependencyBackup
                 "icsw.mon.host.dependency.form"
-                "Monitoring HostDependency"
+                "Monitoring Host Dependency"
             )
 
         delete: (scope, $event, obj) ->
-            icswToolsSimpleModalService("Really delete MonitoringHostDependency '#{obj.name}' ?").then(
+            icswToolsSimpleModalService("Really delete Monitoring Host Dependency '#{obj.name}' ?").then(
                 () =>
                     cluster_tree.delete_mon_host_dependency(obj).then(
                         () ->
@@ -687,12 +687,12 @@ monitoring_cluster_module = angular.module(
                 "mon_service_dependency"
                 icswMonServiceDependencyBackup
                 "icsw.mon.service.dependency.form"
-                "Monitoring ServiceDependency"
+                "Monitoring Service Dependency"
             )
 
         delete: (scope, $event, obj) ->
             console.log cluster_tree.basic_tree
-            icswToolsSimpleModalService("Really delete MonitoringServiceDependency '#{obj.name}' ?").then(
+            icswToolsSimpleModalService("Really delete Monitoring Service Dependency '#{obj.name}' ?").then(
                 () =>
                     cluster_tree.delete_mon_service_dependency(obj).then(
                         () ->

@@ -1,8 +1,8 @@
-# Copyright (C) 2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2016 init.at
 #
-# Send feedback to: <lang-nevyjel@init.at>
+# this file is part of report-server
 #
-# This file is part of icsw-server
+# Send feedback to: <huymajer@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 2 as
@@ -17,19 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-# -*- coding: utf-8 -*-
-#
-""" serviceEnum Base for 'global' configenum object, for servers """
+""" report-server constants """
 
-from initat.host_monitoring.service_enum_base import icswServiceEnumBaseClient
+# default port
 
-__all__ = [
-    "icswServiceEnumBase"
-]
-
-
-class icswServiceEnumBase(icswServiceEnumBaseClient):
-    def __init__(self, name, info="N/A", root_service=True, msi_block_name=None):
-        icswServiceEnumBaseClient.__init__(self, name, info, root_service, msi_block_name)
-        self.client_service = False
-        self.server_service = True

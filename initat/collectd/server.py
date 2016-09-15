@@ -67,7 +67,6 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         )
         # close connection (daemonizing)
         db_tools.close_connection()
-        self.__msi_block = self._init_msi_block()
         self.CC.read_config_from_db(
             [
                 (
@@ -187,19 +186,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self._check_database()
 
     def process_start(self, src_process, src_pid):
-        process_tools.append_pids(self.__pid_name, src_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
-            self.__msi_block.save_block()
-
-    def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name)
-        self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("collectd")
-        msi_block.add_actual_pid(process_name="main")
-        msi_block.kill_pids = True
-        msi_block.save_block()
-        return msi_block
+        self.CC.process_added(src_process, src_pid)
 
     def _init_network_sockets(self):
         self.bind_id = get_server_uuid("collectd")
@@ -348,9 +335,6 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
 
     def loop_post(self):
         self.CC.close()
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
 
     def loop_end(self):
         self.stop_rrd_cached()
@@ -594,19 +578,13 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self.spc.check()
 
     def _snmp_process_start(self, **kwargs):
-        self.__msi_block.add_actual_pid(
-            kwargs["pid"],
-            process_name=kwargs["process_name"],
-        )
-        self.__msi_block.save_block()
+        self.CC.process_added(kwargs["process_name"], kwargs["pid"])
 
     def _snmp_process_exit(self, **kwargs):
-        self.__msi_block.remove_actual_pid(kwargs["pid"])
-        self.__msi_block.save_block()
+        self.CC.process_removed(kwargs["pid"])
 
     def process_exit(self, p_name, pid):
-        self.__msi_block.remove_actual_pid(pid)
-        self.__msi_block.save_block()
+        self.CC.process_removed(pid)
 
     def _snmp_all_stopped(self):
         self.log("all SNMP-processes stopped, setting exit_requested flag")

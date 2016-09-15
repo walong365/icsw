@@ -43,10 +43,14 @@ class ConfigCheckObject(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log("[CC] {}".format(what), log_level)
 
-    def init(self, srv_type_enum, global_config, add_config_store=True, init_logging=True, native_logging=False):
+    def init(self, srv_type_enum, global_config, add_config_store=True, init_logging=True, native_logging=False, init_msi_block=True):
         self.srv_type_enum = srv_type_enum
         self.global_config = global_config
         self.__native_logging = native_logging
+        self.__init_msi_block = init_msi_block
+        if self.__init_msi_block:
+            # init MSI block
+            self.__msi_block = None
         if add_config_store:
             self.__cs = config_store.ConfigStore("client", self.log)
         else:
@@ -159,6 +163,26 @@ class ConfigCheckObject(object):
                 )
         self.global_config.add_config_entries(_opts)
 
+        if self.__init_msi_block:
+            self.__pid_name = self.global_config["PID_NAME"]
+            process_tools.save_pid(self.__pid_name)
+            self.log("init MSI Block")
+            self.__msi_block = process_tools.MSIBlock(self.srv_type_enum.value.msi_block_name)
+            self.__msi_block.add_actual_pid(process_name="main")
+            self.__msi_block.save()
+
+    def process_added(self, src_process, src_pid):
+        if self.__init_msi_block:
+            process_tools.append_pids(self.__pid_name, src_pid)
+            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
+            self.__msi_block.save()
+
+    def process_removed(self, src_pid):
+        if self.__init_msi_block:
+            process_tools.remove_pids(self.__pid_name, src_pid)
+            self.__msi_block.remove_actual_pid(src_pid)
+            self.__msi_block.save()
+
     # property functions to access device and config
     @property
     def server(self):
@@ -168,7 +192,18 @@ class ConfigCheckObject(object):
     def config(self):
         return self.__sql_info.config
 
+    @property
+    def msi_block(self):
+        if self.__init_msi_block:
+            return self.__msi_block
+        else:
+            raise AttributeError("No MSI Block defined")
+
     def close(self):
+        if self.__init_msi_block and self.__msi_block:
+            process_tools.delete_pid(self.__pid_name)
+            self.__msi_block.remove()
+            self.__msi_block = None
         if not self.__native_logging:
             self.__process.log_template.close()
 

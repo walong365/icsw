@@ -39,6 +39,7 @@ from initat.cluster.backbone.models import ext_license_version_state_coarse, ext
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListExtLicense
 from initat.cluster.backbone.serializers import ext_license_state_coarse_serializer, \
     ext_license_version_state_coarse_serializer
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import server_command
@@ -64,7 +65,7 @@ class license_liveview(View):
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="get_license_usage")
-        result = contact_server(request, "rms", srv_com, timeout=10)
+        result = contact_server(request, icswServiceEnum.rms_server, srv_com, timeout=10)
         _lic_dump = {}
         if result is not None:
             result = result.tree

@@ -363,7 +363,7 @@ partition_table_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start("saving partition data...")
@@ -508,7 +508,7 @@ partition_table_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start("saving partition data...")
@@ -555,7 +555,7 @@ partition_table_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start("saving disc data...")
@@ -642,7 +642,7 @@ partition_table_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start("saving part data...")
@@ -715,7 +715,7 @@ partition_table_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start("saving Syspart data...")

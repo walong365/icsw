@@ -28,6 +28,7 @@
             <optional>
                 <attribute name="uuid-postfix"/>
             </optional>
+            <!-- deprecated -->
             <optional>
                 <attribute name="meta_server_name"/>
             </optional>
@@ -180,7 +181,7 @@
                         </interleave>
                     </element>
                 </optional>
-                <!-- old version -->
+                <!-- old version, deprecated -->
                 <optional>
                     <element name="config_names">
                         <oneOrMore>

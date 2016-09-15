@@ -94,6 +94,8 @@ setup(
         "initat.package_install.client",
         "initat.rrd_grapher",
         "initat.rrd_grapher.graph",
+        "initat.report_server",
+        "initat.report_server.config",
         "initat.mother",
         "initat.snmp",
         "initat.snmp.handler",

@@ -19,7 +19,6 @@
         runs_on="client"
         pid_file_name="logserver/logserver.pid"
         has_force_stop="1"
-        meta_server_name="logserver"
         uuid-postfix="logging-server"
     >
         <module-name>initat.logging_server.main</module-name>
@@ -80,7 +79,6 @@
         runs_on="client"
         pid_file_name="collserver/collserver.pid"
         has_force_stop="1"
-        meta_server_name="collserver"
         wait_time="300"
         reload="1"
     >

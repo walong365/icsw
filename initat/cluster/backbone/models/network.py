@@ -583,14 +583,15 @@ def net_ip_post_save(sender, **kwargs):
             # set boot netdevice
             cur_inst.netdevice.device.bootnetdevice = cur_inst.netdevice
             cur_inst.netdevice.device.save()
-            if num_boot_ips > 1:
-                _dev_configs = cur_inst.netdevice.device.device_config_set.all().select_related("config")
-                _names = [_dev_config.config.name for _dev_config in _dev_configs]
-                if "server" in _names:
-                    # server, ignore multiple IP-adresses
-                    pass
-                else:
-                    raise ValidationError("too many IP-adresses in a boot network defined")
+            # currently there is no easy way to prevent adding more than one Boot-IPs, just let it happen and report an error
+            # if num_boot_ips > 1:
+            #    _dev_configs = cur_inst.netdevice.device.device_config_set.all().select_related("config")
+            #    _names = [_dev_config.config.name for _dev_config in _dev_configs]
+            #    if "server" in _names:
+            #        # server, ignore multiple IP-adresses
+            #        pass
+            #    else:
+            #        raise ValidationError("too many IP-adresses in a boot network defined")
             if cur_inst.netdevice.device.bootserver_id:
                 BootsettingsChanged.send(sender=cur_inst, device=cur_inst.netdevice.device, cause="net_ip_changed")
         if cur_inst.netdevice.device.bootserver_id:

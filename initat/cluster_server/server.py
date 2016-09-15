@@ -44,7 +44,7 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         long_host_name, mach_name = process_tools.get_fqdn()
         self.__run_command = True if global_config["COMMAND"].strip() else False
-        self.CC.init(icswServiceEnum.cluster_server, global_config)
+        self.CC.init(icswServiceEnum.cluster_server, global_config, init_msi_block=not self.__run_command)
         self.CC.check_config()
         # close DB conncetion (daemonize)
         if self.__run_command:
@@ -58,8 +58,6 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
                 global_config["LOG_NAME"],
                 global_config["COMMAND"]
             )
-        self.__pid_name = global_config["PID_NAME"]
-        self.__msi_block = self._init_msi_block()
         db_tools.close_connection()
         self.CC.read_config_from_db(
             [
@@ -145,34 +143,16 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
 
     @property
     def msi_block(self):
-        return self.__msi_block
+        return self.CC.msi_block
 
     def process_start(self, src_process, src_pid):
-        process_tools.append_pids(self.__pid_name, src_pid)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
-            self.__msi_block.save_block()
+        self.CC.process_added(src_process, src_pid)
 
     def process_exit(self, src_process, src_pid):
-        process_tools.remove_pids(self.__pid_name, src_pid)
-        if self.__msi_block:
-            self.__msi_block.remove_actual_pid(src_pid)
-            self.__msi_block.save_block()
+        self.CC.process_removed(src_pid)
         if src_process == "backup_process" and global_config["BACKUP_DATABASE"]:
             self.log("backup process finished, exiting")
             self["exit_requested"] = True
-
-    def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name)
-        if not global_config["COMMAND"]:
-            self.log("Initialising meta-server-info block")
-            msi_block = process_tools.meta_server_info("cluster-server")
-            msi_block.add_actual_pid(process_name="main")
-            msi_block.kill_pids = True
-            msi_block.save_block()
-        else:
-            msi_block = None
-        return msi_block
 
     def _check_uuid(self):
         self.log("uuid checking")
@@ -211,9 +191,6 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
     def loop_end(self):
         if not self.__run_command:
             self.network_unbind()
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
 
     def loop_post(self):
         self.CC.close()

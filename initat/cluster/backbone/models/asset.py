@@ -937,12 +937,16 @@ class AssetRun(models.Model):
             if install_time:
                 timestamp = time.mktime(install_time.timetuple())
 
-                apv_install_times = AssetPackageVersionInstallTime.objects.filter(package_version=apv,
-                    timestamp=timestamp)
+                apv_install_times = AssetPackageVersionInstallTime.objects.filter(
+                    package_version=apv,
+                    timestamp=timestamp
+                )
 
                 if not apv_install_times:
-                    apv_install_time = AssetPackageVersionInstallTime(package_version=apv,
-                        timestamp=timestamp)
+                    apv_install_time = AssetPackageVersionInstallTime(
+                        package_version=apv,
+                        timestamp=timestamp
+                    )
 
                     apv_install_time.save()
                 else:
