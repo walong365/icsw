@@ -698,7 +698,7 @@ class RMSJob(object):
                     logging_tools.form_entry(self.__env_dict[key], header="Value")
                 ]
             )
-        self.write_file("env_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
+        self.write_file(u"env_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
         out_list = logging_tools.new_form_list()
         for key in sorted(self.__env_int_dict.keys()):
             out_list.append(
@@ -707,7 +707,7 @@ class RMSJob(object):
                     logging_tools.form_entry(self.__env_int_dict[key], header="Value")
                 ]
             )
-        self.write_file("env_int_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
+        self.write_file(u"env_int_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
 
     def _read_config(self):
         if "CONFIG_FILE" in global_config:

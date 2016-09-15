@@ -44,8 +44,8 @@ from django.views.generic import View
 from rest_framework import viewsets
 from rest_framework.response import Response
 
-from initat.cluster.backbone.models import user, login_history
-from initat.cluster.backbone.serializers import user_serializer
+from initat.cluster.backbone.models import user, login_history, background_job
+from initat.cluster.backbone.serializers import user_serializer, background_job_serializer
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
@@ -343,4 +343,18 @@ class UserView(viewsets.ViewSet):
             context["is_authenticated"] = False
         context["is_anonymous"] = not context["is_authenticated"]
         serializer = user_serializer([_user], context=context, many=True)
+        return Response(serializer.data)
+
+
+class BackgroundJobViewSet(viewsets.ViewSet):
+    def get_bg_jobs(self, request):
+        serializer = background_job_serializer(
+            background_job.objects.all().select_related(
+                "initiator__domain_tree_node",
+                "user",
+            ).prefetch_related(
+                "background_job_run_set"
+            )[0:100],
+            many=True
+        )
         return Response(serializer.data)

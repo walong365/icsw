@@ -243,7 +243,10 @@ class server_com(object):
             if doit:
                 self.Meta.actual_configs = self.Meta.needed_configs
             else:
-                err_str = "Server {} has no {} attribute".format(loc_config["SERVER_SHORT_NAME"], " or ".join(self.Meta.needed_configs))
+                err_str = "Server {} has no {} attribute".format(
+                    loc_config["SERVER_SHORT_NAME"],
+                    " or ".join([_enum.name for _enum in self.Meta.needed_configs])
+                )
         else:
             doit = True
         if doit and self.Meta.needed_config_keys:

@@ -57,7 +57,7 @@ menu_module = angular.module(
 
     # typeahead functions
     $scope.get_selections = (view_value) ->
-        console.log "gs", view_value
+        # console.log "gs", view_value
         defer = $q.defer()
         $scope.struct.typeahead_loading = true
         $timeout(
