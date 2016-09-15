@@ -277,7 +277,7 @@ class Threshold(object):
                     ]
                 )
                 self.__container.proc.send_to_remote_server(
-                    icswServiceEnum.cluster_serer,
+                    icswServiceEnum.cluster_server,
                     unicode(notify_command()),
                 )
             else:
