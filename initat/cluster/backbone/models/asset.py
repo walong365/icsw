@@ -601,15 +601,12 @@ class AssetUpdateEntry(models.Model):
     install_date = models.DateTimeField(null=True)
     # status, now as string
     status = models.CharField(default="", max_length=128)
-    # assetrun
-    asset_run = models.ForeignKey("backbone.AssetRun")
     # optional
     optional = models.BooleanField(default=True)
     # installed
     installed = models.BooleanField(default=False)
     # new version (for RPMs)
     new_version = models.CharField(default="", max_length=64)
-    created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
         return "AssetUpdate name={}".format(self.name)
@@ -1011,41 +1008,88 @@ class AssetRun(models.Model):
     def _generate_assets_pending_update_nrpe(self, data):
         l = json.loads(data)
         for (name, optional) in l:
-            new_pup = AssetUpdateEntry(
+            asset_update_entry = AssetUpdateEntry.objects.filter(
                 name=name,
-                installed=False,
-                asset_run=self,
+                version="",
+                release="",
+                kb_idx=0,
+                install_date=None,
+                status="",
                 optional=optional,
-            )
-            new_pup.save()
+                installed=False,
+                new_version=""
+                )
+            if asset_update_entry:
+                asset_update_entry = asset_update_entry[0]
+            else:
+                asset_update_entry = AssetUpdateEntry(
+                    name=name,
+                    installed=False,
+                    optional=optional,
+                )
+                asset_update_entry.save()
+
+            print asset_update_entry
+            self.asset_batch.pending_updates.add(asset_update_entry)
 
     def _generate_assets_pending_update_hm(self, tree):
         blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0]\
             .text
         l = server_command.decompress(blob, pickle=True)
         for (name, version) in l:
-            new_pup = AssetUpdateEntry(
+            asset_update_entry = AssetUpdateEntry.objects.filter(
                 name=name,
-                installed=False,
-                asset_run=self,
-                # by definition linux updates are optional
+                version="",
+                release="",
+                kb_idx=0,
+                install_date=None,
+                status="",
                 optional=True,
-                new_version=version,
-            )
-            new_pup.save()
+                installed=False,
+                new_version=version
+                )
+            if asset_update_entry:
+                asset_update_entry = asset_update_entry[0]
+            else:
+                asset_update_entry = AssetUpdateEntry(
+                    name=name,
+                    # by definition linux updates are optional
+                    optional=True,
+                    installed=False,
+                    new_version=version,
+                )
+                asset_update_entry.save()
+
+            self.asset_batch.pending_updates.add(asset_update_entry)
 
     def _generate_assets_update_nrpe(self, data):
         l = json.loads(data)
         for (name, up_date, status) in l:
-            new_up = AssetUpdateEntry(
+            asset_update_entry = AssetUpdateEntry.objects.filter(
                 name=name,
+                version="",
+                release="",
+                kb_idx=0,
                 install_date=dateparse.parse_datetime(up_date),
                 status=status,
-                installed=True,
-                asset_run=self,
                 optional=False,
-            )
-            new_up.save()
+                installed=True,
+                new_version=""
+                )
+            if asset_update_entry:
+                asset_update_entry = asset_update_entry[0]
+            else:
+                asset_update_entry = AssetUpdateEntry(
+                    name=name,
+                    install_date=dateparse.parse_datetime(up_date),
+                    status=status,
+                    optional=False,
+                    installed=True
+                )
+                asset_update_entry.save()
+
+            print asset_update_entry
+            self.asset_batch.installed_updates.add(asset_update_entry)
 
     def _generate_assets_process_nrpe(self, data):
         l = json.loads(data)
@@ -1498,6 +1542,10 @@ class AssetBatch(models.Model):
         null=True,
     )
     network_devices = models.ManyToManyField(AssetHWNetworkDevice)
+
+    pending_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_pending_updates")
+    installed_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_installed_updates")
+
     # TODO: Remove this.
     partitions = models.ManyToManyField(AssetHWLogicalEntry)
     displays = models.ManyToManyField(AssetHWDisplayEntry)

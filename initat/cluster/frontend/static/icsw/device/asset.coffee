@@ -150,7 +150,9 @@ device_asset_module = angular.module(
     set_schedule_items = (sched_list) ->
         $scope.struct.schedule_items.length = 0
         for obj in sched_list
+            console.log(obj)
             $scope.struct.schedule_items.push(salt_schedule_item(obj))
+            obj.$$device.schedule_items.push(obj)
 
     set_asset_runs = (run_list) ->
         for dev in $scope.struct.devices
@@ -194,17 +196,30 @@ device_asset_module = angular.module(
                 $scope.struct.device_tree = data[0]
                 $scope.struct.disp_setting_tree = data[1]
                 $scope.struct.package_tree = data[2]
-                console.log($scope.struct.package_tree)
+                #console.log($scope.struct.package_tree)
                 $scope.struct.devices.length = 0
                 for dev in devs
                     # filter out metadevices
                     if not dev.is_meta_device
                         if not dev.assetrun_set?
                             dev.assetrun_set = []
+
                         if not dev.asset_batch_list?
                             dev.asset_batch_list = []
+                        else
+                            dev.asset_batch_list.length = 0
+
                         if not dev.info_tabs?
                             dev.info_tabs = []
+                        else
+                            dev.info_tabs.length = 0
+
+                        if not dev.schedule_items?
+                            dev.schedule_items = []
+                        else
+                            dev.schedule_items.length = 0
+
+                        dev.$$scan_device_button_disabled = false
 
                         $scope.struct.devices.push(dev)
 
@@ -215,11 +230,6 @@ device_asset_module = angular.module(
                                 pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
                             }
                         )
-#                        Restangular.all(ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES.slice(1)).getList(
-#                            {
-#                                pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
-#                            }
-#                        )
                         Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
                             {
                                 pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
@@ -228,13 +238,12 @@ device_asset_module = angular.module(
                     ]
                 ).then(
                     (result) ->
-                        # console.log "r", result
                         # schedule list
                         set_schedule_items(result[0])
-                        # assetrun list
-                        #set_asset_runs(result[1])
 
                         set_asset_batch_list(result[1])
+
+                        console.log(result[1])
 
                         $scope.struct.data_loaded = true
 
@@ -426,6 +435,29 @@ device_asset_module = angular.module(
                     $scope.struct.num_selected_ar--
                     break
 
+    $scope.scan_device = (_device) ->
+        _device.$$scan_device_button_disabled = true
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.ASSET_RUN_ASSETRUN_FOR_DEVICE_NOW
+                data:
+                    pk: _device.idx
+                dataType: "json"
+            }
+        ).then(
+            (ok) ->
+                $timeout(
+                    () ->
+                        _device.$$scan_device_button_disabled = false
+                    5000
+                )
+            (not_ok) ->
+                $timeout(
+                    () ->
+                        _device.$$scan_device_button_disabled = false
+                    5000
+                )
+        )
 
     $scope.run_now = ($event, obj) ->
         $event.preventDefault()
@@ -540,8 +572,19 @@ device_asset_module = angular.module(
                 console.log not_ok
         )
 
-    $scope.close_tab = (_tab) ->
-        _tab.enabled = false
+    $scope.close_tab = (to_be_closed_tab, _device) ->
+        $timeout(
+            () ->
+                tabs_tmp = []
+
+                for tab in _device.info_tabs
+                    if tab != to_be_closed_tab
+                        tabs_tmp.push(tab)
+                _device.info_tabs.length = 0
+                for tab in tabs_tmp
+                    _device.info_tabs.push(tab)
+            0
+        )
 
 ]).filter('assetRunFilter'
 [
@@ -568,6 +611,9 @@ device_asset_module = angular.module(
     $q, $templateCache,
 ) ->
     return {
+        scope: {
+            schedule_items: "=icswScheduleItems"
+        }
         restrict: "E"
         template: $templateCache.get("icsw.asset.scheduled.runs.table")
         controller: "icswScheduledRunsTableCtrl"
@@ -596,269 +642,6 @@ device_asset_module = angular.module(
             (not_ok) ->
                 console.log not_ok
         )
-
-]).directive("icswAssetAssetRunsTable",
-[
-    "$q", "$templateCache",
-(
-    $q, $templateCache,
-) ->
-    return {
-        restrict: "E"
-        template: $templateCache.get("icsw.asset.asset.runs.table")
-        scope: {
-            asset_run_list: "=icswAssetRunList"
-        }
-        controller: "icswAssetAssetRunsTableCtrl"
-    }
-]).controller("icswAssetAssetRunsTableCtrl",
-[
-    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall"
-(
-    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall
-) ->
-    $scope.struct = {
-        selected_assetrun: undefined
-    }
-
-    $scope.downloadPdf = ->
-        if $scope.struct.selected_assetrun != undefined
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_PDF
-                data:
-                    pk: $scope.struct.selected_assetrun.asset_batch
-                dataType: 'json'
-            }
-            ).then(
-                (result) ->
-                    console.log "result: ", result
-
-                    uri = 'data:application/pdf;base64,' + result.pdf
-                    downloadLink = document.createElement("a")
-                    downloadLink.href = uri
-                    downloadLink.download = "assetbatch" + $scope.struct.selected_assetrun.asset_batch + ".pdf"
-
-                    document.body.appendChild(downloadLink)
-                    downloadLink.click()
-                    document.body.removeChild(downloadLink)
-                (not_ok) ->
-                    console.log not_ok
-            )
-
-    $scope.downloadXlsx = ->
-        console.log($scope.struct.selected_assetrun)
-        if $scope.struct.selected_assetrun != undefined
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_XLSX
-                data:
-                    pk: $scope.struct.selected_assetrun.asset_batch
-                dataType: 'json'
-            }
-            ).then(
-                (result) ->
-                    console.log "result: ", result
-                    
-                    uri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + result.xlsx
-                    downloadLink = document.createElement("a")
-                    downloadLink.href = uri
-                    downloadLink.download = "assetbatch" + $scope.struct.selected_assetrun.asset_batch + ".xlsx"
-
-                    document.body.appendChild(downloadLink)
-                    downloadLink.click()
-                    document.body.removeChild(downloadLink)
-                (not_ok) ->
-                    console.log not_ok
-            )
-
-    $scope.downloadCsv = ->
-        console.log($scope.struct.selected_assetrun)
-        if $scope.struct.selected_assetrun != undefined
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_EXPORT_ASSETRUNS_TO_CSV
-                data:
-                    pk: $scope.struct.selected_assetrun.idx
-                dataType: 'json'
-            }
-            ).then(
-                (result) ->
-                    uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result.csv)
-                    downloadLink = document.createElement("a")
-                    downloadLink.href = uri
-                    downloadLink.download = "assetrun" + $scope.struct.selected_assetrun.idx + ".csv"
-
-                    document.body.appendChild(downloadLink)
-                    downloadLink.click()
-                    document.body.removeChild(downloadLink)
-                (not_ok) ->
-                    console.log not_ok
-            )
-
-    $scope.select_assetrun = ($event, assetrun) ->
-        assetrun.$$selected = !assetrun.$$selected
-        if assetrun.$$selected
-            $scope.struct.selected_assetrun = assetrun
-            # ensure only assetrun with same type are selected
-            _type = assetrun.run_type
-            for _run in $scope.asset_run_list
-                if _run.run_type !=_type and _run.$$selected
-                    _run.$$selected = false
-
-    # resolve functions
-    resolve_package_assets = (tree, vers_list, package_install_times) ->
-        _res = _.orderBy(
-            (tree.version_lut[idx] for idx in vers_list)
-            ["$$package.name"]
-            ["asc"]
-        )
-
-        result_new = []
-
-        # do some more salting of package objectss
-        for vers in _res
-            new_obj = {}
-
-            if vers.release == ""
-                new_obj.release = "N/A"
-            else
-                new_obj.release = vers.release
-
-            new_obj.$$install_time = "N/A"
-            new_obj.$$package = vers.$$package
-            new_obj.version = vers.version
-            new_obj.size = vers.size
-
-            if vers.$$package.$$package_type == "Windows"
-                new_obj.$$size = Number((vers.size / 1024).toFixed(2)) + " MByte"
-
-            for package_install_time in package_install_times
-                if vers.idx == package_install_time.package_version
-                    new_obj.$$install_time = moment(package_install_time.install_time).format("YYYY-MM-DD HH:mm:ss")
-                    break
-
-            result_new.push(new_obj)
-
-        return result_new
-
-    resolve_hardware_assets = (in_list) ->
-        # todo: create structured tree
-        for entry in in_list
-            entry.$$attributes = angular.fromJson(entry.attributes)
-            entry.$$info_list = angular.fromJson(entry.info_list)
-            entry.$$attribute_info = ("#{key}=#{value}" for key, value of entry.$$attributes).join(", ")
-            entry.$$info_info = ("#{key} (#{value.length})" for key, value of entry.$$info_list).join(", ")
-            # console.log entry
-        return in_list
-
-    resolve_pending_updates = (in_list) ->
-        return (entry for entry in in_list when not entry.installed)
-        
-        
-    resolve_installed_updates = (in_list) ->
-        return (entry for entry in in_list when entry.installed)
-        
-    resolve_pci_entries = (in_list) ->
-        r_list = []
-        for entry in in_list
-            entry.$$position = sprintf("%04x:%02x:%02x.%02x", entry.domain, entry.bus, entry.slot, entry.func)
-            r_list.push(entry)
-        return r_list
-
-    resolve_dmi_entries = (head) ->
-        if head.length
-            return head[0]
-        else
-            return null
-
-    resolve_hw_entries = (assetrun, data) ->
-        memory_entries = data[0].memory_modules
-        cpu_entries = data[0].cpus
-        gpu_entries = data[0].gpus
-        hdd_entries = data[0].hdds
-        partition_entries = data[0].partitions
-        display_entries = data[0].displays
-
-        assetrun.$$memory_entries = []
-        assetrun.$$cpu_entries = []
-        assetrun.$$gpu_entries = []
-        assetrun.$$hdd_entries = []
-        assetrun.$$partition_entries = []
-        assetrun.$$display_entries = []
-
-        r_list = []
-
-        for entry in memory_entries
-            entry.$$capacity = entry.capacity / (1024.0 * 1024.0)
-
-            assetrun.$$memory_entries.push(entry)
-
-        for entry in cpu_entries
-            assetrun.$$cpu_entries.push(entry)
-
-        for entry in gpu_entries
-            assetrun.$$gpu_entries.push(entry)
-
-        for entry in hdd_entries
-            entry.$$size = "N/A" #(parseInt(entry.size) / (1024 * 1024 * 1024)).toFixed(2)
-            entry.serialnumber = "N/A"
-            assetrun.$$hdd_entries.push(entry)
-
-        for entry in partition_entries
-            entry.$$size = (parseInt(entry.size) / (1024 * 1024 * 1024)).toFixed(2)
-            entry.$$free = (parseInt(entry.free) / (1024 * 1024 * 1024)).toFixed(2)
-            entry.$$percentage_free = (((parseInt(entry.free) / parseInt(entry.size))) * 100).toFixed(2)
-            assetrun.$$partition_entries.push(entry)
-
-        for entry in display_entries
-            assetrun.$$display_entries.push(entry)
-
-        return r_list
-        
-    $scope.expand_assetrun = ($event, assetrun) ->
-        if !assetrun.$$expanded and not assetrun.$$assets_loaded
-            blockUI.start("Fetching data from server...")
-            Restangular.all(ICSW_URLS.ASSET_GET_ASSETS_FOR_ASSET_RUN.slice(1)).getList(
-                {
-                    pk: assetrun.idx
-                }
-            ).then(
-                (data) ->
-                    _done = $q.defer()
-                    if assetrun.run_type == 1
-                        icswAssetPackageTreeService.load($scope.$id).then(
-                            (tree) ->
-                                _done.resolve(resolve_package_assets(tree, data[0].packages, data[0].packages_install_times))
-
-                        )
-                    else if assetrun.run_type == 2
-                        _done.resolve(resolve_hardware_assets(data[0].assethardwareentry_set))
-                    else if assetrun.run_type == 3
-                        _done.resolve(data[0].assetlicenseentry_set)
-                    else if assetrun.run_type == 4
-                        _done.resolve(resolve_installed_updates(data[0].assetupdateentry_set))
-                    else if assetrun.run_type == 5
-                        _done.resolve(resolve_hw_entries(assetrun, data))
-                    else if assetrun.run_type == 7
-                        _done.resolve(resolve_pending_updates(data[0].assetupdateentry_set))
-                    else if assetrun.run_type == 6
-                        _done.resolve(data[0].assetprocessentry_set)
-                    else if assetrun.run_type == 8
-                        _done.resolve(resolve_dmi_entries(data[0].assetdmihead_set))
-                    else if assetrun.run_type == 9
-                        _done.resolve(resolve_pci_entries(data[0].assetpcientry_set))
-                    else if assetrun.run_type == 10
-                        _done.resolve(resolve_hw_entries(assetrun, data))
-                    else
-                        _done.resolve([])
-                    _done.promise.then(
-                        (results) ->
-                            assetrun.$$assets = results
-                            assetrun.$$expanded = !assetrun.$$expanded
-                            assetrun.$$assets_loaded = true
-                            blockUI.stop()
-                    )
-            )
-        else
-            assetrun.$$expanded = !assetrun.$$expanded
 
 ]).directive("icswAssetKnownPackages",
 [
@@ -1072,10 +855,19 @@ device_asset_module = angular.module(
             new_obj.size = vers.size
 
             if vers.$$package.$$package_type == "Windows"
-                new_obj.$$size = Number((vers.size / 1024).toFixed(2)) + " MByte"
+                if vers.size > 0
+                    new_obj.$$size = Number((vers.size / 1024).toFixed(2)) + " MByte"
+                else
+                    new_obj.$$size = "N/A"
 
             if vers.$$package.$$package_type == "Linux"
-                new_obj.$$size = Number((vers.size / 1024).toFixed(2)) + " KByte"
+                if vers.size > 0
+                    if vers.size < (1024 * 1024)
+                        new_obj.$$size = Number((vers.size / 1024).toFixed(2)) + " KByte"
+                    else
+                        new_obj.$$size = Number((vers.size / (1024 * 1024)).toFixed(2)) + " MByte"
+                else
+                    new_obj.$$size = "N/A"
 
             for package_install_time in package_install_times
                 if vers.idx == package_install_time.package_version
@@ -1164,18 +956,50 @@ device_asset_module = angular.module(
         assetbatch.$$expanded = !assetbatch.$$expanded
 
     $scope.open_in_new_tab = (asset_batch, tab_type) ->
+        for tab in asset_batch.$$device.info_tabs
+            if tab.tab_type == tab_type && tab.asset_batch.idx == asset_batch.idx
+                return
+
+        tab = {}
+        tab.enabled = true
+        tab.tab_type = tab_type
+        tab.asset_batch = asset_batch
+
         if tab_type == 0
             icswAssetPackageTreeService.load($scope.$id).then(
                 (tree) ->
-                    tab = {}
-                    tab.enabled = true
-                    tab.tab_heading_text = "Installed Packages (" + asset_batch.idx + ")"
-                    tab.tab_type = tab_type
-                    tab.asset_batch = asset_batch
+                    tab.tab_heading_text = "Installed Packages (ScanID:" + asset_batch.idx + ")"
                     tab.packages = resolve_package_assets(tree, asset_batch.packages, asset_batch.packages_install_times)
 
                     asset_batch.$$device.info_tabs.push(tab)
             )
+        else if tab_type == 1
+            tab.tab_heading_text = "Pending Updates (ScanID: " + asset_batch.idx + ")"
+            asset_batch.$$device.info_tabs.push(tab)
+
+        else if tab_type == 2
+            tab.tab_heading_text = "Installed Updates (ScanID:" + asset_batch.idx + ")"
+            asset_batch.$$device.info_tabs.push(tab)
+
+        else if tab_type == 3
+            tab.tab_heading_text = "Installed Memory Modules (ScanID:" + asset_batch.idx + ")"
+
+            for memory_entry in asset_batch.memory_modules
+                memory_entry.$$capacity = "N/A"
+                memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
+
+            asset_batch.$$device.info_tabs.push(tab)
+
+        else if tab_type == 4
+            tab.tab_heading_text = "Installed CPU(s) (ScanID:" + asset_batch.idx + ")"
+
+            asset_batch.$$device.info_tabs.push(tab)
+        else if tab_type == 5
+            tab.tab_heading_text = "Installed GPU(s) (ScanID:" + asset_batch.idx + ")"
+
+            asset_batch.$$device.info_tabs.push(tab)
+
+
 ]).directive("icswAssetBatchDetails",
 [
     "$q", "$templateCache", "$compile",
@@ -1191,6 +1015,16 @@ device_asset_module = angular.module(
             element.children().remove()
             if scope.tab.tab_type == 0
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.package"))(scope)
+            else if scope.tab.tab_type == 1
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.pending.updates"))(scope)
+            else if scope.tab.tab_type == 2
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.installed.updates"))(scope)
+            else if scope.tab.tab_type == 3
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.hw.memory.modules"))(scope)
+            else if scope.tab.tab_type == 4
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.hw.cpu"))(scope)
+            else if scope.tab.tab_type == 5
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.hw.gpu"))(scope)
             else
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.na"))(scope)
             element.append(_not_av_el)

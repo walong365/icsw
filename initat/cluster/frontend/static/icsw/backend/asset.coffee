@@ -61,6 +61,12 @@ device_asset_module = angular.module(
                 entry.$$expanded = false
                 entry.$$created = moment(entry.created).format("YYYY-MM-DD HH:mm:ss")
                 for vers in entry.assetpackageversion_set
+                    vers.$$release = "N/A"
+                    if vers.release
+                        vers.$$release = vers.release
+                    vers.$$info = "N/A"
+                    if vers.info
+                        vers.$$info = vers.info
                     vers.$$package = entry
                     vers.$$created = moment(vers.created).format("YYYY-MM-DD HH:mm:ss")
                     vers.$$size = icswTools.get_size_str(vers.size, 1024, "Byte")

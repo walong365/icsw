@@ -77,7 +77,7 @@ class run_assetrun_for_device_now(View):
         ScheduleItem.objects.create(
             device=_dev,
             source=10,
-            planned_date=datetime.datetime.now(tz=pytz.utc),
+            planned_date=timezone.now(),
             run_now=True,
             dispatch_setting=None
         )
