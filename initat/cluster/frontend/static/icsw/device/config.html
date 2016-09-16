@@ -6,59 +6,67 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.configuration.overview">
-    <h3>
-        Device Configuration ({{ helper.devices.length }} Devices), {{ configs.length }} Configurations ({{ helper.active_configs.length }} shown)
-    </h3>
-    <div class="form-inline">
-        <input class="form-control" ng-model="name_filter" placeholder="filter"/>
-        <icsw-tools-button type="show" is-show="struct.only_selected" show-value="only selected" hide-value="all" ng-click="toggle_only_selected()"></icsw-tools-button>
-        <icsw-tools-button type="show" is-show="struct.with_server" show-value="with server" hide-value="without server" ng-click="toggle_with_server()"></icsw-tools-button>
-        <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && helper.config_tree.catalog_list.length > 0">
-            <input placeholder="new config" ng-model="new_config_name" class="form-control"/>
-            <div class="btn-group" ng-show="new_config_name">
-                <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
-                    Create in Catalog <span class="caret"></span>
-                </button>
-                <ul class="dropdown-menu">
-                    <li ng-repeat="entry in helper.config_tree.catalog_list" ng-click="create_config(entry)"><a>{{ entry.name }}</a></li>
-                </ul>
+    <div uib-alert class="alert-warning" ng-show="!helper">Fetching data from server</div>
+    <div ng-if="helper">
+        <h3>
+            Device Configuration ({{ helper.devices.length }} Devices), {{ configs.length }} Configurations ({{ helper.active_configs.length }} shown)
+        </h3>
+        <div class="form-inline">
+            <input class="form-control" ng-model="struct.name_filter" placeholder="filter" ng-model-options="{debounce: {default: 250}}" ng-change="settings_changed()"/>
+            Service: <icsw-tools-tri-button icsw-state="struct.with_service" icsw-callback="settings_changed"></icsw-tools-tri-button>
+            Server: <icsw-tools-tri-button icsw-state="struct.with_server" icsw-callback="settings_changed"></icsw-tools-tri-button>
+            <icsw-tools-button type="show" is-show="struct.only_selected" show-value="only selected" hide-value="all" ng-click="toggle_only_selected()"></icsw-tools-button>
+            <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && helper.config_tree.catalog_list.length > 0">
+                <input placeholder="new config" ng-model="new_config_name" class="form-control"/>
+                <div class="btn-group" ng-show="new_config_name">
+                    <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
+                        Create in Catalog <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu">
+                        <li ng-repeat="entry in helper.config_tree.catalog_list" ng-click="create_config(entry)"><a>{{ entry.name }}</a></li>
+                    </ul>
+                </div>
             </div>
         </div>
+        <uib-accordion ng-show="helper.devices.length" close-others="false">
+            <div uib-accordion-group class="panel-default" is-open="matrix">
+                <uib-accordion-heading>
+                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': matrix, 'glyphicon-chevron-right': !matrix}"></i>
+                    Configuration Matrix
+                </uib-accordion-heading>
+                <table ng-show="helper.devices.length" class="table rotateheaders table-condensed table-hover colhover" style="width:auto;">
+                    <thead>
+                        <tr>
+                            <th colspan="3">&nbsp;</th>
+                            <th class="icsw-config-rotate" ng-repeat="conf in helper.active_configs">
+                                 <div ng-mouseenter="mouse_enter($event, conf)" ng-mouseleave="mouse_leave($event, conf)">
+                                     <!-- <span ng-show="conf.$$cse" class="label label-success" title="{{ conf.$$cse.name }}">Srv</span> -->
+                                     <span>{{ conf.$$info_str }}</span>
+                                     <span ng-show="conf.$$mouse" ng-class="conf.$$header_class">selected</span>
+                                 </div>
+                            </th>
+                        </tr>
+                        <tr>
+                            <th>Type</th>
+                            <td>Local</td>
+                            <td>Meta</td>
+                            <th ng-repeat="conf in helper.active_configs" class="text-center">
+                                 <span ng-class="conf.$$header_class">{{ conf.$$config_type_str }}</span>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat="dev in helper.devices">
+                            <th ng-class="get_th_class(dev)">{{ get_name(dev) }}</th>
+                            <td class="text-center">{{ dev.$local_selected.length }}</td>
+                            <td class="text-center">
+                                <span ng-show="!dev.is_meta_device">{{ dev.$num_meta_selected }}</span>
+                            </td>
+                            <td icsw-device-configuration-row-data device="dev" helper="helper"></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </uib-accordion>
     </div>
-    <uib-accordion ng-show="helper.devices.length" close-others="false">
-        <div uib-accordion-group class="panel-default" is-open="matrix">
-            <uib-accordion-heading>
-                <i class="glyphicon" ng-class="{'glyphicon-chevron-down': matrix, 'glyphicon-chevron-right': !matrix}"></i>
-                Configuration Matrix
-            </uib-accordion-heading>
-            <table ng-show="helper.devices.length" class="table rotateheaders table-condensed table-hover colhover" style="width:auto;">
-                <thead>
-                    <tr>
-                        <th colspan="3">&nbsp;</th>
-                        <th class="rotate" ng-repeat="conf in helper.active_configs">
-                             <div><span>{{ conf.info_str }}</span></div>
-                        </th>
-                    </tr>
-                    <tr>
-                        <th>Type</th>
-                        <td>Local</td>
-                        <td>Meta</td>
-                        <th ng-repeat="conf in helper.active_configs">
-                             <span class="badge">{{ conf.config_type_str }}</span>
-                        </th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr ng-repeat="dev in helper.devices">
-                        <th ng-class="get_th_class(dev)">{{ get_name(dev) }}</th>
-                        <td class="text-center">{{ dev.$local_selected.length }}</td>
-                        <td class="text-center">
-                            <span ng-show="!dev.is_meta_device">{{ dev.$num_meta_selected }}</span>
-                        </td>
-                        <td icsw-device-configuration-row-data device="dev" helper="helper"></td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </uib-accordion>
 </script>

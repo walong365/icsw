@@ -130,11 +130,12 @@ angular.module(
                     _cls = "glyphicon glyphicon-ok-circle"
             return _cls
 
-        update_active_configs: (name_re, only_selected, with_server) =>
+        update_active_configs: (name_re, only_selected, with_server, with_service) =>
             @active_configs.length = 0
 
             for entry in @config_tree.list
                 entry.$selected = if (entry.enabled and entry.name.match(name_re)) then true else false
+                @mouse_leave(entry)
                 if only_selected and entry.$selected
                     entry.$selected = false
                     for cur_dev in @devices
@@ -147,11 +148,25 @@ angular.module(
                             if entry.idx in cur_md.$local_selected
                                 entry.$selected = true
                                 break
-                if not with_server and entry.server_config
+                if with_server == 1 and not entry.server_config
+                    entry.$selected = false
+                else if with_server == -1 and entry.server_config
+                    entry.$selected = false
+                if with_service == 1 and not entry.$$cse
+                    entry.$selected = false
+                else if with_service == -1 and entry.$$cse
                     entry.$selected = false
                 if entry.$selected
                     @active_configs.push(entry)
             $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_CONFIG_CHANGED"))
+
+        mouse_enter: (config) =>
+            config.$$mouse = true
+            config.$$header_class = "label label-primary"
+
+        mouse_leave: (config) =>
+            config.$$mouse = false
+            config.$$header_class = "label label-default"
 
         click: (device, config) =>
 
@@ -202,14 +217,17 @@ angular.module(
 
     $scope.helper = undefined
 
-    $scope.name_filter = ""
     $scope.new_config_name = ""
     $scope.matrix = true
     $scope.struct = {
+        # name filter
+        name_filter: ""
         # only selected configs
         only_selected: false
-        # show system configs
-        with_server: true
+        # show server configs
+        with_server: 0
+        # show service configs
+        with_service: 0
     }
     $scope.new_devsel = (_dev_sel) ->
         local_defer = $q.defer()
@@ -231,16 +249,6 @@ angular.module(
         local_defer.promise.then(
             (init_msg) ->
                 $scope.helper.set_devices(_dev_sel)
-                # create instance with $local_selected,
-                # $scope.helper = new icswDeviceConfigHelper($scope.device_tree, $scope.config_tree, _dev_sel)
-                $scope.$watch("name_filter", (new_val) ->
-                    if $scope.filter_to?
-                        $timeout.cancel($scope.filter_to)
-                    $scope.filter_to = $timeout(
-                        $scope.new_filter_set_exp
-                        500
-                    )
-                )
 
                 $scope.new_filter_set()
         )
@@ -253,19 +261,19 @@ angular.module(
     $scope.new_filter_set = () ->
         # called after filter settings have changed
         try
-            cur_re = new RegExp($scope.name_filter, "gi")
+            cur_re = new RegExp($scope.struct.name_filter, "gi")
         catch exc
             cur_re = new RegExp("^$", "gi")
 
-        $scope.helper.update_active_configs(cur_re, $scope.struct.only_selected, $scope.struct.with_server)
+        $scope.helper.update_active_configs(cur_re, $scope.struct.only_selected, $scope.struct.with_server, $scope.struct.with_service)
 
     $scope.toggle_only_selected = () ->
         $scope.struct.only_selected = !$scope.struct.only_selected
-        $scope.new_filter_set($scope.name_filter, true)
+        $scope.new_filter_set($scope.struct.name_filter, true)
 
-    $scope.toggle_with_server = () ->
-        $scope.struct.with_server = !$scope.struct.with_server
-        $scope.new_filter_set($scope.name_filter, true)
+    $scope.settings_changed = () ->
+        if $scope.helper?
+            $scope.new_filter_set($scope.struct.name_filter, true)
 
     $scope.create_config = (cur_cat) ->
         blockUI.start()
@@ -302,6 +310,13 @@ angular.module(
             return "warning"
         else
             return ""
+
+    # mouse enter / levae
+    $scope.mouse_enter = ($event, config) ->
+        $scope.helper.mouse_enter(config)
+
+    $scope.mouse_leave = ($event, config) ->
+        $scope.helper.mouse_leave(config)
 
 ]).directive("icswDeviceConfigurationOverview", ["$templateCache", ($templateCache) ->
     return {

@@ -224,26 +224,71 @@ angular.module(
             scope.get_class = () ->
                 return if scope.flag then "btn-success" else "btn-default"
     }
+]).directive("icswToolsTriButton",
+[
+    "$q", "$templateCache", "$timeout",
+(
+    $q, $templateCache, $timeout,
+) ->
+    # tri-state button, ignore, set, unset (for selections)
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.tools.tri.button")
+        scope:
+            state: "=icswState"
+            callback: "=icswCallback"
+        link: (scope, element, attrs) ->
+            if attrs.size
+                _size = "btn-#{attrs.size}"
+            else
+                _size = ""
+
+            new_state = () ->
+                new_val = scope.state
+                # state, 1: set, 0: ignore, -1:
+                if new_val == 1
+                    scope.css_class = "btn btn-success #{_size}"
+                    scope.button_value = "set"
+                else if new_val == 0
+                    scope.css_class = "btn btn-warning #{_size}"
+                    scope.button_value = "ignore"
+                else if new_val == -1
+                    scope.css_class = "btn btn-danger #{_size}"
+                    scope.button_value = "not set"
+                if scope.callback?
+                    $timeout(
+                        () ->
+                            scope.callback(new_val)
+                        0
+                    )
+
+            _cur_val = 666
+
+            scope.toggle_state = ($event) ->
+                scope.state++
+                if scope.state == 2
+                    scope.state = -1
+                _cur_val = scope.state
+                new_state()
+
+            scope.$watch(
+                "state",
+                (new_val) ->
+                    if new_val != _cur_val
+                        _cur_val = new_val
+                        new_state()
+            )
+
+    }
 ]).directive('icswToolsButton',
 [
-    "icswToolsButtonConfigService", "gettextCatalog",
+    "icswToolsButtonConfigService", "gettextCatalog", "$templateCache",
 (
-    icswToolsButtonsConfigService, gettextCatalog
+    icswToolsButtonsConfigService, gettextCatalog, $templateCache,
 ) ->
     return {
         restrict: "EA",
-        template: """
-    <button ng-attr-type="{{ button_type }}" name="button" class="btn {{ css_class }} {{ additional_class }} {{ icon_class }}"
-            ng-disabled="is_disabled">
-        {{ button_value }}
-    </button>
-<!--
-Disabled for now as it forces a line break (cf. monitoring basic setup)
-visible-md visible-lg
-    <button ng-attr-type="{{button_type}}" name="button" class="hidden-md hidden-lg btn {{css_class}} {{additional_class}} {{icon_class}}" title="{{ button_value }}">
-    </button>
--->
-    """
+        template: $templateCache.get("icsw.tools.button")
         scope:
             isShow: '&'
             disabled: '&'
