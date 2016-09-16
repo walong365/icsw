@@ -495,13 +495,13 @@ monitoring_basic_module = angular.module(
                 {
                     message: $compile($templateCache.get(template_name))(sub_scope)
                     title: template_title
-                    css_class: "modal-wide"
+                    css_class: ""
                     ok_label: if create then "Create" else "Modify"
                     closable: true
                     ok_callback: (modal) ->
                         d = $q.defer()
                         if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "", 0)
+                            toaster.pop("warning", "form validation problem", "")
                             d.reject("form not valid")
                         else
                             if create
@@ -791,7 +791,7 @@ monitoring_basic_module = angular.module(
                 "host_check_command"
                 icswHostCheckCommandBackup
                 "icsw.host.check.command.form"
-                "Monitoring HostCheck Command"
+                "Monitoring Host Check Command"
             )
 
         delete: (scope, $event, obj) ->
@@ -968,7 +968,7 @@ monitoring_basic_module = angular.module(
                 "mon_contactgroup"
                 icswMonContactgroupBackup
                 "icsw.mon.contactgroup.form"
-                "Monitoring ContactGroup"
+                "Monitoring Contact Group"
             )
 
         delete: (scope, $event, obj) ->

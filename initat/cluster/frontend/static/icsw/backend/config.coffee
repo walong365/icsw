@@ -238,13 +238,15 @@ config_module = angular.module(
                 _name = "#{config.name}"
                 config.$mulitple_names = false
             # @_init_expansion_fields(config)
-            config.info_str = "#{_name} (#{config.$$num_var}, #{config.$$num_script}, #{config.$$num_mon})"
+            config.$$info_str = "#{_name} (#{config.$$num_var}, #{config.$$num_script}, #{config.$$num_mon})"
             r_v = []
             if config.server_config
                 r_v.push("S")
+            if config.$$cse
+                r_v.push("R")
             # if config.system_config
             #     r_v.push("Y")
-            config.config_type_str = r_v.join("/")
+            config.$$config_type_str = r_v.join(", ")
 
         link: () =>
             # hints

@@ -418,7 +418,7 @@ monitoring_device_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         if create
@@ -614,7 +614,7 @@ monitoring_device_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start("changing dispatchers ....")
@@ -878,7 +878,7 @@ monitoring_device_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if s2_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start("saving Field...")
@@ -969,7 +969,7 @@ monitoring_device_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         if create
@@ -1023,7 +1023,7 @@ monitoring_device_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "", 0)
+                        toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start("Copying Template ...")

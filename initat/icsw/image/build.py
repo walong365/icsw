@@ -34,6 +34,7 @@ from lxml import etree
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import image
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, process_tools, threading_tools, configfile, config_tools
 
 global_config = configfile.get_global_config("build_image")
@@ -222,7 +223,7 @@ class ServerProcess(threading_tools.process_pool):
         )
         # log config
         self._log_config()
-        self.device = config_tools.server_check(server_type="image_server").effective_device
+        self.device = config_tools.server_check(service_type_enum=icswServiceEnum.image_server).effective_device
         if not self.device:
             self.log("not an image server", logging_tools.LOG_LEVEL_ERROR)
             self._int_error("not an image server")

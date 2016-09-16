@@ -57,7 +57,7 @@ class SyncerProcess(threading_tools.process_obj):
             init_logger=True
         )
         db_tools.close_connection()
-        self.router_obj = config_tools.router_object(self.log)
+        self.router_obj = config_tools.RouterObject(self.log)
         self.__register_timer = False
         self.register_func("send_register_msg", self._send_register_msg)
         self.register_func("file_content_result", self._file_content_result)

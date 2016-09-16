@@ -54,6 +54,7 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, DeviceScanLockSerializer, \
     device_variable_scope_serializer, StaticAssetSerializer, DeviceClassSerializer, \
     dvs_allowed_name_serializer
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.tools import logging_tools, server_command, process_tools
 
@@ -307,7 +308,7 @@ class scan_device_network(View):
             srv_com = None
             request.xml_response.error("invalid scan type {}".format(_sm))
         if srv_com is not None:
-            _result = contact_server(request, "discovery", srv_com, timeout=30)
+            _result = contact_server(request, icswServiceEnum.discovery_server, srv_com, timeout=30)
 
 
 class get_device_location(View):

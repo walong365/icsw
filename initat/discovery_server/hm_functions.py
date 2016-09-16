@@ -29,14 +29,11 @@ from lxml import etree
 
 from initat.cluster.backbone.exceptions import NoMatchingNetworkDeviceTypeFoundError, \
     NoMatchingNetworkFoundError
-from initat.cluster.backbone.models import partition, partition_disc, \
-    partition_table, partition_fs, lvm_lv, lvm_vg, sys_partition, net_ip, netdevice, \
+from initat.cluster.backbone.models import net_ip, netdevice, \
     netdevice_speed, peer_information, DeviceLogEntry, DeviceInventory
-from initat.cluster.backbone.models.functions import get_related_models
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
-from initat.tools import logging_tools, net_tools, partition_tools, \
-    process_tools, server_command, dmi_tools, pci_database
+from initat.tools import logging_tools, net_tools, process_tools, server_command, dmi_tools, pci_database
 from .config import global_config
 
 # removed tun from list to enable adding of FWs from Madar, move to option?

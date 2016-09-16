@@ -42,6 +42,7 @@ from rest_framework.views import APIView
 from initat.cluster.backbone.models import device, cd_connection, cluster_timezone, \
     kernel, image, partition_table, status, network, DeviceLogEntry, mac_ignore
 from initat.cluster.backbone.serializers import device_serializer_boot
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import logging_tools, server_command
 
@@ -92,7 +93,7 @@ class get_boot_info_json(View):
                 ]
             )
             result = contact_server(
-                request, "mother", srv_com, timeout=10, log_result=False, connection_id="webfrontend_status"
+                request, icswServiceEnum.mother_server, srv_com, timeout=10, log_result=False, connection_id="webfrontend_status"
             )
         else:
             result = None
@@ -253,7 +254,7 @@ class update_device(View):
                         srv_com.builder("device", name=cur_dev.name, pk="{:d}".format(cur_dev.pk)) for cur_dev in all_devs
                     ]
                 )
-                _res = contact_server(request, "mother", srv_com, timeout=10, connection_id="webfrontend_refresh")
+                _res = contact_server(request, icswServiceEnum.mother_server, srv_com, timeout=10, connection_id="webfrontend_refresh")
         if _all_update_list:
             if len(all_devs) > 1:
                 dev_info_str = "{}: {}".format(
@@ -351,7 +352,7 @@ class soft_control(View):
                 srv_com.builder("device", soft_command=soft_state, pk="{:d}".format(cur_dev.pk)) for cur_dev in cur_devs.itervalues()
             ]
         )
-        result = contact_server(request, "mother", srv_com, timeout=10, log_result=False)
+        result = contact_server(request, icswServiceEnum.mother_server, srv_com, timeout=10, log_result=False)
         _ok_list, _error_list = (
             result.xpath(".//ns:device[@command_sent='1']/@pk"),
             result.xpath(".//ns:device[@command_sent='0']/@pk"),
@@ -412,7 +413,7 @@ class hard_control(View):
                 for cur_cd_con in cur_cd_cons
             ]
         )
-        contact_server(request, "mother", srv_com, timeout=10)
+        contact_server(request, icswServiceEnum.mother_server, srv_com, timeout=10)
 
 
 class modify_mbl(View):

@@ -656,6 +656,8 @@ gulp.task("watch", (cb) ->
             "frontend/static/icsw/**/*.coffee",
             "frontend/static/icsw/**/*.html",
             # addons
+            "addons/liebherr/initat/cluster/work/icsw/*.js",
+            "addons/liebherr/initat/cluster/work/icsw/*.html",
             "addons/licadmin/initat/cluster/work/icsw/*.js",
             "addons/licadmin/initat/cluster/work/icsw/*.html",
         ]

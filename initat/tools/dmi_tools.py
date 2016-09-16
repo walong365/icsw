@@ -18,9 +18,9 @@
 
 """ parse dmidecode output """
 
+import commands
 import re
 import tempfile
-import commands
 
 from lxml.builder import E
 

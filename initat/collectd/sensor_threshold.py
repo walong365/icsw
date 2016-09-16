@@ -1,7 +1,7 @@
 #
 # this file is part of collectd
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,6 +28,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import SensorThreshold, \
     SensorThresholdAction, device
 from initat.icsw.service import clusterid
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, process_tools, server_command
 from initat.tools.bgnotify.create import create_bg_job, notify_command
 from .config import global_config
@@ -276,7 +277,7 @@ class Threshold(object):
                     ]
                 )
                 self.__container.proc.send_to_remote_server(
-                    "cluster-server",
+                    icswServiceEnum.cluster_server,
                     unicode(notify_command()),
                 )
             else:

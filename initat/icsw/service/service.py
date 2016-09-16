@@ -77,7 +77,7 @@ class Service(object):
 
     @property
     def msi_name(self):
-        c_name = self.attrib["meta_server_name"]
+        c_name = self.attrib["name"]
         _path = os.path.join("/", "var", "lib", "meta-server", c_name)
         # compat layer for buggy specs
         if not os.path.exists(_path) and c_name in self._COMPAT_DICT:
@@ -155,19 +155,23 @@ class Service(object):
                 return
         dev_config, dev_config_error = ([], [])
         if config_tools is not None:
-            if self.entry.find(".//config_names/config_name") is not None:
-                # dev_config = config_tools.device_with_config(entry.findtext(".//config_names/config_name"))
-                _conf_names = [_entry.text for _entry in self.entry.findall(".//config_names/config_name")]
-                for _conf_name in _conf_names:
+            try:
+                from initat.cluster.backbone.server_enums import icswServiceEnum
+            except ImportError:
+                from initat.host_monitoring.client_enums import icswServiceEnum
+            if self.entry.find(".//config-enums/config-enum") is not None:
+                _enum_names = [_entry.text for _entry in self.entry.findall(".//config-enums/config-enum")]
+                for _enum_name in _enum_names:
+                    _enum = getattr(icswServiceEnum, _enum_name)
                     try:
-                        _cr = config_tools.server_check(server_type=_conf_name)
+                        _cr = config_tools.server_check(service_type_enum=_enum)
                     except (threading_tools.int_error, threading_tools.term_error):
                         self.log("got int or term error, reraising", logging_tools.LOG_LEVEL_ERROR)
                         raise
                     except:
                         config_tools.close_db_connection()
                         try:
-                            _cr = config_tools.server_check(server_type=_conf_name)
+                            _cr = config_tools.server_check(service_type_enum=_enum)
                         except:
                             # cannot get server_check instance, set config_check_ok to False
                             self.config_check_ok = False
@@ -208,6 +212,7 @@ class Service(object):
                 _result.append(
                     E.meta_result(
                         target_state=_meta_result.get("target_state"),
+                        ignore=_meta_result.get("ignore"),
                     )
                 )
         run_info = []
@@ -271,60 +276,71 @@ class Service(object):
             except:
                 _result.attrib["version"] = "error getting version: {}".format(process_tools.get_except_info())
 
-    def _get_proc_info_str(self, unique_pids, num_started, num_found, num_diff, num_pids, diff_dict, any_ok):
+    def _get_proc_info_str(self, unique_pids, num_found, diff_dict, any_ok):
         num_procs = len(unique_pids)
-        if any_ok:
-            ret_str = "{} running".format(logging_tools.get_plural("thread", num_found))
+        ret_f = []
+        if any_ok and False:
+            ret_f.append(
+                "{} running".format(logging_tools.get_plural("process", num_found))
+            )
         else:
-            if diff_dict:
-                diff_str = ", [diff: {}]".format(
-                    ", ".join(
-                        [
-                            "{:d}: {:d}".format(
-                                _key,
-                                _value
-                            ) for _key, _value in diff_dict.iteritems()
-                        ]
+            num_under, num_over = (
+                len([_v for _v in diff_dict.itervalues() if _v < 0]),
+                len([_v for _v in diff_dict.itervalues() if _v > 0]),
+            )
+            if num_under:
+                ret_f.append(
+                    "{} {} missing".format(
+                        logging_tools.get_plural("process", num_under),
+                        num_under == 1 and "is" or "are",
                     )
                 )
-            else:
-                diff_str = ""
-            if num_diff < 0:
-                ret_str = "{} {} missing{}".format(
-                    logging_tools.get_plural("thread", -num_diff),
-                    num_diff == 1 and "is" or "are",
-                    diff_str,
+            if num_over:
+                ret_f.append(
+                    "{} too much".format(
+                        logging_tools.get_plural("process", num_over),
+                    )
                 )
-                da_name = "critical"
-            elif num_diff > 0:
-                ret_str = "{} too much{}".format(
-                    logging_tools.get_plural("thread", num_diff),
-                    diff_str,
+            if not num_under and not num_over:
+                ret_f.append(
+                    "the process is running" if num_procs == 1 else "{}{} running".format(
+                        "all " if num_procs > 1 else "",
+                        logging_tools.get_plural("process", num_procs),
+                    )
                 )
-                da_name = "warning"
-            else:
-                ret_str = "the process is running" if num_started == 1 else "{}{} ({}) running".format(
-                    "all " if num_procs > 1 else "",
-                    logging_tools.get_plural("process", num_procs),
-                    logging_tools.get_plural("thread", num_started),
+            if diff_dict:
+                ret_f.append(
+                    "[diff: {}]".format(
+                        ", ".join(
+                            [
+                                "{:d}: {:d}".format(
+                                    _key,
+                                    _value
+                                ) for _key, _value in diff_dict.iteritems()
+                            ]
+                        )
+                    )
                 )
-        return ret_str
+        return ", ".join(ret_f)
 
     def _check_processes(self, pids, act_proc_dict):
-        name = self.name
-        any_ok = True if int(self.attrib["any_threads_ok"]) else False
+        # name = self.name
+        any_ok = True if int(self.attrib["any-processes-ok"]) else False
         unique_pids = {
             key: pids.count(key) for key in set(pids)
         }
-        pids_found = {}
-        for key in set(pids):
-            if key in act_proc_dict:
-                try:
-                    pids_found[key] = act_proc_dict[key].num_threads()
-                except psutil.NoSuchProcess:
-                    pass
-        num_started = sum(unique_pids.values()) if unique_pids else 0
-        num_found = sum(pids_found.values()) if pids_found else 0
+        pids_found = {key: True for key in set(pids) if key in act_proc_dict}
+        # for key in set(pids):
+        #    if key in act_proc_dict:
+        #        try:
+        #            pids_found[key] = act_proc_dict[key].num_threads()
+        #        except psutil.NoSuchProcess:
+        #            pass
+        # num_started = sum(unique_pids.values()) if unique_pids else 0
+        # num_found = sum(pids_found.values()) if pids_found else 0
+        num_started = len(unique_pids)
+        num_found = len(pids_found)
+        # print num_started, num_found, unique_pids, pids_found
         # check for extra Nagios2.x thread
         if any_ok and num_found:
             ret_state = SERVICE_OK
@@ -577,7 +593,7 @@ class PIDService(Service):
             start_time = os.stat(pid_file_name)[stat.ST_CTIME]
             act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
             act_state, num_started, num_found = self._check_processes(act_pids, act_proc_dict)
-            num_diff = 0
+            unique_pids = set(act_pids)
             diff_dict = {}
             result.append(
                 E.process_state_info(
@@ -590,17 +606,14 @@ class PIDService(Service):
                     check_source="pid",
                     num_started="{:d}".format(num_started),
                     num_found="{:d}".format(num_found),
-                    num_diff="{:d}".format(num_diff),
+                    num_diff="{:d}".format(abs(num_started - num_found)),
                     start_time="{:d}".format(start_time),
                     state="{:d}".format(act_state),
                     proc_info_str=self._get_proc_info_str(
-                        set(act_pids),
-                        num_started,
+                        unique_pids,
                         num_found,
-                        num_diff,
-                        len(act_pids),
                         diff_dict,
-                        True if int(self.entry.attrib["any_threads_ok"]) else False,
+                        True if int(self.entry.attrib["any-processes-ok"]) else False,
                     )
                 ),
             )
@@ -612,26 +625,25 @@ class PIDService(Service):
 class MetaService(Service):
     # Service backup up by a meta-server file
     def _check(self, result, act_proc_dict):
-        init_script_name = self.init_script_name
-        c_name = self.attrib["meta_server_name"]
         ms_name = self.msi_name
         if os.path.exists(ms_name):
             # TODO : cache msi files
-            ms_block = process_tools.meta_server_info(ms_name)
+            ms_block = process_tools.MSIBlock(ms_name)
             start_time = ms_block.start_time
             _check = ms_block.check_block(act_proc_dict)
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
-            diff_threads = sum(ms_block.bound_dict.values())
+            diff_procs = sum([abs(_v) for _v in diff_dict.values()]) if diff_dict else 0
             act_pids = ms_block.pids_found
+            # print "*", act_pids
             unique_pids = set(act_pids)
             num_started = len(act_pids)
-            if diff_threads:
+            if diff_procs:
                 act_state = SERVICE_INCOMPLETE
+                # hm, not correct, FIXME
                 num_found = num_started
             else:
                 act_state = SERVICE_OK
                 num_found = num_started
-            num_diff = diff_threads
             result.append(
                 E.process_state_info(
                     *[
@@ -643,17 +655,14 @@ class MetaService(Service):
                     check_source="meta",
                     num_started="{:d}".format(num_started),
                     num_found="{:d}".format(num_found),
-                    num_diff="{:d}".format(num_diff),
+                    num_diff="{:d}".format(diff_procs),
                     start_time="{:d}".format(int(start_time)),
                     state="{:d}".format(act_state),
                     proc_info_str=self._get_proc_info_str(
                         unique_pids,
-                        num_started,
                         num_found,
-                        num_diff,
-                        len(act_pids),
                         diff_dict,
-                        True if int(self.entry.attrib["any_threads_ok"]) else False,
+                        True if int(self.entry.attrib["any-processes-ok"]) else False,
                     )
                 ),
             )

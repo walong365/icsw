@@ -51,7 +51,7 @@ except ImportError:
     pass
 
 
-class router_object(object):
+class RouterObject(object):
     def __init__(self, log_com):
         self.__log_com = log_com
         self.__cur_gen = 0
@@ -950,40 +950,67 @@ class server_check(object):
 
 
 class device_with_config(dict):
-    def __init__(self, config_name, **kwargs):
+    def __init__(self, config_name=None, service_type_enum=None, **kwargs):
         dict.__init__(self)
         self.__config_name = config_name
-        if self.__config_name.count("%"):
-            self.__match_str = "name__icontains"
-            self.__m_config_name = self.__config_name.replace("%", "")
+        self.__service_type_enum = service_type_enum
+        if self.__config_name:
+            if self.__config_name.count("%"):
+                self.__match_str = "name__icontains"
+                self.__m_config_name = self.__config_name.replace("%", "")
+            else:
+                self.__match_str = "name"
+                self.__m_config_name = self.__config_name
         else:
-            self.__match_str = "name"
-            self.__m_config_name = self.__config_name
+            pass
         self._check(**kwargs)
 
     def _check(self, **kwargs):
         # locates devices with the given config_name
         # right now we are fetching a little bit too much ...
         # print "*** %s=%s" % (self.__match_str, self.__m_config_name)
-        direct_list = device_config.objects.filter(
-            Q(
-                **{
-                    "config__{}".format(self.__match_str): self.__m_config_name,
-                    "device__enabled": True,
-                    "device__device_group__enabled": True,
-                }
+        if self.__config_name:
+            direct_list = device_config.objects.filter(
+                Q(
+                    **{
+                        "config__{}".format(self.__match_str): self.__m_config_name,
+                        "device__enabled": True,
+                        "device__device_group__enabled": True,
+                    }
+                )
             )
-        ).select_related(
+            _value_list = [
+                "config__name",
+                "config",
+                "device__name",
+                "device",
+                "device__device_group",
+                "device__is_meta_device",
+            ]
+        else:
+            direct_list = device_config.objects.filter(
+                Q(
+                    **{
+                        "config__config_service_enum__enum_name": self.__service_type_enum.name,
+                        "device__enabled": True,
+                        "device__device_group__enabled": True,
+                    }
+                )
+            )
+            _value_list = [
+                "config__config_service_enum__enum_name",
+                "config",
+                "device__name",
+                "device",
+                "device__device_group",
+                "device__is_meta_device",
+            ]
+        direct_list = direct_list.select_related(
             "device",
             "config",
             "device__device_group",
         ).values_list(
-            "config__name",
-            "config",
-            "device__name",
-            "device",
-            "device__device_group",
-            "device__is_meta_device",
+            *_value_list
         )
         exp_group = set([cur_entry[4] for cur_entry in direct_list if cur_entry[5]])
         conf_pks = set([cur_entry[1] for cur_entry in direct_list])
@@ -1027,16 +1054,25 @@ class device_with_config(dict):
         }
         for dev_key, conf_list in dev_conf_dict.iteritems():
             dev_name, dev_pk, devg_pk, _dev_type = dev_key
-            for conf_name, conf_pk, m_type, src_type in conf_list:
+            for conf_or_srv_name, conf_pk, m_type, src_type in conf_list:
                 # print "%s (%s/%s), %s" % (conf_name, m_type, src_type, dev_key[0])
-                cur_struct = server_check(
-                    short_host_name=dev_name,
-                    server_type=conf_name,
-                    config=conf_dict[conf_pk],
-                    device=dev_dict[dev_pk],
-                    effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
-                )
-                self.setdefault(conf_name, []).append(cur_struct)
+                if self.__config_name:
+                    cur_struct = server_check(
+                        short_host_name=dev_name,
+                        server_type=conf_or_srv_name,
+                        config=conf_dict[conf_pk],
+                        device=dev_dict[dev_pk],
+                        effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
+                    )
+                else:
+                    cur_struct = server_check(
+                        short_host_name=dev_name,
+                        service_type_enum=self.__service_type_enum,
+                        config=conf_dict[conf_pk],
+                        device=dev_dict[dev_pk],
+                        effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
+                    )
+                self.setdefault(conf_or_srv_name, []).append(cur_struct)
 
     def set_key_type(self, k_type):
         print "deprecated, only one key_type (config) supported"
@@ -1053,6 +1089,6 @@ def _log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
 
 
 if __name__ == "__main__":
-    ro = router_object(_log_com)
+    ro = RouterObject(_log_com)
     # pprint.pprint(ro.get_clusters())
     print len(ro.get_clusters())

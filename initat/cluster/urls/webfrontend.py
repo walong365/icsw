@@ -45,6 +45,7 @@ report_patterns = [
 ]
 
 asset_patterns = [
+    url("^get_assetbatch_list$", asset_views.AssetBatchViewSet.as_view({"get": "list"}), name="get_assetbatch_list"),
     url("^export_assetbatch_to_xlsx$", asset_views.export_assetbatch_to_xlsx.as_view(), name="export_assetbatch_to_xlsx"),
     url("^export_assetbatch_to_pdf$", asset_views.export_assetbatch_to_pdf.as_view(), name="export_assetbatch_to_pdf"),
     url("^export_scheduled_runs_to_csv$", asset_views.export_scheduled_runs_to_csv.as_view(), name="export_scheduled_runs_to_csv"),
@@ -113,6 +114,7 @@ session_patterns = [
     url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
     url(r"get_authenticated_user$", session_views.UserView.as_view({"get": "get_user"}), name="get_authenticated_user"),
     url(r"get_csrf_token$", session_views.get_csrf_token.as_view(), name="get_csrf_token"),
+    url(r"get_background_jobs$", session_views.BackgroundJobViewSet.as_view({"get": "get_bg_jobs"}), name="background_jobs"),
 ]
 
 rms_patterns = [
@@ -125,6 +127,8 @@ rms_patterns = [
     url(r"control_queue", rms_views.control_queue.as_view(), name="control_queue"),
     url(r"get_file_content", rms_views.get_file_content.as_view(), name="get_file_content"),
     url(r"change_job_pri$", rms_views.change_job_priority.as_view(), name="change_job_priority"),
+    # for liebherr
+    url(r"job_list$", rms_views.RmsJobViewSet.as_view({"get": "simple_get"}), name="job_list"),
 ]
 
 # license overview

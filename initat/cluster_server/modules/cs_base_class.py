@@ -1,4 +1,4 @@
-# Copyright (C) 2007,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2014,2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,6 +24,7 @@ from django.db import connection
 
 from initat.cluster.backbone import db_tools
 from initat.cluster_server.config import global_config
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import process_tools, server_command, threading_tools, config_tools, io_stream_helper, logging_tools
 
 
@@ -231,7 +232,9 @@ class server_com(object):
         doit, srv_origin, err_str = (False, "---", "OK")
         if self.Meta.needed_configs:
             for act_c in self.Meta.needed_configs:
-                sql_info = config_tools.server_check(server_type="{}".format(act_c))
+                # todo, move to icswServiceEnum
+                _a = icswServiceEnum
+                sql_info = config_tools.server_check(service_type_enum=act_c)  # server_type="{}".format(act_c))
                 if sql_info.effective_device:
                     doit, srv_origin = (True, sql_info.server_origin)
                     if not self.server_idx:
@@ -240,7 +243,10 @@ class server_com(object):
             if doit:
                 self.Meta.actual_configs = self.Meta.needed_configs
             else:
-                err_str = "Server {} has no {} attribute".format(loc_config["SERVER_SHORT_NAME"], " or ".join(self.Meta.needed_configs))
+                err_str = "Server {} has no {} attribute".format(
+                    loc_config["SERVER_SHORT_NAME"],
+                    " or ".join([_enum.name for _enum in self.Meta.needed_configs])
+                )
         else:
             doit = True
         if doit and self.Meta.needed_config_keys:

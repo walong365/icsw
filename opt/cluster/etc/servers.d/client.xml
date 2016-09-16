@@ -19,7 +19,6 @@
         runs_on="client"
         pid_file_name="logserver/logserver.pid"
         has_force_stop="1"
-        meta_server_name="logserver"
         uuid-postfix="logging-server"
     >
         <module-name>initat.logging_server.main</module-name>
@@ -80,7 +79,6 @@
         runs_on="client"
         pid_file_name="collserver/collserver.pid"
         has_force_stop="1"
-        meta_server_name="collserver"
         wait_time="300"
         reload="1"
     >
@@ -125,7 +123,7 @@
             </ports>
         </network>
     </instance>
-    <instance name="memcached" check_type="simple" init_script_name="init-memcached" pid_file_name="init-memcached/memcached.pid" any_threads_ok="1" runs_on="system">
+    <instance name="memcached" check_type="simple" init_script_name="init-memcached" pid_file_name="init-memcached/memcached.pid" any-processes-ok="1" runs_on="system">
         <network>
             <ports>
                 <port type="command">8001</port>

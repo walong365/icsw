@@ -26,6 +26,7 @@ from django.db.models import Q
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import cd_connection, device_variable, \
     netdevice, DeviceLogEntry, user
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.mother.command_tools import simple_command
 from initat.snmp.sink import SNMPSink
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
@@ -285,9 +286,9 @@ class ExternalCommandProcess(threading_tools.process_obj):
         # close database connection
         db_tools.close_connection()
         simple_command.setup(self)
-        self.router_obj = config_tools.router_object(self.log)
+        self.router_obj = config_tools.RouterObject(self.log)
         self.snmp_sink = SNMPSink(self.log)
-        self.sc = config_tools.server_check(server_type="mother_server")
+        self.sc = config_tools.server_check(service_type_enum=icswServiceEnum.mother_server)
         self.register_func("delay_command", self._delay_command)
         self.register_func("hard_control", self._hard_control)
         self.register_func("snmp_finished", self._snmp_finished)

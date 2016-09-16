@@ -312,9 +312,9 @@
             <stateData type="dict" url_str="/asset" templateUrl_str="icsw/device/asset/overview"/>
             <icswData type="dict" pageTitle_str="Device Assets">
                 <serviceTypes type="list">
-                    <value>discovery-server</value>
+                    <value>discovery_server</value>
                 </serviceTypes>
-                <menuEntry type="dict" icon_str="fa-code"/>
+                <menuEntry type="dict" icon_str="fa-diamond"/>
                 <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
                 <rights type="list">
                     <value>backbone.device.assets</value>
@@ -338,7 +338,7 @@
             <stateData type="dict" url_str="/deployboot" templateUrl_str="icsw/main/deploy/boot.html"/>
             <icswData type="dict" pageTitle_str="Boot nodes" hasDevselFunc_bool="yes">
                 <serviceTypes type="list">
-                    <value>mother</value>
+                    <value>mother_server</value>
                 </serviceTypes>
                 <rights type="list">
                     <value>backbone.device.change_boot</value>
@@ -393,7 +393,7 @@
             <stateData type="dict" url_str="/rmsoverview" templateUrl_str="icsw/main/rms/overview.html"/>
             <icswData type="dict" pageTitle_str="RMS Overview">
                 <serviceTypes type="list">
-                    <value>rms-server</value>
+                    <value>rms_server</value>
                 </serviceTypes>
                 <dashboardEntry type="dict" sizeX_int="4" sizeY_int="6"/>
                 <rights type="list">
@@ -409,7 +409,7 @@
             <stateData type="dict" url_str="/licoverview" templateUrl_str="icsw/main/rms/licoverview.html"/>
             <icswData type="dict" pageTitle_str="License Liveview">
                 <serviceTypes type="list">
-                    <value>rms-server</value>
+                    <value>rms_server</value>
                 </serviceTypes>
                 <dashboardEntry type="dict" sizeX_int="2" sizeY_int="6"/>
                 <rights type="list">
@@ -495,7 +495,7 @@
                     <value>rms</value>
                 </licenses>
                 <serviceTypes type="list">
-                    <value>rms-server</value>
+                    <value>rms_server</value>
                 </serviceTypes>
                 <dashboardEntry type="dict" sizeX_int="3" sizeY_int="2"/>
                 <rights type="list">

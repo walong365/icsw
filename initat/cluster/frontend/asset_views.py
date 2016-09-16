@@ -40,14 +40,14 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 
-from initat.cluster.frontend.report_views import PDFReportGenerator, generate_csv_entry_for_assetrun
+from initat.report_server.report import PDFReportGenerator, generate_csv_entry_for_assetrun
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
     AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
     AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
-    StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer
+    StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer, AssetBatchSerializer
 
 try:
     from openpyxl import Workbook
@@ -58,6 +58,18 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+class AssetBatchViewSet(viewsets.ViewSet):
+    def list(self, request):
+        if "pks" in request.query_params:
+            queryset = AssetBatch.objects.prefetch_related("packages_install_times", "installed_updates",
+                "pending_updates", "memory_modules", "cpus", "gpus").filter(
+                Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
+            )
+        else:
+            queryset = AssetBatch.objects.all()
+        serializer = AssetBatchSerializer(queryset, many=True)
+        return Response(serializer.data)
+
 
 class run_assetrun_for_device_now(View):
     @method_decorator(login_required)
@@ -66,7 +78,7 @@ class run_assetrun_for_device_now(View):
         ScheduleItem.objects.create(
             device=_dev,
             source=10,
-            planned_date=datetime.datetime.now(tz=pytz.utc),
+            planned_date=timezone.now(),
             run_now=True,
             dispatch_setting=None
         )
@@ -247,9 +259,9 @@ class ScheduledRunViewSet(viewsets.ViewSet):
 class AssetRunsViewSet(viewsets.ViewSet):
     def list_all(self, request):
         if "pks" in request.query_params:
-           queryset = AssetRun.objects.filter(
-               Q(asset_batch__device__in=json.loads(request.query_params.getlist("pks")[0]))
-           )
+            queryset = AssetRun.objects.filter(
+                Q(asset_batch__device__in=json.loads(request.query_params.getlist("pks")[0]))
+            )
         else:
             queryset = AssetRun.objects.all()
 

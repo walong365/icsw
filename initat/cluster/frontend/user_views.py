@@ -42,8 +42,8 @@ from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
     csw_object_permission, group_object_permission, user_object_permission, device, License, device_variable
 from initat.cluster.backbone.models.functions import db_t2000_limit
-from initat.cluster.backbone.serializers import RolePermissionSerializer, RoleObjectPermissionSerializer, \
-    user_variable_serializer
+from initat.cluster.backbone.serializers import user_variable_serializer
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.license_views import login_required_rest
 from initat.cluster.frontend.rest_views import rest_logging
@@ -82,12 +82,12 @@ class sync_users(View):
             )
             srv_com = server_command.srv_command(command="create_user_home")
             srv_com["server_key:username"] = create_user.login
-            _result = contact_server(request, "server", srv_com, timeout=30, target_server_id=create_user.export.device_id)
+            _result = contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=30, target_server_id=create_user.export.device_id)
         # force sync_users
         request.user.save()
-        if config_tools.server_check(server_type="monitor_server").effective_device:
+        if config_tools.server_check(service_type_enum=icswServiceEnum.monitor_server).effective_device:
             srv_com = server_command.srv_command(command="sync_http_users")
-            _result = contact_server(request, "md-config", srv_com)
+            _result = contact_server(request, icswServiceEnum.monitor_server, srv_com)
 
 
 class change_object_permission(View):
@@ -242,7 +242,7 @@ class upload_license_file(View):
                     request.xml_response.info("Successfully uploaded license file")
 
                     srv_com = server_command.srv_command(command="check_license_violations")
-                    contact_server(request, "server", srv_com, timeout=60, log_error=True, log_result=False)
+                    contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, log_error=True, log_result=False)
             else:
                 request.xml_response.warn("This license file has already been uploaded")
 
@@ -285,7 +285,7 @@ class get_device_ip(View):
         to_server_check = config_tools.server_check(device=to_dev, config=None, server_type="node")
 
         # calc route to it and use target ip
-        _router = config_tools.router_object(logger)
+        _router = config_tools.RouterObject(logger)
         route = from_server_check.get_route_to_other_device(_router, to_server_check, allow_route_to_other_networks=True, prefer_production_net=True)
 
         if route:

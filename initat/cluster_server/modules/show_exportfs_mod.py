@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,12 +19,13 @@
 
 from django.db.models import Q
 from initat.cluster.backbone.models import device_config, home_export_list
+from initat.cluster.backbone.server_enums import icswServiceEnum
 import cs_base_class
 
 
 class show_exportfs(cs_base_class.server_com):
     class Meta:
-        needed_configs = ["server"]
+        needed_configs = [icswServiceEnum.cluster_server]
 
     def _call(self, cur_inst):
         # normal exports

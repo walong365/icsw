@@ -32,6 +32,7 @@ from django.db.models import Q
 from django.db.utils import IntegrityError
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import package_search, package_search_result, \
     package, get_related_models, package_device_connection, device, kernel, image, \
     package_repo
@@ -61,14 +62,14 @@ class repo_overview(permission_required_mixin, View):
                         uuid=cur_dev.uuid
                     ) for cur_dev in device.objects.filter(Q(pk__in=_node_pks))
                 ]
-            _result = contact_server(request, "package", srv_com, timeout=10, log_result=True)
+            _result = contact_server(request, icswServiceEnum.package_server, srv_com, timeout=10, log_result=True)
         else:
             request.xml_response.error("unknown mode '{}'".format(cur_mode))
 
 
 def reload_searches(request):
     srv_com = server_command.srv_command(command="reload_searches")
-    return contact_server(request, "package", srv_com, timeout=5, log_result=False)
+    return contact_server(request, icswServiceEnum.package_server, srv_com, timeout=5, log_result=False)
 
 
 class retry_search(View):
@@ -255,7 +256,7 @@ class change_package(View):
                 cur_pdc.save()
         request.xml_response.info("{} updated".format(logging_tools.get_plural("PDC", changed)), logger)
         srv_com = server_command.srv_command(command="new_config")
-        result = contact_server(request, "package", srv_com, timeout=10, log_result=False)
+        result = contact_server(request, icswServiceEnum.package_server, srv_com, timeout=10, log_result=False)
         if result:
             # print result.pretty_print()
             request.xml_response.info("sent sync to server", logger)
@@ -308,7 +309,7 @@ class synchronize(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(command="new_config")
-        result = contact_server(request, "package", srv_com, timeout=10, log_result=False)
+        result = contact_server(request, icswServiceEnum.package_server, srv_com, timeout=10, log_result=False)
         if result:
             # print result.pretty_print()
             request.xml_response.info("sent sync to server", logger)

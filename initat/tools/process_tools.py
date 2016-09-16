@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2001-2007,2009-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2001-2007,2009-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -21,11 +21,15 @@
 
 import atexit
 import base64
+import bz2
+import grp
 import inspect
+import json
 import marshal
 import os
 import pickle
 import platform
+import pwd
 import random
 import re
 import socket
@@ -35,13 +39,10 @@ import sys
 import threading
 import time
 import traceback
-import json
-import bz2
-from lxml import etree  # @UnresolvedImports
-import grp
-import pwd
 
 import six
+from lxml import etree
+
 from initat.tools import logging_tools
 
 try:
@@ -475,17 +476,9 @@ class int_error(error):
         error.__init__(self)
 
 
-class meta_server_info(object):
+class MSIBlock(object):
     def __init__(self, name, log_com=None):
         self.__log_com = log_com
-        self.__prop_list = [
-            ("start_command", "s", None),
-            ("stop_command", "s", None),
-            ("kill_pids", "b", False),
-            ("check_memory", "b", True),
-            ("exe_name", "s", None),
-            ("need_any_pids", "b", 0),
-        ]
         self._reset()
         if name.startswith("/"):
             parsed = self._parse_file(name)
@@ -501,8 +494,6 @@ class meta_server_info(object):
             self.__file_name = None
             self.set_meta_server_dir("/var/lib/meta-server")
             self.__name = name
-            for opt, val_type, def_val in self.__prop_list:
-                setattr(self, opt, def_val)
         self.parsed = parsed
         self.file_init_time = time.time()
 
@@ -513,10 +504,9 @@ class meta_server_info(object):
             logging_tools.my_syslog(what)
 
     def _reset(self):
-        self.__pids = []
+        self.__pids = set()
         self.__pid_names = {}
         self.__pid_proc_names = {}
-        self.__pid_fuzzy = {}
         # when the MSI-block was startet (== main process start)
         self.__start_time = {}
 
@@ -528,7 +518,7 @@ class meta_server_info(object):
             xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
         except:
             self.log(
-                "error parsing XML file {} (meta_server_info): {}".format(
+                "error parsing XML file {} (MSIBlock): {}".format(
                     name,
                     get_except_info()
                 ),
@@ -544,29 +534,9 @@ class meta_server_info(object):
                 self.__start_time = int(float(_start_time.text))
             # reads pids
             for cur_idx, pid_struct in enumerate(xml_struct.xpath(".//pid_list/pid", smart_strings=False)):
-                self.__pids.extend([int(pid_struct.text)] * int(pid_struct.get("mult", "1")))
+                self.__pids.add(int(pid_struct.text))
                 self.__pid_names[int(pid_struct.text)] = pid_struct.get("name", "proc{:d}".format(cur_idx + 1))
                 self.__pid_proc_names[int(pid_struct.text)] = pid_struct.get("proc_name", "")
-                self.__pid_fuzzy[int(pid_struct.text)] = (
-                    int(pid_struct.get("fuzzy_floor", "0")),
-                    int(pid_struct.get("fuzzy_ceiling", "0")),
-                )
-            for opt, val_type, def_val in self.__prop_list:
-                cur_prop = xml_struct.xpath(".//properties/prop[@type and @key='{}']".format(opt), smart_strings=False)
-                if cur_prop:
-                    cur_prop = cur_prop[0]
-                    cur_value = cur_prop.text
-                    if cur_prop.attrib["type"] == "integer":
-                        cur_value = int(cur_value)
-                    elif cur_prop.attrib["type"] == "boolean":
-                        cur_value = bool(cur_value)
-                else:
-                    cur_value = def_val
-                if opt.startswith("fuzzy"):
-                    # ignore fuzzy*
-                    pass
-                else:
-                    setattr(self, opt, cur_value)
             parsed = True
         return parsed
 
@@ -592,20 +562,6 @@ class meta_server_info(object):
         self.__file_init_time = fi_time
     file_init_time = property(file_init_time_get, file_init_time_set)
 
-    def stop_command_get(self):
-        return self._stop_command
-
-    def stop_command_set(self, stop_com):
-        self._stop_command = stop_com
-    stop_command = property(stop_command_get, stop_command_set)
-
-    def start_command_get(self):
-        return self._start_command
-
-    def start_command_set(self, start_com):
-        self._start_command = start_com
-    start_command = property(start_command_get, start_command_set)
-
     def exe_name_get(self):
         return self.__exe_name
 
@@ -613,28 +569,7 @@ class meta_server_info(object):
         self.__exe_name = en
     exe_name = property(exe_name_get, exe_name_set)
 
-    def need_any_pids_get(self):
-        return self.__need_any_pids
-
-    def need_any_pids_set(self, en):
-        self.__need_any_pids = en
-    need_any_pids = property(need_any_pids_get, need_any_pids_set)
-
-    def kill_pids_get(self):
-        return self.__kill_pids
-
-    def kill_pids_set(self, kp=1):
-        self.__kill_pids = kp
-    kill_pids = property(kill_pids_get, kill_pids_set)
-
-    def check_memory_get(self):
-        return self.__check_memory
-
-    def check_memory_set(self, cm=1):
-        self.__check_memory = cm
-    check_memory = property(check_memory_get, check_memory_set)
-
-    def add_actual_pid(self, act_pid=None, mult=1, fuzzy_floor=0, fuzzy_ceiling=0, process_name=""):
+    def add_actual_pid(self, act_pid=None, process_name=""):
         if not act_pid:
             act_pid = os.getpid()
         try:
@@ -648,29 +583,16 @@ class meta_server_info(object):
                 logging_tools.LOG_LEVEL_ERROR
             )
             _ps_name = ""
-        self.__pids.extend(mult * [act_pid])
-        self.__pid_fuzzy[act_pid] = (fuzzy_floor, fuzzy_ceiling)
+        self.__pids.add(act_pid)
         if not process_name:
             process_name = "proc{:d}".format(len(self.__pid_names) + 1)
         self.__pid_names[act_pid] = process_name
         self.__pid_proc_names[act_pid] = _ps_name
-        self.__pids.sort()
 
-    def remove_actual_pid(self, act_pid=None, mult=0):
-        """
-        mult: number of pids to remove, defaults to 0 (means all)
-        """
+    def remove_actual_pid(self, act_pid=None):
         if not act_pid:
             act_pid = os.getpid()
-        if mult:
-            for _idx in xrange(mult):
-                if act_pid in self.__pids:
-                    self.__pids.remove(act_pid)
-        else:
-            while act_pid in self.__pids:
-                self.__pids.remove(act_pid)
-        # do NOT sort the pids
-        # self.__pids.sort()
+        self.__pids.remove(act_pid)
 
     def get_pids(self, process_name=None, name=None):
         pid_list = self.__pids
@@ -698,8 +620,7 @@ class meta_server_info(object):
         return pid_list
 
     def set_pids(self, in_pids):
-        # dangerous, pid_fuzzy not set
-        self.__pids = in_pids
+        self.__pids = set(in_pids)
     pids = property(get_pids, set_pids)
 
     def get_unique_pids(self):
@@ -712,53 +633,30 @@ class meta_server_info(object):
         return self.__pid_proc_names[pid]
 
     def get_info(self):
-        pid_dict = {pid: self.__pids.count(pid) for pid in self.__pids}
+        pid_dict = {pid: 1 for pid in self.__pids}
         all_pids = sorted(pid_dict.keys())
-        return "{} ({}): {}".format(
-            logging_tools.get_plural("unique pid", len(all_pids)),
-            logging_tools.get_plural("total thread", len(self.__pids)),
-            all_pids and ", ".join(["{:d}{}".format(pid, pid_dict[pid] and " (x {:d})".format(pid_dict[pid]) or "") for pid in all_pids]) or "---"
+        return "{}: {}".format(
+            logging_tools.get_plural("pid", len(all_pids)),
+            all_pids and ", ".join(["{:d}".format(pid) for pid in all_pids]) or "---"
         )
 
     def save_block(self):
+        return self.save()
+
+    def save(self):
         pid_list = E.pid_list()
-        for cur_pid in sorted(set(self.__pids)):
+        for cur_pid in sorted(self.__pids):
             cur_pid_el = E.pid(
                 "{:d}".format(cur_pid),
-                mult="{:d}".format(
-                    self.__pids.count(cur_pid)
-                ),
                 name=self.__pid_names[cur_pid],
                 proc_name=self.__pid_proc_names[cur_pid]
             )
-            f_f, f_c = self.__pid_fuzzy[cur_pid]
-            if f_f:
-                cur_pid_el.attrib["fuzzy_floor"] = "{:d}".format(f_f)
-            if f_c:
-                cur_pid_el.attrib["fuzzy_ceiling"] = "{:d}".format(f_c)
             pid_list.append(cur_pid_el)
         xml_struct = E.meta_info(
             E.name(self.__name),
             E.start_time("{:d}".format(int(self.__start_time))),
             pid_list,
-            E.properties()
         )
-        for opt, val_type, _dev_val in self.__prop_list:
-            prop_val = getattr(self, opt)
-            if prop_val is not None:
-                xml_struct.find("properties").append(
-                    E.prop(
-                        str(prop_val),
-                        **{
-                            "key": opt,
-                            "type": {
-                                "s": "string",
-                                "i": "integer",
-                                "b": "boolean"
-                            }[val_type]
-                        }
-                    )
-                )
         file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)  # @UndefinedVariable
         if not self.__file_name:
             self.__file_name = os.path.join(self.__meta_server_dir, self.__name)
@@ -766,7 +664,7 @@ class meta_server_info(object):
             open(self.__file_name, "w").write(file_content)
         except:
             self.log(
-                "error writing file {} (meta_server_info for {})".format(
+                "error writing file {} (MSIBlock for {})".format(
                     self.__file_name,
                     self.__name
                 ),
@@ -774,19 +672,22 @@ class meta_server_info(object):
             )
 
     def __eq__(self, other):
-        return self.__name == other.name and self.__pids == other.get_pids()
+        return self.__name == other.name and sorted(list(self.__pids)) == sorted(list(other.get_pids()))
 
     def __ne__(self, other):
-        return self.__name != other.name or self.__pids != other.get_pids()
+        return self.__name != other.name or sorted(list(self.__pids)) != sorted(list(other.get_pids()))
 
     def remove_meta_block(self):
+        return self.remove()
+
+    def remove(self):
         if not self.__file_name:
             self.__file_name = os.path.join(self.__meta_server_dir, self.__name)
         try:
             os.unlink(self.__file_name)
         except:
             self.log(
-                "error removing file {} (meta_server_info for {}): {}".format(
+                "error removing file {} (MSIBlock for {}): {}".format(
                     self.__file_name,
                     self.__name,
                     get_except_info()
@@ -804,71 +705,35 @@ class meta_server_info(object):
     def check_block(self, act_dict={}):
         if not act_dict:
             act_dict = get_proc_list()
-        if not self.__pids:
-            # search pids
-            # print act_dict.keys()
-            try:
-                pids_found = [
-                    key for key, value in act_dict.iteritems() if value.name() == self.__exe_name
-                ]
-            except psutil.NoSuchProcess:
-                # catch vanished process(es)
-                pids_found = []
-                for key, value in act_dict.iteritems():
-                    try:
-                        if value.name() == self.__exe_name:
-                            pids_found.append(key)
-                    except psutil.NoSuchProcess:
-                        # ignore mssing
-                        pass
-            self.__pids = sum([[key] * act_dict[key].num_threads() for key in pids_found], [])
-            self.__pid_names.update({key: self.__exe_name for key in pids_found})
-            self.__pid_proc_names.update({key: psutil.Process(key).name() for key in pids_found})
-        # thread multiply dict
         self.__pids_found = {}
+        # print "*", self.__pids
         for cur_pid in self.__pids:
+            # print cur_pid, cur_pid in act_dict
             if cur_pid in act_dict:
                 try:
-                    self.__pids_found[cur_pid] = act_dict[cur_pid].num_threads()
+                    _stat = act_dict[cur_pid].status().lower()
+                    # print _stat
+                    if _stat in ["running", "sleeping"]:
+                        self.__pids_found[cur_pid] = 1
                 except psutil.NoSuchProcess:
                     pass
-        self.pids_found = sum(
-            [
-                [cur_pid] * self.__pids_found[cur_pid] for cur_pid in self.__pids_found.iterkeys() if cur_pid in act_dict
-            ],
-            []
-        )
-        self.__pids_expected = {
-            cur_pid: (
-                self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[0],
-                self.__pids.count(cur_pid) + self.__pid_fuzzy.get(cur_pid, (0, 0))[1]
-            ) for cur_pid in self.__pids
-        }
-        # print self.__name, self.__pids_found, self.__pids_expected, self.__pid_fuzzy
-        # difference to requested threadcount
+        self.pids_found = [cur_pid for cur_pid in self.__pids_found.iterkeys() if cur_pid in act_dict]
         bound_dict = {}
         missing_list = []
-        for unique_pid in set(self.__pids_found.keys()) | set(self.__pids_expected.keys()):
-            p_f = self.__pids_found.get(unique_pid, 0)
-            l_c, u_c = self.__pids_expected[unique_pid]
+        for unique_pid in set(self.__pids_found.keys()) | set(self.__pids):
             if unique_pid not in self.__pids_found:
                 missing_list.append(unique_pid)
-                bound_dict[unique_pid] = -l_c
-            elif unique_pid not in self.__pids_expected:
-                bound_dict[unique_pid] = p_f
+                bound_dict[unique_pid] = -1
+            elif unique_pid not in self.__pids:
+                bound_dict[unique_pid] = 1
             else:
-                if p_f < l_c:
-                    bound_dict[unique_pid] = p_f - l_c
-                elif p_f > u_c:
-                    bound_dict[unique_pid] = p_f - u_c
-                else:
-                    bound_dict[unique_pid] = 0
+                bound_dict[unique_pid] = 0
         self.missing_list = missing_list
         self.bound_dict = bound_dict
         if any([value != 0 for value in bound_dict.itervalues()]):
             _ok = False
         else:
-            if not self.__pids_found and self.__need_any_pids:
+            if not self.__pids_found:
                 _ok = False
             elif any([value > 0 for value in bound_dict.itervalues()]):
                 _ok = False
@@ -879,15 +744,11 @@ class meta_server_info(object):
     def pid_check_string(self, proc_dict):
         def _get_mis_info(cur_pid):
             if cur_pid in self.missing_list:
-                return "all {} missing".format(self.__pids_expected[cur_pid][0])
+                return "missing"
             elif self.bound_dict[cur_pid]:
                 return "{:d} {}, {:d} found)".format(
                     abs(self.bound_dict[cur_pid]),
-                    "missing (lower bound is {:d}".format(
-                        self.__pids_expected[cur_pid][0]
-                    ) if self.bound_dict[cur_pid] < 0 else "too many (upper bound is {:d}".format(
-                        self.__pids_expected[cur_pid][1]
-                    ),
+                    "missing" if self.bound_dict[cur_pid] < 0 else "too much",
                     self.__pids_found.get(cur_pid, 0),
                 )
             else:
@@ -998,13 +859,13 @@ class cached_file(object):
             self.changed()
 
 
-def save_pid(name, pid=None, mult=1):
-    return append_pids(name, pid=pid, mult=mult, mode="w")
+def save_pid(name, pid=None):
+    return append_pids(name, pid=pid, mode="w")
 
 save_pids = save_pid
 
 
-def append_pids(name, pid=None, mult=1, mode="a"):
+def append_pids(name, pid=None, mode="a"):
     if pid is None:
         actp = [os.getpid()]
     else:
@@ -1031,7 +892,7 @@ def append_pids(name, pid=None, mult=1, mode="a"):
         "w": "writing"
     }[mode]
     try:
-        open(fname, mode).write("\n".join(mult * ["{:d}".format(cur_p) for cur_p in actp] + [""]))
+        open(fname, mode).write("\n".join(["{:d}".format(cur_p) for cur_p in actp] + [""]))
     except:
         logging_tools.my_syslog(
             "error {} {} ({}) to {}: {}".format(
@@ -1053,10 +914,7 @@ def append_pids(name, pid=None, mult=1, mode="a"):
             )
 
 
-def remove_pids(name, pid=None, mult=0):
-    """
-    mult: number of pids to remove, defaults to 0 (means all)
-    """
+def remove_pids(name, pid=None):
     if pid is None:
         actp = [os.getpid()]
     else:
@@ -1079,7 +937,7 @@ def remove_pids(name, pid=None, mult=0):
             num_removed = 0
             new_lines = []
             for line in pid_lines:
-                if line == str(del_pid) and (not mult or num_removed < mult):
+                if line == str(del_pid):
                     num_removed += 1
                 else:
                     new_lines.append(line)

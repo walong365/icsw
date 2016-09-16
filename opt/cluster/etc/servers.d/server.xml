@@ -1,16 +1,11 @@
 <?xml version="1.0"?>
 <instances>
-    <instance check_type="meta" name="logcheck-server" alias="logcheck" pid_file_name="logcheck-server/logcheck-server.pid" meta_server_name="logcheck-server" uuid-postfix="logcheck-server" reload="1">
+    <instance check_type="meta" name="logcheck-server" alias="logcheck" pid_file_name="logcheck-server/logcheck-server.pid" uuid-postfix="logcheck-server" reload="1">
         <!--
-        any of the following config_names has to be set to start this service
+        any of the following config-enums has to be set to start this service
         a config_name with attribute contact=0 (default is 1) will not be considered when
         building the server routing dicts
         -->
-        <config_names>
-            <!-- deprecated -->
-            <config_name>syslog_server</config_name>
-            <config_name>logcheck_server</config_name>
-        </config_names>
         <config-enums>
             <config-enum>logcheck_server</config-enum>
         </config-enums>
@@ -27,9 +22,6 @@
         <nice-level>15</nice-level>
     </instance>
     <instance check_type="meta" name="package-server" alias="package" pid_file_name="package-server/package-server.pid" reload="1" uuid-postfix="package-server">
-        <config_names>
-            <config_name>package_server</config_name>
-        </config_names>
         <config-enums>
             <config-enum>package_server</config-enum>
         </config-enums>
@@ -54,9 +46,6 @@
         </access-rights>
     </instance>
     <instance check_type="meta" name="mother" alias="mother-server" pid_file_name="mother/mother.pid" uuid-postfix="mother">
-        <config_names>
-            <config_name>mother_server</config_name>
-        </config_names>
         <config-enums>
             <config-enum>mother_server</config-enum>
         </config-enums>
@@ -73,10 +62,6 @@
         <nice-level>15</nice-level>
     </instance>
     <instance check_type="meta" name="collectd" alias="collectd-server" runs_on="server" pid_file_name="collectd/collectd.pid" wait_time="45" reload="1" uuid-postfix="collectd">
-        <config_names>
-            <config_name>rrd_server</config_name>
-            <config_name>rrd_collector</config_name>
-        </config_names>
         <config-enums>
             <config-enum>collectd_server</config-enum>
         </config-enums>
@@ -110,20 +95,12 @@
     <instance name="nginx" check_type="simple" pid_file_name="nginx.pid" any_threads_ok="1" runs_on="system">
     </instance>
     <instance name="icinga-init" check_type="pid_file" pid_file_name="/opt/cluster/icinga/var/icinga.lock" any_threads_ok="1" startstop="0" runs_on="system">
-        <config_names>
-            <config_name contact='0'>monitor_server</config_name>
-            <config_name contact='0'>monitor_master</config_name>
-        </config_names>
     </instance>
     <instance name="uwsgi-init" check_type="simple" pid_file_name="uwsgi-init.pid" any_threads_ok="1" runs_on="system">
     </instance>
     <instance name="rrdcached" check_type="pid_file" any_threads_ok="1" runs_on="system" pid_file_name="rrdcached/rrdcached.pid" startstop="0">
     </instance>
     <instance check_type="meta" name="rrd-grapher" alias="grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" uuid-postfix="grapher">
-        <config_names>
-            <config_name>rrd_grapher</config_name>
-            <config_name>rrd_server</config_name>
-        </config_names>
         <config-enums>
             <config-enum>grapher_server</config-enum>
         </config-enums>
@@ -151,11 +128,7 @@
             <dir value="/var/cache/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="rms-server" alias="rms" pid_file_name="rms-server/rms-server.pid" meta_server_name="rms-server" reload="1" uuid-postfix="rms-server">
-        <config_names>
-            <config_name>sge_server</config_name>
-            <config_name>rms_server</config_name>
-        </config_names>
+    <instance check_type="meta" name="rms-server" alias="rms" pid_file_name="rms-server/rms-server.pid" reload="1" uuid-postfix="rms-server">
         <config-enums>
             <config-enum>rms_server</config-enum>
         </config-enums>
@@ -190,17 +163,11 @@
                 <port type="command">8004</port>
             </ports>
         </network>
-        <config_names>
-            <config_name>server</config_name>
-        </config_names>
         <config-enums>
             <config-enum>cluster_server</config-enum>
         </config-enums>
     </instance>
     <instance check_type="meta" name="discovery-server" alias="discovery" pid_file_name="discovery-server/discovery-server.pid" uuid-postfix="discovery-server">
-        <config_names>
-            <config_name>discovery_server</config_name>
-        </config_names>
         <config-enums>
             <config-enum>discovery_server</config-enum>
         </config-enums>
@@ -221,9 +188,6 @@
         </access-rights>
     </instance>
     <instance check_type="meta" name="cluster-config-server" alias="config" pid_file_name="cluster-config-server/cluster-config-server.pid" uuid-postfix="config-server">
-        <config_names>
-            <config_name>config_server</config_name>
-        </config_names>
         <config-enums>
             <config-enum>config_server</config-enum>
         </config-enums>
@@ -247,12 +211,7 @@
             <dir value="/var/run/cluster-config-server" user="idccs" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="host-relay" pid_file_name="collrelay/collrelay.pid" meta_server_name="collrelay" reload="1" uuid-postfix="host-relay">
-        <!-- <config_names>
-            <config_name contact='0'>monitor_server</config_name>
-            <config_name contact='0'>monitor_master</config_name>
-            <config_name>monitor_slave</config_name>
-        </config_names> -->
+    <instance check_type="meta" name="host-relay" pid_file_name="collrelay/collrelay.pid" reload="1" uuid-postfix="host-relay">
         <config-enums>
             <config-enum>host_relay</config-enum>
         </config-enums>
@@ -279,11 +238,6 @@
         <config-enums>
             <config-enum>snmp_relay</config-enum>
         </config-enums>
-        <!-- <config_names>
-            <config_name contact='0'>monitor_server</config_name>
-            <config_name contact='0'>monitor_master</config_name>
-            <config_name>monitor_slave</config_name>
-        </config_names> -->
         <ignore-missing-database/>
         <old-binary>snmp-relay</old-binary>
         <nice-level>15</nice-level>
@@ -292,15 +246,9 @@
         check_type="meta"
         name="md-sync-server"
         pid_file_name="md-sync-server/md-sync-server.pid"
-        meta_server_name="md-sync-server"
         reload="1"
         uuid-postfix="md-sync-server"
     >
-        <!-- <config_names>
-            <config_name contact='0'>monitor_server</config_name>
-            <config_name contact='0'>monitor_master</config_name>
-            <config_name>monitor_slave</config_name>
-        </config_names> -->
         <config-enums>
             <config-enum>monitor_slave</config-enum>
         </config-enums>
@@ -327,10 +275,6 @@
         </access-rights>
     </instance>
     <instance check_type="meta" name="md-config-server" alias="md-config" pid_file_name="md-config-server/md-config-server.pid" reload="1" uuid-postfix="md-config-server">
-        <config_names>
-            <config_name>monitor_server</config_name>
-            <config_name>monitor_master</config_name>
-        </config_names>
         <config-enums>
             <config-enum>monitor_server</config-enum>
         </config-enums>
@@ -358,13 +302,31 @@
             <file value="/opt/nagvis4icinga/share/server/core/defined/global.php" user="idmon" group="idg"/>
         </access-rights>
     </instance>
-    <instance name="mongodb-init" check_type="simple" pid_file_name="mongodb-init/mongodb-init.pid" any_threads_ok="1" runs_on="system">
-        <config_names>
-            <config_name>mongodb_server</config_name>
-        </config_names>
+    <instance name="mongodb-init" check_type="simple" pid_file_name="mongodb-init/mongodb-init.pid" any-processes-ok="1">
         <config-enums>
             <config-enum>mongodb_server</config-enum>
         </config-enums>
         <required-license>discovery_server</required-license>
+    </instance>
+    <instance check_type="meta" name="report-server" alias="report" pid_file_name="report-server/report-server.pid" has_force_stop="1" reload="1" uuid-postfix="report-server">
+        <config-enums>
+            <config-enum>report_server</config-enum>
+        </config-enums>
+        <dependencies>
+            <needed-for-start symmetrical="1">logging-server</needed-for-start>
+            <needed-for-start symmetrical="1">memcached</needed-for-start>
+        </dependencies>
+        <network>
+            <ports>
+                <port type="command">8016</port>
+            </ports>
+        </network>
+        <start-argument>
+            <arg key="user">idreport</arg>
+            <arg key="group">idg</arg>
+        </start-argument>
+        <access-rights>
+            <dir value="/opt/cluster/share/reports" user="idreport" group="idg" create="1"/>
+        </access-rights>
     </instance>
 </instances>

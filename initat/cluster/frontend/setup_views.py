@@ -26,6 +26,7 @@ import logging
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from lxml.builder import E
@@ -68,7 +69,7 @@ class scan_for_images(View):
     def post(self, request):
         _post = request.POST
         srv_com = server_command.srv_command(command="get_image_list")
-        srv_result = contact_server(request, "server", srv_com, timeout=10, log_result=True)
+        srv_result = contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=10, log_result=True)
         if srv_result:
             present_img_names = image.objects.all().values_list("name", flat=True)
             # print srv_result.pretty_print()
@@ -99,7 +100,7 @@ class use_image(View):
         img_name = _post["img_name"]
         logger.info("use_image called, image_name {}".format(img_name))
         srv_com = server_command.srv_command(command="get_image_list")
-        srv_result = contact_server(request, "server", srv_com, timeout=10, log_result=False)
+        srv_result = contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=10, log_result=False)
         image.take_image(request.xml_response, srv_result, img_name, logger=logger)
 
 
@@ -111,7 +112,7 @@ class rescan_kernels(View):
         srv_com = server_command.srv_command(command="rescan_kernels")
         _srv_result = contact_server(
             request,
-            "mother",
+            icswServiceEnum.mother_server,
             srv_com,
             timeout=180,
             log_result=True,

@@ -17,324 +17,58 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+""" asset database, models for dynamic assets """
 
 import base64
 import bz2
 import datetime
 import json
-import time
 import logging
+import time
 
-from django.db.models import signals
-from django.dispatch import receiver
 from django.db import models
 from django.db.models import Q
 from django.utils import timezone, dateparse
-from enum import IntEnum
 from lxml import etree
 
-from initat.tools import (server_command, pci_database, dmi_tools,
-    partition_tools, logging_tools)
-from initat.cluster.backbone.tools.hw import Hardware
-from initat.cluster.backbone.models.partition import (partition_disc,
-    partition_table, partition, partition_fs, LogicalDisc, lvm_vg,
-    sys_partition, lvm_lv)
-from initat.tools.server_command import srv_command
 from initat.cluster.backbone.models.functions import get_related_models
+from initat.cluster.backbone.models.partition import partition_disc, \
+    partition_table, partition, partition_fs, LogicalDisc, lvm_vg, \
+    sys_partition, lvm_lv
+from initat.cluster.backbone.tools.hw import Hardware
 from initat.snmp.snmp_struct import ResultNode
+from initat.tools import server_command, pci_database, dmi_tools, \
+    partition_tools, logging_tools
+from initat.tools.server_command import srv_command
 
 logger = logging.getLogger(__name__)
 
-
-########################################################################################################################
-# Functions
-########################################################################################################################
-
-def sizeof_fmt(num, suffix='B'):
-    for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
-        if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
-        num /= 1024.0
-    return "%.1f%s%s" % (num, 'Yi', suffix)
+from .asset_functions import *
 
 
-def get_packages_for_ar(asset_run):
-    blob = asset_run.raw_result_str
-    runtype = asset_run.run_type
-    scantype = asset_run.scan_type
-
-    assets = []
-
-    if blob:
-        if runtype == AssetType.PACKAGE:
-            if scantype == ScanType.NRPE:
-                if blob.startswith("b'"):
-                    _data = bz2.decompress(base64.b64decode(blob[2:-2]))
-                else:
-                    _data = bz2.decompress(base64.b64decode(blob))
-                l = json.loads(_data)
-                for (name, version, size, date) in l:
-                    if size == "Unknown":
-                        size = 0
-                    assets.append(
-                        BaseAssetPackage(
-                            name,
-                            version=version,
-                            size=size,
-                            install_date=date,
-                            package_type=PackageTypeEnum.WINDOWS
-                        )
-                    )
-            elif scantype == ScanType.HM:
-                try:
-                    package_dict = server_command.decompress(blob, pickle=True)
-                except:
-                    raise
-                else:
-                    for package_name in package_dict:
-                        for versions_dict in package_dict[package_name]:
-                            installtimestamp = None
-                            if 'installtimestamp' in versions_dict:
-                                installtimestamp = versions_dict['installtimestamp']
-
-                            assets.append(
-                                BaseAssetPackage(
-                                    package_name,
-                                    version=versions_dict['version'],
-                                    size=versions_dict['size'],
-                                    release=versions_dict['release'],
-                                    install_date=installtimestamp,
-                                    package_type=PackageTypeEnum.LINUX
-                                )
-                            )
-
-    return assets
-
-
-
-
-
-########################################################################################################################
-# Base Asset Classes
-########################################################################################################################
-
-class BaseAssetPackage(object):
-    def __init__(self, name, version=None, release=None, size=None, install_date=None, package_type=None):
-        self.name = name
-        self.version = version
-        self.release = release
-        self.size = size
-        self.install_date = install_date
-        self.package_type = package_type
-
-    def get_install_time_as_datetime(self):
-        if self.package_type == PackageTypeEnum.LINUX:
-            try:
-                return datetime.datetime.fromtimestamp(int(self.install_date))
-            except:
-                pass
-
-            return None
-        else:
-            try:
-                year = self.install_date[0:4]
-                month = self.install_date[4:6]
-                day = self.install_date[6:8]
-
-                return datetime.datetime(year=int(year), month=int(month), day=int(day), hour=12)
-            except:
-                pass
-
-            return None
-
-    def get_as_row(self):
-        _name = self.name
-        _version = self.version if self.version else "N/A"
-        _release = self.release if self.release else "N/A"
-
-        if self.package_type == PackageTypeEnum.LINUX:
-            if self.size:
-                try:
-                    _size = sizeof_fmt(self.size)
-                except:
-                    _size = "N/A"
-            else:
-                _size = "N/A"
-
-            if self.install_date:
-                try:
-                    _install_date = datetime.datetime.fromtimestamp(int(self.install_date)).\
-                        strftime(ASSET_DATETIMEFORMAT)
-                except:
-                    _install_date = "N/A"
-            else:
-                _install_date = "N/A"
-        else:
-            if self.size:
-                try:
-                    _size = sizeof_fmt(int(self.size) * 1024)
-                except:
-                    _size = "N/A"
-            else:
-                _size = "N/A"
-
-            _install_date = self.install_date if self.install_date else "N/A"
-            if _install_date == "Unknown":
-                _install_date = "N/A"
-
-            if _install_date != "N/A":
-                try:
-                    year = _install_date[0:4]
-                    month = _install_date[4:6]
-                    day = _install_date[6:8]
-
-                    _install_date = datetime.datetime(year=int(year), month=int(month), day=int(day)).\
-                        strftime(ASSET_DATETIMEFORMAT)
-                except:
-                    _install_date = "N/A"
-
-        o = {}
-        o['package_name'] = _name
-        o['package_version'] = _version
-        o['package_release'] = _release
-        o['package_size'] = _size
-        o['package_install_date'] = _install_date
-        return o
-
-    def __repr__(self):
-        s = "Name: %s" % self.name
-        if self.version:
-            s += " Version: %s" % self.version
-        if self.release:
-            s += " Release: %s" % self.release
-        if self.size:
-            s += " Size: %s" % self.size
-        if self.install_date:
-            s += " InstallDate: %s" % self.install_date
-        if self.package_type:
-            s += " PackageType: %s" % self.package_type
-
-        return s
-
-    def __lt__(self, other):
-        return self.name < other.name
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.version == other.version \
-            and self.release == other.release \
-            and self.size == other.size \
-            and self.install_date == other.install_date \
-            and self.package_type == other.package_type
-
-    def __hash__(self):
-        return hash((self.name, self.version, self.release, self.size, self.install_date, self.package_type))
-
-########################################################################################################################
-# Enums / Globals
-########################################################################################################################
-
-ASSET_DATETIMEFORMAT = "%a %d. %b %Y %H:%M:%S"
-
-
-class AssetType(IntEnum):
-    PACKAGE = 1
-    HARDWARE = 2  # lstopo
-    LICENSE = 3
-    UPDATE = 4
-    LSHW = 5
-    PROCESS = 6
-    PENDING_UPDATE = 7
-    DMI = 8
-    PCI = 9
-    PRETTYWINHW = 10
-    PARTITION = 11
-
-
-class ScanType(IntEnum):
-    HM = 1
-    NRPE = 2
-
-
-class RunStatus(IntEnum):
-    PLANNED = 1
-    RUNNING = 2
-    ENDED = 3
-
-
-class RunResult(IntEnum):
-    UNKNOWN = 1
-    SUCCESS = 2
-    WARNING = 3
-    FAILED = 4
-    # canceled (no IP)
-    CANCELED = 5
-
-
-class PackageTypeEnum(IntEnum):
-    WINDOWS = 1
-    LINUX = 2
-
-
-memory_entry_form_factors = {
-    0: "Unknown",
-    1: "Other",
-    2: "SIP",
-    3: "DIP",
-    4: "ZIP",
-    5: "SOJ",
-    6: "Proprietary",
-    7: "SIMM",
-    8: "DIMM",
-    9: "TSOP",
-    10: "PGA",
-    11: "RIMM",
-    12: "SODIMM",
-    13: "SRIMM",
-    14: "SMD",
-    15: "SSMP",
-    16: "QFP",
-    17: "TQFP",
-    18: "SOIC",
-    19: "LCC",
-    20: "PLCC",
-    21: "BGA",
-    22: "FPBGA",
-    23: "LGA"
-}
-
-memory_entry_memory_types = {
-    0: "Unknown",
-    1: "Other",
-    2: "DRAM",
-    3: "Synchronous DRAM",
-    4: "Cache DRAM",
-    5: "EDO",
-    6: "EDRAM",
-    7: "VRAM",
-    8: "SRAM",
-    9: "RAM",
-    10: "ROM",
-    11: "FLASH",
-    12: "EEPROM",
-    13: "FEPROM",
-    14: "EPROM",
-    15: "CDRAM",
-    16: "3DRAM",
-    17: "SDRAM",
-    18: "SGRAM",
-    19: "RDRAM",
-    20: "DDR",
-    21: "DDR2",
-    22: "DDR2 FB-DIMM",
-    24: "DDR3",
-    25: "FBD2"
-}
-
-########################################################################################################################
-# (Django Database) Classes
-########################################################################################################################
+__all__ = [
+    "AssetHWMemoryEntry",
+    "AssetHWCPUEntry",
+    "AssetHWGPUEntry",
+    "AssetHWHDDEntry",
+    "AssetHWLogicalEntry",
+    "AssetHWDisplayEntry",
+    "AssetHWNetworkDevice",
+    "AssetPackageVersionInstallTime",
+    "AssetPackage",
+    "AssetPackageVersion",
+    "AssetHardwareEntry",
+    "AssetLicenseEntry",
+    "AssetUpdateEntry",
+    "AssetProcessEntry",
+    "AssetPCIEntry",
+    "AssetDMIHead",
+    "AssetDMIHandle",
+    "AssetDMIValue",
+    "AssetRun",
+    "AssetBatch",
+    "DeviceInventory",
+]
 
 
 class AssetHWMemoryEntry(models.Model):
@@ -464,14 +198,6 @@ class AssetHWDisplayEntry(models.Model):
             self.manufacturer
         )
 
-class AssetPackageVersionInstallTime(models.Model):
-    idx = models.AutoField(primary_key=True)
-    package_version = models.ForeignKey("backbone.AssetPackageVersion")
-    timestamp = models.BigIntegerField()
-
-    @property
-    def install_time(self):
-        return datetime.datetime.fromtimestamp(float(self.timestamp))
 
 class AssetHWNetworkDevice(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -489,6 +215,16 @@ class AssetHWNetworkDevice(models.Model):
                 self.device_name,
                 self.speed,
             )
+
+
+class AssetPackageVersionInstallTime(models.Model):
+    idx = models.AutoField(primary_key=True)
+    package_version = models.ForeignKey("backbone.AssetPackageVersion")
+    timestamp = models.BigIntegerField()
+
+    @property
+    def install_time(self):
+        return datetime.datetime.fromtimestamp(float(self.timestamp))
 
 
 class AssetPackage(models.Model):
@@ -602,15 +338,12 @@ class AssetUpdateEntry(models.Model):
     install_date = models.DateTimeField(null=True)
     # status, now as string
     status = models.CharField(default="", max_length=128)
-    # assetrun
-    asset_run = models.ForeignKey("backbone.AssetRun")
     # optional
     optional = models.BooleanField(default=True)
     # installed
     installed = models.BooleanField(default=False)
     # new version (for RPMs)
     new_version = models.CharField(default="", max_length=64)
-    created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
         return "AssetUpdate name={}".format(self.name)
@@ -758,6 +491,11 @@ class AssetRun(models.Model):
     scan_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in ScanType], null=True)
 
     created = models.DateTimeField(auto_now_add=True)
+
+    def is_finished_processing(self):
+        if self.interpret_error_string or self.generate_duration:
+            return True
+        return False
 
     @property
     def hdds(self):
@@ -938,12 +676,16 @@ class AssetRun(models.Model):
             if install_time:
                 timestamp = time.mktime(install_time.timetuple())
 
-                apv_install_times = AssetPackageVersionInstallTime.objects.filter(package_version=apv,
-                    timestamp=timestamp)
+                apv_install_times = AssetPackageVersionInstallTime.objects.filter(
+                    package_version=apv,
+                    timestamp=timestamp
+                )
 
                 if not apv_install_times:
-                    apv_install_time = AssetPackageVersionInstallTime(package_version=apv,
-                        timestamp=timestamp)
+                    apv_install_time = AssetPackageVersionInstallTime(
+                        package_version=apv,
+                        timestamp=timestamp
+                    )
 
                     apv_install_time.save()
                 else:
@@ -964,7 +706,6 @@ class AssetRun(models.Model):
         # lookup for structural entries
         _struct_lut = {}
         _root_tree = root.getroottree()
-        struct_el = None
         for element in root.iter():
             if element.tag in ["topology", "object"]:
                 # structural entry
@@ -1008,41 +749,87 @@ class AssetRun(models.Model):
     def _generate_assets_pending_update_nrpe(self, data):
         l = json.loads(data)
         for (name, optional) in l:
-            new_pup = AssetUpdateEntry(
+            asset_update_entry = AssetUpdateEntry.objects.filter(
                 name=name,
-                installed=False,
-                asset_run=self,
+                version="",
+                release="",
+                kb_idx=0,
+                install_date=None,
+                status="",
                 optional=optional,
-            )
-            new_pup.save()
+                installed=False,
+                new_version=""
+                )
+            if asset_update_entry:
+                asset_update_entry = asset_update_entry[0]
+            else:
+                asset_update_entry = AssetUpdateEntry(
+                    name=name,
+                    installed=False,
+                    optional=optional,
+                )
+                asset_update_entry.save()
+
+            print asset_update_entry
+            self.asset_batch.pending_updates.add(asset_update_entry)
 
     def _generate_assets_pending_update_hm(self, tree):
         blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0]\
             .text
         l = server_command.decompress(blob, pickle=True)
         for (name, version) in l:
-            new_pup = AssetUpdateEntry(
+            asset_update_entry = AssetUpdateEntry.objects.filter(
                 name=name,
-                installed=False,
-                asset_run=self,
-                # by definition linux updates are optional
+                version="",
+                release="",
+                kb_idx=0,
+                install_date=None,
+                status="",
                 optional=True,
-                new_version=version,
-            )
-            new_pup.save()
+                installed=False,
+                new_version=version
+                )
+            if asset_update_entry:
+                asset_update_entry = asset_update_entry[0]
+            else:
+                asset_update_entry = AssetUpdateEntry(
+                    name=name,
+                    # by definition linux updates are optional
+                    optional=True,
+                    installed=False,
+                    new_version=version,
+                )
+                asset_update_entry.save()
+
+            self.asset_batch.pending_updates.add(asset_update_entry)
 
     def _generate_assets_update_nrpe(self, data):
         l = json.loads(data)
         for (name, up_date, status) in l:
-            new_up = AssetUpdateEntry(
+            asset_update_entry = AssetUpdateEntry.objects.filter(
                 name=name,
+                version="",
+                release="",
+                kb_idx=0,
                 install_date=dateparse.parse_datetime(up_date),
                 status=status,
-                installed=True,
-                asset_run=self,
                 optional=False,
-            )
-            new_up.save()
+                installed=True,
+                new_version=""
+                )
+            if asset_update_entry:
+                asset_update_entry = asset_update_entry[0]
+            else:
+                asset_update_entry = AssetUpdateEntry(
+                    name=name,
+                    install_date=dateparse.parse_datetime(up_date),
+                    status=status,
+                    optional=False,
+                    installed=True
+                )
+                asset_update_entry.save()
+
+            self.asset_batch.installed_updates.add(asset_update_entry)
 
     def _generate_assets_process_nrpe(self, data):
         l = json.loads(data)
@@ -1294,7 +1081,7 @@ class AssetRun(models.Model):
                 new_disc.save()
                 for part in sorted(dev_stuff):
                     part_stuff = dev_stuff[part]
-                    ("   handling partition %s" % (part))
+                    # ("   handling partition %s" % (part))
                     if "multipath" in part_stuff:
                         # see machinfo_mod.py, lines 1570 (partinfo_command:interpret)
                         real_disk = [entry for entry in part_stuff["multipath"]["list"] if entry["status"] == "active"]
@@ -1495,9 +1282,20 @@ class AssetBatch(models.Model):
         null=True,
     )
     network_devices = models.ManyToManyField(AssetHWNetworkDevice)
+
+    pending_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_pending_updates")
+    installed_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_installed_updates")
+
     # TODO: Remove this.
     partitions = models.ManyToManyField(AssetHWLogicalEntry)
     displays = models.ManyToManyField(AssetHWDisplayEntry)
+
+    @property
+    def is_finished_processing(self):
+        for assetrun in self.assetrun_set.all():
+            if not assetrun.is_finished_processing():
+                return False
+        return True
 
     def completed(self):
         for assetrun in self.assetrun_set.all():
@@ -1567,8 +1365,10 @@ class AssetBatch(models.Model):
         # set the CPUs
         self.cpus.all().delete()
         for cpu in hw.cpus:
-            new_cpu = AssetHWCPUEntry(cpuname=cpu.product,
-                numberofcores=cpu.number_of_cores)
+            new_cpu = AssetHWCPUEntry(
+                cpuname=cpu.product,
+                numberofcores=cpu.number_of_cores
+            )
             new_cpu.save()
             self.cpus.add(new_cpu)
 
@@ -1666,282 +1466,3 @@ class DeviceInventory(models.Model):
     # serialized XML
     value = models.TextField()
     date = models.DateTimeField(auto_now_add=True)
-
-
-class StaticAssetType(IntEnum):
-    # related to a software
-    LICENSE = 1
-    # general contract
-    CONTRACT = 2
-    # special hardware
-    HARDWARE = 3
-
-
-class StaticAssetTemplateFieldType(IntEnum):
-    INTEGER = 1
-    # oneline
-    STRING = 2
-    DATE = 3
-    # textarea
-    TEXT = 4
-
-
-# static assets
-class StaticAssetTemplate(models.Model):
-    # to be defined by administrator
-    idx = models.AutoField(primary_key=True)
-    # asset type
-    type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetType])
-    # name of Template
-    name = models.CharField(max_length=128, unique=True)
-    # description
-    description = models.TextField(default="", blank=True)
-    # system template (not deleteable)
-    system_template = models.BooleanField(default=False)
-    # parent template (for copy operations)
-    parent_template = models.ForeignKey("backbone.StaticAssetTemplate", null=True)
-    # link to creation user
-    user = models.ForeignKey("backbone.user", null=True)
-    # enabled
-    enabled = models.BooleanField(default=True)
-    # created
-    date = models.DateTimeField(auto_now_add=True)
-
-    def check_ordering(self):
-        # check ordering of elements
-        _dict = {}
-        for entry in self.staticassettemplatefield_set.all():
-            _dict.setdefault(entry.ordering, []).append(entry)
-        if any([len(_value) > 1 for _value in _dict.itervalues()]):
-            # reorder
-            for _idx, _entry in enumerate(self.staticassettemplatefield_set.all().order_by("ordering")):
-                _entry.ordering = _idx
-                _entry.save(update_fields=["ordering"])
-
-    def copy(self, new_obj, create_user):
-        nt = StaticAssetTemplate(
-            type=self.type,
-            name=new_obj["name"],
-            description=new_obj["description"],
-            system_template=False,
-            parent_template=self,
-            user=create_user,
-            enabled=self.enabled,
-        )
-        nt.save()
-        for _field in self.staticassettemplatefield_set.all():
-            nt.staticassettemplatefield_set.add(_field.copy(nt, create_user))
-        return nt
-
-    class CSW_Meta:
-        permissions = (
-            ("setup", "Change StaticAsset templates", False),
-        )
-
-
-class StaticAssetTemplateField(models.Model):
-    idx = models.AutoField(primary_key=True)
-    # template
-    static_asset_template = models.ForeignKey("backbone.StaticAssetTemplate")
-    # name
-    name = models.CharField(max_length=64, default="")
-    # description
-    field_description = models.TextField(default="", blank=True)
-    field_type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetTemplateFieldType])
-    # is optional
-    optional = models.BooleanField(default=True)
-    # is consumable (for integer fields)
-    consumable = models.BooleanField(default=False)
-    # consumable values, should be start > warn > critical
-    consumable_start_value = models.IntegerField(default=0)
-    consumable_warn_value = models.IntegerField(default=0)
-    consumable_critical_value = models.IntegerField(default=0)
-    # date check
-    date_check = models.BooleanField(default=False)
-    # date warning limits in days
-    date_warn_value = models.IntegerField(default=60)
-    date_critical_value = models.IntegerField(default=30)
-    # field is fixed (cannot be altered)
-    fixed = models.BooleanField(default=False)
-    # default value
-    default_value_str = models.CharField(default="", blank=True, max_length=255)
-    default_value_int = models.IntegerField(default=0)
-    default_value_date = models.DateField(default=timezone.now)
-    default_value_text = models.TextField(default="", blank=True)
-    # bounds, for input checking
-    has_bounds = models.BooleanField(default=False)
-    value_int_lower_bound = models.IntegerField(default=0)
-    value_int_upper_bound = models.IntegerField(default=0)
-    # monitor flag, only for datefields and / or consumable (...?)
-    monitor = models.BooleanField(default=False)
-    # hidden, used for linking (...?)
-    hidden = models.BooleanField(default=False)
-    # show_in_overview
-    show_in_overview = models.BooleanField(default=False)
-    # ordering, starting from 0 to #fields - 1
-    ordering = models.IntegerField(default=0)
-    # created
-    date = models.DateTimeField(auto_now_add=True)
-
-    def copy(self, new_template, create_user):
-        nf = StaticAssetTemplateField(
-            static_asset_template=new_template,
-            name=self.name,
-            field_description=self.field_description,
-            field_type=self.field_type,
-            optional=self.optional,
-            consumable=self.consumable,
-            default_value_str=self.default_value_str,
-            default_value_int=self.default_value_int,
-            default_value_date=self.default_value_date,
-            default_value_text=self.default_value_text,
-            has_bounds=self.has_bounds,
-            value_int_lower_bound=self.value_int_lower_bound,
-            value_int_upper_bound=self.value_int_upper_bound,
-            monitor=self.monitor,
-            fixed=self.fixed,
-            hidden=self.hidden,
-            show_in_overview=self.show_in_overview,
-            consumable_start_value=self.consumable_start_value,
-            consumable_warn_value=self.consumable_warn_value,
-            consumable_critical_value=self.consumable_critical_value,
-            date_warn_value=self.date_warn_value,
-            date_critical_value=self.date_critical_value,
-            date_check=self.date_check,
-        )
-        nf.save()
-        return nf
-
-    def get_attr_name(self):
-        if self.field_type == StaticAssetTemplateFieldType.INTEGER.value:
-            return ("value_int", "int")
-        elif self.field_type == StaticAssetTemplateFieldType.STRING.value:
-            return ("value_str", "str")
-        elif self.field_type == StaticAssetTemplateFieldType.DATE.value:
-            return ("value_date", "date")
-        elif self.field_type == StaticAssetTemplateFieldType.TEXT.value:
-            return ("value_text", "text")
-        else:
-            raise ValueError("wrong field type {}".format(self.field_type))
-
-    def create_field_value(self, asset):
-        new_f = StaticAssetFieldValue(
-            static_asset=asset,
-            static_asset_template_field=self,
-            change_user=asset.create_user,
-        )
-        _local, _short = self.get_attr_name()
-        setattr(new_f, _local, getattr(self, "default_{}".format(_local)))
-        new_f.save()
-        return new_f
-
-    class Meta:
-        unique_together = [
-            ("static_asset_template", "name"),
-        ]
-        ordering = ["ordering"]
-
-
-@receiver(signals.post_save, sender=StaticAssetTemplateField)
-def StaticAssetTemplateField_post_save(sender, **kwargs):
-    if "instance" in kwargs:
-        cur_inst = kwargs["instance"]
-        if not cur_inst.optional:
-            # get all staticassets where this field is not set
-            _missing_assets = StaticAsset.objects.filter(
-                Q(static_asset_template=cur_inst.static_asset_template)
-            ).exclude(
-                Q(staticassetfieldvalue__static_asset_template_field=cur_inst)
-            )
-            if _missing_assets.count():
-                # add fields
-                for _asset in _missing_assets:
-                    cur_inst.create_field_value(_asset)
-
-
-class StaticAsset(models.Model):
-    # used for linking
-    idx = models.AutoField(primary_key=True)
-    # template
-    static_asset_template = models.ForeignKey("backbone.StaticAssetTemplate")
-    # create user
-    create_user = models.ForeignKey("backbone.user", null=True)
-    # device
-    device = models.ForeignKey("backbone.device")
-    date = models.DateTimeField(auto_now_add=True)
-
-    def add_fields(self):
-        for _f in self.static_asset_template.staticassettemplatefield_set.all():
-            _f.create_field_value(self)
-
-
-class StaticAssetFieldValue(models.Model):
-    idx = models.AutoField(primary_key=True)
-    # template
-    static_asset = models.ForeignKey("backbone.StaticAsset")
-    # field
-    static_asset_template_field = models.ForeignKey("backbone.StaticAssetTemplateField")
-    # change user
-    change_user = models.ForeignKey("backbone.user")
-    # value
-    value_str = models.CharField(null=True, blank=True, max_length=255, default=None)
-    value_int = models.IntegerField(null=True, blank=True, default=None)
-    value_date = models.DateField(null=True, blank=True, default=None)
-    value_text = models.TextField(null=True, blank=True, default=None)
-    date = models.DateTimeField(auto_now_add=True)
-
-    def check_new_value(self, in_dict, xml_response):
-        _field = self.static_asset_template_field
-        _local, _short = _field.get_attr_name()
-        _value = in_dict[_short]
-        _errors = []
-        if not _field.fixed:
-            if _short == "int":
-                # check for lower / upper bounds
-                if _field.has_bounds:
-                    if _value < _field.value_int_lower_bound:
-                        _errors.append(
-                            "value {:d} is below lower bound {:d}".format(
-                                _value,
-                                _field.value_int_lower_bound,
-                            )
-                        )
-                    if _value > _field.value_int_upper_bound:
-                        _errors.append(
-                            "value {:d} is above upper bound {:d}".format(
-                                _value,
-                                _field.value_int_upper_bound,
-                            )
-                        )
-        if _errors:
-            xml_response.error(
-                "Field {}: {}".format(
-                    _field.name,
-                    ", ".join(_errors)
-                )
-            )
-            return False
-        else:
-            return True
-
-    def set_new_value(self, in_dict, user):
-        _field = self.static_asset_template_field
-        _local, _short = _field.get_attr_name()
-        if not _field.fixed:
-            # ignore changes to fixed values
-            if _short == "date":
-                # cast date
-                setattr(self, _local, datetime.datetime.strptime(in_dict[_short], "%d.%m.%Y").date())
-            else:
-                setattr(self, _local, in_dict[_short])
-            self.change_user = user
-            self.save()
-
-def sizeof_fmt(num, suffix='B'):
-    if num is None:
-        return "N/A"
-    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
-        if abs(num) < 1024.0:
-            return "%3.1f%s%s" % (num, unit, suffix)
-        num /= 1024.0
-    return "%.1f%s%s" % (num, 'Yi', suffix)

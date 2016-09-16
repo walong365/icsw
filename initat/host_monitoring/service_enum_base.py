@@ -28,10 +28,12 @@ __all__ = [
 
 
 class icswServiceEnumBaseClient(object):
-    def __init__(self, name, info="N/A", root_service=True):
+    def __init__(self, name, info="N/A", root_service=True, msi_block_name=None):
         self.name = name
         self.info = info
         self.root_service = root_service
+        # should match name of instance in {server,client,...}.xml
+        self.msi_block_name = msi_block_name or self.name
         self.client_service = True
         self.server_service = False
         self.clear_instance_names()

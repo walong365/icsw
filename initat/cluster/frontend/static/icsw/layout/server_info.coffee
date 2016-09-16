@@ -139,7 +139,7 @@ angular.module(
         return false
 
     $scope.$on("$destroy", () ->
-        if $scope.struct.cur_tu
+        if $scope.struct.cur_to
             $timeout.cancel($scope.struct.cur_to)
     )
 

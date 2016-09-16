@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2007-2008,2012,2014-2015 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2007-2008,2012,2014-2016 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
 # this file is part of python-modules-base
 #

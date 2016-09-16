@@ -52,10 +52,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, 
                 ("LINECACHE_ENTRIES_PER_FILE", configfile.int_c_var(50, info="line cache per file")),
             ]
         )
-        self.__pid_name = global_config["PID_NAME"]
         # close connection (daemonizing)
         db_tools.close_connection()
-        self.__msi_block = self._init_msi_block()
         self.srv_helper = service_tools.ServiceHelper(self.log)
         self.CC.re_insert_config()
         self.register_exception("hup_error", self._hup_error)
@@ -117,27 +115,11 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, 
         Machine.g_rotate_logs()
 
     def process_start(self, src_process, src_pid):
-        mult = 2
-        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
-        if self.__msi_block:
-            self.__msi_block.add_actual_pid(src_pid, mult=mult)
-            self.__msi_block.save_block()
-
-    def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name, mult=3)
-        self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("logcheck-server")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.kill_pids = True
-        msi_block.save_block()
-        return msi_block
+        self.CC.process_added(src_process, src_pid)
 
     def loop_end(self):
         self._disable_syslog_config()
         Machine.shutdown()
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
 
     def loop_post(self):
         self.network_unbind()

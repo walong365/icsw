@@ -39,7 +39,7 @@ from initat.tools.server_mixins import RemoteCall
 class server_process(
     server_mixins.ICSWBasePoolClient,
     server_mixins.RemoteCallMixin,
-    server_mixins.SendToRemoteServerMixin,
+    # server_mixins.SendToRemoteServerMixin,
     VersionCheckMixin,
 ):
     def __init__(self):
@@ -47,10 +47,8 @@ class server_process(
         self.CC.init(icswServiceEnum.monitor_slave, global_config)
         self.CC.check_config()
         self.__enable_livestatus = True  # global_config["ENABLE_LIVESTATUS"]
-        self.__pid_name = global_config["PID_NAME"]
         self.__verbose = global_config["VERBOSE"]
         self.read_config_store()
-        self._init_msi_block()
         # log config
         self.CC.log_config()
         self.register_exception("int_error", self._int_error)
@@ -63,7 +61,7 @@ class server_process(
         self.VCM_check_relay_version()
         self._init_network_sockets()
         _srv_com = server_command.srv_command(command="status")
-        self.send_to_remote_server_ip("127.0.0.1", "cluster-server", unicode(_srv_com))
+        # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
 
     def _check_for_pc_control(self):
         if self._icinga_pc is None:
@@ -130,28 +128,7 @@ class server_process(
         self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
 
     def process_start(self, src_process, src_pid):
-        # if src_process == "syncer":
-        #    self.send_to_process("syncer", "check_for_slaves")
-        #    self.add_process(build_process("build"), start=True)
-        # elif src_process == "build":
-        #    self.send_to_process("build", "check_for_slaves")
-        #    if global_config["RELOAD_ON_STARTUP"]:
-        #        self.send_to_process("build", "reload_md_daemon")
-        #    if global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]:
-        #        self.send_to_process("build", "rebuild_config", cache_mode=global_config["INITIAL_CONFIG_CACHE_MODE"])
-        mult = 3
-        process_tools.append_pids(self.__pid_name, src_pid, mult=mult)
-        self.__msi_block.add_actual_pid(src_pid, mult=mult, fuzzy_ceiling=3, process_name=src_process)
-        self.__msi_block.save_block()
-
-    def _init_msi_block(self):
-        process_tools.save_pid(self.__pid_name, mult=3)
-        self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("md-sync-server")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.kill_pids = True
-        msi_block.save_block()
-        self.__msi_block = msi_block
+        self.CC.process_added(src_process, src_pid)
 
     def _register_slave(self, *args, **kwargs):
         _src_proc, _src_id, slave_ip, slave_uuid = args
@@ -344,13 +321,11 @@ class server_process(
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):
-        return self.server_status(srv_com, self.__msi_block, global_config)
+        return self.server_status(srv_com, self.CC.msi_block, global_config)
 
     def loop_end(self):
         if self._icinga_pc:
             self._icinga_pc.stop()
-        process_tools.delete_pid(self.__pid_name)
-        self.__msi_block.remove_meta_block()
 
     def loop_post(self):
         self.network_unbind()

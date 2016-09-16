@@ -36,6 +36,7 @@ else:
 
     from django.db.models import Q
     from initat.cluster.backbone.models import kernel, initrd_build, PopulateRamdiskCmdLine
+    from initat.cluster.backbone.server_enums import icswServiceEnum
 
 import argparse
 import commands
@@ -1156,7 +1157,7 @@ def main_normal():
     kernel_server_idx = 0
     # check for kernel_server
     mother_configs = config_tools.device_with_config("kernel_server")
-    ks_check = config_tools.server_check(server_type="kernel_server")
+    ks_check = config_tools.server_check(service_type_enum=icswServiceEnum.kernel_server)
     if not ks_check.effective_device:
         print "Host '{}' is not a kernel_server, exiting ...".format(short_host_name)
         sys.exit(1)

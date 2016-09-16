@@ -590,7 +590,7 @@ dashboard_module = angular.module(
                     ok_callback: (modal) =>
                         d = $q.defer()
                         if not sub_scope.struct.layout_name or sub_scope.struct.layout_name in @layout_names
-                            toaster.pop("warning", "wrong layout name", "", 0)
+                            toaster.pop("warning", "wrong layout name", "")
                             d.reject("form not valid")
                         else
                             # save current position

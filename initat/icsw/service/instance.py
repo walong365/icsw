@@ -76,6 +76,18 @@ class RelaxNG(object):
         return self.ng.error_log
 
 
+def ResolveInstance(func):
+    def wrapper(*args, **kwargs):
+        _inst = args[0]
+        _id = args[1]
+        if isinstance(_id, basestring):
+            _id = _inst[_id]
+        elif _id.__class__.__name__ in ["icswClientEnum", "icswServerEnum"]:
+            _id = _inst.resolve_enum(_id)
+        return func(_inst, _id, *args[2:], **kwargs)
+    return wrapper
+
+
 class InstanceXML(object):
     def __init__(self, log_com=None, quiet=False):
         self.__quiet = quiet
@@ -111,6 +123,8 @@ class InstanceXML(object):
         self.tree = E.instances()
         # lookup table for name / alias search
         self.__lut = {}
+        # enum lookup table
+        self.__enum_lut = {}
         # alias lut
         self.__alias_lut = {}
         # check for additional instances
@@ -189,6 +203,8 @@ class InstanceXML(object):
                             raise KeyError("name {} already present in instance lut".format(_name))
                     else:
                         self.__lut[_name] = sub_inst
+                for _enum_name in _tree_dict[_inst_key].xpath(".//config-enum/text()"):
+                    self.__enum_lut[_enum_name] = sub_inst
                 self.tree.append(sub_inst)
         for _overlay_key in _overlay_keys:
             for sub_inst in _tree_dict[_overlay_key].findall("instance"):
@@ -241,52 +257,36 @@ class InstanceXML(object):
     def get_alias_dict(self):
         return self.__alias_lut
 
+    def resolve_enum(self, enum):
+        return self.__enum_lut[enum.name]
+
     # utility functions
     def get_all_instances(self):
         return self.tree.findall(".//instance")
 
+    @ResolveInstance
     def get_config_enums(self, inst):
-        # return all enums
-        if isinstance(inst, basestring):
-            inst = self[inst]
         # if only_contact is set to True only config_names where @contact=1 (or contact is not set) will be returned
         return inst.xpath(".//config-enums/config-enum/text()")
 
-    # access functions
-    def get_config_names(self, inst, only_contact=True):
-        if not only_contact:
-            raise ValueError("called with only_contact=False")
-        if isinstance(inst, basestring):
-            inst = self[inst]
-        # if only_contact is set to True only config_names where @contact=1 (or contact is not set) will be returned
-        if only_contact:
-            return inst.xpath(".//config_names/config_name[@contact='1' or not(@contact)]/text()")
-        else:
-            return inst.xpath(".//config_names/config_name/text()")
-
+    @ResolveInstance
     def get_pid_file_name(self, inst):
-        if isinstance(inst, basestring):
-            inst = self[inst]
         return inst.attrib["pid_file_name"]
 
+    @ResolveInstance
     def get_attrib(self, inst):
-        if isinstance(inst, basestring):
-            inst = self[inst]
         return dict(inst.attrib)
 
+    @ResolveInstance
     def do_node_split(self, inst):
-        if isinstance(inst, basestring):
-            inst = self[inst]
         return True if inst.find(".//node-split") is not None else False
 
+    @ResolveInstance
     def get_uuid_postfix(self, inst):
-        if isinstance(inst, basestring):
-            inst = self[inst]
         return inst.attrib["uuid-postfix"]
 
+    @ResolveInstance
     def get_port_dict(self, inst, ptype=None, command=False):
-        if isinstance(inst, basestring):
-            inst = self[inst]
         _pd = {}
         for _port in inst.xpath(".//network/ports/port"):
             _pd[_port.get("type", "command")] = int(_port.text)
@@ -310,12 +310,11 @@ class InstanceXML(object):
             name = cur_el.attrib["name"]
             for key, def_value in [
                 ("runs_on", "server"),
-                ("any_threads_ok", "0"),
+                ("any-processes-ok", "0"),
                 ("pid_file_name", "{}.pid".format(name)),
                 ("init_script_name", name),
                 ("startstop", "1"),
                 ("process_name", name),
-                ("meta_server_name", name),
                 # default wait time before killing processes
                 ("wait_time", "10"),
             ]:

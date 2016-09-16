@@ -43,6 +43,7 @@ __all__ = [
     # target states
     "TARGET_STATE_RUNNING",
     "TARGET_STATE_STOPPED",
+    # service ignore (for meta-server) is handled by 1 / 0 (boolean)
     # configured target states (by db or IP)
     "CONF_STATE_RUN",
     "CONF_STATE_STOP",

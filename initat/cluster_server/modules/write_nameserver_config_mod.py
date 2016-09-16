@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2009,2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,13 +28,14 @@ from django.db.models import Q
 import cs_base_class
 from initat.cluster.backbone.models import net_ip, device, \
     domain_tree_node, config, network
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster_server.config import global_config
 from initat.tools import config_tools, ipvx_tools, logging_tools, process_tools, server_command
 
 
 class write_nameserver_config(cs_base_class.server_com):
     class Meta:
-        needed_configs = ["name_server"]
+        needed_configs = [icswServiceEnum.bind_server]
 
     def _call(self, cur_inst):
         _log_lines, sys_dict = process_tools.fetch_sysinfo("/")

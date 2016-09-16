@@ -26,7 +26,7 @@ import zmq
 
 from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring import limits
-from initat.snmp.process import snmp_process_container
+from initat.snmp.process import SNMPProcessContainer
 from initat.snmp.sink import SNMPSink
 from initat.snmp_relay.config import global_config, IPC_SOCK_SNMP
 from initat.snmp_relay.schemes import SNMPNetObject, SNMPGeneralScheme, snmp_schemes, import_errors
@@ -44,7 +44,6 @@ class server_process(server_mixins.ICSWBasePool):
         )
         self.CC.init(icswServiceEnum.snmp_relay, global_config)
         self.CC.check_config()
-        self._init_msi_block()
         self._init_ipc_sockets()
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
@@ -88,7 +87,7 @@ class server_process(server_mixins.ICSWBasePool):
         self.__host_objects = {}
 
     def _init_processes(self):
-        self.spc = snmp_process_container(
+        self.spc = SNMPProcessContainer(
             IPC_SOCK_SNMP,
             self.log,
             global_config["SNMP_PROCESSES"],
@@ -113,37 +112,16 @@ class server_process(server_mixins.ICSWBasePool):
         self.spc.check()
 
     def _snmp_process_start(self, **kwargs):
-        self.__msi_block.add_actual_pid(
-            kwargs["pid"],
-            mult=kwargs.get("mult", 3),
-            process_name=kwargs["process_name"],
-            fuzzy_ceiling=kwargs.get("fuzzy_ceiling", 3)
-        )
-        self.__msi_block.save_block()
-        process_tools.append_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
+        self.CC.process_added(kwargs["process_name"], kwargs["pid"])
 
     def _snmp_process_exit(self, **kwargs):
-        self.__msi_block.remove_actual_pid(kwargs["pid"], mult=kwargs.get("mult", 3))
-        self.__msi_block.save_block()
-        process_tools.remove_pids(self.__pid_name, kwargs["pid"], mult=kwargs.get("mult", 3))
+        self.CC.process_removed(kwargs["pid"])
 
     def _get_host_object(self, host_name, snmp_community, snmp_version):
         host_tuple = (host_name, snmp_community, snmp_version)
         if host_tuple not in self.__host_objects:
             self.__host_objects[host_tuple] = SNMPNetObject(self.log, self.__verbose, host_name, snmp_community, snmp_version)
         return self.__host_objects[host_tuple]
-
-    def _init_msi_block(self):
-        self.__pid_name = global_config["PID_NAME"]
-        process_tools.save_pids(global_config["PID_NAME"], mult=3)
-        cf_pids = 2  # + global_config["SNMP_PROCESSES"]
-        self.log("Initialising meta-server-info block")
-        msi_block = process_tools.meta_server_info("snmp-relay")
-        msi_block.add_actual_pid(mult=3, fuzzy_ceiling=4, process_name="main")
-        msi_block.kill_pids = True
-        # msi_block.heartbeat_timeout = 120
-        msi_block.save_block()
-        self.__msi_block = msi_block
 
     def _int_error(self, err_cause):
         self.log("_int_error() called, cause %s" % (str(err_cause)), logging_tools.LOG_LEVEL_WARN)
@@ -462,7 +440,7 @@ class server_process(server_mixins.ICSWBasePool):
         if self.__verbose > 3:
             self.log("recv() done")
         if not self.__num_messages % 100:
-            cur_mem = process_tools.get_mem_info(self.__msi_block.get_unique_pids() if self.__msi_block else 0)
+            cur_mem = process_tools.get_mem_info(self.CC.msi_block.get_unique_pids() if self.CC.msi_block else 0)
             self.log(
                 "memory usage is {} after {}".format(
                     logging_tools.get_size_str(cur_mem),
@@ -520,9 +498,6 @@ class server_process(server_mixins.ICSWBasePool):
 
     def loop_end(self):
         self._close_ipc_sockets()
-        process_tools.delete_pid(self.__pid_name)
-        if self.__msi_block:
-            self.__msi_block.remove_meta_block()
 
     def loop_post(self):
         self.CC.close()

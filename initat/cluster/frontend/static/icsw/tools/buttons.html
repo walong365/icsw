@@ -1,0 +1,19 @@
+<script type="text/ng-template" id="icsw.tools.button">
+    <button ng-attr-type="{{ button_type }}" name="button" class="btn {{ css_class }} {{ additional_class }} {{ icon_class }}"
+            ng-disabled="is_disabled">
+        {{ button_value }}
+    </button>
+<!--
+Disabled for now as it forces a line break (cf. monitoring basic setup)
+visible-md visible-lg
+    <button ng-attr-type="{{button_type}}" name="button" class="hidden-md hidden-lg btn {{css_class}} {{additional_class}} {{icon_class}}" title="{{ button_value }}">
+    </button>
+-->
+</script>
+
+<script type="text/ng-template" id="icsw.tools.tri.button">
+    <button type="button" name="button" ng-class="css_class" ng-click="toggle_state($event)" icsw-callback="">
+        {{ button_value }}
+    </button>
+
+</script>

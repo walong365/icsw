@@ -24,10 +24,47 @@ import zmq
 
 from initat.tools import logging_tools
 from .config import DEFAULT_RETURN_NAME
-from .process import snmp_process
+from .process import SNMPProcess
+
+__all__ = [
+    "SNMPProcessContainer",
+]
 
 
-class snmp_process_container(object):
+class SNMPProcessInfo(object):
+    def __init__(self, npid, new_idx, conf_dict):
+        self.npid = npid
+        self.idx = new_idx
+        self.name = "snmp_{:d}".format(new_idx)
+        self.msi_name = "snmp_{:d}".format(self.npid)
+        self.proc = SNMPProcess(self.name, conf_dict, ignore_signals=True)
+        self.running = False
+        self.stopping = False
+        self.stopped = False
+        self.jobs = 0
+        self.pending = 0
+        self.done = 0
+        self.batch_ids = set()
+
+    def start_batch(self, batch_id):
+        self.batch_ids.add(batch_id)
+        self.jobs += 1
+        self.pending += 1
+
+    def stop_batch(self, batch_id):
+        self.batch_ids.remove(batch_id)
+        self.pending -= 1
+        self.done += 1
+
+    def salt_proc_info_dict(self, pi_dict):
+        pi_dict[self.name] = {
+            "pid": self.proc.pid,
+            "alive": self.running,
+            "name": self.name
+        }
+
+
+class SNMPProcessContainer(object):
     def __init__(self, mq_name, log_com, max_procs, max_snmp_jobs, conf_dict, event_dict):
         # name of return queue
         self.mq_name = mq_name
@@ -73,11 +110,12 @@ class snmp_process_container(object):
     def salt_proc_info_dict(self, pi_dict):
         # update pi_dict with information from the running SNMP processes
         for _idx, _struct in self.__snmp_dict.iteritems():
-            pi_dict[_struct["name"]] = {
-                "pid": _struct["proc"].pid,
-                "alive": _struct["running"],
-                "name": _struct["name"],
-            }
+            _struct.salt_proc_info_dict(pi_dict)
+            # pi_dict[_struct["name"]] = {
+            #    "pid": _struct["proc"].pid,
+            #    "alive": _struct["running"],
+            #    "name": _struct["name"],
+            # }
 
     def check(self):
         cur_running = self.__snmp_dict.keys()
@@ -95,33 +133,36 @@ class snmp_process_container(object):
                 while _npid in self.__used_proc_ids:
                     _npid += 1
                 self.__used_proc_ids.add(_npid)
-                cur_struct = {
-                    "npid": _npid,
-                    "name": "snmp_{:d}".format(new_idx),
-                    "msi_name": "snmp_{:d}".format(_npid),
-                    "proc": snmp_process("snmp_{:d}".format(new_idx), self.conf_dict, ignore_signals=True),
-                    "running": False,
-                    "stopping": False,
-                    "stopped": False,
-                    "jobs": 0,
-                    "pending": 0,
-                    "done": 0,
-                }
-                cur_struct["proc"].main_queue_name = self.mq_name
-                cur_struct["proc"].start()
-                self.__snmp_dict[new_idx] = cur_struct
+                cur_info = SNMPProcessInfo(_npid, new_idx, self.conf_dict)
+                cur_info.proc.main_queue_name = self.mq_name
+                cur_info.proc.start()
+                # cur_struct = {
+                #    "npid": _npid,
+                #    "name": "snmp_{:d}".format(new_idx),
+                #    "msi_name": "snmp_{:d}".format(_npid),
+                #    "proc": SNMPProcess("snmp_{:d}".format(new_idx), self.conf_dict, ignore_signals=True),
+                #    "running": False,
+                #    "stopping": False,
+                #    "stopped": False,
+                #    "jobs": 0,
+                #    "pending": 0,
+                #    "done": 0,
+                # }
+                # cur_struct["proc"].main_queue_name = self.mq_name
+                # cur_struct["proc"].start()
+                self.__snmp_dict[new_idx] = cur_info   # cur_struct
 
     def get_free_snmp_id(self):
         # code from old snmp-relay:
         # free_processes = sorted([(value["calls_init"], key) for key, value in self.__process_dict.iteritems() if value["state"] == "running"])
         idle_procs = sorted(
             [
-                (value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and not value["pending"] and not value["stopping"]
+                (value.jobs, key) for key, value in self.__snmp_dict.iteritems() if not value.stopped and not value.pending and not value.stopping
             ]
         )
         running_procs = sorted(
             [
-                (value["jobs"], key) for key, value in self.__snmp_dict.iteritems() if not value["stopped"] and value["pending"] and not value["stopping"]
+                (value.jobs, key) for key, value in self.__snmp_dict.iteritems() if not value.stopped and value.pending and not value.stopping
             ]
         )
         if idle_procs:
@@ -137,14 +178,14 @@ class snmp_process_container(object):
         self.__run_flag = False
         _starting, _running, _stopped = (0, 0, 0)
         for _key, value in self.__snmp_dict.iteritems():
-            if value["running"] and value["stopped"]:
+            if value.running and value.stopped:
                 _stopped += 1
-            elif value["running"] and not value["stopped"]:
+            elif value.running and not value.stopped:
                 _running += 1
-            elif not value["running"] and not value["stopped"]:
+            elif not value.running and not value.stopped:
                 _starting += 1
-            if value["running"] and not value["stopped"]:
-                self.send(value["name"], "exit")
+            if value.running and not value.stopped:
+                self.send(value.name, "exit")
         self.log(
             "stop info: {:d} starting, {:d} running, {:d} stopped".format(
                 _starting,
@@ -160,12 +201,25 @@ class snmp_process_container(object):
             ", ".join(
                 [
                     "{:d}/{:d}".format(
-                        self.__snmp_dict[key]["jobs"],
-                        self.__snmp_dict[key]["done"],
+                        self.__snmp_dict[key].jobs,
+                        self.__snmp_dict[key].done,
                     ) for key in sorted(self.__snmp_dict.iterkeys())
                 ]
             )
         )
+
+    def trigger_timeout(self, batch_id):
+        self.log("triggering timeout for batch_id '{}'".format(batch_id), logging_tools.LOG_LEVEL_WARN)
+        _snmp_info = [_struct for _struct in self.__snmp_dict.itervalues() if batch_id in _struct.batch_ids]
+        if len(_snmp_info):
+            _snmp_info = _snmp_info[0]
+            self.send(
+                _snmp_info.name,
+                "trigger_timeout",
+                batch_id,
+            )
+        else:
+            self.log("Matching process not found", logging_tools.LOG_LEVEL_ERROR)
 
     def start_batch(self, vers, ip, com, batch_id, single_key_transform, timeout, *oid_list, **kwargs):
         # see proc_data in snmp_relay_schemes
@@ -181,8 +235,7 @@ class snmp_process_container(object):
                     )
                 )
                 for _vers, _ip, _com, _batch_id, _single_key_transform, _timeout, _oid_list, _kwargs in self.__buffer:
-                    self.__snmp_dict[snmp_id]["jobs"] += 1
-                    self.__snmp_dict[snmp_id]["pending"] += 1
+                    self.__snmp_dict[snmp_id].start_batch(_batch_id)
                     self.send(
                         _snmp_id,
                         "fetch_snmp",
@@ -197,8 +250,7 @@ class snmp_process_container(object):
                         **_kwargs
                     )
                 self.__buffer = []
-            self.__snmp_dict[snmp_id]["jobs"] += 1
-            self.__snmp_dict[snmp_id]["pending"] += 1
+            self.__snmp_dict[snmp_id].start_batch(batch_id)
             self.send(
                 _snmp_id,
                 "fetch_snmp",
@@ -260,27 +312,24 @@ class snmp_process_container(object):
         snmp_idx = int(src_proc.split("_")[1])
         data = self._socket.recv_pyobj()
         if data["type"] == "process_start":
-            self.__snmp_dict[snmp_idx]["running"] = True
+            self.__snmp_dict[snmp_idx].running = True
             self._event(
                 "process_start",
                 pid=data["pid"],
-                mult=3,
-                process_name=self.__snmp_dict[snmp_idx]["msi_name"],
-                fuzzy_ceiling=3
+                process_name=self.__snmp_dict[snmp_idx].msi_name,
             )
             if not self.__run_flag:
                 # call stop
                 self.stop()
         elif data["type"] == "process_exit":
             self.log("SNMP process {:d} stopped (PID={:d})".format(snmp_idx, data["pid"]), logging_tools.LOG_LEVEL_WARN)
-            self.__snmp_dict[snmp_idx]["stopped"] = True
-            self.__used_proc_ids.remove(self.__snmp_dict[snmp_idx]["npid"])
+            self.__snmp_dict[snmp_idx].stopped = True
+            self.__used_proc_ids.remove(self.__snmp_dict[snmp_idx].npid)
             # self.log(str(self.__used_proc_ids))
-            self.__snmp_dict[snmp_idx]["proc"].join()
+            self.__snmp_dict[snmp_idx].proc.join()
             self._event(
                 "process_exit",
                 pid=data["pid"],
-                mult=3,
             )
             if self.__run_flag:
                 # spawn new processes
@@ -291,18 +340,17 @@ class snmp_process_container(object):
                 self.log("all SNMP processes stopped")
                 self._event("all_stopped")
         elif data["type"] == "snmp_finished":
-            self.__snmp_dict[snmp_idx]["pending"] -= 1
-            self.__snmp_dict[snmp_idx]["done"] += 1
+            self.__snmp_dict[snmp_idx].stop_batch(data["args"][0])
             self._event("finished", data)
-            if self.__snmp_dict[snmp_idx]["jobs"] > self.max_snmp_jobs:
-                if self.__snmp_dict[snmp_idx]["stopping"]:
+            if self.__snmp_dict[snmp_idx].jobs > self.max_snmp_jobs:
+                if self.__snmp_dict[snmp_idx].stopping:
                     self.log("SNMP process {:d} already stopped".format(snmp_idx), logging_tools.LOG_LEVEL_WARN)
                 else:
-                    self.__snmp_dict[snmp_idx]["stopping"] = True
+                    self.__snmp_dict[snmp_idx].stopping = True
                     self.log(
                         "stopping SNMP process {:d} ({:d} > {:d})".format(
                             snmp_idx,
-                            self.__snmp_dict[snmp_idx]["jobs"],
+                            self.__snmp_dict[snmp_idx].jobs,
                             self.max_snmp_jobs,
                         )
                     )

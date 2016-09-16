@@ -83,11 +83,6 @@ class AssetHardwareEntrySerializer(serializers.ModelSerializer):
         model = AssetHardwareEntry
 
 
-class AssetBatchSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = AssetBatch
-
 class AssetPackageVersionInstallTimeSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetPackageVersionInstallTime
@@ -306,3 +301,19 @@ class StaticAssetSerializer(serializers.ModelSerializer):
 class StaticAssetTemplateRefsSerializer(serializers.Serializer):
     static_asset_template = serializers.IntegerField()
     device_name = serializers.CharField()
+
+
+class AssetBatchSerializer(serializers.ModelSerializer):
+    packages_install_times = AssetPackageVersionInstallTimeSerializer(many=True)
+    installed_updates = AssetUpdateEntrySerializer(many=True)
+    pending_updates = AssetUpdateEntrySerializer(many=True)
+    memory_modules = AssetHWMemoryEntrySerializer(many=True)
+    cpus = AssetHWCPUEntrySerializer(many=True)
+    gpus = AssetHWGPUEntrySerializer(many=True)
+
+    class Meta:
+        model = AssetBatch
+        fields = ("idx", "run_start_time", "run_end_time", "num_runs", "num_completed", "num_runs_ok",
+                  "num_runs_error", "run_status", "run_result", "device", "run_time", "packages",
+                  "packages_install_times", "pending_updates", "installed_updates", "cpus", "memory_modules", "gpus",
+                  "is_finished_processing")

@@ -71,6 +71,7 @@ def enum_show_command(options):
             "rrd_server": icswServiceEnum.collectd_server.name,
             "rrd_collector": icswServiceEnum.collectd_server.name,
             "server": icswServiceEnum.cluster_server.name,
+            "ldap_server": icswServiceEnum.ldap_server.name,
         }
         for c_con in config.objects.all():
             if not c_con.config_service_enum_id:

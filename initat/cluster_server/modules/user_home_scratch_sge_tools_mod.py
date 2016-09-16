@@ -27,6 +27,7 @@ from django.db.models import Q
 
 import cs_base_class
 import cs_tools
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import user, config_str
 from initat.cluster_server.config import global_config
 from initat.tools import process_tools, server_command
@@ -193,7 +194,7 @@ class create_user_home(cs_base_class.server_com):
 
 class create_sge_user(cs_base_class.server_com):
     class Meta:
-        needed_configs = ["sge_server"]
+        needed_configs = [icswServiceEnum.rms_server]
         needed_option_keys = ["username"]
 
     def _call(self, cur_inst):
@@ -273,7 +274,7 @@ class delete_sge_user(cs_base_class.server_com):
 
 class rename_sge_user(cs_base_class.server_com):
     class Meta:
-        needed_configs = ["sge_server"]
+        needed_configs = [icswServiceEnum.rms_server]
         needed_option_keys = ["username", "old_username"]
 
     def _call(self, cur_inst):

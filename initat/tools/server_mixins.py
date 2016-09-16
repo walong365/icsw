@@ -19,8 +19,6 @@
 #
 """ usefull server mixins """
 
-import logging
-import os
 import re
 import sys
 import time
@@ -43,10 +41,14 @@ class ConfigCheckObject(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log("[CC] {}".format(what), log_level)
 
-    def init(self, srv_type_enum, global_config, add_config_store=True, init_logging=True, native_logging=False):
+    def init(self, srv_type_enum, global_config, add_config_store=True, init_logging=True, native_logging=False, init_msi_block=True):
         self.srv_type_enum = srv_type_enum
         self.global_config = global_config
         self.__native_logging = native_logging
+        self.__init_msi_block = init_msi_block
+        if self.__init_msi_block:
+            # init MSI block
+            self.__msi_block = None
         if add_config_store:
             self.__cs = config_store.ConfigStore("client", self.log)
         else:
@@ -159,6 +161,26 @@ class ConfigCheckObject(object):
                 )
         self.global_config.add_config_entries(_opts)
 
+        if self.__init_msi_block:
+            self.__pid_name = self.global_config["PID_NAME"]
+            process_tools.save_pid(self.__pid_name)
+            self.log("init MSI Block")
+            self.__msi_block = process_tools.MSIBlock(self.srv_type_enum.value.msi_block_name)
+            self.__msi_block.add_actual_pid(process_name="main")
+            self.__msi_block.save()
+
+    def process_added(self, src_process, src_pid):
+        if self.__init_msi_block:
+            process_tools.append_pids(self.__pid_name, src_pid)
+            self.__msi_block.add_actual_pid(src_pid, process_name=src_process)
+            self.__msi_block.save()
+
+    def process_removed(self, src_pid):
+        if self.__init_msi_block:
+            process_tools.remove_pids(self.__pid_name, src_pid)
+            self.__msi_block.remove_actual_pid(src_pid)
+            self.__msi_block.save()
+
     # property functions to access device and config
     @property
     def server(self):
@@ -168,7 +190,18 @@ class ConfigCheckObject(object):
     def config(self):
         return self.__sql_info.config
 
+    @property
+    def msi_block(self):
+        if self.__init_msi_block:
+            return self.__msi_block
+        else:
+            raise AttributeError("No MSI Block defined")
+
     def close(self):
+        if self.__init_msi_block and self.__msi_block:
+            process_tools.delete_pid(self.__pid_name)
+            self.__msi_block.remove()
+            self.__msi_block = None
         if not self.__native_logging:
             self.__process.log_template.close()
 
@@ -751,15 +784,15 @@ class RemoteCallSignature(object):
 
 
 class RemoteServerAddressBase(object):
-    def __init__(self, mixin, srv_type):
+    def __init__(self, mixin, srv_type_enum):
         self.mixin = mixin
-        self.srv_type = srv_type
+        self.srv_type_enum = srv_type_enum
         self._connected = False
         self.__latest_router_error = None
         self._address = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.mixin.log("[RSAb {}] {}".format(self.srv_type, what), log_level)
+        self.mixin.log("[RSAb {}] {}".format(self.srv_type_enum.name, what), log_level)
 
     @property
     def valid(self):
@@ -836,28 +869,28 @@ class RemoteServerAddressBase(object):
 
 
 class RemoteServerAddress(RemoteServerAddressBase):
-    def __init__(self, mixin, srv_type):
-        RemoteServerAddressBase.__init__(self, mixin, srv_type)
+    def __init__(self, mixin, srv_type_enum):
+        RemoteServerAddressBase.__init__(self, mixin, srv_type_enum)
         self._uuid, self._port = (None, None)
-        self.log("init for {}".format(self.srv_type))
+        self.log("init for {}".format(self.srv_type_enum.name))
         self.__latest_router_error = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.mixin.log("[RSA {}] {}".format(self.srv_type, what), log_level)
+        self.mixin.log("[RSA {}] {}".format(self.srv_type_enum.name, what), log_level)
 
     def check_for_address(self, router):
         if not self.valid:
             router.update()
-            if self.srv_type in router.service_types:
-                _addresses = router[self.srv_type]
+            if self.srv_type_enum.name in router:
+                _addresses = router[self.srv_type_enum.name]
                 if len(_addresses):
                     from initat.cluster.backbone.models import device
                     from django.db.models import Q
                     _addr = _addresses[0]
                     self._address = _addr[1]
                     _dev = device.objects.get(Q(pk=_addr[2]))
-                    self._port = self.mixin.CC.Instance.get_port_dict(self.srv_type, command=True)
-                    self._postfix = self.mixin.CC.Instance.get_uuid_postfix(self.srv_type)
+                    self._port = self.mixin.CC.Instance.get_port_dict(self.srv_type_enum, command=True)
+                    self._postfix = self.mixin.CC.Instance.get_uuid_postfix(self.srv_type_enum)
                     self._uuid = "{}:{}:".format(_dev.com_uuid, self._postfix)
                     self.log(
                         "set address to {} (device {}, port {:d}, COM-UUID {})".format(
@@ -875,25 +908,25 @@ class RemoteServerAddress(RemoteServerAddressBase):
                 if self.__latest_router_error and abs(self.__latest_router_error - cur_time) < 5:
                     pass
                 else:
-                    self.log("not found in router".format(self.srv_type), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("not found in router".format(self.srv_type_enum.name), logging_tools.LOG_LEVEL_ERROR)
                     self.__latest_router_error = cur_time
 
 
 class RemoteServerAddressIP(RemoteServerAddressBase):
-    def __init__(self, mixin, srv_type):
-        RemoteServerAddressBase.__init__(self, mixin, srv_type)
+    def __init__(self, mixin, srv_type_enum):
+        RemoteServerAddressBase.__init__(self, mixin, srv_type_enum)
         self._uuid, self._port = (None, None)
         self.log("init")
         self.__latest_router_error = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.mixin.log("[RSAIP {}] {}".format(self.srv_type, what), log_level)
+        self.mixin.log("[RSAIP {}] {}".format(self.srv_type_enum.name, what), log_level)
 
     def check_for_address(self, instance, addr):
         if not self.valid:
-            self._uuid = instance.get_uuid_postfix(self.srv_type)
+            self._uuid = instance.get_uuid_postfix(self.srv_type_enum)
             self._address = addr
-            self._port = instance.get_port_dict(self.srv_type, command=True)
+            self._port = instance.get_port_dict(self.srv_type_enum, command=True)
             self.log(
                 "set address to {} (port {:d}, COM-UUID {})".format(
                     self._address,
@@ -914,27 +947,27 @@ class SendToRemoteServerMixin(threading_tools.ICSWAutoInit):
     def strs_com_socket(self):
         return getattr(self, self.STRS_SOCKET_NAME)
 
-    def send_to_remote_server(self, srv_type, send_obj):
+    def send_to_remote_server(self, srv_type_enum, send_obj):
         from initat.cluster.backbone import routing
         if self.__target_dict is None:
             from initat.cluster.backbone import db_tools
             db_tools.close_connection()
             self.__target_dict = {}
             self.__strs_router = routing.SrvTypeRouting(log_com=self.log)
-        if srv_type not in self.__target_dict:
-            self.__target_dict[srv_type] = RemoteServerAddress(self, srv_type)
-        _rsa = self.__target_dict[srv_type]
+        if srv_type_enum not in self.__target_dict:
+            self.__target_dict[srv_type_enum] = RemoteServerAddress(self, srv_type_enum)
+        _rsa = self.__target_dict[srv_type_enum]
         _rsa.check_for_address(self.__strs_router)
         return self.send_to_remote_server_int(_rsa, send_obj)
 
-    def send_to_remote_server_ip(self, srv_addr, srv_type, send_obj):
+    def send_to_remote_server_ip(self, srv_addr, srv_type_enum, send_obj):
         if self.__target_dict is None:
             from initat.icsw.service.instance import InstanceXML
             self.__target_dict = {}
             self.__strs_instance = InstanceXML(quiet=True)
-        if srv_type not in self.__target_dict:
-            self.__target_dict[srv_type] = RemoteServerAddressIP(self, srv_type)
-        _rsa = self.__target_dict[srv_type]
+        if srv_type_enum not in self.__target_dict:
+            self.__target_dict[srv_type_enum] = RemoteServerAddressIP(self, srv_type_enum)
+        _rsa = self.__target_dict[srv_type_enum]
         _rsa.check_for_address(self.__strs_instance, srv_addr)
         return self.send_to_remote_server_int(_rsa, send_obj)
 

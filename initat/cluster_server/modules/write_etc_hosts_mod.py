@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2008,2011-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2008,2011-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,7 +25,8 @@ from django.db.models import Q
 import cs_base_class
 from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
 from initat.tools import ipvx_tools, logging_tools, process_tools, cluster_location
-from initat.tools.config_tools import router_object
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.tools.config_tools import RouterObject
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
 ETC_HOSTS_FILENAME = "/etc/hosts"
@@ -34,7 +35,7 @@ GROUP_DIR = "/opt/cluster/etc/pdsh"
 
 class write_etc_hosts(cs_base_class.server_com):
     class Meta:
-        needed_configs = ["auto_etc_hosts"]
+        needed_configs = [icswServiceEnum.auto_etc_hosts]
 
     def _call(self, cur_inst):
         file_list = []
@@ -57,7 +58,7 @@ class write_etc_hosts(cs_base_class.server_com):
             Q(device__device_group__enabled=True)
         ).values_list("pk", flat=True)
         # ref_table
-        route_obj = router_object(cur_inst.log)
+        route_obj = RouterObject(cur_inst.log)
         all_paths = []
         for s_ndev in my_idxs:
             all_paths.extend(networkx.shortest_path(route_obj.nx, s_ndev, weight="weight").values())
