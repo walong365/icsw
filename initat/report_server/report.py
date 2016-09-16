@@ -1010,6 +1010,21 @@ class PDFReportGenerator(ReportGenerator):
 
         body_data.append((text_block, t))
 
+        str_to_use = "N/A"
+        for _net_device in _device.netdevice_set.all():
+            if str_to_use == "N/A":
+                str_to_use = "{} ({})".format(_net_device.macaddr, _net_device.devname)
+            else:
+                str_to_use += ", {}".format("{} ({})".format(_net_device.macaddr, _net_device.devname))
+        data = [[str_to_use]]
+
+        text_block = Paragraph('<b>MAC Addresses:</b>', style_sheet["BodyText"])
+        t = Table(data, colWidths=(available_width * 0.83),
+                  style=[]
+                  )
+
+        body_data.append((text_block, t))
+
         # SNMP Schemes
         str_to_use = "N/A"
         for _snmp_scheme in _device.snmp_schemes.all():
