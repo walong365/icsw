@@ -59,6 +59,7 @@ setup(
         "initat.cluster.backbone.tools",
         "initat.cluster.backbone.0800_models",
         "initat.cluster.backbone.models",
+        "initat.cluster.backbone.models.asset",
         "initat.cluster.backbone.exceptions",
         "initat.cluster.backbone.migrations",
         "initat.cluster.backbone.serializers",
