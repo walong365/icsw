@@ -310,7 +310,7 @@
                 <serviceTypes type="list">
                     <value>discovery_server</value>
                 </serviceTypes>
-                <menuEntry type="dict" icon_str="fa-code"/>
+                <menuEntry type="dict" icon_str="fa-diamond"/>
                 <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
                 <rights type="list">
                     <value>backbone.device.assets</value>

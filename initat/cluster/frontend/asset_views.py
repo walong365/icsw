@@ -61,7 +61,8 @@ logger = logging.getLogger(__name__)
 class AssetBatchViewSet(viewsets.ViewSet):
     def list(self, request):
         if "pks" in request.query_params:
-            queryset = AssetBatch.objects.filter(
+            queryset = AssetBatch.objects.prefetch_related("packages_install_times", "installed_updates",
+                "pending_updates", "memory_modules", "cpus", "gpus").filter(
                 Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
             )
         else:

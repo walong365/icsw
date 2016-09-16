@@ -94,27 +94,26 @@ device_asset_module = angular.module(
                         pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
                     }
                 )
-                Restangular.all(ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES.slice(1)).getList(
+                Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
                     {
                         pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
                     }
                 )
-#                Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
-#                    {
-#                        pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
-#                    }
-#                )
                 # todo, make faster
                 # icswAssetPackageTreeService.reload($scope.$id)
             ]
         ).then(
             (result) ->
                 set_schedule_items(result[0])
-                set_asset_runs(result[1])
 
-                #console.log(result[2])
-                start_timer()
+                set_asset_batch_list(result[1])
+
                 $scope.struct.reloading = false
+
+                for asset_batch in $scope.struct.asset_batch_list
+                    if !asset_batch.is_finished_processing
+                        start_timer()
+                        break
         )
 
     start_timer = () ->
@@ -145,40 +144,15 @@ device_asset_module = angular.module(
             salt_asset_batch(asset_batch)
             dev_lookup_table[asset_batch.device].asset_batch_list.push(asset_batch)
 
-        console.log($scope.struct.asset_batch_list)
-
     set_schedule_items = (sched_list) ->
         $scope.struct.schedule_items.length = 0
+
+        for device in $scope.struct.devices
+            device.schedule_items.length = 0
+
         for obj in sched_list
-            console.log(obj)
             $scope.struct.schedule_items.push(salt_schedule_item(obj))
             obj.$$device.schedule_items.push(obj)
-
-    set_asset_runs = (run_list) ->
-        for dev in $scope.struct.devices
-            # reset assetrun_set list
-            dev.assetrun_set.length = 0
-        _prev_lut = _.keyBy($scope.struct.asset_runs, "idx")
-        $scope.struct.asset_runs.length = 0
-        for obj in run_list
-            _salted = salt_asset_run(obj)
-            if _salted.idx of _prev_lut
-                _prev = _prev_lut[_salted.idx]
-                # copy values from previous run
-                _salted.$$assets_loaded = _prev.$$assets_loaded
-                _salted.$$expanded = _prev.$$expanded
-                if _salted.$$assets_loaded
-                    _salted.$$assets = _prev.$$assets
-                    _salted.$$memory_entries = _prev.$$memory_entries
-                    _salted.$$cpu_entries = _prev.$$cpu_entries
-                    _salted.$$gpu_entries = _prev.$$gpu_entries
-                    _salted.$$hdd_entries = _prev.$$hdd_entries
-                    _salted.$$partition_entries = _prev.$$partition_entries
-                    _salted.$$display_entries = _prev.$$display_entries
-
-            $scope.struct.asset_runs.push(_salted)
-            _dev = $scope.struct.device_tree.all_lut[_salted.device]
-            _dev.assetrun_set.push(_salted)
 
     $scope.$on("$destroy", () ->
         stop_timer()
@@ -243,8 +217,6 @@ device_asset_module = angular.module(
 
                         set_asset_batch_list(result[1])
 
-                        console.log(result[1])
-
                         $scope.struct.data_loaded = true
 
                         #start_timer()
@@ -256,88 +228,25 @@ device_asset_module = angular.module(
         obj.$$run_start_day = "N/A"
         obj.$$run_start_hour = "N/A"
         obj.$$run_time = "N/A"
+        obj.$$run_progress = "N/A"
         obj.$$expanded = false
         obj.$$device = $scope.struct.device_tree.all_lut[obj.device]
 
         if obj.run_time > 0
-            obj.$$run_time = obj.run_time
+            obj.$$run_time = obj.run_time + " seconds"
 
         if obj.run_start_time
             _moment = moment(obj.run_start_time)
             obj.$$run_start_day = _moment.format("YYYY-MM-DD")
             obj.$$run_start_hour = _moment.format("HH:mm:ss")
+
+        obj.$$run_progress = Math.round((((obj.num_completed)/ obj.num_runs) * 100))
 
     salt_schedule_item = (obj) ->
         obj.$$planned_time = moment(obj.planned_date).format("YYYY-MM-DD HH:mm:ss")
         obj.$$device = $scope.struct.device_tree.all_lut[obj.device]
         obj.$$full_name = obj.$$device.full_name
         obj.$$disp_setting = $scope.struct.disp_setting_tree.lut[obj.dispatch_setting]
-        return obj
-
-    salt_asset_run = (obj) ->
-        obj.$$device = $scope.struct.device_tree.all_lut[obj.device]
-        obj.$$full_name = obj.$$device.full_name
-        obj.$$run_type = icswAssetHelperFunctions.resolve("asset_type", obj.run_type)
-        obj.$$run_status = icswAssetHelperFunctions.resolve("run_status", obj.run_status)
-        obj.$$run_status_class = icswAssetHelperFunctions.get_class("run_status", obj.run_status)
-        obj.$$run_result = icswAssetHelperFunctions.resolve("run_result", obj.run_result)
-        obj.$$run_result_class = icswAssetHelperFunctions.get_class("run_result", obj.run_result)
-        if obj.error_string or obj.interpret_error_string
-            # console.log "E"
-            obj.$$error_class = "error"
-        else
-            obj.$$error_class = ""
-        obj.$$assets_loaded = false
-        obj.$$expanded = false
-        # link assets
-        if obj.run_type == 1
-            # package
-            obj.$$num_results = obj.num_packages
-        else if obj.run_type == 2
-            # hardware
-            obj.$$num_results = obj.num_hardware
-        else if obj.run_type == 6
-            # processes
-            obj.$$num_results = obj.num_processes
-        else if obj.run_type == 4
-            # update
-            obj.$$num_results = obj.num_updates
-        else if obj.run_type == 7
-            # pending update
-            obj.$$num_results = obj.num_pending_updates
-        else if obj.run_type == 3
-            # pending update
-            obj.$$num_results = obj.num_licenses
-        else if obj.run_type == 8
-            # DMI handles
-            obj.$$num_results = obj.num_asset_handles
-        else if obj.run_type == 9
-            # PCI map
-            obj.$$num_results = obj.num_pci_entries
-        else if obj.run_type == 10
-            # easy/win hw entries
-            obj.$$num_results = obj.num_hw_entries
-        else if obj.run_type == 5
-            # easy/win hw entries
-            obj.$$num_results = obj.num_hw_entries
-        else
-            obj.$$num_results = 0
-        if obj.run_start_time
-            _moment = moment(obj.run_start_time)
-            obj.$$run_start_day = _moment.format("YYYY-MM-DD")
-            obj.$$run_start_hour = _moment.format("HH:mm:ss")
-        else
-            obj.$$run_start_day = "N/A"
-            obj.$$run_start_hour = "N/A"
-
-        if obj.run_end_time
-            _moment = moment(obj.run_end_time)
-            obj.$$run_end_day = _moment.format("YYYY-MM-DD")
-            obj.$$run_end_hour = _moment.format("HH:mm:ss")
-        else
-            obj.$$run_end_day = "N/A"
-            obj.$$run_end_hour = "N/A"
-
         return obj
 
     $scope.filterSchedArrayForCsvExport = (filteredSchedItems) ->
@@ -449,35 +358,16 @@ device_asset_module = angular.module(
                 $timeout(
                     () ->
                         _device.$$scan_device_button_disabled = false
+                        reload_data()
                     5000
                 )
             (not_ok) ->
                 $timeout(
                     () ->
                         _device.$$scan_device_button_disabled = false
+                        reload_data()
                     5000
                 )
-        )
-
-    $scope.run_now = ($event, obj) ->
-        $event.preventDefault()
-        $event.stopPropagation()
-        blockUI.start("Init AssetRun")
-        obj.$$asset_run = true
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.ASSET_RUN_ASSETRUN_FOR_DEVICE_NOW
-                data:
-                    pk: obj.idx
-                dataType: "json"
-            }
-        ).then(
-            (ok) ->
-                blockUI.stop()
-                obj.$$asset_run = false
-            (not_ok) ->
-                blockUI.stop()
-                obj.$$asset_run = false
         )
 
 
@@ -877,80 +767,6 @@ device_asset_module = angular.module(
             result_new.push(new_obj)
 
         return result_new
-
-    resolve_hardware_assets = (in_list) ->
-        # todo: create structured tree
-        for entry in in_list
-            entry.$$attributes = angular.fromJson(entry.attributes)
-            entry.$$info_list = angular.fromJson(entry.info_list)
-            entry.$$attribute_info = ("#{key}=#{value}" for key, value of entry.$$attributes).join(", ")
-            entry.$$info_info = ("#{key} (#{value.length})" for key, value of entry.$$info_list).join(", ")
-            # console.log entry
-        return in_list
-
-    resolve_pending_updates = (in_list) ->
-        return (entry for entry in in_list when not entry.installed)
-
-
-    resolve_installed_updates = (in_list) ->
-        return (entry for entry in in_list when entry.installed)
-
-    resolve_pci_entries = (in_list) ->
-        r_list = []
-        for entry in in_list
-            entry.$$position = sprintf("%04x:%02x:%02x.%02x", entry.domain, entry.bus, entry.slot, entry.func)
-            r_list.push(entry)
-        return r_list
-
-    resolve_dmi_entries = (head) ->
-        if head.length
-            return head[0]
-        else
-            return null
-
-    resolve_hw_entries = (assetrun, data) ->
-        memory_entries = data[0].memory_modules
-        cpu_entries = data[0].cpus
-        gpu_entries = data[0].gpus
-        hdd_entries = data[0].hdds
-        partition_entries = data[0].partitions
-        display_entries = data[0].displays
-
-        assetrun.$$memory_entries = []
-        assetrun.$$cpu_entries = []
-        assetrun.$$gpu_entries = []
-        assetrun.$$hdd_entries = []
-        assetrun.$$partition_entries = []
-        assetrun.$$display_entries = []
-
-        r_list = []
-
-        for entry in memory_entries
-            entry.$$capacity = entry.capacity / (1024.0 * 1024.0)
-
-            assetrun.$$memory_entries.push(entry)
-
-        for entry in cpu_entries
-            assetrun.$$cpu_entries.push(entry)
-
-        for entry in gpu_entries
-            assetrun.$$gpu_entries.push(entry)
-
-        for entry in hdd_entries
-            entry.$$size = "N/A" #(parseInt(entry.size) / (1024 * 1024 * 1024)).toFixed(2)
-            entry.serialnumber = "N/A"
-            assetrun.$$hdd_entries.push(entry)
-
-        for entry in partition_entries
-            entry.$$size = (parseInt(entry.size) / (1024 * 1024 * 1024)).toFixed(2)
-            entry.$$free = (parseInt(entry.free) / (1024 * 1024 * 1024)).toFixed(2)
-            entry.$$percentage_free = (((parseInt(entry.free) / parseInt(entry.size))) * 100).toFixed(2)
-            assetrun.$$partition_entries.push(entry)
-
-        for entry in display_entries
-            assetrun.$$display_entries.push(entry)
-
-        return r_list
 
     $scope.expand_assetbatch = ($event, assetbatch) ->
         assetbatch.$$expanded = !assetbatch.$$expanded

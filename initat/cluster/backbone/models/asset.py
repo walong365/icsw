@@ -755,6 +755,11 @@ class AssetRun(models.Model):
 
     created = models.DateTimeField(auto_now_add=True)
 
+    def is_finished_processing(self):
+        if self.interpret_error_string or self.generate_duration:
+            return True
+        return False
+
     @property
     def hdds(self):
         if self.asset_batch and self.asset_batch.partition_table:
@@ -1060,6 +1065,7 @@ class AssetRun(models.Model):
                 )
                 asset_update_entry.save()
 
+            print asset_update_entry
             self.asset_batch.pending_updates.add(asset_update_entry)
 
     def _generate_assets_update_nrpe(self, data):
@@ -1549,6 +1555,13 @@ class AssetBatch(models.Model):
     # TODO: Remove this.
     partitions = models.ManyToManyField(AssetHWLogicalEntry)
     displays = models.ManyToManyField(AssetHWDisplayEntry)
+
+    @property
+    def is_finished_processing(self):
+        for assetrun in self.assetrun_set.all():
+            if not assetrun.is_finished_processing():
+                return False
+        return True
 
     def completed(self):
         for assetrun in self.assetrun_set.all():
