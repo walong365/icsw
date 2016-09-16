@@ -86,6 +86,8 @@ def get_packages_for_ar(asset_run):
                         )
                     )
             elif scantype == ScanType.HM:
+                tree = etree.fromstring(blob)
+                blob = tree.xpath('ns0:pkg_list', namespaces=tree.nsmap)[0].text
                 try:
                     package_dict = server_command.decompress(blob, pickle=True)
                 except:
@@ -109,9 +111,6 @@ def get_packages_for_ar(asset_run):
                             )
 
     return assets
-
-
-
 
 
 ########################################################################################################################
@@ -1065,7 +1064,6 @@ class AssetRun(models.Model):
                 )
                 asset_update_entry.save()
 
-            print asset_update_entry
             self.asset_batch.pending_updates.add(asset_update_entry)
 
     def _generate_assets_update_nrpe(self, data):
@@ -1094,7 +1092,6 @@ class AssetRun(models.Model):
                 )
                 asset_update_entry.save()
 
-            print asset_update_entry
             self.asset_batch.installed_updates.add(asset_update_entry)
 
     def _generate_assets_process_nrpe(self, data):

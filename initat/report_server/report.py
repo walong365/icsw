@@ -2593,7 +2593,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
         row_writer_func(base_header)
 
-        for update in ar.assetupdateentry_set.all():
+        for update in ar.asset_batch.installed_updates.all():
             row = base_row[:]
 
             row.append(update.name)
@@ -2638,7 +2638,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
         row_writer_func(base_header)
 
-        for update in ar.assetupdateentry_set.all():
+        for update in ar.asset_batch.pending_updates.all():
             row = base_row[:]
 
             row.append(update.name)

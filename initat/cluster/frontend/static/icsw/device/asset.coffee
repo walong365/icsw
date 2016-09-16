@@ -782,7 +782,7 @@ device_asset_module = angular.module(
         tab.asset_batch = asset_batch
 
         if tab_type == 0
-            icswAssetPackageTreeService.load($scope.$id).then(
+            icswAssetPackageTreeService.reload($scope.$id).then(
                 (tree) ->
                     tab.tab_heading_text = "Installed Packages (ScanID:" + asset_batch.idx + ")"
                     tab.packages = resolve_package_assets(tree, asset_batch.packages, asset_batch.packages_install_times)
