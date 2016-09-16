@@ -32,15 +32,15 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import device, snmp_scheme
 from initat.cluster.backbone.routing import get_server_uuid
-from initat.snmp.process import snmp_process_container
-from initat.tools import cluster_location, config_tools, configfile, logging_tools, process_tools, \
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.snmp.process import SNMPProcessContainer
+from initat.tools import config_tools, configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools, uuid_tools
 from .aggregate import aggregate_process
-from .background import snmp_job, bg_job, ipmi_builder
-from .collectd_struct import CollectdHostInfo, var_cache, ext_com, host_matcher, file_creator
+from .background import SNMPJob, BackgroundJob, IPMIBuilder
+from .collectd_struct import CollectdHostInfo, var_cache, ext_com, host_matcher, FileCreator
 from .config import global_config, IPC_SOCK_SNMP
 from .dbsync import SyncProcess
 from .resize import resize_process
@@ -116,7 +116,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self.register_func("enable_rrd_cached", self.enable_rrd_cached)
         self.sync_from_disk_to_ram()
         self.hm = host_matcher(self.log)
-        self.fc = file_creator(self.log)
+        self.fc = FileCreator(self.log)
         self.__last_sent = {}
         self.__snmp_running = True
         self._init_snmp()
@@ -125,8 +125,8 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self._init_hosts()
         self._init_rrd_cached()
         self.__ipmi_list = []
-        bg_job.setup(self)
-        snmp_job.setup(self)
+        BackgroundJob.setup(self)
+        SNMPJob.setup(self)
         self.tc = ThresholdContainer(self)
         self.register_timer(self._check_database, 300, instant=True)
         self.register_timer(self._check_background, 2, instant=True)
@@ -352,16 +352,16 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
                 self._handle_xml(_send_com)
 
     def _check_reachability(self, devs, var_cache, _router, _type):
-        _srv_type = "rrd_server"
+        _srv_type = icswServiceEnum.collectd_server
         self.log(
             "Start reachability check for {} (srv {}, type {})".format(
                 logging_tools.get_plural("device", len(devs)),
-                _srv_type,
+                _srv_type.name,
                 _type,
             )
         )
         s_time = time.time()
-        _sc = config_tools.server_check(server_type=_srv_type)
+        _sc = config_tools.server_check(service_type_enum=_srv_type)
         res_dict = _sc.get_route_to_other_devices(_router, devs, allow_route_to_other_networks=True)
         _reachable, _unreachable = ([], [])
         for dev in devs:
@@ -374,7 +374,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self.log(
             "Reachability check for {} (srv {}, type {}) took {}".format(
                 logging_tools.get_plural("device", len(devs)),
-                _srv_type,
+                _srv_type.name,
                 _type,
                 logging_tools.get_diff_time_str(e_time - s_time),
             )
@@ -556,7 +556,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
             )
 
     def _init_snmp(self):
-        self.spc = snmp_process_container(
+        self.spc = SNMPProcessContainer(
             IPC_SOCK_SNMP,
             self.log,
             global_config["SNMP_PROCS"],
@@ -591,7 +591,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self["exit_requested"] = True
 
     def _snmp_finished(self, data):
-        snmp_job.feed_result(data["args"])
+        SNMPJob.feed_result(data["args"])
 
     def _log_stats(self):
         self.__end_time = time.time()
@@ -972,8 +972,8 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         if com_text in ["ipmi_hosts", "snmp_hosts"]:
             j_type = com_text.split("_")[0]
             t_obj = {
-                "ipmi": bg_job,
-                "snmp": snmp_job
+                "ipmi": BackgroundJob,
+                "snmp": SNMPJob
             }[j_type]
             # create ids
             _id_dict = {
@@ -983,16 +983,16 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
             for new_id in _new_list:
                 _dev = _id_dict[new_id]
                 if j_type == "ipmi":
-                    t_obj(
+                    BackgroundJob(
                         new_id,
-                        ipmi_builder().get_comline(_dev),
-                        ipmi_builder(),
+                        IPMIBuilder().get_comline(_dev),
+                        IPMIBuilder(),
                         device_name=_dev.get("full_name"),
                         uuid=_dev.get("uuid"),
                     )
                 else:
                     _schemes = snmp_scheme.objects.filter(Q(pk__in=in_com.xpath(".//ns:schemes/ns:scheme/@pk", start_el=_dev)))
-                    t_obj(
+                    SNMPJob(
                         new_id,
                         _dev.get("ip"),
                         _schemes,
@@ -1003,11 +1003,12 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
                         snmp_read_timeout=int(_dev.get("snmp_read_timeout", "10")),
                     )
             for same_id in _same_list:
+                # update attributes for jobs already present
                 _dev = _id_dict[same_id]
                 _job = t_obj.get_job(same_id)
                 if j_type == "ipmi":
                     for attr_name, attr_value in [
-                        ("comline", ipmi_builder().get_comline(_dev)),
+                        ("comline", IPMIBuilder().get_comline(_dev)),
                         ("device_name", _dev.get("full_name")),
                         ("uuid", _dev.get("uuid")),
                     ]:
@@ -1031,8 +1032,8 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
             )
 
     def _check_background(self):
-        bg_job.check_jobs(start=self.__snmp_running)
-        snmp_job.check_jobs(start=self.__snmp_running)
+        BackgroundJob.check_jobs(start=self.__snmp_running)
+        SNMPJob.check_jobs(start=self.__snmp_running)
 
     def _handle_hk_command(self, in_com, com_text):
         h_filter, k_filter = (

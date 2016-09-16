@@ -126,8 +126,7 @@ class server_process(
             )
 
     def loop_end(self):
-        process_tools.delete_pid(self.__pid_name)
-        self.__msi_block.remove_meta_block()
+        pass
 
     def loop_post(self):
         self.network_unbind()

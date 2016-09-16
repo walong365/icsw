@@ -232,9 +232,6 @@ class DBPrefetchMixin(object):
     def _sensorthreshold_prefetch(self):
         return ["notify_users"]
 
-    def _background_job_related(self):
-        return ["initiator__domain_tree_node", "user"]
-
     def _deviceselection_prefetch(self):
         return ["devices", "device_groups", "categories"]
 

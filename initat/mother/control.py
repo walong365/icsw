@@ -31,6 +31,7 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import device, macbootlog, mac_ignore, \
     log_source_lookup, LogSource, DeviceLogEntry, user, LicenseUsage, LicenseEnum, \
     LicenseParameterTypeEnum
@@ -1309,7 +1310,7 @@ class NodeControlProcess(threading_tools.process_obj):
         self.mother_src = LogSource.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
         # close database connection
         simple_command.setup(self)
-        self.sc = config_tools.server_check(server_type="mother_server")
+        self.sc = config_tools.server_check(service_type_enum=icswServiceEnum.mother_server)
         if "b" in self.sc.identifier_ip_lut:
             _boot_ips = self.sc.identifier_ip_lut["b"]
             self.log(
@@ -1333,7 +1334,7 @@ class NodeControlProcess(threading_tools.process_obj):
         self.register_func("soft_control", self._status)
         self.register_func("ds_ping_result", self.device_state.ping_result)
         self.register_timer(self._check_commands, 10)
-        # self.kernel_dev = config_tools.server_check(server_type="kernel_server")
+        # self.kernel_dev = config_tools.server_check(service_type_enum=icswServiceEnum.kernel_server)
         self.register_func("syslog_line", self._syslog_line)
         self.register_func("node_status", self._node_status)
         # build dhcp res

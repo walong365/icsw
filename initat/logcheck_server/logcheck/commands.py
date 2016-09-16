@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -31,6 +31,7 @@ from django.db.models import Q
 from lxml.builder import E
 
 from initat.cluster.backbone.models import SyslogCheck
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.host_monitoring import limits
 from initat.tools import logging_tools, process_tools, server_command
 
@@ -293,7 +294,7 @@ class SyslogCheckCommand(MonCommand):
                 "list": _res_list
             }
             self.send_to_remote_server(
-                "md-config-server",
+                icswServiceEnum.monitor_server,
                 server_command.srv_command(
                     command="passive_check_results_as_chunk",
                     ascii_chunk=process_tools.compress_struct(_result_chunk),

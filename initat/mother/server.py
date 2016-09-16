@@ -36,7 +36,7 @@ import initat.tools.server_mixins
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import network, status, LogSource
 from initat.icsw.service.instance import InstanceXML
-from initat.snmp.process import snmp_process
+from initat.snmp.process import SNMPProcess
 from initat.tools import server_mixins, server_command, \
     threading_tools, uuid_tools, logging_tools, process_tools, service_tools, \
     configfile
@@ -110,7 +110,7 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
             self.add_process(initat.mother.control.ICMPProcess("icmp"), start=True)
             db_tools.close_connection()
             conf_dict = {key: global_config[key] for key in ["LOG_NAME", "LOG_DESTINATION", "VERBOSE"]}
-            self.add_process(snmp_process("snmp_process", conf_dict=conf_dict), start=True)
+            self.add_process(SNMPProcess("snmp_process", conf_dict=conf_dict), start=True)
             # send initial commands
             self.send_to_process(
                 "kernel",

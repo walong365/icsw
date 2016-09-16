@@ -1,4 +1,4 @@
-# Copyright (C) 2007,2013-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2013-2014,2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,6 +17,7 @@
 #
 
 """ create rsync config """
+# Deprecated, please rewrite or remove
 
 import os
 import re
@@ -31,7 +32,7 @@ from initat.tools import logging_tools, process_tools, server_command
 
 class write_rsyncd_config(cs_base_class.server_com):
     class Meta:
-        needed_configs = ["rsync_server"]
+        needed_configs = []  # "rsync_server"]
 
     def _call(self, cur_inst):
         rsyncd_cf_name = "/etc/rsyncd.conf"

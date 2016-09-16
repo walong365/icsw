@@ -1,4 +1,4 @@
-# Copyright (C) 2007,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,6 +26,7 @@ import time
 from django.db.models import Q
 from initat.cluster.backbone.models import user, group, device_config, \
     config_str, home_export_list, device
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, server_command
 
@@ -35,7 +36,7 @@ import cs_tools
 
 class write_yp_config(cs_base_class.server_com):
     class Meta:
-        needed_configs = ["yp_server"]
+        needed_configs = [icswServiceEnum.yp_server]
 
     def _call(self, cur_inst):  # call_it(self, opt_dict, call_params):
         try:

@@ -23,6 +23,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import background_job_run, device, \
     cluster_timezone, SensorAction
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import server_command
 from .base import BGInotifyTask
 
@@ -66,7 +67,7 @@ class ChangeBootsettingTask(BGInotifyTask):
                             start=cluster_timezone.localize(datetime.datetime.now()),
                         ),
                         srv_com,
-                        "mother",
+                        icswServiceEnum.mother_server,
                     )
                 )
         return to_run

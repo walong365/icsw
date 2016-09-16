@@ -162,13 +162,13 @@ class SrvTypeRouting(object):
                 _found_srv = [entry for entry in _srv_list if entry[2] == server_id]
                 if not _found_srv:
                     self.log(
-                        "no server_id {:d} found for srv_type {}, taking first one".format(
+                        "no server with pk {:d} found for srv_type {}".format(
                             server_id,
                             srv_type_enum.name
                         ),
                         logging_tools.LOG_LEVEL_CRITICAL,
                     )
-                    _found_srv = _srv_list
+                    return None
             else:
                 # no server id, take first one
                 _found_srv = _srv_list
@@ -188,10 +188,6 @@ class SrvTypeRouting(object):
                 _INSTANCE.get_port_dict(srv_type_enum, command=True),
             )
         else:
-            self.log(
-                "no ServerType {} defined".format(srv_type_enum),
-                logging_tools.LOG_LEVEL_CRITICAL
-            )
             return None
 
     @property
@@ -221,7 +217,7 @@ class SrvTypeRouting(object):
         # local device
         _myself = server_check(server_type="", fetch_network_info=True)
         _router = RouterObject(self.logger)
-        enum_names = sum([_INSTANCE.get_config_enums(_inst.get("name")) for _inst in _INSTANCE.get_all_instances()], [])
+        enum_names = set()
         # build reverse lut
         _rv_lut = {}
         _INSTANCES_WITH_NAMES = set()
@@ -232,8 +228,11 @@ class SrvTypeRouting(object):
             if _INSTANCE.do_node_split(_inst):
                 node_split_list.append(_inst_name)
             for _enum_name in _INSTANCE.get_config_enums(_inst):
-                _INSTANCES_WITH_NAMES.add(_inst_name)
-                _rv_lut.setdefault(_enum_name, []).append(_inst_name)  # [_conf_name] = _inst_name
+                _srv_enum = getattr(icswServiceEnum, _enum_name)
+                if _srv_enum.value.server_service:
+                    enum_names.add(_enum_name)
+                    _INSTANCES_WITH_NAMES.add(_enum_name)
+                    _rv_lut.setdefault(_enum_name, []).append(_inst_name)  # [_conf_name] = _inst_name
         # for key, value in _SRV_NAME_TYPE_MAPPING.iteritems():
         #     _rv_lut.update({_name: key for _name in value})
         # resolve dict

@@ -34,7 +34,7 @@ angular.module(
     _bi_info = []
     load_data = (client) ->
         _defer = $q.defer()
-        _wait_list = [icswCachingCall.fetch(client, ICSW_URLS.REST_BACKGROUND_JOB_LIST, {_num_entries: 100}, [])]
+        _wait_list = [icswCachingCall.fetch(client, ICSW_URLS.SESSION_BACKGROUND_JOBS)]
         $q.all(_wait_list).then((data) ->
             _bi_info = data[0]
             _defer.resolve(_bi_info)
@@ -72,60 +72,90 @@ angular.module(
         template: $templateCache.get("icsw.system.background.job.info.table")
     }
 ]).factory("icswSystemBackgroundJobFactory",
-    [() ->
-        {tr, td, strong, tbody} = React.DOM
-        get_line_class = (job) ->
-            if job.result == 0
-                return ""
-            else if job.result == 1
-                return "warning"
-            else
-                return "danger"
-        get_result_str = (job) ->
-            return {
-                0: "OK"
-                1: "Warn"
-                2: "Error"
-                3: "Critical"
-                4: "Unknown"
-            }[job.result]
-        get_diff_time = (dt) ->
-            if dt
-                return moment(dt).fromNow()
-            else
-                return "???"
-        get_time = (dt) ->
-            if dt
-                DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
-                return moment(dt).format(DT_FORM)
-            else
-                return "---"
-        job_line = React.createClass(
-            render: () ->
-                return tr(
-                    {key: @props.idx, className: get_line_class(@props)}
-                    [
-                        td(
-                            {key: "td0"}
-                            strong(
-                                {}
-                                @props.command
-                            )
-                        )
-                        td({key: "res"}, get_result_str(@props))
-                        td({key: "command", title: @props.command_xml}, @props.command_xml.substring(0, 10))
-                        td({key: "date"}, get_time(@props.date) + " (" + get_diff_time(@props.date) + ")")
-                        td({key: "user"}, @props.user_name)
-                        td({key: "state"}, @props.state)
-                        td({key: "init"}, @props.initiator_name)
-                        td({key: "nums"}, @props.num_servers or "-")
-                        td({key: "numo"}, @props.num_objects or "-")
-                        td({key: "cause"}, @props.cause)
-                        td({key: "until"}, get_time(@props.valid_until))
-                    ]
+[
+    "$q",
+(
+    $q,
+) ->
+    {tr, td, strong} = React.DOM
+
+    get_line_class = (job) ->
+        if job.result == 0
+            return ""
+        else if job.result == 1
+            return "warning"
+        else
+            return "danger"
+
+    get_srv_reply_str = (srv_reply) ->
+        # SRV_REPLY_STATE
+        return {
+            0: "OK"
+            1: "Warn"
+            2: "Error"
+            3: "Critical"
+            4: "Unknown"
+        }[srv_reply]
+
+    get_diff_time = (dt) ->
+        if dt
+            return moment(dt).fromNow()
+        else
+            return "???"
+    get_time = (dt) ->
+        if dt
+            DT_FORM = "dd, D. MMM YYYY HH:mm:ss"
+            return moment(dt).format(DT_FORM)
+        else
+            return "---"
+
+    return React.createClass(
+        render: () ->
+            if @props.background_job_run_set.length
+                _states = (
+                    entry.state for entry in @props.background_job_run_set
                 )
-        )
-        return job_line
+                details = (get_srv_reply_str(reply) for reply in _states)
+
+                # console.log @props.state, @props.result
+                # console.log _states
+                # console.log @props.background_job_run_set
+            else
+                details = []
+
+            return tr(
+                {
+                    key: @props.idx,
+                    # className: get_line_class(@props)
+                }
+                [
+                    td(
+                        {key: "td0"}
+                        strong(
+                            {}
+                            @props.command
+                        )
+                    )
+                    td({key: "res"}, get_srv_reply_str(@props.result))
+                    td({key: "command", title: @props.command_xml}, @props.command_xml.substring(0, 10))
+                    td({key: "date"}, get_time(@props.date) + " (" + get_diff_time(@props.date) + ")")
+                    td({key: "user"}, @props.user_name)
+                    td(
+                        {
+                            key: "state"
+                            className: "text-center  #{get_line_class(@props)}"
+                        }
+                        @props.state
+                    )
+                    td({key: "init"}, @props.initiator_name)
+                    td({key: "nums", className: "text-center"}, @props.num_servers or "-")
+                    td({key: "details", className: "text-center"}, details.join(", "))
+                    td({key: "numo", className: "text-center"}, @props.num_objects or "-")
+                    td({key: "cause"}, @props.cause)
+                    td({key: "until"}, get_time(@props.valid_until))
+                ]
+            )
+    )
 ]).directive("icswSystemBackgroundJobLine",
 [
     "$templateCache", "icswSystemBackgroundJobFactory",

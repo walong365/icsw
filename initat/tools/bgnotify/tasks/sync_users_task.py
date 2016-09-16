@@ -22,6 +22,7 @@ import datetime
 from django.db.models import Q
 
 from initat.cluster.backbone.models import user, background_job_run, cluster_timezone
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, server_command, config_tools
 from .base import BGInotifyTask
 
@@ -56,7 +57,7 @@ class SyncUserTask(BGInotifyTask):
                             start=cluster_timezone.localize(datetime.datetime.now()),
                         ),
                         srv_com,
-                        "server",
+                        icswServiceEnum.cluster_server,
                         #
                     )
                 )
@@ -65,9 +66,9 @@ class SyncUserTask(BGInotifyTask):
         # check directory sync requests
         no_device = []
         for _config, _command, _srv_type in [
-            ("ldap_server", "sync_ldap_config", "server"),
-            ("yp_server", "write_yp_config", "server"),
-            ("monitor_server", "sync_http_users", "md-config"),
+            ("ldap_server", "sync_ldap_config", icswServiceEnum.cluster_server),
+            ("yp_server", "write_yp_config", icswServiceEnum.cluster_server),
+            ("monitor_server", "sync_http_users", icswServiceEnum.monitor_server),
         ]:
             _cdict = config_tools.device_with_config(_config)
             for _sc_list in _cdict.itervalues():

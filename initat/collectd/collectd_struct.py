@@ -36,7 +36,7 @@ from initat.collectd.config import global_config
 from initat.tools import logging_tools, process_tools, rrd_tools
 
 
-class file_creator(object):
+class FileCreator(object):
     def __init__(self, log_com):
         self.__log_com = log_com
         self.log("init file_creator")

@@ -36,14 +36,15 @@ __all__ = [
 ]
 
 
-class background_job_serializer(serializers.ModelSerializer):
-    initiator_name = serializers.CharField(read_only=True)
-    user_name = serializers.CharField(read_only=True)
-
-    class Meta:
-        model = background_job
-
-
 class background_job_run_serializer(serializers.ModelSerializer):
     class Meta:
         model = background_job_run
+
+
+class background_job_serializer(serializers.ModelSerializer):
+    initiator_name = serializers.CharField(read_only=True)
+    user_name = serializers.CharField(read_only=True)
+    background_job_run_set = background_job_run_serializer(many=True, read_only=True)
+
+    class Meta:
+        model = background_job

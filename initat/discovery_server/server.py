@@ -22,13 +22,13 @@
 import zmq
 from django.db.models import Q
 
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, DeviceScanLock
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.discovery_server.event_log.event_log_poller import EventLogPollerProcess
 from initat.discovery_server.generate_assets_process import GenerateAssetsProcess
-from initat.snmp.process import snmp_process_container
-from initat.tools import cluster_location, configfile, logging_tools, process_tools, \
+from initat.snmp.process import SNMPProcessContainer
+from initat.tools import configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools, net_tools
 from initat.tools.server_mixins import RemoteCall
 from .config import global_config, IPC_SOCK_SNMP
@@ -98,7 +98,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.CC.process_removed(kwargs["pid"])
 
     def _init_processes(self):
-        self.spc = snmp_process_container(
+        self.spc = SNMPProcessContainer(
             IPC_SOCK_SNMP,
             self.log,
             global_config["SNMP_PROCESSES"],
