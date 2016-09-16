@@ -43,19 +43,19 @@ ul.dynatree-container span.ip_ok {
 .ui-timepicker-rtl dl dd { margin: 0 65px 10px 10px; }
 
 
-th.rotate {
+th.icsw-config-rotate {
   height: 180px;
   white-space: nowrap;
 }
 
-th.rotate > div {
+th.icsw-config-rotate > div {
   transform:
     translate(8px, -12px)
     rotate(315deg);
   width: 30px;
 }
 
-th.rotate > div > span {
+th.icsw-config-rotate > div > span {
   border-bottom: 1px solid #ccc;
   padding: 5px 10px;
 }
