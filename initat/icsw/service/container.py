@@ -328,8 +328,15 @@ class ServiceContainer(object):
             CONF_STATE_IP_MISMATCH: ("ip mismatch", "critical"),
         }
         meta_dict = {
-            TARGET_STATE_RUNNING: ("run", "ok"),
-            TARGET_STATE_STOPPED: ("stop", "critical"),
+            "t": {
+                TARGET_STATE_RUNNING: ("run", "ok"),
+                TARGET_STATE_STOPPED: ("stop", "critical"),
+            },
+            "i": {
+                0: ("monitor", "ok"),
+                1: ("ignore", "warning"),
+            }
+
         }
         if License is not None:
             lic_dict = {
@@ -464,11 +471,19 @@ class ServiceContainer(object):
                     _meta_res = act_struct.find(".//meta_result")
                     if _meta_res is not None:
                         t_state = int(_meta_res.get("target_state"))
+                        ignore = int(_meta_res.get("ignore"))
                         cur_line.append(
                             logging_tools.form_entry(
-                                meta_dict[t_state][0],
+                                meta_dict["t"][t_state][0],
                                 header="TState",
-                                display_attribute=meta_dict[t_state][1],
+                                display_attribute=meta_dict["t"][t_state][1],
+                            )
+                        )
+                        cur_line.append(
+                            logging_tools.form_entry(
+                                meta_dict["i"][ignore][0],
+                                header="Ignore",
+                                display_attribute=meta_dict["i"][ignore][1],
                             )
                         )
                     else:
@@ -476,6 +491,13 @@ class ServiceContainer(object):
                             logging_tools.form_entry(
                                 "unknown",
                                 header="TState",
+                                display_attribute="warning",
+                            )
+                        )
+                        cur_line.append(
+                            logging_tools.form_entry(
+                                "unknown",
+                                header="Ignore",
                                 display_attribute="warning",
                             )
                         )

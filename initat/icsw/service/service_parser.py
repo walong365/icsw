@@ -100,6 +100,8 @@ class Parser(object):
         self._add_state_overview_parser(ss_parser)
         self._add_state_enable_parser(ss_parser)
         self._add_state_disable_parser(ss_parser)
+        self._add_state_monitor_parser(ss_parser)
+        self._add_state_ignore_parser(ss_parser)
 
     def _add_state_overview_parser(self, sub_parser):
         _act = sub_parser.add_parser("overview", help="state overview")
@@ -109,13 +111,23 @@ class Parser(object):
         self._add_iccs_sel(_act)
 
     def _add_state_enable_parser(self, sub_parser):
-        _act = sub_parser.add_parser("enable", help="state overview")
+        _act = sub_parser.add_parser("enable", help="enable service")
         _act.set_defaults(statecom="enable")
         self._add_iccs_any_sel(_act)
 
     def _add_state_disable_parser(self, sub_parser):
-        _act = sub_parser.add_parser("disable", help="state overview")
+        _act = sub_parser.add_parser("disable", help="disable service")
         _act.set_defaults(statecom="disable")
+        self._add_iccs_any_sel(_act)
+
+    def _add_state_monitor_parser(self, sub_parser):
+        _act = sub_parser.add_parser("monitor", help="monitor service")
+        _act.set_defaults(statecom="monitor")
+        self._add_iccs_any_sel(_act)
+
+    def _add_state_ignore_parser(self, sub_parser):
+        _act = sub_parser.add_parser("ignore", help="ignore service")
+        _act.set_defaults(statecom="ignore")
         self._add_iccs_any_sel(_act)
 
     def _add_iccs_sel(self, _parser):

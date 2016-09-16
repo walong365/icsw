@@ -34,6 +34,7 @@ from initat.constants import VERSION_CS_NAME, INITAT_BASE
 from initat.tools import logging_tools, process_tools, config_store, threading_tools
 from .constants import *
 
+
 class Service(object):
     _COMPAT_DICT = {
         "rms-server": "rms_server",
@@ -211,6 +212,7 @@ class Service(object):
                 _result.append(
                     E.meta_result(
                         target_state=_meta_result.get("target_state"),
+                        ignore=_meta_result.get("ignore"),
                     )
                 )
         run_info = []
