@@ -19,8 +19,6 @@
 #
 """ usefull server mixins """
 
-import logging
-import os
 import re
 import sys
 import time

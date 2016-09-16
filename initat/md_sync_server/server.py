@@ -39,7 +39,7 @@ from initat.tools.server_mixins import RemoteCall
 class server_process(
     server_mixins.ICSWBasePoolClient,
     server_mixins.RemoteCallMixin,
-    server_mixins.SendToRemoteServerMixin,
+    # server_mixins.SendToRemoteServerMixin,
     VersionCheckMixin,
 ):
     def __init__(self):
@@ -61,7 +61,7 @@ class server_process(
         self.VCM_check_relay_version()
         self._init_network_sockets()
         _srv_com = server_command.srv_command(command="status")
-        self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
+        # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
 
     def _check_for_pc_control(self):
         if self._icinga_pc is None:

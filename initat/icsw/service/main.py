@@ -58,13 +58,14 @@ def _state_overview(opt_ns, result):
             _states.append(_src_state)
         _actions = result.xpath(".//ns:action", start_el=_inst)
         print(
-            "{:<30s}, target state is {:<20s} [{}], {} / {} in the last 24 hours".format(
+            "{:<30s}, target state is {:<20s} [{}, {}], {} / {} in the last 24 hours".format(
                 _inst.get("name"),
                 {
                     0: "stopped",
                     1: "started"
                 }[int(_inst.attrib["target_state"])],
                 "active" if int(_inst.attrib["active"]) else "inactive",
+                "ignored" if int(_inst.attrib["ignore"]) else "watched",
                 logging_tools.get_plural("state", len(_states)),
                 logging_tools.get_plural("action", len(_actions)),
             )
@@ -175,7 +176,7 @@ def main(opt_ns):
             sys.exit(1)
         if opt_ns.statecom == "overview":
             _state_overview(opt_ns, _result)
-        elif opt_ns.statecom in ["disable", "enable"]:
+        elif opt_ns.statecom in ["disable", "enable", "ignore", "monitor"]:
             log_com(*_result.get_log_tuple())
     else:
         log_com(

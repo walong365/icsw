@@ -28,7 +28,7 @@ import time
 import commands
 import inflection
 
-from initat.meta_server.config import global_config
+from initat.meta_server.config import global_config, SQL_SCHEMA_VERSION, INIT_SQL_SCHEMA_VERSION
 from initat.tools import logging_tools, server_command, process_tools
 from initat.icsw.service import constants
 
@@ -230,6 +230,9 @@ class ServiceState(object):
 
     def check_schema(self, conn):
         _table_dict = {
+            "schema_version": [
+                "version INTEGER NOT NULL",
+            ],
             "service": [
                 "idx INTEGER PRIMARY KEY NOT NULL",
                 "name TEXT NOT NULL UNIQUE",
@@ -237,6 +240,7 @@ class ServiceState(object):
                 # active for services now in use (in instance_xml)
                 "active INTEGER DEFAULT 1",
                 "created INTEGER NOT NULL",
+                "ignore INTEGER DEFAULT 0",
             ],
             "state": [
                 "idx INTEGER PRIMARY KEY NOT NULL",
@@ -272,21 +276,44 @@ class ServiceState(object):
         all_tables = {
             _entry[0]: _entry[1] for _entry in conn.execute("SELECT name, sql FROM sqlite_master WHERE type='table';").fetchall()
         }
+        # step one: create missing tables
         for _t_name, _t_struct in _table_dict.iteritems():
             _sql_str = "CREATE TABLE {}({})".format(
                 _t_name,
                 ", ".join(_t_struct),
             )
-            if _t_name in all_tables:
-                if _sql_str != all_tables[_t_name]:
-                    self.log("SQL creation statements differ, recreating table '{}'".format(_t_name), logging_tools.LOG_LEVEL_WARN)
-                    self.log("  before: {}".format(all_tables[_t_name]))
-                    self.log("   after: {}".format(_sql_str))
-                    conn.execute("DROP TABLE {};".format(_t_name))
-                    del all_tables[_t_name]
             if _t_name not in all_tables:
                 self.log("creating table {}: {}".format(_t_name, _sql_str))
                 conn.execute("{};".format(_sql_str))
+        # step two: check version
+        _cur_vers = conn.execute("SELECT * FROM schema_version").fetchall()
+        if not len(_cur_vers):
+            conn.execute("INSERT INTO schema_version(version) VALUES(?)", (INIT_SQL_SCHEMA_VERSION, ))
+        _cur_vers = conn.execute("SELECT version FROM schema_version").fetchone()[0]
+        if _cur_vers != SQL_SCHEMA_VERSION:
+            self.log("SQL schema version found ({:d}) differs from current version ({:d})".format(_cur_vers, SQL_SCHEMA_VERSION), logging_tools.LOG_LEVEL_WARN)
+            if _cur_vers == 1:
+                # add ignore flag
+                conn.execute("ALTER TABLE service ADD COLUMN ignore INTEGER DEFAULT 0")
+                _cur_vers = 2
+            conn.execute("DELETE FROM schema_version")
+            conn.execute("INSERT INTO schema_version(version) VALUES(?)", (_cur_vers,))
+        else:
+            self.log("SQL schema version found ({:d}) matches current version".format(SQL_SCHEMA_VERSION))
+        if False:
+            # old code, replaced with schmema_version upgrade path
+            for _t_name, _t_struct in _table_dict.iteritems():
+                _sql_str = "CREATE TABLE {}({})".format(
+                    _t_name,
+                    ", ".join(_t_struct),
+                )
+                if _t_name in all_tables:
+                    if _sql_str != all_tables[_t_name]:
+                        self.log("SQL creation statements differ, recreating table '{}'".format(_t_name), logging_tools.LOG_LEVEL_WARN)
+                        self.log("  before: {}".format(all_tables[_t_name]))
+                        self.log("   after: {}".format(_sql_str))
+                        conn.execute("DROP TABLE {};".format(_t_name))
+                        del all_tables[_t_name]
         # create indices
         for _t_name, _f_name in [
             ("state", "service"),
@@ -317,8 +344,8 @@ class ServiceState(object):
             for new_service in new_services:
                 self.log("adding new service {}".format(new_service))
                 cursor.execute(
-                    "INSERT INTO service(name, target_state, active, created) VALUES(?, ?, ?, ?)",
-                    (new_service, self._get_default_state(new_service), 1, int(time.time())),
+                    "INSERT INTO service(name, target_state, active, ignore, created) VALUES(?, ?, ?, ?, ?)",
+                    (new_service, self._get_default_state(new_service), 1, 0, int(time.time())),
                 )
             # services
             self.__service_lut = {
@@ -327,6 +354,10 @@ class ServiceState(object):
             # update states
             self.__target_dict = {
                 _entry[0]: _entry[1] for _entry in cursor.execute("SELECT name, target_state FROM service")
+            }
+            # update ignore
+            self.__ignore_dict = {
+                _entry[0]: True if _entry[1] else False for _entry in cursor.execute("SELECT name, ignore FROM service")
             }
 
     def _get_default_state(self, srv_name):
@@ -418,18 +449,25 @@ class ServiceState(object):
         self.__state_dict = {}
         # target state
         self.__target_dict = {}
+        # ignore state
+        self.__ignore_dict = {}
         # transition lock dict
         self.__transition_lock_dict = {}
 
-    def _update_target_dict(self):
+    def _update_target_ignore_dict(self):
         _changed = False
         with self.get_cursor(cached=False) as crsr:
-            for _name, _target_state in crsr.execute("SELECT name, target_state FROM service"):
+            for _name, _target_state, _ignore in crsr.execute("SELECT name, target_state, ignore FROM service"):
+                _ignore = True if _ignore else False
                 if _name in self.__target_dict:
-                    if self.__target_dict[_name] != _target_state:
+                    if self.__target_dict[_name] != _target_state or self.__ignore_dict[_name] != _ignore:
                         self.__target_dict[_name] = _target_state
+                        self.__ignore_dict[_name] = _ignore
                         _changed = True
         return _changed
+
+    def _is_monitored(self, name):
+        return not self.__ignore_dict[name]
 
     def _update_state(self, name, p_state, c_state, lic_state, proc_info_str):
         if (p_state, c_state, lic_state) != self.__state_dict.get(name, None):
@@ -624,38 +662,41 @@ class ServiceState(object):
                 # ignore entries without startstop == 1
                 _res = _el.entry.find(".//result")
                 if _res is not None:
-                    # print etree.tostring(_el.entry, pretty_print=True)
-                    _p_state = int(_res.find("process_state_info").attrib["state"])
-                    _c_state = int(_res.find("configured_state_info").attrib["state"])
-                    _lic_state = int(_res.find("license_info").attrib["state"])
-                    _proc_info_str = _res.find("process_state_info").get("proc_info_str", "")
-                    _is_ok, _action = self._update_state(_el.name, _p_state, _c_state, _lic_state, _proc_info_str)
-                    if not _is_ok:
-                        _gen_trans = False
-                        if self.__shutdown:
-                            # create transition
-                            _gen_trans = True
-                        else:
-                            _stable = self._check_for_stable_state(_el)
-                            _el.log(
-                                "not OK ({}, PState={}, CState={}, LState={} [{}], {}, {})".format(
-                                    "should run" if self.__target_dict[_el.name] else "should not run",
-                                    constants.STATE_DICT[_p_state],
-                                    constants.CONF_STATE_DICT[_c_state],
-                                    constants.LIC_STATE_DICT[_lic_state],
-                                    "stable" if _stable else "not stable",
-                                    logging_tools.get_plural("pid", len(_res.findall(".//pid"))),
-                                    _proc_info_str or '---',
-                                ),
-                                logging_tools.LOG_LEVEL_WARN
-                            )
-                            if _stable or force:
+                    if self._is_monitored(_el.name):
+                        # print etree.tostring(_el.entry, pretty_print=True)
+                        _p_state = int(_res.find("process_state_info").attrib["state"])
+                        _c_state = int(_res.find("configured_state_info").attrib["state"])
+                        _lic_state = int(_res.find("license_info").attrib["state"])
+                        _proc_info_str = _res.find("process_state_info").get("proc_info_str", "")
+                        _is_ok, _action = self._update_state(_el.name, _p_state, _c_state, _lic_state, _proc_info_str)
+                        if not _is_ok:
+                            _gen_trans = False
+                            if self.__shutdown:
+                                # create transition
                                 _gen_trans = True
-                        if _gen_trans:
-                            # create transition
-                            if _el.name not in exclude:
-                                if not self._check_for_throttle(_el, cur_time, throttle_dict):
-                                    act_list.append((_el, _action))
+                            else:
+                                _stable = self._check_for_stable_state(_el)
+                                _el.log(
+                                    "not OK ({}, PState={}, CState={}, LState={} [{}], {}, {})".format(
+                                        "should run" if self.__target_dict[_el.name] else "should not run",
+                                        constants.STATE_DICT[_p_state],
+                                        constants.CONF_STATE_DICT[_c_state],
+                                        constants.LIC_STATE_DICT[_lic_state],
+                                        "stable" if _stable else "not stable",
+                                        logging_tools.get_plural("pid", len(_res.findall(".//pid"))),
+                                        _proc_info_str or '---',
+                                    ),
+                                    logging_tools.LOG_LEVEL_WARN
+                                )
+                                if _stable or force:
+                                    _gen_trans = True
+                            if _gen_trans:
+                                # create transition
+                                if _el.name not in exclude:
+                                    if not self._check_for_throttle(_el, cur_time, throttle_dict):
+                                        act_list.append((_el, _action))
+                    # else:
+                    #    print "*", _el.name
                 else:
                     _el.log("no result entry found", logging_tools.LOG_LEVEL_WARN)
         # return a transition list
@@ -732,6 +773,7 @@ class ServiceState(object):
             _dep_list = self.instance.get_stop_dependencies(inst_name)
             for _dep in _filter_list(_dep_list):
                 _state = self.__state_dict[_dep]
+                # print "*", _dep, _state, constants.STATE_DICT
                 if constants.STATE_DICT[_state[0]] == "ok":
                     _deps_ok = False
         if not _deps_ok:
@@ -835,8 +877,8 @@ class ServiceState(object):
                 services = []
             with self.get_cursor() as crsr:
                 with self.get_cursor() as state_crsr:
-                    for _srv_id, name, target_state, active in crsr.execute(
-                        "SELECT idx, name, target_state, active FROM service ORDER BY name"
+                    for _srv_id, name, target_state, active, ignore in crsr.execute(
+                        "SELECT idx, name, target_state, active, ignore FROM service ORDER BY name"
                     ):
                         if services and name not in services:
                             continue
@@ -875,46 +917,55 @@ class ServiceState(object):
                                 name=name,
                                 target_state="{:d}".format(target_state),
                                 active="{:d}".format(active),
+                                ignore="{:d}".format(ignore),
                             )
                         )
             srv_com["overview"] = instances
         elif _com == "enable":
-            services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
-            with self.get_cursor(cached=False) as crsr:
-                enable_list = [
-                    (_entry[0], _entry[1]) for _entry in crsr.execute(
-                        "SELECT idx, name FROM service WHERE target_state={:d}".format(
-                            constants.TARGET_STATE_STOPPED
-                        )
-                    ).fetchall() if _entry[1] in services
-                ]
-                for _idx, _name in enable_list:
-                    crsr.execute(
-                        "UPDATE service SET target_state=? WHERE idx=?",
-                        (constants.TARGET_STATE_RUNNING, _idx)
-                    )
-                    crsr.execute(
-                        "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
-                        (
-                            _idx, "enable", int(time.time()), 1, 1,
-                        )
-                    )
-            srv_com.set_result(
-                "enabled {}: {}".format(
-                    logging_tools.get_plural("service", len(enable_list)),
-                    ", ".join([_name for _id, _name in enable_list]) or "none",
-                )
-            )
-            trigger = self._update_target_dict()
-            self._sync_system_states()
+            trigger = self._enable_command(srv_com)
         elif _com == "disable":
-            self._disable_command(srv_com)
+            trigger = self._disable_command(srv_com)
+        elif _com == "monitor":
+            trigger = self._monitor_command(srv_com)
+        elif _com == "ignore":
+            trigger = self._ignore_command(srv_com)
         else:
             srv_com.set_result(
                 "command {} not defined".format(srv_com["command"].text),
                 server_command.SRV_REPLY_STATE_ERROR,
             )
         self.log("handled command {} in {}".format(_com, logging_tools.get_diff_time_str(time.time() - cur_time)))
+        return trigger
+
+    def _enable_command(self, srv_com):
+        services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
+        with self.get_cursor(cached=False) as crsr:
+            enable_list = [
+                (_entry[0], _entry[1]) for _entry in crsr.execute(
+                    "SELECT idx, name FROM service WHERE target_state={:d}".format(
+                        constants.TARGET_STATE_STOPPED
+                    )
+                ).fetchall() if _entry[1] in services
+            ]
+            for _idx, _name in enable_list:
+                crsr.execute(
+                    "UPDATE service SET target_state=? WHERE idx=?",
+                    (constants.TARGET_STATE_RUNNING, _idx)
+                )
+                crsr.execute(
+                    "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
+                    (
+                        _idx, "enable", int(time.time()), 1, 1,
+                    )
+                )
+        srv_com.set_result(
+            "enabled {}: {}".format(
+                logging_tools.get_plural("service", len(enable_list)),
+                ", ".join([_name for _id, _name in enable_list]) or "none",
+            )
+        )
+        trigger = self._update_target_ignore_dict()
+        self._sync_system_states()
         return trigger
 
     def _disable_command(self, srv_com):
@@ -938,11 +989,70 @@ class ServiceState(object):
                         _idx, "disable", int(time.time()), 1, 1,
                     )
                 )
-        trigger = self._update_target_dict()
-        self._sync_system_states()
         srv_com.set_result(
             "disabled {}: {}".format(
                 logging_tools.get_plural("service", len(disable_list)),
                 ", ".join([_name for _id, _name in disable_list]) or "none",
             )
         )
+        trigger = self._update_target_ignore_dict()
+        self._sync_system_states()
+        return trigger
+
+    def _monitor_command(self, srv_com):
+        services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
+        with self.get_cursor(cached=False) as crsr:
+            monitor_list = [
+                (_entry[0], _entry[1]) for _entry in crsr.execute(
+                    "SELECT idx, name FROM service WHERE ignore=1"
+                ).fetchall() if _entry[1] in services
+            ]
+            for _idx, _name in monitor_list:
+                crsr.execute(
+                    "UPDATE service SET ignore=? WHERE idx=?",
+                    (0, _idx)
+                )
+                crsr.execute(
+                    "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
+                    (
+                        _idx, "monitor", int(time.time()), 1, 1,
+                    )
+                )
+        srv_com.set_result(
+            "monitoring {}: {}".format(
+                logging_tools.get_plural("service", len(monitor_list)),
+                ", ".join([_name for _id, _name in monitor_list]) or "none",
+            )
+        )
+        trigger = self._update_target_ignore_dict()
+        self._sync_system_states()
+        return trigger
+
+    def _ignore_command(self, srv_com):
+        services = [_name for _name in srv_com["*services"].strip().split(",") if _name.strip()]
+        with self.get_cursor(cached=False) as crsr:
+            ignore_list = [
+                (_entry[0], _entry[1]) for _entry in crsr.execute(
+                    "SELECT idx, name FROM service WHERE ignore=0"
+                ).fetchall() if _entry[1] in services
+                ]
+            for _idx, _name in ignore_list:
+                crsr.execute(
+                    "UPDATE service SET ignore=? WHERE idx=?",
+                    (1, _idx)
+                )
+                crsr.execute(
+                    "INSERT INTO action(service, action, created, success, finished) VALUES(?, ?, ?, ?, ?)",
+                    (
+                        _idx, "ignore", int(time.time()), 1, 1,
+                    )
+                )
+        srv_com.set_result(
+            "ignoring {}: {}".format(
+                logging_tools.get_plural("service", len(ignore_list)),
+                ", ".join([_name for _id, _name in ignore_list]) or "none",
+            )
+        )
+        trigger = self._update_target_ignore_dict()
+        self._sync_system_states()
+        return trigger
