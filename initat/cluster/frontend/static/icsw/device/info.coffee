@@ -450,7 +450,7 @@ angular.module(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.monitoring_tree = data[1]
-                console.log data[1]
+                # console.log data[1]
                 $scope.struct.domain_tree = data[2]
                 $scope.struct.category_tree = data[3]
                 if $scope.icsw_struct.is_devicegroup
@@ -458,7 +458,7 @@ angular.module(
                 else
                     $scope.edit_obj = $scope.icsw_struct.edit_obj
                 create_info_fields($scope.edit_obj)
-                console.log $scope.edit_obj
+                # console.log $scope.edit_obj
                 $scope.struct.data_valid = true
                 defer.resolve("done")
         )

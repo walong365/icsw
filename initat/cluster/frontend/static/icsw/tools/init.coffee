@@ -1711,7 +1711,6 @@ angular.module(
         # private functions
         load_data: (client) =>
             @_load_called = true
-            console.log 
             if angular.isArray(@rest_map[0])
                 # full map
                 _rest_calls = (

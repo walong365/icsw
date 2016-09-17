@@ -277,7 +277,7 @@ menu_module = angular.module(
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
 ) ->
     # console.log icswAcessLevelService
-    {input, ul, li, a, span, h4, div, p, strong} = React.DOM
+    {input, ul, li, a, span, h4, div, p, strong, h3} = React.DOM
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
@@ -340,30 +340,36 @@ menu_module = angular.module(
                 col_idx++
                 sg_data = sg_state.data
                 # console.log "d=", data
-                items_per_column[col_idx] = [
-                    li(
-                        {
-                            key: "#{sg_data.key}_li"
-                        }
-                        [
-                            p(
-                                {
-                                    key: "p"
-                                }
-                                [
-                                    strong(
-                                        {
-                                            key: "strong"
-                                        }
-                                        [
-                                          sg_data.name
-                                        ]
-                                    )
-                                ]
-                            )
-                        ]
+                items_per_column[col_idx] = []
+                if sg_state.data.hidden?
+                    _hidden = sg_state.data.hidden
+                else
+                    _hidden = false
+                if not _hidden
+                    items_per_column[col_idx].push(
+                        li(
+                            {
+                                key: "#{sg_data.key}_li"
+                            }
+                            [
+                                h3(
+                                    {
+                                        key: "p"
+                                    }
+                                    [
+                                        strong(
+                                            {
+                                                key: "strong"
+                                            }
+                                            [
+                                                sg_data.name
+                                            ]
+                                        )
+                                    ]
+                                )
+                            ]
+                        )
                     )
-                ]
 
                 for state in sg_data.entries
                     data = state.icswData
@@ -388,13 +394,9 @@ menu_module = angular.module(
 
                 ul_items = []
 
-                columns = 0
+                columns = @props.entries.length
 
-                for column in Object.keys(items_per_column)
-                    columns += 1
-
-                for column in Object.keys(items_per_column)
-                    items = items_per_column[column]
+                for column, items of items_per_column
 
                     ul_item = ul(
                         {
@@ -409,7 +411,7 @@ menu_module = angular.module(
                 _res = li(
                     {
                         className: "dropdown"
-                        key: "menu_" + key
+                        key: "menu_#{key}"
                     }
                     [
                         a(
@@ -417,18 +419,18 @@ menu_module = angular.module(
                                 className: "cursorpointer dropdown-toggle"
                                 # dataToggle is not working
                                 "data-toggle": "dropdown"
-                                key: "menu.head_" + key
+                                key: "head"
                             }
                             [
                                 span(
                                     {
                                         className: "fa #{state.icon} fa-lg fa_top"
-                                        key: "span_" + key
+                                        key: "span"
                                     }
                                 )
                                 span(
                                     {
-                                        key: "text_" + key
+                                        key: "text"
                                     }
                                     state.name
                                 )
@@ -436,23 +438,24 @@ menu_module = angular.module(
                         )
                         ul(
                             {
-                                key: key + "dropdown-menu_ul"
+                                key: "dropdown"
                                 className: "dropdown-menu"
                             }
                             li(
                                 {
+                                    key: "li"
                                 }
                                 [
 
                                     div(
                                         {
-                                            key: key + "yamm-content_div"
-                                            className: "yamm-content"
+                                            key: "yamm-content-div"
+                                            className: "yamm-content container-fluid"
                                         }
                                         [
                                             div(
                                                 {
-                                                    key: key + "row_div"
+                                                    key:"row_div"
                                                     className: "row"
                                                 }
                                                 ul_items

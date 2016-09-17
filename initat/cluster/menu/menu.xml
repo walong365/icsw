@@ -79,11 +79,7 @@
                 </icswData>
             </route>
         </routeSubGroup>
-    </routeGroup>
-    <!-- trees -->
-    <routeGroup name="tree">
-        <menuHeader type="dict" name_str="Trees" icon_str="fa-tree"/>
-        <routeSubGroup name_str="bla0">
+        <routeSubGroup name_str="Trees">
             <route name="main.domaintree">
                 <stateData type="dict" url_str="/domaintree" templateUrl_str="icsw/main/device/domaintree.html"/>
                 <icswData type="dict" pageTitle_str="Domain names">

@@ -23,6 +23,14 @@
             <oneOrMore>
                 <element name="routeSubGroup">
                     <attribute name="name_str"/>
+                    <optional>
+                        <attribute name="hidden_bool">
+                            <choice>
+                                <value>yes</value>
+                                <value>no</value>
+                            </choice>
+                        </attribute>
+                    </optional>
                     <oneOrMore>
                         <element name="route">
                             <attribute name="name"/>

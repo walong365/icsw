@@ -8,20 +8,20 @@
 .yamm .collapse,
 .yamm .dropup,
 .yamm .dropdown {
-  position: static;
+    position: static;
 }
 .yamm .container {
-  position: relative;
+    position: relative;
 }
 .yamm .dropdown-menu {
-  left: auto;
+    left: auto;
 }
 .yamm .yamm-content {
-  padding: 10px 15px;
+    padding: 10px 15px;
 }
 .yamm .dropdown.yamm-fw .dropdown-menu {
-  left: 0;
-  right: 0;
+    left: 0;
+    right: 0;
 }
 
 .yamm-content [class*="col-"] {
