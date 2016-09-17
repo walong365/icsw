@@ -27,8 +27,9 @@ import random
 import time
 import uuid
 
+from django.db import models
 from django.core.exceptions import ValidationError
-from django.db.models import signals, CASCADE
+from django.db.models import signals, CASCADE, Q
 from django.dispatch import receiver
 from django.utils.crypto import get_random_string
 from django.utils.lru_cache import lru_cache
