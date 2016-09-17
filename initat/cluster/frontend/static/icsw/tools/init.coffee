@@ -292,6 +292,8 @@ angular.module(
             @pageTitle = ""
             # menuHeader
             @menuHeader = {}
+            # routeSubGroup
+            @routeSubGroup = {}
             # menuEntry
             @menuEntry = {}
             # dashboardEntry
@@ -307,12 +309,14 @@ angular.module(
                     console.error "unknown icswRouteExtension #{key}=#{value}", @
                 else
                     @[key] = value
-            for _check in ["menuEntry", "menuHeader", "dashboardEntry"]
+            for _check in ["menuEntry", "menuHeader", "routeSubGroup", "dashboardEntry"]
                 _attr = "$$#{_check}"
                 if args and _check of args
                     @[_attr] = true
                 else
                     @[_attr] = false
+            # if "routeSubGroup" of args
+            #    console.log @$$routeSubGroup, args.routeSubGroup
             # feed states
             for _attr_name in ["rights", "licenses", "serviceTypes"]
                 _src = @[_attr_name]
@@ -387,8 +391,10 @@ angular.module(
 ]).service("icswRouteHelper",
 [
     "icswRouteExtension", "$state", "$rootScope", "ICSW_SIGNALS", "icswAcessLevelService",
+    "icswTools",
 (
     icswRouteExtension, $state, $rootScope, ICSW_SIGNALS, icswAcessLevelService,
+    icswTools,
 ) ->
     _init = false
     _user = undefined
@@ -403,6 +409,33 @@ angular.module(
         menu_states: []
         menu_header_states: []
     }
+
+    class MenuHeader
+        constructor: (in_data) ->
+            @data = in_data
+            @data.entries = []
+
+        add_entry: (entry) =>
+            @data.entries.push(entry)
+            # reorder
+            icswTools.order_in_place(@data.entries, ["data.ordering"], ["asc"])
+
+        get_react: (menu_header) =>
+            # order entries
+            return React.createElement(
+                menu_header
+                @data
+            )
+
+    class MenuSubGroup
+        constructor: (in_data) ->
+            @data = in_data
+            @data.entries = []
+
+        add_entry: (entry) =>
+            @data.entries.push(entry)
+            # reorder
+            icswTools.order_in_place(@data.entries, ["icswData.menuEntry.ordering"], ["asc"])
 
     _check_rights = () ->
         # states for menus entries
@@ -419,6 +452,25 @@ angular.module(
             # console.log "U/ACLS:", _user, _acls, _init, _acls
             #if _acls?
             #    console.log _acls.global_permissions
+
+            # create menu
+            _menu_lut = {}
+            for state in _struct.icsw_states
+                data = state.icswData
+                if data.$$menuHeader
+                    _cur_menu = new MenuHeader(data.menuHeader)
+                    _struct.menu_header_states.push(_cur_menu)
+                    _menu_lut[_cur_menu.data.key] = _cur_menu
+            icswTools.order_in_place(_struct.menu_header_states, ["data.ordering"], ["asc"])
+            # create subgroup
+            _subgroup_lut = {}
+            for state in _struct.icsw_states
+                data = state.icswData
+                if data.$$routeSubGroup
+                    _cur_sg = new MenuSubGroup(data.routeSubGroup)
+                    _subgroup_lut[_cur_sg.data.subgroupkey] = _cur_sg
+                    _menu_lut[_cur_sg.data.menukey].add_entry(_cur_sg)
+
             for state in _struct.icsw_states
                 data = state.icswData
                 _add = true
@@ -448,6 +500,8 @@ angular.module(
                     else
                         _add = false
                 data.$$allowed = _add
+                if data.$$menuEntry
+                    _subgroup_lut[data.menuEntry.subgroupkey].add_entry(state)
                 if data.$$allowed
                     _struct.allowed_states.push(state)
                     if data.$$menuEntry
@@ -456,8 +510,8 @@ angular.module(
                         _struct.quicklink_states.push(state)
                     if data.$$dashboardEntry
                         _struct.dashboard_states.push(state)
-                if data.$$menuHeader
-                    _struct.menu_header_states.push(state)
+                # if data.$$routeSubGroup
+                #    _struct.route_sub_groups.push(state)
             # signal: we have changed the rights
         if _init and _user? and _acls_valid
             _struct.valid = true
@@ -481,7 +535,7 @@ angular.module(
                     console.error "old menu entry, please fix", _data
                 else
                     icsw_states.push(state)
-                    if _data.menuEntry? and _data.menuEntry.menukey
+                    if _data.menuEntry?
                         # set sref for menu
                         _data.menuEntry.sref = $state.href(state)
         _struct.icsw_states = icsw_states

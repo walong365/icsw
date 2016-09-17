@@ -271,14 +271,13 @@ menu_module = angular.module(
 ]).factory("icswReactMenuFactory",
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
-    "icswMenuProgressService", "$state", "icswRouteHelper",
+    "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
 (
     icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
-    icswMenuProgressService, $state, icswRouteHelper,
+    icswMenuProgressService, $state, icswRouteHelper, icswTools,
 ) ->
     # console.log icswAcessLevelService
     {input, ul, li, a, span, h4, div, p, strong} = React.DOM
-    react_dom = ReactDOM
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
@@ -336,63 +335,56 @@ menu_module = angular.module(
             items_added = 0
             items_per_column = {}
 
-            for state in @props.entries
-                data = state.icswData
+            col_idx = -1
+            for sg_state in @props.entries
+                col_idx++
+                sg_data = sg_state.data
+                # console.log "d=", data
+                items_per_column[col_idx] = [
+                    li(
+                        {
+                            key: "#{sg_data.key}_li"
+                        }
+                        [
+                            p(
+                                {
+                                    key: "p"
+                                }
+                                [
+                                    strong(
+                                        {
+                                            key: "strong"
+                                        }
+                                        [
+                                          sg_data.name
+                                        ]
+                                    )
+                                ]
+                            )
+                        ]
+                    )
+                ]
 
-                if data.menuEntry.column?
-                    items_per_column[data.menuEntry.column] =
-                    [
-                        li(
-                            {
-                                key: data.key + data.menuEntry.columnname + "_li"
-                            }
-                            [
-                                p(
-                                    {
-                                        key: data.key + data.menuEntry.columnname + "_p"
-                                    }
-                                    [
-                                        strong(
-                                            {
-                                                key: data.key + data.menuEntry.columnname + "_strong"
-                                            }
-                                            [
-                                              data.menuEntry.columnname
-                                            ]
-                                        )
-                                    ]
-                                )
-                            ]
-                        )
-                    ]
-                else
-                    items_per_column[0] = []
-
-            for state in @props.entries
-                data = state.icswData
-                _key = data.key
-                if data.menuEntry.isHidden? and data.menuEntry.isHidden
-                    continue
-                if data.$$allowed
-                    column = 0
-                    if data.menuEntry.column?
-                        column = data.menuEntry.column
-
-                    if angular.isFunction(state.name)
-                        items_per_column[column].push(
-                            React.createElement(state.name, {key: _key})
-                        )
+                for state in sg_data.entries
+                    data = state.icswData
+                    _key = data.key
+                    if data.menuEntry.isHidden? and data.menuEntry.isHidden
+                        continue
+                    if data.$$allowed
                         items_added += 1
-                    else
-                        items_per_column[column].push(
-                            React.createElement(menu_line, {key: _key, state: state})
-                        )
-                        items_added += 1
+                        if angular.isFunction(state.name)
+                            items_per_column[col_idx].push(
+                                React.createElement(state.name, {key: _key})
+                            )
+                        else
+                            items_per_column[col_idx].push(
+                                React.createElement(menu_line, {key: _key, state: state})
+                            )
 
             if items_added > 0
-                state = @props.state
-                header = state.icswData.menuHeader
-                key= "mh_#{state.icswData.key}"
+                state = @props
+                # header = state.icswData.menuHeader
+                key= "mh_#{state.menu_key}"
 
                 ul_items = []
 
@@ -430,7 +422,7 @@ menu_module = angular.module(
                             [
                                 span(
                                     {
-                                        className: "fa #{header.icon} fa-lg fa_top"
+                                        className: "fa #{state.icon} fa-lg fa_top"
                                         key: "span_" + key
                                     }
                                 )
@@ -438,7 +430,7 @@ menu_module = angular.module(
                                     {
                                         key: "text_" + key
                                     }
-                                    header.name
+                                    state.name
                                 )
                             ]
                         )
@@ -477,24 +469,6 @@ menu_module = angular.module(
             return _res
     )
     
-    class MenuHeader
-        constructor: (@state) ->
-            @entries = []
-
-        add_entry: (entry) =>
-            @entries.push(entry)
-
-        get_react: () =>
-            # order entries
-            return React.createElement(
-                menu_header
-                {
-                    key: @state.icswData.key + "_top"
-                    state: @state
-                    entries: _.orderBy(@entries, "icswData.menuEntry.ordering")
-                }
-            )
-    
     menu_comp = React.createClass(
         displayName: "menubar"
 
@@ -523,23 +497,7 @@ menu_module = angular.module(
     
         render: () ->
             _menu_struct = icswRouteHelper.get_struct()
-            # may not be valid
-            # console.log "mv", _menu_struct.valid
-            if _menu_struct.valid
-                menus = (new MenuHeader(state) for state in _menu_struct.menu_header_states)
-                # console.log menus.length
-                for state in _menu_struct.menu_states
-                    # find menu
-                    menu = (entry for entry in menus when entry.state.icswData.menuHeader.key == state.icswData.menuEntry.menukey)
-                    if menu.length
-                        menu[0].add_entry(state)
-                    else
-                        console.error("No menu with name #{state.icswData.menuEntry.menukey} found (#{state.icswData.pageTitle})")
-                        console.log "Menus known:", (entry.state.icswData.menuHeader.key for entry in menus).join(", ")
-
-            else
-                menus = []
-
+            menus = _menu_struct.menu_header_states
             if menus.length
                 _res =
                     div(
@@ -553,7 +511,7 @@ menu_module = angular.module(
                                     className: "nav navbar-nav"
                                 }
                                 (
-                                    menu.get_react() for menu in _.orderBy(menus, "state.icswData.menuHeader.ordering")
+                                    menu.get_react(menu_header) for menu in menus
                                 )
                             )
                         ]

@@ -125,7 +125,7 @@ class FileModify(object):
 
     def route_xml_to_json(self, xml):
         def _iter_dict(el):
-            if el.tag in ["route"] or el.attrib["type"] == "dict":
+            if el.tag in ["route", "routeSubGroup"] or el.attrib["type"] == "dict":
                 r_v = {}
                 for _attr_name in el.attrib.iterkeys():
                     if _attr_name.count("_") == 1:
@@ -168,29 +168,38 @@ class FileModify(object):
                 menu_head_el.attrib["ordering_int"] = "{:d}".format((menu_idx + 1) * 10)
                 menu_head_el.attrib["key_str"] = key_str
             _header_added = False
-            menu_columns_el = group.find(".//menuColumns")
-            menu_column_names = {}
-            if menu_columns_el:
-                for menu_column_el in menu_columns_el.findall(".//menuColumn"):
-                    _index = int(menu_column_el.attrib["index"])
-                    _column_header_name = menu_column_el.text
-                    menu_column_names[_index] = _column_header_name
-            for route_idx, route in enumerate(group.findall(".//route")):
-                _me = route.find(".//icswData/menuEntry")
-                if _me is not None:
-                    if menu_head_el is None:
-                        raise ValueError("No menu_head_el defined")
-                    _data = route.find(".//icswData")
-                    _me.attrib["menukey_str"] = key_str
-                    _me.attrib["ordering_int"] = "{:d}".format((route_idx + 1) * 10)
-                    if "column_int" in _me.attrib and menu_column_names:
-                        _me.attrib["columnname_str"] = menu_column_names[int(_me.attrib["column_int"])]
-
-                    if not _header_added:
-                        # add header to first route entry with menuEntry
-                        _header_added = True
-                        _data.append(E.menuHeader(**{_key: _value for _key, _value in menu_head_el.attrib.iteritems()}))
-                new_xml.append(route)
+            for sub_idx, sub_group_el in enumerate(group.xpath(".//routeSubGroup")):
+                subgroup_str = "{}_{}".format(key_str, sub_group_el.attrib["name_str"].lower())
+                sub_group_el.attrib["ordering_int"] = "{:d}".format((sub_idx + 1) * 10)
+                sub_group_el.attrib["menukey_str"] = key_str
+                sub_group_el.attrib["subgroupkey_str"] = subgroup_str
+                _sub_group_added = False
+                for route_idx, route in enumerate(sub_group_el.findall(".//route")):
+                    _me = route.find(".//icswData/menuEntry")
+                    if _me is not None:
+                        if menu_head_el is None:
+                            raise ValueError("No menu_head_el defined")
+                        _data = route.find(".//icswData")
+                        # no longer needed
+                        # _me.attrib["menukey_str"] = key_str
+                        _me.attrib["subgroupkey_str"] = subgroup_str
+                        _me.attrib["ordering_int"] = "{:d}".format((route_idx + 1) * 10)
+                        if not _sub_group_added:
+                            _sub_group_added = True
+                            _data.append(
+                                E.routeSubGroup(
+                                    **{_key: _value for _key, _value in sub_group_el.attrib.iteritems()}
+                                )
+                            )
+                        if not _header_added:
+                            # add header to first route entry with menuEntry
+                            _header_added = True
+                            _data.append(
+                                E.menuHeader(
+                                    **{_key: _value for _key, _value in menu_head_el.attrib.iteritems()}
+                                )
+                            )
+                    new_xml.append(route)
 
         return new_xml
 
