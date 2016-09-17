@@ -120,8 +120,8 @@
                 <tbody>
                     <tr ng-repeat="instance in struct.instance_list">
                         <td>{{ instance }}</td>
-                        <td>{{ get_runs_on(instance) }}</td>
-                        <td>{{ server_info_list[0].get_check_source(instance) }}</td>
+                        <td class="text-center">{{ get_runs_on(instance) }}</td>
+                        <td class="text-center">{{ struct.server_info_list[0].get_check_source(instance) }}</td>
                         <td ng-repeat="srv_info in struct.server_info_list">
                             <icsw-layout-server-info-instance></icsw-layout-server-info-instance>
                         </td>

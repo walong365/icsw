@@ -265,7 +265,7 @@ class ServiceContainer(object):
         self.update_proc_dict()
         self.update_valid_licenses()
         self.update_version_tuple()
-        if opt_ns.tstate:
+        if opt_ns.meta:
             meta_result = query_local_meta_server(instance_xml, "overview", services=[_srv.name for _srv in check_list])
             # check for valid meta-server result
             if meta_result is not None:
@@ -366,7 +366,7 @@ class ServiceContainer(object):
                 cur_line = [logging_tools.form_entry(act_struct.attrib["name"], header="Name")]
                 cur_line.append(logging_tools.form_entry(act_struct.attrib["runs_on"], header="runson"))
                 cur_line.append(logging_tools.form_entry(_res.find("process_state_info").get("check_source", "N/A"), header="source"))
-                if opt_ns.thread:
+                if opt_ns.process:
                     s_info = act_struct.find(".//process_state_info")
                     if "num_started" not in s_info.attrib:
                         cur_line.append(logging_tools.form_entry(s_info.text))
@@ -386,6 +386,25 @@ class ServiceContainer(object):
                             elif num_diff > 0:
                                 da_name = "warning"
                         cur_line.append(logging_tools.form_entry(s_info.attrib["proc_info_str"], header="Process info", display_attribute=da_name))
+                    pid_dict = {}
+                    for cur_pid in act_struct.findall(".//pids/pid"):
+                        pid_dict[int(cur_pid.text)] = int(cur_pid.get("count", "1"))
+                    if pid_dict:
+                        p_list = sorted(pid_dict.keys())
+                        if max(pid_dict.values()) == 1:
+                            cur_line.append(logging_tools.form_entry(logging_tools.compress_num_list(p_list), header="pids"))
+                        else:
+                            cur_line.append(
+                                logging_tools.form_entry(
+                                    ",".join(["{:d}{}".format(
+                                        key,
+                                        " ({:d})".format(pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list]
+                                             ),
+                                    header="pids"
+                                )
+                            )
+                    else:
+                        cur_line.append(logging_tools.form_entry("no PIDs", header="pids"))
                 if opt_ns.started:
                     start_time = int(act_struct.find(".//process_state_info").get("start_time", "0"))
                     if start_time:
@@ -400,26 +419,6 @@ class ServiceContainer(object):
                     else:
                         ret_str = "no start info found"
                     cur_line.append(logging_tools.form_entry(ret_str, header="started"))
-                if opt_ns.pid:
-                    pid_dict = {}
-                    for cur_pid in act_struct.findall(".//pids/pid"):
-                        pid_dict[int(cur_pid.text)] = int(cur_pid.get("count", "1"))
-                    if pid_dict:
-                        p_list = sorted(pid_dict.keys())
-                        if max(pid_dict.values()) == 1:
-                            cur_line.append(logging_tools.form_entry(logging_tools.compress_num_list(p_list), header="pids"))
-                        else:
-                            cur_line.append(
-                                logging_tools.form_entry(
-                                    ",".join(["{:d}{}".format(
-                                        key,
-                                        " ({:d})".format(pid_dict[key]) if pid_dict[key] > 1 else "") for key in p_list]
-                                    ),
-                                    header="pids"
-                                )
-                            )
-                    else:
-                        cur_line.append(logging_tools.form_entry("no PIDs", header="pids"))
                 if opt_ns.config:
                     cur_line.append(logging_tools.form_entry(act_struct.find(".//config_info").text, header="config info"))
                 if opt_ns.memory:
@@ -467,7 +466,7 @@ class ServiceContainer(object):
                         display_attribute=crc_dict[c_state][1],
                     )
                 )
-                if opt_ns.tstate:
+                if opt_ns.meta:
                     _meta_res = act_struct.find(".//meta_result")
                     if _meta_res is not None:
                         t_state = int(_meta_res.get("target_state"))
@@ -475,7 +474,7 @@ class ServiceContainer(object):
                         cur_line.append(
                             logging_tools.form_entry(
                                 meta_dict["t"][t_state][0],
-                                header="TState",
+                                header="TargetState",
                                 display_attribute=meta_dict["t"][t_state][1],
                             )
                         )
@@ -489,14 +488,14 @@ class ServiceContainer(object):
                     else:
                         cur_line.append(
                             logging_tools.form_entry(
-                                "unknown",
-                                header="TState",
+                                "N/A",
+                                header="TargetState",
                                 display_attribute="warning",
                             )
                         )
                         cur_line.append(
                             logging_tools.form_entry(
-                                "unknown",
+                                "N/A",
                                 header="Ignore",
                                 display_attribute="warning",
                             )

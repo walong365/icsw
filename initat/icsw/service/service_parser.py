@@ -45,15 +45,15 @@ class Parser(object):
         _srvc = sub_parser.add_parser("status", help="service status")
         _srvc.set_defaults(childcom="status")
         _srvc.add_argument("-i", dest="interactive", action="store_true", default=False, help="enable interactive mode [%(default)s]")
-        _srvc.add_argument("-t", dest="thread", action="store_true", default=False, help="Process overview [%(default)s]")
+        # _srvc.add_argument("-t", dest="thread", action="store_true", default=False, help="Process overview [%(default)s]")
         _srvc.add_argument("-s", dest="started", action="store_true", default=False, help="start info [%(default)s]")
-        _srvc.add_argument("-p", dest="pid", action="store_true", default=False, help="show pid info [%(default)s]")
+        _srvc.add_argument("-p", dest="process", action="store_true", default=False, help="show process info [%(default)s]")
         _srvc.add_argument("-c", dest="config", action="store_true", default=False, help="show config info [%(default)s]")
         _srvc.add_argument("-m", dest="memory", action="store_true", default=False, help="memory consumption [%(default)s]")
         _srvc.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except start and DB info [%(default)s]")
         _srvc.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above [%(default)s]")
         _srvc.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
-        _srvc.add_argument("--with-tstate", dest="tstate", default=False, action="store_true", help="add target-state info from local meta-server [%(default)s]")
+        _srvc.add_argument("--with-meta", dest="meta", default=False, action="store_true", help="add info from local meta-server [%(default)s]")
         self._add_iccs_sel(_srvc)
         # _srvc.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
         _srvc.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
@@ -141,11 +141,10 @@ class Parser(object):
         # cleanup parsed args
         if opt_ns.childcom == "status":
             if opt_ns.all or opt_ns.almost_all:
-                opt_ns.thread = True
+                opt_ns.process = True
                 opt_ns.memory = True
                 opt_ns.version = True
             if opt_ns.all:
-                opt_ns.pid = True
                 opt_ns.started = True
                 opt_ns.config = True
         main(opt_ns)
@@ -163,8 +162,7 @@ class Parser(object):
         def_ns.all = True
         def_ns.memory = True
         def_ns.config = True
-        def_ns.pid = True
         def_ns.started = True
-        def_ns.thread = True
-        def_ns.tstate = not meta_server
+        def_ns.process = True
+        def_ns.meta = not meta_server
         return def_ns

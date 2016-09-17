@@ -745,7 +745,6 @@ class MetaService(Service):
                 self.log(*_result.get_log_tuple())
 
     def _generate_py_arg_list(self, debug=False):
-        cur_name = self.name
         _prog_name = self.prog_name
         _prog_title = self.prog_title
         arg_dict = {_val.get("key"): _val.text.strip() for _val in self.entry.findall(".//arg[@key]")}
