@@ -4,6 +4,12 @@
             <attribute name="name"></attribute>
             <optional>
                 <element name="menuHeader">
+                    <attribute name="side_str">
+                        <choice>
+                            <value>left</value>
+                            <value>right</value>
+                        </choice>
+                    </attribute>
                     <attribute name="type">
                         <choice>
                             <value>dict</value>

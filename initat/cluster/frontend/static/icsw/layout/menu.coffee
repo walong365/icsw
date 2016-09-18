@@ -272,9 +272,11 @@ menu_module = angular.module(
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
     "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
+    "icswUserService",
 (
     icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
+    icswUserService,
 ) ->
     # console.log icswAcessLevelService
     {input, ul, li, a, span, h4, div, p, strong, h3} = React.DOM
@@ -389,6 +391,19 @@ menu_module = angular.module(
 
             if items_added > 0
                 state = @props
+                menu_name = state.name
+                menu_title = ""
+                if menu_name == "$$USER_INFO"
+                    _user = icswUserService.get().user
+                    if _user?
+                        menu_name = _user.login
+                        menu_title = _user.info
+                        if _user.login != _user.login_name
+                            menu_name = "#{menu_name} (via alias #{_user.login_name})"
+                        # n title="{{ struct.current_user.full_name }}">{{ struct.current_user.login }}</span>
+                        # uct.current_user.login != struct.current_user.login_name"> (via alias {{ struct.current_user.login_name }})</span>
+                    else
+                        menu_name = "---"
                 # header = state.icswData.menuHeader
                 key= "mh_#{state.menu_key}"
 
@@ -420,6 +435,7 @@ menu_module = angular.module(
                                 # dataToggle is not working
                                 "data-toggle": "dropdown"
                                 key: "head"
+                                title: menu_title
                             }
                             [
                                 span(
@@ -432,7 +448,7 @@ menu_module = angular.module(
                                     {
                                         key: "text"
                                     }
-                                    state.name
+                                    menu_name
                                 )
                             ]
                         )
@@ -473,6 +489,8 @@ menu_module = angular.module(
     )
     
     menu_comp = React.createClass(
+        propTypes:
+            side: React.PropTypes.string
         displayName: "menubar"
 
         update_dimensions: () ->
@@ -500,7 +518,7 @@ menu_module = angular.module(
     
         render: () ->
             _menu_struct = icswRouteHelper.get_struct()
-            menus = _menu_struct.menu_header_states
+            menus = (entry for entry in _menu_struct.menu_header_states when entry.data.side == @props.side)
             if menus.length
                 _res =
                     div(
@@ -511,7 +529,7 @@ menu_module = angular.module(
                             ul(
                                 {
                                     key: "topmenu"
-                                    className: "nav navbar-nav"
+                                    className: "nav navbar-nav navbar-#{@props.side}"
                                 }
                                 (
                                     menu.get_react(menu_header) for menu in menus
@@ -524,7 +542,7 @@ menu_module = angular.module(
             return _res
     )
     return menu_comp
-]).directive("icswMenuDirective",
+]).directive("icswMenu",
 [
     "icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService",
     "$rootScope", "ICSW_SIGNALS",
@@ -535,11 +553,15 @@ menu_module = angular.module(
     return {
         restrict: "EA"
         replace: true
-        scope: true
+        scope:
+            side: "@icswMenuSide"
         link: (scope, el, attrs) ->
             _element = ReactDOM.render(
                 React.createElement(
                     icswReactMenuFactory
+                    {
+                        side: scope.side
+                    }
                 )
                 el[0]
             )

@@ -40,14 +40,6 @@ menu_module = angular.module(
                 pageTitle: "ICSW Login"
         }
     ).state(
-        "logout"
-        {
-            url: "/logout",
-            templateUrl: "icsw/logout.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "ICSW Logout"
-        }
-    ).state(
         "main",
         {
             url: "/main"
@@ -73,6 +65,7 @@ menu_module = angular.module(
             controller: "icswMainCtrl"
         }
     )
+    icswRouteExtensionProvider.add_route("logout")
 ]).controller("icswMainCtrl", [
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",

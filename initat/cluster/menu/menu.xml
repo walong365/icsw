@@ -1,6 +1,6 @@
 <routes>
     <routeGroup name="mm_devices">
-        <menuHeader type="dict" name_str="Devices" icon_str="fa-hdd-o"/>
+        <menuHeader type="dict" name_str="Devices" icon_str="fa-hdd-o" side_str="left"/>
         <routeSubGroup name_str="Settings">
             <route name="main.devicecreate">
                 <stateData type="dict" url_str="/devicecreate" templateUrl_str="icsw/main/device/create.html"/>
@@ -101,7 +101,7 @@
         </routeSubGroup>
     </routeGroup>
     <routeGroup name="stat">
-        <menuHeader type="dict" name_str="Status" icon_str="fa-line-chart"/>
+        <menuHeader type="dict" name_str="Status" icon_str="fa-line-chart" side_str="left"/>
         <routeSubGroup name_str="bla">
             <route name="main.deviceinfo">
                 <stateData type="dict" url_str="/deviceinfo" template_str="&lt;icsw-simple-device-info icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-simple-device-info&gt;"/>
@@ -190,7 +190,7 @@
         </routeSubGroup>
     </routeGroup>
     <routeGroup name="mon">
-        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-eye"/>
+        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-eye" side_str="left"/>
         <routeSubGroup name_str="Settings">
             <route name="main.monitorbasics">
                 <stateData type="dict" url_str="/monitorbasics" templateUrl_str="icsw/monitoring/setup"/>
@@ -285,7 +285,7 @@
         </routeSubGroup>
     </routeGroup>
     <routeGroup name="asset">
-        <menuHeader type="dict" name_str="Assets" icon_str="fa-shopping-bag"/>
+        <menuHeader type="dict" name_str="Assets" icon_str="fa-shopping-bag" side_str="left"/>
         <routeSubGroup name_str="bla">
             <route name="main.schedoverview">
                 <stateData type="dict" url_str="/sched/overview" template_str="&lt;icsw-schedule-overview&gt;&lt;/icsw-schedule-overview&gt;"/>
@@ -341,7 +341,7 @@
         </routeSubGroup>
     </routeGroup>
     <routeGroup name="cluster">
-        <menuHeader type="dict" name_str="Cluster" icon_str="fa-cubes"/>
+        <menuHeader type="dict" name_str="Cluster" icon_str="fa-cubes" side_str="left"/>
         <routeSubGroup name_str="bla">
             <route name="main.deployboot">
                 <stateData type="dict" url_str="/deployboot" templateUrl_str="icsw/main/deploy/boot.html"/>
@@ -398,7 +398,7 @@
             </routeSubGroup>
         </routeGroup>
         <routeGroup name="rms">
-            <menuHeader type="dict" name_str="RMS" icon_str="fa-list-ol"/>
+            <menuHeader type="dict" name_str="RMS" icon_str="fa-list-ol" side_str="left"/>
             <routeSubGroup name_str="bla">
             <route name="main.rmsoverview">
                 <stateData type="dict" url_str="/rmsoverview" templateUrl_str="icsw/main/rms/overview.html"/>
@@ -435,7 +435,7 @@
         </routeSubGroup>
     </routeGroup>
     <routeGroup name="sys">
-        <menuHeader type="dict" name_str="System" icon_str="fa-cog"/>
+        <menuHeader type="dict" name_str="System" icon_str="fa-cog" side_str="left"/>
         <routeSubGroup name_str="bla">
             <route name="main.usertree">
                 <stateData type="dict" url_str="/usertree" templateUrl_str="icsw/main/user/tree.html"/>
@@ -493,15 +493,28 @@
             </route>
         </routeSubGroup>
     </routeGroup>
+    <routeGroup name="rightmenu">
+        <menuHeader type="dict" name_str="$$USER_INFO" icon_str="fa-user" side_str="right"/>
+        <routeSubGroup name_str="bla">
+            <route name="main.useraccount">
+                <stateData type="dict" url_str="/useraccount" templateUrl_str="icsw/main/user/account.html"/>
+                <icswData type="dict" pageTitle_str="Account info">
+                    <menuEntry type="dict" icon_str="fa-info" name_str="Account info"/>
+                </icswData>
+            </route>
+            <route name="logout">
+                <stateData type="dict" url_str="/logout" templateUrl_str="icsw/logout.html"/>
+                <icswData type="dict" pageTitle_str="Logout">
+                    <menuEntry type="dict" icon_str="fa-sign-out" name_str="Logout"/>
+                </icswData>
+            </route>
+        </routeSubGroup>
+    </routeGroup>
     <routeGroup name="dummy">
         <routeSubGroup name_str="bla">
             <route name="main.dashboard">
                 <stateData type="dict" url_str="/dashboard" templateUrl_str="icsw/main/dashboard.html"/>
                 <icswData type="dict" pageTitle_str="Dashboard"/>
-            </route>
-            <route name="main.useraccount">
-                <stateData type="dict" url_str="/useraccount" templateUrl_str="icsw/main/user/account.html"/>
-                <icswData type="dict" pageTitle_str="Account info"/>
             </route>
             <route name="main.userjobinfo">
                 <stateData type="dict" url_str="/userjobinfo" templateUrl_str="icsw.dashboard.jobinfo"/>

@@ -10,49 +10,7 @@
         <div class="container-fluid">
             <icsw-menu-progress-bars user="struct.current_user"></icsw-menu-progress-bars>
 
-            <!-- <div class="nostyle" style="initial">
-                <div class="navbar yamm navbar-default navbar-fixed-top">
-                    <div class="container">
-                        <ul class="nav navbar-nav">
-                            <li class="dropdown">
-                                <a class="dropdown-toggle" data-toggle="dropdown">Dropdown</a>
-                                <ul class="dropdown-menu">
-                                    <li>
-                                        <div class="yamm-content">
-                                            <div class="row">
-                                                <ul class="col-sm-2 list-unstyled">
-                                                <li>
-                                                  <p><strong>Status</strong></p>
-                                                </li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>List Item</a></li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>List Item</a></li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>List Item</a></li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>List Item</a></li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>List Item</a></li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>List Item</a></li>
-                                                </ul>
-                                                <ul class="col-sm-2 list-unstyled">
-                                                <li>
-                                                  <p><strong>Configuration</strong></p>
-                                                </li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>Link Item</a></li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>Link Item</a></li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>Link Item</a></li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>Link Item</a></li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>Link Item</a></li>
-                                                <li><a href="#"><span class="fa fa-bars"></span>Link Item</a></li>
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </li>
-                                </ul>
-                            </li>
-                        </ul>
-                    </div>
-                </div>
-            </div> -->
-
-            <icsw-menu-directive></icsw-menu-directive>
+            <icsw-menu icsw-menu-side="left"></icsw-menu>
 
             <div class="collapse navbar-collapse">
                 <!-- @if DEBUG -->
@@ -76,54 +34,8 @@
                 </form>
                 <!-- @endif -->
 
-                <ul class="nav navbar-nav navbar-right" ng-if="struct.current_user" style="margin-right:0px;">
-                    <!-- <li class="active" ng-click="device_selection($event)">
-                        <a>
-                            <span class="fa fa-desktop fa-lg" title="Device Selection">
-                            </span>
-                            {{ struct.selection_string }}
-                        </a>
-                    </li> -->
-                    <li>
-                        <a class="dropdown-toggle cursorpointer" data-toggle="dropdown"> <!--  style="padding-bottom:15px;"> -->
-                            <span ng-if="struct.current_user">
-                                <span class="fa fa-user fa-lg fa_top"></span>
-                                <span title="{{ struct.current_user.full_name }}">{{ struct.current_user.login }}</span>
-                                <span ng-show="struct.current_user.login != struct.current_user.login_name"> (via alias {{ struct.current_user.login_name }})</span>
-                                &nbsp;&nbsp;<icsw-background-job-info></icsw-background-job-info>
-                            </span>
-                            <span class="fa fa-sort-down pull-right"></span>&nbsp;&nbsp;
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li ng-if="struct.current_user">
-                                <a ui-sref="main.useraccount">
-                                    <span class="fa fa-info-circle fa_icsw"></span>
-                                    Account Info
-                                </a>
-                            </li>
-                            <!-- @if DEBUG -->
-                            <li ng-show="has_menu_permission('backbone.user.admin')">
-                                <a href="{{ ICSW_URLS.ADMIN_INDEX }}">
-                                    <span class="fa fa-wrench fa_icsw"></span>
-                                    Admin
-                                </a>
-                            </li>
-                            <!-- @endif -->
-                            <li ng-if="struct.current_user">
-                                <a ui-sref="logout">
-                                    <span class="fa fa-sign-out fa_icsw"></span>
-                                    Logout
-                                </a>
-                            </li>
-                            <li class="divider" ng-if="struct.current_user"></li>
-                            <li ng-show="handbook_url_valid">
-                                <a href="{{ handbook_url }}" target="_blank">
-                                    <span class="fa fa-book fa_icsw"></span>PDF Handbook
-                                </a>
-                            </li>
-                        </ul>
-                    </li>
-                </ul>
+                <icsw-menu icsw-menu-side="right"></icsw-menu>
+                <icsw-background-job-info></icsw-background-job-info>
             </div>
         </div>
     </nav>
