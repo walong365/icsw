@@ -231,6 +231,9 @@ angular.module(
     toasterConfig["time-out"] = {
         # timeout for error after 30 seconds
         "toast-error": 30000
+        "toast-warning": 10000
+        "toast-info": 5000
+        "toast-success": 5000
     }
 ]).config([
     "$httpProvider",

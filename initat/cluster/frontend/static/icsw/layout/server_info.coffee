@@ -87,13 +87,13 @@ angular.module(
                 $scope.struct.runs_on = {}
                 $(xml).find("ics_batch").each (idx, res_xml) ->
                     res_xml = $(res_xml)
-                    cur_si = new icswLayoutServerInfoService(res_xml)
+                    cur_si = new icswLayoutServerInfoService($scope, res_xml)
                     $scope.struct.server_info_list.push(cur_si)
-                    _cur_inst = cur_si.instance_names()
+                    _cur_inst = cur_si.$$instance_names
                     for _name in _cur_inst
                         if _name not of $scope.struct.runs_on
                             $scope.struct.runs_on[_name] = res_xml.find("instance[name='#{_name}']").attr("runs_on")
-                    $scope.struct.instance_list = _.union($scope.instance_list, _cur_inst)
+                    $scope.struct.instance_list = _.uniq(_.concat($scope.struct.instance_list, _cur_inst))
                 $scope.struct.loading = false
                 $scope.struct.cur_to = $timeout($scope.reload_server_info, 15000)
         )
@@ -124,7 +124,7 @@ angular.module(
             url     : ICSW_URLS.MAIN_SERVER_CONTROL
             data    : {
                 cmd: angular.toJson(
-                    server_id: srv_info.get_server_id()
+                    server_id: srv_info.$$srv_id
                     instance: instance
                     type: type
                 )
@@ -147,7 +147,7 @@ angular.module(
 ]).service("icswLayoutServerInfoService", () ->
 
     class icswLayoutServerInfoService
-        constructor: (@xml) ->
+        constructor: (@scope, @xml) ->
             _round = 8 * 1024 * 1024
             @result = @xml.find("result")
             @server_state = parseInt(@result.attr("state"))
@@ -167,178 +167,166 @@ angular.module(
                 @version_software = @xml.find("version_info > sys").attr("software")
             else
                 @version_set = false
+            @service_lut = {}
+            @salt()
 
-        get_tr_class: () ->
-            if @server_state
-                return "danger"
+        has_service: (name) ->
+            return name of @service_lut
+
+        get_service: (name) ->
+            return @service_lut[name]
+
+        salt: () ->
+            @$$srv_name = @xml.find("command").attr("server_name")
+            @$$srv_id = parseInt(@xml.find("command").attr("server_id"))
+            if @valid
+                @_salt_ok()
             else
-                return ""
+                @_salt_error()
 
-        get_name: () ->
-            return @xml.find("command").attr("server_name")
+        _salt_error: () =>
+            @$$tr_class = "danger"
+            @$$instance_names = []
 
-        get_server_id: () ->
-            return parseInt(@xml.find("command").attr("server_id"))
+        _salt_ok: () =>
+            @$$tr_class = ""
+            @$$instance_names = ($(entry).attr("name") for entry in @xml.find("instance"))
+            for name in @$$instance_names
+                @service_lut[name] = @_salt_service(name)
 
-        instance_names: () ->
-            return ($(entry).attr("name") for entry in @xml.find("instance"))
+        do_action: (instance, action) =>
+            @scope.do_action(@, instance, action)
 
-        service_enabled: (instance) ->
+        _salt_service: (instance) ->
             _meta_xml = @xml.find("metastatus > instances > instance[name='#{instance}']")
-            if _meta_xml.length
-                return if parseInt(_meta_xml.attr("target_state")) == 1 then true else false
-            else
-                return false
-
-        service_disabled: (instance) ->
-            _meta_xml = @xml.find("metastatus > instances > instance[name='#{instance}']")
-            if _meta_xml.length
-                return if parseInt(_meta_xml.attr("target_state")) == 0 then true else false
-            else
-                return false
-
-        get_state: (instance) ->
             _xml = @xml.find("status > instances > instance[name='#{instance}']")
+            salted = {
+                name: instance
+                meta_xml: _meta_xml
+                xml: _xml
+                $$enable_disable_allowed: instance not in ["meta-server", "logging-server"]
+            }
+            if _meta_xml.length
+                salted.$$enabled = if parseInt(_meta_xml.attr("target_state")) == 1 then true else false
+                salted.$$disabled = if parseInt(_meta_xml.attr("target_state")) == 0 then true else false
+            else
+                salted.$$enabled = false
+                salted.$$disabled = false
             if _xml.length
+                salted.$$startstop = if parseInt(_xml.attr("startstop")) then true else false
+                salted.$$version_class = if parseInt(_xml.find("result").attr("version_ok")) then "text-success" else "text-danger"
+                if _xml.find("result").attr("version")?
+                    salted.$$version = _xml.find("result").attr("version").replace("-", "&ndash;")
+                else
+                    salted.$$version = ""
                 _state_info = _xml.find("process_state_info")
+                _diff = parseInt(_state_info.attr("num_diff"))
+                if _diff
+                    salted.$$run_class = "text-danger"
+                else
+                    salted.$$run_class = "text-success"
+                if _xml.attr("check_type") == "simple"
+                    salted.$$run_info = _xml.find("pids > pid").length
+                else
+                    if _state_info.attr("num_started")?
+                        _started = parseInt(_state_info.attr("num_started"))
+                        _found = parseInt(_state_info.attr("num_found"))
+                        _diff = parseInt(_state_info.attr("num_diff"))
+                        if !_diff
+                            salted.$$run_info = "#{_started}"
+                        else
+                            if _diff > 0
+                                salted.$$run_info = "#{_found} (#{-_diff} too much)"
+                            else
+                                salted.$$run_info = "#{_found} (#{-_diff} missing)"
+                    else
+                        salted.$$run_info = "N/A"
+                salted.$$mem_value = @xml.find("instance[name='#{instance}'] memory_info").contents().first().text()
+                salted.$$mem_percent = parseInt((parseInt(salted.$$mem_value) * 100) / @max_mem)
                 if parseInt(_state_info.attr("state")) == 5
                     # not installed
-                    return 3
+                    salted.$$state = 3
                 else if parseInt(_state_info.attr("state")) == 6
                     # not configured
-                    return 4
+                    salted.$$state = 4
                 else
                     if _xml.attr("check_type") == "simple"
                         if parseInt(_state_info.attr("state")) == 0
                             # running
-                            return 1
+                            salted.$$state = 1
                         else
                             # not running
-                            return 2
+                            salted.$$state = 2
                     else
                         if _state_info.attr("num_started")
                             # running
-                            return 1
+                            salted.$$state = 1
                         else
                             # not running
-                            return 2
+                            salted.$$state = 2
             else
-                # nothing found
-                return 0
-
-        get_run_class: (instance) ->
-            _state_info = @xml.find("instance[name='#{instance}'] process_state_info")
-            _diff = parseInt(_state_info.attr("num_diff"))
-            if _diff
-                return "text-danger"
-            else
-                return "text-success"
-
-        get_version_class: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}']")
-            if _xml.find("result").attr("version_ok")?
-                _vers_ok = parseInt(_xml.find("result").attr("version_ok"))
-                if _vers_ok
-                    return "text-success"
-                else
-                    return "text-danger"
-            else
-                return "text-warn"
-
-        get_version: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}']")
-            if _xml.find("result").attr("version_ok")?
-                return _xml.find("result").attr("version").replace("-", "&ndash;")
-            else
-                return ""
-
-        has_startstop: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}']")
-            if _xml.attr("startstop")?
-                return if parseInt(_xml.attr("startstop")) then true else false
-            else
-                return false
-        get_run_info: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}']")
-            _state_info = _xml.find("process_state_info")
-            if _xml.attr("check_type") == "simple"
-                return _xml.find("pids > pid").length
-            else
-                _started = parseInt(_state_info.attr("num_started"))
-                _found = parseInt(_state_info.attr("num_found"))
-                _diff = parseInt(_state_info.attr("num_diff"))
-                if !_diff
-                    return "#{_started}"
-                else
-                    if _diff > 0
-                        return "#{_found} (#{-_diff} too much)"
-                    else
-                        return "#{_found} (#{-_diff} missing)"
-
-        enable_disable_allowed: (instance) ->
-            if instance in ["meta-server", "logging-server"]
-                return false
-            else
-                return true
-
-        get_mem_info: (instance) ->
-            _xml = @xml.find("instance[name='#{instance}'] memory_info").contents().first()
-            return _xml.text()
-
-        get_mem_value: (instance) ->
-            _mem = @xml.find("instance[name='#{instance}'] memory_info").contents().first().text()
-            return parseInt((parseInt(_mem) * 100) / @max_mem)
+                salted.$$state = 0
+                salted.$$startstop = false
+                salted.$$version_class = "text-warn"
+                salted.$$version = ""
+                salted.$$run_class = ""
+                salted.$$run_info = "---"
+                salted.$$mem_value = 0
+                salted.$$mem_percent = 0
+            return salted
 
         get_check_source: (instance) ->
             return @xml.find("instance[name='#{instance}']").attr("check_type")
 
-).directive("icswLayoutServerInfoInstance", ["$templateCache", "$compile", ($templateCache, $compile) ->
-    return {
-        restrict : "EA"
-        link : (scope, element, attrs) ->
-            scope.get_state = () ->
-                return scope.srv_info.get_state(scope.instance)
-            scope.get_run_info = () ->
-                return scope.srv_info.get_run_info(scope.instance)
-            scope.get_run_class = () ->
-                return scope.srv_info.get_run_class(scope.instance)
-            scope.get_version_class = () ->
-                return scope.srv_info.get_version_class(scope.instance)
-            scope.has_startstop = () ->
-                return scope.srv_info.has_startstop(scope.instance)
-            scope.get_version = () ->
-                return scope.srv_info.get_version(scope.instance)
-            scope.get_mem_info = () ->
-                return scope.srv_info.get_mem_info(scope.instance)
-            scope.get_mem_value = () ->
-                return scope.srv_info.get_mem_value(scope.instance)
-            scope.enable_disable_allowed = () ->
-                return scope.srv_info.enable_disable_allowed(scope.instance)
-            scope.action = (type) ->
-                scope.do_action(scope.srv_info, scope.instance, type)
-            new_el = $compile($templateCache.get("icsw.layout.server.info.state"))
-            element.append(new_el(scope))
-    }
-]).directive("icswServiceEnableDisable",
+).directive("icswLayoutServerInfoInstance",
 [
     "$templateCache", "$compile",
 (
     $templateCache, $compile
 ) ->
     return {
+        restrict : "EA"
+        scope:
+            server_info: "=icswServerInfo"
+            service_name: "=icswServiceName"
+        template: $templateCache.get("icsw.layout.server.info.state")
+        controller: "icswLayoutServerInfoInstanceCtrl"
+    }
+]).controller("icswLayoutServerInfoInstanceCtrl",
+[
+    "$scope", "icswAcessLevelService",
+(
+    $scope, icswAcessLevelService,
+) ->
+
+    icswAcessLevelService.install($scope)
+    if $scope.server_info.has_service($scope.service_name)
+        $scope.service = $scope.server_info.get_service($scope.service_name)
+    else
+        $scope.service = {
+            "$$state": 0
+        }
+
+    $scope.do_action = (action) ->
+        $scope.server_info.do_action($scope.service_name, action)
+
+    $scope.$on("$destroy", () ->
+    )
+]).directive("icswServiceEnableDisable",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
         restrict: "EA"
         template: $templateCache.get("icsw.service.enable.disable")
-        link : (scope, element, attrs) ->
-            scope.service_enabled = () ->
-                return scope.srv_info.service_enabled(scope.instance)
-            scope.service_disabled = () ->
-                return scope.srv_info.service_disabled(scope.instance)
     }
 ]).directive("icswLayoutServerInfoOverview",
 [
-    "$templateCache", "$compile",
+    "$templateCache",
 (
-    $templateCache, $compile
+    $templateCache,
 ) ->
     return {
         restrict: "EA"
