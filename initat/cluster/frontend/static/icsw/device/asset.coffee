@@ -777,9 +777,22 @@ device_asset_module = angular.module(
                 return
 
         tab = {}
-        tab.enabled = true
         tab.tab_type = tab_type
         tab.asset_batch = asset_batch
+
+        for memory_entry in asset_batch.memory_modules
+            memory_entry.$$capacity = "N/A"
+            memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
+
+        if tab_type == -1
+
+            icswAssetPackageTreeService.reload($scope.$id).then(
+                (tree) ->
+                    tab.tab_heading_text = "Scan (ID:" + asset_batch.idx + ")"
+                    tab.packages = resolve_package_assets(tree, asset_batch.packages, asset_batch.packages_install_times)
+
+                    asset_batch.$$device.info_tabs.push(tab)
+            )
 
         if tab_type == 0
             icswAssetPackageTreeService.reload($scope.$id).then(
@@ -799,20 +812,14 @@ device_asset_module = angular.module(
 
         else if tab_type == 3
             tab.tab_heading_text = "Installed Memory Modules (ScanID:" + asset_batch.idx + ")"
-
-            for memory_entry in asset_batch.memory_modules
-                memory_entry.$$capacity = "N/A"
-                memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
-
             asset_batch.$$device.info_tabs.push(tab)
 
         else if tab_type == 4
             tab.tab_heading_text = "Installed CPU(s) (ScanID:" + asset_batch.idx + ")"
-
             asset_batch.$$device.info_tabs.push(tab)
+
         else if tab_type == 5
             tab.tab_heading_text = "Installed GPU(s) (ScanID:" + asset_batch.idx + ")"
-
             asset_batch.$$device.info_tabs.push(tab)
 
 
@@ -829,7 +836,9 @@ device_asset_module = angular.module(
         }
         link: (scope, element, attrs) ->
             element.children().remove()
-            if scope.tab.tab_type == 0
+            if scope.tab.tab_type == -1
+                _not_av_el = $compile($templateCache.get("icsw.asset.details.all"))(scope)
+            else if scope.tab.tab_type == 0
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.package"))(scope)
             else if scope.tab.tab_type == 1
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.pending.updates"))(scope)
@@ -844,5 +853,83 @@ device_asset_module = angular.module(
             else
                 _not_av_el = $compile($templateCache.get("icsw.asset.details.na"))(scope)
             element.append(_not_av_el)
+    }
+]).directive("icswAssetDetailsPackageTable",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.details.package")
+        scope: {
+            tab: "=icswTab"
+        }
+    }
+]).directive("icswAssetDetailsInstalledUpdatesTable",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.details.installed.updates")
+        scope: {
+            tab: "=icswTab"
+        }
+    }
+]).directive("icswAssetDetailPendingUpdatesTable",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.details.pending.updates")
+        scope: {
+            tab: "=icswTab"
+        }
+    }
+]).directive("icswAssetDetailsHardwareMemoryModulesTable",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.details.hw.memory.modules")
+        scope: {
+            tab: "=icswTab"
+        }
+    }
+]).directive("icswAssetDetailsHardwareCpuTable",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.details.hw.cpu")
+        scope: {
+            tab: "=icswTab"
+        }
+    }
+]).directive("icswAssetDetailsHardwareGpuTable",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.details.hw.gpu")
+        scope: {
+            tab: "=icswTab"
+        }
     }
 ])

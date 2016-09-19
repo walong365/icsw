@@ -144,7 +144,7 @@
                 <td class="text-center">{{ assetbatch.$$run_progress }} % </td>
                 <td class="text-center">
                     <div>
-                        <button type="button" class="btn btn-xs btn-success" ng-disabled="!assetbatch.is_finished_processing" ng-click="expand_assetbatch($event, assetbatch)">{{ assetbatch.is_finished_processing ? (assetbatch.$$expanded ? "hide" : "show") : "Still Processing..." }}</button>
+                        <button type="button" class="btn btn-sm btn-primary" ng-disabled="!assetbatch.is_finished_processing" ng-click="open_in_new_tab(assetbatch, -1)">{{ assetbatch.is_finished_processing ? "Open in new Tab" : "Still Processing..." }}</button>
                     </div>
                 </td>
             </tr>
@@ -621,7 +621,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.installed.updates">
     <h3>
-        Installed Packages
+        Installed Updates
     </h3>
     <table
         class="table table-condensed table-striped simple-border"
@@ -657,7 +657,7 @@
 
 <script type="text/ng-template" id="icsw.asset.details.pending.updates">
     <h3>
-        Installed Packages
+        Pending Updates
     </h3>
     <table
         class="table table-condensed table-striped simple-border"
@@ -1097,4 +1097,46 @@
             </tr>
         </tbody>
     </table>
+</script>
+
+<script type="text/ng-template" id="icsw.asset.details.all">
+    <br/>
+    <uib-tabset>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>Installed Packages</span>
+            </uib-tab-heading>
+            <icsw-asset-details-package-table icsw-tab="tab"></icsw-asset-details-package-table>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>Pending Updates</span>
+            </uib-tab-heading>
+            <icsw-asset-detail-pending-updates-table icsw-tab="tab"></icsw-asset-detail-pending-updates-table>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>Installed Updates</span>
+            </uib-tab-heading>
+            <icsw-asset-details-installed-updates-table icsw-tab="tab"></icsw-asset-details-installed-updates-table>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>Installed Memory Module(s)</span>
+            </uib-tab-heading>
+            <icsw-asset-details-hardware-memory-modules-table icsw-tab="tab"></icsw-asset-details-hardware-memory-modules-table>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>Installed CPU(s)</span>
+            </uib-tab-heading>
+            <icsw-asset-details-hardware-cpu-table icsw-tab="tab"></icsw-asset-details-hardware-cpu-table>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>Installed GPU(s)</span>
+            </uib-tab-heading>
+            <icsw-asset-details-hardware-gpu-table icsw-tab="tab"></icsw-asset-details-hardware-gpu-table>
+        </uib-tab>
+    </uib-tabset>
 </script>
