@@ -46,6 +46,7 @@ class ConfigCheckObject(object):
         self.global_config = global_config
         self.__native_logging = native_logging
         self.__init_msi_block = init_msi_block
+        self._inst_xml = InstanceXML(self.log)
         if self.__init_msi_block:
             # init MSI block
             self.__msi_block = None
@@ -59,10 +60,17 @@ class ConfigCheckObject(object):
                     ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
                 ]
             )
+
             if "LOG_NAME" not in global_config:
                 global_config.add_config_entries(
                     [
-                        ("LOG_NAME", configfile.str_c_var(self.srv_type_enum.value.name, source="instance")),
+                        (
+                            "LOG_NAME",
+                            configfile.str_c_var(
+                                self._inst_xml[self.srv_type_enum.value.instance_name].attrib["name"],
+                                source="instance"
+                            )
+                        ),
                     ]
                 )
             if self.__native_logging:
@@ -97,7 +105,6 @@ class ConfigCheckObject(object):
         if self.srv_type_enum.value.server_service:
             from initat.tools import config_tools
             from initat.cluster.backbone.models import LogSource
-        self._inst_xml = InstanceXML(self.log)
         if self.srv_type_enum.value.instance_name is None:
             raise KeyError("No instance_name set for srv_type_enum '{}'".format(self.srv_type_enum.name))
         self._instance = self._inst_xml[self.srv_type_enum.value.instance_name]
@@ -204,6 +211,8 @@ class ConfigCheckObject(object):
             self.__msi_block = None
         if not self.__native_logging:
             self.__process.log_template.close()
+        # remove global config
+        self.global_config.delete()
 
     def log_config(self):
         _log = self.global_config.get_log(clear=True)

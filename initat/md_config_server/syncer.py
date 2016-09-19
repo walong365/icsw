@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -30,7 +30,6 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
-from initat.md_config_server import constants
 from initat.md_config_server.config import global_config, sync_config
 from initat.tools import config_tools, logging_tools, server_command, threading_tools
 

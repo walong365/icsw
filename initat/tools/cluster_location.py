@@ -46,7 +46,7 @@ def read_config_from_db(g_config, server_type_enum, sql_info, init_list=[]):
             "str",
             "int",
             "blob",
-            "bool"
+            "bool",
         ]:
             # very similiar code appears in config_tools.py
             src_sql_obj = _VAR_LUT[short].objects
