@@ -218,39 +218,50 @@ angular.module(
                 return (obj.depth > 1) and top_level == "device"
 
             ok_label = if create then "Create" else "Modify"
-            icswComplexModalService(
-                {
-                    message: $compile($templateCache.get("icsw.category.form"))(sub_scope)
-                    title: "#{ok_label} Category entry '#{obj_or_parent.name}"
-                    # css_class: "modal-wide"
-                    ok_label: ok_label
-                    closable: true
-                    ok_callback: (modal) ->
-                        d = $q.defer()
-                        if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "")
-                            d.reject("form not valid")
-                        else
-                            if create
-                                scope.tree.create_category_entry(sub_scope.edit_obj).then(
-                                    (ok) ->
-                                        d.resolve("created")
-                                    (notok) ->
-                                        d.reject("not created")
-                                )
-                            else
-                                Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2))
-                                sub_scope.edit_obj.put().then(
-                                    (ok) ->
-                                        scope.tree.reorder()
-                                        d.resolve("updated")
-                                    (not_ok) ->
-                                        d.reject("not updated")
-                                )
-                        return d.promise
-                    delete_ask: true
 
-                    delete_callback: (modal) ->
+            complex_modal_service_dict =
+            {
+                message: $compile($templateCache.get("icsw.category.form"))(sub_scope)
+                title: "#{ok_label} Category entry '#{obj_or_parent.name}"
+                # css_class: "modal-wide"
+                ok_label: ok_label
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if sub_scope.form_data.$invalid
+                        toaster.pop("warning", "form validation problem", "")
+                        d.reject("form not valid")
+                    else
+                        if create
+                            scope.tree.create_category_entry(sub_scope.edit_obj).then(
+                                (ok) ->
+                                    d.resolve("created")
+                                (notok) ->
+                                    d.reject("not created")
+                            )
+                        else
+                            Restangular.restangularizeElement(null, sub_scope.edit_obj, ICSW_URLS.REST_CATEGORY_DETAIL.slice(1).slice(0, -2))
+                            sub_scope.edit_obj.put().then(
+                                (ok) ->
+                                    scope.tree.reorder()
+                                    d.resolve("updated")
+                                (not_ok) ->
+                                    d.reject("not updated")
+                            )
+                    return d.promise
+                delete_ask: true
+
+                cancel_callback: (modal) ->
+                    if not create
+                        dbu.restore_backup(obj_or_parent)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+
+            if !create
+                complex_modal_service_dict['delete_callback'] =
+                    (modal) ->
                         d = $q.defer()
                         scope.tree.delete_category_entry(sub_scope.edit_obj).then(
                             (ok) ->
@@ -262,14 +273,9 @@ angular.module(
                         )
                         return d.promise
 
-                    cancel_callback: (modal) ->
-                        if not create
-                            dbu.restore_backup(obj_or_parent)
-                        d = $q.defer()
-                        d.resolve("cancel")
-                        return d.promise
-                }
-            ).then(
+
+
+            icswComplexModalService(complex_modal_service_dict).then(
                 (fin) ->
                     console.log "finish"
                     $rootScope.$emit(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), scope.tree)
