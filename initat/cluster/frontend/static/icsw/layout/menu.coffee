@@ -262,7 +262,11 @@ menu_module = angular.module(
                 )
                 # reload every 30 seconds
                 @backg_timer = $timeout(reload, 30000)
-            reload()
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+                if @backg_timer?
+                    $timeout.cancel(@backg_timer)
+                reload()
+            )
             $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
                 if @backg_timer?
                     $timeout.cancel(@backg_timer)
