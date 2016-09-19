@@ -204,7 +204,7 @@ angular.module(
                 # new object, allow all values
                 p_list = (value for value in scope.dn_tree.mode_entries when value.depth)
 
-            console.log p_list
+            # console.log p_list
             sub_scope.valid_parents = p_list
 
             sub_scope.is_location = (obj) ->

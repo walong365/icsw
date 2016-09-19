@@ -206,12 +206,17 @@ angular.module(
                 xml: _xml
                 $$enable_disable_allowed: instance not in ["meta-server", "logging-server"]
             }
+            console.log instance, _meta_xml[0]
             if _meta_xml.length
                 salted.$$enabled = if parseInt(_meta_xml.attr("target_state")) == 1 then true else false
-                salted.$$disabled = if parseInt(_meta_xml.attr("target_state")) == 0 then true else false
+                salted.$$disabled = !salted.$$enabled
+                salted.$$ignore = if parseInt(_meta_xml.attr("ignore")) == 1 then true else false
+                salted.$$monitor = !salted.$$ignore
             else
                 salted.$$enabled = false
                 salted.$$disabled = false
+                salted.$$ignore = false
+                salted.$$monitor = false
             if _xml.length
                 salted.$$startstop = if parseInt(_xml.attr("startstop")) then true else false
                 salted.$$version_class = if parseInt(_xml.find("result").attr("version_ok")) then "text-success" else "text-danger"
@@ -321,6 +326,16 @@ angular.module(
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.service.enable.disable")
+    }
+]).directive("icswServiceMonitorIgnore",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.service.monitor.ignore")
     }
 ]).directive("icswLayoutServerInfoOverview",
 [
