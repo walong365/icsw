@@ -620,11 +620,16 @@ class AssetRun(models.Model):
                     installtimestamp = None
                     if 'installtimestamp' in versions_dict:
                         installtimestamp = versions_dict['installtimestamp']
+
+                    size = 0
+                    if 'size' in versions_dict:
+                        size = versions_dict['size']
+
                     assets.append(
                         BaseAssetPackage(
                             package_name,
                             version=versions_dict['version'],
-                            size=versions_dict['size'],
+                            size=size,
                             release=versions_dict['release'],
                             install_date=installtimestamp,
                             package_type=PackageTypeEnum.LINUX
