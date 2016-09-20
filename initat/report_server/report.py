@@ -1,10 +1,30 @@
+# Copyright (C) 2016 Gregor Kaufmann, init.at
+#
+# Send feedback to: <kaufmann@init.at>
+#
+# this file is part of discovery-server
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+""" report-server, report generation functions """
+
 import os
 import base64
 import datetime
 import tempfile
 import logging
 from io import BytesIO
-from enum import IntEnum
 
 from PIL import Image as PILImage
 from PollyReports import Element, Rule, Band
@@ -21,24 +41,17 @@ from reportlab.lib.enums import TA_LEFT, TA_CENTER
 from reportlab.lib.pagesizes import landscape, letter, A4, A3
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm, inch
-from reportlab.lib.utils import ImageReader
-from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.pdfmetrics import stringWidth
-from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.pdfgen.canvas import Canvas
 from reportlab.platypus import SimpleDocTemplate, Spacer, Table, Paragraph, Image
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 
-from initat.cluster.backbone.models import device, device_variable, AssetType, PackageTypeEnum, RunStatus, RunResult
 from initat.cluster.backbone.models import network
 from initat.cluster.backbone.models import user
 from initat.cluster.backbone.models.report import ReportHistory
 from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
-from initat.cluster.frontend.helper_functions import (xml_wrapper,
-    contact_server)
-from initat.cluster.backbone.models import device, device_variable, AssetType, PackageTypeEnum, RunStatus, RunResult
+from initat.cluster.backbone.models import device, AssetType, PackageTypeEnum, RunStatus, RunResult
 from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 
 
@@ -885,28 +898,36 @@ class PDFReportGenerator(ReportGenerator):
         data = self._get_data_for_sub_network_report(_network)
 
         data = sorted(data, key=lambda k: k['ip'])
-        if data:
-            report = GenericReport(_network.identifier)
-            root_report.add_child(report)
-            section_number = report.get_section_number()
 
-            rpt = PollyReportsReport(data)
+        if not data:
+            mock_object = {
+                "ip": "",
+                "netdevname": "",
+                "devname": ""
+            }
+            data.append(mock_object)
 
-            header_names_left = [("IP", "ip", 33.0),
-                                 ("Net-Device", "netdevname", 33.0),
-                                 ("Device", "devname", 34.0)]
+        report = GenericReport(_network.identifier)
+        root_report.add_child(report)
+        section_number = report.get_section_number()
 
-            header_names_right = []
+        rpt = PollyReportsReport(data)
 
-            self.__config_report_helper("{} Network: {}".format(section_number, _network.identifier),
-                                        header_names_left,
-                                        header_names_right, rpt, data)
+        header_names_left = [("IP", "ip", 33.0),
+                             ("Net-Device", "netdevname", 33.0),
+                             ("Device", "devname", 34.0)]
 
-            rpt.generate(canvas)
-            canvas.save()
-            report.number_of_pages += rpt.pagenumber
-            report.add_buffer_to_report(_buffer)
-            self.current_page_num += rpt.pagenumber
+        header_names_right = []
+
+        self.__config_report_helper("{} Network: {}".format(section_number, _network.identifier),
+                                    header_names_left,
+                                    header_names_right, rpt, data)
+
+        rpt.generate(canvas)
+        canvas.save()
+        report.number_of_pages += rpt.pagenumber
+        report.add_buffer_to_report(_buffer)
+        self.current_page_num += rpt.pagenumber
 
     def __generate_device_report(self, _device, report_settings, root_report):
         device_report = DeviceReport(_device, report_settings, _device.full_name)
@@ -985,7 +1006,7 @@ class PDFReportGenerator(ReportGenerator):
                 str_to_use = com_cap.name
             else:
                 str_to_use += ", {}".format(com_cap.name)
-        data = [[str_to_use]]
+        data = [[Paragraph(str_to_use, style_sheet["BodyText"])]]
 
         text_block = Paragraph('<b>ComCapabilities:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
@@ -997,11 +1018,13 @@ class PDFReportGenerator(ReportGenerator):
         # Ip info
         str_to_use = "N/A"
         for _ip in _device.all_ips():
+            if str(_ip) == "None":
+                continue
             if str_to_use == "N/A":
                 str_to_use = str(_ip)
             else:
                 str_to_use += ", {}".format(str(_ip))
-        data = [[str_to_use]]
+        data = [[Paragraph(str_to_use, style_sheet["BodyText"])]]
 
         text_block = Paragraph('<b>IP Info:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
@@ -1016,7 +1039,7 @@ class PDFReportGenerator(ReportGenerator):
                 str_to_use = "{} ({})".format(_net_device.macaddr, _net_device.devname)
             else:
                 str_to_use += ", {}".format("{} ({})".format(_net_device.macaddr, _net_device.devname))
-        data = [[str_to_use]]
+        data = [[Paragraph(str_to_use, style_sheet["BodyText"])]]
 
         text_block = Paragraph('<b>MAC Addresses:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
@@ -1032,7 +1055,7 @@ class PDFReportGenerator(ReportGenerator):
                 str_to_use = str(_snmp_scheme)
             else:
                 str_to_use += ", {}".format(str(_snmp_scheme))
-        data = [[str_to_use]]
+        data = [[Paragraph(str_to_use, style_sheet["BodyText"])]]
 
         text_block = Paragraph('<b>SNMP Scheme:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
@@ -1043,7 +1066,7 @@ class PDFReportGenerator(ReportGenerator):
 
         # SNMP Info
         str_to_use = "N/A"
-        data = [[str_to_use]]
+        data = [[Paragraph(str_to_use, style_sheet["BodyText"])]]
 
         text_block = Paragraph('<b>SNMP Info:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
@@ -1059,7 +1082,7 @@ class PDFReportGenerator(ReportGenerator):
                 str_to_use = _category.name
             else:
                 str_to_use += ", {}".format(_category.name)
-        data = [[str_to_use]]
+        data = [[Paragraph(str_to_use, style_sheet["BodyText"])]]
 
         text_block = Paragraph('<b>Categories:</b>', style_sheet["BodyText"])
         t = Table(data, colWidths=(available_width * 0.83),
