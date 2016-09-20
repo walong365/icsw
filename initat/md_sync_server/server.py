@@ -33,6 +33,7 @@ from initat.md_sync_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins, config_store
 from initat.tools.server_mixins import RemoteCall
+from .syncer import SyncerProcess, RemoteSlave
 
 
 @server_mixins.RemoteCallProcess
@@ -60,6 +61,7 @@ class server_process(
         self.VCM_check_md_version()
         self.VCM_check_relay_version()
         self._init_network_sockets()
+        self.__is_distributor = False
         _srv_com = server_command.srv_command(command="status")
         # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
 
@@ -218,7 +220,7 @@ class server_process(
             need_all_binds=False,
             bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
-            client_type="md-sync-server",
+            client_type=icswServiceEnum.monitor_slave,
             simple_server_bind=True,
             pollin=self.remote_call,
         )
@@ -234,6 +236,14 @@ class server_process(
     def start_mon_process(self, srv_com, **kwargs):
         self.config_store["mon_is_running"] = True
         return self._start_stop_mon_process(srv_com)
+
+    @RemoteCall(target_process="syncer")
+    def distribute_info(self, srv_com, **kwargs):
+        if not self.__is_distributor:
+            self.log("got distribution info, starting distribution processes")
+            self.__is_distributor = True
+            self.add_process(SyncerProcess("syncer"), start=True)
+        return srv_com
 
     def _start_stop_mon_process(self, srv_com):
         global_config["MON_TARGET_STATE"] = self.config_store["mon_is_running"]

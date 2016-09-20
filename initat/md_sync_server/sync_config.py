@@ -28,15 +28,9 @@ import stat
 import sys
 import time
 
-from django.db.models import Q
-
-from initat.cluster.backbone.models import mon_dist_master, mon_dist_slave, cluster_timezone, \
-    mon_build_unreachable
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.server_version import VERSION_STRING
-from initat.tools import config_tools, configfile, logging_tools, process_tools, server_command
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
+from initat.tools import configfile, logging_tools, process_tools, server_command
+from .config import global_config
 
 
 __all__ = [
@@ -45,40 +39,27 @@ __all__ = [
 
 
 class sync_config(object):
-    def __init__(self, proc, monitor_server, **kwargs):
+    def __init__(self, proc, di_dict, **kwargs):
         """
         holds information about remote monitoring satellites
         """
         self.__process = proc
-        self.__slave_name = kwargs.get("slave_name", None)
+        self.name = di_dict.get("name", None)
         self.__main_dir = global_config["MD_BASEDIR"]
         self.distributed = kwargs.get("distributed", False)
-        self.master = True if not self.__slave_name else False
-        if self.__slave_name:
-            self.__dir_offset = os.path.join("slaves", self.__slave_name)
-            master_cfg = config_tools.device_with_config(service_type_enum=icswServiceEnum.monitor_server)
-            slave_cfg = config_tools.server_check(
-                host_name=monitor_server.full_name,
-                service_type_enum=icswServiceEnum.monitor_slave,
-                fetch_network_info=True
-            )
-            self.slave_uuid = monitor_server.uuid
-            route = master_cfg[icswServiceEnum.monitor_server][0].get_route_to_other_device(
-                self.__process.router_obj,
-                slave_cfg,
-                allow_route_to_other_networks=True,
-                global_sort_results=True,
-            )
-            if not route:
+        self.master = di_dict["master"]
+        if self.name:
+            self.__dir_offset = os.path.join("slaves", self.name)
+            for _attr_name in ["slave_ip", "master_ip", "pk", "uuid"]:
+                setattr(self, _attr_name, di_dict[_attr_name])
+            if not self.master_ip:
                 self.slave_ip = None
                 self.master_ip = None
-                self.log("no route to slave {} found".format(unicode(monitor_server)), logging_tools.LOG_LEVEL_ERROR)
+                self.log("no route to slave {} found".format(self.name), logging_tools.LOG_LEVEL_ERROR)
             else:
-                self.slave_ip = route[0][3][1][0]
-                self.master_ip = route[0][2][1][0]
                 self.log(
                     "IP-address of slave {} is {} (master ip: {})".format(
-                        unicode(monitor_server),
+                        self.name,
                         self.slave_ip,
                         self.master_ip
                     )
@@ -87,7 +68,6 @@ class sync_config(object):
             self.__tcv_dict = {}
         else:
             self.__dir_offset = ""
-        self.monitor_server = monitor_server
         self.__dict = {}
         self._create_directories()
         # flags
@@ -117,30 +97,14 @@ class sync_config(object):
         self.mon_version = "?.?-0"
         # clear md_struct
         self.__md_struct = None
-        if not self.master:
-            # try to get relayer / mon_version from latest build
-            _latest_build = mon_dist_slave.objects.filter(Q(device=self.monitor_server)).order_by("-pk")
-            if len(_latest_build):
-                _latest_build = _latest_build[0]
-                self.mon_version = _latest_build.mon_version
-                self.relayer_version = _latest_build.relayer_version
-                self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
-
-    def get_send_data(self):
-        _r_dict = {
-            "master": True if not self.__slave_name else False,
-        }
-        if self.__slave_name:
-            _r_dict.update(
-                {
-                    "name": self.__slave_name,
-                    "pk": self.monitor_server.pk,
-                    "uuid": self.monitor_server.uuid,
-                    "master_ip": self.master_ip,
-                    "slave_ip": self.slave_ip,
-                }
-            )
-        return _r_dict
+        # if not self.master:
+        #    # try to get relayer / mon_version from latest build
+        #    _latest_build = mon_dist_slave.objects.filter(Q(device=self.monitor_server)).order_by("-pk")
+        #    if len(_latest_build):
+        #        _latest_build = _latest_build[0]
+        #        self.mon_version = _latest_build.mon_version
+        #        self.relayer_version = _latest_build.relayer_version
+        #        self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
 
     def _relayer_gen(self):
         # return the relayer generation
@@ -184,7 +148,7 @@ class sync_config(object):
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
             "[sc {}] {}".format(
-                self.__slave_name if self.__slave_name else "master",
+                self.name if self.name else "master",
                 what
             ),
             level

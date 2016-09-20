@@ -195,7 +195,7 @@ class main_process(ICSWBasePoolClient):
             bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self._recv_command,
-            client_type="meta-server",
+            client_type=icswServiceEnum.meta_server,
         )
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
         if hm_classes and global_config["TRACK_CSW_MEMORY"]:

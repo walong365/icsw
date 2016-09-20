@@ -28,11 +28,10 @@ software and performance
 
 from django.db.models import Q
 
-from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device
-from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.md_config_server.config import global_config, sync_config
-from initat.tools import config_tools, logging_tools, server_command, threading_tools
+from initat.host_monitoring.client_enums import icswServiceEnum
+from initat.tools import logging_tools, server_command, threading_tools
+from .config import global_config
+from .sync_config import sync_config
 
 
 class RemoteSlave(object):
@@ -56,8 +55,6 @@ class SyncerProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        db_tools.close_connection()
-        self.router_obj = config_tools.RouterObject(self.log)
         self.__register_timer = False
         self.register_func("send_register_msg", self._send_register_msg)
         self.register_func("file_content_result", self._file_content_result)
@@ -65,6 +62,7 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("check_for_slaves", self._check_for_slaves)
         self.register_func("check_for_redistribute", self._check_for_redistribute)
         self.register_func("build_info", self._build_info)
+        self.register_func("distribute_info", self._distribute_info)
         self.__build_in_progress, self.__build_version = (False, 0)
 
         # this used to be just set in _check_for_slaves, but apparently check_for_redistribute can be called before that
@@ -76,14 +74,40 @@ class SyncerProcess(threading_tools.process_obj):
     def loop_post(self):
         self.__log_template.close()
 
+    def _distribute_info(self, srv_com, **kwargs):
+        srv_com = server_command.srv_command(source=srv_com)
+        dist_info = server_command.decompress(srv_com["*info"], marshal=True)
+        self.log("distribution info has {}".format(logging_tools.get_plural("entry", len(dist_info))))
+        self.__slave_configs, self.__slave_lut = ({}, {})
+        for _di in dist_info:
+            if _di["master"]:
+                self.log("found master entry")
+                self.__master_config = sync_config(self, _di, distributed=True if len(dist_info) > 1 else False)
+            else:
+                self.log("found slave entry ({})".format(", ".join(sorted(_di.keys()))))
+                _slave_c = sync_config(
+                    self,
+                    _di,
+                )
+                self.__slave_configs[_slave_c.pk] = _slave_c
+                self.__slave_lut[_slave_c.name] = _slave_c.pk
+                self.__slave_lut[_slave_c.uuid] = _slave_c.pk
+                self.log(
+                    "  slave {} (IP {}, {})".format(
+                        _slave_c.name,
+                        _slave_c.slave_ip,
+                        _slave_c.uuid,
+                    )
+                )
+
     def _check_for_slaves(self, **kwargs):
+        # old code
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         slave_servers = device.objects.filter(
             Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.monitor_slave.name)
         ).select_related("domain_tree_node")
         # slave configs
         self.__master_config = sync_config(self, master_server, distributed=True if len(slave_servers) else False)
-        self.__slave_configs, self.__slave_lut = ({}, {})
         # connect to local relayer
         self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", master_server.uuid))
         self.send_pool_message("register_slave", "127.0.0.1", master_server.uuid)
@@ -124,6 +148,7 @@ class SyncerProcess(threading_tools.process_obj):
             info=server_command.compress(_send_data, marshal=True),
         )
         self.send_pool_message("send_slave_command", unicode(distr_info))
+        print "***", _send_data
         if not self.__register_timer:
             self.__register_timer = True
             self.register_func("relayer_info", self._relayer_info)

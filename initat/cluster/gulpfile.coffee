@@ -686,6 +686,16 @@ gulp.task("serve-graphics", (cb) ->
     cb()
 )
 
+gulp.task("serve-icinga", (cb) ->
+    connect.server(
+        {
+            root: "/opt/cluster/icinga/share/images/logos"
+            port: 8083
+        }
+    )
+    cb()
+)
+
 gulp.task("serve-main", (cb) ->
     connect.server(
         {
@@ -695,6 +705,13 @@ gulp.task("serve-main", (cb) ->
             fallback: "work/icsw/main.html"
             middleware: (connect, opt) ->
                 return [
+                    middleware(
+                        "/icsw/api/v2/static/icinga/",
+                        {
+                            pathRewrite: {"/icsw/api/v2/static/icinga/": "/"}
+                            target: "http://localhost:8083"
+                        }
+                    )
                     middleware(
                         "/icsw/api/v2/static/graphs/",
                         {
@@ -734,7 +751,7 @@ gulp.task(
     "serve-all",
     gulp.series(
         "create-content",
-        gulp.parallel("serve-graphics", "serve-django", "serve-main", "watch")
+        gulp.parallel("serve-graphics", "serve-icinga", "serve-django", "serve-main", "watch")
     ), (cb) ->
         cb()
 )

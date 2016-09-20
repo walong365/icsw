@@ -167,7 +167,7 @@ class main_process(ICSWBasePool):
             bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self._recv_data,
-            client_type="logging-server",
+            client_type=icswServiceEnum.logging_server,
         )
 
         _fwd_string = self.CC.CS["log.forward.address"].strip()

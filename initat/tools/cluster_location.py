@@ -94,15 +94,6 @@ def read_config_from_db(g_config, server_type_enum, sql_info, init_list=[]):
                 g_config.add_config_entries([(wo_var_name, wo_var)])
 
 
-def read_global_config(dc, server_type, init_dict=None, host_name=""):
-    if init_dict is None:
-        init_dict = {}
-    gcd = configfile.configuration(server_type.replace("%", ""), init_dict)
-    # FIXME
-    # reload_global_config(dc, gcd, server_type, host_name)
-    return gcd
-
-
 class db_device_variable(object):
     def __init__(self, cur_dev, var_name, **kwargs):
         if type(cur_dev) in [int, long]:

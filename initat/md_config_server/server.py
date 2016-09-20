@@ -27,7 +27,7 @@ import zmq
 from django.db.models import Q
 
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster.backbone import db_tools
+from initat.cluster.backbone import db_tools, routing
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
     mon_check_command_special, mon_check_command, SpecialGroupsEnum
 from initat.cluster.backbone.models.functions import get_related_models
@@ -134,6 +134,7 @@ class server_process(
         if "MD_TYPE" in global_config:
             self.register_func("register_slave", self._register_slave)
             self.register_func("send_command", self._send_command)
+            self.register_func("send_slave_command", self._send_slave_command)
             self.register_func("ocsp_results", self._ocsp_results)
             self.__external_cmd_file = None
             self.register_func("external_cmd_file", self._set_external_cmd_file)
@@ -474,6 +475,12 @@ class server_process(
         else:
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
 
+    def _send_slave_command(self, *args, **kwargs):
+        # send srv_command to local distribution server
+        send_com = server_command.srv_command(source=args[2])
+        # print unicode(send_com)
+        self.send_to_remote_server_ip("127.0.0.1", routing.get_server_uuid(), icswServiceEnum.monitor_slave, send_com)
+
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
         try:
@@ -501,9 +508,8 @@ class server_process(
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
-            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
-            server_type="md-config",
+            service_type_enum=icswServiceEnum.monitor_server,
             simple_server_bind=True,
             pollin=self.remote_call,
         )

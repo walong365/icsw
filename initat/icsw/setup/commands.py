@@ -362,7 +362,7 @@ def create_db_cf(opts):
         return False
 
     # content
-    _cs = config_store.ConfigStore(DB_ACCESS_CS_NAME)
+    _cs = config_store.ConfigStore(DB_ACCESS_CS_NAME, access_mode=config_store.AccessModeEnum.LOCAL)
     for _key in sorted(c_dict):
         if not _key.startswith("_"):
             _cs["db.{}".format(_key.lower())] = c_dict[_key]
