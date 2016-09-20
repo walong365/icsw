@@ -40,11 +40,11 @@ global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
 __all__ = [
-    "sync_config",
+    "SyncConfig",
 ]
 
 
-class sync_config(object):
+class SyncConfig(object):
     def __init__(self, proc, monitor_server, **kwargs):
         """
         holds information about remote monitoring satellites

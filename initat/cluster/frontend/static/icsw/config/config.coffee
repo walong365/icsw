@@ -176,13 +176,22 @@ config_module = angular.module(
         open_configs: []
         # active tab
         active_tab: 0
+        # show server configs
+        with_server: 0
+        # show service configs
+        with_service: 0
     }
 
     # filter related functions
 
     $scope.update_search = () ->
         if $scope.struct.config_tree?
-            $scope.struct.config_tree.update_filtered_list($scope.struct.search_str, $scope.struct.filter_settings)
+            $scope.struct.config_tree.update_filtered_list(
+                $scope.struct.search_str
+                $scope.struct.filter_settings
+                $scope.struct.with_server
+                $scope.struct.with_service
+            )
 
     _update_filter_settings = () ->
         for _fltr in ["config", "script", "mon", "var"]
@@ -198,6 +207,9 @@ config_module = angular.module(
         $scope.struct.filter_settings[name] = !$scope.struct.filter_settings[name]
         if not _.some(($scope.struct.filter_settings[_fltr] for _fltr in ["config", "script", "mon", "var"]))
             $scope.struct.filter_settings.name = true
+        _update_filter_settings()
+
+    $scope.change_boolean_filters = () ->
         _update_filter_settings()
 
     _update_filter_settings()

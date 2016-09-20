@@ -31,7 +31,7 @@ from django.db.models import Q
 from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.tools import logging_tools, server_command, threading_tools
 from .config import global_config
-from .sync_config import sync_config
+from .sync_config import SyncConfig
 
 
 class RemoteSlave(object):
@@ -82,10 +82,10 @@ class SyncerProcess(threading_tools.process_obj):
         for _di in dist_info:
             if _di["master"]:
                 self.log("found master entry")
-                self.__master_config = sync_config(self, _di, distributed=True if len(dist_info) > 1 else False)
+                self.__master_config = SyncConfig(self, _di, distributed=True if len(dist_info) > 1 else False)
             else:
                 self.log("found slave entry ({})".format(", ".join(sorted(_di.keys()))))
-                _slave_c = sync_config(
+                _slave_c = SyncConfig(
                     self,
                     _di,
                 )
@@ -107,7 +107,7 @@ class SyncerProcess(threading_tools.process_obj):
             Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.monitor_slave.name)
         ).select_related("domain_tree_node")
         # slave configs
-        self.__master_config = sync_config(self, master_server, distributed=True if len(slave_servers) else False)
+        self.__master_config = SyncConfig(self, master_server, distributed=True if len(slave_servers) else False)
         # connect to local relayer
         self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", master_server.uuid))
         self.send_pool_message("register_slave", "127.0.0.1", master_server.uuid)
@@ -120,7 +120,7 @@ class SyncerProcess(threading_tools.process_obj):
                 )
             )
             for cur_dev in slave_servers:
-                _slave_c = sync_config(
+                _slave_c = SyncConfig(
                     self,
                     cur_dev,
                     slave_name=cur_dev.full_name,

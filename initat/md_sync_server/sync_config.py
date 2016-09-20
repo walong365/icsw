@@ -34,11 +34,11 @@ from .config import global_config
 
 
 __all__ = [
-    "sync_config",
+    "SyncConfig",
 ]
 
 
-class sync_config(object):
+class SyncConfig(object):
     def __init__(self, proc, di_dict, **kwargs):
         """
         holds information about remote monitoring satellites

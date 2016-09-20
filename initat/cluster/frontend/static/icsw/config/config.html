@@ -110,7 +110,7 @@
     </div>
     <div ng-if="struct.data_valid">
         <h2>
-            {{ struct.config_tree.list.length }} Configurations, {{ filtered.length }} shown, {{ struct.config_tree.$selected }} selected
+            {{ struct.config_tree.list.length }} Configurations, {{ struct.config_tree.filtered_list.length }} shown, {{ struct.config_tree.$selected }} selected
             <icsw-tools-button-static
                 type="create"
                 value="create new config"
@@ -143,7 +143,6 @@
                 <table
                     st-table="configs_displayed"
                     st-safe-src="struct.config_tree.filtered_list"
-                    icsw-tools-table-leak-filtered="filtered"
                     class="table table-hover table-condensed table-striped"
                     style="width:100%;"
                 >
@@ -169,12 +168,16 @@
                                             </div>
                                         </div>
                                     </div>
+                                    <div class="col-sm-2">
+                                        Service: <icsw-tools-tri-button icsw-state="struct.with_service" icsw-callback="change_boolean_filters"></icsw-tools-tri-button>
+                                        Server: <icsw-tools-tri-button icsw-state="struct.with_server" icsw-callback="change_boolean_filters"></icsw-tools-tri-button>
+                                    </div>
                                     <div
                                         icsw-tools-pagination
                                         st-items-by-page="15"
                                         st-displayed-pages="11"
                                         possible-items-by-page="15,30,100,200"
-                                        class="col-sm-8"
+                                        class="col-sm-6"
                                     ></div>
                                 </div>
                             </td>
@@ -298,10 +301,10 @@
                         <div class="controls col-sm-7">
                             <ui-select ng-model="edit_obj.config_catalog" class="maxwidth500">
                                 <ui-select-match class="ui-select-match" placeholder="select config catalog">
-                                    {{ $select.selected.name }}
+                                    {{ $select.selected.$$info_str }}
                                 </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_tree.catalog_list | props_filter:{name:$select.search}">
-                                    <div ng-bind-html="value.name | highlight: $select.search"></div>
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in config_tree.catalog_list | props_filter:{$$info_str:$select.search}">
+                                    <div ng-bind-html="value.$$info_str | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
                         </div>

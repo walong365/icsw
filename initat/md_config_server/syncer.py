@@ -31,7 +31,7 @@ from django.db.models import Q
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.md_config_server.config import global_config, sync_config
+from initat.md_config_server.config import global_config, SyncConfig
 from initat.tools import config_tools, logging_tools, server_command, threading_tools
 
 
@@ -82,7 +82,7 @@ class SyncerProcess(threading_tools.process_obj):
             Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.monitor_slave.name)
         ).select_related("domain_tree_node")
         # slave configs
-        self.__master_config = sync_config(self, master_server, distributed=True if len(slave_servers) else False)
+        self.__master_config = SyncConfig(self, master_server, distributed=True if len(slave_servers) else False)
         self.__slave_configs, self.__slave_lut = ({}, {})
         # connect to local relayer
         self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", master_server.uuid))
@@ -96,7 +96,7 @@ class SyncerProcess(threading_tools.process_obj):
                 )
             )
             for cur_dev in slave_servers:
-                _slave_c = sync_config(
+                _slave_c = SyncConfig(
                     self,
                     cur_dev,
                     slave_name=cur_dev.full_name,
