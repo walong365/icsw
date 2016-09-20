@@ -1145,6 +1145,8 @@ class PDFReportGenerator(ReportGenerator):
             row_collector.current_asset_type = AssetType(ar.run_type)
             generate_csv_entry_for_assetrun(ar, row_collector.collect)
 
+            time_str = ar.asset_batch.run_start_time.strftime(ASSET_DATETIMEFORMAT)
+
             if AssetType(ar.run_type) == AssetType.UPDATE:
                 data = row_collector.rows_dict[1:]
                 data = sorted(data, key=lambda k: k['update_status'])
@@ -1178,8 +1180,8 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Install Status", "update_status", 15.0)]
                 header_names_right = [("Install Date", "install_date", 15.0)]
 
-                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
+                    time_str), header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1210,8 +1212,8 @@ class PDFReportGenerator(ReportGenerator):
                                      ("License Key", "license_key", 50.0)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
+                    time_str), header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1261,8 +1263,8 @@ class PDFReportGenerator(ReportGenerator):
                 header_names_right = [("Size", "package_size", 15.00),
                                       ("Install Date", "package_install_date", 15.00)]
 
-                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
+                    time_str), header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1301,8 +1303,8 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Optional", "update_optional", 33.33)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
+                    time_str), header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1336,8 +1338,8 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Attributes", "hardware_attributes", 70.00)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
+                    time_str), header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1374,8 +1376,8 @@ class PDFReportGenerator(ReportGenerator):
                                      ("PID", "process_id", 50.0)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
+                    time_str), header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1412,8 +1414,8 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Value", "value", 54.0)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
+                    time_str), header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1458,8 +1460,8 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Device", "device", 28.75)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for {}".format(section_number, heading, _device.full_name),
-                                            header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
+                    time_str), header_names_left, header_names_right, rpt, data)
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1601,10 +1603,12 @@ class PDFReportGenerator(ReportGenerator):
         t_body = Table(data, colWidths=(available_width * 0.10, available_width * 0.90),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
 
-        p_h = Paragraph('<font face="{}" size="16">{} Hardware Report for {}</font>'.format(
+        time_str = hardware_report_ar.asset_batch.run_start_time.strftime(ASSET_DATETIMEFORMAT)
+        p_h = Paragraph('<font face="{}" size="16">{} Hardware Report for [{}] ({})</font>'.format(
             self.bold_font,
             section_number,
-            hardware_report_ar.asset_batch.device.name),
+            hardware_report_ar.asset_batch.device.name,
+            time_str),
             style_sheet["BodyText"])
 
         data = [[p_h]]
