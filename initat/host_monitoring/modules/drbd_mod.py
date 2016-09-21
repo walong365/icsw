@@ -48,7 +48,7 @@ class drbd_status_command(hm_classes.hm_command):
                 )
         else:
             srv_com.set_result(
-                "no drbd_tools found",
+                "no drbd_tools or drbd_config found",
                 server_command.SRV_REPLY_STATE_ERROR
             )
 
