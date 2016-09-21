@@ -34,12 +34,9 @@ class icswServiceEnumBaseClient(object):
         self.root_service = root_service
         # should match name of instance in {server,client,...}.xml
         self.msi_block_name = msi_block_name or self.name
-        if relayer_service:
-            self.client_service = False
-            self.server_service = True
-        else:
-            self.client_service = True
-            self.server_service = False
+        self.client_service = True
+        self.server_service = False
+        self.relayer_service = relayer_service
         self.clear_instance_names()
 
     def clear_instance_names(self):

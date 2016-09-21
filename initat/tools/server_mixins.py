@@ -347,9 +347,7 @@ class NetworkBindMixin(object):
         pollin = kwargs.get("pollin", None)
         ext_call = kwargs.get("ext_call", False)
         immediate = kwargs.get("immediate", True)
-        if "bind_port" in kwargs:
-            bind_port = kwargs["bind_port"]
-        elif "server_type" in kwargs:
+        if "server_type" in kwargs:
             _inst = InstanceXML(log_com=self.log)
             _srv_type = kwargs["server_type"]
             bind_port = _inst.get_port_dict(_srv_type, ptype="command")
@@ -357,6 +355,8 @@ class NetworkBindMixin(object):
             _inst = InstanceXML(log_com=self.log)
             _srv_type = kwargs["service_type_enum"]
             bind_port = _inst.get_port_dict(_srv_type, ptype="command")
+        elif "bind_port" in kwargs:
+            bind_port = kwargs["bind_port"]
         else:
             raise KeyError("neither bind_port, service_type_enum nor server_type defined in kwargs")
         main_socket_name = kwargs.get("main_socket_name", "main_socket")
