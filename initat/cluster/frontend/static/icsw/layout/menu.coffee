@@ -283,7 +283,7 @@ menu_module = angular.module(
     icswUserService,
 ) ->
     # console.log icswAcessLevelService
-    {input, ul, li, a, span, h4, div, p, strong, h3} = React.DOM
+    {ul, li, a, span, h4, div, p, strong, h3} = React.DOM
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
@@ -340,6 +340,8 @@ menu_module = angular.module(
         displayName: "menuheader"
         getDefaultProps: () ->
         render: () ->
+            SHOW_MENU_ICON = false
+            SHOW_MENU_TITLE = true
             items_added = 0
             items_per_column = {}
 
@@ -365,7 +367,7 @@ menu_module = angular.module(
                                         key: "p"
                                     }
                                     [
-                                        strong(
+                                        h3(
                                             {
                                                 key: "strong"
                                             }
@@ -429,14 +431,14 @@ menu_module = angular.module(
 
                     ul_items.push(ul_item)
                 _m_item = []
-                if state.icon? and state.icon != ""
+                if state.icon? and state.icon != "" and SHOW_MENU_ICON
                     _m_item.push span(
                         {
                         className: "fa #{state.icon} fa-lg"
                         key: "span"
                         }
                     )
-                if menu_name? and menu_name != ""
+                if menu_name? and menu_name != "" and SHOW_MENU_TITLE
                     _m_item.push span(
                         {
                             key: "text"

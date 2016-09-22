@@ -1,6 +1,6 @@
 <routes>
     <routeGroup name="mm_devices">
-        <menuHeader type="dict" name_str="Devices" icon_str="" side_str="left"/>
+        <menuHeader type="dict" name_str="Devices" icon_str="fa-cog" side_str="left"/>
         <routeSubGroup name_str="Settings">
             <route name="main.devicecreate">
                 <stateData type="dict" url_str="/devicecreate" templateUrl_str="icsw/main/device/create.html"/>
@@ -121,7 +121,7 @@
 
 
     <routeGroup name="mon">
-        <menuHeader type="dict" name_str="Monitoring" icon_str="" side_str="left"/>
+        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-cog" side_str="left"/>
         <routeSubGroup name_str="Status">
             <route name="main.livestatus">
                 <stateData type="dict" url_str="/livestatus/all"
@@ -296,7 +296,7 @@
 
 
     <routeGroup name="cluster">
-        <menuHeader type="dict" name_str="HPC" icon_str="" side_str="left"/>
+        <menuHeader type="dict" name_str="HPC" icon_str="fa-cog" side_str="left"/>
         <routeSubGroup name_str="Cluster">
             <route name="main.deployboot">
                 <stateData type="dict" url_str="/deployboot" templateUrl_str="icsw/main/deploy/boot.html"/>
@@ -389,7 +389,7 @@
 
 
     <routeGroup name="todo">
-        <menuHeader type="dict" name_str="Fix" icon_str="" side_str="left"/>
+        <menuHeader type="dict" name_str="Fix" icon_str="fa-cog" side_str="left"/>
         <routeSubGroup name_str="Links to fix">
             <route name="main.monitorredirect">
                 <stateData type="dict" url_str="/monitorredirect" resolve_bool="yes"/>
@@ -435,7 +435,7 @@
 
 
     <routeGroup name="rightmenu">
-        <menuHeader type="dict" name_str="" icon_str="fa-cog" side_str="right"/>
+        <menuHeader type="dict" name_str="$$USER_INFO" icon_str="fa-cog" side_str="right"/>
         <routeSubGroup name_str="History">
             <route name="main.monitorbuildinfo">
                 <stateData type="dict" url_str="/monitorbuildinfo" template_str="&lt;icsw-monitoring-build-info&gt;&lt;/icsw-monitoring-build-info&gt;"/>
@@ -533,9 +533,6 @@
             </route>
         </routeSubGroup>
     </routeGroup>
-
-
-
     <routeGroup name="dummy">
         <routeSubGroup name_str="Dummyg">
             <route name="main.dashboard">
