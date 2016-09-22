@@ -40,7 +40,7 @@ from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_read
 from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.status import StatusProcess, LiveSocket
-from initat.md_config_server.syncer import SyncerProcess, RemoteSlave
+from initat.md_config_server.syncer import SyncerProcess, RemoteServer
 from initat.tools import logging_tools, process_tools, server_command, \
     threading_tools, server_mixins, configfile
 from initat.tools.server_mixins import RemoteCall
@@ -132,7 +132,7 @@ class server_process(
         self._init_network_sockets()
 
         if "MD_TYPE" in global_config:
-            self.register_func("register_slave", self._register_slave)
+            self.register_func("register_remote", self._register_remote)
             self.register_func("send_command", self._send_command)
             self.register_func("ocsp_results", self._ocsp_results)
             self.__external_cmd_file = None
@@ -415,14 +415,14 @@ class server_process(
                 self.send_to_process("build", "rebuild_config", cache_mode=global_config["INITIAL_CONFIG_CACHE_MODE"])
         self.CC.process_added(src_process, src_pid)
 
-    def _register_slave(self, *args, **kwargs):
-        _src_proc, _src_id, slave_ip, slave_uuid = args
-        if slave_uuid not in self.__slaves:
-            # in fact only one primary slave is handled
-            rs = RemoteSlave(slave_uuid, slave_ip, self.CC.Instance.get_port_dict(icswServiceEnum.monitor_slave, command=True))
+    def _register_remote(self, *args, **kwargs):
+        _src_proc, _src_id, remote_ip, remote_uuid, remote_enum_name = args
+        if remote_uuid not in self.__remotes:
+            # in fact only one primary remote is handled
+            rs = RemoteServer(remote_uuid, remote_ip, self.CC.Instance.get_port_dict(getattr(icswServiceEnum, remote_enum_name), command=True))
             self.log("connecting to {}".format(unicode(rs)))
             self.main_socket.connect(rs.conn_str)
-            self.__slaves[slave_uuid] = rs
+            self.__remotes[remote_uuid] = rs
 
     def _ocsp_results(self, *args, **kwargs):
         _src_proc, _src_pid, lines = args
@@ -489,8 +489,8 @@ class server_process(
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            if full_uuid in self.__slaves:
-                self.log("target is {}".format(unicode(self.__slaves[full_uuid])))
+            if full_uuid in self.__remotes:
+                self.log("target is {}".format(unicode(self.__remotes[full_uuid])))
         else:
             self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
 
@@ -508,7 +508,7 @@ class server_process(
             pollin=self.remote_call,
         )
 
-        self.__slaves = {}
+        self.__remotes = {}
 
         conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
         vector_socket = self.zmq_context.socket(zmq.PUSH)
@@ -563,6 +563,10 @@ class server_process(
 
     @RemoteCall(target_process="syncer")
     def file_content_result(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="syncer")
+    def slave_info(self, srv_com, **kwargs):
         return srv_com
 
     @RemoteCall(target_process="syncer")

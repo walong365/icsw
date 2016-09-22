@@ -49,4 +49,4 @@ else:
     BUILD_MACHINE = os.uname()[1]
 
 VERSION_MAJOR = VERSION_STRING.split("-")[0]
-VERSION_MINOR = VERSION_STRING.split("-")[0]
+VERSION_MINOR = VERSION_STRING.split("-")[1]

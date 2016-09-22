@@ -33,7 +33,8 @@ from initat.md_sync_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins, config_store
 from initat.tools.server_mixins import RemoteCall
-from .syncer import SyncerProcess, RemoteSlave
+from .syncer import SyncerProcess
+from .sync_config import RemoteServer
 
 
 @server_mixins.RemoteCallProcess
@@ -61,9 +62,9 @@ class server_process(
         self.VCM_check_md_version()
         self.VCM_check_relay_version()
         self._init_network_sockets()
-        self.__is_distributor = False
+        self.add_process(SyncerProcess("syncer"), start=True)
         self.register_func("send_command", self._send_command)
-        self.register_func("register_slave", self._register_slave)
+        self.register_func("register_remote", self._register_remote)
         _srv_com = server_command.srv_command(command="status")
         # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
 
@@ -134,13 +135,13 @@ class server_process(
     def process_start(self, src_process, src_pid):
         self.CC.process_added(src_process, src_pid)
 
-    def _register_slave(self, *args, **kwargs):
-        _src_proc, _src_id, slave_ip, slave_uuid = args
-        if slave_uuid not in self.__slaves:
-            rs = RemoteSlave(slave_uuid, slave_ip, self.CC.Instance.get_port_dict(icswServiceEnum.monitor_slave, command=True))
+    def _register_remote(self, *args, **kwargs):
+        _src_proc, _src_id, remote_ip, remote_uuid, remote_port = args
+        if remote_uuid not in self.__slaves:
+            rs = RemoteServer(remote_uuid, remote_ip, remote_port)
             self.log("connecting to {}".format(unicode(rs)))
             self.main_socket.connect(rs.conn_str)
-            self.__slaves[slave_uuid] = rs
+            self.__slaves[remote_uuid] = rs
 
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
@@ -241,10 +242,6 @@ class server_process(
 
     @RemoteCall(target_process="syncer")
     def distribute_info(self, srv_com, **kwargs):
-        if not self.__is_distributor:
-            self.log("got distribution info, starting distribution processes")
-            self.__is_distributor = True
-            self.add_process(SyncerProcess("syncer"), start=True)
         return srv_com
 
     def _start_stop_mon_process(self, srv_com):
@@ -299,6 +296,10 @@ class server_process(
 
     @RemoteCall(target_process="dynconfig")
     def monitoring_info(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall()
+    def register_master(self, srv_com, **kwargs):
         return srv_com
 
     @RemoteCall(target_process="syncer")

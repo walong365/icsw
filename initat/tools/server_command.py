@@ -26,6 +26,7 @@ import marshal
 import os
 import pickle
 import collections
+import json
 import re
 
 from lxml import etree
@@ -108,6 +109,8 @@ def compress(in_str, **kwargs):
         in_str = marshal.dumps(in_str)
     elif kwargs.get("pickle", False):
         in_str = pickle.dumps(in_str)
+    elif kwargs.get("json", False):
+        in_str = json.dumps(in_str)
     return base64.b64encode(bz2.compress(in_str))
 
 
@@ -117,6 +120,8 @@ def decompress(in_str, **kwargs):
         ret_struct = marshal.loads(ret_struct)
     elif kwargs.get("pickle", False):
         ret_struct = pickle.loads(ret_struct)
+    elif kwargs.get("json", False):
+        ret_struct = json.loads(ret_struct)
     return ret_struct
 
 

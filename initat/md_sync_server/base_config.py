@@ -1,6 +1,6 @@
 # Copyright (C) 2016 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of icsw-server
+# this file is part of md-config-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,19 +17,27 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" config part of md-config-server """
+""" syncer definition basics for md-config and md-sync-server """
 
-from initat.tools import configfile, process_tools
+from enum import Enum
 
 
 __all__ = [
-    "global_config",
-    "CS_NAME",
-    "CS_MON_NAME",
+    "RemoteServer",
+    "SlaveState",
 ]
 
-global_config = configfile.get_global_config(process_tools.get_programm_name())
-# general settings for main proces
-CS_NAME = "icsw.md-sync"
-# monitoring info (used icinga version)
-CS_MON_NAME = "icsw.md-sync.mon"
+
+class RemoteServer(object):
+    def __init__(self, uuid, ip, port):
+        self.ip = ip
+        self.port = port
+        self.conn_str = "tcp://{}:{:d}".format(self.ip, self.port)
+        self.uuid = uuid
+
+    def __unicode__(self):
+        return u"RemoteServer at {} [{}]".format(self.conn_str, self.uuid)
+
+
+class SlaveState(Enum):
+    init = "init"

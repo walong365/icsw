@@ -32,18 +32,14 @@ from initat.cluster.backbone import db_tools, routing
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.md_config_server.config import global_config, SyncConfig
+from initat.md_sync_server.base_config import RemoteServer
 from initat.tools import config_tools, logging_tools, server_command, threading_tools
 
 
-class RemoteSlave(object):
-    def __init__(self, uuid, ip, port):
-        self.ip = ip
-        self.port = port
-        self.conn_str = "tcp://{}:{:d}".format(self.ip, self.port)
-        self.uuid = uuid
-
-    def __unicode__(self):
-        return u"RemoteSlave at {} [{}]".format(self.conn_str, self.uuid)
+__all__ = [
+    "RemoteServer",
+    "SyncerProcess",
+]
 
 
 class SyncerProcess(threading_tools.process_obj):
@@ -63,6 +59,7 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("check_for_slaves", self._check_for_slaves)
         self.register_func("check_for_redistribute", self._check_for_redistribute)
         self.register_func("build_info", self._build_info)
+        self.register_func("slave_info", self._slave_info)
         self.__build_in_progress, self.__build_version = (False, 0)
 
         # this used to be just set in _check_for_slaves, but apparently check_for_redistribute can be called before that
@@ -85,7 +82,7 @@ class SyncerProcess(threading_tools.process_obj):
         # connect to local relayer
         _primary_slave_uuid = routing.get_server_uuid(icswServiceEnum.monitor_slave, master_server.uuid)
         self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", _primary_slave_uuid))
-        self.send_pool_message("register_slave", "127.0.0.1", _primary_slave_uuid)
+        self.send_pool_message("register_remote", "127.0.0.1", _primary_slave_uuid, icswServiceEnum.monitor_slave.name)
         _send_data = [self.__master_config.get_send_data()]
         if len(slave_servers):
             self.log(
@@ -153,6 +150,11 @@ class SyncerProcess(threading_tools.process_obj):
                 self.log("uuid {} not found in slave_lut".format(uuid), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("uuid missing in relayer_info", logging_tools.LOG_LEVEL_ERROR)
+
+    def _slave_info(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        info_list = server_command.decompress(srv_com["*slave_info"], json=True)
+        print "got info", info_list
 
     def _build_info(self, *args, **kwargs):
         # build info send from relayer
