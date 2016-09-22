@@ -19,26 +19,23 @@
 #
 """ report views """
 
+import Queue
 import base64
 import json
 import os
-import Queue
 from threading import Thread
 
 from django.conf import settings
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from reportlab.lib.pagesizes import landscape, letter, A4, A3
 
-
-from initat.cluster.backbone.models import device, device_variable, AssetType, PackageTypeEnum, RunStatus, RunResult
+from initat.cluster.backbone.models import device, device_variable
 from initat.cluster.backbone.models.report import ReportHistory
-from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
-from initat.cluster.frontend.helper_functions import (xml_wrapper,
-    contact_server)
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.report_server.report import sizeof_fmt, _select_assetruns_for_device
 from initat.tools import server_command
 
@@ -94,6 +91,8 @@ class GetReportData(View):
             report_type = report_history.type
             data = report_history.get_data()
             data_b64 = base64.b64encode(data)
+        else:
+            report_id = 0
 
         return HttpResponse(
             json.dumps(
@@ -143,7 +142,10 @@ class GenerateReportPdf(View):
             icswServiceEnum.report_server,
             srv_com,
         )
-        report_id = result.get("report_id")
+        if result is not None:
+            report_id = result.get("report_id")
+        else:
+            report_id = 0
 
         return HttpResponse(
             json.dumps(
@@ -213,7 +215,7 @@ class GenerateReportXlsx(View):
 
         queue = Queue.Queue()
 
-        Thread(target=_generate_report, args=[pk_settings, _devices, queue, "xlsx"]).start()
+        Thread(target=generate_report, args=[pk_settings, _devices, queue, "xlsx"]).start()
 
         report_id = queue.get()
 
@@ -341,25 +343,9 @@ class UpdateDownloadCount(View):
 def _init_report_settings(request):
     settings_dict = {}
 
-    for key in request.POST.iterkeys():
-        valuelist = request.POST.getlist(key)
-        # look for pk in key
-
-        index = key.split("[")[1][:-1]
-        if index not in settings_dict:
-            settings_dict[index] = {}
-
-        if key[::-1][:4] == ']kp[':
-            settings_dict[index]["pk"] = int(valuelist[0])
-        else:
-            if valuelist[0] == "true":
-                value = True
-            elif valuelist[0] == "false":
-                value = False
-            else:
-                value = valuelist[0]
-
-            settings_dict[index][key.split("[")[-1][:-1]] = value
+    _settings = json.loads(request.POST["json"])
+    for index, stuff in enumerate(_settings):
+        settings_dict[index] = stuff
 
     pk_settings = {}
 
@@ -375,5 +361,7 @@ def _init_report_settings(request):
     for _device in device.objects.filter(idx__in=[int(pk) for pk in pk_settings.keys()]):
         if not _device.is_meta_device:
             _devices.append(_device)
+
+    print "**", pk_settings, _devices
 
     return pk_settings, _devices

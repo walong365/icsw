@@ -420,12 +420,13 @@ device_asset_module = angular.module(
             )
 
     $scope.select_devices = (obj) ->
-        icswSimpleAjaxCall({
-            url: ICSW_URLS.ASSET_GET_DEVICES_FOR_ASSET
-            data:
-                pk: obj[0]
-            dataType: 'json'
-        }
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.ASSET_GET_DEVICES_FOR_ASSET
+                data:
+                    pk: obj[0]
+                dataType: 'json'
+            }
         ).then(
             (result) ->
                 new_devs = []
@@ -440,12 +441,14 @@ device_asset_module = angular.module(
                             pks_s = pks_s.concat(dev.idx + ",")
                             devidx_dev_dict[dev.idx] = dev
 
-                icswSimpleAjaxCall({
-                    url: ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES
-                    data:
-                        pks: pks_s
-                    dataType: 'json'
-                }).then(
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES
+                        data:
+                            pks: pks_s
+                        dataType: 'json'
+                    }
+                ).then(
                     (result) ->
                         console.log "result: ", result
                         for obj in result.asset_runs
@@ -515,10 +518,11 @@ device_asset_module = angular.module(
     $scope, $q, ICSW_URLS, icswSimpleAjaxCall
 ) ->
     $scope.downloadCsv = ->
-        icswSimpleAjaxCall({
-            url: ICSW_URLS.ASSET_EXPORT_SCHEDULED_RUNS_TO_CSV
-            dataType: 'json'
-        }
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.ASSET_EXPORT_SCHEDULED_RUNS_TO_CSV
+                dataType: 'json'
+            }
         ).then(
             (result) ->
                     uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result.csv)

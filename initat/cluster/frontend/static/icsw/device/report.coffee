@@ -114,34 +114,34 @@ device_report_module = angular.module(
 
     $scope.assetbatch_selection_mode_change = () ->
         for dev in $scope.struct.devices
-                dev.$selected_for_report = false
+            dev.$selected_for_report = false
 
-                dev.$packages_selected = false
-                dev.$packages_selected_button_disabled = true
+            dev.$packages_selected = false
+            dev.$packages_selected_button_disabled = true
 
-                dev.$licenses_selected = false
-                dev.$licenses_selected_button_disabled = true
+            dev.$licenses_selected = false
+            dev.$licenses_selected_button_disabled = true
 
-                dev.$installed_updates_selected = false
-                dev.$installed_updates_button_disabled = true
+            dev.$installed_updates_selected = false
+            dev.$installed_updates_button_disabled = true
 
-                dev.$avail_updates_selected = false
-                dev.$avail_updates_button_disabled = true
+            dev.$avail_updates_selected = false
+            dev.$avail_updates_button_disabled = true
 
-                dev.$process_report_selected = false
-                dev.$process_report_button_disabled = true
+            dev.$process_report_selected = false
+            dev.$process_report_button_disabled = true
 
-                dev.$hardware_report_selected = false
-                dev.$hardware_report_button_disabled = true
+            dev.$hardware_report_selected = false
+            dev.$hardware_report_button_disabled = true
 
-                dev.$dmi_report_selected = false
-                dev.$dmi_report_button_disabled = true
+            dev.$dmi_report_selected = false
+            dev.$dmi_report_button_disabled = true
 
-                dev.$pci_report_selected = false
-                dev.$pci_report_button_disabled = true
+            dev.$pci_report_selected = false
+            dev.$pci_report_button_disabled = true
 
-                dev.$lstopo_report_selected = false
-                dev.$lstopo_report_button_disabled = true
+            dev.$lstopo_report_selected = false
+            dev.$lstopo_report_button_disabled = true
 
         if $scope.struct.assetbatch_selection_mode != ""
             idx_list = []
@@ -259,15 +259,17 @@ device_report_module = angular.module(
         )
 
     $scope.uploader.onCompleteAll = () ->
-        icswSimpleAjaxCall({
-                    url: ICSW_URLS.REPORT_GET_REPORT_GFX
-                    dataType: 'json'
-                }).then(
-                    (result) ->
-                        $scope.struct.gfx_b64_data = result.gfx
-                    (not_ok) ->
-                        console.log not_ok
-                )
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.REPORT_GET_REPORT_GFX
+                dataType: 'json'
+            }
+        ).then(
+            (result) ->
+                $scope.struct.gfx_b64_data = result.gfx
+            (not_ok) ->
+                console.log not_ok
+        )
 
         angular.element("input[type='file']").val(null);
         $scope.percentage = 0
@@ -278,9 +280,9 @@ device_report_module = angular.module(
         $scope.percentage = progress
 
     icswCSRFService.get_token().then(
-            (token) ->
-                $scope.uploader.formData.push({"csrfmiddlewaretoken": token})
-        )
+        (token) ->
+            $scope.uploader.formData.push({"csrfmiddlewaretoken": token})
+    )
 
     $scope.select_general_module = (selector) ->
         if selector == 0
@@ -455,66 +457,77 @@ device_report_module = angular.module(
         else
             url_to_use = ICSW_URLS.REPORT_GENERATE_REPORT_XLSX
 
-        icswSimpleAjaxCall({
-            url: url_to_use
-            data:
-                pks: settings
-            dataType: 'json'
-        }
+        icswSimpleAjaxCall(
+            {
+                url: url_to_use
+                data:
+                    json: angular.toJson(settings)
+                dataType: 'json'
+            }
         ).then(
             (result) ->
-                $scope.struct.generate_interval = $interval(
-                    () ->
-                        icswSimpleAjaxCall({
-                            url: ICSW_URLS.REPORT_GET_PROGRESS
-                            data:
-                                id: result.report_id
-                            dataType: 'json'
-                        }).then(
-                            (data) ->
-                                if $scope.struct.report_generating
-                                    if data.progress > $scope.struct.generate_progress
-                                        $scope.struct.generate_progress = data.progress
+                if result.report_id
+                    $scope.struct.generate_interval = $interval(
+                        () ->
+                            icswSimpleAjaxCall(
+                                {
+                                    url: ICSW_URLS.REPORT_GET_PROGRESS
+                                    data:
+                                        id: result.report_id
+                                    dataType: 'json'
+                                }
+                            ).then(
+                                (data) ->
+                                    if $scope.struct.report_generating
+                                        if data.progress > $scope.struct.generate_progress
+                                            $scope.struct.generate_progress = data.progress
 
-                                    if data.progress == -1
-                                        icswSimpleAjaxCall({
-                                            url: ICSW_URLS.REPORT_GET_REPORT_DATA
-                                            data:
-                                                report_id: result.report_id
-                                            dataType: 'json'
-                                        }).then(
-                                            (result) ->
-                                                console.log(result)
-                                                if result.hasOwnProperty("pdf")
-                                                    $scope.struct.report_download_url_name = "Download PDF Report"
-                                                    $scope.struct.report_download_name = "Report.pdf"
-                                                    blob = b64_to_blob(result.pdf, 'application/pdf')
-                                                    $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
-                                                    $scope.struct.report_id = result.report_id
+                                        if data.progress == -1
+                                            icswSimpleAjaxCall(
+                                                {
+                                                    url: ICSW_URLS.REPORT_GET_REPORT_DATA
+                                                    data:
+                                                        report_id: result.report_id
+                                                    dataType: 'json'
+                                                }
+                                            ).then(
+                                                (result) ->
+                                                    console.log(result)
+                                                    if result.hasOwnProperty("pdf")
+                                                        $scope.struct.report_download_url_name = "Download PDF Report"
+                                                        $scope.struct.report_download_name = "Report.pdf"
+                                                        blob = b64_to_blob(result.pdf, 'application/pdf')
+                                                        $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+                                                        $scope.struct.report_id = result.report_id
 
-                                                if result.hasOwnProperty("xlsx")
-                                                    $scope.struct.report_download_url_name = "Download (zipped) XLSX Report"
-                                                    $scope.struct.report_download_name = "Report.zip"
-                                                    blob = b64_to_blob(result.xlsx, 'application/zip')
-                                                    $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
-                                                    $scope.struct.report_id = result.report_id
+                                                    if result.hasOwnProperty("xlsx")
+                                                        $scope.struct.report_download_url_name = "Download (zipped) XLSX Report"
+                                                        $scope.struct.report_download_name = "Report.zip"
+                                                        blob = b64_to_blob(result.xlsx, 'application/zip')
+                                                        $scope.struct.report_download_url = (window.URL || window.webkitURL).createObjectURL(blob)
+                                                        $scope.struct.report_id = result.report_id
 
-                                                $scope.struct.report_generating = false
-                                                $scope.struct.generate_button_disabled = false
-                                                $interval.cancel($scope.struct.generate_interval)
-                                                refresh_available_reports()
-                                                $scope.struct.generate_progress = 0
-                                            (not_ok) ->
-                                                console.log not_ok
+                                                    $scope.struct.report_generating = false
+                                                    $scope.struct.generate_button_disabled = false
+                                                    $interval.cancel($scope.struct.generate_interval)
+                                                    refresh_available_reports()
+                                                    $scope.struct.generate_progress = 0
+                                                (not_ok) ->
+                                                    console.log not_ok
 
-                                                $scope.struct.report_generating = false
-                                                $scope.struct.generate_button_disabled = false
-                                                $interval.cancel($scope.struct.generate_interval)
-                                                $scope.struct.generate_progress = 0
+                                                    $scope.struct.report_generating = false
+                                                    $scope.struct.generate_button_disabled = false
+                                                    $interval.cancel($scope.struct.generate_interval)
+                                                    $scope.struct.generate_progress = 0
 
-                                        )
-                            )
-                    , 1000)
+                                            )
+                                )
+                        , 1000)
+                else
+                    # not ok
+                    $scope.struct.report_generating = false
+                    $scope.struct.generate_button_disabled = false
+                    $scope.struct.generate_progress = 0
             (not_ok) ->
                 $scope.struct.report_generating = false
                 $scope.struct.generate_button_disabled = false
