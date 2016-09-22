@@ -178,7 +178,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
             pollin=self.remote_call,
-            client_type="package-client",
+            client_type=icswServiceEnum.package_client,
         )
         self.main_socket.connect(self.srv_conn_str)
         self.network_info = {"ok": 0, "error": 0, "total": 0}

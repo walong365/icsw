@@ -432,8 +432,11 @@ class MemCacheBasedDict(object):
         if not self.__spm:
             for _key in self._keys:
                 self._update_key(_key)
-            self._set("keys", json.dumps(self._keys))
-            self._change_version()
+            self._store_keys()
+
+    def _store_keys(self):
+        self._set("keys", json.dumps(self._keys))
+        self._change_version()
 
     def _update_key(self, key):
         self._set("k_{}".format(key), self._dict[key].serialize())
@@ -441,8 +444,7 @@ class MemCacheBasedDict(object):
     def _key_modified(self, key):
         if not self.__spm:
             self._update_key(key)
-            self._set("keys", json.dumps(self._keys))
-            self._change_version()
+            self._store_keys()
 
     def _dummy_init(self):
         self._keys = []
@@ -519,6 +521,14 @@ class MemCacheBasedDict(object):
         # print self._dict
         return self._dict[key]
 
+    def __delitem__(self, key):
+        self._check_mc()
+        self._keys.remove(key)
+        del self._dict[key]
+        if not self.__spm:
+            self.mc_client.delete(self._mc_key(key))
+            self._store_keys()
+
     def key_changed(self, key):
         self._key_modified(key)
 
@@ -537,6 +547,11 @@ class configuration(object):
         self.clear_log()
         if args:
             self.add_config_entries(*args)
+
+    def delete(self):
+        # remove global config
+        for key in self.keys():
+            del self[key]
 
     def close(self):
         # to be called for every new process

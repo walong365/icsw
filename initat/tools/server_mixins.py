@@ -46,6 +46,7 @@ class ConfigCheckObject(object):
         self.global_config = global_config
         self.__native_logging = native_logging
         self.__init_msi_block = init_msi_block
+        self._inst_xml = InstanceXML(self.log)
         if self.__init_msi_block:
             # init MSI block
             self.__msi_block = None
@@ -59,10 +60,17 @@ class ConfigCheckObject(object):
                     ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
                 ]
             )
+
             if "LOG_NAME" not in global_config:
                 global_config.add_config_entries(
                     [
-                        ("LOG_NAME", configfile.str_c_var(self.srv_type_enum.value.name, source="instance")),
+                        (
+                            "LOG_NAME",
+                            configfile.str_c_var(
+                                self._inst_xml[self.srv_type_enum.value.instance_name].attrib["name"],
+                                source="instance"
+                            )
+                        ),
                     ]
                 )
             if self.__native_logging:
@@ -97,7 +105,6 @@ class ConfigCheckObject(object):
         if self.srv_type_enum.value.server_service:
             from initat.tools import config_tools
             from initat.cluster.backbone.models import LogSource
-        self._inst_xml = InstanceXML(self.log)
         if self.srv_type_enum.value.instance_name is None:
             raise KeyError("No instance_name set for srv_type_enum '{}'".format(self.srv_type_enum.name))
         self._instance = self._inst_xml[self.srv_type_enum.value.instance_name]
@@ -204,6 +211,8 @@ class ConfigCheckObject(object):
             self.__msi_block = None
         if not self.__native_logging:
             self.__process.log_template.close()
+        # remove global config
+        self.global_config.delete()
 
     def log_config(self):
         _log = self.global_config.get_log(clear=True)
@@ -338,13 +347,18 @@ class NetworkBindMixin(object):
         pollin = kwargs.get("pollin", None)
         ext_call = kwargs.get("ext_call", False)
         immediate = kwargs.get("immediate", True)
-        if "bind_port" in kwargs:
-            bind_port = kwargs["bind_port"]
-        elif "server_type" in kwargs:
+        if "server_type" in kwargs:
             _inst = InstanceXML(log_com=self.log)
-            bind_port = _inst.get_port_dict(kwargs["server_type"], ptype="command")
+            _srv_type = kwargs["server_type"]
+            bind_port = _inst.get_port_dict(_srv_type, ptype="command")
+        elif "service_type_enum" in kwargs:
+            _inst = InstanceXML(log_com=self.log)
+            _srv_type = kwargs["service_type_enum"]
+            bind_port = _inst.get_port_dict(_srv_type, ptype="command")
+        elif "bind_port" in kwargs:
+            bind_port = kwargs["bind_port"]
         else:
-            raise KeyError("neither bind_port nor server_type defined in kwargs")
+            raise KeyError("neither bind_port, service_type_enum nor server_type defined in kwargs")
         main_socket_name = kwargs.get("main_socket_name", "main_socket")
         virtual_sockets_name = kwargs.get("virtual_sockets_name", "virtual_sockets")
         bind_to_localhost = kwargs.get("bind_to_localhost", False)
@@ -361,7 +375,7 @@ class NetworkBindMixin(object):
         else:
             from initat.tools import cluster_location
             from initat.cluster.backbone.routing import get_server_uuid
-            self.bind_id = get_server_uuid(kwargs["server_type"])
+            self.bind_id = get_server_uuid(_srv_type)
             if kwargs.get("simple_server_bind", False):
                 dev_r = None
             else:
@@ -405,7 +419,7 @@ class NetworkBindMixin(object):
                                 "tcp://{}:{:d}".format(_virtual_ip, bind_port) for _virtual_ip in _ip_list
                             ],
                             # ignore local device
-                            get_server_uuid(kwargs["server_type"], _dev.uuid),
+                            get_server_uuid(_srv_type, _dev.uuid),
                             _dev,
                         )
                     )
@@ -922,9 +936,14 @@ class RemoteServerAddressIP(RemoteServerAddressBase):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.mixin.log("[RSAIP {}] {}".format(self.srv_type_enum.name, what), log_level)
 
-    def check_for_address(self, instance, addr):
+    def check_for_address(self, instance, addr, dev_uuid):
         if not self.valid:
             self._uuid = instance.get_uuid_postfix(self.srv_type_enum)
+            if dev_uuid:
+                self._uuid = "{}:{}:".format(
+                    dev_uuid,
+                    self._uuid,
+                )
             self._address = addr
             self._port = instance.get_port_dict(self.srv_type_enum, command=True)
             self.log(
@@ -960,7 +979,7 @@ class SendToRemoteServerMixin(threading_tools.ICSWAutoInit):
         _rsa.check_for_address(self.__strs_router)
         return self.send_to_remote_server_int(_rsa, send_obj)
 
-    def send_to_remote_server_ip(self, srv_addr, srv_type_enum, send_obj):
+    def send_to_remote_server_ip(self, srv_addr, dev_uuid, srv_type_enum, send_obj):
         if self.__target_dict is None:
             from initat.icsw.service.instance import InstanceXML
             self.__target_dict = {}
@@ -968,7 +987,7 @@ class SendToRemoteServerMixin(threading_tools.ICSWAutoInit):
         if srv_type_enum not in self.__target_dict:
             self.__target_dict[srv_type_enum] = RemoteServerAddressIP(self, srv_type_enum)
         _rsa = self.__target_dict[srv_type_enum]
-        _rsa.check_for_address(self.__strs_instance, srv_addr)
+        _rsa.check_for_address(self.__strs_instance, srv_addr, dev_uuid)
         return self.send_to_remote_server_int(_rsa, send_obj)
 
     def send_to_remote_server_int(self, rsa, send_obj):

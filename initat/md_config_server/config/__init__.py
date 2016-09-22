@@ -31,7 +31,7 @@ from initat.md_config_server.config.build_cache import BuildCache
 from initat.md_config_server.config.config_dir import config_dir
 from initat.md_config_server.config.host_type_config import host_type_config
 from initat.md_config_server.config.main_config import main_config
-from initat.md_config_server.config.sync_config import sync_config
+from initat.md_config_server.config.sync_config import SyncConfig
 from initat.md_config_server.config.check_command import check_command
 from initat.md_config_server.config.templates import *
 from initat.md_config_server.config.objects import *

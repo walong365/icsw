@@ -111,9 +111,14 @@
                         <th>Type</th>
                         <th>Check</th>
                         <th ng-repeat="srv_info in struct.server_info_list">
-                            {{ srv_info.$$srv_name }},
-                            {{ srv_info.max_mem | get_size:1:1024:"B":3 }} max /
-                            {{ srv_info.sum_mem | get_size:1:1024:"B":3 }} total Memory
+                            <span ng-show="srv_info.max_mem">
+                                {{ srv_info.$$srv_name }},
+                                {{ srv_info.max_mem | get_size:1:1024:"B":3 }} max /
+                                {{ srv_info.sum_mem | get_size:1:1024:"B":3 }} total Memory
+                            </span>
+                            <span ng-show="!srv_info.max_mem">
+                                {{ srv_info.$$srv_name }}
+                            </span>
                          </th>
                     </tr>
                 </thead>
@@ -151,7 +156,10 @@
         <div class="text-warning" ng-switch-when="0">
             <span class="text-error">Not available</span>
         </div>
-        <div class="row" style="width:520px;" ng-switch-when="1">
+        <div class="row" style="width:540px;" ng-switch-when="1">
+            <!-- <div class="col-xs-1">
+                {{ service.$$conf_state }}
+            </div>-->
             <div class="col-xs-2 text-right">
                 <span ng-class="service.$$version_class" ng-bind-html="service.$$version"></span>
             </div>
@@ -182,9 +190,10 @@
             <div class="col-xs-2">
                 <icsw-service-monitor-ignore></icsw-service-monitor-ignore>
             </div>
-            <div class="col-xs-4">
-                <icsw-service-enable-disable></icsw-service-enable-disable>
-                <icsw-service-monitor-ignore></icsw-service-monitor-ignore>
+        </div>
+        <div class="row" ng-switch-when="3">
+            <div class="col-xs-12 text-warning">
+                not installed
             </div>
         </div>
         <div class="row" ng-switch-when="4">
@@ -199,15 +208,6 @@
             </div>
             <div class="col-xs-2">
                 <icsw-service-monitor-ignore></icsw-service-monitor-ignore>
-            </div>
-            <div class="col-xs-4">
-                <icsw-service-enable-disable></icsw-service-enable-disable>
-                <icsw-service-monitor-ignore></icsw-service-monitor-ignore>
-            </div>
-        </div>
-        <div class="row" ng-switch-when="3">
-            <div class="col-xs-12 text-warning">
-                not installed
             </div>
         </div>
     </div>

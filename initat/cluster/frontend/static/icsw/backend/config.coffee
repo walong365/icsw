@@ -260,6 +260,9 @@ config_module = angular.module(
             # how often a config name is used
             @_multi_name_dict = _.countBy((config.name for config in @list))
             for cat in @catalog_list
+                cat.$$info_str = cat.name
+                if cat.system_catalog
+                    cat.$$info_str = "#{cat.$$info_str} (SYS)"
                 if cat.configs?
                     cat.configs.length = 0
                 else
@@ -297,12 +300,15 @@ config_module = angular.module(
                 _local_s = []
                 for attr_name in ["name", "description"]
                     _local_s.push(entry[attr_name])
+                if entry.$$cse
+                    for attr_name in ["name"]
+                        _local_s.push(entry.$$cse[attr_name])
                 entry.$$filter_string = _local_s.join(" ")
                 s.push(entry.$$filter_string)
                 # needed ?
                 entry.$$global_filter_string = s.join(" ")
 
-        update_filtered_list: (search_str, filter_settings) =>
+        update_filtered_list: (search_str, filter_settings, with_server, with_service) =>
             if not search_str?
                 search_str = ""
             # console.log "f", search_str, filter_settings
@@ -313,6 +319,11 @@ config_module = angular.module(
             if search_str == ""
                 # default for empty search string
                 filter_settings = {config: true, mon: false, script: false, var: false}
+            # default values
+            if not with_server?
+                with_server = 0
+            if not with_service?
+                with_service = 0
             @filtered_list.length = 0
             for entry in @list
                 if entry.$$filter_set?
@@ -358,6 +369,14 @@ config_module = angular.module(
                     entry.$$num_script_found = 0
                     entry.$$num_var_found = 0
                     entry.$$num_mon_found = 0
+                if with_server == 1 and not entry.server_config
+                    entry.$$global_filter_match = false
+                else if with_server == -1 and entry.server_config
+                    entry.$$global_filter_match = false
+                if with_service == 1 and not entry.$$cse
+                    entry.$$global_filter_match = false
+                else if with_service == -1 and entry.$$cse
+                    entry.$$global_filter_match = false
                 for _type in ["script", "mon", "var"]
                     @_set_config_class(entry, _type)
                 if entry.$$global_filter_match

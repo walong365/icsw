@@ -288,7 +288,12 @@ class ServiceState(object):
         # step two: check version
         _cur_vers = conn.execute("SELECT * FROM schema_version").fetchall()
         if not len(_cur_vers):
-            conn.execute("INSERT INTO schema_version(version) VALUES(?)", (INIT_SQL_SCHEMA_VERSION, ))
+            if not len(all_tables):
+                # initial install, schema is up-to date
+                conn.execute("INSERT INTO schema_version(version) VALUES(?)", (SQL_SCHEMA_VERSION,))
+            else:
+                # some tables were present, must be old version
+                conn.execute("INSERT INTO schema_version(version) VALUES(?)", (INIT_SQL_SCHEMA_VERSION,))
         _cur_vers = conn.execute("SELECT version FROM schema_version").fetchone()[0]
         if _cur_vers != SQL_SCHEMA_VERSION:
             self.log("SQL schema version found ({:d}) differs from current version ({:d})".format(_cur_vers, SQL_SCHEMA_VERSION), logging_tools.LOG_LEVEL_WARN)

@@ -206,7 +206,7 @@ angular.module(
                 xml: _xml
                 $$enable_disable_allowed: instance not in ["meta-server", "logging-server"]
             }
-            console.log instance, _meta_xml[0]
+            # console.log instance, _meta_xml[0]
             if _meta_xml.length
                 salted.$$enabled = if parseInt(_meta_xml.attr("target_state")) == 1 then true else false
                 salted.$$disabled = !salted.$$enabled
@@ -224,8 +224,9 @@ angular.module(
                     salted.$$version = _xml.find("result").attr("version").replace("-", "&ndash;")
                 else
                     salted.$$version = ""
-                _state_info = _xml.find("process_state_info")
-                _diff = parseInt(_state_info.attr("num_diff"))
+                _proc_state_info = _xml.find("process_state_info")
+                salted.$$conf_state = parseInt(_xml.find("configured_state_info").attr("state"))
+                _diff = parseInt(_proc_state_info.attr("num_diff"))
                 if _diff
                     salted.$$run_class = "text-danger"
                 else
@@ -233,10 +234,10 @@ angular.module(
                 if _xml.attr("check_type") == "simple"
                     salted.$$run_info = _xml.find("pids > pid").length
                 else
-                    if _state_info.attr("num_started")?
-                        _started = parseInt(_state_info.attr("num_started"))
-                        _found = parseInt(_state_info.attr("num_found"))
-                        _diff = parseInt(_state_info.attr("num_diff"))
+                    if _proc_state_info.attr("num_started")?
+                        _started = parseInt(_proc_state_info.attr("num_started"))
+                        _found = parseInt(_proc_state_info.attr("num_found"))
+                        _diff = parseInt(_proc_state_info.attr("num_diff"))
                         if !_diff
                             salted.$$run_info = "#{_started}"
                         else
@@ -248,22 +249,22 @@ angular.module(
                         salted.$$run_info = "N/A"
                 salted.$$mem_value = @xml.find("instance[name='#{instance}'] memory_info").contents().first().text()
                 salted.$$mem_percent = parseInt((parseInt(salted.$$mem_value) * 100) / @max_mem)
-                if parseInt(_state_info.attr("state")) == 5
+                if parseInt(_proc_state_info.attr("state")) == 5
                     # not installed
                     salted.$$state = 3
-                else if parseInt(_state_info.attr("state")) == 6
+                else if parseInt(_proc_state_info.attr("state")) == 6
                     # not configured
                     salted.$$state = 4
                 else
                     if _xml.attr("check_type") == "simple"
-                        if parseInt(_state_info.attr("state")) == 0
+                        if parseInt(_proc_state_info.attr("state")) == 0
                             # running
                             salted.$$state = 1
                         else
                             # not running
                             salted.$$state = 2
                     else
-                        if _state_info.attr("num_started")
+                        if _proc_state_info.attr("num_started")
                             # running
                             salted.$$state = 1
                         else

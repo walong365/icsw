@@ -55,15 +55,17 @@ def get_type_from_config(c_name):
     return _REVERSE_MAP.get(c_name, None)
 
 
-def get_server_uuid(srv_type, uuid=None):
+def get_server_uuid(srv_type=None, uuid=None):
     if uuid is None:
         uuid = uuid_tools.get_uuid().get_urn()
     if not uuid.startswith("urn"):
         uuid = "urn:uuid:{}".format(uuid)
-    return "{}:{}:".format(
-        uuid,
-        _INSTANCE.get_uuid_postfix(srv_type),
-    )
+    if srv_type is not None:
+        uuid = "{}:{}:".format(
+            uuid,
+            _INSTANCE.get_uuid_postfix(srv_type),
+        )
+    return uuid
 
 
 class SrvTypeRouting(object):

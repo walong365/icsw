@@ -46,7 +46,7 @@ def read_config_from_db(g_config, server_type_enum, sql_info, init_list=[]):
             "str",
             "int",
             "blob",
-            "bool"
+            "bool",
         ]:
             # very similiar code appears in config_tools.py
             src_sql_obj = _VAR_LUT[short].objects
@@ -92,15 +92,6 @@ def read_config_from_db(g_config, server_type_enum, sql_info, init_list=[]):
         for wo_var_name, wo_var in l_var_wo_host.iteritems():
             if wo_var_name not in g_config or g_config.get_source(wo_var_name) == "default":
                 g_config.add_config_entries([(wo_var_name, wo_var)])
-
-
-def read_global_config(dc, server_type, init_dict=None, host_name=""):
-    if init_dict is None:
-        init_dict = {}
-    gcd = configfile.configuration(server_type.replace("%", ""), init_dict)
-    # FIXME
-    # reload_global_config(dc, gcd, server_type, host_name)
-    return gcd
 
 
 class db_device_variable(object):

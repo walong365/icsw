@@ -167,8 +167,10 @@ class RMSJob(object):
                 src_file
             )
         )
-        shell_path, shell_start_mode = (self.__env_int_dict.get("shell_path", "/bin/bash"),
-                                        self.__env_int_dict.get("shell_start_mode", "posix_compliant"))
+        shell_path, shell_start_mode = (
+            self.__env_int_dict.get("shell_path", "/bin/bash"),
+            self.__env_int_dict.get("shell_start_mode", "posix_compliant")
+        )
         # cluster_queue_name = global_config["JOB_QUEUE"]
         self.log(
             "shell_path is '{}', shell_start_mode is '{}'".format(
@@ -698,7 +700,10 @@ class RMSJob(object):
                     logging_tools.form_entry(self.__env_dict[key], header="Value")
                 ]
             )
-        self.write_file(u"env_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
+        try:
+            self.write_file(u"env_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
+        except:
+            self.log("error creating env_ file: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         out_list = logging_tools.new_form_list()
         for key in sorted(self.__env_int_dict.keys()):
             out_list.append(
@@ -707,7 +712,10 @@ class RMSJob(object):
                     logging_tools.form_entry(self.__env_int_dict[key], header="Value")
                 ]
             )
-        self.write_file(u"env_int_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
+        try:
+            self.write_file(u"env_int_{}".format(global_config["CALLER_NAME"]), str(out_list).split("\n"))
+        except:
+            self.log("error creating env_int_ file: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
 
     def _read_config(self):
         if "CONFIG_FILE" in global_config:

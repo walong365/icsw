@@ -1,6 +1,6 @@
 # Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of md-config-server
+# this file is part of md-sync-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -28,18 +28,11 @@ software and performance
 
 from django.db.models import Q
 
-from initat.cluster.backbone import db_tools, routing
-from initat.cluster.backbone.models import device
-from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.md_config_server.config import global_config, SyncConfig
-from initat.md_sync_server.base_config import RemoteServer
-from initat.tools import config_tools, logging_tools, server_command, threading_tools
-
-
-__all__ = [
-    "RemoteServer",
-    "SyncerProcess",
-]
+from initat.host_monitoring.client_enums import icswServiceEnum
+from initat.tools import logging_tools, server_command, threading_tools
+from initat.icsw.service.instance import InstanceXML
+from .config import global_config
+from .sync_config import SyncConfig
 
 
 class SyncerProcess(threading_tools.process_obj):
@@ -52,16 +45,16 @@ class SyncerProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True
         )
-        db_tools.close_connection()
-        self.router_obj = config_tools.RouterObject(self.log)
+        self.inst_xml = InstanceXML(self.log)
+        self.__register_timer = False
         self.register_func("file_content_result", self._file_content_result)
         self.register_func("file_content_bulk_result", self._file_content_result)
-        self.register_func("check_for_slaves", self._check_for_slaves)
         self.register_func("check_for_redistribute", self._check_for_redistribute)
         self.register_func("build_info", self._build_info)
-        self.register_func("slave_info", self._slave_info)
+        self.register_func("distribute_info", self._distribute_info)
         self.__build_in_progress, self.__build_version = (False, 0)
-
+        # setup local master
+        self.__local_master = SyncConfig(self, None, distributed=False)
         # this used to be just set in _check_for_slaves, but apparently check_for_redistribute can be called before that
         self.__slave_configs, self.__slave_lut = ({}, {})
 
@@ -71,59 +64,82 @@ class SyncerProcess(threading_tools.process_obj):
     def loop_post(self):
         self.__log_template.close()
 
-    def _check_for_slaves(self, **kwargs):
-        master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
-        slave_servers = device.objects.filter(
-            Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.monitor_slave.name)
-        ).select_related("domain_tree_node")
-        # slave configs
-        self.__master_config = SyncConfig(self, master_server, distributed=True if len(slave_servers) else False)
+    def _distribute_info(self, srv_com, **kwargs):
+        srv_com = server_command.srv_command(source=srv_com)
+        dist_info = server_command.decompress(srv_com["*info"], marshal=True)
+        self.log("distribution info has {}".format(logging_tools.get_plural("entry", len(dist_info))))
         self.__slave_configs, self.__slave_lut = ({}, {})
-        # connect to local relayer
-        _primary_slave_uuid = routing.get_server_uuid(icswServiceEnum.monitor_slave, master_server.uuid)
-        self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", _primary_slave_uuid))
-        self.send_pool_message("register_remote", "127.0.0.1", _primary_slave_uuid, icswServiceEnum.monitor_slave.name)
-        _send_data = [self.__master_config.get_send_data()]
-        if len(slave_servers):
-            self.log(
-                "found {}: {}".format(
-                    logging_tools.get_plural("slave_server", len(slave_servers)),
-                    ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))
+        for _di in dist_info:
+            if _di["master"]:
+                self.log("found master entry")
+                self.__master_config = SyncConfig(self, _di, distributed=True if len(dist_info) > 1 else False, local_master=self.__local_master)
+                self.send_pool_message(
+                    "register_remote",
+                    self.__master_config.master_ip,
+                    self.__master_config.master_uuid,
+                    _di["master_port"],
                 )
-            )
-            for cur_dev in slave_servers:
+            else:
+                self.log("found slave entry ({})".format(", ".join(sorted(_di.keys()))))
                 _slave_c = SyncConfig(
                     self,
-                    cur_dev,
-                    slave_name=cur_dev.full_name,
-                    master_server=master_server,
+                    _di,
                 )
-                self.__slave_configs[cur_dev.pk] = _slave_c
-                self.__slave_lut[cur_dev.full_name] = cur_dev.pk
-                self.__slave_lut[cur_dev.uuid] = cur_dev.pk
+                self.__slave_configs[_slave_c.pk] = _slave_c
+                self.__slave_lut[_slave_c.name] = _slave_c.pk
+                self.__slave_lut[_slave_c.slave_uuid] = _slave_c.pk
                 self.log(
                     "  slave {} (IP {}, {})".format(
-                        _slave_c.monitor_server.full_name,
+                        _slave_c.name,
                         _slave_c.slave_ip,
-                        _slave_c.monitor_server.uuid
+                        _slave_c.slave_uuid,
                     )
                 )
-                _send_data.append(_slave_c.get_send_data())
-                # if _slave_c.slave_ip:
-                #    self.send_pool_message("register_slave", _slave_c.slave_ip, _slave_c.monitor_server.uuid)
-                # else:
-                #    self.log("slave has an invalid IP", logging_tools.LOG_LEVEL_CRITICAL)
-        else:
-            self.log("no slave-servers found")
-        # send distribution info to local syncer
-        distr_info = server_command.srv_command(
-            command="distribute_info",
-            info=server_command.compress(_send_data, marshal=True),
+                if _slave_c.slave_ip:
+                    self.send_pool_message(
+                        "register_remote",
+                        _slave_c.slave_ip,
+                        _slave_c.slave_uuid,
+                        self.inst_xml.get_port_dict(icswServiceEnum.monitor_slave, command=True)
+                    )
+        if not self.__register_timer:
+            self.__register_timer = True
+            self.register_func("relayer_info", self._relayer_info)
+            _reg_timeout, _first_timeout = (600, 2)  # (600, 15)
+            self.log("will send register_msg in {:d} (then {:d}) seconds".format(_first_timeout, _reg_timeout))
+            self.register_timer(self._send_register_msg, _reg_timeout, instant=global_config["DEBUG"], first_timeout=_first_timeout)
+        self.send_info_message()
+
+    def _send_register_msg(self, **kwargs):
+        for _slave_struct in [self.__master_config] + self.__slave_configs.values():
+            if _slave_struct.master:
+                # message to myself
+                print "to_myself"
+            else:
+                master_ip = _slave_struct.master_ip
+                master_uuid = _slave_struct.master_uuid
+                srv_com = server_command.srv_command(
+                    command="register_master",
+                    master_ip=master_ip,
+                    master_port="{:d}".format(global_config["COMMAND_PORT"]),
+                )
+                self.log(u"send register_master to {} (master IP {}, UUID {})".format(unicode(_slave_struct.name), master_ip, master_uuid))
+                self.send_command(_slave_struct.slave_uuid, unicode(srv_com))
+        self.send_info_message()
+
+    def send_info_message(self):
+        info_list = [
+            _entry.get_info_dict() for _entry in [self.__master_config] + self.__slave_configs.values()
+        ]
+        srv_com = server_command.srv_command(
+            command="slave_info",
+            slave_info=server_command.compress(info_list, json=True)
         )
-        self.send_pool_message("send_command", _primary_slave_uuid, unicode(distr_info))
+        self.send_command(self.__master_config.master_uuid, unicode(srv_com))
+        print "I", info_list
 
     def send_command(self, src_id, srv_com):
-        self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), srv_com)
+        self.send_pool_message("send_command", src_id, srv_com)
 
     def _check_for_redistribute(self, *args, **kwargs):
         for slave_config in self.__slave_configs.itervalues():
@@ -150,11 +166,6 @@ class SyncerProcess(threading_tools.process_obj):
                 self.log("uuid {} not found in slave_lut".format(uuid), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("uuid missing in relayer_info", logging_tools.LOG_LEVEL_ERROR)
-
-    def _slave_info(self, *args, **kwargs):
-        srv_com = server_command.srv_command(source=args[0])
-        info_list = server_command.decompress(srv_com["*slave_info"], json=True)
-        print "got info", info_list
 
     def _build_info(self, *args, **kwargs):
         # build info send from relayer

@@ -133,9 +133,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
-            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
-            server_type="discovery",
+            service_type_enum=icswServiceEnum.discovery_server,
             simple_server_bind=True,
             pollin=self.remote_call,
         )

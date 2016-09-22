@@ -1072,11 +1072,8 @@ class device_with_config(dict):
                         device=dev_dict[dev_pk],
                         effective_device=dev_dict[dev_pk] if m_type == src_type else dev_dict[group_md_lut[devg_pk]],
                     )
+                    self.setdefault(self.__service_type_enum, []).append(cur_struct)
                 self.setdefault(conf_or_srv_name, []).append(cur_struct)
-
-    def set_key_type(self, k_type):
-        print "deprecated, only one key_type (config) supported"
-        sys.exit(0)
 
 
 def close_db_connection():

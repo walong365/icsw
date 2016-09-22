@@ -171,8 +171,8 @@ sources = {
             "frontend/static/js/webfrontend_translation.js",
             "frontend/static/js/angular-gridster.js",
             "frontend/static/js/angular-promise-extras.js",
-            "frontend/static/js/react-15.3.1.js",
-            "frontend/static/js/react-dom-15.3.1.js",
+            "frontend/static/js/react-15.3.2.js",
+            "frontend/static/js/react-dom-15.3.2.js",
             # not needed ?
             # "frontend/static/js/react-draggable.js",
             "frontend/static/js/hotkeys.js",
@@ -686,6 +686,16 @@ gulp.task("serve-graphics", (cb) ->
     cb()
 )
 
+gulp.task("serve-icinga", (cb) ->
+    connect.server(
+        {
+            root: "/opt/cluster/icinga/share/images/logos"
+            port: 8083
+        }
+    )
+    cb()
+)
+
 gulp.task("serve-main", (cb) ->
     connect.server(
         {
@@ -695,6 +705,13 @@ gulp.task("serve-main", (cb) ->
             fallback: "work/icsw/main.html"
             middleware: (connect, opt) ->
                 return [
+                    middleware(
+                        "/icsw/api/v2/static/icinga/",
+                        {
+                            pathRewrite: {"/icsw/api/v2/static/icinga/": "/"}
+                            target: "http://localhost:8083"
+                        }
+                    )
                     middleware(
                         "/icsw/api/v2/static/graphs/",
                         {
@@ -734,7 +751,7 @@ gulp.task(
     "serve-all",
     gulp.series(
         "create-content",
-        gulp.parallel("serve-graphics", "serve-django", "serve-main", "watch")
+        gulp.parallel("serve-graphics", "serve-icinga", "serve-django", "serve-main", "watch")
     ), (cb) ->
         cb()
 )

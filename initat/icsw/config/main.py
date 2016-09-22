@@ -43,7 +43,7 @@ def enum_show_command(options):
     _list = logging_tools.new_form_list()
     for entry in icswServiceEnum:
         if entry.name not in _c_dict:
-            if options.sync and entry.value.server_service:
+            if options.sync and (entry.value.server_service or entry.value.relayer_service):
                 new_entry = ConfigServiceEnum.create_db_entry(entry)
                 _c_dict[new_entry.enum_name] = new_entry
             else:
@@ -58,6 +58,7 @@ def enum_show_command(options):
                 logging_tools.form_entry(entry.value.name, header="Name"),
                 logging_tools.form_entry_center("yes" if entry.value.root_service else "no", header="Root Service"),
                 logging_tools.form_entry_center("yes" if entry.value.server_service else "no", header="Server"),
+                logging_tools.form_entry_center("yes" if entry.value.relayer_service else "no", header="Relayer"),
                 logging_tools.form_entry(entry.value.info, header="Info"),
                 logging_tools.form_entry_center(_db_str, header="DB info"),
             ]

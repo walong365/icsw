@@ -33,6 +33,8 @@ from initat.md_sync_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins, config_store
 from initat.tools.server_mixins import RemoteCall
+from .syncer import SyncerProcess
+from .sync_config import RemoteServer
 
 
 @server_mixins.RemoteCallProcess
@@ -60,6 +62,9 @@ class server_process(
         self.VCM_check_md_version()
         self.VCM_check_relay_version()
         self._init_network_sockets()
+        self.add_process(SyncerProcess("syncer"), start=True)
+        self.register_func("send_command", self._send_command)
+        self.register_func("register_remote", self._register_remote)
         _srv_com = server_command.srv_command(command="status")
         # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
 
@@ -130,13 +135,32 @@ class server_process(
     def process_start(self, src_process, src_pid):
         self.CC.process_added(src_process, src_pid)
 
-    def _register_slave(self, *args, **kwargs):
-        _src_proc, _src_id, slave_ip, slave_uuid = args
-        if slave_uuid not in self.__slaves:
-            rs = RemoteSlave(slave_uuid, slave_ip, 2004)
+    def _register_remote(self, *args, **kwargs):
+        _src_proc, _src_id, remote_ip, remote_uuid, remote_port = args
+        if remote_uuid not in self.__slaves:
+            rs = RemoteServer(remote_uuid, remote_ip, remote_port)
             self.log("connecting to {}".format(unicode(rs)))
             self.main_socket.connect(rs.conn_str)
-            self.__slaves[slave_uuid] = rs
+            self.__slaves[remote_uuid] = rs
+
+    def _send_command(self, *args, **kwargs):
+        _src_proc, _src_id, full_uuid, srv_com = args
+        try:
+            self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
+            self.main_socket.send_unicode(srv_com)
+        except:
+            self.log(
+                "cannot send {:d} bytes to {}: {}".format(
+                    len(srv_com),
+                    full_uuid,
+                    process_tools.get_except_info(),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            if full_uuid in self.__slaves:
+                self.log("target is {}".format(unicode(self.__slaves[full_uuid])))
+        else:
+            self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
 
     def _ocsp_results(self, *args, **kwargs):
         _src_proc, _src_pid, lines = args
@@ -189,25 +213,6 @@ class server_process(
         else:
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
 
-    def _send_command(self, *args, **kwargs):
-        _src_proc, _src_id, full_uuid, srv_com = args
-        try:
-            self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
-            self.main_socket.send_unicode(srv_com)
-        except:
-            self.log(
-                "cannot send {:d} bytes to {}: {}".format(
-                    len(srv_com),
-                    full_uuid,
-                    process_tools.get_except_info(),
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            if full_uuid in self.__slaves:
-                self.log("target is {}".format(unicode(self.__slaves[full_uuid])))
-        else:
-            self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
-
     def _set_external_cmd_file(self, *args, **kwargs):
         _src_proc, _src_id, ext_name = args
         self.log("setting external cmd_file to '{}'".format(ext_name))
@@ -218,7 +223,7 @@ class server_process(
             need_all_binds=False,
             bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
-            client_type="md-sync-server",
+            client_type=icswServiceEnum.monitor_slave,
             simple_server_bind=True,
             pollin=self.remote_call,
         )
@@ -234,6 +239,10 @@ class server_process(
     def start_mon_process(self, srv_com, **kwargs):
         self.config_store["mon_is_running"] = True
         return self._start_stop_mon_process(srv_com)
+
+    @RemoteCall(target_process="syncer")
+    def distribute_info(self, srv_com, **kwargs):
+        return srv_com
 
     def _start_stop_mon_process(self, srv_com):
         global_config["MON_TARGET_STATE"] = self.config_store["mon_is_running"]
@@ -287,6 +296,10 @@ class server_process(
 
     @RemoteCall(target_process="dynconfig")
     def monitoring_info(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall()
+    def register_master(self, srv_com, **kwargs):
         return srv_com
 
     @RemoteCall(target_process="syncer")

@@ -248,6 +248,15 @@ class user(models.Model):
     # scan depth
     scan_depth = models.IntegerField(default=2)
 
+    # for Django1.10
+    @property
+    def is_anonymous(self):
+        return False
+
+    # @property
+    def is_authenticated(self):
+        return True
+
     class Meta:
         db_table = u'user'
         ordering = ("login", "group__groupname")
@@ -279,10 +288,6 @@ class group(models.Model):
     # new model
     perms = models.ManyToManyField(csw_permission, related_name="db_group_perms", blank=True, through=group_permission)
     object_perms = models.ManyToManyField(csw_object_permission, related_name="db_group_perms", blank=True, through=group_object_permission)
-
-    # for Django1.10
-    def is_anonymous(self):
-        return False
 
     def is_authenticated(self):
         return True

@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" syncer definition for md-config-server """
+""" syncer definition for md-sync-server """
 
 import base64
 import bz2
@@ -28,74 +28,73 @@ import stat
 import sys
 import time
 
-from django.db.models import Q
-
-from initat.cluster.backbone.models import mon_dist_master, mon_dist_slave, cluster_timezone, \
-    mon_build_unreachable
-from initat.cluster.backbone import routing
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.server_version import VERSION_STRING
-from initat.tools import config_tools, configfile, logging_tools, process_tools, server_command
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
-
+from initat.tools import logging_tools, process_tools, server_command, config_store
+from .base_config import RemoteServer, SlaveState
+from .config import global_config, CS_MON_NAME
+from initat.server_version import VERSION_MAJOR, VERSION_MINOR
 
 __all__ = [
     "SyncConfig",
+    "RemoteServer",
 ]
 
 
 class SyncConfig(object):
-    def __init__(self, proc, monitor_server, **kwargs):
+    def __init__(self, proc, di_dict, **kwargs):
         """
         holds information about remote monitoring satellites
         """
+        # TreeState, di_dict set with master=True|False or di_dict not set (simple config)
         self.__process = proc
-        self.__slave_name = kwargs.get("slave_name", None)
         self.__main_dir = global_config["MD_BASEDIR"]
         self.distributed = kwargs.get("distributed", False)
-        self.master = True if not self.__slave_name else False
-        if self.__slave_name:
-            self.__dir_offset = os.path.join("slaves", self.__slave_name)
-            master_cfg = config_tools.device_with_config(service_type_enum=icswServiceEnum.monitor_server)
-            self.master_uuid = routing.get_server_uuid(
-                icswServiceEnum.monitor_slave,
-                master_cfg[icswServiceEnum.monitor_server][0].effective_device.uuid,
-            )
-            slave_cfg = config_tools.server_check(
-                host_name=monitor_server.full_name,
-                service_type_enum=icswServiceEnum.monitor_slave,
-                fetch_network_info=True
-            )
-            self.slave_uuid = routing.get_server_uuid(
-                icswServiceEnum.monitor_slave,
-                monitor_server.uuid,
-            )
-            route = master_cfg[icswServiceEnum.monitor_server][0].get_route_to_other_device(
-                self.__process.router_obj,
-                slave_cfg,
-                allow_route_to_other_networks=True,
-                global_sort_results=True,
-            )
-            if not route:
-                self.slave_ip = None
-                self.master_ip = None
-                self.log("no route to slave {} found".format(unicode(monitor_server)), logging_tools.LOG_LEVEL_ERROR)
-            else:
-                self.slave_ip = route[0][3][1][0]
-                self.master_ip = route[0][2][1][0]
-                self.log(
-                    "IP-address of slave {} is {} (master ip: {})".format(
-                        unicode(monitor_server),
-                        self.slave_ip,
-                        self.master_ip
-                    )
-                )
-            # target config version directory for distribute
-            self.__tcv_dict = {}
-        else:
+        if di_dict is None:
+            self.name = None
+            self.master = None
+            self.log("init local structure")
             self.__dir_offset = ""
-        self.monitor_server = monitor_server
+            self.config_store = config_store.ConfigStore(CS_MON_NAME, log_com=self.__process.log, access_mode=config_store.AccessModeEnum.LOCAL)
+            self.config_store["md.version.string"] = global_config["MD_VERSION_STRING"]
+            self.config_store["md.version"] = global_config["MD_VERSION"]
+            self.config_store["md.release"] = global_config["MD_RELEASE"]
+            self.config_store["icsw.version"] = VERSION_MAJOR
+            self.config_store["icsw.release"] = VERSION_MINOR
+            self.config_store.write()
+        else:
+            self.name = di_dict.get("name", None)
+            self.master = di_dict["master"]
+            if self.name:
+                self.struct = None
+                self.__dir_offset = os.path.join("slaves", self.name)
+                for _attr_name in ["slave_ip", "master_ip", "pk", "slave_uuid", "master_uuid"]:
+                    setattr(self, _attr_name, di_dict[_attr_name])
+                if not self.master_ip:
+                    self.slave_ip = None
+                    self.master_ip = None
+                    self.log("no route to slave {} found".format(self.name), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.log(
+                        "IP-address of slave {} is {} [{}] (master ip: {} [{}])".format(
+                            self.name,
+                            self.slave_ip,
+                            self.slave_uuid,
+                            self.master_ip,
+                            self.master_uuid,
+                        )
+                    )
+                # target config version directory for distribute
+                self.__tcv_dict = {}
+            else:
+                self.struct = kwargs["local_master"]
+                self.master_ip = "127.0.0.1"
+                self.master_port = di_dict["master_port"]
+                self.pure_uuid = di_dict["pure_uuid"]
+                self.master_uuid = di_dict["master_uuid"]
+                self.slave_uuid = None
+                self.log("master uuid is {}@{}, {:d}".format(self.master_uuid, self.master_ip, self.master_port))
+                self.__dir_offset = ""
+        self.state = SlaveState.init
         self.__dict = {}
         self._create_directories()
         # flags
@@ -120,43 +119,21 @@ class SyncConfig(object):
         self.dist_ok = True
         # flag for reload after sync
         self.reload_after_sync_flag = False
-        # relayer info
-        self.relayer_version = "?.?-0"
-        self.mon_version = "?.?-0"
         # clear md_struct
         self.__md_struct = None
-        if not self.master:
-            # try to get relayer / mon_version from latest build
-            _latest_build = mon_dist_slave.objects.filter(Q(device=self.monitor_server)).order_by("-pk")
-            if len(_latest_build):
-                _latest_build = _latest_build[0]
-                self.mon_version = _latest_build.mon_version
-                self.relayer_version = _latest_build.relayer_version
-                self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
 
-    def get_send_data(self):
-        _r_dict = {
-            "master": True if not self.__slave_name else False,
-            "pure_uuid": self.monitor_server.uuid,
-            # todo, FIXME
-            "master_port": 8010,
-            "master_uuid": routing.get_server_uuid(
-                icswServiceEnum.monitor_server,
-                self.monitor_server.uuid,
-            )
+    def get_info_dict(self):
+        r_dict = {
+            "master": self.master,
+            "slave_uuid": self.slave_uuid,
+            "state": self.state.name,
+            # "relayer_version": self.relayer_version,
+            # "mon_version": self.mon_version,
         }
-        if self.__slave_name:
-            _r_dict.update(
-                {
-                    "name": self.__slave_name,
-                    "pk": self.monitor_server.pk,
-                    "master_ip": self.master_ip,
-                    "master_uuid": self.master_uuid,
-                    "slave_ip": self.slave_ip,
-                    "slave_uuid": self.slave_uuid,
-                }
-            )
-        return _r_dict
+        if self.struct:
+            for _key in ["md.version", "md.release", "icsw.version", "icsw.release", "md.version.string"]:
+                r_dict[_key] = self.struct.config_store[_key]
+        return r_dict
 
     def _relayer_gen(self):
         # return the relayer generation
@@ -200,7 +177,7 @@ class SyncConfig(object):
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
             "[sc {}] {}".format(
-                self.__slave_name if self.__slave_name else "master",
+                self.name if self.name else "master",
                 what
             ),
             level

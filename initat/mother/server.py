@@ -144,9 +144,8 @@ class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixi
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=global_config["NEED_ALL_NETWORK_BINDS"],
-            bind_port=global_config["COMMAND_PORT"],
             pollin=self.remote_call,
-            server_type="mother",
+            service_type_enum=icswServiceEnum.mother_server,
         )
         self.connection_set = set()
         self.connection_status = {}

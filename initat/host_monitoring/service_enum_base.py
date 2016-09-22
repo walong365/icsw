@@ -28,7 +28,7 @@ __all__ = [
 
 
 class icswServiceEnumBaseClient(object):
-    def __init__(self, name, info="N/A", root_service=True, msi_block_name=None):
+    def __init__(self, name, info="N/A", root_service=True, msi_block_name=None, relayer_service=False):
         self.name = name
         self.info = info
         self.root_service = root_service
@@ -36,6 +36,7 @@ class icswServiceEnumBaseClient(object):
         self.msi_block_name = msi_block_name or self.name
         self.client_service = True
         self.server_service = False
+        self.relayer_service = relayer_service
         self.clear_instance_names()
 
     def clear_instance_names(self):

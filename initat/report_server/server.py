@@ -77,9 +77,8 @@ class server_process(
     def _init_network_sockets(self):
         self.network_bind(
             need_all_binds=False,
-            bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,
-            client_type="report-server",
+            service_type_enum=icswServiceEnum.report_server,
             simple_server_bind=True,
             pollin=self.remote_call,
         )
