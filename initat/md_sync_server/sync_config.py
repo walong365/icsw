@@ -123,34 +123,40 @@ class SyncConfig(object):
         self.__md_struct = None
 
     def register_master(self, srv_com):
-        master_ip, master_uuid, master_port = (
+        master_ip, master_uuid, master_port, slave_uuid = (
             srv_com["*master_ip"],
             srv_com["*master_uuid"],
-            int(srv_com["*master_port"])
+            int(srv_com["*master_port"]),
+            srv_com["*slave_uuid"],
         )
         self.log(
-            "registering master at {} ({}@{:d})".format(
+            "registering master at {} ({}@{:d}) for local slave".format(
                 master_uuid,
                 master_ip,
                 master_port,
+                slave_uuid,
             )
         )
         self.config_store["master.uuid"] = master_uuid
         self.config_store["master.ip"] = master_ip
         self.config_store["master.port"] = master_port
+        self.config_store["slave.uuid"] = slave_uuid
         self.config_store.write()
+
+    def get_satellite_info(self):
+        r_dict = {}
+        for _key in ["md.version", "md.release", "icsw.version", "icsw.release", "md.version.string"]:
+            r_dict[_key] = self.config_store[_key]
+        return r_dict
 
     def get_info_dict(self):
         r_dict = {
             "master": self.master,
             "slave_uuid": self.slave_uuid,
             "state": self.state.name,
-            # "relayer_version": self.relayer_version,
-            # "mon_version": self.mon_version,
         }
         if self.struct:
-            for _key in ["md.version", "md.release", "icsw.version", "icsw.release", "md.version.string"]:
-                r_dict[_key] = self.struct.config_store[_key]
+            r_dict.update(self.struct.get_satellite_info())
         return r_dict
 
     def _relayer_gen(self):

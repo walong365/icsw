@@ -300,6 +300,12 @@ class server_process(
 
     @RemoteCall(target_process="syncer")
     def register_master(self, srv_com, **kwargs):
+        # call from satellite master to register itself at this satellite
+        return srv_com
+
+    @RemoteCall(target_process="syncer")
+    def satellite_info(self, srv_com, **kwargs):
+        # call from pure slave (==satellite) to this satellite master
         return srv_com
 
     @RemoteCall(target_process="syncer")

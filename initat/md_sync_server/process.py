@@ -141,7 +141,11 @@ class ProcessControl(object):
         _pid_present = os.path.isfile(self.__pid_file_name)
         if _pid_present:
             try:
-                _pid = int(file(self.__pid_file_name, "r").read().strip().split()[0])
+                _pid = file(self.__pid_file_name, "r").read().strip()
+                if len(_pid):
+                    _pid = int(_pid.split()[0])
+                else:
+                    _pid = None
             except:
                 self.log(
                     "error getting pid from {} :{}".format(

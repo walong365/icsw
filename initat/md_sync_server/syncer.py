@@ -53,12 +53,13 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("build_info", self._build_info)
         self.register_func("distribute_info", self._distribute_info)
         self.register_func("register_master", self._register_master)
+        self.register_func("satellite_info", self._satellite_info)
         self.__build_in_progress, self.__build_version = (False, 0)
         # setup local master
         self.__local_master = None
         # registered at master
         self.__registered_at_master = False
-        self.register_timer(self._init_local_master, 60, first_timeout=0)
+        self.register_timer(self._init_local_master, 60, first_timeout=2)
         # this used to be just set in _check_for_slaves, but apparently check_for_redistribute can be called before that
         self.__slave_configs, self.__slave_lut = ({}, {})
 
@@ -72,6 +73,20 @@ class SyncerProcess(threading_tools.process_obj):
         if not self.__local_master and "MD_TYPE" in global_config:
             self.__local_master = SyncConfig(self, None, distributed=False)
             self._check_for_register_at_master()
+        self._send_satellite_info()
+
+    def _send_satellite_info(self):
+        if self.__registered_at_master:
+            self.send_command(
+                self.__local_master.config_store["master.uuid"],
+                unicode(
+                    server_command.srv_command(
+                        command="satellite_info",
+                        uuid=self.__local_master.config_store["slave.uuid"],
+                        satellite_info=server_command.compress(self.__local_master.get_satellite_info(), json=True)
+                    )
+                )
+            )
 
     def _distribute_info(self, srv_com, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
@@ -132,6 +147,7 @@ class SyncerProcess(threading_tools.process_obj):
                     master_ip=master_ip,
                     master_uuid=master_uuid,
                     master_port="{:d}".format(global_config["COMMAND_PORT"]),
+                    slave_uuid=_slave_struct.slave_uuid,
                 )
                 self.log(u"send register_master to {} (master IP {}, UUID {})".format(unicode(_slave_struct.name), master_ip, master_uuid))
                 self.send_command(_slave_struct.slave_uuid, unicode(srv_com))
@@ -177,6 +193,12 @@ class SyncerProcess(threading_tools.process_obj):
         else:
             self.log("uuid missing in relayer_info", logging_tools.LOG_LEVEL_ERROR)
 
+    def _satellite_info(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        print srv_com.pretty_print()
+
+    # pure slave (==satellite) methods
+
     def _register_master(self, *args, **kwargs):
         # only called at pure slaves
         srv_com = server_command.srv_command(source=args[0])
@@ -187,7 +209,7 @@ class SyncerProcess(threading_tools.process_obj):
             self.log("ignoring register_master", logging_tools.LOG_LEVEL_WARN)
 
     def _check_for_register_at_master(self):
-        if not self.__registered_at_master and "master_uuid" in self.__local_master.config_store:
+        if not self.__registered_at_master and "master.uuid" in self.__local_master.config_store:
             self.__registered_at_master = True
             self.send_pool_message(
                 "register_remote",
@@ -195,6 +217,7 @@ class SyncerProcess(threading_tools.process_obj):
                 self.__local_master.config_store["master.uuid"],
                 self.__local_master.config_store["master.port"],
             )
+            self._send_satellite_info()
 
     def _build_info(self, *args, **kwargs):
         # build info send from relayer
