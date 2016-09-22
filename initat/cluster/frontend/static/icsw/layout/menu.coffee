@@ -227,7 +227,7 @@ menu_module = angular.module(
     @backg_timer = null
     return {
         restrict: "EA"
-        template: '<button type="button" ng-click="redirect_to_bgj_info()" title="number of background jobs"></button>'
+        template: '<button type="button" ng-click="redirect_to_bgj_info()" title="Number of Background Jobs" style="margin-top:27px;margin-left:15px;"></button>'
         replace: true
         link: (scope, el, attrs) ->
             scope.background_jobs = 0
@@ -240,9 +240,9 @@ menu_module = angular.module(
             el.addClass("btn btn-xs btn-warning")
             get_background_job_class = () ->
                 if scope.background_jobs < 4
-                    return "btn btn-xs btn-warning"
+                    return "btn btn-xs btn-warning pull-right"
                 else
-                    return "btn btn-xs btn-danger"
+                    return "btn btn-xs btn-danger pull-right"
             reload = () ->
                 icswSimpleAjaxCall(
                     {
@@ -298,6 +298,8 @@ menu_module = angular.module(
                 a_attrs.href = data.menuEntry.href
             else
                 a_attrs.href = data.menuEntry.sref
+            if data.menuEntry.entryClass?
+                a_attrs.className = "#{a_attrs.className} #{data.menuEntry.entryClass}"
             if data.menuEntry.labelClass
                 return li(
                     {key: "li"}
@@ -358,7 +360,7 @@ menu_module = angular.module(
                                 key: "#{sg_data.key}_li"
                             }
                             [
-                                h3(
+                                p(
                                     {
                                         key: "p"
                                     }
@@ -426,7 +428,28 @@ menu_module = angular.module(
                     )
 
                     ul_items.push(ul_item)
+                _m_item = []
+                if state.icon? and state.icon != ""
+                    _m_item.push span(
+                        {
+                        className: "fa #{state.icon} fa-lg"
+                        key: "span"
+                        }
+                    )
+                if menu_name? and menu_name != ""
+                    _m_item.push span(
+                        {
+                            key: "text"
+                        }
+                        menu_name
+                    )
+                _m_item.push span(
+                    {
+                        className: "caret"
+                        key: "caretdown"
+                    }
 
+                )
                 _res = li(
                     {
                         className: "dropdown"
@@ -441,20 +464,7 @@ menu_module = angular.module(
                                 key: "head"
                                 title: menu_title
                             }
-                            [
-                                span(
-                                    {
-                                        className: "fa #{state.icon} fa-lg fa_top"
-                                        key: "span"
-                                    }
-                                )
-                                span(
-                                    {
-                                        key: "text"
-                                    }
-                                    menu_name
-                                )
-                            ]
+                            _m_item
                         )
                         ul(
                             {
@@ -622,7 +632,7 @@ menu_module = angular.module(
         # selection button title
         title_str: ""
     }
-
+    $scope.basic_breadcrumb = "This > is > a > dummy > Breadcrumb"
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
         $scope.struct.current_user = icswUserService.get().user
     )

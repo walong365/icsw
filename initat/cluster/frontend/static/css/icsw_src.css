@@ -227,25 +227,6 @@ ul.fancytree-container {
 .cursorpointer {
     cursor: pointer;
 }
-.cfp-hotkeys-container {
-    background-color: rgba(255, 255, 255, 0.6);
-    text-align: center;
-}
-.cfp-hotkeys {
-    background-color: rgba(245, 245, 245, 0.8);
-    border: 1px solid #cccccc;
-    display: inline-block;
-    min-height: 180px;
-    height: auto;
-    margin-top: 150px;
-    text-align: center;
-    vertical-align: middle;
-    width: 400px;
-}
-.cfp-hotkeys table {
-    background-color: transparent;
-    margin: 10px;
-}
 .icsw-formlabel {
     width: 250px;
     text-align: left!important;
@@ -266,3 +247,73 @@ div[class*="col-"] > ul {
 .tab-pane icsw-simple-device-info > .container-fluid {
     padding: 5px 0px;
 }
+/* HELP PAGE START */
+.cfp-hotkeys-container {
+    background-color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+}
+.cfp-hotkeys {
+    background-color: rgba(245, 245, 245, 0.8);
+    border: 1px solid #cccccc;
+    display: inline-block;
+    min-height: 180px;
+    height: auto;
+    margin-top: 150px;
+    text-align: center;
+    vertical-align: middle;
+    width: 400px;
+}
+.cfp-hotkeys table {
+    background-color: transparent;
+    margin: 10px;
+}
+/* HELP PAGE END */
+/* MENU START */
+.navbar {
+    margin-bottom: 17px;
+    min-height: 70px;
+}
+
+*::before, *::after {
+    box-sizing: border-box;
+}
+*::after, *::before {
+    box-sizing: border-box;
+}
+*::before, *::after {
+    box-sizing: border-box;
+}
+*::after, *::before {
+    box-sizing: border-box;
+}
+.yamm .nav, .yamm .collapse, .yamm .dropup, .yamm .dropdown {
+    position: static;
+}
+.navbar-nav > li {
+    float: left;
+}
+.nav > li {
+    display: block;
+}
+.navbar-nav {
+    font-size: 14px;
+}
+.navbar-nav > li > a {
+    font-size: 18px;
+    padding-bottom: 26.5px;
+    padding-top: 26.5px;
+    line-height: 17px;
+}
+.navbar form {
+    margin-top: 22px;
+}
+.navbar p {
+    margin: 0 0 3px;
+}
+.navbar .disabled {
+    color: #bbbbbb;
+}
+.yamm [class*="col-"] {
+    min-width: 200px;
+}
+/* MENU END */

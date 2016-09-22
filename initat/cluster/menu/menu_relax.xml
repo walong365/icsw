@@ -158,6 +158,9 @@
                                                 <attribute name="column_int"></attribute>
                                             </optional>
                                             <optional>
+                                                <attribute name="entryClass_str"></attribute>
+                                            </optional>
+                                            <optional>
                                                 <attribute name="preSpacer_bool">
                                                     <choice>
                                                         <value>yes</value>

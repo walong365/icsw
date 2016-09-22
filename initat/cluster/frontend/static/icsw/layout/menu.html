@@ -33,11 +33,8 @@
                     </div>
                 </form>
                 <!-- @endif -->
-
+                <icsw-background-job-info></icsw-background-job-info>
                 <icsw-menu icsw-menu-side="right"></icsw-menu>
-                <div class="navbar-form navbar-right">
-                    <icsw-background-job-info></icsw-background-job-info>
-                </div>
             </div>
         </div>
     </nav>
@@ -46,13 +43,8 @@
 <script type="text/ng-template" id="icsw.layout.submenubar">
     <nav class="navbar navbar-default submenu-bar" ng-if="struct.current_user" style="position:fixed;width:100%;z-index:1029;margin-top:-30px;">
         <ul class="sub-breadcrumb pull-left">
-            <li ng-repeat="entry in struct.bc_list track by $index"  class="pull-left">
-                <a class="cursorpointer" ui-sref="{{ entry.sref }}" ui-sref-opts="{icswRegister: false}" ng-show="!entry.has_devsel">
-                    <span class="fa" ng-class="entry.icon"/> {{ entry.name }}
-                </a>
-                <button type="button" ng-show="entry.has_devsel" class="btn btn-xs btn-default" ng-click="activate_state(entry)">
-                    <span class="fa" ng-class="entry.icon"/> {{ entry.name }}
-                </button>
+            <li class="pull-left">
+                {{ basic_breadcrumb }}
             </li>
             <li class="pull-right cursorpointer">
                 <span
@@ -71,6 +63,14 @@
                 >No devices selected</span>
                 <icsw-tools-button ng-show="!struct.any_selected && struct.tree_valid" type="select" size="xs" value="Select all" ng-click="select_all($event)"></icsw-tools-button>
             </li>
+            <li ng-repeat="entry in struct.bc_list track by $index"  class="pull-right">
+                <a class="cursorpointer" ui-sref="{{ entry.sref }}" ui-sref-opts="{icswRegister: false}" ng-show="!entry.has_devsel">
+                    <span class="fa" ng-class="entry.icon"/> {{ entry.name }}
+                </a>
+                <button type="button" ng-show="entry.has_devsel" class="btn btn-xs btn-default" ng-click="activate_state(entry)">
+                    <span class="fa" ng-class="entry.icon"/> {{ entry.name }}
+                </button>
+            </li>
         </ul>
     </nav>
 </script>
@@ -85,7 +85,7 @@
             </div>
         </li>
         <li class="active" ng-if="num_gauges == 0"><!-- redirect_to_init() -->
-            <img height="42px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="go_mainboard($event)" style="cursor: pointer" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
+            <img height="58px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="go_mainboard($event)" style="cursor: pointer;margin-top:8px;padding-right:15px;" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
         </li>
     </ul>
 </script>
