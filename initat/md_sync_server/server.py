@@ -298,7 +298,7 @@ class server_process(
     def monitoring_info(self, srv_com, **kwargs):
         return srv_com
 
-    @RemoteCall()
+    @RemoteCall(target_process="syncer")
     def register_master(self, srv_com, **kwargs):
         return srv_com
 

@@ -122,6 +122,24 @@ class SyncConfig(object):
         # clear md_struct
         self.__md_struct = None
 
+    def register_master(self, srv_com):
+        master_ip, master_uuid, master_port = (
+            srv_com["*master_ip"],
+            srv_com["*master_uuid"],
+            int(srv_com["*master_port"])
+        )
+        self.log(
+            "registering master at {} ({}@{:d})".format(
+                master_uuid,
+                master_ip,
+                master_port,
+            )
+        )
+        self.config_store["master.uuid"] = master_uuid
+        self.config_store["master.ip"] = master_ip
+        self.config_store["master.port"] = master_port
+        self.config_store.write()
+
     def get_info_dict(self):
         r_dict = {
             "master": self.master,

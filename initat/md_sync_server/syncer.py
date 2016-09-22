@@ -52,9 +52,13 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("check_for_redistribute", self._check_for_redistribute)
         self.register_func("build_info", self._build_info)
         self.register_func("distribute_info", self._distribute_info)
+        self.register_func("register_master", self._register_master)
         self.__build_in_progress, self.__build_version = (False, 0)
         # setup local master
-        self.__local_master = SyncConfig(self, None, distributed=False)
+        self.__local_master = None
+        # registered at master
+        self.__registered_at_master = False
+        self.register_timer(self._init_local_master, 60, first_timeout=0)
         # this used to be just set in _check_for_slaves, but apparently check_for_redistribute can be called before that
         self.__slave_configs, self.__slave_lut = ({}, {})
 
@@ -63,6 +67,11 @@ class SyncerProcess(threading_tools.process_obj):
 
     def loop_post(self):
         self.__log_template.close()
+
+    def _init_local_master(self):
+        if not self.__local_master and "MD_TYPE" in global_config:
+            self.__local_master = SyncConfig(self, None, distributed=False)
+            self._check_for_register_at_master()
 
     def _distribute_info(self, srv_com, **kwargs):
         srv_com = server_command.srv_command(source=srv_com)
@@ -73,6 +82,7 @@ class SyncerProcess(threading_tools.process_obj):
             if _di["master"]:
                 self.log("found master entry")
                 self.__master_config = SyncConfig(self, _di, distributed=True if len(dist_info) > 1 else False, local_master=self.__local_master)
+                # register md-config-server
                 self.send_pool_message(
                     "register_remote",
                     self.__master_config.master_ip,
@@ -113,14 +123,14 @@ class SyncerProcess(threading_tools.process_obj):
     def _send_register_msg(self, **kwargs):
         for _slave_struct in [self.__master_config] + self.__slave_configs.values():
             if _slave_struct.master:
-                # message to myself
-                print "to_myself"
+                self.log("register_master not necessary for master")
             else:
                 master_ip = _slave_struct.master_ip
                 master_uuid = _slave_struct.master_uuid
                 srv_com = server_command.srv_command(
                     command="register_master",
                     master_ip=master_ip,
+                    master_uuid=master_uuid,
                     master_port="{:d}".format(global_config["COMMAND_PORT"]),
                 )
                 self.log(u"send register_master to {} (master IP {}, UUID {})".format(unicode(_slave_struct.name), master_ip, master_uuid))
@@ -166,6 +176,25 @@ class SyncerProcess(threading_tools.process_obj):
                 self.log("uuid {} not found in slave_lut".format(uuid), logging_tools.LOG_LEVEL_ERROR)
         else:
             self.log("uuid missing in relayer_info", logging_tools.LOG_LEVEL_ERROR)
+
+    def _register_master(self, *args, **kwargs):
+        # only called at pure slaves
+        srv_com = server_command.srv_command(source=args[0])
+        if self.__local_master:
+            self.__local_master.register_master(srv_com)
+            self._check_for_register_at_master()
+        else:
+            self.log("ignoring register_master", logging_tools.LOG_LEVEL_WARN)
+
+    def _check_for_register_at_master(self):
+        if not self.__registered_at_master and "master_uuid" in self.__local_master.config_store:
+            self.__registered_at_master = True
+            self.send_pool_message(
+                "register_remote",
+                self.__local_master.config_store["master.ip"],
+                self.__local_master.config_store["master.uuid"],
+                self.__local_master.config_store["master.port"],
+            )
 
     def _build_info(self, *args, **kwargs):
         # build info send from relayer
