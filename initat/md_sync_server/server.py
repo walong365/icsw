@@ -62,6 +62,8 @@ class server_process(
         self.VCM_check_relay_version()
         self._init_network_sockets()
         self.__is_distributor = False
+        self.register_func("send_command", self._send_command)
+        self.register_func("register_slave", self._register_slave)
         _srv_com = server_command.srv_command(command="status")
         # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
 
@@ -135,10 +137,29 @@ class server_process(
     def _register_slave(self, *args, **kwargs):
         _src_proc, _src_id, slave_ip, slave_uuid = args
         if slave_uuid not in self.__slaves:
-            rs = RemoteSlave(slave_uuid, slave_ip, 2004)
+            rs = RemoteSlave(slave_uuid, slave_ip, self.CC.Instance.get_port_dict(icswServiceEnum.monitor_slave, command=True))
             self.log("connecting to {}".format(unicode(rs)))
             self.main_socket.connect(rs.conn_str)
             self.__slaves[slave_uuid] = rs
+
+    def _send_command(self, *args, **kwargs):
+        _src_proc, _src_id, full_uuid, srv_com = args
+        try:
+            self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
+            self.main_socket.send_unicode(srv_com)
+        except:
+            self.log(
+                "cannot send {:d} bytes to {}: {}".format(
+                    len(srv_com),
+                    full_uuid,
+                    process_tools.get_except_info(),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            if full_uuid in self.__slaves:
+                self.log("target is {}".format(unicode(self.__slaves[full_uuid])))
+        else:
+            self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
 
     def _ocsp_results(self, *args, **kwargs):
         _src_proc, _src_pid, lines = args
@@ -190,25 +211,6 @@ class server_process(
                 raise
         else:
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
-
-    def _send_command(self, *args, **kwargs):
-        _src_proc, _src_id, full_uuid, srv_com = args
-        try:
-            self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
-            self.main_socket.send_unicode(srv_com)
-        except:
-            self.log(
-                "cannot send {:d} bytes to {}: {}".format(
-                    len(srv_com),
-                    full_uuid,
-                    process_tools.get_except_info(),
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            if full_uuid in self.__slaves:
-                self.log("target is {}".format(unicode(self.__slaves[full_uuid])))
-        else:
-            self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
 
     def _set_external_cmd_file(self, *args, **kwargs):
         _src_proc, _src_id, ext_name = args

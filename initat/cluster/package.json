@@ -21,7 +21,7 @@
     "gulp-exec": "^2.1.2",
     "gulp-flatten": "^0.3.0",
     "gulp-gzip": "^1.4.0",
-    "gulp-htmlmin": "^2.0.0",
+    "gulp-htmlmin": "^3.0.0",
     "gulp-if": "^2.0.1",
     "gulp-inject": "^4.1.0",
     "gulp-memory-cache": "^0.3.0",

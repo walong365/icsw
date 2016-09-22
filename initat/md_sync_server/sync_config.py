@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" config part of md-config-server """
+""" syncer definition for md-sync-server """
 
 import base64
 import bz2
@@ -50,7 +50,7 @@ class SyncConfig(object):
         self.master = di_dict["master"]
         if self.name:
             self.__dir_offset = os.path.join("slaves", self.name)
-            for _attr_name in ["slave_ip", "master_ip", "pk", "uuid"]:
+            for _attr_name in ["slave_ip", "master_ip", "pk", "slave_uuid", "master_uuid"]:
                 setattr(self, _attr_name, di_dict[_attr_name])
             if not self.master_ip:
                 self.slave_ip = None
@@ -58,10 +58,12 @@ class SyncConfig(object):
                 self.log("no route to slave {} found".format(self.name), logging_tools.LOG_LEVEL_ERROR)
             else:
                 self.log(
-                    "IP-address of slave {} is {} (master ip: {})".format(
+                    "IP-address of slave {} is {} [{}] (master ip: {} [{}])".format(
                         self.name,
                         self.slave_ip,
-                        self.master_ip
+                        self.slave_uuid,
+                        self.master_ip,
+                        self.master_uuid,
                     )
                 )
             # target config version directory for distribute

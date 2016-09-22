@@ -134,7 +134,6 @@ class server_process(
         if "MD_TYPE" in global_config:
             self.register_func("register_slave", self._register_slave)
             self.register_func("send_command", self._send_command)
-            self.register_func("send_slave_command", self._send_slave_command)
             self.register_func("ocsp_results", self._ocsp_results)
             self.__external_cmd_file = None
             self.register_func("external_cmd_file", self._set_external_cmd_file)
@@ -419,7 +418,8 @@ class server_process(
     def _register_slave(self, *args, **kwargs):
         _src_proc, _src_id, slave_ip, slave_uuid = args
         if slave_uuid not in self.__slaves:
-            rs = RemoteSlave(slave_uuid, slave_ip, 2004)
+            # in fact only one primary slave is handled
+            rs = RemoteSlave(slave_uuid, slave_ip, self.CC.Instance.get_port_dict(icswServiceEnum.monitor_slave, command=True))
             self.log("connecting to {}".format(unicode(rs)))
             self.main_socket.connect(rs.conn_str)
             self.__slaves[slave_uuid] = rs
@@ -474,12 +474,6 @@ class server_process(
                 raise
         else:
             self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
-
-    def _send_slave_command(self, *args, **kwargs):
-        # send srv_command to local distribution server
-        send_com = server_command.srv_command(source=args[2])
-        # print unicode(send_com)
-        self.send_to_remote_server_ip("127.0.0.1", routing.get_server_uuid(), icswServiceEnum.monitor_slave, send_com)
 
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args

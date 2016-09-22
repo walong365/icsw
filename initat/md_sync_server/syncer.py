@@ -56,10 +56,8 @@ class SyncerProcess(threading_tools.process_obj):
             init_logger=True
         )
         self.__register_timer = False
-        self.register_func("send_register_msg", self._send_register_msg)
         self.register_func("file_content_result", self._file_content_result)
         self.register_func("file_content_bulk_result", self._file_content_result)
-        self.register_func("check_for_slaves", self._check_for_slaves)
         self.register_func("check_for_redistribute", self._check_for_redistribute)
         self.register_func("build_info", self._build_info)
         self.register_func("distribute_info", self._distribute_info)
@@ -91,92 +89,41 @@ class SyncerProcess(threading_tools.process_obj):
                 )
                 self.__slave_configs[_slave_c.pk] = _slave_c
                 self.__slave_lut[_slave_c.name] = _slave_c.pk
-                self.__slave_lut[_slave_c.uuid] = _slave_c.pk
+                self.__slave_lut[_slave_c.slave_uuid] = _slave_c.pk
                 self.log(
                     "  slave {} (IP {}, {})".format(
                         _slave_c.name,
                         _slave_c.slave_ip,
-                        _slave_c.uuid,
+                        _slave_c.slave_uuid,
                     )
                 )
-
-    def _check_for_slaves(self, **kwargs):
-        # old code
-        master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
-        slave_servers = device.objects.filter(
-            Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.monitor_slave.name)
-        ).select_related("domain_tree_node")
-        # slave configs
-        self.__master_config = SyncConfig(self, master_server, distributed=True if len(slave_servers) else False)
-        # connect to local relayer
-        self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", master_server.uuid))
-        self.send_pool_message("register_slave", "127.0.0.1", master_server.uuid)
-        _send_data = [self.__master_config.get_send_data()]
-        if len(slave_servers):
-            self.log(
-                "found {}: {}".format(
-                    logging_tools.get_plural("slave_server", len(slave_servers)),
-                    ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))
-                )
-            )
-            for cur_dev in slave_servers:
-                _slave_c = SyncConfig(
-                    self,
-                    cur_dev,
-                    slave_name=cur_dev.full_name,
-                    master_server=master_server,
-                )
-                self.__slave_configs[cur_dev.pk] = _slave_c
-                self.__slave_lut[cur_dev.full_name] = cur_dev.pk
-                self.__slave_lut[cur_dev.uuid] = cur_dev.pk
-                self.log(
-                    "  slave {} (IP {}, {})".format(
-                        _slave_c.monitor_server.full_name,
-                        _slave_c.slave_ip,
-                        _slave_c.monitor_server.uuid
-                    )
-                )
-                _send_data.append(_slave_c.get_send_data())
                 if _slave_c.slave_ip:
-                    self.send_pool_message("register_slave", _slave_c.slave_ip, _slave_c.monitor_server.uuid)
-                else:
-                    self.log("slave has an invalid IP", logging_tools.LOG_LEVEL_CRITICAL)
-        else:
-            self.log("no slave-servers found")
-        distr_info = server_command.srv_command(
-            command="distribute_info",
-            info=server_command.compress(_send_data, marshal=True),
-        )
-        self.send_pool_message("send_slave_command", unicode(distr_info))
-        print "***", _send_data
+                    self.send_pool_message("register_slave", _slave_c.slave_ip, _slave_c.slave_uuid)
         if not self.__register_timer:
             self.__register_timer = True
             self.register_func("relayer_info", self._relayer_info)
-            _reg_timeout, _first_timeout = (600, 15)
+            _reg_timeout, _first_timeout = (600, 2)  # (600, 15)
             self.log("will send register_msg in {:d} (then {:d}) seconds".format(_first_timeout, _reg_timeout))
             self.register_timer(self._send_register_msg, _reg_timeout, instant=global_config["DEBUG"], first_timeout=_first_timeout)
 
     def _send_register_msg(self, **kwargs):
-        master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
-        for _slave_struct in [None] + self.__slave_configs.values():
-            if _slave_struct:
-                master_ip = _slave_struct.master_ip
-                _srv = _slave_struct.monitor_server
+        for _slave_struct in [self.__master_config] + self.__slave_configs.values():
+            if _slave_struct.master:
+                # message to myself
+                print "to_myself"
             else:
-                master_ip = "127.0.0.1"
-                _srv = master_server
-            srv_com = server_command.srv_command(
-                command="register_master",
-                host="DIRECT",
-                port="0",
-                master_ip=master_ip,
-                master_port="{:d}".format(global_config["COMMAND_PORT"]),
-            )
-            self.log(u"send register_master to {} (master IP {}, UUID {})".format(unicode(_srv), master_ip, _srv.uuid))
-            self.send_command(_srv.uuid, unicode(srv_com))
+                master_ip = _slave_struct.master_ip
+                master_uuid = _slave_struct.master_uuid
+                srv_com = server_command.srv_command(
+                    command="register_master",
+                    master_ip=master_ip,
+                    master_port="{:d}".format(global_config["COMMAND_PORT"]),
+                )
+                self.log(u"send register_master to {} (master IP {}, UUID {})".format(unicode(_slave_struct.name), master_ip, master_uuid))
+                self.send_command(master_uuid, unicode(srv_com))
 
     def send_command(self, src_id, srv_com):
-        self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), srv_com)
+        self.send_pool_message("send_command", src_id, srv_com)
 
     def _check_for_redistribute(self, *args, **kwargs):
         for slave_config in self.__slave_configs.itervalues():

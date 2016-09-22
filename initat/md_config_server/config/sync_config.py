@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" config part of md-config-server """
+""" syncer definition for md-config-server """
 
 import base64
 import bz2
@@ -32,6 +32,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import mon_dist_master, mon_dist_slave, cluster_timezone, \
     mon_build_unreachable
+from initat.cluster.backbone import routing
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.server_version import VERSION_STRING
 from initat.tools import config_tools, configfile, logging_tools, process_tools, server_command
@@ -57,12 +58,19 @@ class SyncConfig(object):
         if self.__slave_name:
             self.__dir_offset = os.path.join("slaves", self.__slave_name)
             master_cfg = config_tools.device_with_config(service_type_enum=icswServiceEnum.monitor_server)
+            self.master_uuid = routing.get_server_uuid(
+                icswServiceEnum.monitor_slave,
+                master_cfg[icswServiceEnum.monitor_server][0].effective_device.uuid,
+            )
             slave_cfg = config_tools.server_check(
                 host_name=monitor_server.full_name,
                 service_type_enum=icswServiceEnum.monitor_slave,
                 fetch_network_info=True
             )
-            self.slave_uuid = monitor_server.uuid
+            self.slave_uuid = routing.get_server_uuid(
+                icswServiceEnum.monitor_slave,
+                monitor_server.uuid,
+            )
             route = master_cfg[icswServiceEnum.monitor_server][0].get_route_to_other_device(
                 self.__process.router_obj,
                 slave_cfg,
@@ -135,9 +143,10 @@ class SyncConfig(object):
                 {
                     "name": self.__slave_name,
                     "pk": self.monitor_server.pk,
-                    "uuid": self.monitor_server.uuid,
                     "master_ip": self.master_ip,
+                    "master_uuid": self.master_uuid,
                     "slave_ip": self.slave_ip,
+                    "slave_uuid": self.slave_uuid,
                 }
             )
         return _r_dict
