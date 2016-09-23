@@ -40,11 +40,11 @@ angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
     "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
-    "icswToolsSimpleModalService", "themeService",
+    "icswToolsSimpleModalService", "themeService", "icswOverallStyle",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
     initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
-    icswToolsSimpleModalService, themeService,
+    icswToolsSimpleModalService, themeService, icswOverallStyle,
 ) ->
     $scope.all_loaded = false;
     $scope.initProduct = initProduct
@@ -85,6 +85,7 @@ angular.module(
                 themeService.setdefault($(xml).find("value[name='theme_default']").text())
                 $scope.login_hints = angular.fromJson($(xml).find("value[name='login_hints']").text())
                 $scope.django_version = $(xml).find("value[name='django_version']").text()
+                icswOverallStyle.set($(xml).find("value[name='overall_style']").text())
                 $scope.struct.disabled = false
                 $scope.struct.cluster_data = data[1]
                 $scope.license_tree = data[2]

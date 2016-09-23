@@ -109,6 +109,11 @@ if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
         )
     )
 
+if "overall.style" in _cs:
+    ICSW_OVERALL_STYLE = _cs["overall.style"]
+else:
+    ICSW_OVERALL_STYLE = "normal"
+
 if DEBUG:
     warnings.filterwarnings(
         "error",

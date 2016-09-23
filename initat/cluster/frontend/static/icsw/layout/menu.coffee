@@ -79,11 +79,18 @@ menu_module = angular.module(
                 }
             )
             icswUserService.load($scope.$id)
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.MAIN_GET_OVERALL_STYLE
+                    dataType: "json"
+                }
+            )
         ]
     ).then(
         (data) ->
             $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
             $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
+            icswOverallStyle.set(data[2].overall_style)
     )
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
         $scope.struct.current_user = icswUserService.get().user
@@ -91,6 +98,9 @@ menu_module = angular.module(
     )
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
         $scope.struct.current_user = undefined
+    )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
+        $scope.struct.overall_style = icswOverallStyle.get()
     )
 
     $scope.get_progress_style = (obj) ->
@@ -185,6 +195,9 @@ menu_module = angular.module(
                 scope.update_progress_bar()
             )
 
+            $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
+                scope.overall_style = icswOverallStyle.get()
+            )
             scope.go_mainboard = ($event)->
                 $state.go("main.dashboard")
 

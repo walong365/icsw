@@ -84,6 +84,11 @@ class get_docu_info(View):
         return HttpResponse(json.dumps(_info_dict), content_type="application/json")
 
 
+class get_overall_style(View):
+    def post(self, request):
+        return HttpResponse(json.dumps({"overall_style": settings.ICSW_OVERALL_STYLE}), content_type="application/json")
+
+
 class get_routing_info(View):
     # @method_decorator(login_required)
     def get(self, request):

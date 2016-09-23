@@ -84,6 +84,9 @@ def main(opts):
             raise KeyError("unknown key '{}'".format(opts.key))
     elif opts.mode == "setkey":
         _store = ConfigStore(opts.store)
+        if not opts.key:
+            print("Need valid key")
+            sys.exit(4)
         print("setting key '{}' of store {} to '{}'".format(opts.key, opts.store, opts.value))
         _store[opts.key] = opts.value
         _store.write()
