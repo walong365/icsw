@@ -66,6 +66,7 @@ class SyncConfig(object):
             self.master = di_dict["master"]
             if self.name:
                 self.struct = None
+                self.config_store = config_store.ConfigStore(CS_MON_NAME, log_com=self.__process.log, access_mode=config_store.AccessModeEnum.LOCAL, read=False)
                 self.__dir_offset = os.path.join("slaves", self.name)
                 for _attr_name in ["slave_ip", "master_ip", "pk", "slave_uuid", "master_uuid"]:
                     setattr(self, _attr_name, di_dict[_attr_name])
@@ -86,7 +87,9 @@ class SyncConfig(object):
                 # target config version directory for distribute
                 self.__tcv_dict = {}
             else:
+                # local master structure, is usually none due to delayed check of MD_TYPE in snycer.py
                 self.struct = kwargs["local_master"]
+                self.config_store = None
                 self.master_ip = "127.0.0.1"
                 self.master_port = di_dict["master_port"]
                 self.pure_uuid = di_dict["pure_uuid"]
@@ -122,6 +125,9 @@ class SyncConfig(object):
         # clear md_struct
         self.__md_struct = None
 
+    def set_local_master(self, local_master):
+        self.struct = local_master
+
     def register_master(self, srv_com):
         master_ip, master_uuid, master_port, slave_uuid = (
             srv_com["*master_ip"],
@@ -145,9 +151,15 @@ class SyncConfig(object):
 
     def get_satellite_info(self):
         r_dict = {}
-        for _key in ["md.version", "md.release", "icsw.version", "icsw.release", "md.version.string"]:
-            r_dict[_key] = self.config_store[_key]
+        if self.config_store is not None:
+            # may be none for local master
+            for _key in ["md.version", "md.release", "icsw.version", "icsw.release", "md.version.string"]:
+                r_dict[_key] = self.config_store.get(_key, None)
         return r_dict
+
+    def store_satellite_info(self, si_info):
+        for _key in si_info.keys():
+            self.config_store[_key] = si_info[_key]
 
     def get_info_dict(self):
         r_dict = {
@@ -155,8 +167,11 @@ class SyncConfig(object):
             "slave_uuid": self.slave_uuid,
             "state": self.state.name,
         }
-        if self.struct:
+        if self.struct is not None:
+            # local master
             r_dict.update(self.struct.get_satellite_info())
+        else:
+            r_dict.update(self.get_satellite_info())
         return r_dict
 
     def _relayer_gen(self):

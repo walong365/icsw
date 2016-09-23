@@ -133,6 +133,8 @@ class server_process(
         self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
 
     def process_start(self, src_process, src_pid):
+        if src_process == "syncer" and "distribute_info" in self.config_store:
+            self.send_to_process("syncer", "distribute_info", server_command.decompress(self.config_store["distribute_info"], json=True))
         self.CC.process_added(src_process, src_pid)
 
     def _register_remote(self, *args, **kwargs):
@@ -240,9 +242,13 @@ class server_process(
         self.config_store["mon_is_running"] = True
         return self._start_stop_mon_process(srv_com)
 
-    @RemoteCall(target_process="syncer")
+    @RemoteCall()
     def distribute_info(self, srv_com, **kwargs):
-        return srv_com
+        di_info = server_command.decompress(srv_com["*info"], marshal=True)
+        self.config_store["distribute_info"] = server_command.compress(di_info, json=True)
+        self.config_store.write()
+        self.send_to_process("syncer", "distribute_info", di_info)
+        return None
 
     def _start_stop_mon_process(self, srv_com):
         global_config["MON_TARGET_STATE"] = self.config_store["mon_is_running"]
