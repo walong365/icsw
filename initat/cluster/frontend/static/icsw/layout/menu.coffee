@@ -367,7 +367,7 @@ menu_module = angular.module(
                                         key: "p"
                                     }
                                     [
-                                        h3(
+                                        strong(
                                             {
                                                 key: "strong"
                                             }

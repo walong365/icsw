@@ -271,7 +271,7 @@ div[class*="col-"] > ul {
 /* MENU START */
 .navbar {
     margin-bottom: 17px;
-    min-height: 70px;
+    /* min-height: 70px;*/
 }
 
 *::before, *::after {
@@ -299,13 +299,13 @@ div[class*="col-"] > ul {
     font-size: 14px;
 }
 .navbar-nav > li > a {
-    font-size: 18px;
-    padding-bottom: 26.5px;
+    font-size: 14px;
+    /* padding-bottom: 26.5px;
     padding-top: 26.5px;
-    line-height: 17px;
+    line-height: 17px; */
 }
 .navbar form {
-    margin-top: 22px;
+    /* margin-top: 22px; */
 }
 .navbar p {
     margin: 0 0 3px;

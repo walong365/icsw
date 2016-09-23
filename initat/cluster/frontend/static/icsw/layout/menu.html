@@ -41,7 +41,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.layout.submenubar">
-    <nav class="navbar navbar-default submenu-bar" ng-if="struct.current_user" style="position:fixed;width:100%;z-index:1029;margin-top:-30px;">
+    <nav class="navbar navbar-default submenu-bar" ng-if="struct.current_user" style="position:fixed; width:100%; z-index:1029; margin-top:-30px;">
         <ul class="sub-breadcrumb pull-left">
             <li class="pull-left">
                 {{ basic_breadcrumb }}
@@ -85,7 +85,14 @@
             </div>
         </li>
         <li class="active" ng-if="num_gauges == 0"><!-- redirect_to_init() -->
-            <img height="58px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="go_mainboard($event)" style="cursor: pointer;margin-top:8px;padding-right:15px;" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
+            <img
+                height="42px"
+                ng-attr-src="{{ initProduct.menu_gfx_url }}"
+                ng-click="go_mainboard($event)"
+                style="cursor: pointer;margin-top:0px;padding-right:15px;"
+                title="{{ initProduct.name }}"
+                alt="{{ initProduct.name }}"
+            />
         </li>
     </ul>
 </script>

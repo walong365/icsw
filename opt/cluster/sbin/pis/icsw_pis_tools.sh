@@ -66,10 +66,14 @@ function icsw_cleanup() {
     [ -d /tmp/.icsw_zmq ] && rm -rf /tmp/.icsw_zmq
     [ -d /usr/local/sbin/modules ] && rm -rf /usr/local/sbin/modules
     PY_FILES="host-monitoring limits hm_classes ipc_comtools"
-
     for file in $PY_FILES ; do
         rm -f ${ICSW_SBIN}/$file.py{c,o}
     done
+    # icinga.uwsgi
+    ICINGA_WSGI=/opt/cluster/etc/uwsgi/icinga.wsgi.ini
+    if [ -f ${ICINGA_WSGI} ] ; then
+        chown idmon.idg ${ICINGA_WSGI}
+    fi
 }
 
 function move_log_dir() {

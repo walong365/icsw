@@ -401,7 +401,7 @@ class server_process(
 
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
-        self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
+        self.send_to_process("build", "rebuild_config", cache_mode="CACHED")
 
     def process_start(self, src_process, src_pid):
         if src_process == "syncer":
@@ -571,13 +571,6 @@ class server_process(
 
     @RemoteCall(target_process="syncer")
     def file_content_bulk_result(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall()
-    def relayer_info(self, srv_com, **kwargs):
-        # pretend to be synchronous call such that reply is sent right away
-        self.send_to_process("syncer", "relayer_info", unicode(srv_com))
-        srv_com.set_result("ok processed command sync_http_users")
         return srv_com
 
     @RemoteCall()

@@ -62,9 +62,8 @@ class VersionCheckMixin(object):
                 global_config.add_config_entries(
                     [
                         ("MD_TYPE", configfile.str_c_var(md_type)),
-                        ("MD_VERSION", configfile.int_c_var(int(md_version.split(".")[0]))),
-                        ("MD_RELEASE", configfile.int_c_var(int(md_version.split(".")[1]))),
-                        ("MD_VERSION_STRING", configfile.str_c_var(md_version)),
+                        ("MD_VERSION", configfile.str_c_var(md_version)),
+                        ("MD_RELEASE", configfile.str_c_var(md_release)),
                         ("MD_BASEDIR", configfile.str_c_var(os.path.join("/opt", "cluster", md_type))),
                         ("MAIN_CONFIG_NAME", configfile.str_c_var(md_type)),
                         ("MD_LOCK_FILE", configfile.str_c_var("{}.lock".format(md_type))),

@@ -68,6 +68,16 @@ def get_server_uuid(srv_type=None, uuid=None):
     return uuid
 
 
+def get_pure_uuid(in_str):
+    if in_str.count(":"):
+        _parts = in_str.split(":")
+        for _part in _parts:
+            if _part.count("-"):
+                in_str = _part
+                break
+    return in_str
+
+
 class SrvTypeRouting(object):
     ROUTING_KEY = "_WF_ROUTING_{}".format(settings.ICSW_CACHE_KEY)
 

@@ -75,7 +75,9 @@ class SyncerProcess(threading_tools.process_obj):
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         slave_servers = device.objects.filter(
             Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.monitor_slave.name)
-        ).select_related("domain_tree_node")
+        ).select_related(
+            "domain_tree_node"
+        )
         # slave configs
         self.__master_config = SyncConfig(self, master_server, distributed=True if len(slave_servers) else False)
         self.__slave_configs, self.__slave_lut = ({}, {})
@@ -137,26 +139,19 @@ class SyncerProcess(threading_tools.process_obj):
         else:
             self.log("unknown slave_name '{}'".format(slave_name), logging_tools.LOG_LEVEL_ERROR)
 
-    def _relayer_info(self, *args, **kwargs):
-        srv_com = server_command.srv_command(source=args[0])
-        if "uuid" in srv_com:
-            uuid = srv_com["uuid"].text.split(":")[-1]
-            if uuid == self.__master_config.monitor_server.uuid:
-                self.__master_config.set_relayer_info(srv_com)
-            elif uuid in self.__slave_lut:
-                _pk = self.__slave_lut[uuid]
-                self.__slave_configs[_pk].set_relayer_info(srv_com)
-            else:
-                self.log("uuid {} not found in slave_lut".format(uuid), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("uuid missing in relayer_info", logging_tools.LOG_LEVEL_ERROR)
-
     def _slave_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         info_list = server_command.decompress(srv_com["*slave_info"], json=True)
-        print "got info"
-        import pprint
-        pprint.pprint(info_list)
+        for info in info_list:
+            if info["master"]:
+                self.__master_config.set_info(info)
+            else:
+                _pure_uuid = routing.get_pure_uuid(info["slave_uuid"])
+                if _pure_uuid in self.__slave_lut:
+                    _pk = self.__slave_lut[_pure_uuid]
+                    self.__slave_configs[_pk].set_info(info)
+                else:
+                    self.log("got unknown UUID '{}' ({})".format(info["slave_uuid"], _pure_uuid), logging_tools.LOG_LEVEL_ERROR)
 
     def _build_info(self, *args, **kwargs):
         # build info send from relayer
