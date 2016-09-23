@@ -28,12 +28,12 @@ menu_module = angular.module(
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
     "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService",
-    "$rootScope", "ICSW_SIGNALS", "$timeout",
+    "$rootScope", "ICSW_SIGNALS", "$timeout", "icswOverallStyle",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
     $q, icswUserService, blockUI, $state, icswSystemLicenseDataService,
-    $rootScope, ICSW_SIGNALS, $timeout,
+    $rootScope, ICSW_SIGNALS, $timeout, icswOverallStyle,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -49,6 +49,8 @@ menu_module = angular.module(
         typeahead_loading: false
         # search-strings
         search_string: ""
+        # overall style
+        overall_style: icswOverallStyle.get()
     }
     $scope.HANDBOOK_PDF_PRESENT = false
     $scope.HANDBOOK_CHUNKS_PRESENT = false
@@ -163,11 +165,11 @@ menu_module = angular.module(
 [
     "$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct",
     "icswMenuProgressService", "icswLayoutSelectionDialogService", "ICSW_SIGNALS",
-    "$rootScope", "$state",
+    "$rootScope", "$state", "icswOverallStyle",
 (
     $templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct,
     icswMenuProgressService, icswLayoutSelectionDialogService, ICSW_SIGNALS,
-    $rootScope, $state
+    $rootScope, $state, icswOverallStyle,
 ) ->
     return {
         restrict: "EA"
@@ -175,6 +177,7 @@ menu_module = angular.module(
         scope: {}
         link: (scope, el, attrs) ->
             scope.initProduct = initProduct
+            scope.overall_style = icswOverallStyle.get()
             scope.num_gauges = 0
             scope.progress_iters = 0
             scope.cur_gauges = {}
@@ -276,11 +279,11 @@ menu_module = angular.module(
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
     "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
-    "icswUserService",
+    "icswUserService", "icswOverallStyle",
 (
     icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
-    icswUserService,
+    icswUserService, icswOverallStyle,
 ) ->
     # console.log icswAcessLevelService
     {ul, li, a, span, h4, div, p, strong, h3} = React.DOM
@@ -545,7 +548,7 @@ menu_module = angular.module(
                             ul(
                                 {
                                     key: "topmenu"
-                                    className: "nav navbar-nav navbar-#{@props.side}"
+                                    className: "nav navbar-nav navbar-#{@props.side} #{icswOverallStyle.get()}"
                                 }
                                 (
                                     menu.get_react(menu_header) for menu in menus

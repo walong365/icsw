@@ -1,6 +1,7 @@
 <script type="text/ng-template" id="icsw.layout.menubar">
     <nav
         class="navbar navbar-default navbar-fixed-top"
+        ng-class="struct.overall_style"
         role="navigation"
         ng-show="struct.current_user"
         icsw-element-size="size"
@@ -14,7 +15,7 @@
 
             <div class="collapse navbar-collapse">
                 <!-- @if DEBUG -->
-                <form class="navbar-form navbar-left">
+                <form class="navbar-form navbar-left" ng-class="struct.overall_style">
                     <div class="input-group">
                         <input
                             type="text"
@@ -84,9 +85,9 @@
                 </uib-progressbar>
             </div>
         </li>
-        <li class="active" ng-if="num_gauges == 0"><!-- redirect_to_init() -->
+        <li class="active" ng-if="num_gauges == 0">
             <img
-                height="42px"
+                ng-class="overall_style"
                 ng-attr-src="{{ initProduct.menu_gfx_url }}"
                 ng-click="go_mainboard($event)"
                 style="cursor: pointer;margin-top:0px;padding-right:15px;"

@@ -52,6 +52,27 @@ angular.module(
             if value?
                 node.setAttribute(key, value)
         return $(node)
+]).service("icswOverallStyle",
+[
+    "$q",
+(
+    $q,
+) ->
+    _style = "normal"
+    return {
+        get: () ->
+            return _style
+        set: (name) ->
+            _style = name
+    }
+]).controller("icswBodyCtrl",
+[
+    "$scope", "icswOverallStyle",
+(
+    $scope, icswOverallStyle,
+) ->
+    icswOverallStyle.set("normal");
+    $scope.overall_style = icswOverallStyle.get()
 ]).directive("icswDeviceListInfo",
 [
    "$q", "icswSimpleAjaxCall", "$templateCache", "ICSW_URLS",
