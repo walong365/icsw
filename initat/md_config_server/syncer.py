@@ -154,7 +154,9 @@ class SyncerProcess(threading_tools.process_obj):
     def _slave_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         info_list = server_command.decompress(srv_com["*slave_info"], json=True)
-        print "got info", info_list
+        print "got info"
+        import pprint
+        pprint.pprint(info_list)
 
     def _build_info(self, *args, **kwargs):
         # build info send from relayer

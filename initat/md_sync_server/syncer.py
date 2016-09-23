@@ -57,6 +57,8 @@ class SyncerProcess(threading_tools.process_obj):
         self.__build_in_progress, self.__build_version = (False, 0)
         # setup local master
         self.__local_master = None
+        # master config for distribution master
+        self.__master_config = None
         # registered at master
         self.__registered_at_master = False
         self.register_timer(self._init_local_master, 60, first_timeout=2)
@@ -72,11 +74,13 @@ class SyncerProcess(threading_tools.process_obj):
     def _init_local_master(self):
         if not self.__local_master and "MD_TYPE" in global_config:
             self.__local_master = SyncConfig(self, None, distributed=False)
+            if self.__master_config:
+                self.__master_config.set_local_master(self.__local_master)
             self._check_for_register_at_master()
         self._send_satellite_info()
 
     def _send_satellite_info(self):
-        if self.__registered_at_master:
+        if self.__registered_at_master and self.__local_master:
             self.send_command(
                 self.__local_master.config_store["master.uuid"],
                 unicode(
@@ -88,9 +92,7 @@ class SyncerProcess(threading_tools.process_obj):
                 )
             )
 
-    def _distribute_info(self, srv_com, **kwargs):
-        srv_com = server_command.srv_command(source=srv_com)
-        dist_info = server_command.decompress(srv_com["*info"], marshal=True)
+    def _distribute_info(self, dist_info, **kwargs):
         self.log("distribution info has {}".format(logging_tools.get_plural("entry", len(dist_info))))
         self.__slave_configs, self.__slave_lut = ({}, {})
         for _di in dist_info:
@@ -162,7 +164,6 @@ class SyncerProcess(threading_tools.process_obj):
             slave_info=server_command.compress(info_list, json=True)
         )
         self.send_command(self.__master_config.master_uuid, unicode(srv_com))
-        print "I", info_list
 
     def send_command(self, src_id, srv_com):
         self.send_pool_message("send_command", src_id, srv_com)
@@ -195,7 +196,14 @@ class SyncerProcess(threading_tools.process_obj):
 
     def _satellite_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
-        print srv_com.pretty_print()
+        uuid = srv_com["*uuid"]
+        si_info = server_command.decompress(srv_com["*satellite_info"], json=True)
+        if uuid in self.__slave_lut:
+            _pk = self.__slave_lut[uuid]
+            self.__slave_configs[_pk].store_satellite_info(si_info)
+            self.send_info_message()
+        else:
+            self.log("Unknown uuid for satellite_info: {}".format(uuid), logging_tools.LOG_LEVEL_ERROR)
 
     # pure slave (==satellite) methods
 
@@ -217,7 +225,8 @@ class SyncerProcess(threading_tools.process_obj):
                 self.__local_master.config_store["master.uuid"],
                 self.__local_master.config_store["master.port"],
             )
-            self._send_satellite_info()
+        # send satellite info
+        self._send_satellite_info()
 
     def _build_info(self, *args, **kwargs):
         # build info send from relayer

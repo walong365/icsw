@@ -389,8 +389,8 @@
 
 
     <routeGroup name="todo">
-        <menuHeader type="dict" name_str="Fix" icon_str="fa-cog" side_str="left"/>
-        <routeSubGroup name_str="Links to fix">
+        <menuHeader type="dict" name_str="Obsolete" icon_str="fa-cog" side_str="left"/>
+        <routeSubGroup name_str="Obsolete Links">
             <route name="main.monitorredirect">
                 <stateData type="dict" url_str="/monitorredirect" resolve_bool="yes"/>
                 <icswData type="dict" redirectToFromOnError_bool="yes">
