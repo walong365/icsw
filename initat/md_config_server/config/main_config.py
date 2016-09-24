@@ -467,7 +467,6 @@ class main_config(object):
                 ("debug_level", 0),
                 ("debug_verbosity", 0),
                 ("debug_file", os.path.join(self.__r_dir_dict["var"], "ndomod.debug")),
-                ("data_processing_options", global_config["NDO_DATA_PROCESSING_OPTIONS"]),
                 ("config_output_options", 2)
             ]
         )
