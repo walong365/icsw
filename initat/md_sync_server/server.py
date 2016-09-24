@@ -50,7 +50,6 @@ class server_process(
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.monitor_slave, global_config)
         self.CC.check_config()
-        self.__enable_livestatus = True  # global_config["ENABLE_LIVESTATUS"]
         self.__verbose = global_config["VERBOSE"]
         self.read_config_store()
         # log config
@@ -113,34 +112,32 @@ class server_process(
 
     def _update(self):
         res_dict = {}
-        if self.__enable_livestatus:
-            if "MD_TYPE" in global_config and global_config["MON_CURRENT_STATE"]:
-                sock_name = os.path.join(global_config["MD_BASEDIR"], "var", "live")
-                cur_s = LiveSocket(sock_name)
-                try:
-                    result = cur_s.hosts.columns("name", "state").call()
-                except:
-                    self.log(
-                        "cannot query socket {}: {}".format(sock_name, process_tools.get_except_info()),
-                        logging_tools.LOG_LEVEL_CRITICAL
-                    )
-                else:
-                    q_list = [int(value["state"]) for value in result]
-                    res_dict = {
-                        s_name: q_list.count(value) for s_name, value in [
-                            ("unknown", constants.NAG_HOST_UNKNOWN),
-                            ("up", constants.NAG_HOST_UP),
-                            ("down", constants.NAG_HOST_DOWN),
-                        ]
-                    }
-                    res_dict["tot"] = sum(res_dict.values())
-                # cur_s.peer.close()
-                del cur_s
-            else:
+        if "MD_TYPE" in global_config and global_config["MON_CURRENT_STATE"]:
+            cur_s = LiveSocket.get_mon_live_socket()
+            try:
+                result = cur_s.hosts.columns("name", "state").call()
+            except:
                 self.log(
-                    "no MD_TYPE set or MON_CURRENT_STATE is False, skipping livecheck",
-                    logging_tools.LOG_LEVEL_WARN
+                    "cannot query socket {}: {}".format(sock_name, process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_CRITICAL
                 )
+            else:
+                q_list = [int(value["state"]) for value in result]
+                res_dict = {
+                    s_name: q_list.count(value) for s_name, value in [
+                        ("unknown", constants.NAG_HOST_UNKNOWN),
+                        ("up", constants.NAG_HOST_UP),
+                        ("down", constants.NAG_HOST_DOWN),
+                    ]
+                }
+                res_dict["tot"] = sum(res_dict.values())
+            # cur_s.peer.close()
+            del cur_s
+        else:
+            self.log(
+                "no MD_TYPE set or MON_CURRENT_STATE is False, skipping livecheck",
+                logging_tools.LOG_LEVEL_WARN
+            )
         if res_dict:
             self.log(
                 "{} status is: {:d} up, {:d} down, {:d} unknown ({:d} total)".format(

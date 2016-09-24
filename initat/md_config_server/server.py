@@ -445,10 +445,6 @@ class server_process(
     def get_kpi_source_data(self, srv_com, **kwargs):
         return srv_com
 
-    # @RemoteCall(target_process="status")
-    # def get_node_status(self, srv_com, **kwargs):
-    #    return srv_com
-
     @RemoteCall(target_process="build", target_process_func="build_host_config")
     def get_host_config(self, srv_com, **kwargs):
         return srv_com

@@ -169,19 +169,37 @@ class get_node_status(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
+
+        def _to_fqdn(_vals):
+            if _vals[2]:
+                return u"{}.{}".format(_vals[1], _vals[2])
+            else:
+                return _vals[1]
+
         _post = request.POST
         pk_list = json.loads(_post["pk_list"])
         srv_com = server_command.srv_command(command="get_node_status")
         # noinspection PyUnresolvedReferences
+        # print list(device.objects.filter(Q(pk__in=pk_list)).values_list("pk", "name", "domain_tree_node__full_name"))
         srv_com["device_list"] = E.device_list(
             *[
                 E.device(
-                    pk="{:d}".format(int(cur_pk))
-                ) for cur_pk in pk_list if cur_pk and cur_pk.isdigit()
+                    pk="{:d}".format(cur_dev[0]),
+                    full_name=_to_fqdn(cur_dev),
+                ) for cur_dev in device.objects.filter(
+                    Q(pk__in=pk_list)
+                ).values_list("pk", "name", "domain_tree_node__full_name")
             ]
         )
-        result = contact_server(request, icswServiceEnum.monitor_server, srv_com, timeout=30)
+        result = contact_server(
+            request,
+            icswServiceEnum.monitor_server,
+            srv_com,
+            timeout=30,
+            connect_port_enum=icswServiceEnum.monitor_slave
+        )
         if result:
+            # print result.pretty_print()
             host_results = result.xpath(".//ns:host_result/text()", smart_strings=False)
             service_results = result.xpath(".//ns:service_result/text()", smart_strings=False)
             # if not len(host_results) and not len(service_results) and result.get_log_tuple()[1] >= logging_tools.LOG_LEVEL_ERROR:

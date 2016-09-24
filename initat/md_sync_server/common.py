@@ -89,8 +89,8 @@ class LiveSocket(object):
         return _result
 
     @classmethod
-    def get_icinga_live_socket(cls):
-        sock_name = "/opt/{}/var/live".format(global_config["MD_TYPE"])
+    def get_mon_live_socket(cls):
+        sock_name = os.path.join(global_config["MD_BASEDIR"], "var", "live")
         if os.path.exists(sock_name):
             return LiveSocket(sock_name)
         else:

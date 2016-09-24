@@ -192,12 +192,12 @@ class SrvTypeRouting(object):
             )
             return None
 
-    def get_connection_string(self, srv_type_enum, server_id=None):
+    def get_connection_string(self, srv_type_enum, server_id=None, connect_port_enum=None):
         _srv_address = self.get_server_address(srv_type_enum, server_id=server_id)
         if _srv_address is not None:
             return "tcp://{}:{:d}".format(
                 _srv_address,
-                _INSTANCE.get_port_dict(srv_type_enum, command=True),
+                _INSTANCE.get_port_dict(connect_port_enum or srv_type_enum, command=True),
             )
         else:
             return None

@@ -61,7 +61,7 @@ class StatusProcess(threading_tools.process_obj):
     def _open(self):
         if self.__socket is None:
             try:
-                self.__socket = LiveSocket.get_icinga_live_socket()
+                self.__socket = LiveSocket.get_mon_live_socket()
             except Exception as e:
                 self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
