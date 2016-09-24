@@ -25,16 +25,14 @@ import datetime
 import marshal
 import os
 import stat
-import sys
 import time
 
 from django.db.models import Q
 
+from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import mon_dist_master, mon_dist_slave, cluster_timezone, \
     mon_build_unreachable
-from initat.cluster.backbone import routing
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.server_version import VERSION_STRING
 from initat.tools import config_tools, configfile, logging_tools, process_tools, server_command
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
@@ -150,7 +148,7 @@ class SyncConfig(object):
                 info["md.version"],
                 info["md.release"],
             )
-        print "SI", info
+        # print "SI", info
 
     def get_send_data(self):
         _r_dict = {

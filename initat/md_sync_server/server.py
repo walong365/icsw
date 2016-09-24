@@ -125,7 +125,6 @@ class server_process(
                         logging_tools.LOG_LEVEL_CRITICAL
                     )
                 else:
-                    print "***", result
                     q_list = [int(value["state"]) for value in result]
                     res_dict = {
                         s_name: q_list.count(value) for s_name, value in [
