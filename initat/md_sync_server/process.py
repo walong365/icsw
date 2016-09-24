@@ -196,7 +196,6 @@ class ProcessControl(object):
     def send_signal(self, signal_num):
         _pid = self._get_pid_from_file()
         if _pid is not None:
-            print signal_num, type(signal_num)
             self.log("sending signal {:d} to Process {:d}".format(signal_num, _pid))
             try:
                 _proc = psutil.Process(pid=_pid)
