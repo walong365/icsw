@@ -518,9 +518,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 build_dv.delete()
         if not single_build:
             cfgs_written = self.__gen_config._write_entries()
-            if bc_valid and (cfgs_written or rebuild_gen_config):
-                # send reload to remote instance ?
-                self._reload_md_daemon()
+            # if bc_valid and (cfgs_written or rebuild_gen_config):
+            #    # send reload to remote instance ?
+            #    self._reload_md_daemon()
             self.send_pool_message("build_info", "end_build", self.version, target="syncer")
         else:
             cur_gc = self.__gen_config

@@ -61,7 +61,7 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("build_info", self._build_info)
         self.register_func("slave_info", self._slave_info)
         self.__build_in_progress, self.__build_version = (False, 0)
-
+        self.__master_config = None
         # this used to be just set in _check_for_slaves, but apparently check_for_redistribute can be called before that
         self.__slave_configs, self.__slave_lut = ({}, {})
 
@@ -73,7 +73,10 @@ class SyncerProcess(threading_tools.process_obj):
 
     def _check_for_slaves(self, **kwargs):
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
-        slave_servers = device.objects.filter(
+        slave_servers = device.objects.exclude(
+            # exclude master server
+            Q(pk=master_server.idx)
+        ).filter(
             Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.monitor_slave.name)
         ).select_related(
             "domain_tree_node"
@@ -82,9 +85,9 @@ class SyncerProcess(threading_tools.process_obj):
         self.__master_config = SyncConfig(self, master_server, distributed=True if len(slave_servers) else False)
         self.__slave_configs, self.__slave_lut = ({}, {})
         # connect to local relayer
-        _primary_slave_uuid = routing.get_server_uuid(icswServiceEnum.monitor_slave, master_server.uuid)
-        self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", _primary_slave_uuid))
-        self.send_pool_message("register_remote", "127.0.0.1", _primary_slave_uuid, icswServiceEnum.monitor_slave.name)
+        self.__primary_slave_uuid = routing.get_server_uuid(icswServiceEnum.monitor_slave, master_server.uuid)
+        self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", self.__primary_slave_uuid))
+        self.send_pool_message("register_remote", "127.0.0.1", self.__primary_slave_uuid, icswServiceEnum.monitor_slave.name)
         _send_data = [self.__master_config.get_send_data()]
         if len(slave_servers):
             self.log(
@@ -122,7 +125,10 @@ class SyncerProcess(threading_tools.process_obj):
             command="distribute_info",
             info=server_command.compress(_send_data, marshal=True),
         )
-        self.send_pool_message("send_command", _primary_slave_uuid, unicode(distr_info))
+        self.send_sync_command(distr_info)
+
+    def send_sync_command(self, srv_com):
+        self.send_pool_message("send_command", self.__primary_slave_uuid, unicode(srv_com))
 
     def send_command(self, src_id, srv_com):
         self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), srv_com)
@@ -144,7 +150,10 @@ class SyncerProcess(threading_tools.process_obj):
         info_list = server_command.decompress(srv_com["*slave_info"], json=True)
         for info in info_list:
             if info["master"]:
-                self.__master_config.set_info(info)
+                if self.__master_config is not None:
+                    self.__master_config.set_info(info)
+                else:
+                    self.log("not master config set", logging_tools.LOG_LEVEL_WARN)
             else:
                 _pure_uuid = routing.get_pure_uuid(info["slave_uuid"])
                 if _pure_uuid in self.__slave_lut:
@@ -171,6 +180,7 @@ class SyncerProcess(threading_tools.process_obj):
             # trigger reload when sync is done
             for _slave in self.__slave_configs.itervalues():
                 _slave.reload_after_sync()
+            self.__master_config.reload_after_sync()
         elif _bi_type == "unreachable_devices":
             self.__master_config.unreachable_devices(_vals[0])
         elif _bi_type == "unreachable_device":

@@ -227,7 +227,6 @@ class login_addons(View):
         request.xml_response["django_version"] = ".".join(_vers)
         request.xml_response["next_url"] = _next_url or ""
         request.xml_response["theme_default"] = settings.THEME_DEFAULT
-        request.xml_response["overall_style"] = settings.ICSW_OVERALL_STYLE
         request.xml_response["password_character_count"] = "{:d}".format(_cs["password.character.count"])
 
 

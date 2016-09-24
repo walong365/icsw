@@ -487,7 +487,7 @@ class main_config(object):
                     resource_cfg.get_name()
                 )
             ),
-            ("%s_user" % (global_config["MD_TYPE"]), "idmond"),
+            ("%s_user" % (global_config["MD_TYPE"]), "idmon"),
             ("%s_group" % (global_config["MD_TYPE"]), "idg"),
             ("check_external_commands", 1),
             ("command_check_interval", 1),
@@ -557,7 +557,7 @@ class main_config(object):
             main_values.append(
                 ("cfg_dir", os.path.join(self.__r_dir_dict["etc"], "manual")),
             )
-            if global_config["ENABLE_LIVESTATUS"]:
+            if True:
                 main_values.extend([
                     ("*broker_module", "%s/mk-livestatus/livestatus.o %s/live" % (
                         self.__r_dir_dict[lib_dir_name],
@@ -602,25 +602,8 @@ class main_config(object):
                         ("host_perfdata_file_processing_command", "process-host-perfdata-file"),
                     ]
                 )
-            if global_config["ENABLE_NDO"]:
-                if os.path.exists(os.path.join(self.__r_dir_dict[lib_dir_name], "idomod.so")):
-                    main_values.append(
-                        ("*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
-                            self.__r_dir_dict[lib_dir_name],
-                            self.__r_dir_dict["etc"],
-                            NDOMOD_NAME)))
-                else:
-                    main_values.append(
-                        (
-                            "*broker_module", "%s/idomod.so config_file=%s/%s.cfg" % (
-                                self.__r_dir_dict["lib"],
-                                self.__r_dir_dict["etc"],
-                                NDOMOD_NAME
-                            )
-                        )
-                    )
             main_values.append(
-                ("event_broker_options", -1 if global_config["ENABLE_LIVESTATUS"] else global_config["EVENT_BROKER_OPTIONS"])
+                ("event_broker_options", -1),
             )
         else:
             # add global event handlers

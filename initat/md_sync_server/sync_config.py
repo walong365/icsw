@@ -24,6 +24,7 @@ import bz2
 import datetime
 import marshal
 import os
+import signal
 import stat
 import sys
 import time
@@ -117,7 +118,7 @@ class SyncConfig(object):
         self.send_time_lut = {}
         # lut: config_version_send -> number transmitted
         self.num_send = {}
-        # distribution state
+        # distribution state, always True for master
         self.dist_ok = True
         # flag for reload after sync
         self.reload_after_sync_flag = False
@@ -415,19 +416,6 @@ class SyncConfig(object):
             self.__md_struct.save()
             self._check_for_ras()
 
-    def _check_for_ras(self):
-        if self.reload_after_sync_flag and self.dist_ok:
-            self.reload_after_sync_flag = False
-            self.log("sending reload")
-            srv_com = server_command.srv_command(
-                command="call_command",
-                host="DIRECT",
-                port="0",
-                version="{:d}".format(int(self.config_version_send)),
-                cmdline="/etc/init.d/icinga reload"
-            )
-            self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
-
     def _parse_list(self, in_list):
         # return top_dir and simplified list
         if in_list:
@@ -522,3 +510,33 @@ class SyncConfig(object):
                 err_key,
                 ", ".join(sorted(err_dict[err_key]))), logging_tools.LOG_LEVEL_ERROR)
         self._show_pending_info()
+
+    # local actions
+    def handle_reload_after_sync(self, srv_com):
+        self.reload_after_sync_flag = True
+        self._check_for_ras()
+
+    def _check_for_ras(self):
+        if self.reload_after_sync_flag and self.dist_ok:
+            self.reload_after_sync_flag = False
+            self.log("sending reload")
+            self.__process.send_pool_message(
+                "send_signal",
+                signal.SIGHUP,
+            )
+
+    def handle_local_action(self, action, srv_com):
+        _attr_name = "handle_{}".format(action)
+        if not hasattr(self, _attr_name):
+            self.log("unknown local action '{}'".format(action), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            getattr(self, _attr_name)(srv_com)
+
+    def handle_action(self, action, srv_com):
+        if self.master:
+            # local action
+            self.handle_local_action(action, srv_com)
+        else:
+            # remote action
+            pass
+            # print action, self.name

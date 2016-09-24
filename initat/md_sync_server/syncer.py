@@ -54,6 +54,7 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("distribute_info", self._distribute_info)
         self.register_func("register_master", self._register_master)
         self.register_func("satellite_info", self._satellite_info)
+        self.register_func("slave_command", self._slave_command)
         self.__build_in_progress, self.__build_version = (False, 0)
         # setup local master
         self.__local_master = None
@@ -276,3 +277,22 @@ class SyncerProcess(threading_tools.process_obj):
                 self.log("unknown slave '{}'".format(slave_name), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             self.log("unknown build_info '{}'".format(str(args)), logging_tools.LOG_LEVEL_CRITICAL)
+
+    def _slave_command(self, *args, **kwargs):
+        # generic slave command
+        srv_com = server_command.srv_command(source=args[0])
+        _action = srv_com["*action"]
+        # find target
+        _master = True if int(srv_com["*master"]) else False
+        _slave_uuid = srv_com["*slave_uuid"]
+        if _slave_uuid:
+            _config = self.__slave_configs[self.__slave_lut[_slave_uuid]]
+        else:
+            _config = self.__master_config
+        self.log(
+            "got action {} for {}".format(
+                _action,
+                "master" if _master else "slave {}".format(_config.name),
+            )
+        )
+        _config.handle_action(_action, srv_com)

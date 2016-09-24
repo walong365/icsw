@@ -195,6 +195,15 @@
                     </rights>
                 </icswData>
             </route>
+            <route name="main.monitorbuildinfo">
+                <stateData type="dict" url_str="/monitorbuildinfo" template_str="&lt;icsw-monitoring-build-info&gt;&lt;/icsw-monitoring-build-info&gt;"/>
+                <icswData type="dict" pageTitle_str="Monitoring build info">
+                    <menuEntry type="dict" icon_str="fa-info-circle" name_str="Build info"/>
+                    <rights type="list">
+                        <value>backbone.mon_check_command.setup_monitoring</value>
+                    </rights>
+                </icswData>
+            </route>
         </routeSubGroup>
         <routeSubGroup name_str="Miscellaneous">
             <route name="main.kpi">
@@ -437,15 +446,6 @@
     <routeGroup name="rightmenu">
         <menuHeader type="dict" name_str="$$USER_INFO" icon_str="fa-cog" side_str="right"/>
         <routeSubGroup name_str="History">
-            <route name="main.monitorbuildinfo">
-                <stateData type="dict" url_str="/monitorbuildinfo" template_str="&lt;icsw-monitoring-build-info&gt;&lt;/icsw-monitoring-build-info&gt;"/>
-                <icswData type="dict" pageTitle_str="Monitoring build info">
-                    <menuEntry type="dict" icon_str="fa-info-circle" name_str="Build info"/>
-                    <rights type="list">
-                        <value>backbone.mon_check_command.setup_monitoring</value>
-                    </rights>
-                </icswData>
-            </route>
             <route name="main.backgroundinfo">
                 <stateData type="dict" url_str="/sysbackgroundinfo" templateUrl_str="icsw/main/sysbackgroundinfo.html"/>
                 <icswData type="dict" pageTitle_str="Background Job Information">

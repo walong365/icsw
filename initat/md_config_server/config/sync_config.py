@@ -177,8 +177,16 @@ class SyncConfig(object):
         return _r_dict
 
     def reload_after_sync(self):
-        self.reload_after_sync_flag = True
-        self._check_for_ras()
+        self.__process.send_sync_command(
+            server_command.srv_command(
+                command="slave_command",
+                action="reload_after_sync",
+                master="1" if self.master else "0",
+                slave_uuid=self.slave_uuid if not self.master else "",
+            )
+        )
+        # self.reload_after_sync_flag = True
+        # self._check_for_ras()
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
