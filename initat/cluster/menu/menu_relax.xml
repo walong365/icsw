@@ -152,6 +152,9 @@
                                                 <attribute name="name_str"></attribute>
                                             </optional>
                                             <optional>
+                                                <attribute name="title_str"></attribute>
+                                            </optional>
+                                            <optional>
                                                 <attribute name="labelClass_str"></attribute>
                                             </optional>
                                             <optional>

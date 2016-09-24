@@ -1,6 +1,6 @@
 <routes>
     <routeGroup name="mm_devices">
-        <menuHeader type="dict" name_str="Devices" icon_str="fa-cog" side_str="left"/>
+        <menuHeader type="dict" name_str="Devices" icon_str="fa-desktop" side_str="left"/>
         <routeSubGroup name_str="Settings">
             <route name="main.devicecreate">
                 <stateData type="dict" url_str="/devicecreate" templateUrl_str="icsw/main/device/create.html"/>
@@ -118,10 +118,10 @@
         </routeSubGroup>
     </routeGroup>
 
-
+    <!-- monitoring -->
 
     <routeGroup name="mon">
-        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-cog" side_str="left"/>
+        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-eye" side_str="left"/>
         <routeSubGroup name_str="Status">
             <route name="main.livestatus">
                 <stateData type="dict" url_str="/livestatus/all"
@@ -302,10 +302,10 @@
         </routeSubGroup>
     </routeGroup>
 
-
+    <!-- cluster -->
 
     <routeGroup name="cluster">
-        <menuHeader type="dict" name_str="HPC" icon_str="fa-cog" side_str="left"/>
+        <menuHeader type="dict" name_str="HPC" icon_str="fa-cloud" side_str="left"/>
         <routeSubGroup name_str="Cluster">
             <route name="main.deployboot">
                 <stateData type="dict" url_str="/deployboot" templateUrl_str="icsw/main/deploy/boot.html"/>
@@ -396,9 +396,10 @@
         </routeSubGroup>
     </routeGroup>
 
+    <!-- misc -->
 
     <routeGroup name="todo">
-        <menuHeader type="dict" name_str="Obsolete" icon_str="fa-cog" side_str="left"/>
+        <menuHeader type="dict" name_str="Obsolete" icon_str="fa-ellipsis-h" side_str="left"/>
         <routeSubGroup name_str="Obsolete Links">
             <route name="main.monitorredirect">
                 <stateData type="dict" url_str="/monitorredirect" resolve_bool="yes"/>
@@ -442,6 +443,7 @@
         </routeSubGroup>
     </routeGroup>
 
+    <!-- admin / user menu-->
 
     <routeGroup name="rightmenu">
         <menuHeader type="dict" name_str="$$USER_INFO" icon_str="fa-cog" side_str="right"/>

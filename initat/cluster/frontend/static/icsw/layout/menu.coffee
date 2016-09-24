@@ -299,7 +299,7 @@ menu_module = angular.module(
     icswUserService, icswOverallStyle,
 ) ->
     # console.log icswAcessLevelService
-    {ul, li, a, span, h4, div, p, strong, h3} = React.DOM
+    {ul, li, a, span, h4, div, p, strong, h3, i} = React.DOM
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
@@ -316,6 +316,8 @@ menu_module = angular.module(
                 a_attrs.href = data.menuEntry.sref
             if data.menuEntry.entryClass?
                 a_attrs.className = "#{a_attrs.className} #{data.menuEntry.entryClass}"
+            if data.menuEntry.title?
+                a_attrs.title = data.menuEntry.title
             if data.menuEntry.labelClass
                 return li(
                     {key: "li"}
@@ -356,8 +358,13 @@ menu_module = angular.module(
         displayName: "menuheader"
         getDefaultProps: () ->
         render: () ->
-            SHOW_MENU_ICON = false
-            SHOW_MENU_TITLE = true
+            overall_style = icswOverallStyle.get()
+            if overall_style == "normal"
+                SHOW_MENU_ICON = false
+                SHOW_MENU_TITLE = true
+            else
+                SHOW_MENU_ICON = true
+                SHOW_MENU_TITLE = true
             items_added = 0
             items_per_column = {}
 
@@ -372,30 +379,24 @@ menu_module = angular.module(
                 else
                     _hidden = false
                 if not _hidden
-                    items_per_column[col_idx].push(
-                        li(
-                            {
-                                key: "#{sg_data.key}_li"
-                            }
-                            [
-                                p(
-                                    {
-                                        key: "p"
-                                    }
-                                    [
-                                        strong(
-                                            {
-                                                key: "strong"
-                                            }
-                                            [
-                                                sg_data.name
-                                            ]
-                                        )
-                                    ]
-                                )
-                            ]
+                    if overall_style == "condensed"
+                        items_per_column[col_idx].push(
+                            li(
+                                {
+                                    key: "#{sg_data.key}_li"
+                                }
+                                h3({key: "h3"}, sg_data.name)
+                            )
                         )
-                    )
+                    else
+                        items_per_column[col_idx].push(
+                            li(
+                                {
+                                    key: "#{sg_data.key}_li"
+                                }
+                                p({key: "p"}, strong({key: "strong"}, sg_data.name))
+                            )
+                        )
 
                 for state in sg_data.entries
                     data = state.icswData
@@ -450,8 +451,9 @@ menu_module = angular.module(
                 if state.icon? and state.icon != "" and SHOW_MENU_ICON
                     _m_item.push span(
                         {
-                        className: "fa #{state.icon} fa-lg"
-                        key: "span"
+                            className: "fa #{state.icon} fa-lg"
+                            style: {paddingRight: "5px"}
+                            key: "span"
                         }
                     )
                 if menu_name? and menu_name != "" and SHOW_MENU_TITLE
@@ -461,13 +463,14 @@ menu_module = angular.module(
                         }
                         menu_name
                     )
-                _m_item.push span(
-                    {
-                        className: "caret"
-                        key: "caretdown"
-                    }
+                if overall_style == "normal"
+                    _m_item.push span(
+                        {
+                            className: "caret"
+                            key: "caretdown"
+                        }
 
-                )
+                    )
                 _res = li(
                     {
                         className: "dropdown"
@@ -552,23 +555,22 @@ menu_module = angular.module(
             _menu_struct = icswRouteHelper.get_struct()
             menus = (entry for entry in _menu_struct.menu_header_states when entry.data.side == @props.side)
             if menus.length
-                _res =
-                    div(
-                        {
-                            className: "yamm"
-                        }
-                        [
-                            ul(
-                                {
-                                    key: "topmenu"
-                                    className: "nav navbar-nav navbar-#{@props.side} #{icswOverallStyle.get()}"
-                                }
-                                (
-                                    menu.get_react(menu_header) for menu in menus
-                                )
+                _res = div(
+                    {
+                        className: "yamm"
+                    }
+                    [
+                        ul(
+                            {
+                                key: "topmenu"
+                                className: "nav navbar-nav navbar-#{@props.side} #{icswOverallStyle.get()}"
+                            }
+                            (
+                                menu.get_react(menu_header) for menu in menus
                             )
-                        ]
-                    )
+                        )
+                    ]
+                )
             else
                 _res = null
             return _res
