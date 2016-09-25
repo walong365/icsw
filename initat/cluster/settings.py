@@ -114,7 +114,7 @@ if "overall.style" in _cs:
 else:
     ICSW_OVERALL_STYLE = "normal"
 
-if DEBUG:
+if _cs.get("missing.timezone.is.critical", True):
     warnings.filterwarnings(
         "error",
         r"DateTimeField .* received a naive datetime",
