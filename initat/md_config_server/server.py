@@ -33,7 +33,7 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.md_config_server.build import build_process
 from initat.md_config_server.config import global_config
 from initat.md_config_server.dynconfig import DynConfigProcess
-from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
+from initat.md_config_server.icinga_log_reader.log_reader import IcingaLogReader
 from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.syncer import SyncerProcess, RemoteServer
@@ -123,7 +123,7 @@ class server_process(
 
             self.add_process(SyncerProcess("syncer"), start=True)
             self.add_process(DynConfigProcess("dynconfig"), start=True)
-            self.add_process(icinga_log_reader("icinga_log_reader"), start=True)
+            self.add_process(IcingaLogReader("IcingaLogReader"), start=True)
             self.add_process(KpiProcess("KpiProcess"), start=True)
             # wait for the processes to start
             time.sleep(0.5)

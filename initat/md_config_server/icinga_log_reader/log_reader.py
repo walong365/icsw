@@ -35,7 +35,7 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, mon_check_command, \
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data, mon_icinga_log_file, \
     mon_icinga_log_last_read, mon_icinga_log_raw_service_flapping_data, \
-    mon_icinga_log_raw_service_notification_data, \
+    mon_icinga_log_raw_service_notification_data, cluster_timezone, \
     mon_icinga_log_raw_host_notification_data, mon_icinga_log_raw_host_flapping_data, \
     mon_icinga_log_raw_base, mon_icinga_log_full_system_dump, \
     mon_icinga_log_raw_host_downtime_data, mon_icinga_log_raw_service_downtime_data
@@ -47,12 +47,12 @@ from initat.tools import threading_tools, logging_tools
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
 
 __all__ = [
-    "icinga_log_reader",
+    "IcingaLogReader",
     "host_service_id_util",
 ]
 
 
-class icinga_log_reader(threading_tools.process_obj):
+class IcingaLogReader(threading_tools.process_obj):
     class malformed_icinga_log_entry(RuntimeError):
         pass
 
@@ -150,7 +150,7 @@ class icinga_log_reader(threading_tools.process_obj):
             self.log("no earlier icinga log read, reading archive")
             files = glob.glob(
                 os.path.join(
-                    icinga_log_reader.get_icinga_log_archive_dir(),
+                    IcingaLogReader.get_icinga_log_archive_dir(),
                     "{}*".format(global_config['MD_TYPE'])
                 )
             )
@@ -217,7 +217,7 @@ class icinga_log_reader(threading_tools.process_obj):
 
                     day_files = glob.glob(
                         os.path.join(
-                            icinga_log_reader.get_icinga_log_archive_dir(),
+                            IcingaLogReader.get_icinga_log_archive_dir(),
                             "{}-{}-{}-{}-*".format(
                                 global_config['MD_TYPE'],
                                 format_num(missed_log_day.month),
@@ -250,7 +250,7 @@ class icinga_log_reader(threading_tools.process_obj):
                 # assume not running
                 msg = "icinga process (pid: {}) is not running".format(pid)
                 self.log(msg)
-                self._create_icinga_down_entry(datetime.datetime.now(), msg, None, save=True)
+                self._create_icinga_down_entry(cluster_timezone.localize(datetime.datetime.now()), msg, None, save=True)
 
         if self.constants.always_collect_warnings or not global_config["DEBUG"]:
             if self._warnings:
@@ -452,7 +452,7 @@ class icinga_log_reader(threading_tools.process_obj):
             except ValueError:
                 pass  # filename not appropriate
             else:
-                logfilepath = os.path.join(icinga_log_reader.get_icinga_log_archive_dir(), logfilepath)
+                logfilepath = os.path.join(IcingaLogReader.get_icinga_log_archive_dir(), logfilepath)
                 logfiles_date_data.append((year, month, day, hour, logfilepath))
 
         retval = None
