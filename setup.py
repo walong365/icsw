@@ -85,7 +85,7 @@ setup(
         "initat.logging_server",
         "initat.md_config_server",
         "initat.md_config_server.config",
-        "initat.md_config_server.IcingaLogReader",
+        "initat.md_config_server.icinga_log_reader",
         "initat.md_config_server.special_commands",
         "initat.md_config_server.special_commands.instances",
         "initat.md_config_server.kpi",
