@@ -68,6 +68,15 @@
                     </rights>
                 </icswData>
             </route>
+            <route name="main.devlocation">
+                <stateData type="dict" url_str="/devlocation" templateUrl_str="icsw/main/device/location.html"/>
+                <icswData type="dict" pageTitle_str="Location">
+                    <menuEntry type="dict" icon_str="fa-map-marker" name_str="Location"/>
+                    <rights type="list">
+                        <value>backbone.user.modify_category_tree</value>
+                    </rights>
+                </icswData>
+            </route>
         </routeSubGroup>
         <routeSubGroup name_str="Device Attributes">
             <route name="main.configoverview">
@@ -76,15 +85,6 @@
                     <menuEntry type="dict" preSpacer_bool="yes" icon_str="fa-check-square-o" name_str="Assignable Config Setup"/>
                     <rights type="list">
                         <value>backbone.device.change_config</value>
-                    </rights>
-                </icswData>
-            </route>
-            <route name="main.devlocation">
-                <stateData type="dict" url_str="/devlocation" templateUrl_str="icsw/main/device/location.html"/>
-                <icswData type="dict" pageTitle_str="Location Service">
-                    <menuEntry type="dict" icon_str="fa-map-marker" name_str="Location Service"/>
-                    <rights type="list">
-                        <value>backbone.user.modify_category_tree</value>
                     </rights>
                 </icswData>
             </route>
@@ -202,6 +202,13 @@
                     <rights type="list">
                         <value>backbone.mon_check_command.setup_monitoring</value>
                     </rights>
+                </icswData>
+            </route>
+            <route name="main.locationtest">
+                <stateData type="dict" url_str="/devlocationtest"
+                           template_str="&lt;icsw-device-location-overview icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-device-location-overview&gt;"/>
+                <icswData type="dict" pageTitle_str="Location Service">
+                    <menuEntry type="dict" icon_str="fa-map-marker" name_str="Location Service"/>
                 </icswData>
             </route>
         </routeSubGroup>
