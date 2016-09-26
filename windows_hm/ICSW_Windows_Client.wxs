@@ -1,12 +1,12 @@
 <?xml version="1.0"?>
-<?define ProductVersion = "0.0.12"?>
+<?define ProductVersion = "0.0.13"?>
 <?define ProductUpgradeCode = "77EA450B-4B37-478C-919B-D0D62F2ED7C5"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
    <Product Id="*" UpgradeCode="$(var.ProductUpgradeCode)" 
             Name="ICSW Windows Client" Version="$(var.ProductVersion)" Manufacturer="init.at" Language="1033">
       <Package InstallerVersion="200" Compressed="yes" Comments="Windows Installer Package" InstallScope="perMachine" InstallPrivileges="elevated"/>
       <Media Id="1" Cabinet="product.cab" EmbedCab="yes"/>
-      <Icon Id="ProductIcon" SourceFile="WixUIExclamationIco.ico"/>
+      <Icon Id="ProductIcon" SourceFile="WixUIExclamationIco256.ico"/>
       <Property Id="ARPPRODUCTICON" Value="ProductIcon"/>
       <Property Id="ARPHELPLINK" Value="http://www.init.at"/>
       <Property Id="ARPURLINFOABOUT" Value="http://www.init.at"/>
