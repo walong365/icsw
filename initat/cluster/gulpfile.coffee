@@ -137,7 +137,7 @@ sources = {
         [
             # no longer needed ... ?
             # "frontend/static/js/modernizr-2.8.1.min.js",
-            "frontend/static/js/jquery-3.1.0.min.js",
+            "frontend/static/js/jquery-3.1.1.min.js",
             # ace editor
             "frontend/static/js/ace-noconflict.js",
             "frontend/static/js/mode-python.js",
@@ -472,7 +472,7 @@ gulp.task("deploy-fonts", () ->
 gulp.task("deploy-d3", () ->
     return gulp.src(
         [
-            "frontend/static/js/d3js/d3.min.js"
+            "frontend/static/js/d3.min.js"
             "frontend/static/js/dimple.v2.1.6.min.js"
             "frontend/static/js/topojson.js"
         ]
