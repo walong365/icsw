@@ -17,6 +17,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
 """ asset database, models for dynamic assets """
 
 import base64
@@ -40,10 +41,12 @@ from initat.snmp.snmp_struct import ResultNode
 from initat.tools import server_command, pci_database, dmi_tools, \
     partition_tools, logging_tools
 from initat.tools.server_command import srv_command
+from initat.cluster.backbone.models.asset.asset_functions import \
+    PackageTypeEnum, ScanType, BaseAssetPackage, BatchStatus, RunStatus, \
+    RunResult, memory_entry_memory_types, AssetType, sizeof_fmt, \
+    memory_entry_form_factors
 
 logger = logging.getLogger(__name__)
-
-from .asset_functions import *
 
 
 __all__ = [
@@ -497,6 +500,7 @@ class AssetRun(models.Model):
             return True
         return False
 
+    # XXX remove this
     @property
     def hdds(self):
         if self.asset_batch and self.asset_batch.partition_table:
@@ -543,23 +547,43 @@ class AssetRun(models.Model):
     def device(self):
         return self.asset_batch.device.idx
 
-    def start(self):
-        self.run_status = RunStatus.RUNNING
+    def state_start_scan(self):
+        self._change_state(RunStatus.SCANNING)
         self.run_start_time = timezone.now()
         self.save()
 
-    def stop(self, result, error_string=""):
+    def state_finished_scan(self, result, error_string, raw_result_str):
+        self._change_state(RunStatus.FINISHED_SCANNING)
         self.run_result = result
-        self.run_status = RunStatus.ENDED
         self.error_string = error_string
+        self.raw_result_str = raw_result_str
         if self.run_start_time:
             self.run_end_time = timezone.now()
-            self.run_duration = int((self.run_end_time - self.run_start_time).seconds)
-        else:
-            # no start time hence no end time
-            self.run_duration = 0
+            self.run_duration = int(
+                (self.run_end_time - self.run_start_time).seconds
+            )
         self.save()
-        self.asset_batch.run_done(self)
+
+    def state_start_generation(self):
+        self._change_state(RunStatus.GENERATING_ASSETS)
+        self.save()
+
+    def state_finished(self, result, error_string=""):
+        self._change_state(RunStatus.FINISHED)
+        self.run_result = result
+        self.error_string = error_string
+        self.save()
+        self.asset_batch.run_done()
+
+    def _change_state(self, new_state):
+        logger.debug(
+            'Asset run {} state: {} -> {}'.format(
+                str(self.idx),
+                str(RunStatus(self.run_status)),
+                str(new_state),
+            )
+        )
+        self.run_status = new_state
 
     def has_data(self):
         return RunResult(self.run_result) == RunResult.SUCCESS
@@ -583,11 +607,11 @@ class AssetRun(models.Model):
             AssetType(self.run_type)._name_.lower(),
             ScanType(self.scan_type)._name_.lower()
         )
-        func = getattr(self, function_name)
         if not self.raw_result_interpreted:
             # call the appropriate _generate_assets_... method
-            func(self.raw_result)
-            self.save()
+            if hasattr(self, function_name):
+                getattr(self, function_name)(self.raw_result)
+                self.save()
 
     def _generate_assets_package_nrpe(self, data):
         assets = []
@@ -775,7 +799,6 @@ class AssetRun(models.Model):
                 )
                 asset_update_entry.save()
 
-            print asset_update_entry
             self.asset_batch.pending_updates.add(asset_update_entry)
 
     def _generate_assets_pending_update_hm(self, tree):
@@ -985,18 +1008,6 @@ class AssetRun(models.Model):
                         num_values=1,
                     )
                 value.save()
-
-    def _generate_assets_prettywinhw_nrpe(self, blob):
-        # The information is processed in
-        # AssetBatch._generate_assets_from_raw_results() on completion of all
-        # asset runs.
-        pass
-
-    def _generate_assets_lshw_hm(self, tree):
-        # The information is processed in
-        # AssetBatch._generate_assets_from_raw_results() on completion of all
-        # asset runs.
-        pass
 
     def _generate_assets_partition_hm(self, tree):
         result = srv_command(source=tree)
@@ -1251,6 +1262,8 @@ class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
     run_start_time = models.DateTimeField(null=True, blank=True)
     run_end_time = models.DateTimeField(null=True, blank=True)
+
+    # XXX Remove this!
     # total number of runs
     num_runs = models.IntegerField(default=0)
     # number of runs completed
@@ -1258,11 +1271,13 @@ class AssetBatch(models.Model):
     # number of runs ok / error
     num_runs_ok = models.IntegerField(default=0)
     num_runs_error = models.IntegerField(default=0)
+
     # status
     run_status = models.IntegerField(
-        choices=[(status.value, status.name) for status in RunStatus],
-        default=RunStatus.PLANNED.value,
+        choices=[(status.value, status.name) for status in BatchStatus],
+        default=BatchStatus.PLANNED.value,
     )
+    # XXX Remove this!
     # result
     run_result = models.IntegerField(
         choices=[(status.value, status.name) for status in RunResult],
@@ -1271,6 +1286,7 @@ class AssetBatch(models.Model):
     # error string
     error_string = models.TextField(default="")
     # total run time in seconds
+    # XXX Remove this!
     run_time = models.IntegerField(default=0)
     device = models.ForeignKey("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
@@ -1295,6 +1311,42 @@ class AssetBatch(models.Model):
     partitions = models.ManyToManyField(AssetHWLogicalEntry)
     displays = models.ManyToManyField(AssetHWDisplayEntry)
 
+    def state_init(self):
+        self.run_start_time = timezone.now()
+        self._change_state(BatchStatus.PLANNED)
+
+    def state_start_runs(self):
+        self._change_state(BatchStatus.RUNNING)
+
+    def state_finished_runs(self):
+        self._change_state(BatchStatus.FINISHED_RUNS)
+
+    def state_start_generation(self):
+        self._change_state(BatchStatus.GENERATING_ASSETS)
+
+    def state_finished(self):
+        self.run_end_time = timezone.now()
+        self._change_state(BatchStatus.FINISHED)
+
+    def _change_state(self, new_state):
+        logger.debug(
+            'Asset batch {} state: {} -> {}'.format(
+                str(self.idx),
+                str(BatchStatus(self.run_status)),
+                str(new_state),
+            )
+        )
+        self.run_status = new_state
+
+    def run_done(self):
+        if all(r.run_status == RunStatus.FINISHED
+               for r in self.assetrun_set.all()):
+            self.state_finished_runs()
+            if all(r.run_result == RunResult.SUCCESS
+                   for r in self.assetrun_set.all()):
+                self.run_result = RunResult.SUCCESS
+            self.save()
+
     @property
     def is_finished_processing(self):
         for assetrun in self.assetrun_set.all():
@@ -1304,24 +1356,9 @@ class AssetBatch(models.Model):
 
     def completed(self):
         for assetrun in self.assetrun_set.all():
-            if not assetrun.run_status == RunStatus.ENDED:
+            if not assetrun.run_status == BatchStatus.ENDED:
                 return False
         return True
-
-    def run_done(self, asset_run):
-        self.num_completed += 1
-        if asset_run.run_result == RunResult.SUCCESS:
-            self.num_runs_ok += 1
-        else:
-            self.num_runs_error += 1
-        if self.num_completed == self.num_runs:
-            # finished
-            self.run_end_time = timezone.now()
-            self.run_time = int((self.run_end_time - self.run_start_time).seconds)
-            self.run_status = RunStatus.ENDED
-            self.run_result = max([_res.run_result for _res in self.assetrun_set.all()])
-            self._generate_assets_from_raw_results()
-        self.save()
 
     def __repr__(self):
         return unicode(self)
@@ -1331,7 +1368,7 @@ class AssetBatch(models.Model):
             unicode(self.device)
         )
 
-    def _generate_assets_from_raw_results(self):
+    def generate_assets(self):
         """Set the batch level hardware information (.cpus, .memory_modules
         etc.) from the acquired asset runs."""
         runs = [
@@ -1399,43 +1436,43 @@ class AssetBatch(models.Model):
         fs_dict = {fs.name: fs for fs in partition_fs.objects.all()}
 
         name = "_".join([self.device.name, "part", str(self.idx)])
-        partition_table_ = partition_table(
-            name=name,
-            description='partition information generated during asset run',
-        )
-        partition_table_.save()
-        for hdd in hw.hdds:
-            disc = partition_disc(
-                partition_table=partition_table_,
-                disc=hdd.device_name,
-            )
-            disc.save()
-
-            for hdd_partition in hdd.partitions:
-                partition_ = partition(
-                    partition_disc=disc,
-                    pnum=hdd_partition.index,
-                    size=hdd_partition.size,
-                )
-                if hdd_partition.logical:
-                    partition_fs_ = \
-                        fs_dict[hdd_partition.logical.file_system.lower()]
-                else:
-                    partition_fs_ = fs_dict["empty"]
-                partition_.partition_fs = partition_fs_
-                partition_.save()
-                if hdd_partition.logical:
-                    logical = LogicalDisc(
-                        device_name=hdd_partition.logical.device_name,
-                        partition_fs=partition_fs_,
-                        size=hdd_partition.logical.size,
-                        free_space=hdd_partition.logical.free_space,
-                    )
-                    logical.save()
-                    logical.partitions.add(partition_)
-        self.partition_table = partition_table_
-        # set the partition info on the device
-        self.device.act_partition_table = partition_table_
+#         partition_table_ = partition_table(
+#             name=name,
+#             description='partition information generated during asset run',
+#         )
+#         partition_table_.save()
+#         for hdd in hw.hdds:
+#             disc = partition_disc(
+#                 partition_table=partition_table_,
+#                 disc=hdd.device_name,
+#             )
+#             disc.save()
+#
+#             for hdd_partition in hdd.partitions:
+#                 partition_ = partition(
+#                     partition_disc=disc,
+#                     pnum=hdd_partition.index,
+#                     size=hdd_partition.size,
+#                 )
+#                 if hdd_partition.logical:
+#                     partition_fs_ = \
+#                         fs_dict[hdd_partition.logical.file_system.lower()]
+#                 else:
+#                     partition_fs_ = fs_dict["empty"]
+#                 partition_.partition_fs = partition_fs_
+#                 partition_.save()
+#                 if hdd_partition.logical:
+#                     logical = LogicalDisc(
+#                         device_name=hdd_partition.logical.device_name,
+#                         partition_fs=partition_fs_,
+#                         size=hdd_partition.logical.size,
+#                         free_space=hdd_partition.logical.free_space,
+#                     )
+#                     logical.save()
+#                     logical.partitions.add(partition_)
+#         self.partition_table = partition_table_
+#         # set the partition info on the device
+#         self.device.act_partition_table = partition_table_
         self.device.save()
 
         # set the network devices
