@@ -359,12 +359,6 @@ menu_module = angular.module(
         getDefaultProps: () ->
         render: () ->
             overall_style = icswOverallStyle.get()
-            if overall_style == "normal"
-                SHOW_MENU_ICON = false
-                SHOW_MENU_TITLE = true
-            else
-                SHOW_MENU_ICON = true
-                SHOW_MENU_TITLE = true
             items_added = 0
             items_per_column = {}
 
@@ -418,17 +412,23 @@ menu_module = angular.module(
                 state = @props
                 menu_name = state.name
                 menu_title = ""
+                _force_icon = false
                 if menu_name == "$$USER_INFO"
-                    _user = icswUserService.get().user
-                    if _user?
-                        menu_name = _user.login
-                        menu_title = _user.info
-                        if _user.login != _user.login_name
-                            menu_name = "#{menu_name} (via alias #{_user.login_name})"
-                        # n title="{{ struct.current_user.full_name }}">{{ struct.current_user.login }}</span>
-                        # uct.current_user.login != struct.current_user.login_name"> (via alias {{ struct.current_user.login_name }})</span>
+                    if overall_style == "normal"
+                        # ...
+                        menu_name = ""
+                        _force_icon = true
                     else
-                        menu_name = "---"
+                        _user = icswUserService.get().user
+                        if _user?
+                            menu_name = _user.login
+                            menu_title = _user.info
+                            if _user.login != _user.login_name
+                                menu_name = "#{menu_name} (via alias #{_user.login_name})"
+                            # n title="{{ struct.current_user.full_name }}">{{ struct.current_user.login }}</span>
+                            # uct.current_user.login != struct.current_user.login_name"> (via alias {{ struct.current_user.login_name }})</span>
+                        else
+                            menu_name = "---"
                 # header = state.icswData.menuHeader
                 key= "mh_#{state.menu_key}"
 
@@ -448,7 +448,7 @@ menu_module = angular.module(
 
                     ul_items.push(ul_item)
                 _m_item = []
-                if state.icon? and state.icon != "" and SHOW_MENU_ICON
+                if state.icon? and state.icon != "" and (overall_style == "condensed" or _force_icon)
                     _m_item.push span(
                         {
                             className: "fa #{state.icon} fa-lg"
@@ -456,7 +456,7 @@ menu_module = angular.module(
                             key: "span"
                         }
                     )
-                if menu_name? and menu_name != "" and SHOW_MENU_TITLE
+                if menu_name? and menu_name != ""
                     _m_item.push span(
                         {
                             key: "text"
