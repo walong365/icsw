@@ -6,14 +6,7 @@
         <icsw-tools-button type="create" ng-click="create_new_kpi()" ng-show="acl_create(null, 'backbone.kpi.kpi')"></icsw-tools-button>
     </h2>
 
-    <uib-tabset>
-        <uib-tab heading="Evaluation">
-            <icsw-config-kpi-evaluation-table></icsw-config-kpi-evaluation-table>
-        </uib-tab>
-        <uib-tab heading="Configuration">
-            <icsw-config-kpi-configuration-table></icsw-config-kpi-configuration-table>
-        </uib-tab>
-    </uib-tabset>
+    <icsw-config-kpi-configuration-table></icsw-config-kpi-configuration-table>
 
 </script>
 

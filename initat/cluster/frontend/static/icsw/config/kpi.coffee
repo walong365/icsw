@@ -24,7 +24,8 @@ angular.module(
         "icsw.tools.utils", "icsw.d3", "icsw.config.kpi.visualisation", "angular-ladda",
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
-    icswRouteExtensionProvider.add_route("main.kpi")
+    icswRouteExtensionProvider.add_route("main.kpisettings")
+    icswRouteExtensionProvider.add_route("main.kpievaluation")
 ]).controller("icswConfigKpiCtrl",
 [
     "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout", "icswAcessLevelService"
