@@ -857,7 +857,7 @@ class RemoteServerAddressBase(object):
                     self.mixin.strs_com_socket.send_unicode(unicode(send_obj), zmq.DONTWAIT)
                 except zmq.error.ZMQError as e:
                     self.log(
-                        "cannot send to {}: {}".format(
+                        "cannot send to '{}': {}".format(
                             self.connection_string,
                             process_tools.get_except_info()
                         ),

@@ -268,6 +268,7 @@ div[class*="col-"] > ul {
     margin: 10px;
 }
 /* HELP PAGE END */
+
 /* BODY START */
 body.condensed {
     padding-top: 75px;
@@ -286,6 +287,7 @@ img.normal {
 }
 
 /* BODY END */
+
 /* MENU START */
 .navbar.normal {
     margin-bottom: 17px;
@@ -347,3 +349,30 @@ img.normal {
     min-width: 200px;
 }
 /* MENU END */
+
+/* YAMM START */
+
+.yamm.nav,
+.yamm.collapse,
+.yamm.dropup,
+.yamm.dropdown {
+    position: static;
+}
+.yamm.container {
+    position: relative;
+}
+.yamm.dropdown-menu {
+    left: auto;
+}
+.yamm.yamm-content {
+    padding: 10px 15px;
+}
+.yamm.dropdown.yamm-fw .dropdown-menu {
+    left: 0;
+    right: 0;
+}
+
+.yamm-content[class*="col-"] {
+    padding: 0px 5px 0px 15px;
+}
+/* YAMM END */

@@ -118,7 +118,7 @@ class server_process(
                 result = cur_s.hosts.columns("name", "state").call()
             except:
                 self.log(
-                    "cannot query socket {}: {}".format(sock_name, process_tools.get_except_info()),
+                    "cannot query socket {}: {}".format(cur_s.peer, process_tools.get_except_info()),
                     logging_tools.LOG_LEVEL_CRITICAL
                 )
             else:
@@ -221,7 +221,7 @@ class server_process(
             self.main_socket.send_unicode(srv_com)
         except:
             self.log(
-                "cannot send {:d} bytes to {}: {}".format(
+                "cannot send {:d} bytes to '{}': {}".format(
                     len(srv_com),
                     full_uuid,
                     process_tools.get_except_info(),
@@ -377,11 +377,6 @@ class server_process(
 
     @RemoteCall(target_process="dynconfig")
     def monitoring_info(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall(target_process="syncer")
-    def register_master(self, srv_com, **kwargs):
-        # call from satellite master to register itself at this satellite
         return srv_com
 
     @RemoteCall(target_process="syncer")

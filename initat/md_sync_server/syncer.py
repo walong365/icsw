@@ -52,13 +52,12 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("check_for_redistribute", self._check_for_redistribute)
         self.register_func("build_info", self._build_info)
         self.register_func("distribute_info", self._distribute_info)
-        self.register_func("register_master", self._register_master)
         self.register_func("satellite_info", self._satellite_info)
         self.register_func("slave_command", self._slave_command)
         self.__build_in_progress, self.__build_version = (False, 0)
-        # setup local master
+        # setup local master, always set (also on satellite nodes)
         self.__local_master = None
-        # master config for distribution master
+        # master config for distribution master (only set on distribution master)
         self.__master_config = None
         # registered at master
         self.__registered_at_master = False
@@ -145,15 +144,12 @@ class SyncerProcess(threading_tools.process_obj):
             else:
                 master_ip = _slave_struct.master_ip
                 master_uuid = _slave_struct.master_uuid
-                srv_com = server_command.srv_command(
-                    command="register_master",
+                _slave_struct.send_slave_command(
+                    "register_master",
                     master_ip=master_ip,
                     master_uuid=master_uuid,
-                    master_port="{:d}".format(global_config["COMMAND_PORT"]),
-                    slave_uuid=_slave_struct.slave_uuid,
+                    master_port="{:d}".format(global_config["COMMAND_PORT"])
                 )
-                self.log(u"send register_master to {} (master IP {}, UUID {})".format(unicode(_slave_struct.name), master_ip, master_uuid))
-                self.send_command(_slave_struct.slave_uuid, unicode(srv_com))
         self.send_info_message()
 
     def send_info_message(self):
@@ -207,15 +203,6 @@ class SyncerProcess(threading_tools.process_obj):
             self.log("Unknown uuid for satellite_info: {}".format(uuid), logging_tools.LOG_LEVEL_ERROR)
 
     # pure slave (==satellite) methods
-
-    def _register_master(self, *args, **kwargs):
-        # only called at pure slaves
-        srv_com = server_command.srv_command(source=args[0])
-        if self.__local_master:
-            self.__local_master.register_master(srv_com)
-            self._check_for_register_at_master()
-        else:
-            self.log("ignoring register_master", logging_tools.LOG_LEVEL_WARN)
 
     def _check_for_register_at_master(self):
         if not self.__registered_at_master and "master.uuid" in self.__local_master.config_store:
@@ -285,14 +272,20 @@ class SyncerProcess(threading_tools.process_obj):
         # find target
         _master = True if int(srv_com["*master"]) else False
         _slave_uuid = srv_com["*slave_uuid"]
-        if _slave_uuid:
-            _config = self.__slave_configs[self.__slave_lut[_slave_uuid]]
+        if self.__master_config:
+            if _master:
+                _config = self.__master_config
+            else:
+                _config = self.__slave_configs[self.__slave_lut[_slave_uuid]]
         else:
-            _config = self.__master_config
-        self.log(
-            "got action {} for {}".format(
-                _action,
-                "master" if _master else "slave {}".format(_config.name),
+            _config = self.__local_master
+        if _config is not None:
+            self.log(
+                "got action {} for {}".format(
+                    _action,
+                    "master" if _master else "slave {}".format(_config.name),
+                )
             )
-        )
-        _config.handle_action(_action, srv_com)
+            _config.handle_action(_action, srv_com)
+        else:
+            self.log("_config is None, local_master still unset ?", logging_tools.LOG_LEVEL_ERROR)

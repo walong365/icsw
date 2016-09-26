@@ -61,6 +61,7 @@ class SyncConfig(object):
             self.config_store["icsw.version"] = VERSION_MAJOR
             self.config_store["icsw.release"] = VERSION_MINOR
             self.config_store.write()
+            self.version_dict = {}
         else:
             self.name = di_dict.get("name", None)
             self.master = di_dict["master"]
@@ -128,27 +129,6 @@ class SyncConfig(object):
     def set_local_master(self, local_master):
         self.struct = local_master
 
-    def register_master(self, srv_com):
-        master_ip, master_uuid, master_port, slave_uuid = (
-            srv_com["*master_ip"],
-            srv_com["*master_uuid"],
-            int(srv_com["*master_port"]),
-            srv_com["*slave_uuid"],
-        )
-        self.log(
-            "registering master at {} ({}@{:d}) for local slave".format(
-                master_uuid,
-                master_ip,
-                master_port,
-                slave_uuid,
-            )
-        )
-        self.config_store["master.uuid"] = master_uuid
-        self.config_store["master.ip"] = master_ip
-        self.config_store["master.port"] = master_port
-        self.config_store["slave.uuid"] = slave_uuid
-        self.config_store.write()
-
     def get_satellite_info(self):
         r_dict = {}
         if self.config_store is not None:
@@ -174,10 +154,6 @@ class SyncConfig(object):
         else:
             r_dict.update(self.get_satellite_info())
         return r_dict
-
-    def reload_after_sync(self):
-        self.reload_after_sync_flag = True
-        self._check_for_ras()
 
     def set_relayer_info(self, srv_com):
         for key in ["relayer_version", "mon_version"]:
@@ -293,86 +269,38 @@ class SyncConfig(object):
         self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
         self.__md_struct.save()
 
-    def _send(self, srv_com):
-        self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
-        self.__size_raw += len(unicode(srv_com))
-        self.__num_com += 1
-
-    def distribute(self):
-        # max uncompressed send size
-        MAX_SEND_SIZE = 65536
-        cur_time = time.time()
-        if self.slave_ip:
-            self.config_version_send = self.config_version_build
-            if not self.__md_struct.num_runs:
-                self.__md_struct.sync_start = cluster_timezone.localize(datetime.datetime.now())
-            self.__md_struct.num_runs += 1
-            self.send_time = int(cur_time)
-            # to distinguish between iterations during a single build
-            self.send_time_lut[self.send_time] = self.config_version_send
-            self.dist_ok = False
-            self.log(
-                "start send to slave (version {:d} [{:d}], generation is {:d})".format(
-                    self.config_version_send,
-                    self.send_time,
-                    _r_gen,
-                )
-            )
-            # number of atomic commands
-            self.__num_com = 0
-            self.__size_raw, size_data = (0, 0)
-            # send content of /etc
-            dir_offset = len(self.__w_dir_dict["etc"])
-            # generation 1 transfer
-            del_dirs = []
-            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                rel_dir = cur_dir[dir_offset + 1:]
-                del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
-            if del_dirs:
-                srv_com = server_command.srv_command(
-                    command="clear_directories",
-                    host="DIRECT",
-                    slave_name=self.__slave_name,
-                    port="0",
-                    version="{:d}".format(int(self.send_time)),
-                )
-                _bld = srv_com.builder()
-                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
-                self._send(srv_com)
-            _send_list, _send_size = ([], 0)
-            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                rel_dir = cur_dir[dir_offset + 1:]
-                for cur_file in sorted(file_names):
-                    full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
-                    full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
-                    if os.path.isfile(full_r_path):
-                        self.__tcv_dict[full_w_path] = self.config_version_send
-                        _content = file(full_r_path, "r").read()
-                        size_data += len(_content)
-                        if _send_size + len(_content) > MAX_SEND_SIZE:
-                            self._send(self._build_file_content(_send_list))
-                            _send_list, _send_size = ([], 0)
-                        # format: uid, gid, path, content_len, content
-                        _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
-            if _send_list:
-                self._send(self._build_file_content(_send_list))
-                _send_list, _send_size = ([], 0)
-            self.num_send[self.config_version_send] = self.__num_com
-            self.__md_struct.num_files = self.__num_com
-            self.__md_struct.num_transfers = self.__num_com
-            self.__md_struct.size_raw = self.__size_raw
-            self.__md_struct.size_data = size_data
-            self.__md_struct.save()
-            self._show_pending_info()
+    def send_slave_command(self, action_srvc, **kwargs):
+        # send command from local master to remote slave
+        if isinstance(action_srvc, basestring):
+            srv_com = self._get_slave_srv_command(action_srvc, **kwargs)
         else:
-            self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
+            srv_com = action_srvc
+
+        self.log(
+            u"send {} to {} (UUID={}, {})".format(
+                srv_com["*action"],
+                unicode(self.name),
+                self.slave_uuid,
+                ", ".join(["{}='{}'".format(_key, str(_value)) for _key, _value in kwargs.iteritems()]),
+            )
+        )
+        self.__process.send_command(
+            self.slave_uuid,
+            unicode(srv_com),
+        )
+
+    def _get_slave_srv_command(self, action, **kwargs):
+        return server_command.srv_command(
+            command="slave_command",
+            action=action,
+            slave_uuid=self.slave_uuid,
+            master="1" if self.master else "0",
+            **kwargs
+        )
 
     def _build_file_content(self, _send_list):
-        srv_com = server_command.srv_command(
-            command="file_content_bulk",
-            host="DIRECT",
-            slave_name=self.__slave_name,
-            port="0",
+        srv_com = self._get_slave_srv_command(
+            "file_content_bulk",
             version="{:d}".format(int(self.send_time)),
         )
         _bld = srv_com.builder()
@@ -511,10 +439,271 @@ class SyncConfig(object):
                 ", ".join(sorted(err_dict[err_key]))), logging_tools.LOG_LEVEL_ERROR)
         self._show_pending_info()
 
+    # remote actions
+    def handle_remote_action(self, action, srv_com):
+        _attr_name = "handle_remote_{}".format(action)
+        if not hasattr(self, _attr_name):
+            self.log("unknown remote action '{}'".format(action), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            getattr(self, _attr_name)(srv_com)
+
+    def handle_remote_reload_after_sync(self, srv_com):
+        self.reload_after_sync_flag = True
+        self.send_slave_command("reload_after_sync")
+
+    def handle_remote_sync_slave(self, srv_com):
+        # max uncompressed send size
+        MAX_SEND_SIZE = 65536
+        cur_time = time.time()
+        if self.slave_ip:
+            self.config_version_send = self.config_version_build
+            self.send_time = int(cur_time)
+            # to distinguish between iterations during a single build
+            self.send_time_lut[self.send_time] = self.config_version_send
+            self.dist_ok = False
+            self.log(
+                "start send to slave (version {:d} [{:d}])".format(
+                    self.config_version_send,
+                    self.send_time,
+                )
+            )
+            # number of atomic commands
+            self.__num_com = 0
+            self.__size_raw, size_data = (0, 0)
+            # send content of /etc
+            dir_offset = len(self.__w_dir_dict["etc"])
+            # generation 1 transfer
+            del_dirs = []
+            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                rel_dir = cur_dir[dir_offset + 1:]
+                del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
+            if del_dirs:
+                srv_com = self._get_slave_srv_command(
+                    "clear_directories",
+                    version="{:d}".format(int(self.send_time)),
+                )
+                _bld = srv_com.builder()
+                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs]),
+                self.send_slave_command(srv_com)
+            _send_list, _send_size = ([], 0)
+            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                rel_dir = cur_dir[dir_offset + 1:]
+                for cur_file in sorted(file_names):
+                    full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
+                    full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
+                    if os.path.isfile(full_r_path):
+                        self.__tcv_dict[full_w_path] = self.config_version_send
+                        _content = file(full_r_path, "r").read()
+                        size_data += len(_content)
+                        if _send_size + len(_content) > MAX_SEND_SIZE:
+                            self._send(self._build_file_content(_send_list))
+                            _send_list, _send_size = ([], 0)
+                        # format: uid, gid, path, content_len, content
+                        _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
+            if _send_list:
+                self.send_slave_command(self._build_file_content(_send_list))
+                _send_list, _send_size = ([], 0)
+            self.num_send[self.config_version_send] = self.__num_com
+            # self.__md_struct.num_files = self.__num_com
+            # self.__md_struct.num_transfers = self.__num_com
+            # self.__md_struct.size_raw = self.__size_raw
+            # self.__md_struct.size_data = size_data
+            # self.__md_struct.save()
+            # self._show_pending_info()
+        else:
+            self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
+
     # local actions
-    def handle_reload_after_sync(self, srv_com):
+    def handle_local_action(self, action, srv_com):
+        _attr_name = "handle_local_{}".format(action)
+        if not hasattr(self, _attr_name):
+            self.log("unknown local action '{}'".format(action), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            getattr(self, _attr_name)(srv_com)
+
+    def handle_local_reload_after_sync(self, srv_com):
         self.reload_after_sync_flag = True
         self._check_for_ras()
+
+    # direct actions
+    def handle_direct_action(self, action, srv_com):
+        _attr_name = "handle_direct_{}".format(action)
+        if not hasattr(self, _attr_name):
+            self.log("unknown direct action '{}'".format(action), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            getattr(self, _attr_name)(srv_com)
+
+    def handle_direct_clear_directories(self, srv_com):
+        # print srv_com.pretty_print()
+        for dir_name in srv_com.xpath(".//ns:directories/ns:directory/text()"):
+            self._clear_dir(dir_name)
+
+    def handle_direct_file_content_bulk(self, srv_com):
+        new_vers = int(srv_com["version"].text)
+        _file_list = srv_com["file_list"][0]
+        _bulk = bz2.decompress(base64.b64decode(srv_com["bulk"].text))
+        cur_offset = 0
+        num_ok, num_failed = (0, 0)
+        ok_list, failed_list = ([], [])
+        self.log(
+            "got {} (version {:d})".format(
+                logging_tools.get_plural("bulk file", len(srv_com.xpath(".//ns:file_list/ns:file"))),
+                new_vers,
+            )
+        )
+        for _entry in srv_com.xpath(".//ns:file_list/ns:file"):
+            _uid, _gid = (int(_entry.get("uid")), int(_entry.get("gid")))
+            _size = int(_entry.get("size"))
+            path = _entry.text
+            content = _bulk[cur_offset:cur_offset + _size]
+            _success = self._store_file(path, new_vers, _uid, _gid, content)
+            if _success:
+                num_ok += 1
+                ok_list.append(path)
+            else:
+                num_failed += 1
+                failed_list.append(path)
+            cur_offset += _size
+        # print etree.tostring(_file_list), len(_bulk)
+        self.__process._send_satellite_info()
+        if num_failed:
+            log_str, log_state = (
+                "cannot create all files ({:d}, please check logs on relayer)".format(num_failed),
+                logging_tools.LOG_LEVEL_ERROR,
+            )
+        else:
+            log_str, log_state = (
+                "all {:d} files created".format(num_ok),
+                logging_tools.LOG_LEVEL_OK
+            )
+        self.log(log_str, log_state)
+
+    def _store_file(self, t_file, new_vers, uid, gid, content):
+        MON_TOP_DIR = global_config["MD_BASEDIR"]
+        success = False
+        if not t_file.startswith(MON_TOP_DIR):
+            self.log(
+                "refuse to operate outside '{}'".format(
+                    MON_TOP_DIR,
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
+        else:
+            renew, log_str = self._check_version(t_file, new_vers)
+            if renew:
+                t_dir = os.path.dirname(t_file)
+                if not os.path.exists(t_dir):
+                    try:
+                        os.makedirs(t_dir)
+                    except:
+                        self.log(
+                            "error creating directory {}: {}".format(
+                                t_dir,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                    else:
+                        self.log("created directory {}".format(t_dir))
+                try:
+                    file(t_file, "w").write(content)
+                    # we no longer chown because we are not running as root
+                except:
+                    self.log(
+                        "error creating file {}: {}".format(
+                            t_file,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                else:
+                    self.log(
+                        "created {} [{}, {}]".format(
+                            t_file,
+                            logging_tools.get_size_str(len(content)).strip(),
+                            log_str,
+                        )
+                    )
+                    success = True
+            else:
+                success = True
+                self.log("file {} not newer [{}]".format(t_file, log_str), server_command.SRV_REPLY_STATE_WARN)
+        return success
+
+    def _check_version(self, key, new_vers):
+        if new_vers == self.version_dict.get(key):
+            renew, log_str = (False, "no newer version ({:d})".format(new_vers))
+        else:
+            renew = True
+            if key in self.version_dict:
+                log_str = "newer version ({:d} -> {:d})".format(self.version_dict.get(key, 0), new_vers)
+            else:
+                log_str = "new version ({:d})".format(new_vers)
+            self.version_dict[key] = new_vers
+        return renew, log_str
+
+    def _clear_version(self, key):
+        if key in self.version_dict:
+            del self.version_dict[key]
+
+    def _clear_dir(self, t_dir):
+        MON_TOP_DIR = global_config["MD_BASEDIR"]
+        if not t_dir.startswith(MON_TOP_DIR):
+            self.log(
+                "refuse to operate outside '{}'".format(
+                    MON_TOP_DIR,
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
+        else:
+            self.log("clearing directory {}".format(t_dir))
+            num_rem = 0
+            if os.path.isdir(t_dir):
+                for entry in os.listdir(t_dir):
+                    f_path = os.path.join(t_dir, entry)
+                    # remove from version_dict
+                    self._clear_version(f_path)
+                    if os.path.isfile(f_path):
+                        try:
+                            os.unlink(f_path)
+                        except:
+                            self.log(
+                                "cannot remove {}: {}".format(
+                                    f_path,
+                                    process_tools.get_except_info()
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+                        else:
+                            num_rem += 1
+            else:
+                self.log("directory '{}' does not exist".format(t_dir), logging_tools.LOG_LEVEL_ERROR)
+            self.log("removed {} in {}".format(logging_tools.get_plural("file", num_rem), t_dir))
+
+    def handle_direct_reload_after_sync(self, srv_com):
+        self.reload_after_sync_flag = True
+        self._check_for_ras()
+
+    def handle_direct_register_master(self, srv_com):
+        master_ip, master_uuid, master_port, slave_uuid = (
+            srv_com["*master_ip"],
+            srv_com["*master_uuid"],
+            int(srv_com["*master_port"]),
+            srv_com["*slave_uuid"],
+        )
+        self.log(
+            "registering master at {} ({}@{:d}) for local slave".format(
+                master_uuid,
+                master_ip,
+                master_port,
+                slave_uuid,
+            )
+        )
+        self.config_store["master.uuid"] = master_uuid
+        self.config_store["master.ip"] = master_ip
+        self.config_store["master.port"] = master_port
+        self.config_store["slave.uuid"] = slave_uuid
+        self.config_store.write()
 
     def _check_for_ras(self):
         if self.reload_after_sync_flag and self.dist_ok:
@@ -525,18 +714,25 @@ class SyncConfig(object):
                 signal.SIGHUP,
             )
 
-    def handle_local_action(self, action, srv_com):
-        _attr_name = "handle_{}".format(action)
-        if not hasattr(self, _attr_name):
-            self.log("unknown local action '{}'".format(action), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            getattr(self, _attr_name)(srv_com)
-
     def handle_action(self, action, srv_com):
-        if self.master:
-            # local action
+        s_time = time.time()
+        if self.master is None:
+            # direct local action
+            _type = "direct"
+            self.handle_direct_action(action, srv_com)
+        elif self.master:
+            # local action on sync master
+            _type = "local"
             self.handle_local_action(action, srv_com)
         else:
             # remote action
-            pass
-            # print action, self.name
+            _type = "remote"
+            self.handle_remote_action(action, srv_com)
+        e_time = time.time()
+        self.log(
+            "{} action {} took {}".format(
+                action,
+                _type,
+                logging_tools.get_diff_time_str(e_time - s_time),
+            )
+        )

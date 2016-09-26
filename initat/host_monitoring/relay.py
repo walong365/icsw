@@ -109,7 +109,6 @@ class relay_code(ICSWBasePool, HMHRMixin):
         self.__last_master_contact = None
         self.register_func("socket_result", self._socket_result)
         self.register_func("socket_ping_result", self._socket_ping_result)
-        self.version_dict = {}
         self._init_master()
         if self.objgraph:
             self.register_timer(self._objgraph_run, 30, instant=True)
@@ -759,39 +758,12 @@ class relay_code(ICSWBasePool, HMHRMixin):
                 logging_tools.get_plural("message", self.__num_messages))
             )
 
-    def _check_version(self, key, new_vers):
-        if new_vers == self.version_dict.get(key):
-            renew, log_str = (False, "no newer version ({:d})".format(new_vers))
-        else:
-            renew = True
-            if key in self.version_dict:
-                log_str = "newer version ({:d} -> {:d})".format(self.version_dict.get(key, 0), new_vers)
-            else:
-                log_str = "new version ({:d})".format(new_vers)
-            self.version_dict[key] = new_vers
-        return renew, log_str
-
-    def _clear_version(self, key):
-        if key in self.version_dict:
-            del self.version_dict[key]
-
     def _handle_direct_command(self, src_id, srv_com):
         # only DIRECT command from ccollclientzmq
         # print "*", src_id
         cur_com = srv_com["command"].text
         if self.__verbose:
             self.log("got DIRECT command {}".format(cur_com))
-        if cur_com in ["file_content", "file_content_bulk"]:
-            if cur_com == "file_content":
-                ret_com = self._file_content(srv_com)
-            else:
-                ret_com = self._file_content_bulk(srv_com)
-            # set values
-            self._send_to_master(ret_com)
-        elif cur_com == "clear_directory":
-            self._clear_directory(srv_com)
-        elif cur_com == "clear_directories":
-            self._clear_directories(srv_com)
         elif cur_com == "call_command":
             # also check for version ? compare with file versions ? deleted files ? FIXME
             cmdline = srv_com["cmdline"].text
@@ -1121,152 +1093,3 @@ class relay_code(ICSWBasePool, HMHRMixin):
 
     def loop_post(self):
         self.CC.close()
-
-    def _clear_directory(self, srv_com):
-        t_dir = srv_com["directory"].text
-        self._clear_dir(t_dir)
-
-    def _clear_directories(self, srv_com):
-        # print srv_com.pretty_print()
-        for dir_name in srv_com.xpath(".//ns:directories/ns:directory/text()"):
-            self._clear_dir(dir_name)
-
-    def _clear_dir(self, t_dir):
-        if not t_dir.startswith(ICINGA_TOP_DIR):
-            self.log("refuse to operate outside '{}'".format(ICINGA_TOP_DIR), logging_tools.LOG_LEVEL_CRITICAL)
-        else:
-            self.log("clearing directory {}".format(t_dir))
-            num_rem = 0
-            if os.path.isdir(t_dir):
-                for entry in os.listdir(t_dir):
-                    f_path = os.path.join(t_dir, entry)
-                    # remove from version_dict
-                    self._clear_version(f_path)
-                    if os.path.isfile(f_path):
-                        try:
-                            os.unlink(f_path)
-                        except:
-                            self.log(
-                                "cannot remove {}: {}".format(
-                                    f_path,
-                                    process_tools.get_except_info()
-                                ),
-                                logging_tools.LOG_LEVEL_ERROR
-                            )
-                        else:
-                            num_rem += 1
-            else:
-                self.log("directory '{}' does not exist".format(t_dir), logging_tools.LOG_LEVEL_ERROR)
-            self.log("removed {} in {}".format(logging_tools.get_plural("file", num_rem), t_dir))
-
-    def _file_content(self, srv_com):
-        t_file = srv_com["file_name"].text
-        new_vers = int(srv_com["version"].text)
-        ret_com = server_command.srv_command(
-            command="file_content_result",
-            version="{:d}".format(new_vers),
-            slave_name=srv_com["slave_name"].text,
-            file_name=t_file,
-        )
-        success = self._store_file(
-            t_file,
-            new_vers,
-            int(srv_com["uid"].text),
-            int(srv_com["gid"].text),
-            base64.b64decode(srv_com["content"].text),
-        )
-        if success:
-            ret_com.set_result("stored content")
-        else:
-            ret_com.set_result("cannot create file (please check logs on relayer)", server_command.SRV_REPLY_STATE_ERROR)
-        return ret_com
-
-    def _file_content_bulk(self, srv_com):
-        new_vers = int(srv_com["version"].text)
-        _file_list = srv_com["file_list"][0]
-        _bulk = bz2.decompress(base64.b64decode(srv_com["bulk"].text))
-        cur_offset = 0
-        num_ok, num_failed = (0, 0)
-        ok_list, failed_list = ([], [])
-        self.log(
-            "got {} (version {:d})".format(
-                logging_tools.get_plural("bulk file", len(srv_com.xpath(".//ns:file_list/ns:file"))),
-                new_vers,
-            )
-        )
-        for _entry in srv_com.xpath(".//ns:file_list/ns:file"):
-            _uid, _gid = (int(_entry.get("uid")), int(_entry.get("gid")))
-            _size = int(_entry.get("size"))
-            path = _entry.text
-            content = _bulk[cur_offset:cur_offset + _size]
-            _success = self._store_file(path, new_vers, _uid, _gid, content)
-            if _success:
-                num_ok += 1
-                ok_list.append(path)
-            else:
-                num_failed += 1
-                failed_list.append(path)
-            cur_offset += _size
-        # print etree.tostring(_file_list), len(_bulk)
-        ret_com = server_command.srv_command(
-            command="file_content_bulk_result",
-            version="{:d}".format(new_vers),
-            slave_name=srv_com["slave_name"].text,
-            num_ok="{:d}".format(num_ok),
-            num_failed="{:d}".format(num_failed),
-            ok_list=base64.b64encode(bz2.compress(marshal.dumps(ok_list))),
-            failed_list=base64.b64encode(bz2.compress(marshal.dumps(failed_list))),
-        )
-        if num_failed:
-            log_str, log_state = ("cannot create all files ({:d}, please check logs on relayer)".format(num_failed), server_command.SRV_REPLY_STATE_ERROR)
-        else:
-            log_str, log_state = ("all {:d} files created".format(num_ok), server_command.SRV_REPLY_STATE_OK)
-        ret_com.set_result(log_str, log_state)
-        self.log(log_str, server_command.srv_reply_to_log_level(log_state))
-        return ret_com
-
-    def _store_file(self, t_file, new_vers, uid, gid, content):
-        success = False
-        if not t_file.startswith(ICINGA_TOP_DIR):
-            self.log("refuse to operate outside '{}'".format(ICINGA_TOP_DIR), logging_tools.LOG_LEVEL_CRITICAL)
-        else:
-            renew, log_str = self._check_version(t_file, new_vers)
-            if renew:
-                t_dir = os.path.dirname(t_file)
-                if not os.path.exists(t_dir):
-                    try:
-                        os.makedirs(t_dir)
-                    except:
-                        self.log(
-                            "error creating directory {}: {}".format(
-                                t_dir,
-                                process_tools.get_except_info()
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
-                    else:
-                        self.log("created directory {}".format(t_dir))
-                try:
-                    file(t_file, "w").write(content)
-                    os.chown(t_file, uid, gid)
-                except:
-                    self.log(
-                        "error creating file {}: {}".format(
-                            t_file,
-                            process_tools.get_except_info()
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
-                else:
-                    self.log(
-                        "created {} [{}, {}]".format(
-                            t_file,
-                            logging_tools.get_size_str(len(content)).strip(),
-                            log_str,
-                        )
-                    )
-                    success = True
-            else:
-                success = True
-                self.log("file {} not newer [{}]".format(t_file, log_str), server_command.SRV_REPLY_STATE_WARN)
-        return success
