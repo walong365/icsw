@@ -81,16 +81,19 @@ class SyncerProcess(threading_tools.process_obj):
 
     def _send_satellite_info(self):
         if self.__registered_at_master and self.__local_master:
-            self.send_command(
-                self.__local_master.config_store["master.uuid"],
-                unicode(
-                    server_command.srv_command(
-                        command="satellite_info",
-                        uuid=self.__local_master.config_store["slave.uuid"],
-                        satellite_info=server_command.compress(self.__local_master.get_satellite_info(), json=True)
-                    )
+            self.send_to_config_server(
+                server_command.srv_command(
+                    command="satellite_info",
+                    uuid=self.__local_master.config_store["slave.uuid"],
+                    satellite_info=server_command.compress(self.__local_master.get_satellite_info(), json=True)
                 )
             )
+
+    def send_to_config_server(self, srv_com):
+        self.send_command(
+            self.__master_config.master_uuid,
+            unicode(srv_com),
+        )
 
     def _distribute_info(self, dist_info, **kwargs):
         self.log("distribution info has {}".format(logging_tools.get_plural("entry", len(dist_info))))
@@ -131,7 +134,6 @@ class SyncerProcess(threading_tools.process_obj):
                     )
         if not self.__register_timer:
             self.__register_timer = True
-            self.register_func("relayer_info", self._relayer_info)
             _reg_timeout, _first_timeout = (600, 2)  # (600, 15)
             self.log("will send register_msg in {:d} (then {:d}) seconds".format(_first_timeout, _reg_timeout))
             self.register_timer(self._send_register_msg, _reg_timeout, instant=global_config["DEBUG"], first_timeout=_first_timeout)
@@ -148,7 +150,7 @@ class SyncerProcess(threading_tools.process_obj):
                     "register_master",
                     master_ip=master_ip,
                     master_uuid=master_uuid,
-                    master_port="{:d}".format(global_config["COMMAND_PORT"])
+                    master_port="{:d}".format(global_config["COMMAND_PORT"]),
                 )
         self.send_info_message()
 
@@ -158,6 +160,7 @@ class SyncerProcess(threading_tools.process_obj):
         ]
         srv_com = server_command.srv_command(
             command="slave_info",
+            action="info_list",
             slave_info=server_command.compress(info_list, json=True)
         )
         self.send_command(self.__master_config.master_uuid, unicode(srv_com))
@@ -176,20 +179,6 @@ class SyncerProcess(threading_tools.process_obj):
             self.__slave_configs[self.__slave_lut[slave_name]].file_content_info(srv_com)
         else:
             self.log("unknown slave_name '{}'".format(slave_name), logging_tools.LOG_LEVEL_ERROR)
-
-    def _relayer_info(self, *args, **kwargs):
-        srv_com = server_command.srv_command(source=args[0])
-        if "uuid" in srv_com:
-            uuid = srv_com["uuid"].text.split(":")[-1]
-            if uuid == self.__master_config.monitor_server.uuid:
-                self.__master_config.set_relayer_info(srv_com)
-            elif uuid in self.__slave_lut:
-                _pk = self.__slave_lut[uuid]
-                self.__slave_configs[_pk].set_relayer_info(srv_com)
-            else:
-                self.log("uuid {} not found in slave_lut".format(uuid), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            self.log("uuid missing in relayer_info", logging_tools.LOG_LEVEL_ERROR)
 
     def _satellite_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])

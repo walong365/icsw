@@ -112,6 +112,7 @@ angular.module(
             1: "passive"
         }[entry.check_type]
         entry.$$icswPassiveCheck = if entry.check_type then true else false
+        # console.log entry.$$icswPassiveCheck, entry
         entry.$$icswAttemptLabelClass = _get_attempt_class(entry)
         entry.$$icswAttemptInfo = _get_attempt_info(entry)
         try

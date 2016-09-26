@@ -483,6 +483,10 @@ class server_process(
         return srv_com
 
     @RemoteCall(target_process="syncer")
+    def slave_info(self, srv_com, **kwargs):
+        return srv_com
+
+    @RemoteCall(target_process="syncer")
     def file_content_bulk_result(self, srv_com, **kwargs):
         return srv_com
 

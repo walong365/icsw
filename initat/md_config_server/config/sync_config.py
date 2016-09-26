@@ -152,6 +152,10 @@ class SyncConfig(object):
             )
         # print "SI", info
 
+    def handle_info_action(self, action, srv_com):
+        print "**", action
+        print srv_com.pretty_print()
+
     def get_send_data(self):
         _r_dict = {
             "master": True if not self.__slave_name else False,
@@ -288,29 +292,6 @@ class SyncConfig(object):
         self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
         self.__size_raw += len(unicode(srv_com))
         self.__num_com += 1
-
-    def _build_file_content(self, _send_list):
-        srv_com = server_command.srv_command(
-            command="file_content_bulk",
-            host="DIRECT",
-            slave_name=self.__slave_name,
-            port="0",
-            version="{:d}".format(int(self.send_time)),
-        )
-        _bld = srv_com.builder()
-
-        srv_com["file_list"] = _bld.file_list(
-            *[
-                _bld.file(
-                    _path,
-                    uid="{:d}".format(_uid),
-                    gid="{:d}".format(_gid),
-                    size="{:d}".format(_size)
-                ) for _uid, _gid, _path, _size, _content in _send_list
-            ]
-        )
-        srv_com["bulk"] = base64.b64encode(bz2.compress("".join([_parts[-1] for _parts in _send_list])))
-        return srv_com
 
     def _show_pending_info(self):
         cur_time = time.time()

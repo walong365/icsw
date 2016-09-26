@@ -397,13 +397,6 @@ class server_process(
         return srv_com
 
     @RemoteCall()
-    def relayer_info(self, srv_com, **kwargs):
-        # pretend to be synchronous call such that reply is sent right away
-        self.send_to_process("syncer", "relayer_info", unicode(srv_com))
-        srv_com.set_result("ok processed command sync_http_users")
-        return srv_com
-
-    @RemoteCall()
     def passive_check_result(self, srv_com, **kwargs):
         # pretend to be synchronous call such that reply is sent right away
         self.send_to_process("dynconfig", "passive_check_result", unicode(srv_com))
