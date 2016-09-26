@@ -151,4 +151,8 @@ icsw_app = angular.module(
         "DIMPLE_MIN_JS": "/icsw/static/dimple.v2.1.6.min.js",
         "STATIC_URL": "/icsw/static"
     }
-);
+).filter('capitalize', function() {
+    return function (input) {
+        return (!!input) ? input.charAt(0).toUpperCase() + input.substr(1).toLowerCase() : '';
+    }
+});

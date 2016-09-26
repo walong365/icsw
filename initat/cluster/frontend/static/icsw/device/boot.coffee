@@ -755,13 +755,13 @@ angular.module(
         _bs_list = _.uniq(dev.bootserver for dev in $scope.struct.devices when dev.bootserver)
         if _bs_list.length == 1
             if _bs_list[0] of $scope.struct.mother_server_lut
-                bs_info = "on bootserver #{$scope.struct.mother_server_lut[_bs_list[0]].full_name}"
+                bs_info = "on Bootserver #{$scope.struct.mother_server_lut[_bs_list[0]].full_name}"
             else
-                bs_info = "on bootserver with pk=#{_bs_list[0]}"
+                bs_info = "on Bootserver with pk=#{_bs_list[0]}"
         else if _bs_list.length
-            bs_inof = "on #{_bs_list.length} bootservers"
+            bs_inof = "on #{_bs_list.length} Bootservers"
         else
-            bs_info = "no bootserver info"
+            bs_info = "no Bootserver Information"
         $scope.struct.global_bootserver_info = bs_info
 
         # local bootserver info
@@ -1113,10 +1113,10 @@ angular.module(
 
         sub_scope = create_subscope()
         if devs.length == 1
-            title = "Boot settings for device #{devs[0].full_name}"
+            title = "Boot Settings for Device #{devs[0].full_name}"
             sub_scope.$$multi = false
         else
-            title = "Boot settings for #{devs.length} devices"
+            title = "Boot Settings for #{devs.length} Devices"
             sub_scope.$$multi = true
         if sub_scope.$$multi
             sub_scope.$$change_macaddr = false
@@ -1173,6 +1173,7 @@ angular.module(
                 message: $compile($templateCache.get("icsw.boot.modify.form"))(sub_scope)
                 ok_label: "Modify"
                 title: title
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     # _prepare_post_data(sub_scope)

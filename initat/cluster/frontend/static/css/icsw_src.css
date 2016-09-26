@@ -6,7 +6,18 @@
     padding: 5px;
     opacity: 0.95;
 }
-
+*::before, *::after {
+    box-sizing: border-box;
+}
+*::after, *::before {
+    box-sizing: border-box;
+}
+*::before, *::after {
+    box-sizing: border-box;
+}
+*::after, *::before {
+    box-sizing: border-box;
+}
 /* domain tree node styles */
 
 ul.dynatree-container span.intermediate {
@@ -291,22 +302,8 @@ img.normal {
     margin-bottom: 17px;
     min-height: 70px;
 }
-
 .navbar.condensed {
     margin-bottom: 17px;
-}
-
-*::before, *::after {
-    box-sizing: border-box;
-}
-*::after, *::before {
-    box-sizing: border-box;
-}
-*::before, *::after {
-    box-sizing: border-box;
-}
-*::after, *::before {
-    box-sizing: border-box;
 }
 .yamm .nav, .yamm .collapse, .yamm .dropup, .yamm .dropdown {
     position: static;
@@ -326,24 +323,36 @@ img.normal {
     padding-top: 26.5px;
     line-height: 17px;
 }
-
 .navbar-nav.condensed > li > a {
     padding-bottom: 16.5px;
     padding-top: 16.5px;
     line-height: 17px;
 }
-
 .navbar form.normal {
     margin-top: 22px;
 }
-
 .navbar p {
     margin: 0 0 3px;
+    font-size: 14px;
 }
 .navbar .disabled {
     color: #bbbbbb;
 }
-.yamm [class*="col-"] {
-    min-width: 200px;
+.yamm-content [class*="col-"] {
+    min-width: 240px;
+    padding: 0 0 0 15px;
+}
+.yamm-content li, .yamm-content li > a {
+    padding: 2px 0px;
+}
+.navbar-right li:last-of-type > a {
+    padding-bottom: 3px;
+    text-align: right;
+}
+.navbar-right li:last-of-type > a > div {
+    text-align: center;
+    font-size: 12px;
+    padding-right: 0px;
+    margin-top: 5px;
 }
 /* MENU END */

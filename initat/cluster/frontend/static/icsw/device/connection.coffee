@@ -137,7 +137,7 @@ angular.module(
         )
 
     $scope.delete_connection = ($event, cd) ->
-        icswToolsSimpleModalService("Really delete connection ?").then(
+        icswToolsSimpleModalService("Really delete Connection?").then(
             (ok) ->
                 $scope.struct.device_tree.delete_device_connection(cd, $scope.struct.helper_service).then(
                     (del_ok) ->
@@ -157,7 +157,8 @@ angular.module(
             {
                 message: $compile($templateCache.get("icsw.cd.connection.form"))(sub_scope)
                 ok_label: "Modify"
-                title: "Edit DeviceConnection"
+                title: "Edit Power Controlling Connection"
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid

@@ -8,12 +8,12 @@
             <div uib-alert class="alert-warning">{{ struct.error_string }}</div>
         </div>-->
         <div>
-            <h2>
-                Graphing,
+            <h3>
+                Graphing&nbsp;&nbsp;
                 <icsw-tools-yes-no icsw-yes="show settings" icsw-no="hide settings" flag="struct.base_setting.show_settings" ng-show="struct.base_setting.display_settings_switch"></icsw-tools-yes-no>
                 <icsw-tools-yes-no icsw-yes="show tree" icsw-no="hide tree" flag="struct.base_setting.show_tree" ng-show="struct.base_setting.display_tree_switch"></icsw-tools-yes-no>
                 <span ng-show="struct.error_string" class="text-warning">{{ struct.error_string }}</span>
-            </h2>
+            </h3>
         </div>
         <table class="table table-condensed table-striped table-bordered" style="width:auto;" ng-show="struct.vector_valid && struct.base_setting.show_settings">
             <tbody>

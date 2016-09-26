@@ -4897,7 +4897,7 @@ a.label:focus {
   padding: 3px 7px;
   font-size: 12px;
   font-weight: bold;
-  color: #fff;
+  color: : #fff;
   line-height: 1;
   vertical-align: middle;
   white-space: nowrap;
@@ -6878,6 +6878,7 @@ select > option:hover{
 }
 fieldset > legend {
   font-size: 18px;
+  color: #555555;
 }
 /**** Tabs start ****/
 .nav-tabs > li > a {

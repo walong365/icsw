@@ -31,15 +31,6 @@
                     </rights>
                 </icswData>
             </route>
-            <route name="main.deviceconnection">
-                <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
-                <icswData type="dict" pageTitle_str="Device Connections" hasDevselFunc_bool="yes">
-                    <menuEntry type="dict" icon_str="fa-plug" name_str="Connections"/>
-                    <rights type="list">
-                        <value>backbone.device.change_connection</value>
-                    </rights>
-                </icswData>
-            </route>
             <route name="main.deviceconfig">
                 <stateData type="dict" url_str="/deviceconfig" templateUrl_str="icsw/main/device/config.html"/>
                 <icswData type="dict" pageTitle_str="Assign Configurations" hasDevselFunc_bool="yes">
@@ -73,7 +64,7 @@
             <route name="main.configoverview">
                 <stateData type="dict" url_str="/configoverview" templateUrl_str="icsw/main/config/overview.html"/>
                 <icswData type="dict" pageTitle_str="Assignable Configuration Setup">
-                    <menuEntry type="dict" preSpacer_bool="yes" icon_str="fa-check-square-o" name_str="Assignable Config Setup"/>
+                    <menuEntry type="dict" preSpacer_bool="yes" icon_str="fa-check-square-o" name_str="Assignable Configuration Setup"/>
                     <rights type="list">
                         <value>backbone.device.change_config</value>
                     </rights>
@@ -103,6 +94,15 @@
                     <menuEntry type="dict" icon_str="fa-table" name_str="Categories"/>
                     <rights type="list">
                         <value>backbone.user.modify_category_tree</value>
+                    </rights>
+                </icswData>
+            </route>
+            <route name="main.deviceconnection">
+                <stateData type="dict" url_str="/deviceconnection" templateUrl_str="icsw/main/device/connection.html"/>
+                <icswData type="dict" pageTitle_str="Power Controlling Connections" hasDevselFunc_bool="yes">
+                    <menuEntry type="dict" icon_str="fa-plug" name_str="Power Controlling Connections"/>
+                    <rights type="list">
+                        <value>backbone.device.change_connection</value>
                     </rights>
                 </icswData>
             </route>

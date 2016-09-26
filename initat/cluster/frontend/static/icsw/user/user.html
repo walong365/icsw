@@ -4,12 +4,12 @@
         <div class="container-fluid">
             <div  style="max-width:910px;">
                 <hr/>
-                <h2>Permissions</h2>
+                <h3>Permissions</h3>
                 <icsw-user-group-role-permissions
                     icsw-object-type="user"
                     icsw-object="struct.user"
                 ></icsw-user-group-role-permissions>
-                <h2>Quota info</h2>
+                <h3>Quota info</h3>
                 <icsw-user-quota-settings
                     icsw-object="struct.user"
                     icsw-object-type="'user'"
@@ -499,10 +499,10 @@
 
 <script type="text/ng-template" id="icsw.user.edit.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Details for user '{{ user.login }}', password is
+        <h3>Details for user '{{ user.login }}', password is
             <span ng-if="password_set()">set</span>
             <span ng-if="!password_set()">not set</span>
-        </h2>
+        </h3>
         <uib-tabset>
             <uib-tab heading="Base settings">
                 <div class="row">
@@ -799,7 +799,7 @@
 
 <script type="text/ng-template" id="icsw.group.edit.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Details for group '{{ group.groupname }}'</h2>
+        <h3>Details for group '{{ group.groupname }}'</h3>
         <uib-tabset>
             <uib-tab heading="Base settings">
                 <div class="row">
@@ -920,7 +920,7 @@
 
 <script type="text/ng-template" id="icsw.role.edit.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Details for Role '{{ role.name }}'</h2>
+        <h3>Details for Role '{{ role.name }}'</h3>
         <uib-tabset>
             <uib-tab heading="Base settings">
                 <div class="row">
@@ -1038,7 +1038,7 @@
 <script type="text/ng-template" id="icsw.account.detail.form">
     <div class="container-fluid">
         <form class="form-horizontal" ng-submit="update_account()">
-            <h2>Account info for '{{ struct.user.login }}'</h2>
+            <h3>Account Information for '{{ struct.user.login }}'</h3>
             <div class="row" style="margin-left:0px;">
                 <div class="pull-left" style="min-width:450px;max-width:450px;margin-right:10px;">
                     <fieldset class="form-horizontal">
