@@ -27,6 +27,8 @@ device_asset_module = angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.devasset")
+    icswRouteExtensionProvider.add_route("main.schedasset")
+    icswRouteExtensionProvider.add_route("main.schedoverviewasset")
 ]).directive("icswDeviceAssetOverview",
 [
     "$templateCache",

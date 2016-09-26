@@ -268,17 +268,17 @@
                     </rights>
                 </icswData>
             </route>
-            <route name="main.schedoverview">
+            <route name="main.schedoverviewasset">
                 <stateData type="dict" url_str="/sched/overview" template_str="&lt;icsw-schedule-overview&gt;&lt;/icsw-schedule-overview&gt;"/>
                 <icswData type="dict" pageTitle_str="Schedule settings">
-                    <menuEntry type="dict" icon_str="fa-gears" name_str="Settings"/>
+                    <menuEntry type="dict" icon_str="fa-gears" name_str="Schedule Settings"/>
                     <rights type="list">
                         <value>backbone.dispatchersetting.setup</value>
                     </rights>
                 </icswData>
             </route>
-            <route name="main.scheddevice">
-                <stateData type="dict" url_str="/schedule/device" template_str="&lt;icsw-schedule-device icsw-sel-man='0'&gt;&lt;/icsw-schedule-device&gt;"/>
+            <route name="main.schedasset">
+                <stateData type="dict" url_str="/sched/asset" template_str="&lt;icsw-schedule-device icsw-sel-man='0'&gt;&lt;/icsw-schedule-device&gt;"/>
                 <icswData type="dict" pageTitle_str="Schedule Asset Run">
                     <menuEntry type="dict" icon_str="fa-clock-o" name_str="Schedule Asset Run"/>
                     <rights type="list">
