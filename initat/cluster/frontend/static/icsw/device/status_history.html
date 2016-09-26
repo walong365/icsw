@@ -3,11 +3,11 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.status_history_overview">
-    <h2>
+    <h3>
         Status History
         <span ng-show="struct.devices.length"> for {{ struct.devices.length }} devices</span>
         <span ng-show="struct.loading" class="text-warning">Fetching data...</span>
-    </h2>
+    </h3>
 
     <div class="panel panel-default" ng-if="struct.device_tree">
         <div class="panel-heading">

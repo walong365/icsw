@@ -469,7 +469,7 @@ angular.module(
         if $scope.struct.is_devicegroup
             dbu = new icswDeviceGroupBackup()
             template_name = "icsw.devicegroup.info.edit.form"
-            title = "Modify Devicegroup settings"
+            title = "Modify Device Group Settings"
         else
             dbu = new icswDeviceBackup()
             template_name = "icsw.device.info.edit.form"
@@ -485,7 +485,7 @@ angular.module(
             {
                 message: $compile($templateCache.get(template_name))(sub_scope)
                 title: title
-                css_class: "modal-wide"
+                css_class: "modal-wide modal-form"
                 ok_label: "Modify"
                 closable: true
                 ok_callback: (modal) ->

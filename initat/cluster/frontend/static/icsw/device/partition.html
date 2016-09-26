@@ -4,7 +4,7 @@
 
 <script type="text/ng-template" id="icsw.device.partition.overview">
     <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server ...</div>
-    <h2 ng-show="struct.devices.length">Disk info for {{ struct.devices.length }} devices</h2>
+    <h3 ng-show="struct.devices.length">Disk info for {{ struct.devices.length }} devices</h3>
     <icsw-tools-ensure-device-selection dev-list="struct.devices">
         <uib-tabset>
             <uib-tab ng-repeat="dev in struct.devices">
@@ -65,9 +65,9 @@
     <div uib-alert class="alert-warning" ng-show="struct.loading">Loading data from server...</div>
     <uib-tabset>
         <uib-tab heading="Partitions">
-            <h2>
+            <h3>
                 Partition tables ({{ struct.partition_tree.list.length }} entries),
-            </h2>
+            </h3>
             <p>
                 <icsw-tools-button type="reload" size="sm" ng-click="reload($event)"></icsw-tools-button>
                 &nbsp;
@@ -301,7 +301,7 @@
 <script type="text/ng-template" id="icsw.partition.table.disc.form">
     <form class="form-horizontal" name="form_data">
         <div>
-            <h2>Disc '{{ edit_obj.disc }}'</h2>
+            <h3>Disc '{{ edit_obj.disc }}'</h3>
             <fieldset>
                 <legend>Base data</legend>
                 <div class="form-group  ng-class:cur_edit.form_error('disc')">
@@ -332,7 +332,7 @@
 <script type="text/ng-template" id="icsw.partition.table.sys.form">
     <form class="form-horizontal" name="form_data">
         <div>
-            <h2>Sys Partition '{{ edit_obj.name }}'</h2>
+            <h3>Sys Partition '{{ edit_obj.name }}'</h3>
             <fieldset>
                 <legend>Base data</legend>
                 <div class="form-group">
@@ -370,7 +370,7 @@
 <script type="text/ng-template" id="icsw.partition.table.part.form">
     <form class="form-horizontal" name="form_data">
         <div>
-            <h2>Partition '{{ edit_obj.pnum }}'</h2>
+            <h3>Partition '{{ edit_obj.pnum }}'</h3>
             <fieldset>
                 <legend>Base data</legend>
                 <div class="form-group">

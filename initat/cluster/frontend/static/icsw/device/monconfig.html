@@ -1,5 +1,5 @@
 <script type="text/ng-template" id="icsw.device.livestatus.monconfig">
-    <h2 ng-show="struct.devices.length">
+    <h3 ng-show="struct.devices.length">
         Monitoring Hints for {{ struct.devices.length }} devices
         <span class="text-danger" ng-show="struct.fetching">Fetching MonitoringData from server</span>
         <div class="btn-group btn-xs">
@@ -11,7 +11,7 @@
                 <li ng-click="load_data('REFRESH')"><a>refresh (contact device if necessary)</a></li>
             </ul>
         </div>
-    </h2>
+    </h3>
     <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server ...</div>
     <icsw-tools-ensure-device-selection dev-list="struct.devices"> <!-- don't need list-ready since it's handled in the page below -->
         <uib-accordion close-others="no">
@@ -204,7 +204,7 @@
 
 <script type="text/ng-template" id="icsw.monitoring.hint.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Monitoring hint '{{ edit_obj.m_type }} / {{ edit_obj.key }}'</h2>
+        <h3>Monitoring hint '{{ edit_obj.m_type }} / {{ edit_obj.key }}'</h3>
         <fieldset>
             <legend>lower bounds</legend>
             <div class="form-group">

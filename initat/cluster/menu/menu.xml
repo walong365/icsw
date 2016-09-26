@@ -140,8 +140,8 @@
             <route name="main.monitorov">
                 <stateData type="dict" url_str="/monitorov"
                            template_str="&lt;icsw-monitoring-list-overview icsw-sel-man='0'&gt;&lt;/icsw-monitoring-list-overview&gt;"/>
-                <icswData type="dict" pageTitle_str="Monitoring List">
-                    <menuEntry type="dict" icon_str="fa-list" name_str="Monitoring List"/>
+                <icswData type="dict" pageTitle_str="Monitoring Overview">
+                    <menuEntry type="dict" icon_str="fa-list" name_str="Monitoring Overview"/>
                     <rights type="list">
                         <value>backbone.mon_check_command.setup_monitoring</value>
                     </rights>

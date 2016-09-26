@@ -4,12 +4,12 @@
 
 <script type="text/ng-template" id="icsw.device.boot.table">
     <div uib-alert class="alert-warning" ng-show="!struct.tree_valid">Loading BaseData ...</div>
-    <h2>
+    <h3>
         <span class="label label-danger" ng-show="struct.boot_helper.connection_problem_counter" title="number of connection problems">{{ struct.boot_helper.connection_problem_counter }}</span>
         Boot config for {{ struct.devices.length }} devices,
         <span ng-show="struct.num_selected">{{ struct.num_selected }} selected,</span>
         {{ struct.global_bootserver_info }}
-    </h2>
+    </h3>
     <form class="form-inline">
         <div class="btn-group">
             <input
@@ -210,7 +210,7 @@
 <script type="text/ng-template" id="icsw.device.boot.form">
     <form class="form-horizontal" name="form_data">
         <div>
-            <h2>Boot / DHCP settings for '{{ edit_obj.name }}'</h2>
+            <h3>Boot / DHCP settings for '{{ edit_obj.name }}'</h3>
             <fieldset>
                 <legend>DHCP settings</legend>
                 <div class="form-group">
@@ -397,7 +397,7 @@
 
 <script type="text/ng-template" id="boot.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Connection {{ get_cd_info() }}</h2>
+        <h3>Connection {{ get_cd_info() }}</h3>
         <fieldset>
             <legend>Settings</legend>
             <div class="form-group">

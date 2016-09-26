@@ -132,9 +132,9 @@
 </script> 
 
 <script type="text/ng-template" id="icsw.device.tree.overview">
-    <h2>
+    <h3>
         Device Tree ({{ struct.device_tree.all_list.length }} Entries, {{ entries_filtered.length }} shown<span ng-show="num_selected()">, {{ num_selected() }} selected</span>),
-    </h2>
+    </h3>
 
     <icsw-device-tree-filters ng-if="struct.tree_loaded"></icsw-device-tree-filters>
 
@@ -143,9 +143,9 @@
             <!-- entries_displayed is st-table interal -->
             <div class="btn-group">
                 <button ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('create') }}"
-                       ng-show="dg_present()" ng-click="create_device( $event)"> create device</button>
+                       ng-show="dg_present()" ng-click="create_device( $event)"> create Device</button>
                 <button ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('create') }}"
-                       ng-click="create_device_group($event)"> create devicegroup</button>
+                       ng-click="create_device_group($event)"> create Device Group</button>
                 <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('modify') }}"
                        ng-click="edit_many($event)"> modify selected</button>
                 <button ng-disabled="num_selected() == 0" ng-attr-class="btn {{ icswToolsButtonConfigService.get_css_and_icon_class('delete') }}"
@@ -204,7 +204,7 @@
 
 <script type="text/ng-template" id="icsw.device.tree.many.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Change settings of {{ num_selected() }} devices</h2>
+        <h3>Change settings of {{ num_selected() }} devices</h3>
         <fieldset>
             <legend>Basic Settings</legend>
             <div class="row">
