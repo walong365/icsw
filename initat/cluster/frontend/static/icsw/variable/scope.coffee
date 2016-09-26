@@ -142,8 +142,7 @@ device_variable_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.variable.scope.dvsan.form"))(sub_scope)
-                title: "Allowed ScopeVariable in scope '#{var_scope.name}'"
-                # css_class: "modal-wide"
+                title: "Allowed Scope Variable in Scope '#{var_scope.name}'"
                 ok_label: if create then "Create" else "Modify"
                 closable: true
                 ok_callback: (modal) ->

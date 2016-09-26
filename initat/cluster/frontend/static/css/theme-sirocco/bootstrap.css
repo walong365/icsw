@@ -6878,6 +6878,7 @@ select > option:hover{
 }
 fieldset > legend {
   font-size: 18px;
+  color: #555555;
 }
 /**** Tabs start ****/
 .nav-tabs > li > a {

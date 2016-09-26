@@ -3,8 +3,8 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.connection.overview">
-    <div>
-        <h2>Device connections, {{ struct.cd_devices.length }} controlling devices selected</h2>
+    <div class="container-fluid">
+        <h3>Power Controlling Connections, {{ struct.cd_devices.length }} Controlling Devices selected</h3>
         <table ng-show="struct.cd_devices.length" class="table table-condensed table-hover table-striped" style="width:auto;">
             <tbody>
                 <tr ng-repeat-start="dev in struct.cd_devices" class="success">
@@ -14,7 +14,7 @@
                     <td>
                         <div class="btn-group" ng-show="dev.$$cd_valid_list.length">
                             <button class="btn btn-success dropdown-toggle btn-sm" data-toggle="dropdown">
-                                is master for <span class="caret"></span>
+                                is Master for <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu">
                                 <li ng-repeat="child in dev.$$cd_valid_list">
@@ -26,7 +26,7 @@
                     <td>
                         <div class="btn-group" ng-show="dev.$$cd_valid_list_cd.length">
                             <button class="btn btn-success dropdown-toggle btn-sm" data-toggle="dropdown">
-                                is slave of <span class="caret"></span>
+                                is Worker of <span class="caret"></span>
                             </button>
                             <ul class="dropdown-menu">
                                 <li ng-repeat="child in dev.$$cd_valid_list_cd">
@@ -38,10 +38,10 @@
                 </tr>
                 <tr>
                     <td>
-                        {{ dev.$$slave_list.length }} / <ng-pluralize count="dev.$$slave_list.length" when="{'0': 'no slave devices', 'one': 'one slave device', 'other': '{} slave devices'}"></ng-pluralize>
+                        {{ dev.$$slave_list.length }} / <ng-pluralize count="dev.$$slave_list.length" when="{'0': 'no Worker Devices', 'one': 'one Worker Device', 'other': '{} Worker Devices'}"></ng-pluralize>
                     </td>
                     <td>
-                        {{ dev.$$master_list.length }} / <ng-pluralize count="dev.$$master_list.length" when="{'0': 'no master devices', 'one': 'one master device', 'other': '{} master devices'}"></ng-pluralize>
+                        {{ dev.$$master_list.length }} / <ng-pluralize count="dev.$$master_list.length" when="{'0': 'no Master Devices', 'one': 'one Master Device', 'other': '{} Master Devices'}"></ng-pluralize>
                     </td>
                 </tr>
                 <tr ng-repeat-end ng-show="dev.$$slave_list.length || dev.$$master_list.length">
@@ -75,7 +75,7 @@
             </tbody>
         </table>
         <div class="alert alert-warning" ng-show="0">
-            <h3>Automatic creation (currently disabled)</h3>
+            <h3>Automatic Creation (currently disabled)</h3>
             <form class="form-inline">
                 Set
                 <div class="form-group">
@@ -96,47 +96,46 @@
 
 <script type="text/ng-template" id="icsw.cd.connection.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Connection {{ cd_info }}</h2>
         <fieldset>
-            <legend>Settings</legend>
+            <legend>Connection {{ cd_info }} Settings</legend>
             <div class="form-group">
-                <label class="control-label col-sm-4 requiredField">
-                    Connection info<span class="asteriskField">*</span>
+                <label class="control-label col-sm-4 requiredField icsw-formlabel">
+                    Connection Info<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="256" ng-model="edit_obj.connection_info" required="True" type="text" value="not set"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="256" ng-model="edit_obj.connection_info" required="True" type="text" value="not set"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-4 requiredField">
+                <label class="control-label col-sm-4 requiredField icsw-formlabel">
                     Parameter i1<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="numberinput form-control" max="256" min="0" ng-model="edit_obj.parameter_i1" required="True" type="number" value="0"/>
+                    <input class="numberinput form-control maxwidth500" max="256" min="0" ng-model="edit_obj.parameter_i1" required="True" type="number" value="0"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-4 requiredField">
+                <label class="control-label col-sm-4 requiredField icsw-formlabel">
                     Parameter i2<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="numberinput form-control" max="256" min="0" ng-model="edit_obj.parameter_i2" required="True" type="number" value="0"/>
+                    <input class="numberinput form-control maxwidth500" max="256" min="0" ng-model="edit_obj.parameter_i2" required="True" type="number" value="0"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-4 requiredField">
+                <label class="control-label col-sm-4 requiredField icsw-formlabel">
                     Parameter i3<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="numberinput form-control" max="256" min="0" ng-model="edit_obj.parameter_i3" required="True" type="number" value="0"/>
+                    <input class="numberinput form-control maxwidth500" max="256" min="0" ng-model="edit_obj.parameter_i3" required="True" type="number" value="0"/>
                 </div>
             </div>
             <div class="form-group">
-                <label class="control-label col-sm-4 requiredField">
+                <label class="control-label col-sm-4 requiredField icsw-formlabel">
                     Parameter i4<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="numberinput form-control" max="256" min="0" ng-model="edit_obj.parameter_i4" required="True" type="number" value="0"/>
+                    <input class="numberinput form-control maxwidth500" max="256" min="0" ng-model="edit_obj.parameter_i4" required="True" type="number" value="0"/>
                 </div>
             </div>
         </fieldset>

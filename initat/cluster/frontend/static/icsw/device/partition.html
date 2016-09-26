@@ -3,71 +3,73 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.partition.overview">
-    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server ...</div>
-    <h2 ng-show="struct.devices.length">Disk info for {{ struct.devices.length }} devices</h2>
-    <icsw-tools-ensure-device-selection dev-list="struct.devices">
-        <uib-tabset>
-            <uib-tab ng-repeat="dev in struct.devices">
-                <uib-tab-heading>
-                    {{ dev.full_name }}
-                </uib-tab-heading>
-                <h4>
-                    <span ng-show="dev.act_partition_table">
-                        Partition table '{{ dev.act_partition_table.name}}',
-                    </span>
-                    <span class="text-danger" ng-show="!dev.act_partition_table">
-                        No partition table defined,
-                    </span>
-                    <icsw-tools-button type="create" size="xs" value="fetch partition info" ng-click="fetch($event, dev)"></icsw-tools-button>
-                    <icsw-tools-button type="delete" size="xs" value="clear" ng-show="dev.act_partition_table" ng-click="clear($event, dev)" ng-show="dev.act_partition_table"></icsw-tools-button>
-                    <icsw-tools-button type="modify" size="xs" value="use {{ dev.partition_table.name }}" ng-click="use($event, dev)" ng-show="dev.partition_table"></icsw-tools-button>
-                </h4>
-                <table
-                    class="table table-condensed table-hover table-bordered"
-                    style="width:auto;"
-                    ng-show="dev.act_partition_table"
-                >
-                    <tbody>
-                        <tr ng-repeat-start="disk in dev.act_partition_table.partition_disc_set">
-                            <th colspan="2">Disk {{ disk.disc }}, {{ disk.partition_set.length }} partitions</th>
-                            <th>Size</th>
-                            <th>warn</th>
-                            <th>crit</th>
-                        </tr>
-                        <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
-                            <td>{{ disk.disc }}{{ part.pnum || '' }}</td>
-                            <td>{{ part.mountpoint }}</td>
-                            <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
-                            <td class="text-center">{{ part.warn_threshold }} %</td>
-                            <td class="text-center">{{ part.crit_threshold }} %</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2">Logical Volumes</th>
-                            <th>Size</th>
-                            <th>warn</th>
-                            <th>crit</th>
-                        </tr>
-                        <tr ng-repeat="lvm in dev.act_partition_table.lvm_lv_set | orderBy:'name'">
-                            <td>/dev/{{ get_vg(dev, lvm.lvm_vg).name }}/{{ lvm.name }}</td>
-                            <td>{{ lvm.mountpoint }}</td>
-                            <td class="text-right">{{ lvm.size | get_size:1:1000 }}</td>
-                            <td class="text-center">{{ lvm.warn_threshold }} %</td>
-                            <td class="text-center">{{ lvm.crit_threshold }} %</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </uib-tab>
-        </uib-tabset>
-    </icsw-tools-ensure-device-selection>
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching Data from Server ...</div>
+    <div class="container-fluid">
+        <h3 ng-show="struct.devices.length">Disk Information for {{ struct.devices.length }} Devices</h3>
+        <icsw-tools-ensure-device-selection dev-list="struct.devices">
+            <uib-tabset>
+                <uib-tab ng-repeat="dev in struct.devices">
+                    <uib-tab-heading>
+                        {{ dev.full_name }}
+                    </uib-tab-heading>
+                    <h4>
+                        <span ng-show="dev.act_partition_table">
+                            Partition Table '{{ dev.act_partition_table.name}}',
+                        </span>
+                        <span class="text-danger" ng-show="!dev.act_partition_table">
+                            No Partition Table defined,
+                        </span>
+                        <icsw-tools-button type="create" size="xs" value="fetch partition info" ng-click="fetch($event, dev)"></icsw-tools-button>
+                        <icsw-tools-button type="delete" size="xs" value="clear" ng-show="dev.act_partition_table" ng-click="clear($event, dev)" ng-show="dev.act_partition_table"></icsw-tools-button>
+                        <icsw-tools-button type="modify" size="xs" value="use {{ dev.partition_table.name }}" ng-click="use($event, dev)" ng-show="dev.partition_table"></icsw-tools-button>
+                    </h4>
+                    <table
+                        class="table table-condensed table-hover table-bordered"
+                        style="width:auto;"
+                        ng-show="dev.act_partition_table"
+                    >
+                        <tbody>
+                            <tr ng-repeat-start="disk in dev.act_partition_table.partition_disc_set">
+                                <th colspan="2">Disk {{ disk.disc }}, {{ disk.partition_set.length }} Partitions</th>
+                                <th class="text-right">Size</th>
+                                <th class="text-right">Warn</th>
+                                <th class="text-right">Critical</th>
+                            </tr>
+                            <tr ng-repeat-end ng-repeat="part in disk.partition_set" ng-show="part.mountpoint">
+                                <td>{{ disk.disc }}{{ part.pnum || '' }}</td>
+                                <td>{{ part.mountpoint }}</td>
+                                <td class="text-right">{{ part.size | get_size:1000000:1000 }}</td>
+                                <td class="text-right">{{ part.warn_threshold }}%</td>
+                                <td class="text-right">{{ part.crit_threshold }}%</td>
+                            </tr>
+                            <tr>
+                                <th colspan="2">Logical Volumes</th>
+                                <th class="text-right">Size</th>
+                                <th class="text-right">Warn</th>
+                                <th class="text-right">Critical</th>
+                            </tr>
+                            <tr ng-repeat="lvm in dev.act_partition_table.lvm_lv_set | orderBy:'name'">
+                                <td>/dev/{{ get_vg(dev, lvm.lvm_vg).name }}/{{ lvm.name }}</td>
+                                <td>{{ lvm.mountpoint }}</td>
+                                <td class="text-right">{{ lvm.size | get_size:1:1000 }}</td>
+                                <td class="text-right">{{ lvm.warn_threshold }}%</td>
+                                <td class="text-right">{{ lvm.crit_threshold }}%</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </uib-tab>
+            </uib-tabset>
+        </icsw-tools-ensure-device-selection>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.device.partition.edit.overview">
     <div uib-alert class="alert-warning" ng-show="struct.loading">Loading data from server...</div>
     <uib-tabset>
         <uib-tab heading="Partitions">
-            <h2>
+            <h3>
                 Partition tables ({{ struct.partition_tree.list.length }} entries),
-            </h2>
+            </h3>
             <p>
                 <icsw-tools-button type="reload" size="sm" ng-click="reload($event)"></icsw-tools-button>
                 &nbsp;
@@ -301,7 +303,7 @@
 <script type="text/ng-template" id="icsw.partition.table.disc.form">
     <form class="form-horizontal" name="form_data">
         <div>
-            <h2>Disc '{{ edit_obj.disc }}'</h2>
+            <h3>Disc '{{ edit_obj.disc }}'</h3>
             <fieldset>
                 <legend>Base data</legend>
                 <div class="form-group  ng-class:cur_edit.form_error('disc')">
@@ -332,7 +334,7 @@
 <script type="text/ng-template" id="icsw.partition.table.sys.form">
     <form class="form-horizontal" name="form_data">
         <div>
-            <h2>Sys Partition '{{ edit_obj.name }}'</h2>
+            <h3>Sys Partition '{{ edit_obj.name }}'</h3>
             <fieldset>
                 <legend>Base data</legend>
                 <div class="form-group">
@@ -370,7 +372,7 @@
 <script type="text/ng-template" id="icsw.partition.table.part.form">
     <form class="form-horizontal" name="form_data">
         <div>
-            <h2>Partition '{{ edit_obj.pnum }}'</h2>
+            <h3>Partition '{{ edit_obj.pnum }}'</h3>
             <fieldset>
                 <legend>Base data</legend>
                 <div class="form-group">

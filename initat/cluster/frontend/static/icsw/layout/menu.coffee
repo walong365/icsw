@@ -452,7 +452,7 @@ menu_module = angular.module(
                     _m_item.push span(
                         {
                             className: "fa #{state.icon} fa-lg"
-                            style: {paddingRight: "5px"}
+                            #style: {paddingRight: "5px"}
                             key: "span"
                         }
                     )
@@ -469,8 +469,19 @@ menu_module = angular.module(
                             className: "caret"
                             key: "caretdown"
                         }
-
                     )
+                if state.name == "$$USER_INFO"
+                    _user = icswUserService.get().user
+                    if _user?
+                        menu_subname = _user.login
+                        if _user.login != _user.login_name
+                            menu_subname = "#{menu_subname} (via alias #{_user.login_name})"
+                        _m_item.push div(
+                            {
+                                key: "div_username"
+                            }
+                            menu_subname
+                     )
                 _res = li(
                     {
                         className: "dropdown"
