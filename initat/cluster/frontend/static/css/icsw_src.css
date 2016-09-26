@@ -294,7 +294,6 @@ img.normal {
 
 .navbar.condensed {
     margin-bottom: 17px;
-    min-height: 0px;
 }
 
 *::before, *::after {
@@ -329,7 +328,6 @@ img.normal {
 }
 
 .navbar-nav.condensed > li > a {
-    font-size: 14px;
     padding-bottom: 16.5px;
     padding-top: 16.5px;
     line-height: 17px;

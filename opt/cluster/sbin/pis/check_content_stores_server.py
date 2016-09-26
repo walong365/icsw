@@ -158,14 +158,15 @@ def main():
             remove_file(SLAVE_FLAG)
         else:
             new_store["mode.is.slave"] = False
-    if "create.default.network" not in new_store:
-        new_store["create.default.network"] = True
-    if "create.network.device.types" not in new_store:
-        new_store["create.network.device.types"] = True
-    if "session.multiple.per.user.allowed" not in new_store:
-        new_store["session.multiple.per.user.allowed"] = False
-    if "missing.timezone.is.critical" not in new_store:
-        new_store["missing.timezone.is.critical"] = True
+    for _name, _default in [
+        ("create.default.network", True),
+        ("create.network.device.types", True),
+        ("session.multiple.per.user.allowed", False),
+        ("missing.timezone.is.critical", True),
+        ("overall.style", "normal"),
+    ]:
+        if _name not in new_store:
+            new_store[_name] = _default
     new_store.write()
     remove_file(LS_OLD_FILE)
     migrate_uuid()
