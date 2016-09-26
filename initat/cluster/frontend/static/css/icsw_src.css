@@ -194,7 +194,7 @@ ul.fancytree-container {
     margin-top: -6px;
 }
 .fancytree-title > .label,
-.fancytree-title > span > .label{
+.fancytree-title > span > .label {
     margin-left:6px;
     padding: 0.2em 0.6em 0.1em;
 }
@@ -268,10 +268,32 @@ div[class*="col-"] > ul {
     margin: 10px;
 }
 /* HELP PAGE END */
+/* BODY START */
+body.condensed {
+    padding-top: 75px;
+}
+
+body.normal {
+    padding-top: 100px;
+}
+
+img.condensed {
+    height: 42px;
+}
+
+img.normal {
+    height: 58px;
+}
+
+/* BODY END */
 /* MENU START */
-.navbar {
+.navbar.normal {
     margin-bottom: 17px;
     min-height: 70px;
+}
+
+.navbar.condensed {
+    margin-bottom: 17px;
 }
 
 *::before, *::after {
@@ -298,15 +320,23 @@ div[class*="col-"] > ul {
 .navbar-nav {
     font-size: 14px;
 }
-.navbar-nav > li > a {
+.navbar-nav.normal > li > a {
     font-size: 18px;
     padding-bottom: 26.5px;
     padding-top: 26.5px;
     line-height: 17px;
 }
-.navbar form {
+
+.navbar-nav.condensed > li > a {
+    padding-bottom: 16.5px;
+    padding-top: 16.5px;
+    line-height: 17px;
+}
+
+.navbar form.normal {
     margin-top: 22px;
 }
+
 .navbar p {
     margin: 0 0 3px;
 }

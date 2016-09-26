@@ -1,6 +1,7 @@
 <script type="text/ng-template" id="icsw.layout.menubar">
     <nav
         class="navbar navbar-default navbar-fixed-top"
+        ng-class="struct.overall_style"
         role="navigation"
         ng-show="struct.current_user"
         icsw-element-size="size"
@@ -14,7 +15,7 @@
 
             <div class="collapse navbar-collapse">
                 <!-- @if DEBUG -->
-                <form class="navbar-form navbar-left">
+                <form class="navbar-form navbar-left" ng-class="struct.overall_style">
                     <div class="input-group">
                         <input
                             type="text"
@@ -41,7 +42,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.layout.submenubar">
-    <nav class="navbar navbar-default submenu-bar" ng-if="struct.current_user" style="position:fixed;width:100%;z-index:1029;margin-top:-30px;">
+    <nav class="navbar navbar-default submenu-bar" ng-if="struct.current_user" style="position:fixed; width:100%; z-index:1029; margin-top:-30px;">
         <ul class="sub-breadcrumb pull-left">
             <li class="pull-left">
                 {{ basic_breadcrumb }}
@@ -84,8 +85,15 @@
                 </uib-progressbar>
             </div>
         </li>
-        <li class="active" ng-if="num_gauges == 0"><!-- redirect_to_init() -->
-            <img height="58px" ng-attr-src="{{ initProduct.menu_gfx_url }}" ng-click="go_mainboard($event)" style="cursor: pointer;margin-top:8px;padding-right:15px;" title="{{ initProduct.name }}" alt="{{ initProduct.name }}"/>
+        <li class="active" ng-if="num_gauges == 0">
+            <img
+                ng-class="overall_style"
+                ng-attr-src="{{ initProduct.menu_gfx_url }}"
+                ng-click="go_mainboard($event)"
+                style="cursor: pointer;margin-top:0px;padding-right:15px;"
+                title="{{ initProduct.name }}"
+                alt="{{ initProduct.name }}"
+            />
         </li>
     </ul>
 </script>

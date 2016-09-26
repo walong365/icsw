@@ -20,33 +20,25 @@
 """ server process for md-config-server """
 
 import codecs
-import os
 import time
 
 import zmq
 from django.db.models import Q
 
-from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.cluster.backbone import db_tools, routing
+from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
     mon_check_command_special, mon_check_command, SpecialGroupsEnum
 from initat.cluster.backbone.models.functions import get_related_models
-from initat.host_monitoring.hm_classes import mvect_entry
-from initat.md_config_server import constants
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.md_config_server.build import build_process
 from initat.md_config_server.config import global_config
 from initat.md_config_server.dynconfig import DynConfigProcess
-from initat.md_config_server.icinga_log_reader.log_reader import icinga_log_reader
+from initat.md_config_server.icinga_log_reader.log_reader import IcingaLogReader
 from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.mixins import version_check_mixin
-from initat.md_config_server.status import StatusProcess, LiveSocket
 from initat.md_config_server.syncer import SyncerProcess, RemoteServer
-from initat.tools import logging_tools, process_tools, server_command, \
-    threading_tools, server_mixins, configfile
+from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile
 from initat.tools.server_mixins import RemoteCall
-from initat.md_config_server.constants import IDOMOD_PROCESS_TIMED_EVENT_DATA, \
-    IDOMOD_PROCESS_SERVICE_CHECK_DATA, IDOMOD_PROCESS_HOST_CHECK_DATA, BROKER_TIMED_EVENTS, \
-    BROKER_SERVICE_CHECKS, BROKER_HOST_CHECKS, CACHE_MODES
 
 
 @server_mixins.RemoteCallProcess
@@ -70,8 +62,6 @@ class server_process(
                 ("CHECK_HOST_ALIVE_PINGS", configfile.int_c_var(5)),
                 ("CHECK_HOST_ALIVE_TIMEOUT", configfile.float_c_var(5.0)),
                 ("ENABLE_COLLECTD", configfile.bool_c_var(False)),
-                ("ENABLE_LIVESTATUS", configfile.bool_c_var(True)),
-                ("ENABLE_NDO", configfile.bool_c_var(False)),
                 ("ENABLE_NAGVIS", configfile.bool_c_var(False)),
                 ("ENABLE_FLAP_DETECTION", configfile.bool_c_var(False)),
                 ("NAGVIS_DIR", configfile.str_c_var("/opt/nagvis4icinga")),
@@ -91,12 +81,6 @@ class server_process(
                 ("TRANSLATE_PASSIVE_HOST_CHECKS", configfile.bool_c_var(True)),
                 ("USE_ONLY_ALIAS_FOR_ALIAS", configfile.bool_c_var(False)),
                 ("HOST_DEPENDENCIES_FROM_TOPOLOGY", configfile.bool_c_var(False)),
-                (
-                    "NDO_DATA_PROCESSING_OPTIONS", configfile.int_c_var(
-                        (2 ** 26 - 1) - (IDOMOD_PROCESS_TIMED_EVENT_DATA - IDOMOD_PROCESS_SERVICE_CHECK_DATA + IDOMOD_PROCESS_HOST_CHECK_DATA)
-                    )
-                ),
-                ("EVENT_BROKER_OPTIONS", configfile.int_c_var((2 ** 20 - 1) - (BROKER_TIMED_EVENTS + BROKER_SERVICE_CHECKS + BROKER_HOST_CHECKS))),
                 ("CCOLLCLIENT_TIMEOUT", configfile.int_c_var(10)),
                 ("CSNMPCLIENT_TIMEOUT", configfile.int_c_var(20)),
                 ("MAX_SERVICE_CHECK_SPREAD", configfile.int_c_var(5)),
@@ -115,7 +99,6 @@ class server_process(
             ]
         )
         # copy flags
-        self.__enable_livestatus = global_config["ENABLE_LIVESTATUS"]
         self.__verbose = global_config["VERBOSE"]
         # log config
         self.CC.log_config()
@@ -138,15 +121,13 @@ class server_process(
             self.__external_cmd_file = None
             self.register_func("external_cmd_file", self._set_external_cmd_file)
 
-            self.add_process(StatusProcess("status"), start=True)
             self.add_process(SyncerProcess("syncer"), start=True)
             self.add_process(DynConfigProcess("dynconfig"), start=True)
-            self.add_process(icinga_log_reader("icinga_log_reader"), start=True)
+            self.add_process(IcingaLogReader("IcingaLogReader"), start=True)
             self.add_process(KpiProcess("KpiProcess"), start=True)
             # wait for the processes to start
             time.sleep(0.5)
             self.register_timer(self._check_for_redistribute, 60 if global_config["DEBUG"] else 300)
-            self.register_timer(self._update, 30, instant=True)
             # only test code
             # self.send_to_remote_server(
             #    "cluster-server",
@@ -157,64 +138,6 @@ class server_process(
 
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
-
-    def _update(self):
-        res_dict = {}
-        if self.__enable_livestatus:
-            if "MD_TYPE" in global_config:
-                sock_name = os.path.join("/opt", global_config["MD_TYPE"], "var", "live")
-                cur_s = LiveSocket(sock_name)
-                try:
-                    result = cur_s.hosts.columns("name", "state").call()
-                except:
-                    self.log(
-                        "cannot query socket {}: {}".format(sock_name, process_tools.get_except_info()),
-                        logging_tools.LOG_LEVEL_CRITICAL
-                    )
-                else:
-                    q_list = [int(value["state"]) for value in result]
-                    res_dict = {
-                        s_name: q_list.count(value) for s_name, value in [
-                            ("unknown", constants.NAG_HOST_UNKNOWN),
-                            ("up", constants.NAG_HOST_UP),
-                            ("down", constants.NAG_HOST_DOWN),
-                        ]
-                    }
-                    res_dict["tot"] = sum(res_dict.values())
-                # cur_s.peer.close()
-                del cur_s
-            else:
-                self.log("no MD_TYPE set, skipping livecheck", logging_tools.LOG_LEVEL_WARN)
-        if res_dict:
-            self.log(
-                "{} status is: {:d} up, {:d} down, {:d} unknown ({:d} total)".format(
-                    global_config["MD_TYPE"],
-                    res_dict["up"],
-                    res_dict["down"],
-                    res_dict["unknown"],
-                    res_dict["tot"]
-                )
-            )
-            drop_com = server_command.srv_command(command="set_vector")
-            add_obj = drop_com.builder("values")
-            mv_list = [
-                mvect_entry("mon.devices.up", info="Devices up", default=0),
-                mvect_entry("mon.devices.down", info="Devices down", default=0),
-                mvect_entry("mon.devices.total", info="Devices total", default=0),
-                mvect_entry("mon.devices.unknown", info="Devices unknown", default=0),
-            ]
-            cur_time = time.time()
-            for mv_entry, key in zip(mv_list, ["up", "down", "tot", "unknown"]):
-                mv_entry.update(res_dict[key])
-                mv_entry.valid_until = cur_time + 120
-                add_obj.append(mv_entry.build_xml(drop_com.builder))
-            drop_com["vector_loadsensor"] = add_obj
-            drop_com["vector_loadsensor"].attrib["type"] = "vector"
-            send_str = unicode(drop_com)
-            self.log("sending {:d} bytes to vector_socket".format(len(send_str)))
-            self.vector_socket.send_unicode(send_str)
-        else:
-            self.log("empty result dict for _update()", logging_tools.LOG_LEVEL_WARN)
 
     def _check_special_commands(self):
         from initat.md_config_server.special_commands import SPECIAL_DICT
@@ -401,7 +324,7 @@ class server_process(
 
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
-        self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
+        self.send_to_process("build", "rebuild_config", cache_mode="CACHED")
 
     def process_start(self, src_process, src_pid):
         if src_process == "syncer":
@@ -510,12 +433,6 @@ class server_process(
 
         self.__remotes = {}
 
-        conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
-        vector_socket = self.zmq_context.socket(zmq.PUSH)
-        vector_socket.setsockopt(zmq.LINGER, 0)
-        vector_socket.connect(conn_str)
-        self.vector_socket = vector_socket
-
     @RemoteCall(target_process="KpiProcess")
     def calculate_kpi_preview(self, srv_com, **kwargs):
         return srv_com
@@ -526,10 +443,6 @@ class server_process(
 
     @RemoteCall(target_process="KpiProcess")
     def get_kpi_source_data(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall(target_process="status")
-    def get_node_status(self, srv_com, **kwargs):
         return srv_com
 
     @RemoteCall(target_process="build", target_process_func="build_host_config")
@@ -574,13 +487,6 @@ class server_process(
         return srv_com
 
     @RemoteCall()
-    def relayer_info(self, srv_com, **kwargs):
-        # pretend to be synchronous call such that reply is sent right away
-        self.send_to_process("syncer", "relayer_info", unicode(srv_com))
-        srv_com.set_result("ok processed command sync_http_users")
-        return srv_com
-
-    @RemoteCall()
     def passive_check_result(self, srv_com, **kwargs):
         # pretend to be synchronous call such that reply is sent right away
         self.send_to_process("dynconfig", "passive_check_result", unicode(srv_com))
@@ -604,5 +510,4 @@ class server_process(
 
     def loop_post(self):
         self.network_unbind()
-        self.vector_socket.close()
         self.CC.close()

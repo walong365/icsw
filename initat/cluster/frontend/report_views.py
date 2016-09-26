@@ -132,7 +132,6 @@ class GenerateReportPdf(View):
             pk_settings[-1]['hostname'] = "unknown"
 
         srv_com = server_command.srv_command(command="generate_report")
-        srv_com['type'] = 'device'
         srv_com['format'] = 'pdf'
         srv_com['pk_settings'] = str(pk_settings)
         srv_com['devices'] = str([d.idx for d in _devices])
@@ -213,11 +212,20 @@ class GenerateReportXlsx(View):
     def post(self, request):
         pk_settings, _devices = _init_report_settings(request)
 
-        queue = Queue.Queue()
+        srv_com = server_command.srv_command(command="generate_report")
+        srv_com['format'] = 'xlsx'
+        srv_com['pk_settings'] = str(pk_settings)
+        srv_com['devices'] = str([d.idx for d in _devices])
 
-        Thread(target=generate_report, args=[pk_settings, _devices, queue, "xlsx"]).start()
-
-        report_id = queue.get()
+        (result, _) = contact_server(
+            request,
+            icswServiceEnum.report_server,
+            srv_com,
+        )
+        if result is not None:
+            report_id = result.get("report_id")
+        else:
+            report_id = 0
 
         return HttpResponse(
             json.dumps(

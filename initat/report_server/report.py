@@ -654,7 +654,12 @@ class PDFReportGenerator(ReportGenerator):
             logo = PILImage.new('RGB', (255, 255), "white")  # create a new white image
             logo.save(self.logo_buffer, format="BMP")
 
-        self.page_format = eval(self.general_settings["pdf_page_format"])
+
+        if self.general_settings["pdf_page_format"] == "A4":
+            self.page_format = A4
+        elif self.general_settings["pdf_page_format"] == "landscape(A4)":
+            self.page_format = landscape(A4)
+
         self.margin = 36
 
         self.standard_font = "SourceSansPro-Regular"
@@ -2124,22 +2129,23 @@ class XlsxReportGenerator(ReportGenerator):
         return "xlsx"
 
     def generate_report(self):
-        workbooks = []
+        workbooks_general = []
+        workbooks_devices = []
 
         if self.general_settings['network_report_overview_module_selected']:
             workbook = self.__generate_network_report()
 
-            workbooks.append((workbook, "Network_Overview"))
+            workbooks_general.append((workbook, "Network_Overview"))
 
         if self.general_settings['general_device_overview_module_selected']:
             workbook = self.__generate_general_device_overview_report()
 
-            workbooks.append((workbook, "Device_Overview"))
+            workbooks_general.append((workbook, "Device_Overview"))
 
         if self.general_settings['user_group_overview_module_selected']:
             workbook = self.__generate_user_group_overview_report()
 
-            workbooks.append((workbook, "User_Group_Overview"))
+            workbooks_general.append((workbook, "User_Group_Overview"))
 
         idx = 1
         for _device in self.devices:
@@ -2169,16 +2175,21 @@ class XlsxReportGenerator(ReportGenerator):
             self.set_progress(int(round((float(idx) / len(self.devices)) * 100)))
             idx += 1
 
-            workbooks.append((workbook, _device.full_name))
+            workbooks_devices.append((workbook, _device.full_name))
 
         from zipfile import ZipFile
         _buffer = BytesIO()
         zipfile = ZipFile(_buffer, "w")
 
-        for workbook, workbook_name in workbooks:
+        for workbook, workbook_name in workbooks_general:
             s = save_virtual_workbook(workbook)
 
-            zipfile.writestr("{}.xlsx".format(workbook_name), s)
+            zipfile.writestr("General_Reports/{}.xlsx".format(workbook_name), s)
+
+        for workbook, workbook_name in workbooks_devices:
+            s = save_virtual_workbook(workbook)
+
+            zipfile.writestr("Device_Reports/{}.xlsx".format(workbook_name), s)
 
         zipfile.close()
 

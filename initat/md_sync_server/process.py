@@ -193,6 +193,20 @@ class ProcessControl(object):
             _proc = None
         return _proc
 
+    def send_signal(self, signal_num):
+        _pid = self._get_pid_from_file()
+        if _pid is not None:
+            self.log("sending signal {:d} to Process {:d}".format(signal_num, _pid))
+            try:
+                _proc = psutil.Process(pid=_pid)
+                _proc.send_signal(signal_num)
+            except:
+                self.log("error sending signal: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                pass
+        else:
+            self.log("PID not defined or found", logging_tools.LOG_LEVEL_ERROR)
+
     def stop(self):
         self.log("stopping process")
         if self.__ext_process:

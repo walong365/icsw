@@ -28,6 +28,7 @@ import zmq
 from initat.host_monitoring.hm_classes import mvect_entry
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.host_monitoring.client_enums import icswServiceEnum
+from initat.md_config_server import constants
 from initat.md_sync_server.config import global_config, CS_NAME
 from initat.md_sync_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
@@ -35,6 +36,7 @@ from initat.tools import configfile, logging_tools, process_tools, server_comman
 from initat.tools.server_mixins import RemoteCall
 from .syncer import SyncerProcess
 from .sync_config import RemoteServer
+from .status import StatusProcess, LiveSocket
 
 
 @server_mixins.RemoteCallProcess
@@ -48,7 +50,6 @@ class server_process(
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.monitor_slave, global_config)
         self.CC.check_config()
-        self.__enable_livestatus = True  # global_config["ENABLE_LIVESTATUS"]
         self.__verbose = global_config["VERBOSE"]
         self.read_config_store()
         # log config
@@ -63,9 +64,12 @@ class server_process(
         self.VCM_check_relay_version()
         self._init_network_sockets()
         self.add_process(SyncerProcess("syncer"), start=True)
+        self.add_process(StatusProcess("status"), start=True)
         self.register_func("send_command", self._send_command)
         self.register_func("register_remote", self._register_remote)
-        _srv_com = server_command.srv_command(command="status")
+        self.register_func("send_signal", self._send_signal)
+        self.register_timer(self._update, 30, instant=True)
+        # _srv_com = server_command.srv_command(command="status")
         # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
 
     def _check_for_pc_control(self):
@@ -106,6 +110,65 @@ class server_process(
                 else:
                     self._icinga_pc.stop()
 
+    def _update(self):
+        res_dict = {}
+        if "MD_TYPE" in global_config and global_config["MON_CURRENT_STATE"]:
+            cur_s = LiveSocket.get_mon_live_socket()
+            try:
+                result = cur_s.hosts.columns("name", "state").call()
+            except:
+                self.log(
+                    "cannot query socket {}: {}".format(sock_name, process_tools.get_except_info()),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
+            else:
+                q_list = [int(value["state"]) for value in result]
+                res_dict = {
+                    s_name: q_list.count(value) for s_name, value in [
+                        ("unknown", constants.NAG_HOST_UNKNOWN),
+                        ("up", constants.NAG_HOST_UP),
+                        ("down", constants.NAG_HOST_DOWN),
+                    ]
+                }
+                res_dict["tot"] = sum(res_dict.values())
+            # cur_s.peer.close()
+            del cur_s
+        else:
+            self.log(
+                "no MD_TYPE set or MON_CURRENT_STATE is False, skipping livecheck",
+                logging_tools.LOG_LEVEL_WARN
+            )
+        if res_dict:
+            self.log(
+                "{} status is: {:d} up, {:d} down, {:d} unknown ({:d} total)".format(
+                    global_config["MD_TYPE"],
+                    res_dict["up"],
+                    res_dict["down"],
+                    res_dict["unknown"],
+                    res_dict["tot"]
+                )
+            )
+            drop_com = server_command.srv_command(command="set_vector")
+            add_obj = drop_com.builder("values")
+            mv_list = [
+                mvect_entry("mon.devices.up", info="Devices up", default=0),
+                mvect_entry("mon.devices.down", info="Devices down", default=0),
+                mvect_entry("mon.devices.total", info="Devices total", default=0),
+                mvect_entry("mon.devices.unknown", info="Devices unknown", default=0),
+            ]
+            cur_time = time.time()
+            for mv_entry, key in zip(mv_list, ["up", "down", "tot", "unknown"]):
+                mv_entry.update(res_dict[key])
+                mv_entry.valid_until = cur_time + 120
+                add_obj.append(mv_entry.build_xml(drop_com.builder))
+            drop_com["vector_loadsensor"] = add_obj
+            drop_com["vector_loadsensor"].attrib["type"] = "vector"
+            send_str = unicode(drop_com)
+            self.log("sending {:d} bytes to vector_socket".format(len(send_str)))
+            self.vector_socket.send_unicode(send_str)
+        else:
+            self.log("empty result dict for _update()", logging_tools.LOG_LEVEL_WARN)
+
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
 
@@ -144,6 +207,12 @@ class server_process(
             self.log("connecting to {}".format(unicode(rs)))
             self.main_socket.connect(rs.conn_str)
             self.__slaves[remote_uuid] = rs
+
+    def _send_signal(self, *args, **kwargs):
+        if self._icinga_pc is not None:
+            self._icinga_pc.send_signal(args[2])
+        else:
+            self.log("Processcontrol not defined", logging_tools.LOG_LEVEL_ERROR)
 
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
@@ -231,6 +300,12 @@ class server_process(
         )
 
         self.__slaves = {}
+
+        conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
+        vector_socket = self.zmq_context.socket(zmq.PUSH)
+        vector_socket.setsockopt(zmq.LINGER, 0)
+        vector_socket.connect(conn_str)
+        self.vector_socket = vector_socket
 
     @RemoteCall()
     def stop_mon_process(self, srv_com, **kwargs):
@@ -322,6 +397,10 @@ class server_process(
     def file_content_bulk_result(self, srv_com, **kwargs):
         return srv_com
 
+    @RemoteCall(target_process="syncer")
+    def slave_command(self, srv_com, **kwargs):
+        return srv_com
+
     @RemoteCall()
     def relayer_info(self, srv_com, **kwargs):
         # pretend to be synchronous call such that reply is sent right away
@@ -354,4 +433,5 @@ class server_process(
 
     def loop_post(self):
         self.network_unbind()
+        self.vector_socket.close()
         self.CC.close()

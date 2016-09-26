@@ -28,12 +28,12 @@ menu_module = angular.module(
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
     "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService",
-    "$rootScope", "ICSW_SIGNALS", "$timeout",
+    "$rootScope", "ICSW_SIGNALS", "$timeout", "icswOverallStyle",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
     $q, icswUserService, blockUI, $state, icswSystemLicenseDataService,
-    $rootScope, ICSW_SIGNALS, $timeout,
+    $rootScope, ICSW_SIGNALS, $timeout, icswOverallStyle,
 ) ->
     # init service types
     $scope.ICSW_URLS = ICSW_URLS
@@ -49,6 +49,8 @@ menu_module = angular.module(
         typeahead_loading: false
         # search-strings
         search_string: ""
+        # overall style
+        overall_style: icswOverallStyle.get()
     }
     $scope.HANDBOOK_PDF_PRESENT = false
     $scope.HANDBOOK_CHUNKS_PRESENT = false
@@ -77,11 +79,18 @@ menu_module = angular.module(
                 }
             )
             icswUserService.load($scope.$id)
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.MAIN_GET_OVERALL_STYLE
+                    dataType: "json"
+                }
+            )
         ]
     ).then(
         (data) ->
             $scope.HANDBOOK_PDF_PRESENT = data[0].HANDBOOK_PDF_PRESENT
             $scope.HANDBOOK_CHUNKS_PRESENT = data[0].HANDBOOK_CHUNKS_PRESENT
+            icswOverallStyle.set(data[2].overall_style)
     )
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
         $scope.struct.current_user = icswUserService.get().user
@@ -89,6 +98,9 @@ menu_module = angular.module(
     )
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
         $scope.struct.current_user = undefined
+    )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
+        $scope.struct.overall_style = icswOverallStyle.get()
     )
 
     $scope.get_progress_style = (obj) ->
@@ -163,11 +175,11 @@ menu_module = angular.module(
 [
     "$templateCache", "ICSW_URLS", "$timeout", "icswSimpleAjaxCall", "initProduct",
     "icswMenuProgressService", "icswLayoutSelectionDialogService", "ICSW_SIGNALS",
-    "$rootScope", "$state",
+    "$rootScope", "$state", "icswOverallStyle",
 (
     $templateCache, ICSW_URLS, $timeout, icswSimpleAjaxCall, initProduct,
     icswMenuProgressService, icswLayoutSelectionDialogService, ICSW_SIGNALS,
-    $rootScope, $state
+    $rootScope, $state, icswOverallStyle,
 ) ->
     return {
         restrict: "EA"
@@ -175,6 +187,7 @@ menu_module = angular.module(
         scope: {}
         link: (scope, el, attrs) ->
             scope.initProduct = initProduct
+            scope.overall_style = icswOverallStyle.get()
             scope.num_gauges = 0
             scope.progress_iters = 0
             scope.cur_gauges = {}
@@ -182,6 +195,9 @@ menu_module = angular.module(
                 scope.update_progress_bar()
             )
 
+            $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
+                scope.overall_style = icswOverallStyle.get()
+            )
             scope.go_mainboard = ($event)->
                 $state.go("main.dashboard")
 
@@ -276,14 +292,14 @@ menu_module = angular.module(
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
     "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
-    "icswUserService",
+    "icswUserService", "icswOverallStyle",
 (
     icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
-    icswUserService,
+    icswUserService, icswOverallStyle,
 ) ->
     # console.log icswAcessLevelService
-    {ul, li, a, span, h4, div, p, strong, h3} = React.DOM
+    {ul, li, a, span, h4, div, p, strong, h3, i} = React.DOM
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
@@ -300,6 +316,8 @@ menu_module = angular.module(
                 a_attrs.href = data.menuEntry.sref
             if data.menuEntry.entryClass?
                 a_attrs.className = "#{a_attrs.className} #{data.menuEntry.entryClass}"
+            if data.menuEntry.title?
+                a_attrs.title = data.menuEntry.title
             if data.menuEntry.labelClass
                 return li(
                     {key: "li"}
@@ -340,8 +358,7 @@ menu_module = angular.module(
         displayName: "menuheader"
         getDefaultProps: () ->
         render: () ->
-            SHOW_MENU_ICON = false
-            SHOW_MENU_TITLE = true
+            overall_style = icswOverallStyle.get()
             items_added = 0
             items_per_column = {}
 
@@ -356,30 +373,24 @@ menu_module = angular.module(
                 else
                     _hidden = false
                 if not _hidden
-                    items_per_column[col_idx].push(
-                        li(
-                            {
-                                key: "#{sg_data.key}_li"
-                            }
-                            [
-                                p(
-                                    {
-                                        key: "p"
-                                    }
-                                    [
-                                        h3(
-                                            {
-                                                key: "strong"
-                                            }
-                                            [
-                                                sg_data.name
-                                            ]
-                                        )
-                                    ]
-                                )
-                            ]
+                    if overall_style == "condensed"
+                        items_per_column[col_idx].push(
+                            li(
+                                {
+                                    key: "#{sg_data.key}_li"
+                                }
+                                h3({key: "h3"}, sg_data.name)
+                            )
                         )
-                    )
+                    else
+                        items_per_column[col_idx].push(
+                            li(
+                                {
+                                    key: "#{sg_data.key}_li"
+                                }
+                                p({key: "p"}, strong({key: "strong"}, sg_data.name))
+                            )
+                        )
 
                 for state in sg_data.entries
                     data = state.icswData
@@ -401,17 +412,23 @@ menu_module = angular.module(
                 state = @props
                 menu_name = state.name
                 menu_title = ""
+                _force_icon = false
                 if menu_name == "$$USER_INFO"
-                    _user = icswUserService.get().user
-                    if _user?
-                        menu_name = _user.login
-                        menu_title = _user.info
-                        if _user.login != _user.login_name
-                            menu_name = "#{menu_name} (via alias #{_user.login_name})"
-                        # n title="{{ struct.current_user.full_name }}">{{ struct.current_user.login }}</span>
-                        # uct.current_user.login != struct.current_user.login_name"> (via alias {{ struct.current_user.login_name }})</span>
+                    if overall_style == "normal"
+                        # ...
+                        menu_name = ""
+                        _force_icon = true
                     else
-                        menu_name = "---"
+                        _user = icswUserService.get().user
+                        if _user?
+                            menu_name = _user.login
+                            menu_title = _user.info
+                            if _user.login != _user.login_name
+                                menu_name = "#{menu_name} (via alias #{_user.login_name})"
+                            # n title="{{ struct.current_user.full_name }}">{{ struct.current_user.login }}</span>
+                            # uct.current_user.login != struct.current_user.login_name"> (via alias {{ struct.current_user.login_name }})</span>
+                        else
+                            menu_name = "---"
                 # header = state.icswData.menuHeader
                 key= "mh_#{state.menu_key}"
 
@@ -431,27 +448,29 @@ menu_module = angular.module(
 
                     ul_items.push(ul_item)
                 _m_item = []
-                if state.icon? and state.icon != "" and SHOW_MENU_ICON
+                if state.icon? and state.icon != "" and (overall_style == "condensed" or _force_icon)
                     _m_item.push span(
                         {
-                        className: "fa #{state.icon} fa-lg"
-                        key: "span"
+                            className: "fa #{state.icon} fa-lg"
+                            style: {paddingRight: "5px"}
+                            key: "span"
                         }
                     )
-                if menu_name? and menu_name != "" and SHOW_MENU_TITLE
+                if menu_name? and menu_name != ""
                     _m_item.push span(
                         {
                             key: "text"
                         }
                         menu_name
                     )
-                _m_item.push span(
-                    {
-                        className: "caret"
-                        key: "caretdown"
-                    }
+                if overall_style == "normal"
+                    _m_item.push span(
+                        {
+                            className: "caret"
+                            key: "caretdown"
+                        }
 
-                )
+                    )
                 _res = li(
                     {
                         className: "dropdown"
@@ -536,23 +555,22 @@ menu_module = angular.module(
             _menu_struct = icswRouteHelper.get_struct()
             menus = (entry for entry in _menu_struct.menu_header_states when entry.data.side == @props.side)
             if menus.length
-                _res =
-                    div(
-                        {
-                            className: "yamm"
-                        }
-                        [
-                            ul(
-                                {
-                                    key: "topmenu"
-                                    className: "nav navbar-nav navbar-#{@props.side}"
-                                }
-                                (
-                                    menu.get_react(menu_header) for menu in menus
-                                )
+                _res = div(
+                    {
+                        className: "yamm"
+                    }
+                    [
+                        ul(
+                            {
+                                key: "topmenu"
+                                className: "nav navbar-nav navbar-#{@props.side} #{icswOverallStyle.get()}"
+                            }
+                            (
+                                menu.get_react(menu_header) for menu in menus
                             )
-                        ]
-                    )
+                        )
+                    ]
+                )
             else
                 _res = null
             return _res

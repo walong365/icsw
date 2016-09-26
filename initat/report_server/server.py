@@ -97,6 +97,7 @@ class server_process(
                 'report_history_id': report_history.idx,
                 'pk_settings': srv_com['pk_settings'].text,
                 'device_ids': srv_com['devices'].text,
+                'format': srv_com['format'].text,
             }
         )
         self._run_queue()

@@ -1,6 +1,6 @@
 # Copyright (C) 2015, 2016 Bernhard Mallinger, init.at
 #
-# this file is part of md-config-server
+# this file is part of md-sync-server
 #
 # Send feedback to: <mallinger@init.at>
 #
@@ -17,12 +17,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" simple frontend to LiveStatus socket, also used by md-config-server (for KPI) """
 
 import csv
 import os.path
 import socket
 
-from initat.md_config_server.config import global_config
+from .config import global_config
 
 
 class LiveQuery(object):
@@ -88,8 +89,8 @@ class LiveSocket(object):
         return _result
 
     @classmethod
-    def get_icinga_live_socket(cls):
-        sock_name = "/opt/{}/var/live".format(global_config["MD_TYPE"])
+    def get_mon_live_socket(cls):
+        sock_name = os.path.join(global_config["MD_BASEDIR"], "var", "live")
         if os.path.exists(sock_name):
             return LiveSocket(sock_name)
         else:

@@ -284,7 +284,12 @@ def contact_server(request, srv_type_enum, send_com, **kwargs):
                 #    _conn_str = cur_router.get_connection_string(srv_type, server_id=)
                 # else:
                 # print "*", _send_id
-                _conn_str = cur_router.get_connection_string(srv_type_enum, server_id=_send_id)
+                _connect_port_enum = kwargs.get("connect_port_enum", None)
+                _conn_str = cur_router.get_connection_string(
+                    srv_type_enum,
+                    server_id=_send_id,
+                    connect_port_enum=_connect_port_enum
+                )
                 _conn_strs.append(_conn_str)
                 _conn.add_connection(_conn_str, _send_com, multi=True, immediate=True)
             log_result = kwargs.get("log_result", True)

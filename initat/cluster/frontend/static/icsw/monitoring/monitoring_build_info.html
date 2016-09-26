@@ -26,9 +26,8 @@
                 <th>conf</th>
                 <th>run / sync</th>
                 <th>devices</th>
-                <th title="monitoring daemon version">MDVer</th>
-                <th title="monitoring config daemon version">MCDVer</th>
-                <th title="relayer version">RelVer</th>
+                <th title="Monitoring Daemon version" class="text-center">MonDaemon</th>
+                <th title="ICSW Software version" class="text-center">ICSW</th>
                 <th>raw size (transfers)</th>
                 <th>data size (files)</th>
             </tr>
@@ -36,16 +35,15 @@
         <tbody>
             <tr ng-repeat-start="build in entries_displayed" ng-class="build.$$line_class">
                 <th>{{ struct.device_tree.all_lut[build.device].full_name }}
-                    <span ng-show="build.mon_dist_slave_set.lenght">({{ build.mon_dist_slave_set.length }})</span>
+                    <span ng-show="build.mon_dist_slave_set.length">({{ build.mon_dist_slave_set.length }})</span>
                 </th>
                 <td>{{ build.$$build_time }} ({{ build.$$build_diff_time }})</td>
                 <td class="text-right">{{ get_conf_time(build) }}</td>
                 <td class="text-right">{{ get_run_time(build) }}</td>
-                <td class="text-right" ng-class="{'danger' : build.unreachable_devices > 0}">{{ build.num_devices }}
+                <td class="text-right" ng-class="{'danger': build.unreachable_devices > 0}">{{ build.num_devices }}
                     <span ng-show="build.unreachable_devices"> ({{ build.unreachable_devices }})</span>
                 </td>
-                <td>{{ build.mon_version }}</td>
-                <td class="text-center">{{ build.md_version }}</td>
+                <td class="text-center">{{ build.mon_version }}</td>
                 <td class="text-center">{{ build.relayer_version }}</td>
                 <td colspan="2"></td>
             </tr>
@@ -58,7 +56,6 @@
                 </td>
                 <td class="text-right">{{ slave.num_devices }}</td>
                 <td class="text-center">{{ slave.mon_version || '---' }}</td>
-                <td></td>
                 <td class="text-center">{{ slave.relayer_version || '---' }}</td>
                 <td class="text-right">
                     {{ slave.size_raw | get_size:1:1024 }} ({{ slave.num_transfers }})

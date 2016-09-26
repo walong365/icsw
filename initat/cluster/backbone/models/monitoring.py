@@ -114,8 +114,9 @@ class mon_dist_base(models.Model):
     config_build_start = models.DateTimeField(default=None, null=True)
     # end of build
     config_build_end = models.DateTimeField(default=None, null=True)
-    # version of of relayer / icinga
+    # version of of relayer (== icsw)
     relayer_version = models.CharField(max_length=128, default="")
+    # version of monitoring daemon (== icinga)
     mon_version = models.CharField(max_length=128, default="")
     # total build start
     build_start = models.DateTimeField(default=None, null=True)
@@ -158,8 +159,6 @@ class mon_dist_master(mon_dist_base):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
     version = models.IntegerField(default=0)
-    # version of of md-config-server
-    md_version = models.CharField(max_length=128, default="")
 
     class Meta:
         ordering = ("-idx",)

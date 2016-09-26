@@ -57,7 +57,7 @@ SET nscp_path=nscp
 "%WIX_BIN_PATH%candle.exe" ICSW_Windows_Client.wxs
 "%WIX_BIN_PATH%candle.exe" Components.wxs
 "%WIX_BIN_PATH%candle.exe" HostEditingDlg.wxs
-"%WIX_BIN_PATH%light.exe" -ext WixUIExtension -dWixUIExclamationIco=WixUIExclamationIco.ico -dWixUIDialogBmp=WixUIDialogBmp.bmp ICSW_Windows_Client.wixobj Components.wixobj HostEditingDlg.wixobj -o ICSW_Windows_Client.msi
+"%WIX_BIN_PATH%light.exe" -ext WixUIExtension -dWixUIBannerBmp=WixUIBannerBmp.bmp -dWixUIExclamationIco=WixUIExclamationIco.ico -dWixUIDialogBmp=WixUIDialogBmp.bmp ICSW_Windows_Client.wixobj Components.wixobj HostEditingDlg.wixobj -o ICSW_Windows_Client.msi
 
 :: Cleanup temporary files
 RMDIR /s /q .\tmp

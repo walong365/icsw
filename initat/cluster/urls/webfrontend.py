@@ -323,6 +323,7 @@ main_patterns = [
     url(r"^routing_info$", main_views.get_routing_info.as_view(), name="routing_info"),
     url(r"^get_cluster_info$", main_views.get_cluster_info.as_view(), name="get_cluster_info"),
     url(r"^get_docu_info$", main_views.get_docu_info.as_view(), name="get_docu_info"),
+    url(r"^get_overall_style", main_views.get_overall_style.as_view(), name="get_overall_style"),
 ]
 
 rrd_patterns = [

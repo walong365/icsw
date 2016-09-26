@@ -35,6 +35,7 @@ from django.db.models import Q
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
     mon_contactgroup, netdevice, network_type, user, config, config_catalog, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
@@ -93,7 +94,11 @@ class build_process(threading_tools.process_obj, version_check_mixin):
 
     def _check_for_slaves(self, **kwargs):
         master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
-        slave_servers = device.objects.filter(Q(device_config__config__name="monitor_slave")).select_related("domain_tree_node")
+        slave_servers = device.objects.filter(
+            Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.monitor_slave.name)
+        ).select_related(
+            "domain_tree_node"
+        )
         # slave configs
         self.__gen_config = main_config(self, master_server, distributed=True if len(slave_servers) else False)
         self.send_pool_message("external_cmd_file", self.__gen_config.get_command_name())
@@ -513,9 +518,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 build_dv.delete()
         if not single_build:
             cfgs_written = self.__gen_config._write_entries()
-            if bc_valid and (cfgs_written or rebuild_gen_config):
-                # send reload to remote instance ?
-                self._reload_md_daemon()
+            # if bc_valid and (cfgs_written or rebuild_gen_config):
+            #    # send reload to remote instance ?
+            #    self._reload_md_daemon()
             self.send_pool_message("build_info", "end_build", self.version, target="syncer")
         else:
             cur_gc = self.__gen_config

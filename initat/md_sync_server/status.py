@@ -1,6 +1,6 @@
 # Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
-# this file is part of md-config-server
+# this file is part of md-sync-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,14 +22,15 @@
 import json
 import time
 
-from django.db.models import Q
-
-from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device
-from initat.md_config_server.common import LiveSocket
-from initat.md_config_server.config import global_config
+from .common import LiveSocket
+from .config import global_config
 from initat.tools import logging_tools, process_tools, server_command, \
     threading_tools
+
+__all__ = [
+    "LiveSocket",
+    "StatusProcess",
+]
 
 
 class StatusProcess(threading_tools.process_obj):
@@ -42,7 +43,6 @@ class StatusProcess(threading_tools.process_obj):
             context=self.zmq_context,
             init_logger=True,
         )
-        db_tools.close_connection()
         self.register_func("get_node_status", self._get_node_status)
         self.__socket = None
 
@@ -61,7 +61,7 @@ class StatusProcess(threading_tools.process_obj):
     def _open(self):
         if self.__socket is None:
             try:
-                self.__socket = LiveSocket.get_icinga_live_socket()
+                self.__socket = LiveSocket.get_mon_live_socket()
             except Exception as e:
                 self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
@@ -72,8 +72,9 @@ class StatusProcess(threading_tools.process_obj):
         _host_overview = True if "host_overview" in srv_com else False
         _service_overview = True if "service_overview" in srv_com else False
         if not _host_overview:
-            pk_list = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
-            dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
+            # ToDo, FIXME: receive full names in srv_command
+            dev_names = srv_com.xpath(".//device_list/device/@full_name", smart_strings=False)
+            # dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
         s_time = time.time()
         try:
             cur_sock = self._open()

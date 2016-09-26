@@ -19,14 +19,14 @@
 #
 """ report-server, report part """
 import traceback
+import ast
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models.report import ReportHistory
 from initat.tools import logging_tools, threading_tools
 from initat.report_server.config import global_config
-from initat.report_server.report import PDFReportGenerator
-
+from initat.report_server.report import PDFReportGenerator, XlsxReportGenerator
 
 class ReportGenerationProcess(threading_tools.process_obj):
     def process_init(self):
@@ -48,23 +48,32 @@ class ReportGenerationProcess(threading_tools.process_obj):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
 
-    def _generate(self, report_history_id, pk_settings, device_ids, **kwargs):
+    def _generate(self, report_history_id, pk_settings, device_ids, format, **kwargs):
         self.log(
             'generating report {}'.format(report_history_id),
             logging_tools.LOG_LEVEL_OK,
         )
-        pk_settings = eval(pk_settings)
-        device_ids = eval(device_ids)
+
+        pk_settings = ast.literal_eval(pk_settings)
+        device_ids = ast.literal_eval(device_ids)
         devices = device.objects.filter(idx__in=device_ids)
 
         report_history = ReportHistory.objects.get(idx=report_history_id)
 
         try:
-            report_generator = PDFReportGenerator(
-                pk_settings,
-                devices,
-                report_history,
-            )
+            if format == "pdf":
+                report_generator = PDFReportGenerator(
+                    pk_settings,
+                    devices,
+                    report_history
+                )
+            else:
+                report_generator = XlsxReportGenerator(
+                    pk_settings,
+                    devices,
+                    report_history
+                )
+
             report_generator.generate_report()
         except Exception:
             self.log(traceback.format_exc(), logging_tools.LOG_LEVEL_CRITICAL)

@@ -24,6 +24,7 @@ import bz2
 import datetime
 import marshal
 import os
+import signal
 import stat
 import sys
 import time
@@ -55,7 +56,6 @@ class SyncConfig(object):
             self.log("init local structure")
             self.__dir_offset = ""
             self.config_store = config_store.ConfigStore(CS_MON_NAME, log_com=self.__process.log, access_mode=config_store.AccessModeEnum.LOCAL)
-            self.config_store["md.version.string"] = global_config["MD_VERSION_STRING"]
             self.config_store["md.version"] = global_config["MD_VERSION"]
             self.config_store["md.release"] = global_config["MD_RELEASE"]
             self.config_store["icsw.version"] = VERSION_MAJOR
@@ -118,7 +118,7 @@ class SyncConfig(object):
         self.send_time_lut = {}
         # lut: config_version_send -> number transmitted
         self.num_send = {}
-        # distribution state
+        # distribution state, always True for master
         self.dist_ok = True
         # flag for reload after sync
         self.reload_after_sync_flag = False
@@ -153,8 +153,9 @@ class SyncConfig(object):
         r_dict = {}
         if self.config_store is not None:
             # may be none for local master
-            for _key in ["md.version", "md.release", "icsw.version", "icsw.release", "md.version.string"]:
-                r_dict[_key] = self.config_store.get(_key, None)
+            for _key in ["md.version", "md.release", "icsw.version", "icsw.release"]:
+                if _key in self.config_store:
+                    r_dict[_key] = self.config_store[_key]
         return r_dict
 
     def store_satellite_info(self, si_info):
@@ -173,29 +174,6 @@ class SyncConfig(object):
         else:
             r_dict.update(self.get_satellite_info())
         return r_dict
-
-    def _relayer_gen(self):
-        # return the relayer generation
-        # 0 ... old one, no bulk transfers
-        # 1 ... supports bulk transfer (file_content_bulk and clear_directories)
-        _r_gen = 0
-        _r_vers = self.relayer_version
-        if _r_vers.count("-"):
-            _r_vers = _r_vers.split("-")[0]
-            if _r_vers.count(".") == 1:
-                _r_vers = [
-                    int(_part.strip()) for _part in _r_vers.split(".") if _part.strip() and _part.strip().isdigit()
-                ]
-                if len(_r_vers) == 2:
-                    major, minor = _r_vers
-                    if major < 2:
-                        pass
-                    elif major == 3:
-                        _r_gen = 1
-                    else:
-                        if minor > 1:
-                            _r_gen = 1
-        return _r_gen
 
     def reload_after_sync(self):
         self.reload_after_sync_flag = True
@@ -238,10 +216,11 @@ class SyncConfig(object):
         ]
         if process_tools.get_sys_bits() == 64:
             dir_names.append("lib64")
+        self.log("create directores called, main_dir={}, dir_offset={}".format(self.__main_dir, self.__dir_offset or "<EMPTY>"))
         # dir dict for writing on disk
-        self.__w_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, self.__dir_offset, dir_name))) for dir_name in dir_names])
+        self.__w_dir_dict = {dir_name: os.path.normpath(os.path.join(self.__main_dir, self.__dir_offset, dir_name)) for dir_name in dir_names}
         # dir dict for referencing
-        self.__r_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, dir_name))) for dir_name in dir_names])
+        self.__r_dir_dict = {dir_name: os.path.normpath(os.path.join(self.__main_dir, dir_name)) for dir_name in dir_names}
 
     def check_for_resend(self):
         if not self.dist_ok and self.config_version_build != self.config_version_installed and abs(self.send_time - time.time()) > 60:
@@ -332,7 +311,6 @@ class SyncConfig(object):
             # to distinguish between iterations during a single build
             self.send_time_lut[self.send_time] = self.config_version_send
             self.dist_ok = False
-            _r_gen = self._relayer_gen()
             self.log(
                 "start send to slave (version {:d} [{:d}], generation is {:d})".format(
                     self.config_version_send,
@@ -345,74 +323,40 @@ class SyncConfig(object):
             self.__size_raw, size_data = (0, 0)
             # send content of /etc
             dir_offset = len(self.__w_dir_dict["etc"])
-            if _r_gen == 0:
-                # generation 0 transfer
-                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                    rel_dir = cur_dir[dir_offset + 1:]
-                    # send a clear_directory message
-                    srv_com = server_command.srv_command(
-                        command="clear_directory",
-                        host="DIRECT",
-                        slave_name=self.__slave_name,
-                        port="0",
-                        version="{:d}".format(self.send_time),
-                        directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
-                    )
-                    self._send(srv_com)
-                    for cur_file in sorted(file_names):
-                        full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
-                        full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
-                        if os.path.isfile(full_r_path):
-                            self.__tcv_dict[full_w_path] = self.config_version_send
-                            _content = file(full_r_path, "r").read()
-                            size_data += len(_content)
-                            srv_com = server_command.srv_command(
-                                command="file_content",
-                                host="DIRECT",
-                                slave_name=self.__slave_name,
-                                port="0",
-                                uid="{:d}".format(os.stat(full_r_path)[stat.ST_UID]),
-                                gid="{:d}".format(os.stat(full_r_path)[stat.ST_GID]),
-                                version="{:d}".format(int(self.send_time)),
-                                file_name="{}".format(full_w_path),
-                                content=base64.b64encode(_content)
-                            )
-                            self._send(srv_com)
-            else:
-                # generation 1 transfer
-                del_dirs = []
-                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                    rel_dir = cur_dir[dir_offset + 1:]
-                    del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
-                if del_dirs:
-                    srv_com = server_command.srv_command(
-                        command="clear_directories",
-                        host="DIRECT",
-                        slave_name=self.__slave_name,
-                        port="0",
-                        version="{:d}".format(int(self.send_time)),
-                    )
-                    _bld = srv_com.builder()
-                    srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
-                    self._send(srv_com)
+            # generation 1 transfer
+            del_dirs = []
+            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                rel_dir = cur_dir[dir_offset + 1:]
+                del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
+            if del_dirs:
+                srv_com = server_command.srv_command(
+                    command="clear_directories",
+                    host="DIRECT",
+                    slave_name=self.__slave_name,
+                    port="0",
+                    version="{:d}".format(int(self.send_time)),
+                )
+                _bld = srv_com.builder()
+                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
+                self._send(srv_com)
+            _send_list, _send_size = ([], 0)
+            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                rel_dir = cur_dir[dir_offset + 1:]
+                for cur_file in sorted(file_names):
+                    full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
+                    full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
+                    if os.path.isfile(full_r_path):
+                        self.__tcv_dict[full_w_path] = self.config_version_send
+                        _content = file(full_r_path, "r").read()
+                        size_data += len(_content)
+                        if _send_size + len(_content) > MAX_SEND_SIZE:
+                            self._send(self._build_file_content(_send_list))
+                            _send_list, _send_size = ([], 0)
+                        # format: uid, gid, path, content_len, content
+                        _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
+            if _send_list:
+                self._send(self._build_file_content(_send_list))
                 _send_list, _send_size = ([], 0)
-                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                    rel_dir = cur_dir[dir_offset + 1:]
-                    for cur_file in sorted(file_names):
-                        full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
-                        full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
-                        if os.path.isfile(full_r_path):
-                            self.__tcv_dict[full_w_path] = self.config_version_send
-                            _content = file(full_r_path, "r").read()
-                            size_data += len(_content)
-                            if _send_size + len(_content) > MAX_SEND_SIZE:
-                                self._send(self._build_file_content(_send_list))
-                                _send_list, _send_size = ([], 0)
-                            # format: uid, gid, path, content_len, content
-                            _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
-                if _send_list:
-                    self._send(self._build_file_content(_send_list))
-                    _send_list, _send_size = ([], 0)
             self.num_send[self.config_version_send] = self.__num_com
             self.__md_struct.num_files = self.__num_com
             self.__md_struct.num_transfers = self.__num_com
@@ -471,19 +415,6 @@ class SyncConfig(object):
             self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
             self.__md_struct.save()
             self._check_for_ras()
-
-    def _check_for_ras(self):
-        if self.reload_after_sync_flag and self.dist_ok:
-            self.reload_after_sync_flag = False
-            self.log("sending reload")
-            srv_com = server_command.srv_command(
-                command="call_command",
-                host="DIRECT",
-                port="0",
-                version="{:d}".format(int(self.config_version_send)),
-                cmdline="/etc/init.d/icinga reload"
-            )
-            self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
 
     def _parse_list(self, in_list):
         # return top_dir and simplified list
@@ -579,3 +510,33 @@ class SyncConfig(object):
                 err_key,
                 ", ".join(sorted(err_dict[err_key]))), logging_tools.LOG_LEVEL_ERROR)
         self._show_pending_info()
+
+    # local actions
+    def handle_reload_after_sync(self, srv_com):
+        self.reload_after_sync_flag = True
+        self._check_for_ras()
+
+    def _check_for_ras(self):
+        if self.reload_after_sync_flag and self.dist_ok:
+            self.reload_after_sync_flag = False
+            self.log("sending reload")
+            self.__process.send_pool_message(
+                "send_signal",
+                signal.SIGHUP,
+            )
+
+    def handle_local_action(self, action, srv_com):
+        _attr_name = "handle_{}".format(action)
+        if not hasattr(self, _attr_name):
+            self.log("unknown local action '{}'".format(action), logging_tools.LOG_LEVEL_ERROR)
+        else:
+            getattr(self, _attr_name)(srv_com)
+
+    def handle_action(self, action, srv_com):
+        if self.master:
+            # local action
+            self.handle_local_action(action, srv_com)
+        else:
+            # remote action
+            pass
+            # print action, self.name

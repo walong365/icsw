@@ -25,16 +25,14 @@ import datetime
 import marshal
 import os
 import stat
-import sys
 import time
 
 from django.db.models import Q
 
+from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import mon_dist_master, mon_dist_slave, cluster_timezone, \
     mon_build_unreachable
-from initat.cluster.backbone import routing
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.server_version import VERSION_STRING
 from initat.tools import config_tools, configfile, logging_tools, process_tools, server_command
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
@@ -80,7 +78,10 @@ class SyncConfig(object):
             if not route:
                 self.slave_ip = None
                 self.master_ip = None
-                self.log("no route to slave {} found".format(unicode(monitor_server)), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "no route to slave {} found".format(unicode(monitor_server)),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             else:
                 self.slave_ip = route[0][3][1][0]
                 self.master_ip = route[0][2][1][0]
@@ -120,19 +121,34 @@ class SyncConfig(object):
         self.dist_ok = True
         # flag for reload after sync
         self.reload_after_sync_flag = False
-        # relayer info
+        # relayer info (== icsw software version)
         self.relayer_version = "?.?-0"
         self.mon_version = "?.?-0"
         # clear md_struct
         self.__md_struct = None
-        if not self.master:
-            # try to get relayer / mon_version from latest build
+        # try to get relayer / mon_version from latest build
+        if self.master:
+            _latest_build = mon_dist_master.objects.filter(Q(device=self.monitor_server)).order_by("-pk")
+        else:
             _latest_build = mon_dist_slave.objects.filter(Q(device=self.monitor_server)).order_by("-pk")
-            if len(_latest_build):
-                _latest_build = _latest_build[0]
-                self.mon_version = _latest_build.mon_version
-                self.relayer_version = _latest_build.relayer_version
-                self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
+        if len(_latest_build):
+            _latest_build = _latest_build[0]
+            self.mon_version = _latest_build.mon_version
+            self.relayer_version = _latest_build.relayer_version
+            self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
+
+    def set_info(self, info):
+        if "icsw.version" in info:
+            self.relayer_version = "{}-{}".format(
+                info["icsw.version"],
+                info["icsw.release"],
+            )
+        if "md.version" in info:
+            self.mon_version = "{}-{}".format(
+                info["md.version"],
+                info["md.release"],
+            )
+        # print "SI", info
 
     def get_send_data(self):
         _r_dict = {
@@ -158,44 +174,17 @@ class SyncConfig(object):
             )
         return _r_dict
 
-    def _relayer_gen(self):
-        # return the relayer generation
-        # 0 ... old one, no bulk transfers
-        # 1 ... supports bulk transfer (file_content_bulk and clear_directories)
-        _r_gen = 0
-        _r_vers = self.relayer_version
-        if _r_vers.count("-"):
-            _r_vers = _r_vers.split("-")[0]
-            if _r_vers.count(".") == 1:
-                _r_vers = [
-                    int(_part.strip()) for _part in _r_vers.split(".") if _part.strip() and _part.strip().isdigit()
-                ]
-                if len(_r_vers) == 2:
-                    major, minor = _r_vers
-                    if major < 2:
-                        pass
-                    elif major == 3:
-                        _r_gen = 1
-                    else:
-                        if minor > 1:
-                            _r_gen = 1
-        return _r_gen
-
     def reload_after_sync(self):
-        self.reload_after_sync_flag = True
-        self._check_for_ras()
-
-    def set_relayer_info(self, srv_com):
-        for key in ["relayer_version", "mon_version"]:
-            if key in srv_com:
-                _new_vers = srv_com[key].text
-                if _new_vers != getattr(self, key):
-                    self.log("changing {} from '{}' to '{}'".format(
-                        key,
-                        getattr(self, key),
-                        _new_vers)
-                    )
-                    setattr(self, key, _new_vers)
+        self.__process.send_sync_command(
+            server_command.srv_command(
+                command="slave_command",
+                action="reload_after_sync",
+                master="1" if self.master else "0",
+                slave_uuid=self.slave_uuid if not self.master else "",
+            )
+        )
+        # self.reload_after_sync_flag = True
+        # self._check_for_ras()
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
@@ -223,9 +212,9 @@ class SyncConfig(object):
         if process_tools.get_sys_bits() == 64:
             dir_names.append("lib64")
         # dir dict for writing on disk
-        self.__w_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, self.__dir_offset, dir_name))) for dir_name in dir_names])
+        self.__w_dir_dict = {dir_name: os.path.normpath(os.path.join(self.__main_dir, self.__dir_offset, dir_name)) for dir_name in dir_names}
         # dir dict for referencing
-        self.__r_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, dir_name))) for dir_name in dir_names])
+        self.__r_dir_dict = {dir_name: os.path.normpath(os.path.join(self.__main_dir, dir_name)) for dir_name in dir_names}
 
     def check_for_resend(self):
         if not self.dist_ok and self.config_version_build != self.config_version_installed and abs(self.send_time - time.time()) > 60:
@@ -264,14 +253,6 @@ class SyncConfig(object):
         self.config_version_build = b_version
         if self.master:
             # re-check relayer version for master
-            if "initat.host_monitoring.version" in sys.modules:
-                del sys.modules["initat.host_monitoring.version"]
-            from initat.client_version import VERSION_STRING as RELAYER_VERSION_STRING
-            self.relayer_version = RELAYER_VERSION_STRING
-            _mon_version = global_config["MD_VERSION_STRING"]
-            if _mon_version.split(".")[-1] in ["x86_64", "i586", "i686"]:
-                _mon_version = ".".join(_mon_version.split(".")[:-1])
-            self.mon_version = _mon_version
             self.log("mon / relayer version for master is {} / {}".format(self.mon_version, self.relayer_version))
             _md = mon_dist_master(
                 device=self.monitor_server,
@@ -279,11 +260,11 @@ class SyncConfig(object):
                 build_start=cluster_timezone.localize(datetime.datetime.now()),
                 relayer_version=self.relayer_version,
                 # monitorig daemon
-                md_version=VERSION_STRING,
                 mon_version=self.mon_version,
             )
         else:
             self.__md_master = master
+            self.log("mon / relayer version for slave {} is {} / {}".format(self.monitor_server.full_name, self.mon_version, self.relayer_version))
             _md = mon_dist_slave(
                 device=self.monitor_server,
                 mon_dist_master=self.__md_master,
@@ -316,12 +297,10 @@ class SyncConfig(object):
             # to distinguish between iterations during a single build
             self.send_time_lut[self.send_time] = self.config_version_send
             self.dist_ok = False
-            _r_gen = self._relayer_gen()
             self.log(
-                "start send to slave (version {:d} [{:d}], generation is {:d})".format(
+                "start send to slave (version {:d} [{:d}])".format(
                     self.config_version_send,
                     self.send_time,
-                    _r_gen,
                 )
             )
             # number of atomic commands
@@ -329,74 +308,40 @@ class SyncConfig(object):
             self.__size_raw, size_data = (0, 0)
             # send content of /etc
             dir_offset = len(self.__w_dir_dict["etc"])
-            if _r_gen == 0:
-                # generation 0 transfer
-                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                    rel_dir = cur_dir[dir_offset + 1:]
-                    # send a clear_directory message
-                    srv_com = server_command.srv_command(
-                        command="clear_directory",
-                        host="DIRECT",
-                        slave_name=self.__slave_name,
-                        port="0",
-                        version="{:d}".format(self.send_time),
-                        directory=os.path.join(self.__r_dir_dict["etc"], rel_dir),
-                    )
-                    self._send(srv_com)
-                    for cur_file in sorted(file_names):
-                        full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
-                        full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
-                        if os.path.isfile(full_r_path):
-                            self.__tcv_dict[full_w_path] = self.config_version_send
-                            _content = file(full_r_path, "r").read()
-                            size_data += len(_content)
-                            srv_com = server_command.srv_command(
-                                command="file_content",
-                                host="DIRECT",
-                                slave_name=self.__slave_name,
-                                port="0",
-                                uid="{:d}".format(os.stat(full_r_path)[stat.ST_UID]),
-                                gid="{:d}".format(os.stat(full_r_path)[stat.ST_GID]),
-                                version="{:d}".format(int(self.send_time)),
-                                file_name="{}".format(full_w_path),
-                                content=base64.b64encode(_content)
-                            )
-                            self._send(srv_com)
-            else:
-                # generation 1 transfer
-                del_dirs = []
-                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                    rel_dir = cur_dir[dir_offset + 1:]
-                    del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
-                if del_dirs:
-                    srv_com = server_command.srv_command(
-                        command="clear_directories",
-                        host="DIRECT",
-                        slave_name=self.__slave_name,
-                        port="0",
-                        version="{:d}".format(int(self.send_time)),
-                    )
-                    _bld = srv_com.builder()
-                    srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
-                    self._send(srv_com)
+            # generation 1 transfer
+            del_dirs = []
+            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                rel_dir = cur_dir[dir_offset + 1:]
+                del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
+            if del_dirs:
+                srv_com = server_command.srv_command(
+                    command="clear_directories",
+                    host="DIRECT",
+                    slave_name=self.__slave_name,
+                    port="0",
+                    version="{:d}".format(int(self.send_time)),
+                )
+                _bld = srv_com.builder()
+                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
+                self._send(srv_com)
+            _send_list, _send_size = ([], 0)
+            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                rel_dir = cur_dir[dir_offset + 1:]
+                for cur_file in sorted(file_names):
+                    full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
+                    full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
+                    if os.path.isfile(full_r_path):
+                        self.__tcv_dict[full_w_path] = self.config_version_send
+                        _content = file(full_r_path, "r").read()
+                        size_data += len(_content)
+                        if _send_size + len(_content) > MAX_SEND_SIZE:
+                            self._send(self._build_file_content(_send_list))
+                            _send_list, _send_size = ([], 0)
+                        # format: uid, gid, path, content_len, content
+                        _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
+            if _send_list:
+                self._send(self._build_file_content(_send_list))
                 _send_list, _send_size = ([], 0)
-                for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                    rel_dir = cur_dir[dir_offset + 1:]
-                    for cur_file in sorted(file_names):
-                        full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
-                        full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
-                        if os.path.isfile(full_r_path):
-                            self.__tcv_dict[full_w_path] = self.config_version_send
-                            _content = file(full_r_path, "r").read()
-                            size_data += len(_content)
-                            if _send_size + len(_content) > MAX_SEND_SIZE:
-                                self._send(self._build_file_content(_send_list))
-                                _send_list, _send_size = ([], 0)
-                            # format: uid, gid, path, content_len, content
-                            _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
-                if _send_list:
-                    self._send(self._build_file_content(_send_list))
-                    _send_list, _send_size = ([], 0)
             self.num_send[self.config_version_send] = self.__num_com
             self.__md_struct.num_files = self.__num_com
             self.__md_struct.num_transfers = self.__num_com
@@ -558,8 +503,12 @@ class SyncConfig(object):
             if err_str:
                 err_dict.setdefault(err_str, []).append(file_name)
         for err_key in sorted(err_dict.keys()):
-            self.log("[{:4d}] {} : {}".format(
-                len(err_dict[err_key]),
-                err_key,
-                ", ".join(sorted(err_dict[err_key]))), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "[{:4d}] {} : {}".format(
+                    len(err_dict[err_key]),
+                    err_key,
+                    ", ".join(sorted(err_dict[err_key]))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         self._show_pending_info()

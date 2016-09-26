@@ -1,6 +1,6 @@
 <routes>
     <routeGroup name="mm_devices">
-        <menuHeader type="dict" name_str="Devices" icon_str="fa-cog" side_str="left"/>
+        <menuHeader type="dict" name_str="Devices" icon_str="fa-desktop" side_str="left"/>
         <routeSubGroup name_str="Settings">
             <route name="main.devicecreate">
                 <stateData type="dict" url_str="/devicecreate" templateUrl_str="icsw/main/device/create.html"/>
@@ -118,10 +118,10 @@
         </routeSubGroup>
     </routeGroup>
 
-
+    <!-- monitoring -->
 
     <routeGroup name="mon">
-        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-cog" side_str="left"/>
+        <menuHeader type="dict" name_str="Monitoring" icon_str="fa-eye" side_str="left"/>
         <routeSubGroup name_str="Status">
             <route name="main.livestatus">
                 <stateData type="dict" url_str="/livestatus/all"
@@ -192,6 +192,15 @@
                     <menuEntry type="dict" icon_str="fa-list-alt" name_str="Event Logs"/>
                     <rights type="list">
                         <value>backbone.device.discovery_server</value>
+                    </rights>
+                </icswData>
+            </route>
+            <route name="main.monitorbuildinfo">
+                <stateData type="dict" url_str="/monitorbuildinfo" template_str="&lt;icsw-monitoring-build-info&gt;&lt;/icsw-monitoring-build-info&gt;"/>
+                <icswData type="dict" pageTitle_str="Monitoring build info">
+                    <menuEntry type="dict" icon_str="fa-info-circle" name_str="Build info"/>
+                    <rights type="list">
+                        <value>backbone.mon_check_command.setup_monitoring</value>
                     </rights>
                 </icswData>
             </route>
@@ -293,10 +302,10 @@
         </routeSubGroup>
     </routeGroup>
 
-
+    <!-- cluster -->
 
     <routeGroup name="cluster">
-        <menuHeader type="dict" name_str="HPC" icon_str="fa-cog" side_str="left"/>
+        <menuHeader type="dict" name_str="HPC" icon_str="fa-cloud" side_str="left"/>
         <routeSubGroup name_str="Cluster">
             <route name="main.deployboot">
                 <stateData type="dict" url_str="/deployboot" templateUrl_str="icsw/main/deploy/boot.html"/>
@@ -387,9 +396,10 @@
         </routeSubGroup>
     </routeGroup>
 
+    <!-- misc -->
 
     <routeGroup name="todo">
-        <menuHeader type="dict" name_str="Obsolete" icon_str="fa-cog" side_str="left"/>
+        <menuHeader type="dict" name_str="Obsolete" icon_str="fa-ellipsis-h" side_str="left"/>
         <routeSubGroup name_str="Obsolete Links">
             <route name="main.monitorredirect">
                 <stateData type="dict" url_str="/monitorredirect" resolve_bool="yes"/>
@@ -433,19 +443,11 @@
         </routeSubGroup>
     </routeGroup>
 
+    <!-- admin / user menu-->
 
     <routeGroup name="rightmenu">
         <menuHeader type="dict" name_str="$$USER_INFO" icon_str="fa-cog" side_str="right"/>
         <routeSubGroup name_str="History">
-            <route name="main.monitorbuildinfo">
-                <stateData type="dict" url_str="/monitorbuildinfo" template_str="&lt;icsw-monitoring-build-info&gt;&lt;/icsw-monitoring-build-info&gt;"/>
-                <icswData type="dict" pageTitle_str="Monitoring build info">
-                    <menuEntry type="dict" icon_str="fa-info-circle" name_str="Build info"/>
-                    <rights type="list">
-                        <value>backbone.mon_check_command.setup_monitoring</value>
-                    </rights>
-                </icswData>
-            </route>
             <route name="main.backgroundinfo">
                 <stateData type="dict" url_str="/sysbackgroundinfo" templateUrl_str="icsw/main/sysbackgroundinfo.html"/>
                 <icswData type="dict" pageTitle_str="Background Job Information">

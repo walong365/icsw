@@ -109,7 +109,12 @@ if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
         )
     )
 
-if DEBUG:
+if "overall.style" in _cs:
+    ICSW_OVERALL_STYLE = _cs["overall.style"]
+else:
+    ICSW_OVERALL_STYLE = "normal"
+
+if _cs.get("missing.timezone.is.critical", True):
     warnings.filterwarnings(
         "error",
         r"DateTimeField .* received a naive datetime",

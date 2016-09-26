@@ -52,6 +52,31 @@ angular.module(
             if value?
                 node.setAttribute(key, value)
         return $(node)
+]).service("icswOverallStyle",
+[
+    "$q", "ICSW_SIGNALS", "$rootScope",
+(
+    $q, ICSW_SIGNALS, $rootScope,
+) ->
+    _style = "normal"
+    return {
+        get: () ->
+            return _style
+        set: (name) ->
+            _style = name
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"))
+    }
+]).controller("icswBodyCtrl",
+[
+    "$scope", "icswOverallStyle", "$rootScope", "ICSW_SIGNALS",
+(
+    $scope, icswOverallStyle, $rootScope, ICSW_SIGNALS,
+) ->
+    icswOverallStyle.set("normal");
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
+        $scope.overall_style = icswOverallStyle.get()
+    )
+    $scope.overall_style = icswOverallStyle.get()
 ]).directive("icswDeviceListInfo",
 [
    "$q", "icswSimpleAjaxCall", "$templateCache", "ICSW_URLS",
@@ -724,6 +749,8 @@ angular.module(
         ICSW_ROUTE_RIGHTS_INVALID: "icsw.route.rights.invalid"
         # send when fair-share tree is selected
         ICSW_RMS_FAIR_SHARE_TREE_SELECTED: "icsw.rms.fair.share.tree.selected"
+        # overall style changed
+        ICSW_OVERALL_STYLE_CHANGED: "icsw.overall.style.changed"
 
         # local signals (for local $emit / $on)
 

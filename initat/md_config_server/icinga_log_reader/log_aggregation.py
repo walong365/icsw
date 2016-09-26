@@ -49,7 +49,7 @@ def pairwise(iterable):
 class icinga_log_aggregator(object):
     def __init__(self, log_reader):
         '''
-        :param icinga_log_reader log_reader:
+        :param IcingaLogReader log_reader:
         '''
         self.log_reader = log_reader
 
@@ -58,7 +58,7 @@ class icinga_log_aggregator(object):
 
     def update(self):
         from initat.md_config_server.config import global_config
-        if global_config["ENABLE_ICINGA_LOG_PARSING"]:  # this is actually also checked in icinga_log_reader.update()
+        if global_config["ENABLE_ICINGA_LOG_PARSING"]:  # this is actually also checked in IcingaLogReader.update()
             if 'sqlite' in settings.DATABASES['default']['ENGINE']:
                 self.log(
                     "log aggregation is not supported with the sqlite database backend",
