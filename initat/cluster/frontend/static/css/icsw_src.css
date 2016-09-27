@@ -318,9 +318,9 @@ img.normal {
 .yamm .dropdown-menu {
     left: auto;
 }
-.yamm-content[class*="col-"] {
+.yamm-content [class*="col-"] {
     min-width: 240px;
-    padding: 0 0 0 15px;
+    padding: 5px 0 8px 15px;
 }
 /* YAMM END */
 
@@ -358,7 +358,7 @@ img.normal {
 }
 .navbar p {
     /* column heading */
-    margin: 0 0 3px;
+    margin: 0 0 0px;
     font-size: 14px;
 }
 .navbar .disabled {
