@@ -788,13 +788,14 @@ device_asset_module = angular.module(
             memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
 
         if tab_type == -1
-
+            blockUI.start("Please wait...")
             icswAssetPackageTreeService.reload($scope.$id).then(
                 (tree) ->
                     tab.tab_heading_text = "Scan (ID:" + asset_batch.idx + ")"
                     tab.packages = resolve_package_assets(tree, asset_batch.packages, asset_batch.packages_install_times)
 
                     asset_batch.$$device.info_tabs.push(tab)
+                    blockUI.stop()
             )
 
         if tab_type == 0
