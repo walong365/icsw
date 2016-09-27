@@ -243,6 +243,7 @@ angular.module(
         else
             sub_scope.set_scan_mode("base")
 
+        scan_performed = false
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.device.network.scan.form"))(sub_scope)
@@ -255,6 +256,7 @@ angular.module(
                         d.reject("form not valid")
                     else
                         blockUI.start("Starting scan")
+                        scan_performed = true
                         $scope.device_tree.register_device_scan(dev, sub_scope.scan_settings).then(
                             (ok) ->
                                 $scope.reload_everything(sub_scope.$id, false).then(
@@ -282,6 +284,27 @@ angular.module(
                     ["network_info"]
                     $scope.local_helper_obj
                 )
+                $scope.reload_everything(sub_scope.$id, false)
+
+                if scan_performed
+                    blockUI.start("Starting scan")
+                    $timeout(
+                        () ->
+                            $scope.device_tree.register_device_scan(dev, sub_scope.scan_settings).then(
+                                $scope.peer_list.build_luts()
+                                $scope.peer_list.enrich_device_tree($scope.device_tree, $scope.local_helper_obj, $scope.remote_helper_obj)
+                                $scope.device_tree.build_helper_luts(
+                                    ["network_info"]
+                                    $scope.local_helper_obj
+                                )
+                                $scope.reload_everything(sub_scope.$id, true).then(
+                                  (res) ->
+                                      blockUI.stop()
+                                )
+                            )
+                        ,
+                        5000
+                    )
         )
         return
 
