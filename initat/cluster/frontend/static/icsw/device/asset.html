@@ -134,9 +134,7 @@
         </thead>
         <tbody>
             <tr ng-repeat-start="assetbatch in assetbatches_shown track by $index">
-                <td class="text-center">
-                    <span class="label label-success">{{assetbatch.idx}}</span>
-                </td>
+                <td class="text-center">{{ assetbatch.idx }}</td>
                 <td class="text-center">{{ assetbatch.$$run_start_day }}</td>
                 <td class="text-center">{{ assetbatch.$$run_start_hour }}</td>
                 <td class="text-center">{{ assetbatch.$$run_time }}</td>

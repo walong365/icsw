@@ -72,8 +72,7 @@ class ShallowPastAssetBatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetBatch
         fields = (
-            "idx", "device", "run_start_time", "run_time",
-            "num_runs_ok", "num_runs_error", "num_completed",
+            "idx", "device", "run_start_time", "run_time"
         )
 
 

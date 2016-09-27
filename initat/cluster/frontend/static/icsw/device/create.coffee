@@ -36,7 +36,7 @@ angular.module(
     $scope.base_open = true
     $scope.resolve_pending = false
     $scope.device_data = {
-        full_name: "www.orf.at"
+        full_name: "localhost"
         comment: "new device, created at " + moment().format()
         device_group: "newgroup"
         ip: ""
@@ -111,7 +111,7 @@ angular.module(
         ).then(
             (xml) =>
                 if $(xml).find("value[name='device_pk']").length
-                    $scope.device_data.full_name = ""
+                    $scope.device_data.full_name = "localhost"
                     defer = $q.defer()
                     $scope.device_tree._fetch_device(
                         parseInt($(xml).find("value[name='device_pk']").text())

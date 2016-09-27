@@ -338,11 +338,11 @@
             ></icsw-tools-button>
         </legend>
         <div ng-show="struct.shown">
-           {{ struct.asset_struct.used.length }} Assets Shown
+           {{ struct.asset_struct.used.length }} Inventory Entries Shown
             <icsw-tools-button
                 type="create"
                 size="xs"
-                value="add Asset"
+                value="add Inventory Entry"
                 ng-show="struct.asset_struct.unused.length && struct.asset_struct.num_available"
                 ng-click="add_assets($event)"
             ></icsw-tools-button>
