@@ -256,7 +256,6 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
     memory_modules = AssetHWMemoryEntrySerializer(many=True)
     gpus = AssetHWGPUEntrySerializer(many=True)
     hdds = AssetHWHDDEntrySerializer(many=True)
-    partitions = AssetHWLogicalEntrySerializer(many=True)
     displays = AssetHWDisplayEntrySerializer(many=True)
     packages_install_times = AssetPackageVersionInstallTimeSerializer(many=True)
 
@@ -268,7 +267,7 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
             "assetprocessentry_set", "assetlicenseentry_set",
             "assetupdateentry_set", "assetpcientry_set", "assetdmihead_set",
             "memory_modules", "memory_count", "cpus", "cpu_count", "gpus", "hdds",
-            "partitions", "displays"
+            "displays"
         )
 
 
@@ -313,7 +312,6 @@ class AssetBatchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetBatch
-        fields = ("idx", "run_start_time", "run_end_time", "num_runs", "num_completed", "num_runs_ok",
-                  "num_runs_error", "run_status", "run_result", "device", "run_time", "packages",
+        fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "packages",
                   "packages_install_times", "pending_updates", "installed_updates", "cpus", "memory_modules", "gpus",
                   "is_finished_processing")
