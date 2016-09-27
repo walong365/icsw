@@ -22,10 +22,7 @@
 import sys
 
 __all__ = [
-    "lock_entity",
-    "unlock_entity",
-    "show_locked_entities",
-    "show_cluster_id",
+    "main"
 ]
 
 
@@ -203,7 +200,10 @@ def show_locked_entities(opts):
             print("    {} ({})".format(ext_lic.ext_license, ext_lic.license))
 
 
-def show_cluster_id(opts):
-    from initat.cluster.backbone.models import device_variable
-
-    print device_variable.objects.get_cluster_id()
+def main(opts):
+    if opts.subcom == "lock_entity":
+        lock_entity(opts)
+    elif opts.subcom == "unlock_entity":
+        unlock_entity(opts)
+    elif opts.subcom == "show_locked_entities":
+        show_locked_entities(opts)

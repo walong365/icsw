@@ -470,7 +470,8 @@ menu_module = angular.module(
                             key: "caretdown"
                         }
                     )
-                if state.name == "$$USER_INFO"
+                if state.name == "$$USER_INFO" and overall_style == "normal"
+                    # addon for admin submenu
                     _user = icswUserService.get().user
                     if _user?
                         menu_subname = _user.login

@@ -44,7 +44,7 @@ from django.views.generic import View
 from rest_framework import viewsets
 from rest_framework.response import Response
 
-from initat.cluster.backbone.models import user, login_history, background_job
+from initat.cluster.backbone.models import user, login_history, background_job, RouteTrace
 from initat.cluster.backbone.serializers import user_serializer, background_job_serializer
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.constants import GEN_CS_NAME
@@ -344,6 +344,18 @@ class UserView(viewsets.ViewSet):
         context["is_anonymous"] = not context["is_authenticated"]
         serializer = user_serializer([_user], context=context, many=True)
         return Response(serializer.data)
+
+
+class RouteViewSet(viewsets.ViewSet):
+    def register(self, request):
+        if request.user.is_authenticated():
+            RouteTrace.objects.create(
+                session_id=request.session.session_key,
+                user_id=request.user.idx,
+                from_name=request.data["from"],
+                to_name=request.data["to"],
+            )
+        return Response([])
 
 
 class BackgroundJobViewSet(viewsets.ViewSet):

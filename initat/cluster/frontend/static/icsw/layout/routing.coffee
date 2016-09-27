@@ -69,11 +69,11 @@ menu_module = angular.module(
 ]).controller("icswMainCtrl", [
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
-    "icswBreadcrumbs", "$state", "$window",
+    "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS",
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
-    icswBreadcrumbs, $state, $window,
+    icswBreadcrumbs, $state, $window, Restangular, ICSW_URLS,
 ) ->
     hotkeys.bindTo($scope).add(
         # combo: "ctrl+h"
@@ -124,6 +124,17 @@ menu_module = angular.module(
         from_main = if from_state.name.match(/^main/) then true else false
         console.log "$stateChangeSuccess from '#{from_state.name}' (#{from_main}) to '#{to_state.name}' (#{to_main})"
         $scope.struct.route_counter++
+        Restangular.all(
+            ICSW_URLS.SESSION_REGISTER_RC.slice(1)
+        ).post(
+            {
+                from: from_state.name
+                to: to_state.name
+            }
+        ).then(
+            (res) ->
+                console.log "*", res
+        )
         if to_state.name == "logout"
             # ignore
             true

@@ -92,6 +92,14 @@ class ConfigCheckObject(object):
                     context=self.__process.zmq_context,
                 )
 
+    def create_hfp(self):
+        from initat.tools import hfp_tools
+        _cur_hfp = hfp_tools.create_db_entry(
+            self.__sql_info.effective_device,
+            hfp_tools.get_local_hfp()
+        )
+        print unicode(_cur_hfp)
+
     @property
     def CS(self):
         return self.__cs
