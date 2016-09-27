@@ -21,45 +21,51 @@
 #
 import os
 
-from initat.cluster.backbone.available_licenses import LicenseEnum
-from initat.icsw.license.license_lock import lock_entity, unlock_entity, show_locked_entities, show_cluster_id
-from initat.icsw.license.register_cluster import register_cluster, install_license_file
-
 
 class Parser(object):
     def link(self, sub_parser, **kwargs):
-        def run_with_db(fun):
-            def decorated_fun(*args, **kwargs):
-                # don't do this in global scope, we might not have a database on this machine
-                os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
-
-                import django
-                django.setup()
-
-                fun(*args, **kwargs)
-            return decorated_fun
+        if not kwargs["server_mode"]:
+            return
+        from initat.cluster.backbone.available_licenses import LicenseEnum
 
         lic_parser = sub_parser.add_parser("license", help="license utility")
         lic_sub_parser = lic_parser.add_subparsers()
 
-        show_cluster_id_parser = lic_sub_parser.add_parser("show_cluster_id")
-        show_cluster_id_parser.set_defaults(execute=run_with_db(show_cluster_id))
+        show_cluster_id_parser = lic_sub_parser.add_parser("show_cluster_id", help="Show Cluster ID")
+        show_cluster_id_parser.set_defaults(subcom="show_cluster_id", execute=self._execute)
+        show_cluster_id_parser.add_argument(
+            "--without-fp",
+            default=False,
+            action="store_true",
+            help="do not display Server Fingerprint [%(default)s]",
+        )
+        show_cluster_id_parser.add_argument(
+            "--raw",
+            default=False,
+            action="store_true",
+            help="enable raw mode (only data will be printed) [%(default)s]",
+        )
 
         reg_cluster_parser = lic_sub_parser.add_parser(
             "register_cluster",
             help="register your cluster at init.at and obtain a license file"
         )
-        reg_cluster_parser.set_defaults(execute=run_with_db(register_cluster))
+        reg_cluster_parser.set_defaults(subcom="register", execute=self._execute)
         reg_cluster_parser.add_argument("-u", "--user", dest='user', required=True, help="your icsw user name")
         reg_cluster_parser.add_argument("-p", "--password", dest='password', required=True, help="your icsw password")
-        reg_cluster_parser.add_argument("-n", "--cluster-name", dest='cluster_name', required=True,
-                                        help="cluster name as provided by init.at")
+        reg_cluster_parser.add_argument(
+            "-n",
+            "--cluster-name",
+            dest='cluster_name',
+            required=True,
+            help="cluster name as provided by init.at"
+        )
 
         install_cluster_parser = lic_sub_parser.add_parser(
             "install_license",
             help="install already downloaded license file"
         )
-        install_cluster_parser.set_defaults(execute=run_with_db(install_license_file))
+        install_cluster_parser.set_defaults(subcom="install_license", execute=self._execute)
         install_cluster_parser.add_argument("licensefile", help="License file")
 
         def add_lock_arguments(p):
@@ -70,12 +76,24 @@ class Parser(object):
             p.add_argument("-u", "--user", dest="user", help="user name")
             p.add_argument("-e", "--ext-license", dest="ext_license", help="service (=check command)")
         lock_parser = lic_sub_parser.add_parser("lock", help="lock entities from using a license")
-        lock_parser.set_defaults(execute=run_with_db(lock_entity))
+        lock_parser.set_defaults(subcom="lock", execute=self._execute)
         add_lock_arguments(lock_parser)
 
         unlock_parser = lic_sub_parser.add_parser("unlock", help="unlock entities from using a license")
-        unlock_parser.set_defaults(execute=run_with_db(unlock_entity))
+        unlock_parser.set_defaults(subcom="unlock", execute=self._execute)
         add_lock_arguments(unlock_parser)
 
-        show_lock_parser = lic_sub_parser.add_parser("show_locks")
-        show_lock_parser.set_defaults(execute=run_with_db(show_locked_entities))
+        show_lock_parser = lic_sub_parser.add_parser("show_locks", help="show current locks")
+        show_lock_parser.set_defaults(subcom="show_locks", execute=self._execute)
+
+    def _execute(self, opt_ns):
+        os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
+
+        import django
+        django.setup()
+        if opt_ns.subcom in ["lock_entity", "unlock_entity", "show_locked_entities"]:
+            from .license_lock import main
+            main(opt_ns)
+        else:
+            from .main import main
+            main(opt_ns)

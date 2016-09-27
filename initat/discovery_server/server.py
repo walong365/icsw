@@ -24,9 +24,15 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, DeviceScanLock
+from initat.cluster.backbone.models.asset.dynamic_asset import AssetRun, \
+    AssetBatch
+from initat.cluster.backbone.models.asset.asset_functions import RunResult, \
+    BatchStatus
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.discovery_server.event_log.event_log_poller import EventLogPollerProcess
-from initat.discovery_server.generate_assets_process import GenerateAssetsProcess
+from initat.discovery_server.event_log.event_log_poller import \
+    EventLogPollerProcess
+from initat.discovery_server.generate_assets_process import \
+    GenerateAssetsProcess
 from initat.snmp.process import SNMPProcessContainer
 from initat.tools import configfile, logging_tools, process_tools, \
     server_command, server_mixins, threading_tools, net_tools
@@ -59,6 +65,14 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self._init_network_sockets()
         self.register_func("snmp_run", self._snmp_run)
         self.register_func("generate_assets", self._generate_assets)
+        self.register_func(
+            "process_assets_finished",
+            self._process_assets_finished,
+        )
+        self.register_func(
+            "process_batch_assets_finished",
+            self._process_batch_assets_finished,
+        )
         self.register_func("send_msg", self.send_msg)
         db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
@@ -209,6 +223,26 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         _src_proc, _src_pid = args[0:2]
         self.spc.start_batch(*args[2:], **kwargs)
 
-    def _generate_assets(self, *args, **kwargs):
-        # send to generate_assets process
-        self.send_to_process("generate_assets", "process_assets", args[2])
+    def _generate_assets(self, process, src_process, asset_run_id):
+        # trigger the run-level asset generation in the generate_assets process
+        self.send_to_process("generate_assets", "process_assets", asset_run_id)
+
+    def _process_assets_finished(self, process, src_process, asset_run_id):
+        asset_run = AssetRun.objects.get(idx=asset_run_id)
+        asset_run.state_finished(RunResult.SUCCESS)
+        asset_batch = asset_run.asset_batch
+        if asset_batch.run_status == BatchStatus.FINISHED_RUNS:
+            asset_batch.state_start_generation()
+            asset_batch.save()
+            self.send_to_process(
+                "generate_assets",
+                "process_batch_assets",
+                asset_batch.idx,
+            )
+
+    def _process_batch_assets_finished(self, process, src_process,
+                                       asset_batch_id):
+        asset_batch = AssetBatch.objects.get(idx=asset_batch_id)
+        asset_batch.state_finished()
+        asset_batch.save()
+        self.log("Finished asset batch {}.".format(asset_batch.idx))

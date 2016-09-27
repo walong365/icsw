@@ -45,7 +45,7 @@ from initat.cluster.backbone.models.functions import check_empty_string, \
     check_integer, to_system_tz, cluster_timezone
 from initat.cluster.backbone.signals import BootsettingsChanged
 from initat.constants import GEN_CS_NAME
-from initat.tools import config_store, logging_tools
+from initat.tools import config_store, logging_tools, server_command
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +63,7 @@ __all__ = [
     "LogSource",
     "DeviceBootHistory",
     "log_source_lookup",
+    "HardwareFingerPrint",
 ]
 
 
@@ -99,6 +100,44 @@ class ActiveDeviceScanEnum(Enum):
     SNMP = "snmp"
     # host monitoring (2001 tcp)
     HM = "hostmon"
+
+
+class HardwareFingerPrint(models.Model):
+    # every device with a cluster-server config creates such a HFP
+    idx = models.AutoField(primary_key=True)
+    # device
+    device = models.ForeignKey("backbone.device")
+    # fingerprint
+    fingerprint = models.TextField(default="")
+    # changed
+    changecount = models.IntegerField(default=1)
+    # creation date
+    date = models.DateTimeField(auto_now_add=True)
+
+    def update(self, new_fp):
+        self.fingerprint = new_fp
+        self.save()
+
+    @staticmethod
+    def serialize(in_obj):
+        return server_command.compress(in_obj, json=True)
+
+    @staticmethod
+    def deserialize(in_str):
+        return server_command.decompress(in_str, json=True)
+
+    def __unicode__(self):
+        return u"HFP for {} ({})".format(
+            unicode(self.device),
+            self.fingerprint,
+        )
+
+
+@receiver(signals.pre_save, sender=HardwareFingerPrint)
+def device_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        cur_inst.changecount += 1
 
 
 class device(models.Model):
