@@ -278,27 +278,29 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.fixed.scope.vars.overview">
-    <legend ng-show="struct.fixed_var_helper.num_used_vars">
-        Fixed Variable Fields ({{ struct.fixed_var_helper.num_used_vars }} Variables in {{ struct.fixed_var_helper.scope_structs.length }} Scopes)
-        <icsw-tools-button type="show" size="xs" is-show="struct.shown" ng-click="struct.shown = !struct.shown"></icsw-tools-button>
-    </legend>
-    <uib-tabset ng-show="struct.shown">
-        <uib-tab ng-repeat="scope_struct in struct.fixed_var_helper.scope_structs">
-            <uib-tab-heading>
-                {{ scope_struct.scope.name }}
-            </uib-tab-heading>
-            {{ scope_struct.num_set }} of {{ scope_struct.num_total }} Variables set
-            <icsw-tools-button size="sm" type="modify" ng-click="modify_fixed_scope($event, scope_struct.scope)"></icsw-tools-button>
-            <ul class="list-group">
-                <li class="list-group-item" ng-repeat="ivar in scope_struct.list">
-                    <code>{{ ivar.def.name }}</code>
-                    ({{ ivar.def.description }}):
-                    <span ng-show="ivar.set">{{ ivar.var.$var_value }}</span>
-                    <span ng-show="!ivar.set">N/A</span>
-                </li>
-            </ul>
-        </uib-tab>
-    </uib-tabset>
+    <fieldset>
+        <legend>
+            Fixed Variable Fields ({{ struct.fixed_var_helper.num_used_vars }} Variables in {{ struct.fixed_var_helper.scope_structs.length }} Scopes)
+            <icsw-tools-button type="show" size="xs" is-show="struct.shown" ng-click="struct.shown = !struct.shown"></icsw-tools-button>
+        </legend>
+        <uib-tabset ng-show="struct.shown">
+            <uib-tab ng-repeat="scope_struct in struct.fixed_var_helper.scope_structs">
+                <uib-tab-heading>
+                    {{ scope_struct.scope.name }}
+                </uib-tab-heading>
+                {{ scope_struct.num_set }} of {{ scope_struct.num_total }} Variables set
+                <icsw-tools-button size="sm" type="modify" ng-click="modify_fixed_scope($event, scope_struct.scope)"></icsw-tools-button>
+                <ul class="list-group">
+                    <li class="list-group-item" ng-repeat="ivar in scope_struct.list">
+                        <code>{{ ivar.def.name }}</code>
+                        ({{ ivar.def.description }}):
+                        <span ng-show="ivar.set">{{ ivar.var.$var_value }}</span>
+                        <span ng-show="!ivar.set">N/A</span>
+                    </li>
+                </ul>
+            </uib-tab>
+        </uib-tabset>
+    </fieldset>
 </script>
 
 <script type="text/ng-template" id="icsw.device.inventory.modify">
@@ -325,65 +327,67 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.static.asset.overview">
-    <legend ng-show="struct.asset_struct.used.length">
-        Static Assets ({{ struct.asset_struct.used.length }} of {{ struct.asset_tree.list.length }} set)
-        <icsw-tools-button
-            type="show"
-            size="xs"
-            is-show="struct.shown"
-            ng-click="struct.shown = !struct.shown"
-        ></icsw-tools-button>
-    </legend>
-    <div ng-show="struct.shown">
-       {{ struct.asset_struct.used.length }} Assets Shown
-        <icsw-tools-button
-            type="create"
-            size="xs"
-            value="add Asset"
-            ng-show="struct.asset_struct.unused.length && struct.asset_struct.num_available"
-            ng-click="add_assets($event)"
-        ></icsw-tools-button>
-        <table
-            class="table table-condensed table-hover table-striped"
-            style="width:auto;"
-            ng-show="struct.asset_struct.used.length"
-        >
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Type</th>
-                    <th>#Fields</th>
-                    <th>#Unused</th>
-                    <th>FieldInfo</th>
-                    <th colspan="2">Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr ng-repeat="asset in struct.asset_struct.used">
-                    <td>{{ asset.$$static_asset_template.name }}</td>
-                    <td>{{ asset.$$static_asset_template.$$staticAssetType }}</td>
-                    <td class="text-center">{{ asset.staticassetfieldvalue_set.length }}</td>
-                    <td class="text-center">
-                        <button ng-show="asset.$$unused_fields.length" ng-click="add_unused_fields($event, asset)" type="button" class="btn btn-xs btn-info">
-                            {{ asset.$$unused_fields.length }} <span class="fa fa-info-circle fa_icsw"></span>
-                        </button>
-                        <span ng-show="!asset.$$unused_fields.length">0</span>
-                    </td>
-                    <td>{{ asset.$$field_info }}</td>
-                    <td>
-                        <icsw-tools-button type="modify" size="xs" ng-click="modify_asset($event, asset)"></icsw-tools-button>
-                    </td>
-                    <td>
-                        <icsw-tools-button type="delete" size="xs" ng-click="delete_asset($event, asset)"></icsw-tools-button>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
+    <fieldset>
+        <legend>
+            Static Inventory Entries ({{ struct.asset_struct.used.length }} of {{ struct.asset_tree.list.length }} set)
+            <icsw-tools-button
+                type="show"
+                size="xs"
+                is-show="struct.shown"
+                ng-click="struct.shown = !struct.shown"
+            ></icsw-tools-button>
+        </legend>
+        <div ng-show="struct.shown">
+           {{ struct.asset_struct.used.length }} Assets Shown
+            <icsw-tools-button
+                type="create"
+                size="xs"
+                value="add Asset"
+                ng-show="struct.asset_struct.unused.length && struct.asset_struct.num_available"
+                ng-click="add_assets($event)"
+            ></icsw-tools-button>
+            <table
+                class="table table-condensed table-hover table-striped"
+                style="width:auto;"
+                ng-show="struct.asset_struct.used.length"
+            >
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Type</th>
+                        <th>#Fields</th>
+                        <th>#Unused</th>
+                        <th>FieldInfo</th>
+                        <th colspan="2">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="asset in struct.asset_struct.used">
+                        <td>{{ asset.$$static_asset_template.name }}</td>
+                        <td>{{ asset.$$static_asset_template.$$staticAssetType }}</td>
+                        <td class="text-center">{{ asset.staticassetfieldvalue_set.length }}</td>
+                        <td class="text-center">
+                            <button ng-show="asset.$$unused_fields.length" ng-click="add_unused_fields($event, asset)" type="button" class="btn btn-xs btn-info">
+                                {{ asset.$$unused_fields.length }} <span class="fa fa-info-circle fa_icsw"></span>
+                            </button>
+                            <span ng-show="!asset.$$unused_fields.length">0</span>
+                        </td>
+                        <td>{{ asset.$$field_info }}</td>
+                        <td>
+                            <icsw-tools-button type="modify" size="xs" ng-click="modify_asset($event, asset)"></icsw-tools-button>
+                        </td>
+                        <td>
+                            <icsw-tools-button type="delete" size="xs" ng-click="delete_asset($event, asset)"></icsw-tools-button>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </fieldset>
 </script>
 
 <script type="text/ng-template" id="icsw.device.static.asset.add">
-    <h3>Please select new template(s)</h3>
+    <h3>Please select new Template(s)</h3>
     <div ng-repeat="asset in unused_list" class="form-group row">
         <label class="control-label col-sm-6">
             {{ asset.name }} ({{ asset.$$staticAssetType }})
