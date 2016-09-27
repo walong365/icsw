@@ -100,6 +100,7 @@ class ConfigServiceEnum(models.Model):
     info = models.TextField(default="", blank=True)
     # is a root service and not a subservice (like image or kernel server)
     root_service = models.BooleanField(default=True)
+    # single instance, only allowed once
     date = models.DateTimeField(auto_now_add=True)
 
     @staticmethod

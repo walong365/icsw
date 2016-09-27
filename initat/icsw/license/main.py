@@ -19,24 +19,26 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import sys
 import os
+import sys
 import traceback
 import urllib
 import urllib2
 
 from lxml import etree
+
+from initat.cluster.backbone.models import License, device_variable
 from initat.tools import process_tools, hfp_tools
-from django.db.models import Q
-from initat.cluster.backbone.models import License, device_variable, device
-from initat.cluster.backbone.server_enums import icswServiceEnum
 
 __all__ = [
     "main",
 ]
 
 
-REGISTRATION_URL = "http://www.initat.org/cluster/registration"
+if process_tools.get_machine_name() in ["eddie"]:
+    REGISTRATION_URL = "http://localhost:8081/icsw/api/v2/GetLicenseFile"
+else:
+    REGISTRATION_URL = "http://www.initat.org/cluster/registration"
 
 
 def _install_license(content):
@@ -56,13 +58,15 @@ def _install_license(content):
 
     code = int(content_xml.find("header").get("code"))
     if code < 40:  # no error
-        lic_file_content = content_xml.xpath("//values/value[@name='license_file']")[0].text
-        # NOTE: this check currently isn't functional as the license file contains the creation time
-        if License.objects.filter(license_file=lic_file_content).exists():
-            print("License file already added.")
-        else:
-            License(file_name="uploaded_via_command_line", license_file=lic_file_content).save()
-            print("Successfully added license file.")
+        lic_file_node = content_xml.xpath("//values/value[@name='license_file']")
+        if len(lic_file_node):
+            lic_file_content = lic_file_node[0].text
+            # NOTE: this check currently isn't functional as the license file contains the creation time
+            if License.objects.filter(license_file=lic_file_content).exists():
+                print("License file already added.")
+            else:
+                License(file_name="uploaded_via_command_line", license_file=lic_file_content).save()
+                print("Successfully added license file.")
     else:
         print ("Exiting due to errors.")
         sys.exit(1)
@@ -76,7 +80,6 @@ def install_license_file(opts):
 
 
 def register_cluster(opts):
-    from initat.cluster.backbone.models import License, device_variable
 
     cluster_id = device_variable.objects.get_cluster_id()
     data = urllib.urlencode(
@@ -85,7 +88,7 @@ def register_cluster(opts):
             'password': opts.password,
             'cluster_name': opts.cluster_name,
             'cluster_id': cluster_id,
-            "server_fingerprint": hfp_tools.get_server_fp(serialize=True),
+            "fingerprint": hfp_tools.get_server_fp(serialize=True),
         }
     )
 
@@ -126,3 +129,5 @@ def main(opts):
         install_license_file(opts)
     elif opts.subcom == "show_cluster_id":
         show_cluster_id(opts)
+    else:
+        print("unknown subcom '{}'".format(opts.subcom))
