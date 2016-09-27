@@ -40,6 +40,7 @@ __all__ = [
     "AssetType",
     "ScanType",
     "RunStatus",
+    "BatchStatus",
     "RunResult",
     "PackageTypeEnum",
     "memory_entry_form_factors",
@@ -254,8 +255,18 @@ class ScanType(IntEnum):
 
 class RunStatus(IntEnum):
     PLANNED = 1
+    SCANNING = 2
+    FINISHED_SCANNING = 3
+    GENERATING_ASSETS = 4
+    FINISHED = 5
+
+
+class BatchStatus(IntEnum):
+    PLANNED = 1
     RUNNING = 2
-    ENDED = 3
+    FINISHED_RUNS = 3
+    GENERATING_ASSETS = 4
+    FINISHED = 5
 
 
 class RunResult(IntEnum):
