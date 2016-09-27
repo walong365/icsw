@@ -472,8 +472,9 @@ menu_module = angular.module(
                     )
                 if state.name == "$$USER_INFO" and overall_style == "normal"
                     # addon for admin submenu
-                    _user = icswUserService.get().user
-                    if _user?
+                    _user = icswUserService.get()
+                    if _user? and _user.user?
+                        _user = _user.user
                         menu_subname = _user.login
                         if _user.login != _user.login_name
                             menu_subname = "#{menu_subname} (via alias #{_user.login_name})"

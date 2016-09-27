@@ -133,7 +133,6 @@ menu_module = angular.module(
             }
         ).then(
             (res) ->
-                console.log "*", res
         )
         if to_state.name == "logout"
             # ignore
