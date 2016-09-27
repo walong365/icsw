@@ -31,9 +31,9 @@ from django.utils import timezone
 from lxml import etree
 
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network, \
-    device_variable, AssetRun, RunStatus, AssetType, ScanType, \
+    device_variable, AssetRun, RunStatus, BatchStatus, AssetType, ScanType, \
     AssetBatch, RunResult, DeviceDispatcherLink, DispatcherSettingScheduleEnum, \
-    ScheduleItem, DispatchSetting, DiscoverySource
+    ScheduleItem, DiscoverySource
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
@@ -637,23 +637,13 @@ class PlannedRunState(object):
         PlannedRunState.run_idx += 1
         self.run_idx = PlannedRunState.run_idx
         _db_obj = self.run_db_obj
-        _db_obj.start()
-        if _db_obj.asset_batch.run_status != RunStatus.RUNNING:
-            _db_obj.asset_batch.run_status = RunStatus.RUNNING
+        _db_obj.state_start_scan()
+        if _db_obj.asset_batch.run_status != BatchStatus.RUNNING:
+            _db_obj.asset_batch.state_start_runs()
             _db_obj.asset_batch.save()
         self.__pdrf.num_running += 1
 
-    def stop(self, result, error_string=""):
-        self.running = False
-        self.run_db_obj.stop(result, error_string=error_string)
-        self.__pdrf.remove_planned_run(self)
-
-    def cancel(self, error_string="run canceled"):
-        self.stop(RunResult.FAILED, error_string=error_string)
-        self.generate_assets()
-
     def store_nrpe_result(self, state, result):
-        _db_obj = self.run_db_obj
         _stdout, _stderr = result
         self.log(
             "stdout has {}, stderr has {} [{:d}]".format(
@@ -664,16 +654,14 @@ class PlannedRunState(object):
         )
         s = _stdout
         if s is None or state != 0:
-            _res = RunResult.FAILED
+            res = RunResult.FAILED
         else:
-            _res = RunResult.SUCCESS
-        _db_obj.raw_result_str = s
-        self.stop(_res)
-        self.generate_assets()
+            res = RunResult.SUCCESS
+        self._store_result(res, "", s)
 
     def store_zmq_result(self, result):
         _db_obj = self.run_db_obj
-        s, _error_string = (None, "")
+        s, error_string = (None, "")
 
         if result is not None:
             try:
@@ -684,24 +672,43 @@ class PlannedRunState(object):
                 # store the whole XML tree
                 s = etree.tostring(result.tree)
             except:
-                _error_string = "ParseProblem: {}".format(
+                error_string = "ParseProblem: {}".format(
                     process_tools.get_except_info()
                 )
                 self.log(
-                    _error_string,
+                    error_string,
                     logging_tools.LOG_LEVEL_ERROR
                 )
                 s = None
         if s is None:
-            _res = RunResult.FAILED
+            res = RunResult.FAILED
         else:
-            _res = RunResult.SUCCESS
-        _db_obj.raw_result_str = s
-        self.stop(_res, _error_string)
+            res = RunResult.SUCCESS
+        self._store_result(res, error_string, s)
+
+    def _store_result(self, result, error_string, raw_result_str):
+        self._stop()
+        self.run_db_obj.state_finished_scan(
+            result,
+            error_string,
+            raw_result_str
+        )
         self.generate_assets()
 
+    def cancel(self):
+        self._stop()
+        self.run_db_obj.state_cancel(RunResult.FAILED, "run canceled")
+
+    def _stop(self):
+        self.running = False
+        self.__pdrf.remove_planned_run(self)
+
     def generate_assets(self):
-        self.__pdrf.disp.discovery_process.send_pool_message("generate_assets", self.run_db_obj.idx)
+        self.run_db_obj.state_start_generation()
+        self.__pdrf.disp.discovery_process.send_pool_message(
+            "generate_assets",
+            self.run_db_obj.idx,
+        )
 
 
 class PlannedRunsForDevice(object):
@@ -715,11 +722,9 @@ class PlannedRunsForDevice(object):
         # numbers of jobs running
         self.num_running = 0
         self.to_delete = False
-        self.asset_batch = AssetBatch(
-            device=self.device,
-            run_start_time=timezone.now(),
-            run_status=RunStatus.PLANNED,
-        )
+        self.asset_batch = AssetBatch(device=self.device)
+        self.asset_batch.state_init()
+        self.asset_batch.save()
         self.zmq_connections = []
 
     def start_feed(self, cmd_tuples):
@@ -736,7 +741,7 @@ class PlannedRunsForDevice(object):
         )
 
     def cancel(self, err_cause):
-        self.log("canceling because auf '{}'".format(err_cause), logging_tools.LOG_LEVEL_ERROR)
+        self.log("canceling because of '{}'".format(err_cause), logging_tools.LOG_LEVEL_ERROR)
         # make copy of list
         for _run in [_x for _x in self.planned_runs]:
             _run.stop(RunResult.CANCELED, error_string="run canceled")
@@ -890,17 +895,17 @@ class Dispatcher(object):
 
         # prestep: close all pending AssetRuns
         _pending = 0
-        for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.RUNNING)).select_related("asset_batch"):
+        for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.SCANNING)).select_related("asset_batch"):
             diff_time = abs((_now - pending_run.run_start_time).seconds)
             # get rid of old(er) running (==most likely broken) runs
             if diff_time > 1800:
-                pending_run.stop(RunResult.FAILED, "runaway run")
+                pending_run.state_finished(RunResult.FAILED, "runaway run")
                 _pending += 1
         for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.PLANNED)).select_related("asset_batch"):
             diff_time = abs((_now - pending_run.created).seconds)
             # get rid of old(er) running (==most likely broken) runs
             if diff_time > 1800:
-                pending_run.stop(RunResult.FAILED, "runaway run")
+                pending_run.state_finished(RunResult.FAILED, "runaway run")
                 _pending += 1
         if _pending:
             self.log("Closed {}".format(logging_tools.get_plural("pending AssetRun", _pending)), logging_tools.LOG_LEVEL_ERROR)
