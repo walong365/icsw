@@ -516,10 +516,6 @@ class AssetRun(models.Model):
         return self.asset_batch.gpus.all()
 
     @property
-    def partitions(self):
-        return self.asset_batch.partitions.all()
-
-    @property
     def displays(self):
         return self.asset_batch.displays.all()
 
@@ -1263,31 +1259,15 @@ class AssetBatch(models.Model):
     run_start_time = models.DateTimeField(null=True, blank=True)
     run_end_time = models.DateTimeField(null=True, blank=True)
 
-    # XXX Remove this!
-    # total number of runs
-    num_runs = models.IntegerField(default=0)
-    # number of runs completed
-    num_completed = models.IntegerField(default=0)
-    # number of runs ok / error
-    num_runs_ok = models.IntegerField(default=0)
-    num_runs_error = models.IntegerField(default=0)
-
     # status
     run_status = models.IntegerField(
         choices=[(status.value, status.name) for status in BatchStatus],
         default=BatchStatus.PLANNED.value,
     )
-    # XXX Remove this!
-    # result
-    run_result = models.IntegerField(
-        choices=[(status.value, status.name) for status in RunResult],
-        default=RunResult.UNKNOWN.value,
-    )
+
     # error string
     error_string = models.TextField(default="")
-    # total run time in seconds
-    # XXX Remove this!
-    run_time = models.IntegerField(default=0)
+
     device = models.ForeignKey("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
@@ -1307,9 +1287,20 @@ class AssetBatch(models.Model):
     pending_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_pending_updates")
     installed_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_installed_updates")
 
-    # TODO: Remove this.
-    partitions = models.ManyToManyField(AssetHWLogicalEntry)
     displays = models.ManyToManyField(AssetHWDisplayEntry)
+
+    @property
+    def is_finished_processing(self):
+        if self.run_status == BatchStatus.FINISHED:
+            return True
+        return False
+
+    @property
+    def run_time(self):
+        if self.run_start_time and self.run_end_time:
+            return (self.run_end_time - self.run_start_time).seconds
+
+        return None
 
     def state_init(self):
         self.run_start_time = timezone.now()
@@ -1346,19 +1337,6 @@ class AssetBatch(models.Model):
                    for r in self.assetrun_set.all()):
                 self.run_result = RunResult.SUCCESS
             self.save()
-
-    @property
-    def is_finished_processing(self):
-        for assetrun in self.assetrun_set.all():
-            if not assetrun.is_finished_processing():
-                return False
-        return True
-
-    def completed(self):
-        for assetrun in self.assetrun_set.all():
-            if not assetrun.run_status == BatchStatus.ENDED:
-                return False
-        return True
 
     def __repr__(self):
         return unicode(self)

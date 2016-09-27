@@ -1533,10 +1533,11 @@ class PDFReportGenerator(ReportGenerator):
                            ])
 
         data = [["Name", "Serialnumber", "Size"]]
-        for hdd in hardware_report_ar.asset_batch.partition_table.partition_disc_set.all():
-            data.append([Paragraph(str(hdd.disc), style_sheet["BodyText"]),
-                             Paragraph(str("N/A"), style_sheet["courier"]),
-                             Paragraph(str("N/A"), style_sheet["BodyText"])])
+        if hardware_report_ar.asset_batch.partition_table:
+            for hdd in hardware_report_ar.asset_batch.partition_table.partition_disc_set.all():
+                data.append([Paragraph(str(hdd.disc), style_sheet["BodyText"]),
+                                 Paragraph(str("N/A"), style_sheet["courier"]),
+                                 Paragraph(str("N/A"), style_sheet["BodyText"])])
 
         p0_3 = Paragraph('<b>HDDs:</b>', style_sheet["BodyText"])
         t_3 = Table(data,
@@ -1547,37 +1548,37 @@ class PDFReportGenerator(ReportGenerator):
                            ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
-        data = [["Name", "Size", "Free", "Graph"]]
-        for partition in hardware_report_ar.asset_batch.partitions.all():
-            d = Drawing(10, 10)
-            r = Rect(0, 0, 130, 12)
-            r.fillColor = colors.red
-            d.add(r)
-
-            if partition.size is not None and partition.free is not None:
-                free_length = int((float(partition.free) / float(partition.size)) * 130)
-                free_start = 130 - free_length
-
-                r = Rect(free_start, 0, free_length, 12)
-                r.fillColor = colors.green
-                d.add(r)
-            else:
-                d = Paragraph("N/A", style_sheet["BodyText"])
-
-            data.append([Paragraph(str(partition.name), style_sheet["BodyText"]),
-                         Paragraph(sizeof_fmt(partition.size), style_sheet["BodyText"]),
-                         Paragraph(sizeof_fmt(partition.free), style_sheet["BodyText"]),
-                         d])
-
-        p0_4 = Paragraph('<b>Partitions:</b>', style_sheet["BodyText"])
-        t_4 = Table(data,
-                    colWidths=(available_width * 0.88 * 0.25,
-                               available_width * 0.88 * 0.25,
-                               available_width * 0.88 * 0.25,
-                               available_width * 0.88 * 0.25),
-                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
-                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
-                           ])
+        # data = [["Name", "Size", "Free", "Graph"]]
+        # for partition in hardware_report_ar.asset_batch.partitions.all():
+        #     d = Drawing(10, 10)
+        #     r = Rect(0, 0, 130, 12)
+        #     r.fillColor = colors.red
+        #     d.add(r)
+        #
+        #     if partition.size is not None and partition.free is not None:
+        #         free_length = int((float(partition.free) / float(partition.size)) * 130)
+        #         free_start = 130 - free_length
+        #
+        #         r = Rect(free_start, 0, free_length, 12)
+        #         r.fillColor = colors.green
+        #         d.add(r)
+        #     else:
+        #         d = Paragraph("N/A", style_sheet["BodyText"])
+        #
+        #     data.append([Paragraph(str(partition.name), style_sheet["BodyText"]),
+        #                  Paragraph(sizeof_fmt(partition.size), style_sheet["BodyText"]),
+        #                  Paragraph(sizeof_fmt(partition.free), style_sheet["BodyText"]),
+        #                  d])
+        #
+        # p0_4 = Paragraph('<b>Partitions:</b>', style_sheet["BodyText"])
+        # t_4 = Table(data,
+        #             colWidths=(available_width * 0.88 * 0.25,
+        #                        available_width * 0.88 * 0.25,
+        #                        available_width * 0.88 * 0.25,
+        #                        available_width * 0.88 * 0.25),
+        #             style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+        #                    ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+        #                    ])
 
         data = [["Banklabel", "Formfactor", "Memorytype", "Manufacturer", "Capacity"]]
         for memory_module in hardware_report_ar.asset_batch.memory_modules.all():
@@ -1602,7 +1603,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[p0_1, t_1],
                 [p0_2, t_2],
                 [p0_3, t_3],
-                [p0_4, t_4],
+                #[p0_4, t_4],
                 [p0_5, t_5]]
 
         t_body = Table(data, colWidths=(available_width * 0.10, available_width * 0.90),
@@ -2466,11 +2467,11 @@ def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
                 #    else:
                 #        hdd_str = str(hdd)
 
-                for partition in assetrun.asset_batch.partitions.all():
-                    if partition_str != "N/A":
-                        partition_str += "\n{}".format(str(partition))
-                    else:
-                        partition_str = str(partition)
+                # for partition in assetrun.asset_batch.partitions.all():
+                #     if partition_str != "N/A":
+                #         partition_str += "\n{}".format(str(partition))
+                #     else:
+                #         partition_str = str(partition)
 
                 for memory_module in assetrun.asset_batch.memory_modules.all():
                     if memory_str != "N/A":
@@ -2509,7 +2510,7 @@ def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
                         selected_asset_runs.append(assetrun)
                 break
             elif asset_batch_selection_mode == 1:
-                if assetbatch.num_runs == assetbatch.num_completed and assetbatch.num_runs_error == 0:
+                if assetbatch.is_finished_processing():
                     selected_asset_runs = assetbatch.assetrun_set.all()
             elif asset_batch_selection_mode == 2:
                 for assetrun in assetbatch.assetrun_set.all():
@@ -2804,12 +2805,12 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         #
         #     row_writer_func(row)
 
-        for partition in ar.asset_batch.partitions.all():
-            row = base_row[:]
-
-            row.append(str(partition))
-
-            row_writer_func(row)
+        # for partition in ar.asset_batch.partitions.all():
+        #     row = base_row[:]
+        #
+        #     row.append(str(partition))
+        #
+        #     row_writer_func(row)
 
         for display in ar.asset_batch.displays.all():
             row = base_row[:]
