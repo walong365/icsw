@@ -230,7 +230,6 @@ device_asset_module = angular.module(
         obj.$$run_start_day = "N/A"
         obj.$$run_start_hour = "N/A"
         obj.$$run_time = "N/A"
-        obj.$$run_progress = "N/A"
         obj.$$expanded = false
         obj.$$device = $scope.struct.device_tree.all_lut[obj.device]
 
@@ -241,8 +240,6 @@ device_asset_module = angular.module(
             _moment = moment(obj.run_start_time)
             obj.$$run_start_day = _moment.format("YYYY-MM-DD")
             obj.$$run_start_hour = _moment.format("HH:mm:ss")
-
-        obj.$$run_progress = Math.round((((obj.num_completed)/ obj.num_runs) * 100))
 
     salt_schedule_item = (obj) ->
         obj.$$planned_time = moment(obj.planned_date).format("YYYY-MM-DD HH:mm:ss")
@@ -791,13 +788,14 @@ device_asset_module = angular.module(
             memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
 
         if tab_type == -1
-
+            blockUI.start("Please wait...")
             icswAssetPackageTreeService.reload($scope.$id).then(
                 (tree) ->
                     tab.tab_heading_text = "Scan (ID:" + asset_batch.idx + ")"
                     tab.packages = resolve_package_assets(tree, asset_batch.packages, asset_batch.packages_install_times)
 
                     asset_batch.$$device.info_tabs.push(tab)
+                    blockUI.stop()
             )
 
         if tab_type == 0

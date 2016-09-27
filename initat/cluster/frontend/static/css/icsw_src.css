@@ -296,8 +296,33 @@ img.condensed {
 img.normal {
     height: 58px;
 }
-
 /* BODY END */
+
+/* YAMM START */
+.yamm.nav,
+.yamm.collapse,
+.yamm.dropup,
+.yamm.dropdown {
+    position: static;
+}
+.yamm.container {
+    position: relative;
+}
+.yamm.yamm-content {
+    padding: 10px 15px;
+}
+.yamm.dropdown.yamm-fw .dropdown-menu {
+    left: 0;
+    right: 0;
+}
+.yamm .dropdown-menu {
+    left: auto;
+}
+.yamm-content [class*="col-"] {
+    min-width: 240px;
+    padding: 5px 0 8px 15px;
+}
+/* YAMM END */
 
 /* MENU START */
 .navbar.normal {
@@ -309,9 +334,6 @@ img.normal {
 }
 .yamm .nav, .yamm .collapse, .yamm .dropup, .yamm .dropdown {
     position: static;
-}
-.navbar-nav > li {
-    float: left;
 }
 .nav > li {
     display: block;
@@ -331,27 +353,28 @@ img.normal {
     line-height: 17px;
 }
 .navbar form.normal {
+    /* menu searchfield */
     margin-top: 22px;
 }
 .navbar p {
-    margin: 0 0 3px;
+    /* column heading */
+    margin: 0 0 0px;
     font-size: 14px;
 }
 .navbar .disabled {
     color: #bbbbbb;
 }
-.yamm-content [class*="col-"] {
-    min-width: 240px;
-    padding: 0 0 0 15px;
-}
 .yamm-content li, .yamm-content li > a {
+    /* space between links */
     padding: 2px 0px;
 }
 .navbar-right li:last-of-type > a {
+    /* usermenu (username below) */
     padding-bottom: 3px;
     text-align: right;
 }
 .navbar-right li:last-of-type > a > div {
+    /* usermenu (username below) */
     text-align: center;
     font-size: 12px;
     padding-right: 0px;
@@ -359,29 +382,3 @@ img.normal {
 }
 /* MENU END */
 
-/* YAMM START */
-
-.yamm.nav,
-.yamm.collapse,
-.yamm.dropup,
-.yamm.dropdown {
-    position: static;
-}
-.yamm.container {
-    position: relative;
-}
-.yamm.dropdown-menu {
-    left: auto;
-}
-.yamm.yamm-content {
-    padding: 10px 15px;
-}
-.yamm.dropdown.yamm-fw .dropdown-menu {
-    left: 0;
-    right: 0;
-}
-
-.yamm-content[class*="col-"] {
-    padding: 0px 5px 0px 15px;
-}
-/* YAMM END */

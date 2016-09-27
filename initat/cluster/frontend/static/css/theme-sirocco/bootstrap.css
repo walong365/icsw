@@ -5040,46 +5040,46 @@ a.thumbnail.active {
 .alert-success {
   background-color: rgba(146, 170, 0, 0.48);
   border-color: rgba(145, 141, 0, 0.48);
-  color: #ffffff;
+  color: #555555;
 }
 .alert-success hr {
   border-top-color: rgba(119, 116, 0, 0.48);
 }
 .alert-success .alert-link {
-  color: #e6e6e6;
+  color: #3b3b3b;
 }
 .alert-info {
   background-color: rgba(76, 157, 131, 0.3);
   border-color: rgba(64, 133, 99, 0.3);
-  color: #ffffff;
+  color: #555555;
 }
 .alert-info hr {
   border-top-color: rgba(56, 116, 87, 0.3);
 }
 .alert-info .alert-link {
-  color: #e6e6e6;
+  color: #3b3b3b;
 }
 .alert-warning {
   background-color: rgba(226, 151, 45, 0.5);
   border-color: rgba(224, 112, 32, 0.5);
-  color: #ffffff;
+  color: #555555;
 }
 .alert-warning hr {
   border-top-color: rgba(202, 101, 28, 0.5);
 }
 .alert-warning .alert-link {
-  color: #e6e6e6;
+  color: #3b3b3b;
 }
 .alert-danger {
   background-color: rgba(227, 61, 20, 0.25);
   border-color: rgba(213, 25, 19, 0.25);
-  color: #ffffff;
+  color: #555555;
 }
 .alert-danger hr {
   border-top-color: rgba(190, 22, 17, 0.25);
 }
 .alert-danger .alert-link {
-  color: #e6e6e6;
+  color: #3b3b3b;
 }
 @-webkit-keyframes progress-bar-stripes {
   from {
@@ -5692,76 +5692,76 @@ button.list-group-item-danger.active:focus {
   border-bottom-color: #92aa00;
 }
 .panel-success {
-  border-color: rgba(145, 141, 0, 0.48);
+  border-color: #709f36;
 }
 .panel-success > .panel-heading {
   color: #ffffff;
-  background-color: rgba(146, 170, 0, 0.48);
-  border-color: rgba(145, 141, 0, 0.48);
+  background-color: #709f36;
+  border-color: #709f36;
 }
 .panel-success > .panel-heading + .panel-collapse > .panel-body {
-  border-top-color: rgba(145, 141, 0, 0.48);
+  border-top-color: #709f36;
 }
 .panel-success > .panel-heading .badge {
-  color: rgba(146, 170, 0, 0.48);
+  color: #709f36;
   background-color: #ffffff;
 }
 .panel-success > .panel-footer + .panel-collapse > .panel-body {
-  border-bottom-color: rgba(145, 141, 0, 0.48);
+  border-bottom-color: #709f36;
 }
 .panel-info {
-  border-color: rgba(64, 133, 99, 0.3);
+  border-color: #4c9d83;
 }
 .panel-info > .panel-heading {
   color: #ffffff;
-  background-color: rgba(76, 157, 131, 0.3);
-  border-color: rgba(64, 133, 99, 0.3);
+  background-color: #4c9d83;
+  border-color: #4c9d83;
 }
 .panel-info > .panel-heading + .panel-collapse > .panel-body {
-  border-top-color: rgba(64, 133, 99, 0.3);
+  border-top-color: #4c9d83;
 }
 .panel-info > .panel-heading .badge {
-  color: rgba(76, 157, 131, 0.3);
+  color: #4c9d83;
   background-color: #ffffff;
 }
 .panel-info > .panel-footer + .panel-collapse > .panel-body {
-  border-bottom-color: rgba(64, 133, 99, 0.3);
+  border-bottom-color: #4c9d83;
 }
 .panel-warning {
-  border-color: rgba(224, 112, 32, 0.5);
+  border-color: #e2972d;
 }
 .panel-warning > .panel-heading {
   color: #ffffff;
-  background-color: rgba(226, 151, 45, 0.5);
-  border-color: rgba(224, 112, 32, 0.5);
+  background-color: #e2972d;
+  border-color: #e2972d;
 }
 .panel-warning > .panel-heading + .panel-collapse > .panel-body {
-  border-top-color: rgba(224, 112, 32, 0.5);
+  border-top-color: #e2972d;
 }
 .panel-warning > .panel-heading .badge {
-  color: rgba(226, 151, 45, 0.5);
+  color: #e2972d;
   background-color: #ffffff;
 }
 .panel-warning > .panel-footer + .panel-collapse > .panel-body {
-  border-bottom-color: rgba(224, 112, 32, 0.5);
+  border-bottom-color: #e2972d;
 }
 .panel-danger {
-  border-color: rgba(213, 25, 19, 0.25);
+  border-color: #bb3d1e;
 }
 .panel-danger > .panel-heading {
   color: #ffffff;
-  background-color: rgba(227, 61, 20, 0.25);
-  border-color: rgba(213, 25, 19, 0.25);
+  background-color: #bb3d1e;
+  border-color: #bb3d1e;
 }
 .panel-danger > .panel-heading + .panel-collapse > .panel-body {
-  border-top-color: rgba(213, 25, 19, 0.25);
+  border-top-color: #bb3d1e;
 }
 .panel-danger > .panel-heading .badge {
-  color: rgba(227, 61, 20, 0.25);
+  color: #bb3d1e;
   background-color: #ffffff;
 }
 .panel-danger > .panel-footer + .panel-collapse > .panel-body {
-  border-bottom-color: rgba(213, 25, 19, 0.25);
+  border-bottom-color: #bb3d1e;
 }
 .embed-responsive {
   position: relative;

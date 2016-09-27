@@ -14,13 +14,13 @@
                     </uib-tab-heading>
                     <h4>
                         <span ng-show="dev.act_partition_table">
-                            Partition Table '{{ dev.act_partition_table.name}}',
+                            Partition Table '{{ dev.act_partition_table.name}}'
                         </span>
                         <span class="text-danger" ng-show="!dev.act_partition_table">
-                            No Partition Table defined,
+                            No Partition Table defined
                         </span>
-                        <icsw-tools-button type="create" size="xs" value="fetch partition info" ng-click="fetch($event, dev)"></icsw-tools-button>
-                        <icsw-tools-button type="delete" size="xs" value="clear" ng-show="dev.act_partition_table" ng-click="clear($event, dev)" ng-show="dev.act_partition_table"></icsw-tools-button>
+                        <!--<icsw-tools-button type="create" size="xs" value="fetch partition info" ng-click="fetch($event, dev)"></icsw-tools-button>
+                        <icsw-tools-button type="delete" size="xs" value="clear" ng-show="dev.act_partition_table" ng-click="clear($event, dev)" ng-show="dev.act_partition_table"></icsw-tools-button>-->
                         <icsw-tools-button type="modify" size="xs" value="use {{ dev.partition_table.name }}" ng-click="use($event, dev)" ng-show="dev.partition_table"></icsw-tools-button>
                     </h4>
                     <table

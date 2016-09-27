@@ -172,7 +172,7 @@
             </route>
             <route name="main.statushistory">
                 <stateData type="dict" url_str="/statushistory" templateUrl_str="icsw/main/status_history.html"/>
-                <icswData type="dict" pageTitle_str="History Graphs">
+                <icswData type="dict" pageTitle_str="Status History">
                     <licenses type="list">
                         <value>reporting</value>
                     </licenses>
@@ -217,7 +217,7 @@
                     <licenses type="list">
                         <value>kpi</value>
                     </licenses>
-                    <menuEntry type="dict" icon_str="fa-code-fork" name_str="KPIs"/>
+                    <menuEntry type="dict" icon_str="fa-code-fork" name_str="Key Performance Indicators"/>
                     <rights type="list">
                         <value>backbone.kpi.kpi</value>
                     </rights>
@@ -227,11 +227,11 @@
         <routeSubGroup name_str="Settings">
             <route name="main.kpisettings">
                 <stateData type="dict" url_str="/kpi/config" template_str="&lt;icsw-config-kpi&gt;&lt;/icsw-config-kpi&gt;"/>
-                <icswData type="dict" pageTitle_str="KPI Settings">
+                <icswData type="dict" pageTitle_str="Key Performance Indicator Setup">
                     <licenses type="list">
                         <value>kpi</value>
                     </licenses>
-                    <menuEntry type="dict" icon_str="fa-code-fork" name_str="KPI Settings"/>
+                    <menuEntry type="dict" icon_str="fa-code-fork" name_str="KPI Setup"/>
                     <rights type="list">
                         <value>backbone.kpi.kpi</value>
                     </rights>

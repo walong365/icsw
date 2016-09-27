@@ -3,76 +3,77 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.status_history_overview">
-    <h3>
-        Status History
-        <span ng-show="struct.devices.length"> for {{ struct.devices.length }} devices</span>
-        <span ng-show="struct.loading" class="text-warning">Fetching data...</span>
-    </h3>
+    <div class="container-fluid">
+        <h3>
+            Status History
+            <span ng-show="struct.devices.length"> for {{ struct.devices.length }} Devices</span>
+            <span ng-show="struct.loading" class="text-warning">Fetching Data ...</span>
+        </h3>
 
-    <div class="panel panel-default" ng-if="struct.device_tree">
-        <div class="panel-heading">
-            <h4>
-                Showing data
-                <span ng-show="struct.timespan_info" class="text-warning">
-                    ({{ struct.timespan_info }})
-                </span>
-                <span ng-if="!struct.timespan_error && !struct.timespan_info">
-                    from <strong>{{ get_time_frame().start_str }}</strong> to <strong>{{ get_time_frame().end_str }}</strong>:
-                </span>
-            </h4>
-        </div>
-
-        <div class="panel-body">
-            <div class="form-inline">
-                Timerange:
-                <div class="form-group">
-                    &nbsp;
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-                            <span class="glyphicon glyphicon-time"></span>
-                            {{ struct.duration_type }} <span class="caret"></span>
-                        </button>
-                        <ul class="dropdown-menu">
-                            <li ng-repeat="dur in get_allowed_durations()" ng-click="set_duration_type(dur)">
-                                <a>{{ dur }}</a>
-                            </li>
-                        </ul>
-                    </div>
-                    <div class="input-group">
-                        <input type="text"
-                            class="form-control"
-                            uib-datepicker-popup="{{ date_options.format }}"
-                            ng-model="struct.startdate_dp"
-                            is-open="date_options.$$opened"
-                            datepicker-options="date_options"
-                            close-text="Close"
-                        >
-                            <span class="input-group-btn">
-                                <button type="button" class="btn btn-default" ng-click="open_popup()">
-                                    <i class="glyphicon glyphicon-calendar"></i>
-                                </button>
-                            </span>
-                        </input>
-                    </div>
-                    <icsw-tools-button type="reload" size="xs" ng-show="!struct.loading" ng-click="reload_data($event)"></icsw-tools-button>
-                </div>
+        <div class="panel panel-default" ng-if="struct.device_tree">
+            <div class="panel-heading">
+                <h4>
+                    Showing Data
+                    <span ng-show="struct.timespan_info" class="text-warning">
+                        ({{ struct.timespan_info }})
+                    </span>
+                    <span ng-if="!struct.timespan_error && !struct.timespan_info">
+                        from <strong>{{ get_time_frame().start_str }}</strong> to <strong>{{ get_time_frame().end_str }}</strong>:
+                    </span>
+                </h4>
             </div>
-            <h4 class="alert alert-danger" style="width: 300px" ng-if="struct.timespan_error ">{{ struct.timespan_error }}</h4>
+
+            <div class="panel-body">
+                <div class="form-inline">
+                    Timerange:
+                    <div class="form-group">
+                        &nbsp;
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
+                                <span class="glyphicon glyphicon-time"></span>
+                                {{ struct.duration_type }} <span class="caret"></span>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li ng-repeat="dur in get_allowed_durations()" ng-click="set_duration_type(dur)">
+                                    <a>{{ dur }}</a>
+                                </li>
+                            </ul>
+                        </div>
+                        <div class="input-group">
+                            <input type="text"
+                                class="form-control"
+                                uib-datepicker-popup="{{ date_options.format }}"
+                                ng-model="struct.startdate_dp"
+                                is-open="date_options.$$opened"
+                                datepicker-options="date_options"
+                                close-text="Close"
+                            >
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default" ng-click="open_popup()">
+                                        <i class="glyphicon glyphicon-calendar"></i>
+                                    </button>
+                                </span>
+                            </input>
+                        </div>
+                        <icsw-tools-button type="reload" ng-show="!struct.loading" ng-click="reload_data($event)"></icsw-tools-button>
+                    </div>
+                </div>
+                <h4 class="alert alert-danger" style="width: 300px" ng-if="struct.timespan_error ">{{ struct.timespan_error }}</h4>
+            </div>
         </div>
+
+        <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="!struct.loading">
+            <uib-tabset>
+                <uib-tab
+                    ng-repeat="device in struct.devices"
+                    heading="{{ device.full_name }}"
+                    select="enabled_device_lut[device.idx] = device.idx"
+                >
+                    <icsw-device-status-history-device icsw-device="device"></icsw-device-status-history-device>
+                </uib-tab>
+            </uib-tabset>
+        </icsw-tools-ensure-device-selection>
     </div>
-
-    <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="!struct.loading">
-        <uib-tabset>
-            <uib-tab
-                ng-repeat="device in struct.devices"
-                heading="{{ device.full_name }}"
-                select="enabled_device_lut[device.idx] = device.idx"
-            >
-                <icsw-device-status-history-device icsw-device="device"></icsw-device-status-history-device>
-            </uib-tab>
-        </uib-tabset>
-    </icsw-tools-ensure-device-selection>
-
 </script>
 
 <script type="text/ng-template" id="icsw.device.status_history_device">

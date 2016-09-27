@@ -508,6 +508,7 @@ angular.module(
                 en_list = aft_dict[scope.filter_settings.en_filter]
                 # selected list
                 sel_list = aft_dict[scope.filter_settings.sel_filter]
+
                 devtree = icswDeviceTreeService.current()
                 act_sel = icswActiveSelectionService.get_selection()
                 for entry in devtree.all_list
@@ -527,7 +528,7 @@ angular.module(
                             # show disabled (device OR device_group)
                             en_flag = not entry.enabled or (not devtree.get_group(entry).enabled)
                     # selected
-                    selected = entry.idx of act_sel.tot_dev_sel
+                    selected = entry.idx in act_sel.tot_dev_sel
                     sel_flag = selected in sel_list
                     # monitoring
                     mon_f = scope.filter_settings.mon_filter

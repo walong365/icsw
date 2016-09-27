@@ -210,3 +210,6 @@ table.rotateheaders th {
 .label {
     border-radius: 1px;
 }
+.btn-info > .text-info {
+    color: #ffffff;
+}

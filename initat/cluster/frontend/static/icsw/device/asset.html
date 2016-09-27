@@ -129,19 +129,15 @@
                 <th st-sort="$$run_start_day" class="text-center">Scan Day</th>
                 <th class="text-center">Scan Hour</th>
                 <th class="text-center">Scan Runtime</th>
-                <th class="text-center">Scan Progress</th>
                 <th class="text-center">Action</th>
             </tr>
         </thead>
         <tbody>
             <tr ng-repeat-start="assetbatch in assetbatches_shown track by $index">
-                <td class="text-center">
-                    <span class="label label-success">{{assetbatch.idx}}</span>
-                </td>
+                <td class="text-center">{{ assetbatch.idx }}</td>
                 <td class="text-center">{{ assetbatch.$$run_start_day }}</td>
                 <td class="text-center">{{ assetbatch.$$run_start_hour }}</td>
                 <td class="text-center">{{ assetbatch.$$run_time }}</td>
-                <td class="text-center">{{ assetbatch.$$run_progress }} % </td>
                 <td class="text-center">
                     <div>
                         <button type="button" class="btn btn-sm btn-primary" ng-disabled="!assetbatch.is_finished_processing" ng-click="open_in_new_tab(assetbatch, -1)">{{ assetbatch.is_finished_processing ? "Open in new Tab" : "Still Processing..." }}</button>
