@@ -1362,7 +1362,6 @@ class AssetBatch(models.Model):
                     arg_value = etree.fromstring(blob)
 
             run_results[arg_name] = arg_value
-        print 'run_results:', run_results
 
         # check if we have the necessary asset runs
         if not ('win32_tree' in run_results or 'lshw_tree' in run_results):
