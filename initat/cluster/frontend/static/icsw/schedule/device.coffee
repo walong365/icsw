@@ -413,8 +413,9 @@ monitoring_device_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.schedule.dispatch.setting.form"))(sub_scope)
-                title: "Dispatcher settings for #{sub_scope.edit_obj.name}"
+                title: "Dispatcher Settings for #{sub_scope.edit_obj.name}"
                 ok_label: _ok_label
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
@@ -591,7 +592,7 @@ monitoring_device_module = angular.module(
             _dev_list = (entry for entry in $scope.struct.devices when entry.isSelected)
             if not _dev_list.length
                 return
-            _title = "#{_dev_list.length} devices"
+            _title = "#{_dev_list.length} Devices"
         else
             _dev_list = [obj]
             _title = obj.full_name
@@ -609,8 +610,9 @@ monitoring_device_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.schedule.device.form"))(sub_scope)
-                title: "Dispatcher settings for #{_title}"
+                title: "Dispatcher Settings for #{_title}"
                 ok_label: "Modify"
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
@@ -873,8 +875,9 @@ monitoring_device_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.static.asset.field.form"))(s2_scope)
-                title: "Static AssetTemplateField #{s2_scope.edit_obj.name}"
+                title: "Static Inventory Template Field #{s2_scope.edit_obj.name}"
                 ok_label: _ok_label
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if s2_scope.form_data.invalid
@@ -963,9 +966,9 @@ monitoring_device_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.static.asset.template.form"))(sub_scope)
-                title: "Static AssetTemplate #{sub_scope.edit_obj.name}"
+                title: "Static Inventory Template #{sub_scope.edit_obj.name}"
                 ok_label: _ok_label
-                css_class: "modal-wide"
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
