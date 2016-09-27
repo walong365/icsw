@@ -118,7 +118,7 @@ class server_process(
                 result = cur_s.hosts.columns("name", "state").call()
             except:
                 self.log(
-                    "cannot query socket {}: {}".format(sock_name, process_tools.get_except_info()),
+                    "cannot query socket {}: {}".format(cur_s.peer, process_tools.get_except_info()),
                     logging_tools.LOG_LEVEL_CRITICAL
                 )
             else:
@@ -221,7 +221,7 @@ class server_process(
             self.main_socket.send_unicode(srv_com)
         except:
             self.log(
-                "cannot send {:d} bytes to {}: {}".format(
+                "cannot send {:d} bytes to '{}': {}".format(
                     len(srv_com),
                     full_uuid,
                     process_tools.get_except_info(),
@@ -380,11 +380,6 @@ class server_process(
         return srv_com
 
     @RemoteCall(target_process="syncer")
-    def register_master(self, srv_com, **kwargs):
-        # call from satellite master to register itself at this satellite
-        return srv_com
-
-    @RemoteCall(target_process="syncer")
     def satellite_info(self, srv_com, **kwargs):
         # call from pure slave (==satellite) to this satellite master
         return srv_com
@@ -399,13 +394,6 @@ class server_process(
 
     @RemoteCall(target_process="syncer")
     def slave_command(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall()
-    def relayer_info(self, srv_com, **kwargs):
-        # pretend to be synchronous call such that reply is sent right away
-        self.send_to_process("syncer", "relayer_info", unicode(srv_com))
-        srv_com.set_result("ok processed command sync_http_users")
         return srv_com
 
     @RemoteCall()

@@ -26,11 +26,13 @@ import urllib
 import urllib2
 
 from lxml import etree
-from initat.tools import process_tools
+from initat.tools import process_tools, hfp_tools
+from django.db.models import Q
+from initat.cluster.backbone.models import License, device_variable, device
+from initat.cluster.backbone.server_enums import icswServiceEnum
 
 __all__ = [
-    "register_cluster",
-    "install_license_file",
+    "main",
 ]
 
 
@@ -82,7 +84,8 @@ def register_cluster(opts):
             'username': opts.user,
             'password': opts.password,
             'cluster_name': opts.cluster_name,
-            'cluster_id': cluster_id
+            'cluster_id': cluster_id,
+            "server_fingerprint": hfp_tools.get_server_fp(serialize=True),
         }
     )
 
@@ -95,3 +98,31 @@ def register_cluster(opts):
     else:
         content = res.read()
         _install_license(content)
+
+
+def show_cluster_id(opts):
+    if opts.raw:
+        print(device_variable.objects.get_cluster_id())
+    else:
+        print("")
+        print("ClusterID: {}".format(device_variable.objects.get_cluster_id()))
+        print("")
+    if not opts.without_fp:
+        _valid, _log = hfp_tools.server_dict_is_valid(hfp_tools.get_server_fp())
+        if not _valid:
+            print(_log)
+        else:
+            print(_log)
+            print("")
+            print("Current Server Fingerprint:")
+            print("")
+            print hfp_tools.get_server_fp(serialize=True)
+
+
+def main(opts):
+    if opts.subcom == "register_cluster":
+        register_cluster(opts)
+    elif opts.subcom == "install_license_file":
+        install_license_file(opts)
+    elif opts.subcom == "show_cluster_id":
+        show_cluster_id(opts)

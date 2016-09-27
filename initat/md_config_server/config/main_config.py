@@ -552,16 +552,23 @@ class main_config(object):
             sub_dir = os.path.join(self.__w_dir_dict["etc"], sub_dir_name)
             if os.path.isdir(sub_dir):
                 shutil.rmtree(sub_dir)
+        main_values.extend(
+            [
+                (
+                    "*broker_module", "{}/mk-livestatus/livestatus.o {}/live".format(
+                        self.__r_dir_dict[lib_dir_name],
+                        self.__r_dir_dict["var"]
+                    )
+                ),
+                (
+                    "event_broker_options", -1
+                )
+            ]
+        )
         if self.master:
             main_values.append(
                 ("cfg_dir", os.path.join(self.__r_dir_dict["etc"], "manual")),
             )
-            if True:
-                main_values.extend([
-                    ("*broker_module", "%s/mk-livestatus/livestatus.o %s/live" % (
-                        self.__r_dir_dict[lib_dir_name],
-                        self.__r_dir_dict["var"]))
-                ])
             if global_config["ENABLE_COLLECTD"]:
                 # setup perf
                 # collectd data:
@@ -601,9 +608,6 @@ class main_config(object):
                         ("host_perfdata_file_processing_command", "process-host-perfdata-file"),
                     ]
                 )
-            main_values.append(
-                ("event_broker_options", -1),
-            )
         else:
             # add global event handlers
             main_values.extend([

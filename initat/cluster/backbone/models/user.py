@@ -80,6 +80,7 @@ __all__ = [
     "window_manager",
     "login_history",
     "UserLogEntry",
+    "RouteTrace",
 ]
 
 
@@ -99,6 +100,24 @@ AC_READONLY = AC_MASK_READ
 AC_MODIFY = AC_MASK_READ | AC_MASK_MODIFY
 AC_CREATE = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE
 AC_FULL = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE | AC_MASK_DELETE
+
+
+# RouteChnages
+class RouteTrace(models.Model):
+    idx = models.AutoField(primary_key=True)
+    session_id = models.CharField(max_length=64, default="")
+    user_id = models.IntegerField(default=0)
+    from_name = models.CharField(max_length=64)
+    to_name = models.CharField(max_length=64)
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return u"RouteTrace, session {} ({:d}) from {} to {}".format(
+            self.session_id,
+            self.user_id,
+            self.from_name,
+            self.to_name,
+        )
 
 
 # auth_cache structure

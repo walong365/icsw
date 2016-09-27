@@ -95,6 +95,8 @@ class SyncConfig(object):
             # target config version directory for distribute
             self.__tcv_dict = {}
         else:
+            # hm, for send_* commands
+            self.slave_uuid = ""
             self.__dir_offset = ""
         self.monitor_server = monitor_server
         self.__dict = {}
@@ -150,6 +152,10 @@ class SyncConfig(object):
             )
         # print "SI", info
 
+    def handle_info_action(self, action, srv_com):
+        print "**", action
+        print srv_com.pretty_print()
+
     def get_send_data(self):
         _r_dict = {
             "master": True if not self.__slave_name else False,
@@ -174,17 +180,20 @@ class SyncConfig(object):
             )
         return _r_dict
 
-    def reload_after_sync(self):
+    def send_slave_command(self, action):
+        # sends slave command (==action) to local sync master
         self.__process.send_sync_command(
             server_command.srv_command(
                 command="slave_command",
-                action="reload_after_sync",
+                action=action,
                 master="1" if self.master else "0",
-                slave_uuid=self.slave_uuid if not self.master else "",
+                slave_uuid=self.slave_uuid,
             )
         )
-        # self.reload_after_sync_flag = True
-        # self._check_for_ras()
+
+    def reload_after_sync(self):
+        self.reload_after_sync_flag = True
+        self._check_for_ras()
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
@@ -284,97 +293,6 @@ class SyncConfig(object):
         self.__size_raw += len(unicode(srv_com))
         self.__num_com += 1
 
-    def distribute(self):
-        # max uncompressed send size
-        MAX_SEND_SIZE = 65536
-        cur_time = time.time()
-        if self.slave_ip:
-            self.config_version_send = self.config_version_build
-            if not self.__md_struct.num_runs:
-                self.__md_struct.sync_start = cluster_timezone.localize(datetime.datetime.now())
-            self.__md_struct.num_runs += 1
-            self.send_time = int(cur_time)
-            # to distinguish between iterations during a single build
-            self.send_time_lut[self.send_time] = self.config_version_send
-            self.dist_ok = False
-            self.log(
-                "start send to slave (version {:d} [{:d}])".format(
-                    self.config_version_send,
-                    self.send_time,
-                )
-            )
-            # number of atomic commands
-            self.__num_com = 0
-            self.__size_raw, size_data = (0, 0)
-            # send content of /etc
-            dir_offset = len(self.__w_dir_dict["etc"])
-            # generation 1 transfer
-            del_dirs = []
-            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                rel_dir = cur_dir[dir_offset + 1:]
-                del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
-            if del_dirs:
-                srv_com = server_command.srv_command(
-                    command="clear_directories",
-                    host="DIRECT",
-                    slave_name=self.__slave_name,
-                    port="0",
-                    version="{:d}".format(int(self.send_time)),
-                )
-                _bld = srv_com.builder()
-                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
-                self._send(srv_com)
-            _send_list, _send_size = ([], 0)
-            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                rel_dir = cur_dir[dir_offset + 1:]
-                for cur_file in sorted(file_names):
-                    full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
-                    full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
-                    if os.path.isfile(full_r_path):
-                        self.__tcv_dict[full_w_path] = self.config_version_send
-                        _content = file(full_r_path, "r").read()
-                        size_data += len(_content)
-                        if _send_size + len(_content) > MAX_SEND_SIZE:
-                            self._send(self._build_file_content(_send_list))
-                            _send_list, _send_size = ([], 0)
-                        # format: uid, gid, path, content_len, content
-                        _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
-            if _send_list:
-                self._send(self._build_file_content(_send_list))
-                _send_list, _send_size = ([], 0)
-            self.num_send[self.config_version_send] = self.__num_com
-            self.__md_struct.num_files = self.__num_com
-            self.__md_struct.num_transfers = self.__num_com
-            self.__md_struct.size_raw = self.__size_raw
-            self.__md_struct.size_data = size_data
-            self.__md_struct.save()
-            self._show_pending_info()
-        else:
-            self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
-
-    def _build_file_content(self, _send_list):
-        srv_com = server_command.srv_command(
-            command="file_content_bulk",
-            host="DIRECT",
-            slave_name=self.__slave_name,
-            port="0",
-            version="{:d}".format(int(self.send_time)),
-        )
-        _bld = srv_com.builder()
-
-        srv_com["file_list"] = _bld.file_list(
-            *[
-                _bld.file(
-                    _path,
-                    uid="{:d}".format(_uid),
-                    gid="{:d}".format(_gid),
-                    size="{:d}".format(_size)
-                ) for _uid, _gid, _path, _size, _content in _send_list
-            ]
-        )
-        srv_com["bulk"] = base64.b64encode(bz2.compress("".join([_parts[-1] for _parts in _send_list])))
-        return srv_com
-
     def _show_pending_info(self):
         cur_time = time.time()
         pend_keys = [key for key, value in self.__tcv_dict.iteritems() if type(value) != bool]
@@ -405,14 +323,7 @@ class SyncConfig(object):
         if self.reload_after_sync_flag and self.dist_ok:
             self.reload_after_sync_flag = False
             self.log("sending reload")
-            srv_com = server_command.srv_command(
-                command="call_command",
-                host="DIRECT",
-                port="0",
-                version="{:d}".format(int(self.config_version_send)),
-                cmdline="/etc/init.d/icinga reload"
-            )
-            self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
+            self.send_slave_command("reload_after_sync")
 
     def _parse_list(self, in_list):
         # return top_dir and simplified list

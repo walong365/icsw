@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -39,7 +39,7 @@ from .config import global_config
 from .license_checker import LicenseChecker
 
 
-class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
+class ServerProcess(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
     def __init__(self, options):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         long_host_name, mach_name = process_tools.get_fqdn()
@@ -58,6 +58,9 @@ class server_process(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
                 global_config["LOG_NAME"],
                 global_config["COMMAND"]
             )
+        else:
+            # create hardware fingerprint
+            self.CC.create_hfp()
         db_tools.close_connection()
         self.CC.read_config_from_db(
             [

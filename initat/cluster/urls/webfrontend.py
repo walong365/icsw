@@ -115,6 +115,7 @@ session_patterns = [
     url(r"get_authenticated_user$", session_views.UserView.as_view({"get": "get_user"}), name="get_authenticated_user"),
     url(r"get_csrf_token$", session_views.get_csrf_token.as_view(), name="get_csrf_token"),
     url(r"get_background_jobs$", session_views.BackgroundJobViewSet.as_view({"get": "get_bg_jobs"}), name="background_jobs"),
+    url(r"register_rc$", session_views.RouteViewSet.as_view({"post": "register"}), name="register_rc"),
 ]
 
 rms_patterns = [

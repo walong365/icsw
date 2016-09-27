@@ -32,8 +32,8 @@ from initat.server_version import VERSION_STRING
 
 
 def run_code(options):
-    from initat.cluster_server.server import server_process
-    server_process(options).loop()
+    from initat.cluster_server.server import ServerProcess
+    ServerProcess(options).loop()
 
 
 def main(opt_args=None):
