@@ -96,7 +96,7 @@
 
 <script type="text/ng-template" id="icsw.device.info.form">
     <fieldset>
-        <legend>Device Info for: '{{ edit_obj.$$full_device_name }}'<img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16" style="margin-left:5px;"></img></legend>
+        <legend>Device Information for: '{{ edit_obj.$$full_device_name }}'<img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16" style="margin-left:5px;"></img></legend>
         <div class="form-group row">
             <div class="col-md-6 col-xs-12">
                 <div class="row">
@@ -211,10 +211,8 @@
             </div>
         </div>
     </fieldset>
-    <fieldset>
-        <icsw-device-fixed-scope-vars-overview icsw-device="edit_obj"></icsw-device-fixed-scope-vars-overview>
-        <icsw-device-static-asset-overview icsw-device="edit_obj"></icsw-device-static-asset-overview>
-    </fieldset>
+    <icsw-device-fixed-scope-vars-overview icsw-device="edit_obj"></icsw-device-fixed-scope-vars-overview>
+    <icsw-device-static-asset-overview icsw-device="edit_obj"></icsw-device-static-asset-overview>
     <fieldset>
         <legend>Device Flags</legend>
         <div class="row" ng_show="struct.monitoring_tree.mon_device_templ_list">

@@ -359,7 +359,8 @@ partition_table_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.partition.table.layout.form"))(sub_scope)
-                title: "Create new Parition layout"
+                title: "Create new Partition Layout"
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
@@ -504,7 +505,8 @@ partition_table_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.partition.table.layout.form"))(sub_scope)
-                title: "Base settings of partition #{$scope.layout.name}"
+                title: "Base Settings of Partition #{$scope.layout.name}"
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
@@ -551,14 +553,15 @@ partition_table_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.partition.table.disc.form"))(sub_scope)
-                title: if create then "Settings for new disc" else "Settingfs for disc #{disc.name}"
+                title: if create then "Settings for new Disk" else "Settings for Disk #{disc.name}"
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
-                        blockUI.start("saving disc data...")
+                        blockUI.start("Saving Disk Data ...")
                         if create
                             $scope.part_tree.create_partition_disc($scope.layout, sub_scope.edit_obj).then(
                                 (ok) ->
@@ -592,7 +595,7 @@ partition_table_module = angular.module(
         )
 
     $scope.delete_disc = ($event, disc) ->
-        icswToolsSimpleModalService("Really delete Disc #{disc.name} ?").then(
+        icswToolsSimpleModalService("Really delete Disk #{disc.name}?").then(
             () =>
                 blockUI.start("deleting disc")
                 $scope.part_tree.delete_partition_disc($scope.layout, disc).then(
@@ -638,11 +641,12 @@ partition_table_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.partition.table.part.form"))(sub_scope)
-                title: if create then "Settings for new partition" else "Settingfs for partition ##{part.pnum}"
+                title: if create then "Settings for new Partition" else "Settings for Partition ##{part.pnum}"
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
-                        toaster.pop("warning", "form validation problem", "")
+                        toaster.pop("warning", "Form Validation Problem", "")
                         d.reject("form not valid")
                     else
                         blockUI.start("saving part data...")
@@ -679,7 +683,7 @@ partition_table_module = angular.module(
         )
 
     $scope.delete_part = ($event, disc, part) ->
-        icswToolsSimpleModalService("Really delete Partition ##{part.pnum} ?").then(
+        icswToolsSimpleModalService("Really delete Partition ##{part.pnum}?").then(
             () =>
                 blockUI.start("deleting part")
                 $scope.part_tree.delete_partition_part($scope.layout, disc, part).then(
@@ -711,14 +715,15 @@ partition_table_module = angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.partition.table.sys.form"))(sub_scope)
-                title: if create then "Settings for new Systempartition" else "Settingfs for Systempartition #{sys.name}"
+                title: if create then "Settings for new System Partition" else "Settings for System Partition #{sys.name}"
+                closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.invalid
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
-                        blockUI.start("saving Syspart data...")
+                        blockUI.start("Saving System Partition Data ...")
                         if create
                             $scope.part_tree.create_sys_partition($scope.layout, sub_scope.edit_obj).then(
                                 (ok) ->
