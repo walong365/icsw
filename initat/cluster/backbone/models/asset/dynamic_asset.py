@@ -1396,7 +1396,7 @@ class AssetBatch(models.Model):
         # set the GPUs
         self.gpus.all().delete()
         for gpus in hw.gpus:
-            new_gpu = AssetHWGPUEntry(gpuname=gpus.description)
+            new_gpu = AssetHWGPUEntry(gpuname=gpus.product)
             new_gpu.save()
             self.gpus.add(new_gpu)
 

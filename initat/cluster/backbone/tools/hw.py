@@ -306,7 +306,7 @@ class HardwareCPU(HardwareBase):
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394373%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'product': ('Description', str),
+        'product': ('Name', str),
         'manufacturer': ('Manufacturer', str),
         'version': ('Version', str),
         'serial': ('ProcessorId', str),
@@ -385,7 +385,7 @@ class HardwareGPU(HardwareBase):
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394512%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
         'description': ('Description', str),
-        'product': ('VideoProcessor', str),
+        'product': ('Name', str),
     }
 
     def __init__(self, lshw_tree=None, win32_tree=None, dmi_handle=None):
