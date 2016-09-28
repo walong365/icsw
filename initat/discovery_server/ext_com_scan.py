@@ -843,9 +843,6 @@ class Dispatcher(object):
                     DiscoverySource.PACKAGE,
                     align_time_to_baseline(_now, ds)
                 )
-                # print "Next scheduled run: %s" % next_run
-                # self.schedule_items.append(last_sched)
-                # self.schedule_items.sort(key=lambda s: s.planned_date)
                 ScheduleItem.objects.create(
                     device=next_run.device,
                     source=next_run.source,
@@ -854,9 +851,6 @@ class Dispatcher(object):
                 )
                 last_scheds[ds] = 1
                 last_sched[ds] = next_run
-            # import pprint
-            # pprint.pprint(last_sched)
-            # pprint.pprint(last_scheds)
 
             # plan next schedule when counter is below 2
             if last_scheds[ds] < 2:
@@ -865,9 +859,6 @@ class Dispatcher(object):
                     DiscoverySource.PACKAGE,
                     last_sched[ds].planned_date + get_time_inc_from_ds(ds)
                 )
-                # print "Next scheduled run: %s" % next_run
-                # self.schedule_items.append(next_run)
-                # self.schedule_items.sort(key=lambda s: s.planned_date)
                 ScheduleItem.objects.create(
                     device=next_run.device,
                     source=next_run.source,
@@ -897,7 +888,6 @@ class Dispatcher(object):
 
     def dispatch_call(self):
         # called every second, way too often...
-        # print ".", os.getpid()
         _now = timezone.now().replace(microsecond=0)
         # schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
 
@@ -924,8 +914,6 @@ class Dispatcher(object):
             "device__com_capability_list"
         ):
             if schedule_item.planned_date < _now:
-                # print "need to run: %s" % schedule_item.__repr__()
-
                 cap_dict = {
                     _com.matchcode: True for _com in schedule_item.device.com_capability_list.all()
                 }
