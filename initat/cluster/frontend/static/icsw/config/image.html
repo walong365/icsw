@@ -1,20 +1,22 @@
 <script type="text/ng-template" id="icsw/main/imagekernel.html">
-    <uib-tabset icsw-tools-add-acl-functions>
-        <uib-tab heading="Images" ng-if="has_menu_permission('image.modify_images')">
-            <icsw-image-overview></icsw-image-overview>
-        </uib-tab>
-        <uib-tab heading="Kernels" ng-if="has_menu_permission('kernel.modify_kernels')">
-            <icsw-kernel-overview></icsw-kernel-overview>
-        </uib-tab>
-    </uib-tabset>
+    <div class="container-fluid">
+        <uib-tabset icsw-tools-add-acl-functions>
+            <uib-tab heading="Images" ng-if="has_menu_permission('image.modify_images')">
+                <icsw-image-overview></icsw-image-overview>
+            </uib-tab>
+            <uib-tab heading="Kernels" ng-if="has_menu_permission('kernel.modify_kernels')">
+                <icsw-kernel-overview></icsw-kernel-overview>
+            </uib-tab>
+        </uib-tabset>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.image.overview">
     <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server...</div>
-    <h2>
-        Images ({{ struct.image_tree.list.length }} entries),
+    <h3>
+        Images ({{ struct.image_tree.list.length }} Entries)
         <icsw-tools-button type="search" size="xs" value="Scan for images" ng-click="scan_for_images()"></icsw-tools-button>
-    </h2>
+    </h3>
     <table
         st-table="entries_displayed"
         st-safe-src="struct.image_tree.list"
@@ -34,12 +36,12 @@
         <th st-sort="name">Name</th>
         <th st-sort="version">Version</th>
         <th st-sort="enabled">Enabled</th>
-        <th st-sort="architecture">arch</th>
+        <th st-sort="architecture">Arch</th>
         <th st-sort="sys_vendor">Sysinfo</th>
         <th st-sort="imagedevicehistory_set.length">Usecount</th>
-        <th st-sort="builds">#builds</th>
+        <th st-sort="builds">#Builds</th>
         <th st-sort="size_string">Size</th>
-        <th colspan="99" class="text-center">action</th>
+        <th colspan="99" class="text-center">Actions</th>
     </tr>
 </script>
 
@@ -92,9 +94,9 @@
     <tr>
         <th>Name</th>
         <th>SysInfo</th>
-        <th>arch</th>
+        <th>Arch</th>
         <th>Present</th>
-        <th>action</th>
+        <th>Action</th>
     </tr>
 </script>
 
@@ -110,20 +112,19 @@
 
 <script type="text/ng-template" id="icsw.image.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Image details</h2>
         <fieldset>
-            <legend>Base data</legend>
+            <legend>Base Data Image Details</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3">
+                <label class="control-label col-sm-3 icsw-formlabel">
                     Name
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" readonly type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="192" name="name" ng-model="edit_obj.name" readonly type="text"/>
                 </div>
             </div>
         </fieldset>
         <div class="form-group">
-            <label class="control-label col-sm-3">
+            <label class="control-label col-sm-3 icsw-formlabel">
                 Enabled
             </label>
             <div class="controls col-sm-7">
