@@ -21,7 +21,6 @@
 #
 
 import base64
-import bz2
 import datetime
 import glob
 import logging
@@ -34,7 +33,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, \
     LicenseUsage
 from initat.cluster.settings import TIME_ZONE
-from initat.tools import process_tools
+from initat.tools import process_tools, server_command
 
 logger = logging.getLogger("cluster.license_file_reader")
 
@@ -56,7 +55,7 @@ class LicenseFileReader(object):
 
     def _read(self, file_content):
         try:
-            signed_content_str = bz2.decompress(base64.b64decode(file_content))
+            signed_content_str = server_command.decompress(file_content)
         except:
             logger.error(
                 "Error reading uploaded license file: {}".format(

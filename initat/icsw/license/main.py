@@ -29,6 +29,7 @@ from lxml import etree
 
 from initat.cluster.backbone.models import License, device_variable
 from initat.tools import process_tools, hfp_tools
+from initat.cluster.backbone import license_file_reader
 
 __all__ = [
     "main",
@@ -61,6 +62,8 @@ def _install_license(content):
         lic_file_node = content_xml.xpath("//values/value[@name='license_file']")
         if len(lic_file_node):
             lic_file_content = lic_file_node[0].text
+            # validate
+            license_file_reader.LicenseFileReader(lic_file_content)
             # NOTE: this check currently isn't functional as the license file contains the creation time
             if License.objects.filter(license_file=lic_file_content).exists():
                 print("License file already added.")
