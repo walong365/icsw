@@ -1,4 +1,4 @@
-SET CPUZ_VERSION=1.77
+:: SET CPUZ_VERSION=1.77
 SET PCIUTILS_VERSION=3.4.0
 SET NSCP_VERSION=0.5.0.61
 SET WINPYTH_MAJOR=5
@@ -19,8 +19,8 @@ bin\wget -nc https://sourceforge.net/projects/winpython/files/WinPython_3.%WINPY
 bin\wget -nc https://sourceforge.net/projects/winpython/files/WinPython_3.%WINPYTH_MAJOR%/3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%/WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%Zero.exe
 
 :: Fetch cpuz
-bin\wget -nc http://download.cpuid.com/cpu-z/cpu-z_%CPUZ_VERSION%-en.zip
-bin\7z -o.\tmp x cpu-z_%CPUZ_VERSION%-en.zip
+:: bin\wget -nc http://download.cpuid.com/cpu-z/cpu-z_%CPUZ_VERSION%-en.zip
+:: bin\7z -o.\tmp x cpu-z_%CPUZ_VERSION%-en.zip
 
 bin\7z -o.\tmp\zero x WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%Zero.exe
 bin\7z -o.\tmp\full x WinPython-64bit-3.%WINPYTH_MAJOR%.%WINPYTH_MINOR%.%WINPYTH_MINORFIX%.exe
