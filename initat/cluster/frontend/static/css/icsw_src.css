@@ -362,7 +362,7 @@ img.normal {
     font-size: 15px;
 }
 .navbar .dropdown-menu a {
-    /* column heading */
+    /* sub menu font size */
     font-size: 14px;
 }
 .navbar .disabled {
@@ -385,4 +385,17 @@ img.normal {
     margin-top: 5px;
 }
 /* MENU END */
+
+/* SUBMENU START */
+.sub-breadcrumb .menupath span:not(:first-of-type)::before {
+    content: "» ";
+    vertical-align: 1px;
+}
+.sub-breadcrumb .menupath a{
+    color: #555555;
+}
+.sub-breadcrumb .menupath a[ui-sref=""]:hover{
+    text-decoration: none;
+}
+/* SUBMENU END */
 
