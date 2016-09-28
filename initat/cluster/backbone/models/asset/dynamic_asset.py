@@ -81,11 +81,8 @@ class AssetHWMemoryEntry(models.Model):
     formfactor = models.TextField(null=True)
     # i.e ddr/ddr2 if known
     memorytype = models.TextField(null=True)
-
     manufacturer = models.TextField(null=True)
-
     capacity = models.BigIntegerField(null=True)
-
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -106,11 +103,8 @@ class AssetHWMemoryEntry(models.Model):
 
 class AssetHWCPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-
     cpuname = models.TextField(null=True)
-
     numberofcores = models.IntegerField(null=True)
-
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -119,11 +113,8 @@ class AssetHWCPUEntry(models.Model):
 
 class AssetHWGPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-
     gpuname = models.TextField(null=True)
-
     driverversion = models.TextField(null=True)
-
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -132,13 +123,9 @@ class AssetHWGPUEntry(models.Model):
 
 class AssetHWLogicalEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-
     name = models.TextField(null=True)
-
     size = models.BigIntegerField(null=True)
-
     free = models.BigIntegerField(null=True)
-
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -147,15 +134,10 @@ class AssetHWLogicalEntry(models.Model):
 
 class AssetHWDisplayEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-
     name = models.TextField(null=True)
-
     type = models.TextField(null=True)
-
     xpixels = models.IntegerField(null=True)
-
     ypixels = models.IntegerField(null=True)
-
     manufacturer = models.TextField(null=True)
 
     def __unicode__(self):
