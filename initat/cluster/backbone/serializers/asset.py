@@ -27,7 +27,7 @@ from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry, \
     StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
     AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry, AssetHWGPUEntry, \
-    AssetHWHDDEntry, AssetHWLogicalEntry, AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
+    AssetHWLogicalEntry, AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
     AssetPackageVersionInstallTime
 
 from initat.cluster.backbone.models.partition import partition_disc

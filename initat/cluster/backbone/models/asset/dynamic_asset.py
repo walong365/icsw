@@ -52,7 +52,6 @@ __all__ = [
     "AssetHWMemoryEntry",
     "AssetHWCPUEntry",
     "AssetHWGPUEntry",
-    "AssetHWHDDEntry",
     "AssetHWLogicalEntry",
     "AssetHWDisplayEntry",
     "AssetHWNetworkDevice",
@@ -129,22 +128,6 @@ class AssetHWGPUEntry(models.Model):
 
     def __unicode__(self):
         return "{} [Version:{}]".format(self.gpuname, self.driverversion)
-
-
-# TODO: Remove this model.
-class AssetHWHDDEntry(models.Model):
-    idx = models.AutoField(primary_key=True)
-
-    name = models.TextField(null=True)
-
-    serialnumber = models.TextField(null=True)
-
-    size = models.BigIntegerField(null=True)
-
-    created = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "{} [Serialnumber:{} Size:{}]".format(self.name, self.serialnumber, sizeof_fmt(self.size))
 
 
 class AssetHWLogicalEntry(models.Model):
