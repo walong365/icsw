@@ -676,7 +676,7 @@ class server_check(object):
                 s_info_str
             )
         else:
-            self.server_info_str = "{} '{}'-server via sevice_type_enum {}".format(
+            self.server_info_str = "{} '{}'-server via service_type_enum {}".format(
                 self.server_origin,
                 self.__service_type_enum.name,
                 s_info_str

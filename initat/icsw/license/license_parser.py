@@ -50,14 +50,14 @@ class Parser(object):
             "register_cluster",
             help="register your cluster at init.at and obtain a license file"
         )
-        reg_cluster_parser.set_defaults(subcom="register", execute=self._execute)
+        reg_cluster_parser.set_defaults(subcom="register_cluster", execute=self._execute)
         reg_cluster_parser.add_argument("-u", "--user", dest='user', required=True, help="your icsw user name")
         reg_cluster_parser.add_argument("-p", "--password", dest='password', required=True, help="your icsw password")
         reg_cluster_parser.add_argument(
             "-n",
             "--cluster-name",
             dest='cluster_name',
-            required=True,
+            default="",
             help="cluster name as provided by init.at"
         )
 

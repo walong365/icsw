@@ -43,8 +43,7 @@ from initat.tools import server_command, pci_database, dmi_tools, \
 from initat.tools.server_command import srv_command
 from initat.cluster.backbone.models.asset.asset_functions import \
     PackageTypeEnum, ScanType, BaseAssetPackage, BatchStatus, RunStatus, \
-    RunResult, memory_entry_memory_types, AssetType, sizeof_fmt, \
-    memory_entry_form_factors
+    RunResult, AssetType, sizeof_fmt
 
 logger = logging.getLogger(__name__)
 
@@ -93,33 +92,17 @@ class AssetHWMemoryEntry(models.Model):
     def __unicode__(self):
         return "BankLabel:{} FormFactor:{} Memorytype:{} Manufacturer:{} Capacity:{}".format(
             self.banklabel,
-            self.get_name_of_form_factor(),
-            self.get_name_of_memory_type(),
+            self.formfactor,
+            self.memorytype,
             self.manufacturer,
             sizeof_fmt(self.capacity)
         )
 
     def get_name_of_form_factor(self):
-        if self.formfactor:
-            try:
-                return memory_entry_form_factors[int(self.formfactor)]
-            except ValueError:
-                return "Unknown"
-            except KeyError:
-                return self.formfactor
-
-        return "Unknown"
+        return self.formfactor
 
     def get_name_of_memory_type(self):
-        if self.memorytype:
-            try:
-                return memory_entry_memory_types[int(self.memorytype)]
-            except ValueError:
-                return "Unknown"
-            except KeyError:
-                return self.memorytype
-
-        return "Unknown"
+        return self.memorytype
 
 
 class AssetHWCPUEntry(models.Model):
@@ -1349,33 +1332,38 @@ class AssetBatch(models.Model):
     def generate_assets(self):
         """Set the batch level hardware information (.cpus, .memory_modules
         etc.) from the acquired asset runs."""
-        runs = [
-            ("win32_tree", AssetType.PRETTYWINHW, json.loads),
-            ("lshw_tree", AssetType.LSHW, etree.fromstring),
-            ]
+        runs = {
+            AssetType.PRETTYWINHW: "win32_tree",
+            AssetType.LSHW: "lshw_tree",
+            AssetType.DMI: "dmi_head",
+            }
 
         # search for relevant asset runs and Base64 decode and unzip the result
         run_results = {}
-        for (arg_name, asset_type, parser) in runs:
-            parsed = None
-            try:
-                run = self.assetrun_set.filter(run_type=asset_type).get()
-            except AssetRun.DoesNotExist:
-                pass
-            else:
-                if run.scan_type == ScanType.NRPE:
-                    blob = run.raw_result
-                elif run.scan_type == ScanType.HM:
-                    tree = run.raw_result
-                    blob = tree.xpath(
-                        'ns0:lshw_dump',
-                        namespaces=tree.nsmap
-                    )[0].text
-                    blob = bz2.decompress(base64.b64decode(blob))
+        for run in self.assetrun_set.all():
+            if run.run_type not in runs:
+                continue
 
-                # parse raw_data
-                parsed = parser(blob)
-            run_results[arg_name] = parsed
+            arg_name = runs[run.run_type]
+
+            if (run.run_status == RunStatus.FINISHED and
+                    run.run_result == RunResult.SUCCESS):
+                if run.run_type == AssetType.DMI:
+                    arg_value = run.assetdmihead_set.get()
+                else:
+                    if run.scan_type == ScanType.NRPE:
+                        blob = run.raw_result
+                        arg_value = json.loads(blob)
+                    elif run.scan_type == ScanType.HM:
+                        tree = run.raw_result
+                        blob = tree.xpath(
+                            'ns0:lshw_dump',
+                            namespaces=tree.nsmap
+                        )[0].text
+                        blob = bz2.decompress(base64.b64decode(blob))
+                        arg_value = etree.fromstring(blob)
+
+                run_results[arg_name] = arg_value
 
         # check if we have the necessary asset runs
         if not ('win32_tree' in run_results or 'lshw_tree' in run_results):
@@ -1397,6 +1385,8 @@ class AssetBatch(models.Model):
         for memory_module in hw.memory_modules:
             new_memory_module = AssetHWMemoryEntry(
                 banklabel=memory_module.bank_label,
+                formfactor=memory_module.form_factor,
+                memorytype=memory_module.type,
                 manufacturer=memory_module.manufacturer,
                 capacity=memory_module.capacity,
             )
@@ -1406,7 +1396,7 @@ class AssetBatch(models.Model):
         # set the GPUs
         self.gpus.all().delete()
         for gpus in hw.gpus:
-            new_gpu = AssetHWGPUEntry(gpuname=gpus.description)
+            new_gpu = AssetHWGPUEntry(gpuname=gpus.product)
             new_gpu.save()
             self.gpus.add(new_gpu)
 
