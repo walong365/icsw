@@ -359,6 +359,10 @@ img.normal {
 .navbar p {
     /* column heading */
     margin: 0 0 0px;
+    font-size: 15px;
+}
+.navbar .dropdown-menu a {
+    /* column heading */
     font-size: 14px;
 }
 .navbar .disabled {

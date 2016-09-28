@@ -1,49 +1,47 @@
 <script type="text/ng-template" id="icsw.package.install.overview">
-    <uib-tabset ng-show="struct.tree_loaded">
-        <div uib-alert class="alert-warning" ng-show="struct.repo_info_str">{{ struct.repo_info_str }}</div>
-        <uib-tab heading="Package repositories">
-            <div>
-                <h3>
-                    Repositories ({{ struct.repo_tree.list.length }} / {{  struct.repo_tree.filtered_list.length }} entries, {{ struct.repo_tree.service_list.length }} services),
-                    <icsw-tools-button type="reload" size="xs" value="rescan repos" ng-click="rescan_repos($event)"></icsw-tools-button>
-                    <icsw-tools-button type="reload" size="xs" value="Sync to clients" ng-click="sync_repos()"></icsw-tools-button>
-                    <icsw-tools-button type="delete" size="xs" value="Clear caches" ng-click="clear_caches()"></icsw-tools-button>
-                </h3>
-                <table st-table="repos_displayed" st-safe-src="struct.repo_tree.filtered_list" class="table table-condensed table-hover table-striped" style="width:auto;">
-                    <thead>
-                        <tr icsw-package-install-repository-head></tr>
-                        <tr>
-                            <td colspan="5" icsw-tools-pagination st-items-by-page="10" possible-items-by-page="10,20,50,100">
-                            </td>
-                            <td colspan="99">
-                                <div class="form-group">
-                                    only enabled
-                                    <icsw-tools-button type="show" is-show="struct.repo_tree.filters.show_enabled_repos" size="sm" ng-click="toggle_filter($event, 'show_enabled_repos')"></icsw-tools-button>
-                                    only published
-                                    <icsw-tools-button type="show" is-show="struct.repo_tree.filters.show_published_repos" size="sm" ng-click="toggle_filter($event, 'show_published_repos')"></icsw-tools-button>
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td colspan="99">
-                                <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
-                            </td>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr icsw-package-install-repository-row ng-repeat="obj in repos_displayed"></tr>
-                    </tbody>
-                </table>
-            </div>
-        </uib-tab>
-        <uib-tab heading="Package search">
-            <icsw-package-install-search-overview icsw-repositories="struct.repo_tree"></icsw-package-install-search-overview>
-        </uib-tab>
-        <uib-tab heading="Install">
-            <!-- we cannot use icsw-sel-man because of the isolated scope -->
-            <icsw-package-install-device></icsw-package-install-device>
-        </uib-tab>
-    </uib-tabset>
+    <div class="container-fluid">
+        <uib-tabset ng-show="struct.tree_loaded">
+            <div uib-alert class="alert-warning" ng-show="struct.repo_info_str">{{ struct.repo_info_str }}</div>
+            <uib-tab heading="Package Repositories">
+                <div>
+                    <h3>
+                        Repositories ({{ struct.repo_tree.list.length }} / {{  struct.repo_tree.filtered_list.length }} Entries, {{ struct.repo_tree.service_list.length }} Services)&nbsp;&nbsp;
+                        <icsw-tools-button type="reload" size="xs" value="Rescan Repositories" ng-click="rescan_repos($event)"></icsw-tools-button>
+                        <icsw-tools-button type="reload" size="xs" value="Sync to Clients" ng-click="sync_repos()"></icsw-tools-button>
+                        <icsw-tools-button type="delete" size="xs" value="Clear Caches" ng-click="clear_caches()"></icsw-tools-button>
+                    </h3>
+                    <table st-table="repos_displayed" st-safe-src="struct.repo_tree.filtered_list" class="table table-condensed table-hover table-striped" style="width:auto;">
+                        <thead>
+                            <tr>
+                                <td colspan="99">
+                                    <div class="pull-left"><input st-search="" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="text"/></div>
+                                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                                        possible-items-by-page="10,20,50,100" class="pull-left" style="margin-top:4px;"></div>
+                                    <div class="form-group pull-left" style="margin: 4px 0 0 10px;">
+                                        only enabled
+                                        <icsw-tools-button type="show" is-show="struct.repo_tree.filters.show_enabled_repos" size="sm" ng-click="toggle_filter($event, 'show_enabled_repos')"></icsw-tools-button>
+                                        only published
+                                        <icsw-tools-button type="show" is-show="struct.repo_tree.filters.show_published_repos" size="sm" ng-click="toggle_filter($event, 'show_published_repos')"></icsw-tools-button>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr icsw-package-install-repository-head></tr>
+                        </thead>
+                        <tbody>
+                            <tr icsw-package-install-repository-row ng-repeat="obj in repos_displayed"></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </uib-tab>
+            <uib-tab heading="Package Search">
+                <icsw-package-install-search-overview icsw-repositories="struct.repo_tree"></icsw-package-install-search-overview>
+            </uib-tab>
+            <uib-tab heading="Package Installation">
+                <!-- we cannot use icsw-sel-man because of the isolated scope -->
+                <icsw-package-install-device></icsw-package-install-device>
+            </uib-tab>
+        </uib-tabset>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.package.repo.head">
@@ -53,11 +51,11 @@
         <th>Enabled</th>
         <th>AutoRefresh</th>
         <th>GPGcheck</th>
-        <th>publish</th>
+        <th>Publish</th>
         <th>URL</th>
         <th>Pri</th>
         <th>Service</th>
-        <th colspan="2" class="text-center">action</th>
+        <th>Actions</th>
     </tr>
 </script>
 
@@ -73,40 +71,41 @@
     <td>{{ fn.get_service_name(this, obj) }}</td>
     <td>
         <icsw-tools-button type="toggle" size="xs" value="toggle publish" ng-click="toggle_repo_publish($event, obj)"></icsw-tools-button>
-    </td>
-    <td>
         <icsw-tools-button type="delete" size="xs" ng-click="delete_repo($event, obj)"></icsw-tools-button>
     </td>
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.search.overview">
     <div ng-show="struct.tree_valid">
-        <div class="form-inline">
-            New search :
-            <input class="form-control input-ms" placeholder="search string ..." type="text" ng-model="struct.search_string" />
+        <div class="form-inline" style="margin-top:15px;">
+            New Search :
+            <input class="form-control input-ms" placeholder="search String ..." type="text" ng-model="struct.search_string" />
             <icsw-tools-button type="create" ng-show="struct.search_string" ng-click="create_search()"></icsw-tools-button>
-            <span ng-show="struct.reload_timeout" class="text-warning">Pending searches...</span>
+            <span ng-show="struct.reload_timeout" class="text-warning">Pending Searches ...</span>
         </div>
-        <h3>Searches ({{ struct.search_tree.list.length }} entries)</h3>
+        <h3>Searches ({{ struct.search_tree.list.length }} Entries)</h3>
         <table st-table="searches_displayed" st-safe-src="struct.search_tree.list" class="table table-condensed table-hover table-striped" style="width:auto;">
-            <thead icsw-package-install-search-head></thead>
+            <thead>
+                <tr><td colspan="99" icsw-tools-pagination  st-items-by-page="10" possible-items-by-page="10,20,50,100"></td></tr>
+                <tr icsw-package-install-search-head></tr>
+            </thead>
             <tbody>
-                <tr>
-                    <td colspan="99" icsw-tools-pagination  st-items-by-page="10" possible-items-by-page="10,20,50,100"></td>
-                </tr>
                 <tr icsw-package-install-search-row ng-repeat="obj in searches_displayed"></tr>
             </tbody>
         </table>
         <div ng-show="struct.active_search">
             <h3>
-                Search results for '{{ struct.active_search.last_search_string }}' ({{ struct.search_results.length }} entries)
+                Search Results for '{{ struct.active_search.last_search_string }}' ({{ struct.search_results.length }} Entries)
             </h3>
             <table st-table="search_results_displayed" st-safe-src="struct.search_results" class="table table-condensed table-hover table-striped" style="width:auto;">
-                <thead icsw-package-install-search-result-head></thead>
-                <tbody>
+            <table st-table="search_results_displayed" st-safe-src="struct.search_results" class="table table-condensed table-hover table-striped" style="width:auto;">
+                <thead>
                     <tr>
                         <td colspan="99" icsw-tools-pagination  st-items-by-page="10" possible-items-by-page="10,20,50,100"></td>
                     </tr>
+                    <tr icsw-package-install-search-result-head></tr>
+                </thead>
+                <tbody>
                     <tr icsw-package-install-search-result-row ng-repeat="obj in search_results_displayed"></tr>
                 </tbody>
             </table>
@@ -115,16 +114,14 @@
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.package.search.head">
-    <tr>
-        <th>Search string</th>
-        <th>User</th>
-        <th>repeat</th>
-        <th>State</th>
-        <th>results</th>
-        <th>search</th>
-        <th>last search</th>
-        <th colspan="4" class="text-center">action</th>
-    </tr>
+    <th>Search String</th>
+    <th>User</th>
+    <th>Repeat</th>
+    <th>State</th>
+    <th>Results</th>
+    <th>Search</th>
+    <th>Last Search</th>
+    <th colspan="4">Actions</th>
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.package.search.row">
@@ -151,15 +148,14 @@
 
 <script type="text/ng-template" id="icsw.package.search.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Package search</h2>
         <fieldset>
-            <legend>Base data</legend>
+            <legend>Package Search</legend>
             <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
-                    Search string<span class="asteriskField">*</span>
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Search String<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-sm-7">
-                    <input class="textinput textInput form-control" maxlength="128" name="search_string" ng-model="edit_obj.search_string" required="True" type="text"/>
+                    <input class="textinput textInput form-control maxwidth500" maxlength="128" name="search_string" ng-model="edit_obj.search_string" required="True" type="text"/>
                 </div>
             </div>
         </fieldset>
@@ -167,14 +163,12 @@
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.search.result.head">
-    <tr>
-        <th>name</th>
-        <th>version</th>
-        <th>kind</th>
-        <th>repo</th>
-        <th>arch</th>
-        <th colspan="3" class="text-center">action</th>
-    </tr>
+    <th>Name</th>
+    <th>Version</th>
+    <th>Kind</th>
+    <th>Repository</th>
+    <th>Architecture</th>
+    <th colspan="4">Actions</th>
 </script>
 
 <script type="text/ng-template" id="icsw.package.install.search.result.row">
@@ -278,12 +272,12 @@
             </tr>
             <tr>
                 <th>&nbsp;</th>
-                <th>contact (Vers)</th>
+                <td><strong>Contact (Vers)</strong></td>
                 <td ng-repeat="dev in struct.devices">{{ dev.$$package_client_latest_contact }} ({{ dev.$$package_client_version }})</td>
             </tr>
             <tr>
                 <th>Package</th>
-                <th>action</th>
+                <th>Actions</th>
                 <th ng-repeat="dev in struct.devices" class="text-center">
                     <div class="btn-group btn-group-xs">
                         <input type="button" class="btn btn-primary" ng-click="change_device_sel($event, dev, 1)" value="S"/>
@@ -320,18 +314,18 @@
         </tbody>
     </table>
     <h3>
-        Packages ({{ struct.package_tree.filtered_list.length }} of {{ struct.package_tree.list.length }} entries)
+        Packages ({{ struct.package_tree.filtered_list.length }} of {{ struct.package_tree.list.length }} Entries)
     </h3>
     <table st-table="packages_displayed" st-safe-src="struct.package_tree.list" class="table table-condensed table-hover table-striped" style="width:auto;">
         <thead>
             <tr>
-                <th>name</th>
-                <th>version</th>
+                <th>Name</th>
+                <th>Version</th>
                 <th>Repository</th>
-                <th>forced</th>
-                <th>kind</th>
-                <th>arch</th>
-                <th colspan="3" class="text-center">action</th>
+                <th>Forced</th>
+                <th>Kind</th>
+                <th>Architecture</th>
+                <th colspan="3">Actions</th>
             </tr>
             <tr>
                 <td colspan="99">
@@ -397,9 +391,8 @@
 
 <script type="text/ng-template" id="icsw.package.action.form">
     <form class="form-horizontal" name="form_data">
-        <h2>PDC action</h2>
         <fieldset>
-            <legend>Base data</legend>
+            <legend>PDC action</legend>
             <div class="form-group">
                 <label class="control-label col-sm-3">
                     Target state
@@ -420,7 +413,7 @@
             <legend>Flags</legend>
             <div class="form-group">
                 <label class="control-label col-sm-3">
-                    Nodeps flag
+                    Nodeps Flag
                 </label>
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">

@@ -919,8 +919,8 @@ angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.layout.class.filter"))(sub_scope)
-                title: "Select DeviceClasses"
-                closeable: true
+                title: "Select Device Classes"
+                closable: true
                 ok_label: "select"
                 ok_callback: (modal) ->
                     d = $q.defer()
@@ -1170,7 +1170,7 @@ angular.module(
                 {
                     message: dialog_div
                     title: "Device Selection"
-                    closeable: true
+                    closable: true
                     shown_callback: (modal) ->
                         # hack to position to the left
                         # _tw is the full viewport width
