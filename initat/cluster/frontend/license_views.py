@@ -64,6 +64,7 @@ class get_all_licenses(ListAPIView):
                     'parameter_usage': {
                         k.to_user_name(): v for k, v in LicenseUsage.get_license_usage(lic.enum_value).iteritems()
                     },
+                    "fp_state": License.objects.fingerprint_ok(lic.enum_value)
                 } for lic in get_available_licenses()
             ]
         )

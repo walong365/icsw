@@ -100,6 +100,7 @@ class LicenseState(enum.IntEnum):
     none = 0              # license not present
     not_needed = -1       # license not needed
     ip_mismatch = 200     # IP mismatch, should not run
+    fp_mismatch = 300     # fingerprint mismatch, should not run
 
     def is_valid(self):
         # states where we consider the license to be valid, i.e. the user may access the feature
@@ -134,6 +135,9 @@ class _LicenseManager(models.Manager):
         """
         return self._get_license_state(license, parameters, ignore_violations=ignore_violations).is_valid()
 
+    def fingerprint_ok(self, license):
+        return any([r.fingerprint_ok for r in self._license_readers if r.has_license(license)])
+
     ########################################
     # Accessors for views for client
 
@@ -163,8 +167,11 @@ class _LicenseManager(models.Manager):
     def get_valid_licenses(self):
         """Returns all licenses which are active (and should be displayed to the user)"""
         return [
-            lic for lic in set().union(*[r.get_valid_licenses() for r in self._license_readers])
-            if not LicenseViolation.objects.is_hard_violated(lic)
+            lic for lic in set().union(
+                *[
+                    r.get_valid_licenses() for r in self._license_readers
+                ]
+            ) if not LicenseViolation.objects.is_hard_violated(lic)
         ]
 
     def get_license_packages(self):
@@ -185,7 +192,12 @@ class _LicenseManager(models.Manager):
                     LicenseFileReader(file_content, file_name)
                 )
             except LicenseFileReader.InvalidLicenseFile as e:
-                logger.info("Invalid license file in database {}: {}".format(file_name, e))
+                logger.error(
+                    "Invalid license file in database {}: {}".format(
+                        file_name,
+                        e
+                    )
+                )
 
         return readers
 

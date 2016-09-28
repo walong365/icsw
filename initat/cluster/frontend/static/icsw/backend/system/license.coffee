@@ -66,12 +66,18 @@ angular.module(
             for pack in @pack_list
                 for c_id, lic_list of pack.cluster_licenses
                     for lic in lic_list
-                        lic.$$license = @lut_by_id[lic.id]
-                        lic.$$state = icswSystemLicenseFunctions.get_license_state_internal(lic)[3]
-                        if lic.$$state?
-                            lic.$$bootstrap_class = icswSystemLicenseFunctions.get_license_state_bootstrap_class(lic.$$state.state_id)
-                            lic.$$icon_class = icswSystemLicenseFunctions.get_license_state_icon_class(lic.$$state.state_id)
+                        if lic.id of @lut_by_id
+                            lic.$$license = @lut_by_id[lic.id]
+                            lic.$$state = icswSystemLicenseFunctions.get_license_state_internal(lic)[3]
+                            if lic.$$state?
+                                lic.$$bootstrap_class = icswSystemLicenseFunctions.get_license_state_bootstrap_class(lic.$$state.state_id)
+                                lic.$$icon_class = icswSystemLicenseFunctions.get_license_state_icon_class(lic.$$state.state_id)
+                            else
+                                lic.$$bootstrap_class = ""
+                                lic.$$icon_class = ""
                         else
+                            lic.$$license = {name: "License with id '#{lic.id}' not known"}
+                            lic.$$state = {state_str: "N/A"}
                             lic.$$bootstrap_class = ""
                             lic.$$icon_class = ""
 
@@ -100,13 +106,14 @@ angular.module(
 
                 if states.length
                     # NOTE: duplicated in license admin
-                    states.sort((a, b) ->
-                        if a[0] != b[0]
-                            # lower state id is better
-                            return if a[0] > b[0] then 1 else -1
-                        else
-                            # for parameters, we want higher values
-                            return if a[1] < b[1] then 1 else -1
+                    states.sort(
+                        (a, b) ->
+                            if a[0] != b[0]
+                                # lower state id is better
+                                return if a[0] > b[0] then 1 else -1
+                            else
+                                # for parameters, we want higher values
+                                return if a[1] < b[1] then 1 else -1
                     )
                     state = states[0][3]
 
@@ -125,6 +132,7 @@ angular.module(
             else
                 license.$$bootstrap_class = ""
                 license.$$icon_class = ""
+            [license.$$fp_bootstrap_class, license.$$fp_icon_class] =  icswSystemLicenseFunctions.get_license_fp_state(license.fp_state)
 
         set_warning: (license) =>
             warnings = []
@@ -227,6 +235,7 @@ angular.module(
         # console.log "*", issued_lic
         # add this such that licenses with higher parameters have priority if state is equal
         parameters_sortable = _.sum(_.values(issued_lic.parameters))
+        # console.log "*", issued_lic.state
         if moment(issued_lic.valid_from) < moment() and moment() < add_grace_period(moment(issued_lic.valid_to))
             if moment() < moment(issued_lic.valid_to)
                 return (
@@ -309,10 +318,20 @@ angular.module(
         else
             return ""
 
+    get_license_fp_state = (fp_state) ->
+        if fp_state?
+            if fp_state
+                return ["success", "fa fa-check"]
+            else
+                return ["danger", "fa fa-times"]
+        else
+            return ["warning", "fa fa-times"]
+
     return {
         get_license_state_bootstrap_class : get_license_state_bootstrap_class
         get_license_state_icon_class: get_license_state_icon_class
         get_license_state_internal: get_license_state_internal
         add_grace_period: add_grace_period
+        get_license_fp_state: get_license_fp_state
     }
 ])

@@ -84,7 +84,8 @@ lic_module = angular.module("icsw.license.overview",
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.licoverview")
-]).directive("icswLicenseLiveView", [
+]).directive("icswLicenseLiveView",
+[
     "$templateCache",
 (
     $templateCache,
@@ -256,9 +257,16 @@ lic_module = angular.module("icsw.license.overview",
     # for testing:
     $scope.licdaterangestart = moment("Tue Oct 07 2014 00:00:00 GMT+0200 (CEST)")
 
-]).directive("icswLicenseOverview", ["$templateCache", ($templateCache) ->
-    restrict: "EA"
-    templateUrl: "icsw.license.overview"
+]).directive("icswLicenseOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        templateUrl: "icsw.license.overview"
+    }
 ]).service("icswLicenseUsageTools",
 [
     "ICSW_URLS", "$resource",
