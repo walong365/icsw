@@ -695,9 +695,9 @@ class PlannedRunState(object):
         )
         self.generate_assets()
 
-    def cancel(self):
+    def cancel(self, error_string):
         self._stop()
-        self.run_db_obj.state_cancel(RunResult.FAILED, "run canceled")
+        self.run_db_obj.state_finished(RunResult.FAILED)
 
     def _stop(self):
         self.running = False
@@ -741,11 +741,15 @@ class PlannedRunsForDevice(object):
         )
 
     def cancel(self, err_cause):
-        self.log("canceling because of '{}'".format(err_cause), logging_tools.LOG_LEVEL_ERROR)
+        self.log(
+            "canceling because of '{}'".format(err_cause),
+            logging_tools.LOG_LEVEL_ERROR
+        )
         # make copy of list
         for _run in [_x for _x in self.planned_runs]:
-            _run.stop(RunResult.CANCELED, error_string="run canceled")
+            _run.cancel(error_string="run canceled")
         self.asset_batch.error_string = err_cause
+        self.asset_batch.state_finished()
         self.asset_batch.save()
         # canceled, delete
         self.to_delete = True
