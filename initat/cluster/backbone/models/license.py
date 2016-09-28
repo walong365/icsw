@@ -548,7 +548,6 @@ LIC_FILE_RELAX_NG_DEFINITION = """
         </element>
 
         <element name="package-list">
-
             <oneOrMore>
                 <element name="package">
 
@@ -576,7 +575,11 @@ LIC_FILE_RELAX_NG_DEFINITION = """
                     <oneOrMore>
                         <element name="cluster-id">
                             <attribute name="id"/>
-
+                            <optional>
+                                <element name="hardware-finger-print">
+                                    <text/>
+                                </element>
+                            </optional>
                             <oneOrMore>
                                  <element name="license">
                                      <element name="id">
@@ -604,13 +607,36 @@ LIC_FILE_RELAX_NG_DEFINITION = """
                                      </element>
                                  </element>
                              </oneOrMore>
-
+                            <zeroOrMore>
+                                 <element name="package-parameter">
+                                     <element name="id">
+                                         <text/>
+                                     </element>
+                                     <element name="name">
+                                         <text/>
+                                     </element>
+                                     <element name="uuid">
+                                         <text/>
+                                     </element>
+                                     <element name="valid-from">
+                                         <text/>
+                                     </element>
+                                     <element name="valid-to">
+                                         <text/>
+                                     </element>
+                                     <element name="value">
+                                         <text/>
+                                     </element>
+                                 </element>
+                             </zeroOrMore>
                          </element>
                      </oneOrMore>
 
                  </element>
             </oneOrMore>
+
          </element>
+
     </element>
 
     <element name="signature">

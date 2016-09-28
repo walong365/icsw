@@ -11,7 +11,7 @@
                 <div class="form-group">
                     <label class="control-label">Group/Device:</label>
                     <select class="form-control input-sm" ng-model="filter_settings.dg_filter">
-                        <option value="b">all</option>
+                        <option value="b">All</option>
                         <option value="f">Devices</option>
                         <option value="t">Group</option>
                     </select>
@@ -20,25 +20,25 @@
                 <div class="form-group">
                     <label class="control-label">Selected:</label>
                     <select class="form-control input-sm" ng-model="filter_settings.sel_filter">
-                        <option value="b">all</option>
-                        <option value="t">selected</option>
-                        <option value="f">unselected</option>
+                        <option value="b">All</option>
+                        <option value="t">Selected</option>
+                        <option value="f">Unselected</option>
                     </select>
                 </div>
                 &nbsp;
                 <div class="form-group">
                     <label class="control-label">Enabled:</label>
                     <select class="form-control input-sm" ng-model="filter_settings.en_filter">
-                        <option value="b">all</option>
-                        <option value="t">enabled</option>
-                        <option value="f">disabled</option>
+                        <option value="b">All</option>
+                        <option value="t">Enabled</option>
+                        <option value="f">Disabled</option>
                     </select>
                 </div>
                 &nbsp;
                 <div class="form-group">
                     <label class="control-label">MonServer:</label>
                     <select class="form-control input-sm" ng-model="filter_settings.mon_filter">
-                        <option value="i">ignore</option>
+                        <option value="i">Ignore</option>
                         <option ng-repeat="obj in struct.monitor_server_list" ng-value="obj.idx">{{ obj.$$full_name_with_type }})</option>
                     </select>
                 </div>
@@ -46,7 +46,7 @@
                 <div class="form-group">
                     <label class="control-label">BootServer:</label>
                     <select class="form-control" ng-model="filter_settings.boot_filter">
-                        <option value="i">ignore</option>
+                        <option value="i">Ignore</option>
                         <option ng-repeat="obj in struct.mother_server_list" ng-value="obj.idx">{{ obj.full_name }}</option>
                     </select>
                 </div>
