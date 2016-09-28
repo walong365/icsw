@@ -51,11 +51,21 @@ class LicenseFileReader(object):
     def __init__(self, file_content, file_name=None):
         from initat.cluster.backbone.models import device_variable
 
-        from initat.tools import hfp_tools
         # contains the license-file tag, i.e. information relevant for program without signature
         self.content_xml = self._read(file_content)
         self.file_name = file_name
         self.cluster_id = device_variable.objects.get_cluster_id()
+        self._check_fingerprint()
+        self._check_eggs()
+
+    def _check_eggs(self):
+        gp_q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']/icsw:package-parameter".format(
+            self.cluster_id,
+        )
+        _g_paras = self.content_xml.xpath(gp_q, namespaces=ICSW_XML_NS_MAP)
+
+    def _check_fingerprint(self):
+        from initat.tools import hfp_tools
         fp_q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']/icsw:hardware-finger-print/text()".format(
             self.cluster_id,
         )
