@@ -394,7 +394,7 @@ img.normal {
 .sub-breadcrumb .menupath a{
     color: #555555;
 }
-.sub-breadcrumb .menupath a[ui-sref=""]:hover{
+.sub-breadcrumb .menupath a:not([ui-sref]):hover{
     text-decoration: none;
 }
 /* SUBMENU END */

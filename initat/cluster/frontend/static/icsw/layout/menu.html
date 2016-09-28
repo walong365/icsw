@@ -46,7 +46,8 @@
         <ul class="sub-breadcrumb pull-left">
             <li class="menupath pull-left">
                 <span ng-repeat="obj in struct.menupath track by $index">
-                    <a ui-sref="{{ obj.statename }}">{{ obj.name }}</a>
+                    <a ng-if="obj.statename" ui-sref="{{ obj.statename }}">{{ obj.name }}</a>
+                    <a ng-if="!obj.statename">{{ obj.name }}</a>
                 </span>
             </li>
             <li class="pull-right cursorpointer">
