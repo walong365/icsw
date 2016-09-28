@@ -1346,22 +1346,24 @@ class AssetBatch(models.Model):
 
             arg_name = runs[run.run_type]
 
-            if run.run_type == AssetType.DMI:
-                arg_value = run.assetdmihead_set.get()
-            else:
-                if run.scan_type == ScanType.NRPE:
-                    blob = run.raw_result
-                    arg_value = json.loads(blob)
-                elif run.scan_type == ScanType.HM:
-                    tree = run.raw_result
-                    blob = tree.xpath(
-                        'ns0:lshw_dump',
-                        namespaces=tree.nsmap
-                    )[0].text
-                    blob = bz2.decompress(base64.b64decode(blob))
-                    arg_value = etree.fromstring(blob)
+            if (run.run_status == RunStatus.FINISHED and
+                    run.run_result == RunResult.SUCCESS):
+                if run.run_type == AssetType.DMI:
+                    arg_value = run.assetdmihead_set.get()
+                else:
+                    if run.scan_type == ScanType.NRPE:
+                        blob = run.raw_result
+                        arg_value = json.loads(blob)
+                    elif run.scan_type == ScanType.HM:
+                        tree = run.raw_result
+                        blob = tree.xpath(
+                            'ns0:lshw_dump',
+                            namespaces=tree.nsmap
+                        )[0].text
+                        blob = bz2.decompress(base64.b64decode(blob))
+                        arg_value = etree.fromstring(blob)
 
-            run_results[arg_name] = arg_value
+                run_results[arg_name] = arg_value
 
         # check if we have the necessary asset runs
         if not ('win32_tree' in run_results or 'lshw_tree' in run_results):
