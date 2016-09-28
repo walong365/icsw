@@ -84,7 +84,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='assetpackage',
             name='created',
-            field=models.DateTimeField(auto_now_add=True, default=datetime.datetime(2016, 5, 10, 10, 59, 14, 246679)),
+            field=models.DateTimeField(auto_now_add=True, default=django.utils.timezone.now),
             preserve_default=False,
         ),
         migrations.AddField(

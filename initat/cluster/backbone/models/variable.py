@@ -34,7 +34,7 @@ from enum import Enum
 from django.dispatch import receiver
 
 from initat.cluster.backbone.models.functions import check_empty_string, \
-    check_integer, cluster_timezone
+    check_integer, cluster_timezone, memoize_with_expiry
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +47,7 @@ __all__ = [
 
 class DeviceVariableManager(models.Manager):
 
+    @memoize_with_expiry(10)
     def get_cluster_id(self):
         try:
             return self.get(name="CLUSTER_ID").val_str

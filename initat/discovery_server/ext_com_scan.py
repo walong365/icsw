@@ -43,6 +43,15 @@ from .discovery_struct import ExtCom
 
 
 DEFAULT_NRPE_PORT = 5666
+# the mapping between the result of the server command and the result of the
+# asset run
+SERVER_RESULT_RUN_RESULT = {
+    server_command.SRV_REPLY_STATE_OK: RunResult.SUCCESS,
+    server_command.SRV_REPLY_STATE_WARN: RunResult.WARNING,
+    server_command.SRV_REPLY_STATE_ERROR: RunResult.FAILED,
+    server_command.SRV_REPLY_STATE_CRITICAL: RunResult.FAILED,
+    server_command.SRV_REPLY_STATE_UNSET: RunResult.UNKNOWN,
+}
 
 
 class ScanBatch(object):
@@ -661,39 +670,34 @@ class PlannedRunState(object):
 
     def store_zmq_result(self, result):
         _db_obj = self.run_db_obj
-        s, error_string = (None, "")
 
-        if result is not None:
-            try:
-                if _db_obj.run_type not in AssetType:
-                    raise ValueError(
-                        "Unknown ScanType {}".format(_db_obj.run_type)
-                    )
-                # store the whole XML tree
-                s = etree.tostring(result.tree)
-            except:
-                error_string = "ParseProblem: {}".format(
-                    process_tools.get_except_info()
-                )
-                self.log(
-                    error_string,
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-                s = None
-        if s is None:
-            res = RunResult.FAILED
+        raw_result_str = ""
+        error_string = ""
+        (status_string, server_result_code) = result.get_result()
+
+        res = SERVER_RESULT_RUN_RESULT[server_result_code]
+        if res != RunResult.SUCCESS:
+            error_string = status_string
         else:
-            res = RunResult.SUCCESS
-        self._store_result(res, error_string, s)
+            # store the whole XML tree
+            raw_result_str = etree.tostring(result.tree)
+
+        self._store_result(res, error_string, raw_result_str)
 
     def _store_result(self, result, error_string, raw_result_str):
         self._stop()
-        self.run_db_obj.state_finished_scan(
-            result,
-            error_string,
-            raw_result_str
-        )
-        self.generate_assets()
+        if result == RunResult.SUCCESS:
+            self.run_db_obj.state_finished_scan(
+                result,
+                error_string,
+                raw_result_str,
+            )
+            self.generate_assets()
+        else:
+            self.run_db_obj.state_finished(
+                result,
+                error_string,
+            )
 
     def cancel(self, error_string):
         self._stop()
@@ -839,9 +843,6 @@ class Dispatcher(object):
                     DiscoverySource.PACKAGE,
                     align_time_to_baseline(_now, ds)
                 )
-                # print "Next scheduled run: %s" % next_run
-                # self.schedule_items.append(last_sched)
-                # self.schedule_items.sort(key=lambda s: s.planned_date)
                 ScheduleItem.objects.create(
                     device=next_run.device,
                     source=next_run.source,
@@ -850,9 +851,6 @@ class Dispatcher(object):
                 )
                 last_scheds[ds] = 1
                 last_sched[ds] = next_run
-            # import pprint
-            # pprint.pprint(last_sched)
-            # pprint.pprint(last_scheds)
 
             # plan next schedule when counter is below 2
             if last_scheds[ds] < 2:
@@ -861,9 +859,6 @@ class Dispatcher(object):
                     DiscoverySource.PACKAGE,
                     last_sched[ds].planned_date + get_time_inc_from_ds(ds)
                 )
-                # print "Next scheduled run: %s" % next_run
-                # self.schedule_items.append(next_run)
-                # self.schedule_items.sort(key=lambda s: s.planned_date)
                 ScheduleItem.objects.create(
                     device=next_run.device,
                     source=next_run.source,
@@ -893,7 +888,6 @@ class Dispatcher(object):
 
     def dispatch_call(self):
         # called every second, way too often...
-        # print ".", os.getpid()
         _now = timezone.now().replace(microsecond=0)
         # schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
 
@@ -920,8 +914,6 @@ class Dispatcher(object):
             "device__com_capability_list"
         ):
             if schedule_item.planned_date < _now:
-                # print "need to run: %s" % schedule_item.__repr__()
-
                 cap_dict = {
                     _com.matchcode: True for _com in schedule_item.device.com_capability_list.all()
                 }
