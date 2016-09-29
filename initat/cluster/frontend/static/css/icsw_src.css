@@ -240,14 +240,6 @@ ul.fancytree-container {
 .cursorpointer {
     cursor: pointer;
 }
-.icsw-formlabel {
-    width: 250px;
-    text-align: left!important;
-}
-.maxwidth500 {
-    max-width: 500px;
-    min-size: 240px;
-}
 .modal-form .modal-dialog {
     max-width:700px!important;
 }
@@ -260,6 +252,27 @@ div[class*="col-"] > ul {
 .tab-pane icsw-simple-device-info > .container-fluid {
     padding: 5px 0px;
 }
+
+/* FORM STYLES START */
+.icsw-formlabel {
+    width: 250px;
+    text-align: left!important;
+}
+.maxwidth500 {
+    max-width: 500px;
+    min-size: 240px;
+}
+.icsw-buttoncol {
+    max-width: 765px;
+    min-size: 250px;
+    text-align: right;
+    padding-right: 0px;
+}
+.maxwidth800 {
+    max-width:800px;
+}
+/* FORM STYLES END */
+
 /* HELP PAGE START */
 .cfp-hotkeys-container {
     background-color: rgba(255, 255, 255, 0.6);
