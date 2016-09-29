@@ -829,7 +829,10 @@ menu_module = angular.module(
 
     generatePath = (state) ->
         _curr = state.$current.icswData.menuEntry
-        curr_entry = {name : _curr.name, icon: _curr.icon}
+        curr_entry = {
+            name: _curr.name
+            icon: _curr.icon
+        }
         ret_path = [home_link]
         if header_lut[_curr.subgroupkey]?
             ret_path = ret_path.concat header_lut[_curr.subgroupkey]
