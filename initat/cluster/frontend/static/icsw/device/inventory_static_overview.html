@@ -40,9 +40,9 @@
             <div class="panel panel-default">
                 <div class="panel-body" style="padding: 6px 15px">
                     <h2>
-                        Licenses
+                        Static Assets
                     </h2>
-                    <div ng-repeat="obj in struct.licenses">
+                    <div ng-repeat="obj in struct.static_assets">
                         <h3>
                             {{ obj.name }} ({{ obj.description }})
                         </h3>
@@ -54,13 +54,25 @@
                             <thead>
                                 <tr>
                                     <th>Device</th>
-                                    <th ng-repeat="field in obj.$$fields">{{ field.name }}</th>
+                                    <th ng-repeat="field in obj.$$fields">{{ field.name }}{{ field.fixed ? " [fixed]" : "" }}</th>
+                                    <th>Status</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td>all</td>
                                     <td ng-repeat="field in obj.$$fields">{{ field.aggregate }}</td>
+                                    <td class="text-center">
+                                        <div ng-show="obj.$$inventory_static_status == 0" class="alert-success">
+                                            <strong>OK</strong>
+                                        </div>
+                                        <div ng-show="obj.$$inventory_static_status == 1" class="alert-warning">
+                                            <strong>Warning</strong>
+                                        </div>
+                                        <div ng-show="obj.$$inventory_static_status == 2" class="alert-danger">
+                                            <strong>Critical</strong>
+                                        </div>
+                                    </td>
                                 </tr>
                                 <tr ng-repeat="device in obj.$$devices">
                                     <td>
@@ -68,6 +80,17 @@
                                     </td>
                                     <td ng-repeat="field in device.$$static_field_values">
                                         {{ field.value }}
+                                    </td>
+                                    <td class="text-center">
+                                        <div ng-show="device.$$inventory_static_status == 0" class="alert-success">
+                                            <strong>OK</strong>
+                                        </div>
+                                        <div ng-show="device.$$inventory_static_status == 1" class="alert-warning">
+                                            <strong>Warning</strong>
+                                        </div>
+                                        <div ng-show="device.$$inventory_static_status == 2" class="alert-danger">
+                                            <strong>Critical</strong>
+                                        </div>
                                     </td>
                                 </tr>
                             </tbody>

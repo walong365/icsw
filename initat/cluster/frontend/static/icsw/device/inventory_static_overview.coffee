@@ -61,7 +61,7 @@ static_inventory_overview = angular.module(
 
         # easier to handle data structures for template
         categories: []
-        licenses: []
+        static_assets: []
     }
 
     $q.all(
@@ -80,7 +80,7 @@ static_inventory_overview = angular.module(
 
                     $scope.struct.categories.length = 0
 
-                    $scope.struct.data_loaded = true
+
 
                     for category in $scope.struct.category_tree.asset_list
                         o = {
@@ -95,8 +95,12 @@ static_inventory_overview = angular.module(
 
                     idx_list = []
 
-                    for license in $scope.struct.staticasset_tree.static_asset_type_lut.License
-                        idx_list.push(license.idx)
+                    for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.License
+                        idx_list.push(obj.idx)
+                    for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.Contract
+                        idx_list.push(obj.idx)
+                    for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.Hardware
+                        idx_list.push(obj.idx)
 
                     icswSimpleAjaxCall({
                         url: ICSW_URLS.ASSET_GET_FIELDVALUES_FOR_TEMPLATE
@@ -105,12 +109,24 @@ static_inventory_overview = angular.module(
                         dataType: 'json'
                     }).then(
                         (result) ->
-                            for license in $scope.struct.staticasset_tree.static_asset_type_lut.License
+                            for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.License
+                                $scope.struct.static_assets.push(obj)
+                            for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.Contract
+                                $scope.struct.static_assets.push(obj)
+                            for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.Hardware
+                                $scope.struct.static_assets.push(obj)
+
+                            for license in $scope.struct.static_assets
                                 license.$$fields = result.data[license.idx]
                                 license.$$devices = {}
+                                license.$$inventory_static_status = 0
+                                console.log(license)
 
                                 for ordering_num in Object.getOwnPropertyNames(license.$$fields)
                                     for field_value in license.$$fields[ordering_num]["list"]
+                                        if license.$$fields[ordering_num].status > license.$$inventory_static_status
+                                            license.$$inventory_static_status = license.$$fields[ordering_num].status
+
                                         if field_value.device_idx > 0
                                             device = $scope.struct.device_tree.all_lut[field_value.device_idx]
                                             if device.$$static_field_values == undefined
@@ -125,15 +141,21 @@ static_inventory_overview = angular.module(
                                 for ordering_num in Object.getOwnPropertyNames(license.$$fields)
                                     for device_num in Object.getOwnPropertyNames(license.$$devices)
                                         if license.$$devices[device_num].$$static_field_values[ordering_num] == undefined
-                                            console.log("oooooo")
                                             o = {
-                                                value: "N/A"
+                                                value: license.$$fields[ordering_num].aggregate
                                             }
 
                                             license.$$devices[device_num].$$static_field_values[ordering_num] = o
 
-                                $scope.struct.licenses.push(license)
-                                console.log(license)
+                                for device_num in Object.getOwnPropertyNames(license.$$devices)
+                                    device = license.$$devices[device_num]
+                                    device.$$inventory_static_status = 0
+
+                                    for ordering_num in Object.getOwnPropertyNames(device.$$static_field_values)
+                                        if device.$$static_field_values[ordering_num].status > device.$$inventory_static_status
+                                            device.$$inventory_static_status = device.$$static_field_values[ordering_num].status
+
+                            $scope.struct.data_loaded = true
 
                         (not_ok) ->
                             console.log(not_ok)
