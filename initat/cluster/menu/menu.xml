@@ -298,16 +298,6 @@
                     </rights>
                 </icswData>
             </route>
-            <route name="main.statictemplates">
-                <stateData type="dict" url_str="/sched/stattemp"
-                           template_str="&lt;icsw-static-asset-template-overview&gt;&lt;/icsw-static-asset-template-overview&gt;"/>
-                <icswData type="dict" pageTitle_str="Static Templates">
-                    <menuEntry type="dict" icon_str="fa-reorder" name_str="Static Templates"/>
-                    <rights type="list">
-                        <value>backbone.staticassettemplate.setup</value>
-                    </rights>
-                </icswData>
-            </route>
             <route name="main.report">
                 <stateData type="dict" url_str="/report" templateUrl_str="icsw/device/report/overview"/>
                 <icswData type="dict" pageTitle_str="Reporting">
@@ -315,6 +305,16 @@
                     <dashboardEntry type="dict" sizeX_int="3" sizeY_int="3" allowState_bool="yes"/>
                     <rights type="list">
                         <value>backbone.device.assets</value>
+                    </rights>
+                </icswData>
+            </route>
+            <route name="main.statictemplates">
+                <stateData type="dict" url_str="/sched/stattemp"
+                           template_str="&lt;icsw-static-asset-template-overview&gt;&lt;/icsw-static-asset-template-overview&gt;"/>
+                <icswData type="dict" pageTitle_str="Static Inventory Templates">
+                    <menuEntry type="dict" icon_str="fa-reorder" name_str="Static Inventory Templates"/>
+                    <rights type="list">
+                        <value>backbone.staticassettemplate.setup</value>
                     </rights>
                 </icswData>
             </route>

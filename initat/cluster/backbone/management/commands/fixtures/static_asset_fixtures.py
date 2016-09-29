@@ -21,12 +21,12 @@
 
 
 from initat.cluster.backbone import factories
-from initat.cluster.backbone.models import StaticAssetType, StaticAssetTemplateFieldType
+from initat.cluster.backbone.models import StaticAssetTemplateFieldType
 
 
 def add_fixtures(**kwargs):
     _dummy_hardware = factories.StaticAssetTemplateFactory(
-        type=StaticAssetType.HARDWARE,
+        type="System",
         name="sysHardware",
         description="Generic Hardware",
         system_template=True,
@@ -53,7 +53,7 @@ def add_fixtures(**kwargs):
         optional=True,
     )
     _dummy_contract = factories.StaticAssetTemplateFactory(
-        type=StaticAssetType.CONTRACT,
+        type="System",
         description="Generic Contract",
         name="sysContract",
         system_template=True,

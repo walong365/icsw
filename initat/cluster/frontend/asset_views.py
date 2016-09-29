@@ -755,7 +755,7 @@ class get_fieldvalues_for_template(View):
 
                         if template_field.field_type == StaticAssetTemplateFieldType.DATE and (template_field_value.value_date < datetime.date.today()):
                             data[static_asset_template.idx][template_field.ordering]['status'] = 2
-                            field_object[status] = 2
+                            field_object["status"] = 2
 
                         if template_field.consumable:
                             items_left = template_field.consumable_start_value - field_object["value_int"]
@@ -769,12 +769,13 @@ class get_fieldvalues_for_template(View):
 
                 if template_field.consumable:
                     aggregate_value = data[static_asset_template.idx][template_field.ordering]['aggregate']
-                    items_left = template_field.consumable_start_value - aggregate_value
+                    if not aggregate_value == "N/A":
+                        items_left = template_field.consumable_start_value - aggregate_value
 
-                    if items_left <= template_field.consumable_warn_value:
-                        data[static_asset_template.idx][template_field.ordering]['status'] = 1
-                    if items_left <= template_field.consumable_critical_value:
-                        data[static_asset_template.idx][template_field.ordering]['status'] = 2
+                        if items_left <= template_field.consumable_warn_value:
+                            data[static_asset_template.idx][template_field.ordering]['status'] = 1
+                        if items_left <= template_field.consumable_critical_value:
+                            data[static_asset_template.idx][template_field.ordering]['status'] = 2
 
         return HttpResponse(
             json.dumps(

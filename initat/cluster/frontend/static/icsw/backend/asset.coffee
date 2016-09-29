@@ -217,8 +217,8 @@ device_asset_module = angular.module(
                 @salt_template(entry)
 
         salt_template: (entry) =>
+            console.log(entry)
             entry.$$num_fields = entry.staticassettemplatefield_set.length
-            entry.$$asset_type = icswStaticAssetFunctions.resolve("asset_type", entry.type)
             entry.refs_content = "..."
             entry.num_refs = 0
             entry.$$created = moment(entry.date).format("YYYY-MM-DD HH:mm:ss")

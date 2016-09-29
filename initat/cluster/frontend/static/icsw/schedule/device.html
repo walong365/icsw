@@ -299,7 +299,6 @@
                 </tr>
                 <tr>
                     <th st-sort="name" st-sort-default="true">Name</th>
-                    <th>Parent</th>
                     <th st-sort="description">Description</th>
                     <th>Type</th>
                     <th>User</th>
@@ -313,14 +312,9 @@
             <tbody>
                 <tr ng-repeat="obj in entries_displayed">
                     <td>{{ obj.name }}</td>
-                    <td>
-                        <span ng-show="obj.parent_template">
-                            {{ struct.template_tree.lut[obj.parent_template].name }}
-                        </span>
-                    </td>
                     <td>{{ obj.description }}</td>
                     <td class="text-center">
-                        {{ obj.$$asset_type }}
+                        {{ obj.type }}
                     </td>
                     <td class="text-center">
                         <span ng-show="obj.system_template" class="label label-success">system</span>
@@ -374,17 +368,10 @@
             </div>
             <div class="form-group">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
-                    Value Type<span class="asteriskField">*</span>
+                    Template Type<span class="asteriskField">*</span>
                 </label>
-                <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.type" class="maxwidth500" ng-disabled="edit_obj.$$num_fields">
-                        <ui-select-match class="ui-select-match" placeholder="please select a Type">
-                            {{ $select.selected.name }}
-                        </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in asset_type_list">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
+                <div class="controls col-xs-7">
+                    <input class="form-control maxwidth500" ng-model="edit_obj.type"/>
                 </div>
             </div>
         </fieldset>

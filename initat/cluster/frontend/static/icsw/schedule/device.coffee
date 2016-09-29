@@ -927,7 +927,7 @@ monitoring_device_module = angular.module(
                 system_template: false
                 parent_template: null
                 staticassettemplatefield_set: []
-                type: icswStaticAssetFunctions.resolve("asset_type", "hardware")
+                type: "TemplateType (i.e License, Hardware, Contract, ...)"
             }
             _ok_label = "Create"
         else
@@ -938,8 +938,6 @@ monitoring_device_module = angular.module(
         sub_scope = $scope.$new(true)
         sub_scope.edit_obj = obj
         sub_scope.create = create
-        # copy references
-        sub_scope.asset_type_list = icswStaticAssetFunctions.get_form_dict("asset_type")
 
         sub_scope.modify_or_create_field = ($event, as_temp, field, create) ->
             modify_or_create_field($event, sub_scope, as_temp, field, create)

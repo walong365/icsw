@@ -95,11 +95,9 @@ static_inventory_overview = angular.module(
 
                     idx_list = []
 
-                    for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.License
-                        idx_list.push(obj.idx)
-                    for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.Contract
-                        idx_list.push(obj.idx)
-                    for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.Hardware
+                    console.log($scope.struct.staticasset_tree)
+
+                    for obj in $scope.struct.staticasset_tree.list
                         idx_list.push(obj.idx)
 
                     icswSimpleAjaxCall({
@@ -109,11 +107,7 @@ static_inventory_overview = angular.module(
                         dataType: 'json'
                     }).then(
                         (result) ->
-                            for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.License
-                                $scope.struct.static_assets.push(obj)
-                            for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.Contract
-                                $scope.struct.static_assets.push(obj)
-                            for obj in  $scope.struct.staticasset_tree.static_asset_type_lut.Hardware
+                            for obj in $scope.struct.staticasset_tree.list
                                 $scope.struct.static_assets.push(obj)
 
                             for license in $scope.struct.static_assets
