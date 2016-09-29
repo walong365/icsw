@@ -1,0 +1,80 @@
+<script type="text/ng-template" id="icsw/device/inventory/static/overview">
+    <icsw-device-inventory-static-overview icsw-sel-man="0"></icsw-device-inventory-static-overview>
+</script>
+
+
+<script type="text/ng-template" id="icsw.device.inventory.static.overview">
+    <div class="container-fluid">
+        <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching data from server ...</div>
+        <div ng-if="struct.data_loaded">
+        <br/>
+            <div class="panel panel-default">
+                <div class="panel-body" style="padding: 6px 15px">
+                    <h2>
+                        Devices
+                    </h2>
+                    <table
+                        class="table table-condensed table-striped simple-border"
+                        style="width:auto;"
+                    >
+                        <thead>
+                            <tr>
+                                <th>Device Type</th>
+                                <th>Devices (Sum)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="obj in struct.categories">
+                                <td>
+                                   {{ obj.name }}
+                                </td>
+                                <td class="text-right">
+                                    {{ obj.devices.length }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <br/>
+            <div class="panel panel-default">
+                <div class="panel-body" style="padding: 6px 15px">
+                    <h2>
+                        Licenses
+                    </h2>
+                    <div ng-repeat="obj in struct.licenses">
+                        <h3>
+                            {{ obj.name }} ({{ obj.description }})
+                        </h3>
+                        <table
+                            class="table table-condensed table-striped simple-border"
+                            style="width:auto;"
+
+                        >
+                            <thead>
+                                <tr>
+                                    <th>Device</th>
+                                    <th ng-repeat="field in obj.$$fields">{{ field.name }}</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>all</td>
+                                    <td ng-repeat="field in obj.$$fields">{{ field.aggregate }}</td>
+                                </tr>
+                                <tr ng-repeat="device in obj.$$devices">
+                                    <td>
+                                        {{ device.name }}
+                                    </td>
+                                    <td ng-repeat="field in device.$$static_field_values">
+                                        {{ field.value }}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</script>

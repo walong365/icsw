@@ -661,3 +661,95 @@ class device_asset_post(View):
             ]
         else:
             request.xml_response.error("validation problem")
+
+
+class get_fieldvalues_for_template(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        idx_list = [int(value) for value in request.POST.getlist("idx_list[]")]
+
+        static_asset_templates = StaticAssetTemplate.objects.filter(idx__in=idx_list)
+
+        data = {}
+
+        def set_aggregate_value(aggregate_obj, field_object):
+            if field_object['value_int']:
+                if not aggregate_obj['aggregate']:
+                    aggregate_obj['aggregate'] = 0
+                aggregate_obj['aggregate'] += field_object['value_int']
+            else:
+                str_value = ''
+                if field_object['value_str']:
+                    str_value = field_object['value_str']
+                elif field_object['value_date']:
+                    str_value = field_object['value_date']
+                elif field_object['value_text']:
+                    str_value = field_object['value_text']
+
+                if not aggregate_obj['aggregate']:
+                    aggregate_obj['aggregate'] = str_value
+                else:
+                    aggregate_obj['aggregate'] += ", {}".format(str_value)
+
+        def set_value(field_object):
+            value = None
+            if field_object['value_str']:
+                value = field_object['value_str']
+            elif field_object['value_int']:
+                value = field_object['value_int']
+            elif field_object['value_date']:
+                value = field_object['value_date']
+            elif field_object['value_text']:
+                value = field_object['value_text']
+
+            field_object['value'] = value
+
+
+        for static_asset_template in static_asset_templates:
+            data[static_asset_template.idx] = {}
+
+            for template_field in static_asset_template.staticassettemplatefield_set.all():
+                data[static_asset_template.idx][template_field.ordering] = {}
+
+                data[static_asset_template.idx][template_field.ordering]['name'] = template_field.name
+                data[static_asset_template.idx][template_field.ordering]['list'] = []
+                data[static_asset_template.idx][template_field.ordering]['aggregate'] = None
+
+                if template_field.fixed:
+                    field_object = {
+                        'device_idx': 0,
+                        'field_name': template_field.name,
+                        'value_str': template_field.default_value_str,
+                        'value_int': template_field.default_value_int,
+                        'value_date': template_field.default_value_date.isoformat() if template_field.default_value_date else None,
+                        'value_text': template_field.default_value_text
+                    }
+
+                    set_value(field_object)
+                    set_aggregate_value(data[static_asset_template.idx][template_field.ordering], field_object)
+                    data[static_asset_template.idx][template_field.ordering]['list'].append(field_object)
+
+                else:
+                    for template_field_value in template_field.staticassetfieldvalue_set.all():
+                        field_object = {
+                            'device_idx': template_field_value.static_asset.device.idx,
+                            'field_name': template_field.name,
+                            'value_str': template_field_value.value_str,
+                            'value_int': template_field_value.value_int,
+                            'value_date': template_field_value.value_date.isoformat() if template_field_value.value_date else None,
+                            'value_text': template_field_value.value_text
+                        }
+                        set_value(field_object)
+                        set_aggregate_value(data[static_asset_template.idx][template_field.ordering], field_object)
+                        data[static_asset_template.idx][template_field.ordering]['list'].append(field_object)
+
+                if not data[static_asset_template.idx][template_field.ordering]['aggregate']:
+                    data[static_asset_template.idx][template_field.ordering]['aggregate'] = "N/A"
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'data': data
+                }
+            )
+        )

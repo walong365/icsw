@@ -318,6 +318,16 @@
                     </rights>
                 </icswData>
             </route>
+            <route name="main.inventorystaticoverview">
+                <stateData type="dict" url_str="/inventory/overview"
+                           template_str="&lt;icsw-device-inventory-static-overview&gt;&lt;/icsw-device-inventory-static-overview&gt;"/>
+                <icswData type="dict" pageTitle_str="Static Inventory Overview">
+                    <menuEntry type="dict" icon_str="fa-reorder" name_str="Static Inventory Overview"/>
+                    <rights type="list">
+                        <value>backbone.staticassettemplate.setup</value>
+                    </rights>
+                </icswData>
+            </route>
         </routeSubGroup>
     </routeGroup>
 
