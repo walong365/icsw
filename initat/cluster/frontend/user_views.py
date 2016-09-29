@@ -38,10 +38,8 @@ from rest_framework.response import Response
 from rest_framework.routers import DefaultRouter
 
 from initat.cluster.backbone import routing
-from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.backbone.models import group, user, user_variable, csw_permission, \
-    csw_object_permission, group_object_permission, user_object_permission, device, License, device_variable
-from initat.cluster.backbone.models.functions import db_t2000_limit
+    csw_object_permission, group_object_permission, user_object_permission, device, License
 from initat.cluster.backbone.serializers import user_variable_serializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -203,48 +201,6 @@ class change_object_permission(View):
             else:
                 # print "not there"
                 pass
-
-
-class upload_license_file(View):
-    @method_decorator(login_required)
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        lic_file = request.FILES['license_file']
-        lic_file_content = lic_file.read()
-
-        try:
-            reader = LicenseFileReader(lic_file_content)
-        except LicenseFileReader.InvalidLicenseFile as e:
-            request.xml_response.error(unicode(e), logger=logger)
-        else:
-            try:
-                if db_t2000_limit():
-                    # lic file content is encoded bz2, so we are safe ...
-                    if len(lic_file_content) > 2000:
-                        License.objects.get(Q(license_file__startswith=lic_file_content[:2000]))
-                    else:
-                        License.objects.get(license_file=lic_file_content)
-                else:
-                    # sane database
-                    # check based on content, not filename
-                    License.objects.get(license_file=lic_file_content)
-            except License.DoesNotExist:
-
-                local_cluster_id = device_variable.objects.get_cluster_id()
-                file_cluster_ids = reader.get_referenced_cluster_ids()
-                if local_cluster_id not in file_cluster_ids:
-                    msg = u"This license file contains licenses for the following clusters: {}.".\
-                        format(", ".join(file_cluster_ids))
-                    msg += "\nThis cluster has the id {}.".format(local_cluster_id)
-                    request.xml_response.error(msg)
-                else:
-                    License(file_name=lic_file.name, license_file=lic_file_content).save()
-                    request.xml_response.info("Successfully uploaded license file")
-
-                    srv_com = server_command.srv_command(command="check_license_violations")
-                    contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, log_error=True, log_result=False)
-            else:
-                request.xml_response.warn("This license file has already been uploaded")
 
 
 class clear_home_dir_created(View):
