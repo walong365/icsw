@@ -217,6 +217,11 @@ class License(models.Model):
     file_name = models.CharField(max_length=512)
     license_file = models.TextField()  # contains the exact file content of the respective license files
 
+    def __unicode__(self):
+        from initat.cluster.backbone.license_file_reader import LicenseFileReader
+        _reader = LicenseFileReader(self.license_file, self.file_name)
+        return _reader.license_info()
+
     class Meta:
         app_label = "backbone"
         verbose_name = "License"

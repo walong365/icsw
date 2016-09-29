@@ -245,6 +245,7 @@ icsw_lic_patterns = [
     url("^get_license_packages$", license_views.get_license_packages.as_view(), name="get_license_packages"),
     url("^GetLicenseViolations$", license_views.GetLicenseViolations.as_view(), name="GetLicenseViolations"),
     url("^GetValidLicenses$", license_views.GetValidLicenses.as_view(), name="GetValidLicenses"),
+    url("^upload_license_file$", license_views.upload_license_file.as_view(), name="upload_license_file"),
 ]
 
 network_patterns = [
@@ -289,7 +290,6 @@ user_patterns = [
     url("sync$", user_views.sync_users.as_view(), name="sync_users"),
     url("^set_theme$", user_views.set_theme.as_view(), name="set_theme"),
     url("^change_obj_perm$", user_views.change_object_permission.as_view(), name="change_object_permission"),
-    url("^upload_license_file$", user_views.upload_license_file.as_view(), name="upload_license_file"),
     url("^chdc$", user_views.clear_home_dir_created.as_view(), name="clear_home_dir_created"),
     url("^get_device_ip$", user_views.get_device_ip.as_view(), name="get_device_ip"),
     url("^GetGlobalPermissions$", user_views.GetGlobalPermissions.as_view(), name="GetGlobalPermissions"),
