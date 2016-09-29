@@ -9,7 +9,7 @@
                 <div class="row">
                     <div class="col-md-2">
                         <i class="glyphicon" ng-class="{'glyphicon-chevron-down': overview_open, 'glyphicon-chevron-right': !overview_open}"></i>
-                        License overview ({{ lic_overview.length }} entries)
+                        License Overview ({{ lic_overview.length }} Entries)
                     </div>
                     <div class="col-md-8">
                     </div>
@@ -20,13 +20,13 @@
                     <tr class="info">
                         <th>License</th>
                         <th>Flags</th>
-                        <th>used</th>
-                        <th>reserved</th>
-                        <th>free</th>
-                        <th>total</th>
+                        <th>Used</th>
+                        <th>Reserved</th>
+                        <th>Free</th>
+                        <th>Total</th>
                         <th>Cluster</th>
-                        <th>external</th>
-                        <th>graph</th>
+                        <th>External</th>
+                        <th>Graph</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -75,11 +75,11 @@
                         <th>Vendor</th>
                         <th>(Version)</th>
                         <th>User</th>
-                        <th>total licenses</th>
+                        <th>Total Licenses</th>
                         <th>Client</th>
                         <th>(Version)</th>
                         <th>#</th>
-                        <th colspan="2">checkout time</th>
+                        <th colspan="2">Checkout Time</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -112,7 +112,7 @@
         <div uib-accordion-group class="panel-default" is-open="server_open">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': server_open, 'glyphicon-chevron-right': !server_open}"></i>
-                License servers: {{ servers.length }}
+                License Servers: {{ servers.length }}
             </uib-accordion-heading>
             <ul class="list-group" ng-show="servers.length">
                 <li ng-repeat="server in servers" class="list-group-item">
@@ -130,7 +130,7 @@
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h3 class="panel-title">
-                            Time range
+                            Time Range
                         </h3>
                     </div>
                     <div class="panel-body">
@@ -208,7 +208,7 @@
                             </input>
                         </div>
                         <div ng-show="ext_license_list.length == 0">
-                            No licenses found.
+                            No Licenses found.
                         </div>
                     </div>
                 </div>

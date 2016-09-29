@@ -3,60 +3,58 @@
 </script>
 
 <script type="text/ng-template" id="icsw.system.license.overview">
+    <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Loading License Data</div>
+    <div class="container-fluid">
+        <h3 ng-show="struct.data_valid">License Overview (ServerID is {{ struct.license_tree.cluster_info.CLUSTER_ID }})</h3>
+        <uib-accordion close-others="false" ng-if="struct.data_valid">
 
+            <div uib-accordion-group class="panel-default" is-open="your_licenses_open" is-disabled="license_views_disabled">
+                <uib-accordion-heading>
+                    Your Licenses for this Server
+                    <i
+                        class="pull-right glyphicon"
+                        ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"
+                    ></i>
+                </uib-accordion-heading>
 
-    <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Loading License data</div>
-    <h3 ng-show="struct.data_valid">License overview (ClusterID is {{ struct.license_tree.cluster_info.CLUSTER_ID }})</h3>
-    <uib-accordion close-others="false" ng-if="struct.data_valid">
-
-        <div uib-accordion-group class="panel-default" is-open="your_licenses_open" is-disabled="license_views_disabled">
-            <uib-accordion-heading>
-                Your licenses for this cluster
-                <i
-                    class="pull-right glyphicon"
-                    ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"
-                ></i>
-            </uib-accordion-heading>
-
-            <icsw-system-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-system-license-local-licenses>
-        </div>
-
-
-        <div uib-accordion-group class="panel-default" is-open="lic_packs_open" is-disabled="license_views_disabled">
-            <uib-accordion-heading>
-                License packages
-                <i
-                    class="pull-right glyphicon"
-                    ng-class="{'glyphicon-chevron-down': lic_packs_open, 'glyphicon-chevron-right': !lic_packs_open}"
-                ></i>
-            </uib-accordion-heading>
-
-            <icsw-system-license-packages></icsw-system-license-packages>
-        </div>
-
-        <div uib-accordion-group class="panel-default" is-open="lic_upload_open">
-            <uib-accordion-heading>
-                Upload license file
-                <i
-                    class="pull-right glyphicon"
-                    ng-class="{'glyphicon-chevron-down': lic_upload_open, 'glyphicon-chevron-right': !lic_upload_open}"
-                ></i>
-            </uib-accordion-heading>
-
-            <div style="width: 300px; float: left; margin-right: 10px;">
-                <input type="file" nv-file-select="" class="form-control btn btn-default btn-file" uploader="uploader"/>
+                <icsw-system-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-system-license-local-licenses>
             </div>
-            <input
-                type="button"
-                ng-show="uploader.queue.length"
-                class="btn btn-warning btn-sm"
-                value="upload"
-                ng-click="uploader.uploadAll()"
-            />
-        </div>
 
-    </uib-accordion>
 
+            <div uib-accordion-group class="panel-default" is-open="lic_packs_open" is-disabled="license_views_disabled">
+                <uib-accordion-heading>
+                    License Packages
+                    <i
+                        class="pull-right glyphicon"
+                        ng-class="{'glyphicon-chevron-down': lic_packs_open, 'glyphicon-chevron-right': !lic_packs_open}"
+                    ></i>
+                </uib-accordion-heading>
+
+                <icsw-system-license-packages></icsw-system-license-packages>
+            </div>
+
+            <div uib-accordion-group class="panel-default" is-open="lic_upload_open">
+                <uib-accordion-heading>
+                    Upload License Lile
+                    <i
+                        class="pull-right glyphicon"
+                        ng-class="{'glyphicon-chevron-down': lic_upload_open, 'glyphicon-chevron-right': !lic_upload_open}"
+                    ></i>
+                </uib-accordion-heading>
+
+                <div style="width: 300px; float: left; margin-right: 10px;">
+                    <input type="file" nv-file-select="" class="btn btn-default btn-file" uploader="uploader"/>
+                </div>
+                <input
+                    type="button"
+                    ng-show="uploader.queue.length"
+                    class="btn btn-warning btn-sm"
+                    value="upload"
+                    ng-click="uploader.uploadAll()"
+                />
+            </div>
+        </uib-accordion>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.system.license.local.licenses">

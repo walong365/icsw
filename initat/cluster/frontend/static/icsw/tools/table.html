@@ -5,7 +5,7 @@
                 <div class="form-group table-pager">
                     <!-- small pager -->
                     <ul class="pagination pagination-sm" ng-if="numPages > 1 && numPages < 11">
-                        <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}">
+                        <li ng-repeat="pag_num in pages" ng-class="{active: pag_num==currentPage}" class="cursorpointer">
                             <a ng-click="selectPage(pag_num)">{{ pag_num }}</a>
                         </li>
                     </ul>

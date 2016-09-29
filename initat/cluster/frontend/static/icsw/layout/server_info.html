@@ -1,5 +1,8 @@
 <script type="text/ng-template" id="icsw/main/serverinfo.html">
-    <icsw-layout-server-info-overview></icsw-layout-server-info-overview>
+    <div class="container-fluid">
+        <h3>Server Information</h3>
+        <icsw-layout-server-info-overview></icsw-layout-server-info-overview>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.layout.server.info.overview">
@@ -7,20 +10,20 @@
         <div uib-accordion-group class="panel-default" is-open="struct.is_open_roles">
             <uib-accordion-heading>
                 <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.is_open_roles, 'glyphicon-chevron-right': !struct.is_open_roles}"></i>
-                {{ num_roles() }} valid cluster roles defined
+                {{ num_roles() }} valid Cluster Roles defined
                 <span ng-show="struct.local_device_ok">(viewed from {{ struct.local_device }})</span>
                 <span ng-show="!struct.local_device_ok" class="text-danger">({{ struct.local_device }})</span>
                 <span class="text-warning" ng-show="struct.loading">Updating ...</span>
                 <span class="label label-danger" ng-show="struct.unroutable_config_names.length">There are {{ struct.unroutable_config_names.length }} unroutable configs</span>
             </uib-accordion-heading>
             <div uib-alert class="alert-warning" ng-show="struct.unroutable_config_names.length">
-                <h2>Unroutable Configs</h2>
+                <h3>Unroutable Configs</h3>
                 <table class="table table-hover table-striped" style="width:auto;">
                     <thead>
                         <tr>
-                            <th>Config</th>
-                            <th># devs</th>
-                            <th>devices</th>
+                            <th>Configuration</th>
+                            <th>#Devices</th>
+                            <th>Devices</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -36,22 +39,23 @@
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th># configs</th>
-                        <th>Config names</th>
-                        <th>reachable IP</th>
-                        <th>cost</th>
+                        <th class="text-right">#Configurations</th>
+                        <th>Configuration Name</th>
+                        <th class="text-right">Reachable IP</th>
+                        <th class="text-right">Cost</th>
                     </tr>
                 </thead>
                 <tbody>
                     <tr ng-repeat-start="role in get_roles()">
-                        <th colspan="5">{{ role }}, {{ get_num_servers(role) }} devices</th>
+                        <th>{{ role }}, {{ get_num_servers(role) }} Devices</th>
+                        <th colspan="4"></th>
                     </tr>
                     <tr ng-repeat-end ng-repeat="server in get_servers(role)">
                         <td>{{ server[0] }}</td>
-                        <td>{{ server[4].length }}</td>
+                        <td class="text-right">{{ server[4].length }}</td>
                         <td>{{ get_config_names(server) }}</td>
-                        <td>{{ server[1] }}</td>
-                        <td>{{ server[3] }}</td>
+                        <td class="text-right">{{ server[1] }}</td>
+                        <td class="text-right">{{ server[3] }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -62,17 +66,17 @@
                 <ng-pluralize count="struct.server_info_list.length" when="{'0': 'No Server results', 'one': 'One Server result', 'other': '{} Server results'}"></ng-pluralize>
                 <span class="text-warning" ng-show="struct.loading">Updating ...</span>
             </uib-accordion-heading>
-            <table class="table table-hover table-striped" style="width:auto;">
+            <table class="table table-hover table-striped">
                 <thead>
                     <tr>
-                        <th>valid</th>
+                        <th>Valid</th>
                         <th>Name</th>
                         <th>Result</th>
-                        <th>ModelsVers</th>
-                        <th>DatabaseVers</th>
-                        <th>SoftwareVers</th>
-                        <th>max Memory</th>
-                        <th>total Memory</th>
+                        <th>Model Version</th>
+                        <th class="text-right">Database Version</th>
+                        <th class="text-right">Software Version</th>
+                        <th class="text-right">Max Memory</th>
+                        <th class="text-right">Total Memory</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -80,15 +84,15 @@
                         <td>{{ srv_info.valid | yesno2 }}</td>
                         <td>{{ srv_info.$$srv_name }}</td>
                         <td>{{ srv_info.server_reply }}</td>
-                        <td class="text-center">
+                        <td>
                             <span ng-show="srv_info.version_set">{{ srv_info.version_models }}</span>
                             <span ng-show="!srv_info.version_set">---</span>
                         </td>
-                        <td class="text-center">
+                        <td class="text-right">
                             <span ng-show="srv_info.version_set">{{ srv_info.version_database }}</span>
                             <span ng-show="!srv_info.version_set">---</span>
                         </td>
-                        <td class="text-center">
+                        <td class="text-right">
                             <span ng-show="srv_info.version_set">{{ srv_info.version_software }}</span>
                             <span ng-show="!srv_info.version_set">---</span>
                         </td>
@@ -214,83 +218,84 @@
 </script>
 
 <script type="text/ng-template" id="icsw.internal.state.list">
-    <h3>Internal State List ({{ struct.state_list.length }})</h3>
-    <table
-        st-table="entries_displayed"
-        st-safe-src="struct.state_list"
-        class="table table-condensed table-hover table-striped"
-        style="width:auto;"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11"
-                         possible-items-by-page="20,50,100,200,500,1000"></div>
-                </td>
-            </tr>
-            <tr>
-                <th st-sort="name" st-sort-default="true">Name</th>
-                <th st-sort="icswData.$$allowed">Allowed</th>
-                <th st-sort="icswData.$$menuHeader">Header</th>
-                <th st-sort="icswData.$$menuEntry">Entry</th>
-                <th>Quicklink</th>
-                <th>Dashboard</th>
-                <th>PageTitle</th>
-                <th>MenuHeaderInfo</th>
-                <th>MenuEntryInfo</th>
-                <th>DashboardInfo</th>
-                <th>Rights</th>
-                <th>Licenses</th>
-                <th>Service types</th>
-                <th colspan="1" class="text-center">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="obj in entries_displayed">
-                <td>{{ obj.name }}</td>
-                <td class="text-center">{{ obj.icswData.$$allowed | yesno1 }}</td>
-                <td class="text-center">{{ obj.icswData.$$menuHeader | yesno1 }}</td>
-                <td class="text-center">{{ obj.icswData.$$menuEntry | yesno1 }}</td>
-                <td class="text-center">{{ obj.icswData.validForQuicklink | yesno1 }}</td>
-                <td class="text-center">{{ obj.icswData.$$dashboardEntry | yesno1 }}</td>
-                <td>{{ obj.icswData.pageTitle }}</td>
-                <td>
-                    <span ng-show="obj.icswData.$$menuHeader">
-                        {{ obj.icswData.menuHeader.key }} <span ng-class="get_header_class(obj)"></span> ({{ obj.icswData.menuHeader.ordering }})
-                    </span>
-                </td>
-                <td>
-                    <span ng-show="obj.icswData.$$menuEntry">
-                        [{{ obj.icswData.menuEntry.menukey }}] {{ obj.icswData.menuEntry.name }} <span ng-class="get_entry_class(obj)"></span> ({{ obj.icswData.menuEntry.ordering }})
-                    </span>
-                </td>
-                <td>
-                    <span ng-show="obj.icswData.$$dashboardEntry">
-                        ({{ obj.icswData.dashboardEntry.size_x }} x {{ obj.icswData.dashboardEntry.size_y }})
-                        <span ng-show="obj.icswData.dashboardEntry.default_enabled">
-                            , default
+    <div class="container-fluid">
+        <h3>Internal State List ({{ struct.state_list.length }})</h3>
+        <table
+            st-table="entries_displayed"
+            st-safe-src="struct.state_list"
+            class="table table-condensed table-hover table-striped"
+        >
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11"
+                             possible-items-by-page="20,50,100,200,500,1000"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="name" st-sort-default="true">Name</th>
+                    <th st-sort="icswData.$$allowed" class="text-center">Allowed</th>
+                    <th st-sort="icswData.$$menuHeader" class="text-center">Header</th>
+                    <th st-sort="icswData.$$menuEntry" class="text-center">Entry</th>
+                    <th class="text-center">Quicklink</th>
+                    <th class="text-center">Dashboard</th>
+                    <th>PageTitle</th>
+                    <th>Menu Header Info</th>
+                    <th>Menu Entry Info</th>
+                    <th class="text-center">Dashboard Info</th>
+                    <th>Rights</th>
+                    <th>Licenses</th>
+                    <th>Service Types</th>
+                    <th colspan="1" class="text-right">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="obj in entries_displayed">
+                    <td>{{ obj.name }}</td>
+                    <td class="text-center">{{ obj.icswData.$$allowed | yesno1 }}</td>
+                    <td class="text-center">{{ obj.icswData.$$menuHeader | yesno1 }}</td>
+                    <td class="text-center">{{ obj.icswData.$$menuEntry | yesno1 }}</td>
+                    <td class="text-center">{{ obj.icswData.validForQuicklink | yesno1 }}</td>
+                    <td class="text-center">{{ obj.icswData.$$dashboardEntry | yesno1 }}</td>
+                    <td>{{ obj.icswData.pageTitle }}</td>
+                    <td>
+                        <span ng-show="obj.icswData.$$menuHeader">
+                            {{ obj.icswData.menuHeader.key }} <span ng-class="get_header_class(obj)"></span> ({{ obj.icswData.menuHeader.ordering }})
                         </span>
-                        <span ng-show="obj.icswData.dashboardEntry.allow_state">
-                            , state
+                    </td>
+                    <td>
+                        <span ng-show="obj.icswData.$$menuEntry">
+                            [{{ obj.icswData.menuEntry.menukey }}] {{ obj.icswData.menuEntry.name }} <span ng-class="get_entry_class(obj)"></span> ({{ obj.icswData.menuEntry.ordering }})
                         </span>
-                        <span ng-show="obj.icswData.dashboardEntry.allow_show">
-                            , popup
+                    </td>
+                    <td class="text-center">
+                        <span ng-show="obj.icswData.$$dashboardEntry">
+                            ({{ obj.icswData.dashboardEntry.size_x }} x {{ obj.icswData.dashboardEntry.size_y }})
+                            <span ng-show="obj.icswData.dashboardEntry.default_enabled">
+                                , default
+                            </span>
+                            <span ng-show="obj.icswData.dashboardEntry.allow_state">
+                                , state
+                            </span>
+                            <span ng-show="obj.icswData.dashboardEntry.allow_show">
+                                , popup
+                            </span>
                         </span>
-                    </span>
-                </td>
-                <td class="text-center">
-                    {{ obj.icswData.$$rights_info }}
-                </td>
-                <td class="text-center">
-                    {{ obj.icswData.$$licenses_info }}
-                </td>
-                <td class="text-center">
-                    {{ obj.icswData.$$serviceTypes_info }}
-                </td>
-                <td class="text-center">
-                    <icsw-tools-button type="create" value="go" size="xs" ng-click="go($event, obj)"></icsw-tools-button>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+                    </td>
+                    <td>
+                        {{ obj.icswData.$$rights_info }}
+                    </td>
+                    <td>
+                        {{ obj.icswData.$$licenses_info }}
+                    </td>
+                    <td>
+                        {{ obj.icswData.$$serviceTypes_info }}
+                    </td>
+                    <td class="text-right">
+                        <icsw-tools-button type="create" value="go" size="xs" ng-click="go($event, obj)"></icsw-tools-button>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </script>
