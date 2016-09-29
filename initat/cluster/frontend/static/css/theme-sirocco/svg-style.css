@@ -1,6 +1,6 @@
 /* device colors */
 .svg-dev-up { fill: #92aa00; }
-.svg-dev-down { fill: #bb3d1e; }
+.svg-dev-down { fill: #d64f31; }
 .svg-dev-unreach { fill: #ff0000; }
 .svg-dev-unknown { fill: #e2972d; }
 .svg-dev-notmonitored { fill: #aaaaaa; }
@@ -10,8 +10,8 @@
 /* service colors */
 .svg-srv-ok { fill: #92aa00; }
 .svg-srv-warn { fill: #e2972d; }
-.svg-srv-crit { fill: #bb3d1e; }
-.svg-srv-unknown { fill: #bb3d1e; }
+.svg-srv-crit { fill: #d64f31; }
+.svg-srv-unknown { fill: #d64f31; }
 .svg-srv-notmonitored { fill: #aaaaaa; }
 .svg-srv-pending { fill: #ccccff; }
 .svg-srv-unselected { fill: #dddddd; }
@@ -58,6 +58,6 @@
 
 .svg-d3link { stroke: #888888; stroke-width: 2px; opacity: 1; }
 .svg-d3circle { stroke-width: 2px; stroke: #888888; fill: #aaaaaa; }
-.svg-d3circle-selected { stroke-width: 2px; stroke: #888888; fill: #bb3d1e; }
+.svg-d3circle-selected { stroke-width: 2px; stroke: #888888; fill: #d64f31; }
 .svg-d3text { stroke-width:1px; stroke:#ffffff; paint-order:stroke; text-anchor:middle; alignment-baseline:middle; fill:#111111; }
 
