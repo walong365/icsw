@@ -402,6 +402,8 @@ class HardwareHdd(HardwareBase):
         'product': ('product', str),
         'device_name': ('logicalname', str),
         'serial': ('serial', str),
+        # "size" is the size of the physical disk whereas "capacity" is the
+        # size of the corresponding file system (cf. the output of "lsblk")
         'size': ('size', int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394132%28v=vs.85%29.aspx
