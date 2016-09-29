@@ -98,7 +98,6 @@ class ConfigCheckObject(object):
             self.__sql_info.effective_device,
             hfp_tools.get_local_hfp()
         )
-        print unicode(_cur_hfp)
 
     @property
     def CS(self):

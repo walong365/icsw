@@ -27,7 +27,7 @@ from initat.cluster.backbone import routing
 from initat.cluster_server.config import global_config
 from initat.icsw.service import instance, container, service_parser
 from initat.icsw.service.tools import query_local_meta_server
-from initat.tools import process_tools, server_command, uuid_tools, net_tools
+from initat.tools import process_tools, server_command, uuid_tools, net_tools, hfp_tools
 
 
 class status(cs_base_class.server_com):
@@ -54,6 +54,7 @@ class server_status(cs_base_class.server_com):
                 "sys",
                 **settings.ICSW_VERSION_DICT
             )
+            cur_inst.srv_com["fingerprint"] = hfp_tools.get_local_hfp(serialize=True)
             cur_inst.srv_com.set_result(
                 "checked system {}".format(global_config["SERVER_FULL_NAME"]),
             )
