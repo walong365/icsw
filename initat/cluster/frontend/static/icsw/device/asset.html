@@ -840,7 +840,7 @@
         </thead>
         <tbody>
             <tr ng-repeat="node in assets_shown_cpu_entries">
-                <td>{{ node.cpuname }}</td>
+                <td>{{ node.name }}</td>
                 <td>{{ node.numberofcores }}</td>
             </tr>
         </tbody>
@@ -868,13 +868,11 @@
             </tr>
             <tr>
                 <th>GPU Name/Type</th>
-                <th>Driver Version</th>
             </tr>
         </thead>
         <tbody>
             <tr ng-repeat="node in assets_shown_gpu_entries">
-                <td>{{ node.gpuname }}</td>
-                <td>{{ node.driverversion }}</td>
+                <td>{{ node.name }}</td>
             </tr>
         </tbody>
     </table>
@@ -1054,7 +1052,7 @@
         </thead>
         <tbody>
             <tr ng-repeat="node in assets_shown_cpu_entries">
-                <td>{{ node.cpuname }}</td>
+                <td>{{ node.name }}</td>
                 <td>{{ node.numberofcores }}</td>
             </tr>
         </tbody>
@@ -1083,13 +1081,11 @@
             </tr>
             <tr>
                 <th>GPU Name/Type</th>
-                <th>Driver Version</th>
             </tr>
         </thead>
         <tbody>
             <tr ng-repeat="node in assets_shown_gpu_entries">
-                <td>{{ node.gpuname }}</td>
-                <td>{{ node.driverversion }}</td>
+                <td>{{ node.name }}</td>
             </tr>
         </tbody>
     </table>

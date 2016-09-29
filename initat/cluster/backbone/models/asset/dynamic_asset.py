@@ -103,22 +103,21 @@ class AssetHWMemoryEntry(models.Model):
 
 class AssetHWCPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-    cpuname = models.TextField(null=True)
+    name = models.TextField(null=True)
     numberofcores = models.IntegerField(null=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} [Cores:{}]".format(self.cpuname, self.numberofcores)
+        return "{} [Cores:{}]".format(self.name, self.numberofcores)
 
 
 class AssetHWGPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-    gpuname = models.TextField(null=True)
-    driverversion = models.TextField(null=True)
+    name = models.TextField(null=True)
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} [Version:{}]".format(self.gpuname, self.driverversion)
+        return "{}".format(self.name)
 
 
 class AssetHWLogicalEntry(models.Model):
@@ -1339,7 +1338,7 @@ class AssetBatch(models.Model):
         self.cpus.all().delete()
         for cpu in hw.cpus:
             new_cpu = AssetHWCPUEntry(
-                cpuname=cpu.product,
+                name=cpu.product,
                 numberofcores=cpu.number_of_cores
             )
             new_cpu.save()
@@ -1361,7 +1360,7 @@ class AssetBatch(models.Model):
         # set the GPUs
         self.gpus.all().delete()
         for gpus in hw.gpus:
-            new_gpu = AssetHWGPUEntry(gpuname=gpus.product)
+            new_gpu = AssetHWGPUEntry(name=gpus.product)
             new_gpu.save()
             self.gpus.add(new_gpu)
 
