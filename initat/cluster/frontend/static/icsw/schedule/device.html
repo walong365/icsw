@@ -299,6 +299,7 @@
                 </tr>
                 <tr>
                     <th st-sort="name" st-sort-default="true">Name</th>
+                    <th>Parent</th>
                     <th st-sort="description">Description</th>
                     <th>Type</th>
                     <th>User</th>
@@ -312,6 +313,11 @@
             <tbody>
                 <tr ng-repeat="obj in entries_displayed">
                     <td>{{ obj.name }}</td>
+                    <td>
+                        <span ng-show="obj.parent_template">
+                            {{ struct.template_tree.lut[obj.parent_template].name }}
+                        </span>
+                    </td>
                     <td>{{ obj.description }}</td>
                     <td class="text-center">
                         {{ obj.type }}
