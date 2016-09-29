@@ -77,6 +77,7 @@
                         <th class="text-right">Software Version</th>
                         <th class="text-right">Max Memory</th>
                         <th class="text-right">Total Memory</th>
+                        <th>Fingerprint</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -98,6 +99,7 @@
                         </td>
                         <td class="text-right">{{ srv_info.max_mem | get_size:1:1024:"B":3 }}</td>
                         <td class="text-right">{{ srv_info.sum_mem | get_size:1:1024:"B":3 }}</td>
+                        <td>{{ srv_info.$$fingerprint_str }}</td>
                     </tr>
                 </tbody>
             </table>

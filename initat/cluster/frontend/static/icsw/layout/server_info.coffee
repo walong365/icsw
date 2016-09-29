@@ -187,9 +187,15 @@ angular.module(
         _salt_error: () =>
             @$$tr_class = "danger"
             @$$instance_names = []
+            @$$fingerprint_str = "N/A"
 
         _salt_ok: () =>
             @$$tr_class = ""
+            _fp = @xml.find("fingerprint")
+            if _fp.length
+                @$$fingerprint_str = "OK"
+            else
+                @$$fingerprint_str = "---"
             @$$instance_names = ($(entry).attr("name") for entry in @xml.find("instance"))
             for name in @$$instance_names
                 @service_lut[name] = @_salt_service(name)

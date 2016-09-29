@@ -87,10 +87,13 @@ def server_dict_is_valid(s_dict):
     return _valid, ", ".join(_logs)
 
 
-def get_local_hfp():
-    return {
+def get_local_hfp(serialize=False):
+    _rd = {
         "net": get_local_net_hfp()
     }
+    if serialize:
+        _rd = HardwareFingerPrint.serialize(_rd)
+    return _rd
 
 
 def get_local_net_hfp():
