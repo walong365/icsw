@@ -673,17 +673,18 @@ class get_fieldvalues_for_template(View):
         data = {}
 
         def set_aggregate_value(aggregate_obj, field_object):
-            if field_object['value_int']:
+            field_type = field_object['field_type']
+            if field_type == StaticAssetTemplateFieldType.INTEGER:
                 if not aggregate_obj['aggregate']:
                     aggregate_obj['aggregate'] = 0
                 aggregate_obj['aggregate'] += field_object['value_int']
             else:
                 str_value = ''
-                if field_object['value_str']:
+                if field_type == StaticAssetTemplateFieldType.STRING:
                     str_value = field_object['value_str']
-                elif field_object['value_date']:
+                elif field_type == StaticAssetTemplateFieldType.DATE:
                     str_value = field_object['value_date']
-                elif field_object['value_text']:
+                elif field_type == StaticAssetTemplateFieldType.TEXT:
                     str_value = field_object['value_text']
 
                 if not aggregate_obj['aggregate']:

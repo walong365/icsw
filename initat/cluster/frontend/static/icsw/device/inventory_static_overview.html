@@ -7,7 +7,9 @@
     <div class="container-fluid">
         <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching data from server ...</div>
         <div ng-if="struct.data_loaded">
-        <br/>
+            <h2>
+                Asset Categories
+            </h2>
             <div class="panel panel-default">
                 <div class="panel-body" style="padding: 6px 15px">
                     <h2>
@@ -36,68 +38,75 @@
                     </table>
                 </div>
             </div>
-            <br/>
-            <div class="panel panel-default">
-                <div class="panel-body" style="padding: 6px 15px">
-                    <h2>
-                        Static Assets
-                    </h2>
-                    <div ng-repeat="obj in struct.static_assets">
-                        <h3>
-                            {{ obj.name }} ({{ obj.description }})
-                        </h3>
-                        <table
-                            class="table table-condensed table-striped simple-border"
-                            style="width:auto;"
+            <h2>
+                Static Asset Overview
+            </h2>
+            <uib-tabset>
+                <uib-tab ng-repeat="(static_type_name, static_asset_list) in struct.static_asset_tabs">
+                    <uib-tab-heading>
+                        <span>{{ static_type_name }}</span>
+                    </uib-tab-heading>
+                    <br/>
+                    <div class="panel panel-default">
+                        <div class="panel-body" style="padding: 6px 15px">
+                            <div ng-repeat="obj in static_asset_list">
+                                <h3>
+                                    {{ obj.name }} ({{ obj.description }}) <button ng-disabled="obj.$$expand_devices_button_disabled" type="button" class="btn btn-xs btn-success" ng-click="show_devices(obj)">{{ obj.$$show_devices_inventory_static_overview ? 'Hide' : 'Show' }} Device Information</button>
+                                </h3>
+                                <table
+                                    class="table table-condensed table-striped simple-border"
+                                    style="width:auto;"
 
-                        >
-                            <thead>
-                                <tr>
-                                    <th>Device</th>
-                                    <th ng-repeat="field in obj.$$fields">{{ field.name }}{{ field.fixed ? " [fixed]" : "" }}</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>all</td>
-                                    <td ng-repeat="field in obj.$$fields">{{ field.aggregate }}</td>
-                                    <td class="text-center">
-                                        <div ng-show="obj.$$inventory_static_status == 0" class="alert-success">
-                                            <strong>OK</strong>
-                                        </div>
-                                        <div ng-show="obj.$$inventory_static_status == 1" class="alert-warning">
-                                            <strong>Warning</strong>
-                                        </div>
-                                        <div ng-show="obj.$$inventory_static_status == 2" class="alert-danger">
-                                            <strong>Critical</strong>
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr ng-repeat="device in obj.$$devices">
-                                    <td>
-                                        {{ device.name }}
-                                    </td>
-                                    <td ng-repeat="field in device.$$static_field_values">
-                                        {{ field.value }}
-                                    </td>
-                                    <td class="text-center">
-                                        <div ng-show="device.$$inventory_static_status == 0" class="alert-success">
-                                            <strong>OK</strong>
-                                        </div>
-                                        <div ng-show="device.$$inventory_static_status == 1" class="alert-warning">
-                                            <strong>Warning</strong>
-                                        </div>
-                                        <div ng-show="device.$$inventory_static_status == 2" class="alert-danger">
-                                            <strong>Critical</strong>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
+                                >
+                                    <thead>
+                                        <tr>
+                                            <th>Device</th>
+                                            <th ng-repeat="field in obj.$$fields">{{ field.name }}{{ field.fixed ? " [fixed]" : "" }}</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>all</td>
+                                            <td ng-repeat="field in obj.$$fields">{{ field.aggregate }}</td>
+                                            <td class="text-center">
+                                                <div ng-show="obj.$$inventory_static_status == 0" class="alert-success">
+                                                    <strong>OK</strong>
+                                                </div>
+                                                <div ng-show="obj.$$inventory_static_status == 1" class="alert-warning">
+                                                    <strong>Warning</strong>
+                                                </div>
+                                                <div ng-show="obj.$$inventory_static_status == 2" class="alert-danger">
+                                                    <strong>Critical</strong>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr ng-show="obj.$$show_devices_inventory_static_overview" ng-repeat="device in obj.$$devices">
+                                            <td>
+                                                {{ device.name }}
+                                            </td>
+                                            <td ng-repeat="field in device.$$static_field_values">
+                                                {{ field.value }}
+                                            </td>
+                                            <td class="text-center">
+                                                <div ng-show="device.$$inventory_static_status == 0" class="alert-success">
+                                                    <strong>OK</strong>
+                                                </div>
+                                                <div ng-show="device.$$inventory_static_status == 1" class="alert-warning">
+                                                    <strong>Warning</strong>
+                                                </div>
+                                                <div ng-show="device.$$inventory_static_status == 2" class="alert-danger">
+                                                    <strong>Critical</strong>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
+                </uib-tab>
+            </uib-tabset>
         </div>
     </div>
 </script>
