@@ -811,8 +811,20 @@ menu_module = angular.module(
             for icswheadersub in icswheader.entries
                 entryname = if icswheader.name == "$$USER_INFO" then "Usermenu" else icswheader.name
                 header_lut[icswheadersub.data.subgroupkey] = [
-                    {icon : icswheader.icon, name : entryname},
-                    {icon : "", name : icswheadersub.data.name }]
+                    {
+                        icon: icswheader.icon
+                        name: entryname
+                    }
+                ]
+                if icswheadersub.data.hidden? and icswheadersub.data.hidden
+                    true
+                else
+                    header_lut[icswheadersub.data.subgroupkey].push(
+                        {
+                            icon: ""
+                            name: icswheadersub.data.name
+                        }
+                    )
         return  # keep return
 
     generatePath = (state) ->
