@@ -126,7 +126,10 @@ dashboard_module = angular.module(
                 scope.object = new_val
 
                 if scope.object?
-                    scope.virtual_desktop_sessions = scope.virtual_desktop_user_setting.filter((vdus) -> vdus.user == scope.object.idx && vdus.to_delete == false)
+                    scope.virtual_desktop_sessions = scope.virtual_desktop_user_setting.filter(
+                        (vdus) ->
+                            vdus.user == scope.object.idx && vdus.to_delete == false
+                    )
                     # get all ips
                     scope.retrieve_device_ip vdus.device for vdus in scope.virtual_desktop_sessions
 

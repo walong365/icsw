@@ -1972,7 +1972,7 @@ user_module = angular.module(
 [
     "$compile", "$templateCache", "icswTools",
 (
-    $compile, $templateCache, icswTools
+    $compile, $templateCache, icswTools,
 ) ->
     return {
         restrict : "EA"
@@ -1983,15 +1983,18 @@ user_module = angular.module(
             settings_tree: "=icswUserGroupRoleSettingsTree"
         link: (scope, element, attrs) ->
             # console.log scope.object_type, scope.object
-            scope.$watch("object", (new_val) ->
-                if new_val
-                    if scope.object_type == "user"
-                        scope.quota_settings = scope.object.user_quota_setting_set
+            scope.$watch(
+                "object"
+                (new_val) ->
+                    if new_val
+                        if scope.object_type == "user"
+                            scope.quota_settings = scope.object.user_quota_setting_set
+                        else
+                            scope.quota_settings = scope.object.group_quota_setting_set
+                        _salt_list(scope.quota_settings)
                     else
-                        scope.quota_settings = scope.object.group_quota_setting_set
-                    _salt_list(scope.quota_settings)
-                else
-                    scope.quota_settings = []
+                        scope.quota_settings = []
+                true
             )
 
             _build_stacked = (qs, _type, abs) ->
@@ -2124,6 +2127,9 @@ user_module = angular.module(
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.user.disk.usage")
+        scope:
+            object: "=icswObject"
+            settings_tree: "=icswUserGroupRoleSettingsTree"
         link: (scope, element, attrs) ->
             scope.object = undefined
             scope.scan_runs = []
@@ -2131,13 +2137,12 @@ user_module = angular.module(
             scope.du_tree = null
             scope.show_dots = false
             scope.icswTools = icswTools
-            scope.$watch(attrs["object"], (new_val) ->
-                scope.object = new_val
-                scope.type = attrs["type"]
-                if scope.object?
-                    scope.current_scan_run = null
-                    # salt list
-                    if scope.type == "user"
+            scope.$watch(
+                "object"
+                (new_val) ->
+                    if new_val
+                        scope.current_scan_run = null
+                        # salt list
                         scope.scan_runs = scope.object.user_scan_run_set
                         _valid = (_entry for _entry in scope.scan_runs when _entry.current == true)
                         if _valid.length
@@ -2161,10 +2166,8 @@ user_module = angular.module(
                     scope
                     {
                         show_selection_buttons: false
-                        show_icons: true
                         show_select: false
                         show_descendants: true
-                        show_childs: false
                     }
                 )
                 scope.SIZE_LIMIT = 1024 * 1024
