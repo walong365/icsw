@@ -29,14 +29,16 @@ import operator
 
 import enum
 from dateutil import relativedelta
+from django.core.exceptions import ValidationError
 from django.db import models, transaction, IntegrityError
+from django.contrib.contenttypes.models import ContentType
 from django.db.models import signals, Q, Count
 from django.dispatch import receiver
 
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models.rms import ext_license
-from initat.tools.server_command import XML_NS
+from .license_xml import ICSW_XML_NS, ICSW_XML_NS_NAME, ICSW_XML_NS_MAP, LIC_FILE_RELAX_NG_DEFINITION
 
 __all__ = [
     "LicenseState",
@@ -50,6 +52,13 @@ __all__ = [
     "LicenseLockListDeviceService",
     "LicenseLockListUser",
     "LicenseLockListExtLicense",
+    "ICSW_XML_NS",
+    "ICSW_XML_NS_MAP",
+    "ICSW_XML_NS_NAME",
+    "LIC_FILE_RELAX_NG_DEFINITION",
+    "icswEggBasket",
+    "icswEggConsumer",
+    "icswEggLock",
 ]
 
 logger = logging.getLogger("cluster.icsw_license")
@@ -525,141 +534,67 @@ class LicenseLockListExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
     objects = _LicenseLockListExtLicenseManager()
 
 
-########################################
-# XML
+class icswEggBasket(models.Model):
+    # container for all eggs
+    idx = models.AutoField(primary_key=True)
+    # is a sytem basket, only one allowed (and no user baskets defined)
+    system_basket = models.BooleanField(default=True)
+    # how many eggs are currently installed (and covered by licenses)
+    installed = models.IntegerField(default=0)
+    # how many eggs are currently available (must be smaller or equal to the installed eggs)
+    available = models.IntegerField(default=0)
+    # creation date
+    date = models.DateTimeField(auto_now_add=True)
 
-ICSW_XML_NS = XML_NS
-ICSW_XML_NS_NAME = "icsw"
 
-ICSW_XML_NS_MAP = {
-    ICSW_XML_NS_NAME: ICSW_XML_NS
-}
+class icswEggConsumer(models.Model):
+    """
+    a consumers gets created by request from a steering XML control file
+    it links a licensed service with an database element with a fixed or dynamic
+    multiplier to calculate how many eggs are being consumd by a given funtion
+    """
+    # defines how eggs are consumed
+    idx = models.AutoField(primary_key=True)
+    # xml file reference
+    xml_file_reference = models.TextField(default="")
+    # xml reference
+    xml_node_reference = models.TextField(default="")
+    # content type
+    content_type = models.ForeignKey(ContentType, null=True)
+    # name for reference
+    name = models.CharField(max_length=63, default="", unique=True)
+    # config service enum
+    config_service_enum = models.ForeignKey("backbone.ConfigServiceEnum")
+    # multiplier
+    multiplier = models.IntegerField(default=1)
+    # dynamic multiplier ?
+    dynamic_multiplier = models.BooleanField(default=False)
+    # valid, parameters have not changed (after installing a new XML file)
+    valid = models.BooleanField(default=False)
+    # creation date
+    date = models.DateTimeField(auto_now_add=True)
 
 
-LIC_FILE_RELAX_NG_DEFINITION = """
-<element name="signed-license-file" ns=""" + "\"" + ICSW_XML_NS + "\"" + """ xmlns="http://relaxng.org/ns/structure/1.0">
+class icswEggLock(models.Model):
+    # lock instance
+    idx = models.AutoField(primary_key=True)
+    # basket
+    egg_basket = models.ForeignKey(icswEggBasket)
+    # egg consumer
+    egg_consumer = models.ForeignKey(icswEggConsumer)
+    # object id, may be None
+    object_id = models.IntegerField(null=True)
+    # effective number of eggs
+    weight = models.IntegerField(default=0)
+    # creation date
+    date = models.DateTimeField(auto_now_add=True)
 
-    <element name="license-file">
 
-        <element name="license-file-meta">
-            <element name="created-by">
-                <text/>
-            </element>
-            <element name="creation-datetime">
-                <text/> <!-- date validation supported? -->
-            </element>
-            <element name="file-format-version">
-                <text/>
-            </element>
-        </element>
-
-        <element name="customer">
-            <element name="name">
-                <text/>
-            </element>
-            <element name="repository_login">
-                <text/>
-            </element>
-            <element name="repository_password">
-                <text/>
-            </element>
-        </element>
-
-        <element name="package-list">
-            <oneOrMore>
-                <element name="package">
-
-                    <element name="package-meta">
-                        <element name="package-name">
-                            <text/>
-                        </element>
-                        <element name="package-uuid">
-                            <text/>
-                        </element>
-                        <element name="package-date">
-                            <text/>
-                        </element>
-                        <element name="package-version">
-                            <text/>
-                        </element>
-                        <element name="package-type-id">
-                            <text/>
-                        </element>
-                        <element name="package-type-name">
-                            <text/>
-                        </element>
-                    </element>
-
-                    <oneOrMore>
-                        <element name="cluster-id">
-                            <attribute name="id"/>
-                            <optional>
-                                <element name="hardware-finger-print">
-                                    <text/>
-                                </element>
-                            </optional>
-                            <oneOrMore>
-                                <element name="license">
-                                    <element name="id">
-                                       <text/>
-                                    </element>
-                                    <element name="uuid">
-                                       <text/>
-                                    </element>
-                                    <element name="valid-from">
-                                       <text/>
-                                    </element>
-                                    <element name="valid-to">
-                                       <text/>
-                                    </element>
-                                    <element name="parameters">
-
-                                        <zeroOrMore>
-                                            <element name="parameter">
-                                                <attribute name="id"/>
-                                                <attribute name="name"/>
-                                                <text/>
-                                            </element>
-                                        </zeroOrMore>
-
-                                    </element>
-                                </element>
-                            </oneOrMore>
-                            <zeroOrMore>
-                                <element name="package-parameter">
-                                    <element name="id">
-                                       <text/>
-                                    </element>
-                                    <element name="name">
-                                       <text/>
-                                    </element>
-                                    <element name="uuid">
-                                       <text/>
-                                    </element>
-                                    <element name="valid-from">
-                                       <text/>
-                                    </element>
-                                    <element name="valid-to">
-                                       <text/>
-                                    </element>
-                                    <element name="value">
-                                       <text/>
-                                    </element>
-                                </element>
-                            </zeroOrMore>
-                        </element>
-                    </oneOrMore>
-
-                </element>
-            </oneOrMore>
-
-        </element>
-
-    </element>
-
-    <element name="signature">
-        <text/>
-    </element>
-
-</element>
-"""
+@receiver(signals.pre_save, sender=icswEggBasket)
+def icsw_egg_basket_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        _inst = kwargs["instance"]
+        if _inst.system_basket:
+            _found = icswEggBasket.objects.filter(Q(system_basket=True)).exclude(Q(pk=_inst.pk)).count()
+            if _found:
+                raise ValidationError("only one sytem baske allowed")

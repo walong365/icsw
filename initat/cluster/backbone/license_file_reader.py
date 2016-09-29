@@ -157,7 +157,7 @@ class LicenseFileReader(object):
         if not self.fingerprint_ok:
             return LicenseState.fp_mismatch
         # check parameters via xpath
-        license_parameter_check = ["iscw:id/text()='{}'".format(license.name)]
+        license_parameter_check = ["icsw:id/text()='{}'".format(license.name)]
         if parameters is not None:
             for lic_param_type, value in parameters.iteritems():
                 license_parameter_check.append(
