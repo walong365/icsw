@@ -31,6 +31,7 @@ import inflection
 from initat.meta_server.config import global_config, SQL_SCHEMA_VERSION, INIT_SQL_SCHEMA_VERSION
 from initat.tools import logging_tools, server_command, process_tools
 from initat.icsw.service import constants
+from initat.constants import MON_DAEMON_INFO_FILE
 
 LOCK_TIMEOUT = 30
 TRANSACTION_WINDOW = 300
@@ -368,6 +369,12 @@ class ServiceState(object):
     def _get_default_state(self, srv_name):
         if srv_name == "package-client":
             if os.path.exists("/etc/packageserver") or os.path.exists("/etc/packageserver_id"):
+                _ts = constants.TARGET_STATE_RUNNING
+            else:
+                _ts = constants.TARGET_STATE_STOPPED
+        elif srv_name == "md-sync-server":
+            if os.path.exists(MON_DAEMON_INFO_FILE):
+                # icinga-init installed
                 _ts = constants.TARGET_STATE_RUNNING
             else:
                 _ts = constants.TARGET_STATE_STOPPED

@@ -136,6 +136,7 @@ class _LicenseManager(models.Manager):
         return self._get_license_state(license, parameters, ignore_violations=ignore_violations).is_valid()
 
     def fingerprint_ok(self, license):
+        # return false even when no licenses are present, ToDo, FIXME
         return any([r.fingerprint_ok for r in self._license_readers if r.has_license(license)])
 
     ########################################
