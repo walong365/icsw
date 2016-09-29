@@ -228,7 +228,11 @@ class partition_disc(models.Model):
     idx = models.AutoField(db_column="partition_disc_idx", primary_key=True)
     partition_table = models.ForeignKey("backbone.partition_table")
     disc = models.CharField(max_length=192)
-    label_type = models.CharField(max_length=128, default="gpt", choices=[("gpt", "GPT"), ("msdos", "MSDOS")])
+    serial = models.TextField(default='')
+    size = models.BigIntegerField(null=True)
+    label_type = models.CharField(max_length=128, default="gpt",
+        choices=[("gpt", "GPT"), ("msdos", "MSDOS")],
+    )
     priority = models.IntegerField(null=True, default=0)
     date = models.DateTimeField(auto_now_add=True)
 

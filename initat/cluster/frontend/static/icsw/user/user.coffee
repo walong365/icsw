@@ -1146,7 +1146,7 @@ user_module = angular.module(
         defer = $q.defer()
         # must use a timeout here to fix strange routing bug, FIXME, TODO
         if icswBackupTools.changed(ref_obj)
-            icswToolsSimpleModalService("Really close changed #{obj_type} ?").then(
+            icswToolsSimpleModalService("Really close changed #{obj_type}?").then(
                 (ok) ->
                     defer.resolve("close")
                 (not_ok) ->
@@ -1187,7 +1187,7 @@ user_module = angular.module(
     $scope.create_role = () ->
         new_role = {
             $$changed: true
-            name: "DummyRole"
+            name: "New Role"
             description: "new role"
             active: true
             rolepermission_set: []
@@ -1474,7 +1474,7 @@ user_module = angular.module(
 
     $scope.delete = () ->
         # check for deletion of own user / group, TODO, FIXME
-        icswToolsSimpleModalService("Really delete #{$scope.type} ?").then(
+        icswToolsSimpleModalService("Really delete #{$scope.type}?").then(
             (doit) ->
                 blockUI.start("deleting #{$scope.type}")
                 defer = $q.defer()
@@ -1704,7 +1704,7 @@ user_module = angular.module(
 
     $scope.delete = () ->
         # check for deletion of own user / group, TODO, FIXME
-        icswToolsSimpleModalService("Really delete #{$scope.type} ?").then(
+        icswToolsSimpleModalService("Really delete #{$scope.type}?").then(
             (doit) ->
                 blockUI.start("deleting #{$scope.type}")
                 defer = $q.defer()

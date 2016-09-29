@@ -30,9 +30,8 @@
 
 <script type="text/ng-template" id="config.catalog.form">
     <form name="form_data" class="form-horizontal">
-        <h2>Configuration catalog '{{ edit_obj.name }}'</h2>
         <fieldset>
-            <legend>Basic settings</legend>
+            <legend>Basic Settings Configuration Catalog '{{ edit_obj.name }}'</legend>
             <div class="form-group  ng-class:form_error('name')">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Name<span class="asteriskField">*</span>
@@ -77,7 +76,7 @@
     <div>
         <h3>
             <form class="form-inline">
-                Upload to catalog <select name="catalog" class="select form-control input-sm" ng-model="use_catalog" ng-options="value.idx as value.name for value in config_tree.catalog_list"></select>
+                Upload to Catalog <select name="catalog" class="select form-control input-sm" ng-model="use_catalog" ng-options="value.idx as value.name for value in config_tree.catalog_list"></select>
             </form>
         </h3>
         <icsw-config-upload-info ng-repeat="entry in config_tree.uploaded_configs" config-tree="config_tree" upload="entry" catalog="use_catalog">
@@ -109,7 +108,7 @@
         Loading data ...
     </div>
     <div ng-if="struct.data_valid">
-        <h2>
+        <h3>
             {{ struct.config_tree.list.length }} Configurations, {{ struct.config_tree.filtered_list.length }} shown, {{ struct.config_tree.$selected }} selected
             <icsw-tools-button-static
                 type="create"
@@ -134,7 +133,7 @@
             <!-- removed temporarily due to bug in CSW-576
             <icsw-config-download config-tree="config_tree"></icsw-config-download>
             -->
-        </h2>
+        </h3>
         <uib-tabset active="struct.active_tab">
             <uib-tab index="0">
                 <uib-tab-heading>
@@ -220,7 +219,7 @@
 
 <script type="text/ng-template" id="icsw.config.modify.form">
     <form class="form-horizontal" name="form_data" ng-if="struct.data_ready">
-        <h2>Configuration '{{ edit_obj.name }}'</h2>
+        <h3>Configuration '{{ edit_obj.name }}'</h3>
         <div class="row">
             <div class="col-md-6 col-xs-6">
                 <fieldset>
@@ -254,7 +253,7 @@
                     </div>
                     <div class="form-group">
                         <label class="control-label col-sm-3 icsw-formlabel">
-                            ConfigService
+                            Configuration Service
                         </label>
                         <div class="controls col-sm-7">
                             <div class="input-group">
@@ -275,9 +274,9 @@
                         </div>
                     </div>
                 </fieldset>
-                <div ng-bind-html="config.$$config_help_html"></div>
+                <!-- FIXME <div ng-bind-html="config.$$config_help_html"></div> -->
                 <fieldset>
-                    <legend>other settings</legend>
+                    <legend>Other Settings</legend>
                     <div class="form-group">
                         <label class="col-sm-3 control-label icsw-formlabel">
                             Enabled
@@ -296,7 +295,7 @@
                     </div>
                     <div class="form-group">
                         <label class="control-label col-sm-3 requiredField icsw-formlabel">
-                            Configuration catalog<span class="asteriskField">*</span>
+                            Configuration Catalog<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-7">
                             <ui-select ng-model="edit_obj.config_catalog" class="maxwidth500">
