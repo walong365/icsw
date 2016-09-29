@@ -52,7 +52,6 @@ __all__ = [
     "AssetHWMemoryEntry",
     "AssetHWCPUEntry",
     "AssetHWGPUEntry",
-    "AssetHWHDDEntry",
     "AssetHWLogicalEntry",
     "AssetHWDisplayEntry",
     "AssetHWNetworkDevice",
@@ -82,11 +81,8 @@ class AssetHWMemoryEntry(models.Model):
     formfactor = models.TextField(null=True)
     # i.e ddr/ddr2 if known
     memorytype = models.TextField(null=True)
-
     manufacturer = models.TextField(null=True)
-
     capacity = models.BigIntegerField(null=True)
-
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -107,55 +103,28 @@ class AssetHWMemoryEntry(models.Model):
 
 class AssetHWCPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-
-    cpuname = models.TextField(null=True)
-
+    name = models.TextField(null=True)
     numberofcores = models.IntegerField(null=True)
-
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} [Cores:{}]".format(self.cpuname, self.numberofcores)
+        return "{} [Cores:{}]".format(self.name, self.numberofcores)
 
 
 class AssetHWGPUEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-
-    gpuname = models.TextField(null=True)
-
-    driverversion = models.TextField(null=True)
-
-    created = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "{} [Version:{}]".format(self.gpuname, self.driverversion)
-
-
-# TODO: Remove this model.
-class AssetHWHDDEntry(models.Model):
-    idx = models.AutoField(primary_key=True)
-
     name = models.TextField(null=True)
-
-    serialnumber = models.TextField(null=True)
-
-    size = models.BigIntegerField(null=True)
-
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} [Serialnumber:{} Size:{}]".format(self.name, self.serialnumber, sizeof_fmt(self.size))
+        return "{}".format(self.name)
 
 
 class AssetHWLogicalEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-
     name = models.TextField(null=True)
-
     size = models.BigIntegerField(null=True)
-
     free = models.BigIntegerField(null=True)
-
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
@@ -164,15 +133,10 @@ class AssetHWLogicalEntry(models.Model):
 
 class AssetHWDisplayEntry(models.Model):
     idx = models.AutoField(primary_key=True)
-
     name = models.TextField(null=True)
-
     type = models.TextField(null=True)
-
     xpixels = models.IntegerField(null=True)
-
     ypixels = models.IntegerField(null=True)
-
     manufacturer = models.TextField(null=True)
 
     def __unicode__(self):
@@ -1346,22 +1310,24 @@ class AssetBatch(models.Model):
 
             arg_name = runs[run.run_type]
 
-            if run.run_type == AssetType.DMI:
-                arg_value = run.assetdmihead_set.get()
-            else:
-                if run.scan_type == ScanType.NRPE:
-                    blob = run.raw_result
-                    arg_value = json.loads(blob)
-                elif run.scan_type == ScanType.HM:
-                    tree = run.raw_result
-                    blob = tree.xpath(
-                        'ns0:lshw_dump',
-                        namespaces=tree.nsmap
-                    )[0].text
-                    blob = bz2.decompress(base64.b64decode(blob))
-                    arg_value = etree.fromstring(blob)
+            if (run.run_status == RunStatus.FINISHED and
+                    run.run_result == RunResult.SUCCESS):
+                if run.run_type == AssetType.DMI:
+                    arg_value = run.assetdmihead_set.get()
+                else:
+                    if run.scan_type == ScanType.NRPE:
+                        blob = run.raw_result
+                        arg_value = json.loads(blob)
+                    elif run.scan_type == ScanType.HM:
+                        tree = run.raw_result
+                        blob = tree.xpath(
+                            'ns0:lshw_dump',
+                            namespaces=tree.nsmap
+                        )[0].text
+                        blob = bz2.decompress(base64.b64decode(blob))
+                        arg_value = etree.fromstring(blob)
 
-            run_results[arg_name] = arg_value
+                run_results[arg_name] = arg_value
 
         # check if we have the necessary asset runs
         if not ('win32_tree' in run_results or 'lshw_tree' in run_results):
@@ -1372,7 +1338,7 @@ class AssetBatch(models.Model):
         self.cpus.all().delete()
         for cpu in hw.cpus:
             new_cpu = AssetHWCPUEntry(
-                cpuname=cpu.product,
+                name=cpu.product,
                 numberofcores=cpu.number_of_cores
             )
             new_cpu.save()
@@ -1394,7 +1360,7 @@ class AssetBatch(models.Model):
         # set the GPUs
         self.gpus.all().delete()
         for gpus in hw.gpus:
-            new_gpu = AssetHWGPUEntry(gpuname=gpus.description)
+            new_gpu = AssetHWGPUEntry(name=gpus.product)
             new_gpu.save()
             self.gpus.add(new_gpu)
 

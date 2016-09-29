@@ -3,44 +3,46 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rms.overview">
-    <h2>
-        {{ struct.header_line }}
-        <span class="text-danger" ng-show="struct.loading">Fetching initial data from server...</span>
-        <span class="text-danger" ng-show="struct.updating">Updating data</span>
-    </h2>
-    <uib-tabset ng-if="struct.initial_data_present">
-        <uib-tab heading="{{ struct.rms.running.info }}">
-            <icsw-rms-job-running-table icsw-rms-struct="struct.rms.running" icsw-rms-global="struct"></icsw-rms-job-running-table>
-        </uib-tab>
-        <uib-tab heading="{{ struct.rms.waiting.info }}">
-            <icsw-rms-job-waiting-table icsw-rms-struct="struct.rms.waiting" icsw-rms-global="struct"></icsw-rms-job-waiting-table>
-        </uib-tab>
-        <uib-tab heading="{{ struct.rms.done.info }}">
-            <icsw-rms-job-done-table icsw-rms-struct="struct.rms.done" icsw-rms-global="struct"></icsw-rms-job-done-table>
-        </uib-tab>
-        <uib-tab heading="{{ struct.rms.node.info }}">
-            <icsw-rms-queue-table icsw-rms-struct="struct.rms.node" icsw-rms-global="struct"></icsw-rms-queue-table>
-        </uib-tab>
-        <uib-tab ng-if="struct.fstree_present" select="select_fairshare_tree()">
-            <uib-tab-heading>
-                FairShare tree
-            </uib-tab-heading>
-            <icsw-rms-fair-share-tree></icsw-rms-fair-share-tree>
-        </uib-tab>
-        <uib-tab ng-repeat="(key, io_struct) in struct.io_dict" active="io_struct.active">
-            <uib-tab-heading>
-                {{ key }}
-                <icsw-tools-button size="xs" type="close" ng-click="close_io(io_struct)"></icsw-tools-button>
-            </uib-tab-heading>
-            <icsw-rms-io-struct struct="io_struct"></icsw-rms-io-struct>
-        </uib-tab>
-        <uib-tab ng-if="struct.jv_struct.show">
-            <uib-tab-heading>
-                {{ struct.jv_struct.info }}
-            </uib-tab-heading>
-            <icsw-rms-job-var-info icsw-rms-jv-struct="struct.jv_struct"></icsw-rms-job-var-info>
-        </uib-tab>
-    </uib-tabset>
+    <div class="container-fluid">
+        <h3>
+            {{ struct.header_line }}
+            <span class="text-danger" ng-show="struct.loading">Fetching initial Data from Server ...</span>
+            <span class="text-danger" ng-show="struct.updating">Updating Data</span>
+        </h3>
+        <uib-tabset ng-if="struct.initial_data_present">
+            <uib-tab heading="{{ struct.rms.running.info }}">
+                <icsw-rms-job-running-table icsw-rms-struct="struct.rms.running" icsw-rms-global="struct"></icsw-rms-job-running-table>
+            </uib-tab>
+            <uib-tab heading="{{ struct.rms.waiting.info }}">
+                <icsw-rms-job-waiting-table icsw-rms-struct="struct.rms.waiting" icsw-rms-global="struct"></icsw-rms-job-waiting-table>
+            </uib-tab>
+            <uib-tab heading="{{ struct.rms.done.info }}">
+                <icsw-rms-job-done-table icsw-rms-struct="struct.rms.done" icsw-rms-global="struct"></icsw-rms-job-done-table>
+            </uib-tab>
+            <uib-tab heading="{{ struct.rms.node.info }}">
+                <icsw-rms-queue-table icsw-rms-struct="struct.rms.node" icsw-rms-global="struct"></icsw-rms-queue-table>
+            </uib-tab>
+            <uib-tab ng-if="struct.fstree_present" select="select_fairshare_tree()">
+                <uib-tab-heading>
+                    FairShare tree
+                </uib-tab-heading>
+                <icsw-rms-fair-share-tree></icsw-rms-fair-share-tree>
+            </uib-tab>
+            <uib-tab ng-repeat="(key, io_struct) in struct.io_dict" active="io_struct.active">
+                <uib-tab-heading>
+                    {{ key }}
+                    <icsw-tools-button size="xs" type="close" ng-click="close_io(io_struct)"></icsw-tools-button>
+                </uib-tab-heading>
+                <icsw-rms-io-struct struct="io_struct"></icsw-rms-io-struct>
+            </uib-tab>
+            <uib-tab ng-if="struct.jv_struct.show">
+                <uib-tab-heading>
+                    {{ struct.jv_struct.info }}
+                </uib-tab-heading>
+                <icsw-rms-job-var-info icsw-rms-jv-struct="struct.jv_struct"></icsw-rms-job-var-info>
+            </uib-tab>
+        </uib-tabset>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.rms.job.running.table">

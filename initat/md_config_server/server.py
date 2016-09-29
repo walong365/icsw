@@ -111,7 +111,6 @@ class server_process(
         self._check_special_commands()
         # from mixins
         self._check_md_version()
-        self._check_relay_version()
         self._init_network_sockets()
 
         if "MD_TYPE" in global_config:

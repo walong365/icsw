@@ -38,6 +38,7 @@ __all__ = [
     "SITE_PACKAGES_BASE",
     "INITAT_BASE",
     "INITAT_BASE_DEBUG",
+    "MON_DAEMON_INFO_FILE",
 ]
 
 GEN_CS_NAME = "icsw.general"
@@ -50,6 +51,8 @@ CLUSTER_DIR = "/opt/cluster"
 USER_EXTENSION_ROOT = os.path.join(CLUSTER_DIR, "share", "user_extensions.d")
 # changed from cluster to icsw due to clash with corosync packages
 LOG_ROOT = "/var/log/icsw"
+# monitoring daemon info
+MON_DAEMON_INFO_FILE = os.path.join(CLUSTER_DIR, "etc", "mon_info")
 
 _PY_VERSION = "{:d}.{:d}".format(
     sys.version_info.major,

@@ -19,11 +19,10 @@
 #
 """ mixins for md-sync-server """
 
-import commands
 import os
-import re
 import time
 
+from initat.constants import MON_DAEMON_INFO_FILE
 from initat.md_sync_server.config import global_config
 from initat.tools import configfile, logging_tools, process_tools
 
@@ -31,7 +30,7 @@ from initat.tools import configfile, logging_tools, process_tools
 class VersionCheckMixin(object):
     def VCM_check_md_version(self):
         start_time = time.time()
-        _info_file = "/opt/cluster/etc/mon_info"
+        _info_file = MON_DAEMON_INFO_FILE
         self.log(
             "checking type and version of installed monitoring daemon via file {}".format(
                 _info_file
@@ -78,11 +77,3 @@ class VersionCheckMixin(object):
         end_time = time.time()
         self.log("monitor-daemon version discovery took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
 
-    def VCM_check_relay_version(self):
-        from initat.client_version import VERSION_STRING as relay_version
-        global_config.add_config_entries(
-            [
-                ("HAS_SNMP_RELAYER", configfile.bool_c_var(True))
-            ]
-        )
-        self.log("host-relay version {}".format(relay_version))

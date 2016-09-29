@@ -55,15 +55,15 @@ ul.dynatree-container span.ip_ok {
 
 
 th.icsw-config-rotate {
-  height: 180px;
-  white-space: nowrap;
+    height: 180px;
+    white-space: nowrap;
 }
 
 th.icsw-config-rotate > div {
-  transform:
-    translate(8px, -12px)
-    rotate(315deg);
-  width: 30px;
+    transform:
+        translate(8px, -12px)
+        rotate(315deg);
+    width: 30px;
 }
 
 th.icsw-config-rotate > div > span {
@@ -83,7 +83,9 @@ circle.fixed {
 .connect_line_hidden {
     stroke-width : 0 ;
 } */
-.angular-google-map-container { height: 480px; }
+.angular-google-map-container {
+    height: 480px;
+}
 
 /* modal changes */
 .modal.modal-wide .modal-dialog {
@@ -356,9 +358,18 @@ img.normal {
     /* menu searchfield */
     margin-top: 22px;
 }
+.navbar-nav.condensed > li > a > span.fa {
+    /* add extra space to the icons in the menubar */
+    padding-right: 3px;
+}
+
 .navbar p {
     /* column heading */
     margin: 0 0 0px;
+    font-size: 15px;
+}
+.navbar .dropdown-menu a {
+    /* sub menu font size */
     font-size: 14px;
 }
 .navbar .disabled {
@@ -381,4 +392,17 @@ img.normal {
     margin-top: 5px;
 }
 /* MENU END */
+
+/* SUBMENU START */
+.sub-breadcrumb .menupath span:not(:first-of-type)::before {
+    content: "» ";
+    vertical-align: 1px;
+}
+.sub-breadcrumb .menupath a{
+    color: #555555;
+}
+.sub-breadcrumb .menupath a:not([ui-sref]):hover{
+    text-decoration: none;
+}
+/* SUBMENU END */
 

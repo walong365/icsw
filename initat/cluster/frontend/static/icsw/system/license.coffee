@@ -42,6 +42,7 @@ angular.module(
         # license tree
         license_tree: undefined
     }
+
     load = () ->
         $q.all(
             [

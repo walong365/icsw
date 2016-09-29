@@ -346,6 +346,7 @@ class ServiceContainer(object):
                 LicenseState.valid: ("valid", "ok"),
                 LicenseState.grace: ("in grace", "warning"),
                 LicenseState.expired: ("expired", "critical"),
+                LicenseState.fp_mismatch: ("wrong fingerprint", "critical"),
                 # LicenseState.ip_mismatch: ("ip mismatch", "critical"),
             }
         else:

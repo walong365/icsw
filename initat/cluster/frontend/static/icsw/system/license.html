@@ -12,8 +12,10 @@
         <div uib-accordion-group class="panel-default" is-open="your_licenses_open" is-disabled="license_views_disabled">
             <uib-accordion-heading>
                 Your licenses for this cluster
-                <i class="pull-right glyphicon"
-                   ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"></i>
+                <i
+                    class="pull-right glyphicon"
+                    ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"
+                ></i>
             </uib-accordion-heading>
 
             <icsw-system-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-system-license-local-licenses>
@@ -23,8 +25,10 @@
         <div uib-accordion-group class="panel-default" is-open="lic_packs_open" is-disabled="license_views_disabled">
             <uib-accordion-heading>
                 License packages
-                <i class="pull-right glyphicon"
-                   ng-class="{'glyphicon-chevron-down': lic_packs_open, 'glyphicon-chevron-right': !lic_packs_open}"></i>
+                <i
+                    class="pull-right glyphicon"
+                    ng-class="{'glyphicon-chevron-down': lic_packs_open, 'glyphicon-chevron-right': !lic_packs_open}"
+                ></i>
             </uib-accordion-heading>
 
             <icsw-system-license-packages></icsw-system-license-packages>
@@ -33,15 +37,22 @@
         <div uib-accordion-group class="panel-default" is-open="lic_upload_open">
             <uib-accordion-heading>
                 Upload license file
-                <i class="pull-right glyphicon"
-                   ng-class="{'glyphicon-chevron-down': lic_upload_open, 'glyphicon-chevron-right': !lic_upload_open}"></i>
+                <i
+                    class="pull-right glyphicon"
+                    ng-class="{'glyphicon-chevron-down': lic_upload_open, 'glyphicon-chevron-right': !lic_upload_open}"
+                ></i>
             </uib-accordion-heading>
 
             <div style="width: 300px; float: left; margin-right: 10px;">
-                <input type="file" nv-file-select="" class="form-control btn btn-default btn-file" uploader="uploader">
+                <input type="file" nv-file-select="" class="form-control btn btn-default btn-file" uploader="uploader"/>
             </div>
-            <input type="button" ng-show="uploader.queue.length " class="btn btn-warning btn-sm" value="upload"
-                   ng-click="uploader.uploadAll()">
+            <input
+                type="button"
+                ng-show="uploader.queue.length"
+                class="btn btn-warning btn-sm"
+                value="upload"
+                ng-click="uploader.uploadAll()"
+            />
         </div>
 
     </uib-accordion>
@@ -60,7 +71,8 @@
                 <th st-sort="name">License</th>
                 <th st-sort="description" style="width: 300px">Description</th>
                 <th>Parameters</th>
-                <th colspan="3">Status</th>
+                <th title="Fingerprint status" class="text-center">FPStatus</th>
+                <th colspan="3" class="text-center">Time Status</th>
                 <th style="max-width: 250px"></th>
                 <th>Type</th>
                 <th>License package</th>
@@ -101,6 +113,9 @@
                         </div>
                     </div>
                 </td>
+                <td ng-class="lic.$$fp_bootstrap_class" class="text-center">
+                    <i ng-class="lic.$$fp_icon_class"></i>
+                </td>
                 <td ng-class="lic.$$bootstrap_class">
                     <i ng-attr-class="{{ lic.$$icon_class }}"></i>
                 </td>
@@ -123,9 +138,7 @@
 
 <script type="text/ng-template" id="icsw.system.license.packages">
     <uib-tabset>
-        <uib-tab
-            ng-repeat="pack in struct.license_tree.pack_list | orderBy:package_order_fun:true"
-        >
+        <uib-tab ng-repeat="pack in struct.license_tree.pack_list | orderBy:package_order_fun:true">
             <uib-tab-heading>
                 {{ pack.name }}
             </uib-tab-heading>
@@ -164,7 +177,7 @@
                     >
                         <thead>
                             <tr>
-                                <th st-sort="id" st-sort-default="true" width="150">License</th>
+                                <th st-sort="id" st-sort-default="true" width="250">License</th>
                                 <th width="100" colspan="2">State</th>
                                 <th st-sort="valid_from">Valid from</th>
                                 <th st-sort="valid_to">Valid to</th>

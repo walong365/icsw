@@ -28,7 +28,9 @@ import urllib2
 from lxml import etree
 
 from initat.cluster.backbone.models import License, device_variable
-from initat.tools import process_tools, hfp_tools
+from initat.tools import process_tools, hfp_tools, config_store
+from initat.cluster.backbone import license_file_reader
+from initat.constants import VERSION_CS_NAME
 
 __all__ = [
     "main",
@@ -61,6 +63,8 @@ def _install_license(content):
         lic_file_node = content_xml.xpath("//values/value[@name='license_file']")
         if len(lic_file_node):
             lic_file_content = lic_file_node[0].text
+            # validate
+            license_file_reader.LicenseFileReader(lic_file_content)
             # NOTE: this check currently isn't functional as the license file contains the creation time
             if License.objects.filter(license_file=lic_file_content).exists():
                 print("License file already added.")
@@ -82,15 +86,18 @@ def install_license_file(opts):
 def register_cluster(opts):
 
     cluster_id = device_variable.objects.get_cluster_id()
-    data = urllib.urlencode(
-        {
-            'username': opts.user,
-            'password': opts.password,
-            'cluster_name': opts.cluster_name,
-            'cluster_id': cluster_id,
-            "fingerprint": hfp_tools.get_server_fp(serialize=True),
-        }
-    )
+    _dict = {
+        'username': opts.user,
+        'password': opts.password,
+        'cluster_name': opts.cluster_name,
+        'cluster_id': cluster_id,
+        "fingerprint": hfp_tools.get_server_fp(serialize=True),
+    }
+    _vers = config_store.ConfigStore(VERSION_CS_NAME, quiet=True)
+    for _df in ["database", "software", "models"]:
+        _dict["{}_version".format(_df)] = _vers[_df]
+
+    data = urllib.urlencode(_dict)
 
     try:
         res = urllib2.urlopen(REGISTRATION_URL, data)
@@ -109,6 +116,9 @@ def show_cluster_id(opts):
     else:
         print("")
         print("ClusterID: {}".format(device_variable.objects.get_cluster_id()))
+        _vers = config_store.ConfigStore(VERSION_CS_NAME, quiet=True)
+        for _df in ["database", "software", "models"]:
+            print("{} version: {}".format(_df.title(), _vers[_df]))
         print("")
     if not opts.without_fp:
         _valid, _log = hfp_tools.server_dict_is_valid(hfp_tools.get_server_fp())

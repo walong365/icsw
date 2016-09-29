@@ -9,7 +9,7 @@
             <uib-tab>
                 <uib-tab-heading>
                     <span ng-class="struct.synced && 'fa fa-lock' || 'fa fa-unlock'"></span>
-                    current selection
+                    Current Selection
                 </uib-tab-heading>
                 <div class="fluid-container">
                     <form class="input-group" ng-submit="call_devsel_func()">
@@ -171,13 +171,13 @@
                     </uib-tab>
                 </uib-tabset>
             </uib-tab>
-            <uib-tab heading="saved selections" select="enable_saved_selections()">
+            <uib-tab heading="Saved Selections" select="enable_saved_selections()">
                 <form class="form-horizontal">
                     <fieldset>
-                        <h3 ng-show="!saved_selections.length" class="text-warning">No saved selections found</h3>
+                        <h3 ng-show="!saved_selections.length" class="text-warning">No Saved Selections found</h3>
 
                     <div ng-show="saved_selections.length">
-                        <h3 class="text-success">{{ saved_selections.length }} saved selections found</h3>
+                        <h3 class="text-success">{{ saved_selections.length }} Saved Selections found</h3>
                         <div class="row controls form-control-static">
                             {{  selection_for_dropdown }}
                             <div class="input-group">

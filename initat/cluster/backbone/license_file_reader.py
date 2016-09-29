@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015-2016 Bernhard Mallinger
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This file is part of icsw-server
 #
@@ -21,7 +21,6 @@
 #
 
 import base64
-import bz2
 import datetime
 import glob
 import logging
@@ -34,7 +33,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, \
     LicenseUsage
 from initat.cluster.settings import TIME_ZONE
-from initat.tools import process_tools
+from initat.tools import process_tools, server_command
 
 logger = logging.getLogger("cluster.license_file_reader")
 
@@ -50,13 +49,39 @@ class LicenseFileReader(object):
             )
 
     def __init__(self, file_content, file_name=None):
+        from initat.cluster.backbone.models import device_variable
+
         # contains the license-file tag, i.e. information relevant for program without signature
         self.content_xml = self._read(file_content)
         self.file_name = file_name
+        self.cluster_id = device_variable.objects.get_cluster_id()
+        self._check_fingerprint()
+        self._check_eggs()
+
+    def _check_eggs(self):
+        gp_q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']/icsw:package-parameter".format(
+            self.cluster_id,
+        )
+        _g_paras = self.content_xml.xpath(gp_q, namespaces=ICSW_XML_NS_MAP)
+
+    def _check_fingerprint(self):
+        from initat.tools import hfp_tools
+        fp_q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']/icsw:hardware-finger-print/text()".format(
+            self.cluster_id,
+        )
+        fp_node = self.content_xml.xpath(fp_q, namespaces=ICSW_XML_NS_MAP)
+        if len(fp_node):
+            self.__fingerprint_valid = fp_node[0] == hfp_tools.get_server_fp(serialize=True)
+        else:
+            self.__fingerprint_valid = True
+
+    @property
+    def fingerprint_ok(self):
+        return self.__fingerprint_valid
 
     def _read(self, file_content):
         try:
-            signed_content_str = bz2.decompress(base64.b64decode(file_content))
+            signed_content_str = server_command.decompress(file_content)
         except:
             logger.error(
                 "Error reading uploaded license file: {}".format(
@@ -84,6 +109,9 @@ class LicenseFileReader(object):
 
     @staticmethod
     def _get_state_from_license_xml(lic_xml):
+        """
+        only check if the license is valid by examining the given timeframe, do not check fingerprint violations
+        """
         parse_date = lambda date_str: datetime.date(*(int(i) for i in date_str.split(u"-")))
 
         valid_from = parse_date(lic_xml.find("icsw:valid-from", ICSW_XML_NS_MAP).text)
@@ -93,6 +121,7 @@ class LicenseFileReader(object):
 
         # semantics: valid_from is from 00:00:00 of that day, valid to is till 23:59:59 of that day
 
+        # return LicenseState.fp_mismatch
         if today < valid_from:
             return LicenseState.valid_in_future
         elif today > valid_to_plus_grace:
@@ -106,6 +135,14 @@ class LicenseFileReader(object):
         q = "//icsw:package-list/icsw:package/icsw:cluster-id"
         return set(elem.get('id') for elem in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP))
 
+    def has_license(self, license):
+        # check if the license is present in this readers
+        q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']/icsw:license[icsw:id/text()='{}']".format(
+            self.cluster_id,
+            license.name,
+        )
+        return True if len(self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP)) else False
+
     def get_license_state(self, license, parameters=None):
         """
         Returns a LicenseState for the local cluster_id and the given license combination
@@ -116,21 +153,22 @@ class LicenseFileReader(object):
         :type license: LicenseEnum
         :param parameters: {LicenseParameterTypeEnum: quantity} of required parameters
         """
+        if not self.fingerprint_ok:
+            return LicenseState.fp_mismatch
         # check parameters via xpath
         license_parameter_check = ""
         if parameters is not None:
             for lic_param_type, value in parameters.iteritems():
                 license_parameter_check += "and icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(
                     lic_param_type.name,
-                    value
+                    value,
                 )
 
-        from initat.cluster.backbone.models import device_variable
-
-        q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']".format(
-            device_variable.objects.get_cluster_id()
+        q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']/icsw:license[icsw:id/text()='{}' {}]".format(
+            self.cluster_id,
+            license.name,
+            license_parameter_check,
         )
-        q += "/icsw:license[icsw:id/text()='{}' {}]".format(license.name, license_parameter_check)
 
         state = LicenseState.none
         for lic_xml in self.content_xml.xpath(q, namespaces=ICSW_XML_NS_MAP):
@@ -145,9 +183,11 @@ class LicenseFileReader(object):
     def get_valid_licenses(self):
         """Returns licenses which are currently valid as license id string list. Does not consider license violations!"""
         ret = []
-        for lic_id in set(lic_xml.find("icsw:id", namespaces=ICSW_XML_NS_MAP).text
-                          for lic_xml in self.content_xml.xpath("//icsw:license", namespaces=ICSW_XML_NS_MAP)
-                          if self._get_state_from_license_xml(lic_xml).is_valid()):
+        for lic_id in set(
+            lic_xml.find("icsw:id", namespaces=ICSW_XML_NS_MAP).text for lic_xml in self.content_xml.xpath(
+                "//icsw:license", namespaces=ICSW_XML_NS_MAP
+            ) if self._get_state_from_license_xml(lic_xml).is_valid()
+        ):
             try:
                 ret.append(LicenseEnum[lic_id])
             except KeyError:
@@ -173,13 +213,17 @@ class LicenseFileReader(object):
             for pack_xml in packages_xml:
                 uuid = pack_xml.findtext("icsw:package-meta/icsw:package-uuid", namespaces=ICSW_XML_NS_MAP)
                 if uuid in package_uuid_map:
-                    map_version = int(package_uuid_map[uuid].findtext(
-                        "icsw:package-meta/icsw:package-version",
-                        namespaces=ICSW_XML_NS_MAP)
+                    map_version = int(
+                        package_uuid_map[uuid].findtext(
+                            "icsw:package-meta/icsw:package-version",
+                            namespaces=ICSW_XML_NS_MAP
+                        )
                     )
-                    new_version = int(pack_xml.findtext(
-                        "icsw:package-meta/icsw:package-version",
-                        namespaces=ICSW_XML_NS_MAP)
+                    new_version = int(
+                        pack_xml.findtext(
+                            "icsw:package-meta/icsw:package-version",
+                            namespaces=ICSW_XML_NS_MAP
+                        )
                     )
                     if new_version > map_version:
                         package_uuid_map[uuid] = pack_xml
@@ -194,8 +238,12 @@ class LicenseFileReader(object):
                 'customer': package_customer_map[pack_xml].findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
                 'type_name': pack_xml.findtext("icsw:package-meta/icsw:package-type-name", namespaces=ICSW_XML_NS_MAP),
                 'cluster_licenses': {
-                    cluster_xml.get("id"): extract_cluster_data(cluster_xml) for cluster_xml in
-                    pack_xml.xpath("icsw:cluster-id", namespaces=ICSW_XML_NS_MAP)
+                    cluster_xml.get("id"): extract_cluster_data(
+                        cluster_xml
+                    ) for cluster_xml in pack_xml.xpath(
+                        "icsw:cluster-id",
+                        namespaces=ICSW_XML_NS_MAP
+                    )
                 }
             }
 
@@ -212,15 +260,18 @@ class LicenseFileReader(object):
                     for param_xml in parameters_xml.xpath("icsw:parameter", namespaces=ICSW_XML_NS_MAP)
                 }
 
-            return [
+            # for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP):
+            #     print cls._get_state_from_license_xml(lic_xml)
+            _r_list = [
                 {
                     'id': lic_xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP),
                     'valid_from': lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
                     'valid_to': lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
                     'parameters': parse_parameters(lic_xml.find("icsw:parameters", namespaces=ICSW_XML_NS_MAP)),
+                    # "state": cls._get_state_from_license_xml(lic_xml).name
                 } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)
             ]
-
+            return _r_list
         return [extract_package_data(pack_xml) for pack_xml in package_uuid_map.itervalues()]
 
     @staticmethod

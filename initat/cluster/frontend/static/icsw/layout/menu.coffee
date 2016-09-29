@@ -639,12 +639,12 @@ menu_module = angular.module(
     "$scope", "icswLayoutSelectionDialogService", "$rootScope", "icswBreadcrumbs",
     "icswUserService", "$state", "$q", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswDispatcherSettingTreeService", "icswAssetPackageTreeService",
-    "icswActiveSelectionService",
+    "icswActiveSelectionService", "icswMenuPath",
 (
     $scope, icswLayoutSelectionDialogService, $rootScope, icswBreadcrumbs,
     icswUserService, $state, $q, icswDeviceTreeService, ICSW_SIGNALS
     icswDispatcherSettingTreeService, icswAssetPackageTreeService,
-    icswActiveSelectionService
+    icswActiveSelectionService, icswMenuPath
 ) ->
     $scope.struct = {
         current_user: undefined
@@ -664,8 +664,12 @@ menu_module = angular.module(
         in_sync: false
         # selection button title
         title_str: ""
+        # menu path
+        menupath: []
     }
-    $scope.basic_breadcrumb = "This > is > a > dummy > Breadcrumb"
+    menu_path = icswMenuPath
+    menu_path.setup_lut()
+
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
         $scope.struct.current_user = icswUserService.get().user
     )
@@ -681,6 +685,7 @@ menu_module = angular.module(
         $scope.struct.bc_list.length = 0
         for entry in bc_list
             $scope.struct.bc_list.push(entry)
+        $scope.struct.menupath = menu_path.get_path()
     )
 
     _fetch_selection_list = () ->
@@ -789,5 +794,56 @@ menu_module = angular.module(
     return {
         add_state: (state) ->
             add_state(state)
+    }
+]).service('icswMenuPath',
+[
+    "$state", "icswRouteHelper",
+(
+    $state, icswRouteHelper
+) ->
+    header_lut = {}
+    home_link = {name : "Home", statename : "main.dashboard" }
+
+    setup_lut = () ->
+        menu_headers = icswRouteHelper.get_struct().menu_header_states
+        for header in menu_headers
+            icswheader = header.data
+            for icswheadersub in icswheader.entries
+                entryname = if icswheader.name == "$$USER_INFO" then "Usermenu" else icswheader.name
+                header_lut[icswheadersub.data.subgroupkey] = [
+                    {
+                        icon: icswheader.icon
+                        name: entryname
+                    }
+                ]
+                if icswheadersub.data.hidden? and icswheadersub.data.hidden
+                    true
+                else
+                    header_lut[icswheadersub.data.subgroupkey].push(
+                        {
+                            icon: ""
+                            name: icswheadersub.data.name
+                        }
+                    )
+        return  # keep return
+
+    generatePath = (state) ->
+        _curr = state.$current.icswData.menuEntry
+        curr_entry = {
+            name: _curr.name
+            icon: _curr.icon
+        }
+        ret_path = [home_link]
+        if header_lut[_curr.subgroupkey]?
+            ret_path = ret_path.concat header_lut[_curr.subgroupkey]
+        if curr_entry.name?
+            ret_path.push curr_entry
+        ret_path
+
+    return {
+        get_path: () ->
+            generatePath($state)
+        setup_lut: () ->
+            setup_lut()
     }
 ])

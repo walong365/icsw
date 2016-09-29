@@ -61,7 +61,6 @@ class server_process(
         self._icinga_pc = None
         self.register_timer(self._check_for_pc_control, 10, instant=True)
         self.VCM_check_md_version()
-        self.VCM_check_relay_version()
         self._init_network_sockets()
         self.add_process(SyncerProcess("syncer"), start=True)
         self.add_process(StatusProcess("status"), start=True)
