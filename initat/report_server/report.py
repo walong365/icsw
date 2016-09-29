@@ -1508,7 +1508,7 @@ class PDFReportGenerator(ReportGenerator):
 
         data = [["Name", "Cores"]]
         for cpu in hardware_report_ar.asset_batch.cpus.all():
-            data.append([Paragraph(str(cpu.cpuname), style_sheet["BodyText"]),
+            data.append([Paragraph(str(cpu.name), style_sheet["BodyText"]),
                          Paragraph(str(cpu.numberofcores), style_sheet["BodyText"])])
 
         p0_1 = Paragraph('<b>CPUs:</b>', style_sheet["BodyText"])
@@ -1521,8 +1521,7 @@ class PDFReportGenerator(ReportGenerator):
 
         data = [["Name", "Driver Version"]]
         for gpu in hardware_report_ar.asset_batch.gpus.all():
-            data.append([Paragraph(str(gpu.gpuname), style_sheet["BodyText"]),
-                         Paragraph(str(gpu.driverversion), style_sheet["BodyText"])])
+            data.append([Paragraph(str(gpu.name), style_sheet["BodyText"])])
 
         p0_2 = Paragraph('<b>GPUs:</b>', style_sheet["BodyText"])
         t_2 = Table(data,

@@ -204,7 +204,7 @@ class AssetHWCPUEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetHWCPUEntry
         fields = (
-            "idx", "numberofcores", "cpuname"
+            "idx", "numberofcores", "name"
         )
 
 
@@ -213,7 +213,7 @@ class AssetHWGPUEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetHWGPUEntry
         fields = (
-            "idx", "gpuname", "driverversion"
+            "idx", "name"
         )
 
 
