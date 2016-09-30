@@ -546,6 +546,25 @@ class icswEggBasket(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        abstract = True
+
+
+class icswEggBasketXML(models.Model):
+    # defining files for eggbasketconsumers
+    idx = models.AutoField(primary_key=True)
+    # basket
+    egg_basket = models.ForeignKey(icswEggBasket)
+    # content
+    content = models.TextField(default="")
+    # active flag, at least one XML must be active
+    active = models.BooleanField(default=False)
+    # creation date
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
+
 
 class icswEggConsumer(models.Model):
     """
@@ -556,7 +575,7 @@ class icswEggConsumer(models.Model):
     # defines how eggs are consumed
     idx = models.AutoField(primary_key=True)
     # xml file reference
-    xml_file_reference = models.TextField(default="")
+    egg_basket_xml = models.ForeignKey(icswEggBasketXML)
     # xml reference
     xml_node_reference = models.TextField(default="")
     # content type
@@ -574,12 +593,13 @@ class icswEggConsumer(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        abstract = True
+
 
 class icswEggLock(models.Model):
     # lock instance
     idx = models.AutoField(primary_key=True)
-    # basket
-    egg_basket = models.ForeignKey(icswEggBasket)
     # egg consumer
     egg_consumer = models.ForeignKey(icswEggConsumer)
     # object id, may be None
@@ -588,6 +608,9 @@ class icswEggLock(models.Model):
     weight = models.IntegerField(default=0)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = True
 
 
 @receiver(signals.pre_save, sender=icswEggBasket)

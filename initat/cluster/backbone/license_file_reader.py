@@ -310,8 +310,8 @@ class LicenseFileReader(object):
             _r_list = [
                 {
                     'id': lic_xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP),
-                    'valid_from': lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
-                    'valid_to': lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
+                    'valid_from': dateutil.parser.parse(lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP)),
+                    'valid_to': dateutil.parser.parse(lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP)),
                     'parameters': parse_parameters(lic_xml.find("icsw:parameters", namespaces=ICSW_XML_NS_MAP)),
                     # "state": cls._get_state_from_license_xml(lic_xml).name
                 } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)
