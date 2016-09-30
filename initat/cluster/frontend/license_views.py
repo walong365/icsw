@@ -25,7 +25,6 @@
 import logging
 
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework.generics import ListAPIView, RetrieveAPIView
@@ -34,7 +33,6 @@ from rest_framework.response import Response
 from initat.cluster.backbone.available_licenses import LicenseEnum, get_available_licenses
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.backbone.models import License, device_variable
-from initat.cluster.backbone.models.functions import db_t2000_limit
 from initat.cluster.backbone.models.license import LicenseViolation, LicenseUsage
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
@@ -132,19 +130,9 @@ class upload_license_file(View):
         except LicenseFileReader.InvalidLicenseFile as e:
             request.xml_response.error(unicode(e), logger=logger)
         else:
-            try:
-                if db_t2000_limit():
-                    # lic file content is encoded bz2, so we are safe ...
-                    if len(lic_file_content) > 2000:
-                        License.objects.get(Q(license_file__startswith=lic_file_content[:2000]))
-                    else:
-                        License.objects.get(license_file=lic_file_content)
-                else:
-                    # sane database
-                    # check based on content, not filename
-                    License.objects.get(license_file=lic_file_content)
-            except License.DoesNotExist:
-
+            if License.objects.license_exists(lic_file_content):
+                request.xml_response.warn("This license file has already been uploaded")
+            else:
                 local_cluster_id = device_variable.objects.get_cluster_id()
                 file_cluster_ids = reader.get_referenced_cluster_ids()
                 if local_cluster_id not in file_cluster_ids:
@@ -166,5 +154,3 @@ class upload_license_file(View):
 
                     srv_com = server_command.srv_command(command="check_license_violations")
                     contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, log_error=True, log_result=False)
-            else:
-                request.xml_response.warn("This license file has already been uploaded")

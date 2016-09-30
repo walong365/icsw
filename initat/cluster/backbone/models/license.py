@@ -148,6 +148,17 @@ class _LicenseManager(models.Manager):
         # return false even when no licenses are present, ToDo, FIXME
         return any([r.fingerprint_ok for r in self._license_readers if r.has_license(license)])
 
+    def license_exists(self, lic_content):
+        from initat.cluster.backbone.license_file_reader import LicenseFileReader
+        _pure_content = LicenseFileReader.get_pure_data(lic_content)
+        _present = False
+        for value in self.values_list("license_file", flat=True):
+            _loc_pc = LicenseFileReader.get_pure_data(value)
+            if _loc_pc == _pure_content:
+                _present = True
+                break
+        return _present
+
     ########################################
     # Accessors for views for client
 
@@ -173,6 +184,9 @@ class _LicenseManager(models.Manager):
         else:
             # can only contain one
             return next(iter(product_licenses))
+
+    def get_license_info(self):
+        return sum([_reader.license_info(raw=True) for _reader in self._license_readers], [])
 
     def get_valid_licenses(self):
         """Returns all licenses which are active (and should be displayed to the user)"""
