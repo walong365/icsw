@@ -98,7 +98,8 @@ device_asset_module = angular.module(
                 )
                 Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
                     {
-                        pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                        device_pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                        simple: angular.toJson(1)
                     }
                 )
                 # todo, make faster
@@ -208,7 +209,8 @@ device_asset_module = angular.module(
                         )
                         Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
                             {
-                                pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                                device_pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                                simple: angular.toJson(1)
                             }
                         )
                     ]
@@ -227,8 +229,7 @@ device_asset_module = angular.module(
 
     # salt functions
     salt_asset_batch = (obj) ->
-        obj.$$run_start_day = "N/A"
-        obj.$$run_start_hour = "N/A"
+        obj.$$run_start_time = "N/A"
         obj.$$run_time = "N/A"
         obj.$$expanded = false
         obj.$$device = $scope.struct.device_tree.all_lut[obj.device]
@@ -238,8 +239,7 @@ device_asset_module = angular.module(
 
         if obj.run_start_time
             _moment = moment(obj.run_start_time)
-            obj.$$run_start_day = _moment.format("YYYY-MM-DD")
-            obj.$$run_start_hour = _moment.format("HH:mm:ss")
+            obj.$$run_start_time = _moment.format("YYYY-MM-DD HH:mm:ss")
 
     salt_schedule_item = (obj) ->
         obj.$$planned_time = moment(obj.planned_date).format("YYYY-MM-DD HH:mm:ss")
@@ -639,7 +639,10 @@ device_asset_module = angular.module(
 ) ->
     $scope.struct = {
         selected_assetrun: undefined
+        package_tree: undefined
     }
+
+
 
     $scope.downloadPdf = ->
         if $scope.struct.selected_assetrun != undefined
@@ -774,57 +777,54 @@ device_asset_module = angular.module(
     $scope.expand_assetbatch = ($event, assetbatch) ->
         assetbatch.$$expanded = !assetbatch.$$expanded
 
-    $scope.open_in_new_tab = (asset_batch, tab_type) ->
+    $scope.open_in_new_tab = (asset_batch) ->
         for tab in asset_batch.$$device.info_tabs
-            if tab.tab_type == tab_type && tab.asset_batch.idx == asset_batch.idx
+            if tab.asset_batch.idx == asset_batch.idx
                 return
 
-        tab = {}
-        tab.tab_type = tab_type
-        tab.asset_batch = asset_batch
+        blockUI.start("Please wait...")
 
-        for memory_entry in asset_batch.memory_modules
-            memory_entry.$$capacity = "N/A"
-            memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
 
-        if tab_type == -1
-            blockUI.start("Please wait...")
-            icswAssetPackageTreeService.reload($scope.$id).then(
-                (tree) ->
-                    tab.tab_heading_text = "Scan (ID:" + asset_batch.idx + ")"
-                    tab.packages = resolve_package_assets(tree, asset_batch.packages, asset_batch.packages_install_times)
+        $q.all(
+            [
+                Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
+                    {
+                        assetbatch_pks: angular.toJson([asset_batch.idx])
+                    }
+                )
+            ]
+        ).then(
+            (result) ->
+                tab = {}
+                tab.asset_batch = result[0][0]
+                tab.tab_heading_text = "Scan (ID:" + asset_batch.idx + ")"
 
-                    asset_batch.$$device.info_tabs.push(tab)
-                    blockUI.stop()
-            )
+                for memory_entry in tab.asset_batch.memory_modules
+                    memory_entry.$$capacity = "N/A"
+                    memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
 
-        if tab_type == 0
-            icswAssetPackageTreeService.reload($scope.$id).then(
-                (tree) ->
-                    tab.tab_heading_text = "Installed Packages (ScanID:" + asset_batch.idx + ")"
-                    tab.packages = resolve_package_assets(tree, asset_batch.packages, asset_batch.packages_install_times)
+                icswAssetPackageTreeService.load($scope.$id).then(
+                    (tree) ->
+                        tree_up_to_date = true
+                        for package_idx in tab.asset_batch.packages
+                            if tree.version_lut[package_idx] == undefined
+                                tree_up_to_date = false
+                                break
 
-                    asset_batch.$$device.info_tabs.push(tab)
-            )
-        else if tab_type == 1
-            tab.tab_heading_text = "Pending Updates (ScanID: " + asset_batch.idx + ")"
-            asset_batch.$$device.info_tabs.push(tab)
-
-        else if tab_type == 2
-            tab.tab_heading_text = "Installed Updates (ScanID:" + asset_batch.idx + ")"
-            asset_batch.$$device.info_tabs.push(tab)
-
-        else if tab_type == 3
-            tab.tab_heading_text = "Installed Memory Modules (ScanID:" + asset_batch.idx + ")"
-            asset_batch.$$device.info_tabs.push(tab)
-
-        else if tab_type == 4
-            tab.tab_heading_text = "Installed CPU(s) (ScanID:" + asset_batch.idx + ")"
-            asset_batch.$$device.info_tabs.push(tab)
-
-        else if tab_type == 5
-            tab.tab_heading_text = "Installed GPU(s) (ScanID:" + asset_batch.idx + ")"
-            asset_batch.$$device.info_tabs.push(tab)
+                        if !tree_up_to_date
+                            console.log("not up to date package tree found, reloading")
+                            icswAssetPackageTreeService.reload($scope.$id).then(
+                                (tree) ->
+                                    tab.packages = resolve_package_assets(tree, tab.asset_batch.packages, tab.asset_batch.packages_install_times)
+                                    asset_batch.$$device.info_tabs.push(tab)
+                                    blockUI.stop()
+                            )
+                        else
+                            tab.packages = resolve_package_assets(tree, tab.asset_batch.packages, tab.asset_batch.packages_install_times)
+                            asset_batch.$$device.info_tabs.push(tab)
+                            blockUI.stop()
+                )
+        )
 
 
 ]).directive("icswAssetBatchDetails",
@@ -840,22 +840,7 @@ device_asset_module = angular.module(
         }
         link: (scope, element, attrs) ->
             element.children().remove()
-            if scope.tab.tab_type == -1
-                _not_av_el = $compile($templateCache.get("icsw.asset.details.all"))(scope)
-            else if scope.tab.tab_type == 0
-                _not_av_el = $compile($templateCache.get("icsw.asset.details.package"))(scope)
-            else if scope.tab.tab_type == 1
-                _not_av_el = $compile($templateCache.get("icsw.asset.details.pending.updates"))(scope)
-            else if scope.tab.tab_type == 2
-                _not_av_el = $compile($templateCache.get("icsw.asset.details.installed.updates"))(scope)
-            else if scope.tab.tab_type == 3
-                _not_av_el = $compile($templateCache.get("icsw.asset.details.hw.memory.modules"))(scope)
-            else if scope.tab.tab_type == 4
-                _not_av_el = $compile($templateCache.get("icsw.asset.details.hw.cpu"))(scope)
-            else if scope.tab.tab_type == 5
-                _not_av_el = $compile($templateCache.get("icsw.asset.details.hw.gpu"))(scope)
-            else
-                _not_av_el = $compile($templateCache.get("icsw.asset.details.na"))(scope)
+            _not_av_el = $compile($templateCache.get("icsw.asset.details.all"))(scope)
             element.append(_not_av_el)
     }
 ]).directive("icswAssetDetailsPackageTable",
@@ -932,6 +917,19 @@ device_asset_module = angular.module(
     return {
         restrict: "E"
         template: $templateCache.get("icsw.asset.details.hw.gpu")
+        scope: {
+            tab: "=icswTab"
+        }
+    }
+]).directive("icswAssetDetailsHardwareNicTable",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.details.hw.nic")
         scope: {
             tab: "=icswTab"
         }
