@@ -6,7 +6,7 @@
             <span ng-class="struct.current.$$synced && 'fa fa-lock' || 'fa fa-unlock'" ng-click="save_current()"></span>
         </span>
         <ui-select ng-model="struct.current" on-select="select_setting($item, $model)" theme="bootstrap">
-            <ui-select-match class="ui-select-match" title="Stored RRD graphing settings">
+            <ui-select-match class="ui-select-match" title="Stored RRD Graphing Settings">
                 {{ $select.selected.name }}&nbsp;&nbsp;&nbsp;
             </ui-select-match>
             <ui-select-choices class="ui-select-choices" repeat="entry in struct.settings.list">
@@ -22,7 +22,7 @@
 <script type="text/ng-template" id="icsw.rrd.graphsetting.modify">
     <form name="form_data">
         <h3 ng-class="!vars.current.$$synced && 'text-danger'">
-            Settings defined: {{ user_setting.list.length }}
+            Settings Defined: {{ user_setting.list.length }}
             <span ng-show="!vars.current.$$synced">(not synced)</span>
         </h3>
         <fieldset>
@@ -48,14 +48,14 @@
             <div class="form-group row">
                 <label class="col-xs-3 control-label">
                     <span class="fa fa-hdd-o"/>
-                    Merge devices:
+                    Merge Devices:
                 </label>
                 <div class="col-xs-3 controls">
                     <icsw-tools-yes-no flag="vars.current.merge_devices"></icsw-tools-yes-no>
                 </div>
                 <label class="col-xs-3 control-label">
                     <span class="fa fa-line-chart"/>
-                    Merge graphs:
+                    Merge Graphs:
                 </label>
                 <div class="col-xs-3 controls">
                     <icsw-tools-yes-no flag="vars.current.merge_graphs"></icsw-tools-yes-no>

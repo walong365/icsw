@@ -490,7 +490,8 @@ angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.rrd.graphsetting.modify"))(sub_scope)
-                title: "RRD graph settings"
+                title: "RRD Graph Settings"
+                closable: true
                 ok_label: "Close"
                 ok_callback: (modal) ->
                     d = $q.defer()
