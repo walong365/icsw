@@ -927,8 +927,13 @@ monitoring_device_module = angular.module(
                 system_template: false
                 parent_template: null
                 staticassettemplatefield_set: []
-                type: "TemplateType (i.e License, Hardware, Contract, ...)"
+                type: ""
+                types: []
             }
+
+            for static_asset_type in $scope.struct.template_tree.static_asset_type_keys
+                obj.types.push(static_asset_type)
+
             _ok_label = "Create"
         else
             dbu = new icswStaticAssetTemplateBackup()

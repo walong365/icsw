@@ -191,13 +191,13 @@ device_asset_module = angular.module(
             # field lut
             @field_lut = {}
             @static_asset_type_lut = {}
-            for _struct in icswStaticAssetFunctions.get_form_dict("asset_type")
-                _found = (entry for entry in @list when entry.type == _struct.idx)
-                if _found.length
-                    for _entry in _found
-                        # set name
-                        _entry.$$staticAssetType = _struct.name
-                    @static_asset_type_lut[_struct.name] = _found
+
+            for static_asset_template in @list
+                if @static_asset_type_lut[static_asset_template.type] == undefined
+                    @static_asset_type_lut[static_asset_template.type] = []
+
+                @static_asset_type_lut[static_asset_template.type].push(static_asset_template)
+
             for _template in @list
                 for _field in _template.staticassettemplatefield_set
                     @field_lut[_field.idx] = _field

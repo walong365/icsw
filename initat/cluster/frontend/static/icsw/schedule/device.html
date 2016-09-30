@@ -377,7 +377,7 @@
                     Template Type<span class="asteriskField">*</span>
                 </label>
                 <div class="controls col-xs-7">
-                    <input class="form-control maxwidth500" ng-model="edit_obj.type"/>
+                    <input class="form-control maxwidth500" uib-typeahead="value for value in edit_obj.types" ng-model="edit_obj.type"/>
                 </div>
             </div>
         </fieldset>
