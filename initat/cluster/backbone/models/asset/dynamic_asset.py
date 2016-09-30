@@ -1237,6 +1237,38 @@ class AssetBatch(models.Model):
     displays = models.ManyToManyField(AssetHWDisplayEntry)
 
     @property
+    def packages_length(self):
+        return self.packages.count()
+
+    @property
+    def packages_install_times_length(self):
+        return self.packages_install_times.count()
+
+    @property
+    def cpus_length(self):
+        return self.cpus.count()
+
+    @property
+    def memory_modules_length(self):
+        return self.memory_modules.count()
+
+    @property
+    def gpus_length(self):
+        return self.gpus.count()
+
+    @property
+    def network_devices_length(self):
+        return self.network_devices.count()
+
+    @property
+    def pending_updates_length(self):
+        return self.pending_updates.count()
+
+    @property
+    def installed_updates_length(self):
+        return self.installed_updates.count()
+
+    @property
     def is_finished_processing(self):
         if self.run_status == BatchStatus.FINISHED:
             return True

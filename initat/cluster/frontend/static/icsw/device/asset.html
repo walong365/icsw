@@ -126,82 +126,34 @@
             </tr>
             <tr>
                 <th st-sort="idx" st-sort-default="reverse" class="text-center">Scan ID</th>
-                <th st-sort="$$run_start_day" class="text-center">Scan Day</th>
-                <th class="text-center">Scan Hour</th>
+                <th st-sort="$$run_start_time" class="text-center">Scantime</th>
                 <th class="text-center">Scan Runtime</th>
+                <th class="text-center">Package Info</th>
+                <th class="text-center">Pending Update Info</th>
+                <th class="text-center">Installed Updates Info</th>
+                <th class="text-center">Memory Module Info</th>
+                <th class="text-center">CPU Info</th>
+                <th class="text-center">GPU Info</th>
+                <th class="text-center">NIC Info</th>
                 <th class="text-center">Action</th>
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat-start="assetbatch in assetbatches_shown track by $index">
+            <tr ng-repeat="assetbatch in assetbatches_shown track by $index">
                 <td class="text-center">{{ assetbatch.idx }}</td>
-                <td class="text-center">{{ assetbatch.$$run_start_day }}</td>
-                <td class="text-center">{{ assetbatch.$$run_start_hour }}</td>
+                <td class="text-center">{{ assetbatch.$$run_start_time }}</td>
                 <td class="text-center">{{ assetbatch.$$run_time }}</td>
+                <td class="text-center"><div ng-show="assetbatch.packages_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.packages_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
+                <td class="text-center"><div ng-show="assetbatch.pending_updates_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.pending_updates_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
+                <td class="text-center"><div ng-show="assetbatch.installed_updates_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.installed_updates_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
+                <td class="text-center"><div ng-show="assetbatch.memory_modules_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.memory_modules_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
+                <td class="text-center"><div ng-show="assetbatch.cpus_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.cpus_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
+                <td class="text-center"><div ng-show="assetbatch.gpus_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.gpus_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
+                <td class="text-center"><div ng-show="assetbatch.network_devices_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.network_devices_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
                 <td class="text-center">
                     <div>
                         <button type="button" class="btn btn-sm btn-primary" ng-disabled="!assetbatch.is_finished_processing" ng-click="open_in_new_tab(assetbatch, -1)">{{ assetbatch.is_finished_processing ? "Open in new Tab" : "Still Processing..." }}</button>
                     </div>
-                </td>
-            </tr>
-            <tr ng-repeat-end ng-if="assetbatch.$$expanded">
-                <td colspan="99">
-                    <table
-                        class="table table-condensed table-striped simple-border"
-                        style="width:auto;"
-                    >
-                        <thead>
-                            <tr>
-                                <th>Information Type</th>
-                                <th># of entries</th>
-                                <th>Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr ng-if="assetbatch.packages.length > 0">
-                                <td>Installed Packages</td>
-                                <td>{{ assetbatch.packages.length }}</td>
-                                <td>
-                                    <input type="button" class="btn btn-sm btn-primary" ng-click="open_in_new_tab(assetbatch, 0)" value="Open in new Tab"/>
-                                </td>
-                            </tr>
-                            <tr ng-if="assetbatch.pending_updates.length > 0">
-                                <td>Pending Updates</td>
-                                <td>{{ assetbatch.pending_updates.length }}</td>
-                                <td>
-                                    <input type="button" class="btn btn-sm btn-primary" ng-click="open_in_new_tab(assetbatch, 1)" value="Open in new Tab"/>
-                                </td>
-                            </tr>
-                            <tr ng-if="assetbatch.installed_updates.length > 0">
-                                <td>Installed Updates</td>
-                                <td>{{ assetbatch.installed_updates.length }}</td>
-                                <td>
-                                    <input type="button" class="btn btn-sm btn-primary" ng-click="open_in_new_tab(assetbatch, 2)" value="Open in new Tab"/>
-                                </td>
-                            </tr>
-                            <tr ng-if="assetbatch.memory_modules.length > 0">
-                                <td>Installed Memory Modules</td>
-                                <td>{{ assetbatch.memory_modules.length }}</td>
-                                <td>
-                                    <input type="button" class="btn btn-sm btn-primary" ng-click="open_in_new_tab(assetbatch, 3)" value="Open in new Tab"/>
-                                </td>
-                            </tr>
-                            <tr ng-if="assetbatch.cpus.length > 0">
-                                <td>Installed CPU(s)</td>
-                                <td>{{ assetbatch.cpus.length }}</td>
-                                <td>
-                                    <input type="button" class="btn btn-sm btn-primary" ng-click="open_in_new_tab(assetbatch, 4)" value="Open in new Tab"/>
-                                </td>
-                            </tr>
-                            <tr ng-if="assetbatch.gpus.length > 0">
-                                <td>Installed GPU(s)</td>
-                                <td>{{ assetbatch.gpus.length }}</td>
-                                <td>
-                                    <input type="button" class="btn btn-sm btn-primary" ng-click="open_in_new_tab(assetbatch, 5)" value="Open in new Tab"/>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
                 </td>
             </tr>
         </tbody>
@@ -251,124 +203,6 @@
                 <td>{{ item.$$device.full_name }}</td>
                 <td>{{ item.$$planned_time }}</td>
                 <td>{{ item.$$disp_setting.name }}</td>
-            </tr>
-        </tbody>
-    </table>
-</script>
-
-<script type="text/ng-template" id="icsw.asset.asset.runs.table">
-    <h3>
-        <span ng-show="struct.asset_runs.length">
-            AssetRun Overview
-        </span>
-        <span ng-show="struct.num_selected_ar">
-            , diff ({{ struct.num_selected_ar }} selected)
-            <icsw-tools-button ng-if="struct.num_selected_ar == 2" type="reload" size="xs" ng-click="assetchangesetar($event)" value="Asset Changeset"/>
-        </span>
-    </h3>
-
-    <table
-        class="table table-condensed table-striped"
-        ng-show="asset_run_list.length > 0"
-        st-table="assetruns_shown"
-        st-safe-src="asset_run_list"
-        st-set-filter="assetRunFilter"
-    >
-        <thead>
-        <tr>
-                <td colspan="99">
-                    <icsw-tools-button  type="modify" value="Download CSV" ng-click="downloadCsv()" size="xs" class="pull-xs-left">Export to CSV</icsw-tools-button>
-                    <icsw-tools-button  type="modify" value="Download .xlsx" ng-click="downloadXlsx()" size="xs" class="pull-xs-left">Export to CSV</icsw-tools-button>
-                    <icsw-tools-button  type="modify" value="Download .pdf" ng-click="downloadPdf()" size="xs" class="pull-xs-left">Export to PDF</icsw-tools-button>
-                    <span
-                        icsw-tools-pagination
-                        st-items-by-page="20"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100"
-                        class="pull-xs-left"
-                    ></span>
-                </td>
-            </tr>
-            <tr>
-                <th st-sort="$$run_type">Asset Type</th>
-                <th st-sort="asset_batch" class="text-center">Batch ID</th>
-                <th st-sort="$$run_start_day" class="text-right">start Day</th>
-                <th st-sort="$$run_start_hour" class="text-right">Start Hour</th>
-                <th st-sort="$$run_end_day" class="text-right">End Day</th>
-                <th st-sort="$$run_end_hour" class="text-right">End Hour</th>
-                <th st-sort="run_duration" class="text-right">Run Time</th>
-                <th st-sort="device.$$full_name">Device</th>
-                <th st-sort="$$run_status" class="text-center">Status</th>
-                <th st-sort="$$run_result" class="text-center">Result</th>
-                <th class="text-right">Error</th>
-                <th class="text-right">#Assets</th>
-                <th colspan="2">Actions</th>
-            </tr>
-            <tr>
-                <th>
-                    <input st-search="$$run_type" placeholder="filter by asset type" class="input-sm form-control" type="search"/>
-                </th>
-                <th></th>
-                <th class="text-right">
-                    <input st-search="$$run_start_day" placeholder="start day" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
-                </th>
-                <th class="text-right">
-                    <input st-search="$$run_start_hour" placeholder="start time" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
-                </th>
-                <th class="text-right">
-                    <input st-search="$$run_end_day" placeholder="end day" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
-                </th>
-                <th class="text-right">
-                    <input st-search="$$run_end_hour" placeholder="end time" class="input-sm form-control icsw-input-100px" type="search" style="display:inline-block;"/>
-                </th>
-                <th class="text-right">
-                    <input st-search="run_duration" placeholder="duration" class="input-sm form-control icsw-input-50px" type="search" style="display:inline-block;"/>
-                </th>
-                <th class="text-right">
-                    <input st-search="$$device.full_name" placeholder="filter by device_name" class="input-sm form-control" type="search"/>
-                </th>
-                <th>
-                    <input st-search="$$run_status" placeholder="filter by run status" class="input-sm form-control" type="search"/>
-                </th>
-                <th>
-                    <input st-search="$$run_result" placeholder="filter by run result" class="input-sm form-control" type="search"/>
-                </th>
-                <th>
-                    &nbsp;
-                </th>
-                <th colspan="2">&nbsp;</th>
-            </tr>
-
-        </thead>
-        <tbody>
-            <tr ng-class="{'success': assetrun.$$selected}" ng-repeat-start="assetrun in assetruns_shown track by $index">
-                <td>{{ assetrun.$$run_type }}</td>
-                <td class="text-center">
-                    <span class="label label-success">{{ assetrun.asset_batch }}</span>
-                </td>
-                <td class="text-right">{{ assetrun.$$run_start_day }}</td>
-                <td class="text-right">{{ assetrun.$$run_start_hour }}</td>
-                <td class="text-right">{{ assetrun.$$run_end_day }}</td>
-                <td class="text-right">{{ assetrun.$$run_end_hour }}</td>
-                <td class="text-right">{{ assetrun.run_duration }}</td>
-                <td class="text-left">{{ assetrun.$$device.full_name }}</td>
-                <td class="text-center" ng-class="assetrun.$$run_status_class">{{ assetrun.$$run_status }}</td>
-                <td class="text-center" ng-class="assetrun.$$run_result_class">{{ assetrun.$$run_result }}</td>
-                <td ng-class="assetrun.$$error_class">{{ assetrun.$$error_class }} {{ assetrun.error_string }} {{ assetrun.interpret_error_string }}</td>
-                <td class="text-right">{{ assetrun.$$num_results }}</td>
-                <td>
-                    <icsw-tools-button ng-if="assetrun.$$num_results" size="xs" type="show" is-show="!assetrun.$$expanded" ng-click="expand_assetrun($event, assetrun)"></icsw-tools-button>
-                </td>
-                <td>
-                    <icsw-tools-button type="modify" size="xs" value="select" ng-click="select_assetrun($event, assetrun)"></icsw-tools-button>
-                </td>
-            </tr>
-            <tr ng-repeat-end ng-if="assetrun.$$expanded">
-                <td colspan="99">
-                    <icsw-asset-run-details
-                        icsw-asset-run="assetrun"
-                    ></icsw-asset-run-details>
-                </td>
             </tr>
         </tbody>
     </table>
@@ -552,69 +386,6 @@
     </table>
 </script>
 
-<script type="text/ng-template" id="icsw.asset.details.process">
-    <table
-        class="table table-condensed table-striped"
-        style="width:auto;"
-        st-safe-src="asset_run.$$assets"
-        st-table="assets_shown"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="10"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <th st-sort="pid">Pid</th>
-                <th st-sort="name">Name</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="proc in assets_shown">
-                <td>{{ proc.pid }}</td>
-                <td>{{ proc.name }}</td>
-            </tr>
-        </tbody>
-    </table>
-</script>
-
-<script type="text/ng-template" id="icsw.asset.details.licenses">
-    <table
-        class="table table-condensed table-striped"
-        st-safe-src="asset_run.$$assets"
-        st-table="assets_shown"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="10"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <th st-sort="name">Name</th>
-                <th st-sort="license_key">License key</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="lic in assets_shown">
-                <td>{{ lic.name }}</td>
-                <td>{{ lic.license_key }}</td>
-            </tr>
-        </tbody>
-    </table>
-</script>
-
 <script type="text/ng-template" id="icsw.asset.details.installed.updates">
     <h3>
         Installed Updates
@@ -682,304 +453,6 @@
                 <td>{{ up.name }}</td>
                 <td>{{ up.new_version }}</td>
                 <td>{{ up.optional }}</td>
-            </tr>
-        </tbody>
-    </table>
-</script>
-
-<script type="text/ng-template" id="icsw.asset.details.pcientries">
-    <table
-        class="table table-condensed table-striped simple-border"
-        style="width:auto;"
-        st-safe-src="asset_run.$$assets"
-        st-table="assets_shown"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="10"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <th st-sort="domain">Domain</th>
-                <th st-sort="bus">Bus</th>
-                <th st-sort="slot">Slot</th>
-                <th st-sort="func">Func</th>
-                <th>Position</th>
-                <th>Subclass</th>
-                <th>Vendor</th>
-                <th>Device</th>
-                <th>Revision</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="pci in assets_shown">
-                <td class="text-right">{{ pci.domain }}</td>
-                <td class="text-right">{{ pci.bus }}</td>
-                <td class="text-right">{{ pci.slot }}</td>
-                <td class="text-right">{{ pci.func }}</td>
-                <td class="text-right">{{ pci.$$position }}</td>
-                <td>{{ pci.subclassname }}</td>
-                <td>{{ pci.vendorname }}</td>
-                <td>{{ pci.devicename }}</td>
-                <td class="text-center">{{ pci.revision }}</td>
-            </tr>
-        </tbody>
-    </table>
-</script>
-
-<script type="text/ng-template" id="icsw.asset.details.dmihandles">
-    <h3>
-        DMI Version {{ asset_run.$$assets.version }} (size: {{ asset_run.$$assets.size }})
-    </h3>
-    <table
-        ng-if="asset_run.$$assets"
-        class="table table-condensed table-striped simple-border"
-        style="width:auto;"
-        st-safe-src="asset_run.$$assets.assetdmihandle_set"
-        st-table="assets_shown"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="10"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <th class="text-right" st-sort="handle">handle</th>
-                <th class="text-right" st-sort="dmi_type">Type</th>
-                <th>Header</th>
-                <th class="text-right">#Values</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="handle in assets_shown">
-                <td class="text-right">{{ handle.handle }}</td>
-                <td class="text-right">{{ handle.dmi_type }}</td>
-                <td>{{ handle.header }}</td>
-                <td class="text-center">{{ handle.length }}</td>
-            </tr>
-        </tbody>
-    </table>
-</script>
-
-<script type="text/ng-template" id="icsw.asset.details.hw_entry">
-    <h3>
-        Installed Memory Module(s)
-    </h3>
-    <table
-        class="table table-condensed table-striped simple-border"
-        style="width:auto;"
-        st-safe-src="asset_run.$$memory_entries"
-        st-table="assets_shown_memory_entries"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="10"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <th>Banklabel</th>
-                <th>Formfactor</th>
-                <th>Memorytype</th>
-                <th>Manufacturer</th>
-                <th>Capacity</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="node in assets_shown_memory_entries">
-                <td>{{ node.banklabel }}</td>
-                <td>{{ node.formfactorname }}</td>
-                <td>{{ node.memorytypename }}</td>
-                <td>{{ node.manufacturer }}</td>
-                <td>{{ node.$$capacity }} MiB</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <h3>
-        Installed Cpu(s)
-    </h3>
-    <table
-        class="table table-condensed table-striped simple-border"
-        style="width:auto;"
-        st-safe-src="asset_run.$$cpu_entries"
-        st-table="assets_shown_cpu_entries"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="10"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <th>CPU Name/Type</th>
-                <th># Cores</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="node in assets_shown_cpu_entries">
-                <td>{{ node.name }}</td>
-                <td>{{ node.numberofcores }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <h3>
-        Installed GPU(s)
-    </h3>
-    <table
-        class="table table-condensed table-striped simple-border"
-        style="width:auto;"
-        st-safe-src="asset_run.$$gpu_entries"
-        st-table="assets_shown_gpu_entries"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="10"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <th>GPU Name/Type</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="node in assets_shown_gpu_entries">
-                <td>{{ node.name }}</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <h3>
-        Installed Harddrive(s)
-    </h3>
-    <table
-        class="table table-condensed table-striped simple-border"
-        style="width:auto;"
-        st-safe-src="asset_run.$$hdd_entries"
-        st-table="assets_shown_hdd_entries"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="10"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <th>HDD Name/Type</th>
-                <th>Serialnumber</th>
-                <th>Size</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="node in assets_shown_hdd_entries">
-                <td>{{ node.disc }}</td>
-                <td>{{ node.serialnumber }}</td>
-                <td>{{ node.$$size }} GiB</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <h3>
-        Partition Overview
-    </h3>
-    <table
-        class="table table-condensed table-striped simple-border"
-        style="width:auto;"
-        st-safe-src="asset_run.$$partition_entries"
-        st-table="assets_shown_partition_entries"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="10"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <th>Name</th>
-                <th>Size</th>
-                <th>Free</th>
-                <th>Free %</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="node in assets_shown_partition_entries">
-                <td>{{ node.name }}</td>
-                <td>{{ node.$$size }} GiB</td>
-                <td>{{ node.$$free }} GiB</td>
-                <td>{{ node.$$percentage_free }} %</td>
-            </tr>
-        </tbody>
-    </table>
-
-    <h3>
-        Installed Display(s)
-    </h3>
-    <table
-        class="table table-condensed table-striped simple-border"
-        style="width:auto;"
-        st-safe-src="asset_run.$$display_entries"
-        st-table="assets_shown_display_entries"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <div
-                        icsw-tools-pagination
-                        st-items-by-page="10"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100,200,500"
-                    ></div>
-                </td>
-            </tr>
-            <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Manufacturer</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="node in assets_shown_display_entries">
-                <td>{{ node.name }}</td>
-                <td>{{ node.type }}</td>
-                <td>{{ node.manufacturer }}</td>
             </tr>
         </tbody>
     </table>
@@ -1091,6 +564,46 @@
     </table>
 </script>
 
+<script type="text/ng-template" id="icsw.asset.details.hw.nic">
+    <h3>
+        Installed Network Devices(s)
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        st-safe-src="tab.asset_batch.network_devices"
+        st-table="assets_shown_nic_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Device Name</th>
+                <th>Product Name</th>
+                <th>Manufacturer</th>
+                <th>Mac Address</th>
+                <th>Speed</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="obj in assets_shown_nic_entries">
+                <td>{{ obj.device_name }}</td>
+                <td>{{ obj.product_name }}</td>
+                <td>{{ obj.manufacturer }}</td>
+                <td>{{ obj.mac_address }}</td>
+                <td>{{ obj.speed }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
 <script type="text/ng-template" id="icsw.asset.details.all">
     <br/>
     <uib-tabset>
@@ -1129,6 +642,12 @@
                 <span>Installed GPU(s)</span>
             </uib-tab-heading>
             <icsw-asset-details-hardware-gpu-table icsw-tab="tab"></icsw-asset-details-hardware-gpu-table>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>Installed Network Devices(s)</span>
+            </uib-tab-heading>
+            <icsw-asset-details-hardware-nic-table icsw-tab="tab"></icsw-asset-details-hardware-nic-table>
         </uib-tab>
     </uib-tabset>
 </script>
