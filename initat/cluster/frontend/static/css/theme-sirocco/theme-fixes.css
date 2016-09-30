@@ -213,3 +213,11 @@ table.rotateheaders th {
 .btn-info > .text-info {
     color: #ffffff;
 }
+.navbar-nav > li > ul.dropdown-menu {
+    background-color: #ffffff;
+    color: #818181;
+    padding: 20px 20px 20px 17px;
+}
+.navbar-nav > li > ul.dropdown-menu a {
+    color: #666666;
+}

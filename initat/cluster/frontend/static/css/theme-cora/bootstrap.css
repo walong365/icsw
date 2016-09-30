@@ -4150,7 +4150,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
 }
 .navbar {
   position: relative;
-  min-height: 50px;
+  min-height: 70px;
   margin-bottom: 17px;
   border: 1px solid transparent;
 }
@@ -4256,10 +4256,10 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
 }
 .navbar-brand {
   float: left;
-  padding: 16.5px 15px;
+  padding: 26.5px 15px;
   font-size: 17px;
   line-height: 17px;
-  height: 50px;
+  height: 70px;
 }
 .navbar-brand:hover,
 .navbar-brand:focus {
@@ -4279,8 +4279,8 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   float: right;
   margin-right: 15px;
   padding: 9px 10px;
-  margin-top: 8px;
-  margin-bottom: 8px;
+  margin-top: 18px;
+  margin-bottom: 18px;
   background-color: transparent;
   background-image: none;
   border: 1px solid transparent;
@@ -4304,7 +4304,7 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   }
 }
 .navbar-nav {
-  margin: 8.25px -15px;
+  margin: 13.25px -15px;
 }
 .navbar-nav > li > a {
   padding-top: 10px;
@@ -4342,8 +4342,8 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
     float: left;
   }
   .navbar-nav > li > a {
-    padding-top: 16.5px;
-    padding-bottom: 16.5px;
+    padding-top: 26.5px;
+    padding-bottom: 26.5px;
   }
 }
 .navbar-form {
@@ -4354,8 +4354,8 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   border-bottom: 1px solid transparent;
   -webkit-box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 0 rgba(255, 255, 255, 0.1);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 1px 0 rgba(255, 255, 255, 0.1);
-  margin-top: 12.5px;
-  margin-bottom: 12.5px;
+  margin-top: 22.5px;
+  margin-bottom: 22.5px;
 }
 @media (min-width: 768px) {
   .navbar-form .form-group {
@@ -4440,20 +4440,20 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   border-bottom-left-radius: 0;
 }
 .navbar-btn {
-  margin-top: 12.5px;
-  margin-bottom: 12.5px;
+  margin-top: 22.5px;
+  margin-bottom: 22.5px;
 }
 .navbar-btn.btn-sm {
-  margin-top: 15.5px;
-  margin-bottom: 15.5px;
+  margin-top: 25.5px;
+  margin-bottom: 25.5px;
 }
 .navbar-btn.btn-xs {
-  margin-top: 14px;
-  margin-bottom: 14px;
+  margin-top: 24px;
+  margin-bottom: 24px;
 }
 .navbar-text {
-  margin-top: 16.5px;
-  margin-bottom: 16.5px;
+  margin-top: 26.5px;
+  margin-bottom: 26.5px;
 }
 @media (min-width: 768px) {
   .navbar-text {
@@ -4479,23 +4479,23 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   border-color: #101010;
 }
 .navbar-default .navbar-brand {
-  color: #cfcfcf;
+  color: #818181;
 }
 .navbar-default .navbar-brand:hover,
 .navbar-default .navbar-brand:focus {
-  color: #b6b6b6;
+  color: #686868;
   background-color: transparent;
 }
 .navbar-default .navbar-text {
-  color: #777777;
+  color: #818181;
 }
 .navbar-default .navbar-nav > li > a {
-  color: #cfcfcf;
+  color: #818181;
 }
 .navbar-default .navbar-nav > li > a:hover,
 .navbar-default .navbar-nav > li > a:focus {
   color: #92aa00;
-  background-color: #333333;
+  background-color: #212121;
 }
 .navbar-default .navbar-nav > .active > a,
 .navbar-default .navbar-nav > .active > a:hover,
@@ -4531,12 +4531,12 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
 }
 @media (max-width: 767px) {
   .navbar-default .navbar-nav .open .dropdown-menu > li > a {
-    color: #cfcfcf;
+    color: #818181;
   }
   .navbar-default .navbar-nav .open .dropdown-menu > li > a:hover,
   .navbar-default .navbar-nav .open .dropdown-menu > li > a:focus {
     color: #92aa00;
-    background-color: #333333;
+    background-color: #212121;
   }
   .navbar-default .navbar-nav .open .dropdown-menu > .active > a,
   .navbar-default .navbar-nav .open .dropdown-menu > .active > a:hover,
@@ -4552,13 +4552,13 @@ select[multiple].input-group-sm > .input-group-btn > .btn {
   }
 }
 .navbar-default .navbar-link {
-  color: #cfcfcf;
+  color: #818181;
 }
 .navbar-default .navbar-link:hover {
   color: #92aa00;
 }
 .navbar-default .btn-link {
-  color: #cfcfcf;
+  color: #818181;
 }
 .navbar-default .btn-link:hover,
 .navbar-default .btn-link:focus {
@@ -6736,7 +6736,7 @@ button.close {
 }
 .modal-body,
 .modal-body label {
-  color: #ffffff;
+  color: #cccccc;
 }
 .modal-body table {
   background-color: #444444;

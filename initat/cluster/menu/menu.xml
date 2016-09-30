@@ -536,8 +536,8 @@
         <routeSubGroup name_str="My Settings">
             <route name="main.useraccount">
                 <stateData type="dict" url_str="/useraccount" templateUrl_str="icsw/main/user/account.html"/>
-                <icswData type="dict" pageTitle_str="Account info">
-                    <menuEntry type="dict" icon_str="fa-info" name_str="Account info"/>
+                <icswData type="dict" pageTitle_str="Account Info">
+                    <menuEntry type="dict" icon_str="fa-info" name_str="Account Info"/>
                 </icswData>
             </route>
             <route name="main.empty">

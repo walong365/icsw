@@ -143,8 +143,6 @@ table.rotateheaders th {
 .table-pager .pagination {
     margin: 0;
 }
-
-
 .has-success .form-control,
 .has-success .form-control:focus,
 .has-success .input-group-addon {
@@ -180,7 +178,7 @@ table.rotateheaders th {
     padding-right: 10px;
 }
 .submenu-bar .sub-breadcrumb > li a{
-    color: #ffffff;
+    color: #dddddd;
 }
 .sub-breadcrumb .label {
     font-size: 100%;
@@ -200,3 +198,16 @@ table.rotateheaders th {
 .icsw-table-striped-4 > tbody > tr:nth-child(4n+1) {
     background-color: #3b3b3b;
 }
+.btn-info > .text-info {
+    color: #ffffff;
+}
+/* menu start */
+.navbar-nav > li > ul.dropdown-menu {
+    background-color: #444444;
+    color: #dddddd;
+    padding: 20px 20px 20px 17px;
+}
+.navbar-nav > li > ul.dropdown-menu a {
+    color: #cccccc;
+}
+/* menu end */
