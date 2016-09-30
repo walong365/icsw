@@ -42,6 +42,14 @@ angular.module(
         default_theme = $window.sessionStorage.getItem('default_theme')
         theme = current_theme ? default_theme
         themeSetup(theme)
+    toggle : () =>
+        current_theme = $window.sessionStorage.getItem('current_theme')
+        theme_arr = Object.keys(themes)
+        current_index = theme_arr.indexOf(current_theme)
+        current_index += 1
+        current_index = if current_index >= theme_arr.length then 0 else current_index
+        $window.sessionStorage.setItem('current_theme', theme_arr[current_index])
+        themeSetup(theme_arr[current_index])
     save : (theme) =>
         Restangular.all(ICSW_URLS.USER_SET_THEME.slice(1)).customGET("", {"theme":theme}).then(
             (theme_data) ->

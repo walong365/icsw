@@ -69,11 +69,11 @@ menu_module = angular.module(
 ]).controller("icswMainCtrl", [
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
-    "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS",
+    "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS", "themeService"
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
-    icswBreadcrumbs, $state, $window, Restangular, ICSW_URLS,
+    icswBreadcrumbs, $state, $window, Restangular, ICSW_URLS, themeService,
 ) ->
     hotkeys.bindTo($scope).add(
         # combo: "ctrl+h"
@@ -87,10 +87,17 @@ menu_module = angular.module(
     ).add(
         combo: "ctrl+s"
         allowIn: ["INPUT", "SELECT", "TEXTAREA"]
-        description: "Show device selection"
+        description: "Show Device Selection"
         callback: (event) ->
             event.preventDefault()
             icswLayoutSelectionDialogService.quick_dialog()
+    ).add(
+        combo: "f2"
+        allowIn: ["INPUT", "SELECT", "TEXTAREA"]
+        description: "Toggle Theme"
+        callback: (event) ->
+            event.preventDefault()
+            themeService.toggle()
     )
     $scope.struct = {
         current_user: undefined
