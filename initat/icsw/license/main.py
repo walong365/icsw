@@ -30,7 +30,7 @@ from lxml import etree
 from initat.cluster.backbone import license_file_reader
 from initat.cluster.backbone.models import License, device_variable
 from initat.constants import VERSION_CS_NAME
-from initat.tools import process_tools, hfp_tools, config_store
+from initat.tools import process_tools, hfp_tools, config_store, logging_tools
 
 __all__ = [
     "main",
@@ -41,6 +41,41 @@ if process_tools.get_machine_name() in ["eddie"]:
     REGISTRATION_URL = "http://localhost:8081/icsw/api/v2/GetLicenseFile"
 else:
     REGISTRATION_URL = "http://www.initat.org/cluster/registration"
+
+
+def show_license_info(opts):
+    _infos = License.objects.get_license_info()
+    print("License info, {}:".format(logging_tools.get_plural("entry", len(_infos))))
+    for _info in _infos:
+        _cl_info = sorted(list(set(_info["cluster_licenses"].keys()) | set(_info["parameters"].keys())))
+        print("")
+        print("-" * 40)
+        print("")
+        print(
+            "Customer: {}, name: {}, type: {}, {}".format(
+                _info["customer"],
+                _info["name"],
+                _info["type_name"],
+                logging_tools.get_plural("Cluster", len(_cl_info)),
+            )
+        )
+        for _cl_name in _cl_info:
+            _count = {"lics": 0, "paras": 0}
+            _sets = {"lics": set(), "paras": set()}
+            for _skey, _dkey in [("cluster_licenses", "lics"), ("parameters", "paras")]:
+                # import pprint
+                # pprint.pprint(_info)
+                for _entry in _info.get(_skey, {}).get(_cl_name, []):
+                    _sets[_dkey].add(_entry["id"])
+            print(
+                "Cluster {}: {} ({}), {} ({})".format(
+                    _cl_name,
+                    logging_tools.get_plural("License", len(_sets["lics"])),
+                    ", ".join(sorted(list(_sets["lics"]))),
+                    logging_tools.get_plural("Parameter", len(_sets["paras"])),
+                    ", ".join(sorted(list(_sets["paras"]))),
+                )
+            )
 
 
 def _install_license(content):
@@ -64,11 +99,11 @@ def _install_license(content):
         if len(lic_file_node):
             lic_file_content = lic_file_node[0].text
             # validate
-            license_file_reader.LicenseFileReader(lic_file_content)
             # NOTE: this check currently isn't functional as the license file contains the creation time
-            if License.objects.filter(license_file=lic_file_content).exists():
+            if License.objects.license_exists(lic_file_content):
                 print("License file already added.")
             else:
+                license_file_reader.LicenseFileReader(lic_file_content)
                 new_lic = License(file_name="uploaded_via_command_line", license_file=lic_file_content)
                 new_lic.save()
                 print("Successfully added license file: {}".format(unicode(new_lic)))
@@ -140,5 +175,7 @@ def main(opts):
         install_license_file(opts)
     elif opts.subcom == "show_cluster_id":
         show_cluster_id(opts)
+    elif opts.subcom == "show_license_info":
+        show_license_info(opts)
     else:
         print("unknown subcom '{}'".format(opts.subcom))

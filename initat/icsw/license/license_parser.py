@@ -46,6 +46,8 @@ class Parser(object):
             help="enable raw mode (only data will be printed) [%(default)s]",
         )
 
+        show_license_parser = lic_sub_parser.add_parser("show_license_info", help="Show License info")
+        show_license_parser.set_defaults(subcom="show_license_info", execute=self._execute)
         reg_cluster_parser = lic_sub_parser.add_parser(
             "register_cluster",
             help="register your cluster at init.at and obtain a license file"
