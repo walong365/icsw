@@ -27,10 +27,10 @@ import urllib2
 
 from lxml import etree
 
-from initat.cluster.backbone.models import License, device_variable
-from initat.tools import process_tools, hfp_tools, config_store
 from initat.cluster.backbone import license_file_reader
+from initat.cluster.backbone.models import License, device_variable
 from initat.constants import VERSION_CS_NAME
+from initat.tools import process_tools, hfp_tools, config_store
 
 __all__ = [
     "main",
@@ -69,8 +69,9 @@ def _install_license(content):
             if License.objects.filter(license_file=lic_file_content).exists():
                 print("License file already added.")
             else:
-                License(file_name="uploaded_via_command_line", license_file=lic_file_content).save()
-                print("Successfully added license file.")
+                new_lic = License(file_name="uploaded_via_command_line", license_file=lic_file_content)
+                new_lic.save()
+                print("Successfully added license file: {}".format(unicode(new_lic)))
     else:
         print ("Exiting due to errors.")
         sys.exit(1)

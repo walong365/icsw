@@ -31,23 +31,12 @@ from enum import IntEnum
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "StaticAssetType",
     "StaticAssetTemplateFieldType",
     "StaticAssetTemplate",
     "StaticAssetTemplateField",
     "StaticAsset",
     "StaticAssetFieldValue",
 ]
-
-
-class StaticAssetType(IntEnum):
-    # related to a software
-    LICENSE = 1
-    # general contract
-    CONTRACT = 2
-    # special hardware
-    HARDWARE = 3
-
 
 class StaticAssetTemplateFieldType(IntEnum):
     INTEGER = 1
@@ -63,7 +52,7 @@ class StaticAssetTemplate(models.Model):
     # to be defined by administrator
     idx = models.AutoField(primary_key=True)
     # asset type
-    type = models.IntegerField(choices=[(_type.value, _type.name) for _type in StaticAssetType])
+    type = models.CharField(max_length=256)
     # name of Template
     name = models.CharField(max_length=128, unique=True)
     # description

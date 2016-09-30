@@ -153,6 +153,7 @@ device_variable_module = angular.module(
                     else
                         if create
                             # single creation
+                            sub_scope.edit_obj.editable = true
                             $scope.struct.dvs_tree.create_dvs_an(var_scope, sub_scope.edit_obj).then(
                                 (new_conf) ->
                                     d.resolve("created")

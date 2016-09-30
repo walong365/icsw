@@ -24,6 +24,7 @@ import base64
 import datetime
 import glob
 import logging
+import dateutil.parser
 
 import M2Crypto
 import pytz
@@ -33,7 +34,7 @@ from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParam
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, \
     LicenseUsage
 from initat.cluster.settings import TIME_ZONE
-from initat.tools import process_tools, server_command
+from initat.tools import process_tools, server_command, logging_tools
 
 logger = logging.getLogger("cluster.license_file_reader")
 
@@ -156,18 +157,19 @@ class LicenseFileReader(object):
         if not self.fingerprint_ok:
             return LicenseState.fp_mismatch
         # check parameters via xpath
-        license_parameter_check = ""
+        license_parameter_check = ["icsw:id/text()='{}'".format(license.name)]
         if parameters is not None:
             for lic_param_type, value in parameters.iteritems():
-                license_parameter_check += "and icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(
-                    lic_param_type.name,
-                    value,
+                license_parameter_check.append(
+                    "icsw:parameters/icsw:parameter[@id='{}']/text() >= {}".format(
+                        lic_param_type.name,
+                        value,
+                    )
                 )
 
-        q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']/icsw:license[icsw:id/text()='{}' {}]".format(
+        q = "//icsw:package-list/icsw:package/icsw:cluster-id[@id='{}']/icsw:license[{}]".format(
             self.cluster_id,
-            license.name,
-            license_parameter_check,
+            " and ".join(license_parameter_check),
         )
 
         state = LicenseState.none
@@ -201,9 +203,7 @@ class LicenseFileReader(object):
         return self.content_xml.find("icsw:customer", namespaces=ICSW_XML_NS_MAP)
 
     @classmethod
-    def get_license_packages(cls, license_readers):
-        # this has to be called on all license readers to work out (packages can be contained in multiple files and some
-        # might contain deprecated versions)
+    def _get_maps(cls, license_readers):
         package_uuid_map = {}
         package_customer_map = {}
         for reader in license_readers:
@@ -230,6 +230,50 @@ class LicenseFileReader(object):
                 else:
                     package_uuid_map[uuid] = pack_xml
                 package_customer_map[pack_xml] = customer_xml
+        return package_uuid_map, package_customer_map
+
+    @classmethod
+    def get_global_parameters(cls, license_readers):
+        """
+        return all global parameters from all license readers
+        """
+        package_uuid_map, package_customer_map = cls._get_maps(license_readers)
+
+        def extract_parameter_data(cluster_xml):
+            _r_list = [
+                {
+                    'id': lic_xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP),
+                    'valid_from': dateutil.parser.parse(lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP)),
+                    'valid_to': dateutil.parser.parse(lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP)),
+                    "value": int(lic_xml.findtext("icsw:value", namespaces=ICSW_XML_NS_MAP)),
+                    "parameter": getattr(LicenseParameterTypeEnum, lic_xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP)),
+                    # 'parameters': parse_parameters(lic_xml.find("icsw:parameters", namespaces=ICSW_XML_NS_MAP)),
+                    # "state": cls._get_state_from_license_xml(lic_xml).name
+                } for lic_xml in cluster_xml.xpath("icsw:package-parameter", namespaces=ICSW_XML_NS_MAP)
+            ]
+            return _r_list
+
+        def extract_gp_data(pack_xml):
+            return {
+                'name': pack_xml.findtext("icsw:package-meta/icsw:package-name", namespaces=ICSW_XML_NS_MAP),
+                'date': dateutil.parser.parse(pack_xml.findtext("icsw:package-meta/icsw:package-date", namespaces=ICSW_XML_NS_MAP)),
+                'customer': package_customer_map[pack_xml].findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
+                'type_name': pack_xml.findtext("icsw:package-meta/icsw:package-type-name", namespaces=ICSW_XML_NS_MAP),
+                "parameters": {
+                    cluster_xml.get("id"): extract_parameter_data(cluster_xml) for cluster_xml in pack_xml.xpath(
+                        "icsw:cluster-id",
+                        namespaces=ICSW_XML_NS_MAP
+                    )
+                }
+            }
+
+        return [extract_gp_data(pack_xml) for pack_xml in package_uuid_map.itervalues()]
+
+    @classmethod
+    def get_license_packages(cls, license_readers):
+        # this has to be called on all license readers to work out (packages can be contained in multiple files and some
+        # might contain deprecated versions)
+        package_uuid_map, package_customer_map = cls._get_maps(license_readers)
 
         def extract_package_data(pack_xml):
             return {
@@ -256,8 +300,9 @@ class LicenseFileReader(object):
 
             def parse_parameters(parameters_xml):
                 return {
-                    LicenseParameterTypeEnum.id_string_to_user_name(param_xml.get('id')): int_or_none(param_xml.text)
-                    for param_xml in parameters_xml.xpath("icsw:parameter", namespaces=ICSW_XML_NS_MAP)
+                    LicenseParameterTypeEnum.id_string_to_user_name(
+                        param_xml.get('id')
+                    ): int_or_none(param_xml.text) for param_xml in parameters_xml.xpath("icsw:parameter", namespaces=ICSW_XML_NS_MAP)
                 }
 
             # for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP):
@@ -265,8 +310,8 @@ class LicenseFileReader(object):
             _r_list = [
                 {
                     'id': lic_xml.findtext("icsw:id", namespaces=ICSW_XML_NS_MAP),
-                    'valid_from': lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
-                    'valid_to': lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
+                    'valid_from': dateutil.parser.parse(lic_xml.findtext("icsw:valid-from", namespaces=ICSW_XML_NS_MAP)),
+                    'valid_to': dateutil.parser.parse(lic_xml.findtext("icsw:valid-to", namespaces=ICSW_XML_NS_MAP)),
                     'parameters': parse_parameters(lic_xml.find("icsw:parameters", namespaces=ICSW_XML_NS_MAP)),
                     # "state": cls._get_state_from_license_xml(lic_xml).name
                 } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)
@@ -334,3 +379,29 @@ class LicenseFileReader(object):
 
     def __repr__(self):
         return "LicenseFileReader(file_name={})".format(self.file_name)
+
+    def license_info(self):
+        _lic_info, _para_info = (
+            LicenseFileReader.get_license_packages([self]),
+            LicenseFileReader.get_global_parameters([self]),
+        )
+        _num_packs = len(_lic_info)
+        _cluster_ids = set()
+        # not unique
+        _num_lics, _num_paras = (0, 0)
+        for _list in [_lic_info, _para_info]:
+            for _entry in _list:
+                if "cluster_licenses" in _entry:
+                    _cluster_ids |= set(_entry["cluster_licenses"].keys())
+                    for _cl in _entry["cluster_licenses"].itervalues():
+                        _num_lics += len(_cl)
+                else:
+                    _cluster_ids |= set(_entry["parameters"].keys())
+                    for _cl in _entry["parameters"].itervalues():
+                        _num_paras += len(_cl)
+        return "Found {} and {} in {} for {}".format(
+            logging_tools.get_plural("license", _num_lics),
+            logging_tools.get_plural("global parameter", _num_paras),
+            logging_tools.get_plural("package", _num_packs),
+            logging_tools.get_plural("Cluster", len(_cluster_ids)),
+        )

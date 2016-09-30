@@ -24,14 +24,22 @@
 
 import logging
 
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.utils.decorators import method_decorator
+from django.views.generic import View
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, get_available_licenses
-from initat.cluster.backbone.models import License
+from initat.cluster.backbone.license_file_reader import LicenseFileReader
+from initat.cluster.backbone.models import License, device_variable
+from initat.cluster.backbone.models.functions import db_t2000_limit
 from initat.cluster.backbone.models.license import LicenseViolation, LicenseUsage
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
+from initat.tools import server_command
 
 
 logger = logging.getLogger("cluster.license")
@@ -110,3 +118,53 @@ class GetValidLicenses(RetrieveAPIView):
                 'all_licenses': [l.name for l in LicenseEnum],
             }
         )
+
+
+class upload_license_file(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        lic_file = request.FILES['license_file']
+        lic_file_content = lic_file.read()
+
+        try:
+            reader = LicenseFileReader(lic_file_content)
+        except LicenseFileReader.InvalidLicenseFile as e:
+            request.xml_response.error(unicode(e), logger=logger)
+        else:
+            try:
+                if db_t2000_limit():
+                    # lic file content is encoded bz2, so we are safe ...
+                    if len(lic_file_content) > 2000:
+                        License.objects.get(Q(license_file__startswith=lic_file_content[:2000]))
+                    else:
+                        License.objects.get(license_file=lic_file_content)
+                else:
+                    # sane database
+                    # check based on content, not filename
+                    License.objects.get(license_file=lic_file_content)
+            except License.DoesNotExist:
+
+                local_cluster_id = device_variable.objects.get_cluster_id()
+                file_cluster_ids = reader.get_referenced_cluster_ids()
+                if local_cluster_id not in file_cluster_ids:
+                    msg = "\n".join(
+                        [
+                            u"This license file contains licenses for the following clusters: {}".format(
+                                ", ".join(file_cluster_ids)
+                            ),
+                            u"This cluster has the id {}.".format(
+                                local_cluster_id
+                            ),
+                        ]
+                    )
+                    request.xml_response.error(msg)
+                else:
+                    new_lic = License(file_name=lic_file.name, license_file=lic_file_content)
+                    new_lic.save()
+                    request.xml_response.info("Successfully uploaded license file: {}".format(unicode(new_lic)))
+
+                    srv_com = server_command.srv_command(command="check_license_violations")
+                    contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, log_error=True, log_result=False)
+            else:
+                request.xml_response.warn("This license file has already been uploaded")

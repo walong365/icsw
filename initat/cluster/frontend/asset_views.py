@@ -43,7 +43,7 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.report_server.report import PDFReportGenerator, generate_csv_entry_for_assetrun
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
     AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
-    AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue
+    AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue, StaticAssetTemplateFieldType
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
@@ -661,3 +661,127 @@ class device_asset_post(View):
             ]
         else:
             request.xml_response.error("validation problem")
+
+
+class get_fieldvalues_for_template(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        idx_list = [int(value) for value in request.POST.getlist("idx_list[]")]
+
+        static_asset_templates = StaticAssetTemplate.objects.filter(idx__in=idx_list)
+
+        data = {}
+
+        def set_aggregate_value(aggregate_obj, field_object):
+            field_type = field_object['field_type']
+            if field_type == StaticAssetTemplateFieldType.INTEGER:
+                if not aggregate_obj['aggregate']:
+                    aggregate_obj['aggregate'] = 0
+                aggregate_obj['aggregate'] += field_object['value_int']
+            else:
+                str_value = ''
+                if field_type == StaticAssetTemplateFieldType.STRING:
+                    str_value = field_object['value_str']
+                elif field_type == StaticAssetTemplateFieldType.DATE:
+                    str_value = field_object['value_date']
+                elif field_type == StaticAssetTemplateFieldType.TEXT:
+                    str_value = field_object['value_text']
+
+                if not aggregate_obj['aggregate']:
+                    aggregate_obj['aggregate'] = str_value
+                else:
+                    aggregate_obj['aggregate'] += ", {}".format(str_value)
+
+        def set_value(field_object):
+            value = None
+            if field_object['field_type'] == StaticAssetTemplateFieldType.STRING:
+                value = field_object['value_str']
+            elif field_object['field_type'] == StaticAssetTemplateFieldType.INTEGER:
+                value = field_object['value_int']
+            elif field_object['field_type'] == StaticAssetTemplateFieldType.DATE:
+                value = field_object['value_date']
+            elif field_object['field_type'] == StaticAssetTemplateFieldType.TEXT:
+                value = field_object['value_text']
+
+            field_object['value'] = value
+
+
+        for static_asset_template in static_asset_templates:
+            data[static_asset_template.idx] = {}
+
+            for template_field in static_asset_template.staticassettemplatefield_set.all():
+                data[static_asset_template.idx][template_field.ordering] = {}
+
+                data[static_asset_template.idx][template_field.ordering]['name'] = template_field.name
+                data[static_asset_template.idx][template_field.ordering]['list'] = []
+                data[static_asset_template.idx][template_field.ordering]['aggregate'] = None
+                data[static_asset_template.idx][template_field.ordering]['fixed'] = template_field.fixed
+                data[static_asset_template.idx][template_field.ordering]['status'] = 0
+
+                if template_field.fixed:
+                    field_object = {
+                        'device_idx': 0,
+                        'field_name': template_field.name,
+                        'value_str': template_field.default_value_str,
+                        'value_int': template_field.default_value_int,
+                        'value_date': template_field.default_value_date.isoformat() if template_field.default_value_date else None,
+                        'value_text': template_field.default_value_text,
+                        'field_type': template_field.field_type,
+                        'status': 0
+                    }
+
+                    if template_field.field_type == StaticAssetTemplateFieldType.DATE and (template_field.default_value_date < datetime.date.today()):
+                        data[static_asset_template.idx][template_field.ordering]['status'] = 2
+                        field_object['status'] = 2
+
+                    set_value(field_object)
+                    set_aggregate_value(data[static_asset_template.idx][template_field.ordering], field_object)
+                    data[static_asset_template.idx][template_field.ordering]['list'].append(field_object)
+
+                else:
+                    for template_field_value in template_field.staticassetfieldvalue_set.all():
+                        field_object = {
+                            'device_idx': template_field_value.static_asset.device.idx,
+                            'field_name': template_field.name,
+                            'value_str': template_field_value.value_str,
+                            'value_int': template_field_value.value_int,
+                            'value_date': template_field_value.value_date.isoformat() if template_field_value.value_date else None,
+                            'value_text': template_field_value.value_text,
+                            'field_type': template_field.field_type,
+                            'status': 0
+                        }
+                        set_value(field_object)
+                        set_aggregate_value(data[static_asset_template.idx][template_field.ordering], field_object)
+                        data[static_asset_template.idx][template_field.ordering]['list'].append(field_object)
+
+                        if template_field.field_type == StaticAssetTemplateFieldType.DATE and (template_field_value.value_date < datetime.date.today()):
+                            data[static_asset_template.idx][template_field.ordering]['status'] = 2
+                            field_object["status"] = 2
+
+                        if template_field.consumable:
+                            items_left = template_field.consumable_start_value - field_object["value_int"]
+                            if items_left <= template_field.consumable_warn_value:
+                                field_object["status"] = 1
+                            if items_left <= template_field.consumable_critical_value:
+                                field_object["status"] = 2
+
+                if not data[static_asset_template.idx][template_field.ordering]['aggregate']:
+                    data[static_asset_template.idx][template_field.ordering]['aggregate'] = "N/A"
+
+                if template_field.consumable:
+                    aggregate_value = data[static_asset_template.idx][template_field.ordering]['aggregate']
+                    if not aggregate_value == "N/A":
+                        items_left = template_field.consumable_start_value - aggregate_value
+
+                        if items_left <= template_field.consumable_warn_value:
+                            data[static_asset_template.idx][template_field.ordering]['status'] = 1
+                        if items_left <= template_field.consumable_critical_value:
+                            data[static_asset_template.idx][template_field.ordering]['status'] = 2
+
+        return HttpResponse(
+            json.dumps(
+                {
+                    'data': data
+                }
+            )
+        )

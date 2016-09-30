@@ -390,7 +390,7 @@
     <h3>Please select new Template(s)</h3>
     <div ng-repeat="asset in unused_list" class="form-group row">
         <label class="control-label col-sm-6">
-            {{ asset.name }} ({{ asset.$$staticAssetType }})
+            {{ asset.name }} ({{ asset.type }})
         </label>
         <div class="controls col-sm-6">
             <icsw-tools-yes-no flag="asset.$$create"/>

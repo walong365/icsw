@@ -778,7 +778,7 @@ class DeviceVariableScopeViewSet(viewsets.ViewSet):
         dvs_entry = dvs_allowed_name.objects.get(Q(pk=kwargs["pk"]))
         can_delete_answer = can_delete_obj(dvs_entry, logger)
         if can_delete_answer:
-            print "*", dvs_entry
+            dvs_entry.delete()
         else:
             raise ValidationError(
                 "cannot delete: {}".format(

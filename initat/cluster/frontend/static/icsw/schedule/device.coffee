@@ -23,7 +23,7 @@ monitoring_device_module = angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
         "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button", "angular-ladda",
-        "icsw.device.asset", "icsw.device.report"
+        "icsw.device.asset", "icsw.device.report", "icsw.device.inventory.static.overview"
     ]
 ).config([
     "icswRouteExtensionProvider",
@@ -927,8 +927,13 @@ monitoring_device_module = angular.module(
                 system_template: false
                 parent_template: null
                 staticassettemplatefield_set: []
-                type: icswStaticAssetFunctions.resolve("asset_type", "hardware")
+                type: ""
+                types: []
             }
+
+            for static_asset_type in $scope.struct.template_tree.static_asset_type_keys
+                obj.types.push(static_asset_type)
+
             _ok_label = "Create"
         else
             dbu = new icswStaticAssetTemplateBackup()
@@ -938,8 +943,6 @@ monitoring_device_module = angular.module(
         sub_scope = $scope.$new(true)
         sub_scope.edit_obj = obj
         sub_scope.create = create
-        # copy references
-        sub_scope.asset_type_list = icswStaticAssetFunctions.get_form_dict("asset_type")
 
         sub_scope.modify_or_create_field = ($event, as_temp, field, create) ->
             modify_or_create_field($event, sub_scope, as_temp, field, create)

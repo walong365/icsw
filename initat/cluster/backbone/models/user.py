@@ -1518,7 +1518,6 @@ class window_manager(models.Model):
     binary = models.CharField(max_length=256, default="")
     # description of window manager for user
     description = models.TextField()
-
     # devices where this is available
     devices = models.ManyToManyField("backbone.device")
     date = models.DateTimeField(auto_now_add=True)

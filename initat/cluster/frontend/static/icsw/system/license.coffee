@@ -57,7 +57,7 @@ angular.module(
     
     $scope.uploader = new FileUploader(
         scope: $scope
-        url: ICSW_URLS.USER_UPLOAD_LICENSE_FILE
+        url: ICSW_URLS.ICSW_LIC_UPLOAD_LICENSE_FILE
         queueLimit: 1
         alias: "license_file"
         formData: []
