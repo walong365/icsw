@@ -6,7 +6,7 @@
 # This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -594,8 +594,8 @@ class icswEggConsumer(models.Model):
     xml_node_reference = models.TextField(default="")
     # content type
     content_type = models.ForeignKey(ContentType, null=True)
-    # name for reference
-    name = models.CharField(max_length=63, default="", unique=True)
+    # name for reference, used in icswServiceEnumBase
+    action = models.CharField(max_length=63, default="")
     # config service enum
     config_service_enum = models.ForeignKey("backbone.ConfigServiceEnum")
     # multiplier

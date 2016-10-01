@@ -6,7 +6,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -52,6 +52,10 @@ def enum_show_command(options):
             if options.sync:
                 _c_dict[entry.name].update_values(entry)
             _db_str = "yes ({:d})".format(_c_dict[entry.name].pk)
+        if entry.value.server_service:
+            _egg_action = ", ".join([unicode(_action) for _action in entry.value.egg_actions]) or "none"
+        else:
+            _egg_action = "---"
         _list.append(
             [
                 logging_tools.form_entry(entry.name, header="EnumName"),
@@ -61,6 +65,7 @@ def enum_show_command(options):
                 logging_tools.form_entry_center("yes" if entry.value.relayer_service else "no", header="Relayer"),
                 logging_tools.form_entry(entry.value.info, header="Info"),
                 logging_tools.form_entry_center(_db_str, header="DB info"),
+                logging_tools.form_entry(_egg_action, header="Egg actions"),
             ]
         )
     print unicode(_list)

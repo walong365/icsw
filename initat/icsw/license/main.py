@@ -7,7 +7,7 @@
 # This file is part of icsw
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -44,6 +44,15 @@ else:
 
 
 def show_license_info(opts):
+    def len_info(type_str, in_f):
+        if len(in_f):
+            return "{} ({})".format(
+                logging_tools.get_plural(type_str, len(in_f)),
+                ", ".join(sorted(list(in_f))),
+            )
+        else:
+            return "no {}".format(type_str)
+
     _infos = License.objects.get_license_info()
     print("License info, {}:".format(logging_tools.get_plural("entry", len(_infos))))
     for _info in _infos:
@@ -56,24 +65,22 @@ def show_license_info(opts):
                 _info["customer"],
                 _info["name"],
                 _info["type_name"],
-                logging_tools.get_plural("Cluster", len(_cl_info)),
+                len_info("Cluster", _cl_info),
             )
         )
         for _cl_name in _cl_info:
-            _count = {"lics": 0, "paras": 0}
             _sets = {"lics": set(), "paras": set()}
             for _skey, _dkey in [("cluster_licenses", "lics"), ("parameters", "paras")]:
                 # import pprint
                 # pprint.pprint(_info)
                 for _entry in _info.get(_skey, {}).get(_cl_name, []):
+                    # print _entry
                     _sets[_dkey].add(_entry["id"])
             print(
-                "Cluster {}: {} ({}), {} ({})".format(
+                "Cluster {}: {}, {}".format(
                     _cl_name,
-                    logging_tools.get_plural("License", len(_sets["lics"])),
-                    ", ".join(sorted(list(_sets["lics"]))),
-                    logging_tools.get_plural("Parameter", len(_sets["paras"])),
-                    ", ".join(sorted(list(_sets["paras"]))),
+                    len_info("License", _sets["lics"]),
+                    len_info("Parameter", _sets["paras"]),
                 )
             )
 

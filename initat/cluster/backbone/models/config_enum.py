@@ -5,7 +5,7 @@
 # This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -23,7 +23,7 @@
 
 from enum import Enum
 
-from initat.cluster.backbone.models.service_enum_base import icswServiceEnumBase
+from initat.cluster.backbone.models.service_enum_base import icswServiceEnumBase, EggAction
 from initat.cluster.backbone.models.functions import register_service_enum
 
 
@@ -62,11 +62,17 @@ class AppEnum(Enum):
     collectd_server = icswServiceEnumBase(
         "collectd-server",
         "Collect MachineVectors from remote machines and store them",
-        msi_block_name="collectd"
+        msi_block_name="collectd",
+        egg_actions = [
+            EggAction("graph", "device"),
+        ]
     )
     rms_server = icswServiceEnumBase(
         "rms-server",
         "device hosts the RMS-server (Jobsystem)",
+        egg_actions=[
+            EggAction("handle", "device"),
+        ]
     )
     grapher_server = icswServiceEnumBase(
         "grapher-server",

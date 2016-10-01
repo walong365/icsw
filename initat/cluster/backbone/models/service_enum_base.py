@@ -5,7 +5,7 @@
 # This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -21,15 +21,31 @@
 #
 """ serviceEnum Base for 'global' configenum object, for servers """
 
+from django.db.models import Q
 from initat.host_monitoring.service_enum_base import icswServiceEnumBaseClient
+from django.contrib.contenttypes.models import ContentType
 
 __all__ = [
-    "icswServiceEnumBase"
+    "icswServiceEnumBase",
+    "EggAction",
 ]
 
 
+class EggAction(object):
+    def __init__(self, action, content_type):
+        self.action = action
+        if isinstance(content_type, basestring):
+            content_type = ContentType.objects.get(Q(model=content_type))
+        self.content_type = content_type
+
+    def __unicode__(self):
+        return u"{} {}".format(self.action, unicode(self.content_type))
+
+
 class icswServiceEnumBase(icswServiceEnumBaseClient):
-    def __init__(self, name, info="N/A", root_service=True, msi_block_name=None):
+    def __init__(self, name, info="N/A", root_service=True, msi_block_name=None, egg_actions=[]):
         icswServiceEnumBaseClient.__init__(self, name, info, root_service, msi_block_name)
         self.client_service = False
         self.server_service = True
+        # for egg consumers
+        self.egg_actions = egg_actions
