@@ -56,9 +56,11 @@ __all__ = [
     "ICSW_XML_NS_MAP",
     "ICSW_XML_NS_NAME",
     "LIC_FILE_RELAX_NG_DEFINITION",
+    "icswEggCradle",
+    "icswEggEvaluationDef",
     "icswEggBasket",
     "icswEggConsumer",
-    "icswEggLock",
+    "icswEggRequest",
 ]
 
 logger = logging.getLogger("cluster.icsw_license")
@@ -548,15 +550,28 @@ class LicenseLockListExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
     objects = _LicenseLockListExtLicenseManager()
 
 
-class icswEggBasket(models.Model):
-    # container for all eggs
+class icswEggCradle(models.Model):
+    """
+    container for all baskets, more than one cradle may be defined
+    but only one is a system cradle
+
+    grace handling: when the system requires more eggs then present, the grace_period
+    starts to run. During this time up to limit_grace eggs can be consumed, if this
+    limit is reached the system will no longer accept new egg requests
+    """
     idx = models.AutoField(primary_key=True)
     # is a sytem basket, only one allowed (and no user baskets defined)
-    system_basket = models.BooleanField(default=True)
+    system_cradle = models.BooleanField(default=True)
     # how many eggs are currently installed (and covered by licenses)
     installed = models.IntegerField(default=0)
     # how many eggs are currently available (must be smaller or equal to the installed eggs)
     available = models.IntegerField(default=0)
+    # grace days, defaults to 14 days
+    grace_days = models.IntegerField(default=14)
+    # start of grace period
+    grace_start = models.DateTimeField(null=True)
+    # limit of eggs when in grace, defaults to 110% of installed
+    limit_grace = models.IntegerField(default=0)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
@@ -564,20 +579,48 @@ class icswEggBasket(models.Model):
         abstract = True
 
 
-class icswEggBasketXML(models.Model):
-    # defining files for eggbasketconsumers
+class icswEggBasket(models.Model):
+    # basket definition, from ovum global parameters
     idx = models.AutoField(primary_key=True)
     # basket
-    egg_basket = models.ForeignKey(icswEggBasket)
+    egg_cradle = models.ForeignKey(icswEggCradle)
+    # dummy entry
+    dummy = models.BooleanField(default=False)
+    # valid from / to
+    valid_from = models.DateField()
+    valid_to = models.DateField()
+    # valid flag
+    is_valid = models.BooleanField(default=True)
+    # link to license, null for default basket
+    license = models.ForeignKey(License, null=True)
+    # eggs defined
+    eggs = models.IntegerField(default=0)
+    # creation date
+    date = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        abstract = False
+
+
+class icswEggEvaluationDef(models.Model):
+    """
+    Egg evaluation definition
+    """
+    # defining files for eggbasketconsumers
+    idx = models.AutoField(primary_key=True)
+    # cradle
+    egg_cradle = models.ForeignKey(icswEggCradle)
     # content
     content = models.TextField(default="")
+    # dummy entry
+    dummy = models.BooleanField(default=False)
     # active flag, at least one XML must be active
     active = models.BooleanField(default=False)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        abstract = True
+        abstract = False
 
 
 class icswEggConsumer(models.Model):
@@ -588,9 +631,9 @@ class icswEggConsumer(models.Model):
     """
     # defines how eggs are consumed
     idx = models.AutoField(primary_key=True)
-    # xml file reference
-    egg_basket_xml = models.ForeignKey(icswEggBasketXML)
-    # xml reference
+    # evaluation reference
+    egg_evluation_def = models.ForeignKey(icswEggEvaluationDef)
+    # xml reference, points to an UUID
     xml_node_reference = models.TextField(default="")
     # content type
     content_type = models.ForeignKey(ContentType, null=True)
@@ -608,11 +651,13 @@ class icswEggConsumer(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        abstract = True
+        abstract = False
 
 
-class icswEggLock(models.Model):
-    # lock instance
+class icswEggRequest(models.Model):
+    """
+    Egg request, are stored to be reevaluated at any time
+    """
     idx = models.AutoField(primary_key=True)
     # egg consumer
     egg_consumer = models.ForeignKey(icswEggConsumer)
@@ -620,18 +665,20 @@ class icswEggLock(models.Model):
     object_id = models.IntegerField(null=True)
     # effective number of eggs
     weight = models.IntegerField(default=0)
+    # valid, enough eggs present
+    valid = models.BooleanField(default=False)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        abstract = True
+        abstract = False
 
 
-@receiver(signals.pre_save, sender=icswEggBasket)
-def icsw_egg_basket_pre_save(sender, **kwargs):
+@receiver(signals.pre_save, sender=icswEggCradle)
+def icsw_egg_cradle_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         _inst = kwargs["instance"]
         if _inst.system_basket:
-            _found = icswEggBasket.objects.filter(Q(system_basket=True)).exclude(Q(pk=_inst.pk)).count()
+            _found = icswEggCradle.objects.filter(Q(system_cradle=True)).exclude(Q(pk=_inst.pk)).count()
             if _found:
-                raise ValidationError("only one sytem baske allowed")
+                raise ValidationError("only one system cradle allowed")

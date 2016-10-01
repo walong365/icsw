@@ -31,7 +31,10 @@ class AppEnum(Enum):
     config_server = icswServiceEnumBase(
         "config-server",
         "enables node provisioning features",
-        msi_block_name="cluster-config-server"
+        msi_block_name="cluster-config-server",
+        egg_actions=[
+            EggAction("configure", "device"),
+        ]
     )
     cluster_server = icswServiceEnumBase(
         "cluster-server",
@@ -50,6 +53,10 @@ class AppEnum(Enum):
     discovery_server = icswServiceEnumBase(
         "discovery-server",
         "enables network discovery and inventory",
+        egg_actions=[
+            EggAction("discover", "device"),
+            EggAction("asset", "device"),
+        ]
     )
     logcheck_server = icswServiceEnumBase(
         "logcheck-server",
@@ -63,7 +70,7 @@ class AppEnum(Enum):
         "collectd-server",
         "Collect MachineVectors from remote machines and store them",
         msi_block_name="collectd",
-        egg_actions = [
+        egg_actions=[
             EggAction("graph", "device"),
         ]
     )
