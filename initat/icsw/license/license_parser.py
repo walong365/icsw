@@ -63,6 +63,7 @@ class Parser(object):
             help="cluster name as provided by init.at"
         )
 
+        self._add_ovum_parser(lic_sub_parser)
         install_cluster_parser = lic_sub_parser.add_parser(
             "install_license",
             help="install already downloaded license file"
@@ -87,6 +88,11 @@ class Parser(object):
 
         show_lock_parser = lic_sub_parser.add_parser("show_locks", help="show current locks")
         show_lock_parser.set_defaults(subcom="show_locks", execute=self._execute)
+
+    def _add_ovum_parser(self, sub_parser):
+        _act = sub_parser.add_parser("ova", help="ova handling")
+        _act.set_defaults(subcom="ova", execute=self._execute)
+        _act.add_argument("--init", default=False, action="store_true", help="init basic ova structures [%(default)s]")
 
     def _execute(self, opt_ns):
         os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")

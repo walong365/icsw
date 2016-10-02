@@ -24,16 +24,19 @@
 """ database definitions for license management """
 
 import collections
+import datetime
 import logging
 import operator
 
 import enum
 from dateutil import relativedelta
+from initat.tools import logging_tools
 from django.core.exceptions import ValidationError
 from django.db import models, transaction, IntegrityError
 from django.contrib.contenttypes.models import ContentType
 from django.db.models import signals, Q, Count
 from django.dispatch import receiver
+import django.utils.timezone
 
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import memoize_with_expiry
@@ -550,15 +553,32 @@ class LicenseLockListExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
     objects = _LicenseLockListExtLicenseManager()
 
 
+class icswEggCradleManager(models.Manager):
+    def create_system_cradle(self):
+        _sc = self.create(
+            system_cradle=True
+        )
+        return _sc
+
+    def get_system_cradle(self):
+        try:
+            _sc = self.get(Q(system_cradle=True))
+        except icswEggCradle.DoesNotExist:
+            return None
+        else:
+            return _sc
+
+
 class icswEggCradle(models.Model):
     """
     container for all baskets, more than one cradle may be defined
     but only one is a system cradle
 
-    grace handling: when the system requires more eggs then present, the grace_period
+    grace handling: when the system requires more eggs then available, the grace_period
     starts to run. During this time up to limit_grace eggs can be consumed, if this
     limit is reached the system will no longer accept new egg requests
     """
+    objects = icswEggCradleManager()
     idx = models.AutoField(primary_key=True)
     # is a sytem basket, only one allowed (and no user baskets defined)
     system_cradle = models.BooleanField(default=True)
@@ -575,11 +595,50 @@ class icswEggCradle(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
-    class Meta:
-        abstract = False
+    def calc(self):
+        _avail = 0
+        for _basket in icswEggBasket.objects.get_valid_baskets():
+            if _basket:
+                _avail += _basket.eggs
+        self.available = _avail
+        self.save(update_fields=["available", "installed"])
+
+    def __unicode__(self):
+        return "EggCradle, {:d} installed, {:d} available".format(
+            self.installed,
+            self.available,
+        )
+
+
+class icswEggBasketManager(models.Manager):
+    def get_valid_baskets(self):
+        _now = django.utils.timezone.now()
+        return self.filter(
+            Q(egg_cradle__system_cradle=True) &
+            Q(is_valid=True) &
+            Q(valid_from__lte=_now) &
+            Q(valid_to__gte=_now)
+        )
+
+    def num_valid_baskets(self):
+        return self.get_valid_baskets().count()
+
+    def create_dummy_basket(self, eggs=10, validity=20):
+        _now = django.utils.timezone.now()
+        _sys_c = icswEggCradle.objects.get(Q(system_cradle=True))
+        _new_b = self.create(
+            egg_cradle=_sys_c,
+            dummy=True,
+            is_valid=True,
+            valid_from=_now - datetime.timedelta(days=1),
+            valid_to=_now.replace(year=_now.year + validity),
+            eggs=eggs,
+        )
+        return _new_b
 
 
 class icswEggBasket(models.Model):
+    objects = icswEggBasketManager()
     # basket definition, from ovum global parameters
     idx = models.AutoField(primary_key=True)
     # basket
@@ -601,11 +660,41 @@ class icswEggBasket(models.Model):
     class Meta:
         abstract = False
 
+    def __unicode__(self):
+        return "EggBasket (valid={})".format(self.is_valid)
+
+
+@receiver(signals.post_save, sender=icswEggBasket)
+def icsw_egg_basket_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        _inst = kwargs["instance"]
+        _inst.egg_cradle.calc()
+
+
+class icswEggEvaluationDefManager(models.Manager):
+    def get_active_def(self):
+        try:
+            _cd = self.get(Q(active=True))
+        except icswEggEvaluationDef.DoesNotExist:
+            _cd = None
+        return _cd
+
+    def create_dummy_def(self):
+        _sys_c = icswEggCradle.objects.get(Q(system_cradle=True))
+        _new_b = self.create(
+            egg_cradle=_sys_c,
+            content="",
+            dummy=True,
+            active=True,
+        )
+        return _new_b
+
 
 class icswEggEvaluationDef(models.Model):
     """
     Egg evaluation definition
     """
+    objects = icswEggEvaluationDefManager()
     # defining files for eggbasketconsumers
     idx = models.AutoField(primary_key=True)
     # cradle
@@ -614,13 +703,61 @@ class icswEggEvaluationDef(models.Model):
     content = models.TextField(default="")
     # dummy entry
     dummy = models.BooleanField(default=False)
-    # active flag, at least one XML must be active
+    # active flag, at least one Def must be active
     active = models.BooleanField(default=False)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
+    def create_consumers(self):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
+        from initat.cluster.backbone.models import ConfigServiceEnum
+        if not self.active:
+            raise StandardError("Cannot create consumers from inactive EggEvaluationDef")
+        # create or update all consumers
+        # build list of required consumers
+        _c_list = []
+        for _name, _server in icswServiceEnum.get_server_enums().iteritems():
+            _cs_enum = ConfigServiceEnum.objects.get(Q(enum_name=_name))
+            if _server.egg_actions:
+                for _action in _server.egg_actions:
+                    _c_list.append(
+                        {
+                            "action": _action,
+                            "service": _server,
+                            "db_enum": _cs_enum,
+                        }
+                    )
+        for _entry in _c_list:
+            try:
+                _cur_consum = icswEggConsumer.objects.get(
+                    Q(action=_entry["action"].action) &
+                    Q(content_type=_entry["action"].content_type) &
+                    Q(config_service_enum=_entry["db_enum"])
+                )
+            except icswEggConsumer.DoesNotExist:
+                # create new
+                _cur_consum = icswEggConsumer.objects.create(
+                    egg_evaluation_def=self,
+                    xml_node_reference="",
+                    content_type=_entry["action"].content_type,
+                    action=_entry["action"].action,
+                    config_service_enum=_entry["db_enum"],
+                    valid=False,
+                )
+            else:
+                if _cur_consum.egg_evaluation_def.idx != self.idx:
+                    _cur_consum.valid = False
+            _cur_consum.multiplier = 1
+            _cur_consum.save()
+
     class Meta:
         abstract = False
+
+    def __unicode__(self):
+        return "EggEvaluationDef (dummy={}, active={})".format(
+            self.dummy,
+            self.active,
+        )
 
 
 class icswEggConsumer(models.Model):
@@ -632,7 +769,7 @@ class icswEggConsumer(models.Model):
     # defines how eggs are consumed
     idx = models.AutoField(primary_key=True)
     # evaluation reference
-    egg_evluation_def = models.ForeignKey(icswEggEvaluationDef)
+    egg_evaluation_def = models.ForeignKey(icswEggEvaluationDef)
     # xml reference, points to an UUID
     xml_node_reference = models.TextField(default="")
     # content type
@@ -652,6 +789,28 @@ class icswEggConsumer(models.Model):
 
     class Meta:
         abstract = False
+        ordering = ("content_type__model", "config_service_enum__enum_name", "action")
+
+    def __unicode__(self):
+        return u"EggConsumer {}@{} -> {} per {}".format(
+            self.action,
+            self.config_service_enum.name,
+            logging_tools.get_plural("egg", self.multiplier),
+            self.content_type.model,
+        )
+
+
+@receiver(signals.post_save, sender=icswEggConsumer)
+def icsw_egg_consumer_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        _inst = kwargs["instance"]
+        if not _inst.valid:
+            print(
+                "Recalc {}, {}".format(
+                    unicode(_inst),
+                    logging_tools.get_plural("request", _inst.icsweggrequest_set.all().count()),
+                )
+            )
 
 
 class icswEggRequest(models.Model):
@@ -665,6 +824,8 @@ class icswEggRequest(models.Model):
     object_id = models.IntegerField(null=True)
     # effective number of eggs
     weight = models.IntegerField(default=0)
+    # lock, is a lock (now eggs should be consumed, always returns false)
+    is_lock = models.BooleanField(default=False)
     # valid, enough eggs present
     valid = models.BooleanField(default=False)
     # creation date
@@ -678,7 +839,7 @@ class icswEggRequest(models.Model):
 def icsw_egg_cradle_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         _inst = kwargs["instance"]
-        if _inst.system_basket:
+        if _inst.system_cradle:
             _found = icswEggCradle.objects.filter(Q(system_cradle=True)).exclude(Q(pk=_inst.pk)).count()
             if _found:
                 raise ValidationError("only one system cradle allowed")

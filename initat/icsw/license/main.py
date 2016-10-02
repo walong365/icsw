@@ -28,7 +28,8 @@ import urllib2
 from lxml import etree
 
 from initat.cluster.backbone import license_file_reader
-from initat.cluster.backbone.models import License, device_variable
+from initat.cluster.backbone.models import License, device_variable, icswEggCradle, icswEggBasket, \
+    icswEggEvaluationDef, icswEggConsumer
 from initat.constants import VERSION_CS_NAME
 from initat.tools import process_tools, hfp_tools, config_store, logging_tools
 
@@ -41,6 +42,31 @@ if process_tools.get_machine_name() in ["eddie"]:
     REGISTRATION_URL = "http://localhost:8081/icsw/api/v2/GetLicenseFile"
 else:
     REGISTRATION_URL = "http://www.initat.org/cluster/registration"
+
+
+def ova_init(opts):
+    _cur_sc = icswEggCradle.objects.get_system_cradle()
+    # _cur_sc.delete()
+    # _cur_sc = None
+    if _cur_sc is None:
+        _sys_c = icswEggCradle.objects.create_system_cradle()
+        print("created System cradle '{}'".format(unicode(_sys_c)))
+    # icswEggBasket.objects.all().delete()
+    if not icswEggBasket.objects.num_valid_baskets():
+        _sys_b = icswEggBasket.objects.create_dummy_basket()
+        print("Added dummy basket '{}'".format(unicode(_sys_b)))
+    if not icswEggEvaluationDef.objects.get_active_def():
+        _dummy_d = icswEggEvaluationDef.objects.create_dummy_def()
+        print("Added dummy def '{}'".format(_dummy_d))
+    icswEggEvaluationDef.objects.get_active_def().create_consumers()
+    print("System cradle info: {}".format(unicode(icswEggCradle.objects.get_system_cradle())))
+    print(
+        "Consumer info ({}):".format(
+            logging_tools.get_plural("consumer", icswEggConsumer.objects.all().count())
+        )
+    )
+    for _cons in icswEggConsumer.objects.all():
+        print unicode(_cons)
 
 
 def show_license_info(opts):
@@ -184,5 +210,8 @@ def main(opts):
         show_cluster_id(opts)
     elif opts.subcom == "show_license_info":
         show_license_info(opts)
+    elif opts.subcom == "ova":
+        if opts.init:
+            ova_init(opts)
     else:
         print("unknown subcom '{}'".format(opts.subcom))

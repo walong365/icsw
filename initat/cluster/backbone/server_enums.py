@@ -43,6 +43,12 @@ class icswAppBaseServiceEnumClass(object):
 icswServiceEnum = None
 
 
+class BaseEnum(Enum):
+    @classmethod
+    def get_server_enums(cls):
+        return {name: entry.value for name, entry in cls.__members__.items() if entry.value.server_service}
+
+
 def init_app_enum():
     global icswServiceEnum
     from initat.cluster.backbone.models.functions import register_service_enum
@@ -56,7 +62,7 @@ def init_app_enum():
             for entry in _enum:
                 entry.value.clear_instance_names()
                 _all.append((entry.name, entry.value))
-        icswServiceEnum = Enum(value="icswServerEnum", names=_all, type=icswAppBaseServiceEnumClass)
+        icswServiceEnum = BaseEnum(value="icswServerEnum", names=_all, type=icswAppBaseServiceEnumClass)
     _xml = instance.InstanceXML(quiet=True)
     for _inst in _xml.get_all_instances():
         _attr = _xml.get_attrib(_inst)
