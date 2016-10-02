@@ -859,12 +859,13 @@ def icsw_egg_consumer_post_save(sender, **kwargs):
     if "instance" in kwargs:
         _inst = kwargs["instance"]
         if not _inst.valid:
-            print(
-                "Recalc {}, {}".format(
-                    unicode(_inst),
-                    logging_tools.get_plural("request", _inst.icsweggrequest_set.all().count()),
-                )
-            )
+            pass
+            # print(
+            #    "Recalc {}, {}".format(
+            #        unicode(_inst),
+            #        logging_tools.get_plural("request", _inst.icsweggrequest_set.all().count()),
+            #    )
+            # )
 
 
 class icswEggRequest(models.Model):
