@@ -72,13 +72,14 @@ class EggConsumeObject(object):
                 )
             _cur_req.consume()
             _allowed = _cur_req.valid
-            self.log(
-                "action {} on {} not allowed".format(
-                    action,
-                    unicode(obj_def),
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
+            if not _allowed:
+                self.log(
+                    "action {} on {} not allowed".format(
+                        action,
+                        unicode(obj_def),
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         else:
             self.log(
                 "unknown consume action '{}' for {} (known actions: {})".format(

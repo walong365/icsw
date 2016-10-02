@@ -125,11 +125,11 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
             Q(pk__in=orig_dev_pks) & Q(machinevector__pk__gt=0)
         ).values_list("pk", flat=True)
         dev_pks = [
-            dev_pk for dev_pk in orig_dev_pks if not self.EC.consume("graph", dev_pk)
+            dev_pk for dev_pk in orig_dev_pks if self.EC.consume("graph", dev_pk)
         ]
         if len(orig_dev_pks) != len(dev_pks):
             self.log(
-                "Access to device rrds denied to to ova limits: {}".format(
+                "Access to device rrds denied due to ova limits: {}".format(
                     set(orig_dev_pks).difference(dev_pks)
                 ),
                 logging_tools.LOG_LEVEL_ERROR,

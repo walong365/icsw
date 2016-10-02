@@ -35,9 +35,16 @@ class Command(BaseCommand):
         if not num_cc:
             def_cc = config_catalog.create_local_catalog()
             print("created config_catalog '{}'".format(unicode(def_cc)))
-            for conf in config.objects.all():
-                conf.config_catalog = def_cc
-                conf.save()
-            print("migrated {:d} configs".format(config.objects.all().count()))
         else:
             print("{} already present".format(logging_tools.get_plural("config catalog", num_cc)))
+            def_cc = config_catalog.objects.get(system_catalog=True)
+        _conv = 0
+        for conf in config.objects.all():
+            if conf.config_catalog is None:
+                _conv += 1
+                conf.config_catalog = def_cc
+                try:
+                    conf.save()
+                except:
+                    print("Error migrating {}".format(unicode(conf)))
+        print("migrated {:d} configs".format(_conv))

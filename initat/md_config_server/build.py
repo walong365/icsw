@@ -372,7 +372,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         if not single_build:
             # from mixin
             self._check_md_version()
-            self._check_relay_version()
             self._cleanup_db()
             # check for SNMP container config
             self._check_for_snmp_container()
