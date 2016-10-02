@@ -226,11 +226,7 @@ class rms_job_run(models.Model):
 
 @receiver(signals.post_save, sender=rms_job_run)
 def _rms_job_run_post_save(sender, instance, raw, **kwargs):
-    from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-    from initat.cluster.backbone.models import LicenseUsage
-    if not raw:
-        if instance.device is not None:
-            LicenseUsage.log_usage(LicenseEnum.rms, LicenseParameterTypeEnum.device, instance.device)
+    pass
 
 
 class rms_pe_info(models.Model):

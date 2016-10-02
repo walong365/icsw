@@ -39,12 +39,16 @@ class AppEnum(Enum):
     cluster_server = icswServiceEnumBase(
         "cluster-server",
         "sets device as a cluster-server (DB access)",
+        egg_actions=[
+            EggAction("allegro", "user", weight=100),
+            EggAction("vdesktop", "user", weight=20),
+        ]
     )
     mother_server = icswServiceEnumBase(
         "mother-server",
         "enables basic nodeboot via PXE functionalities",
         msi_block_name="mother",
-        egg_actions = [
+        egg_actions=[
             EggAction("handle", "device"),
         ]
     )
@@ -68,6 +72,9 @@ class AppEnum(Enum):
     package_server = icswServiceEnumBase(
         "package-server",
         "enables packge-server functionalities (RPM/deb distribution)",
+        egg_actions=[
+            EggAction("handle", "device"),
+        ]
     )
     collectd_server = icswServiceEnumBase(
         "collectd-server",

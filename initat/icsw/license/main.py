@@ -57,14 +57,15 @@ def ova_show(opts):
 
 def ova_init(opts):
     _sys_c = icswEggCradle.objects.get_system_cradle()
-    # _cur_sc.delete()
-    # _cur_sc = None
+    if False:
+        _sys_c.delete()
+        _sys_c = None
     if _sys_c is None:
         _sys_c = icswEggCradle.objects.create_system_cradle()
         print("created System cradle '{}'".format(unicode(_sys_c)))
     # icswEggBasket.objects.all().delete()
     if not icswEggBasket.objects.num_valid_baskets():
-        _sys_b = icswEggBasket.objects.create_dummy_basket()
+        _sys_b = icswEggBasket.objects.create_dummy_basket(eggs=500)
         print("Added dummy basket '{}'".format(unicode(_sys_b)))
     if not icswEggEvaluationDef.objects.get_active_def():
         _dummy_d = icswEggEvaluationDef.objects.create_dummy_def()

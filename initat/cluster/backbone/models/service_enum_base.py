@@ -32,11 +32,12 @@ __all__ = [
 
 
 class EggAction(object):
-    def __init__(self, action, content_type):
+    def __init__(self, action, content_type, weight=1):
         self.action = action
         if isinstance(content_type, basestring):
             content_type = ContentType.objects.get(Q(model=content_type))
         self.content_type = content_type
+        self.weight = weight
 
     def __unicode__(self):
         return u"{} {}".format(self.action, unicode(self.content_type))

@@ -23,8 +23,8 @@
 """ basic session views """
 
 import base64
-import json
 import datetime
+import json
 import logging
 from importlib import import_module
 
@@ -48,7 +48,7 @@ from initat.cluster.backbone.models import user, login_history, background_job, 
 from initat.cluster.backbone.serializers import user_serializer, background_job_serializer
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.constants import GEN_CS_NAME
-from initat.tools import config_store
+from initat.tools import config_store, server_mixins, logging_tools
 
 logger = logging.getLogger("cluster.session")
 
@@ -200,6 +200,8 @@ def _login(request, _user_object, login_credentials=None):
     if _user_object.ui_theme_selection not in _theme_shorts:
         _user_object.ui_theme_selection = _theme_shorts[0]
         _user_object.save()
+    # log user
+
     _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
     _mult_ok = _cs.get("session.multiple.per.user.allowed", False)
     if _mult_ok:
@@ -244,6 +246,11 @@ class session_expel(View):
         )
 
 
+class DummyLogger(object):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        logger.log(log_level, u"[DL] {}".format(what))
+
+
 class session_login(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
@@ -260,13 +267,20 @@ class session_login(View):
                 request.xml_response.error(unicode(err_msg))
             _failed_login(request, real_user_name)
         else:
-            login_credentials = (real_user_name, login_password, login_name)
-            _num_dup_sessions = _login(request, db_user, login_credentials)
-            request.xml_response["duplicate_sessions"] = "{:d}".format(_num_dup_sessions)
-            if _post.get("next_url", "").strip():
-                request.xml_response["redirect"] = _post["next_url"]
+            # check eggs for allegro
+            _eco = server_mixins.EggConsumeObject(DummyLogger())
+            _eco.init({"SERVICE_ENUM_NAME": "cluster_server"})
+            if _eco.consume("allegro", db_user):
+                login_credentials = (real_user_name, login_password, login_name)
+                _num_dup_sessions = _login(request, db_user, login_credentials)
+                request.xml_response["duplicate_sessions"] = "{:d}".format(_num_dup_sessions)
+                if _post.get("next_url", "").strip():
+                    request.xml_response["redirect"] = _post["next_url"]
+                else:
+                    request.xml_response["redirect"] = "main.dashboard"
             else:
-                request.xml_response["redirect"] = "main.dashboard"
+                request.xml_response.error("Ova resource problem")
+                _failed_login(request, real_user_name)
 
     @classmethod
     def _check_login_data(cls, request, username, password):

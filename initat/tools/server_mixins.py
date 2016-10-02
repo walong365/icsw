@@ -69,7 +69,6 @@ class EggConsumeObject(object):
                 _cur_req = icswEggRequest.objects.create(
                     egg_consumer=_con,
                     object_id=_pk,
-
                 )
             _cur_req.consume()
             _allowed = _cur_req.valid

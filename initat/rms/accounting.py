@@ -40,7 +40,7 @@ from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.rms.config import global_config
 from initat.rms.functions import call_command
-from initat.tools import logging_tools, server_command, threading_tools, process_tools
+from initat.tools import logging_tools, server_command, threading_tools, process_tools, server_mixins
 
 _OBJ_DICT = {
     "rms_queue": rms_queue,
@@ -50,7 +50,7 @@ _OBJ_DICT = {
 }
 
 
-class AccountingProcess(threading_tools.process_obj):
+class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMixin):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(
@@ -61,6 +61,7 @@ class AccountingProcess(threading_tools.process_obj):
             init_logger=True
         )
         db_tools.close_connection()
+        self.EC.init(global_config)
         self._init_environ()
         # job stop/start info
         self.register_func("job_ss_info", self._job_ss_info)
@@ -518,6 +519,7 @@ class AccountingProcess(threading_tools.process_obj):
                 name=_config["job_name"],
             )
             if _com == "job_start":
+                self.EC.consume("handle", _source_dev)
                 _new_run = _job.add_job_run(_source_host, _source_dev)
                 _new_run.rms_queue = _queue
                 # set slots to the default value
@@ -551,6 +553,7 @@ class AccountingProcess(threading_tools.process_obj):
                     for _line in _lines:
                         _parts = _line.split()
                         _pe_dev = self._get_device(_parts[0])
+                        self.EC.consume("handle", _pe_dev)
                         _slots = int(_parts[1])
                         self.log(
                             "pe info parsed for {}: device '{}' (from {}), {}".format(

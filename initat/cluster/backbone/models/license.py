@@ -746,6 +746,7 @@ class icswEggEvaluationDef(models.Model):
                     egg_evaluation_def=self,
                     xml_node_reference="",
                     egg_cradle=self.egg_cradle,
+                    # multiplier=_entry["action"].weight,
                     content_type=_entry["action"].content_type,
                     action=_entry["action"].action,
                     config_service_enum=_entry["db_enum"],
@@ -754,7 +755,10 @@ class icswEggEvaluationDef(models.Model):
             else:
                 if _cur_consum.egg_evaluation_def.idx != self.idx:
                     _cur_consum.valid = False
-            _cur_consum.multiplier = 1
+            _cur_consum.valid = False
+            if _entry["action"].weight != _cur_consum.multiplier:
+                _cur_consum.multiplier = _entry["action"].weight
+                _cur_consum.valid = False
             _cur_consum.save()
 
     class Meta:
@@ -785,6 +789,8 @@ class icswEggConsumer(models.Model):
     content_type = models.ForeignKey(ContentType, null=True)
     # name for reference, used in icswServiceEnumBase
     action = models.CharField(max_length=63, default="")
+    # total consumed by all fullfilled (valid=True) requests
+    consumed = models.IntegerField(default=0)
     # config service enum
     config_service_enum = models.ForeignKey("backbone.ConfigServiceEnum")
     # multiplier
@@ -803,15 +809,27 @@ class icswEggConsumer(models.Model):
     def get_all_consumed(self):
         _ws = self.icsweggrequest_set.filter(Q(is_lock=False) & (Q(valid=True))).values_list("weight", flat=True)
         if _ws.count():
-            return sum(_ws)
+            _sum = sum(_ws)
+            if _sum != self.consumed:
+                self.consumed = _sum
+                self.save(update_fields=["consumed"])
+            return _sum
         else:
             return 0
 
     def consume(self, request):
-        _target_weight = 1
+        # if request.valid is False, try to consume it
+        # if request.valid is True, check the target weight
+        _target_weight = self.multiplier
+        if not request.valid:
+            _to_consume = _target_weight
+        else:
+            _to_consume = _target_weight - request.weight
         _avail = self.egg_cradle.available
-        if _avail > _target_weight:
-            self.egg_cradle.available -= _target_weight
+        if _avail > _to_consume:
+            self.egg_cradle.available -= _to_consume
+            self.consumed += _to_consume
+            self.save(update_fields=["consumed"])
             self.egg_cradle.save(update_fields=["available"])
             request.valid = True
         else:
@@ -863,16 +881,18 @@ class icswEggRequest(models.Model):
     # lock, is a lock (no eggs should be consumed, always returns false)
     is_lock = models.BooleanField(default=False)
     # valid, enough eggs present
-    # generate an request even when not enough eggs are present, then valid=False
+    # generate an request even when not enough eggs are present, set valid=False
     valid = models.BooleanField(default=False)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
     def consume(self):
         if self.is_lock:
+            # is a lock, we dont consume anything
             self.weight = 0
             self.valid = False
         else:
+            # consum from egg_consumer
             self.egg_consumer.consume(self)
         self.save(update_fields=["weight", "valid"])
         return self.valid
