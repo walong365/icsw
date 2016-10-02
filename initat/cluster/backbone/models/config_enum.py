@@ -43,7 +43,10 @@ class AppEnum(Enum):
     mother_server = icswServiceEnumBase(
         "mother-server",
         "enables basic nodeboot via PXE functionalities",
-        msi_block_name="mother"
+        msi_block_name="mother",
+        egg_actions = [
+            EggAction("handle", "device"),
+        ]
     )
     monitor_server = icswServiceEnumBase(
         "monitor-server",
@@ -85,6 +88,9 @@ class AppEnum(Enum):
         "grapher-server",
         "Draw graphs, frontend to collectd",
         msi_block_name="rrd-grapher",
+        egg_actions=[
+            EggAction("graph", "device"),
+        ]
     )
     image_server = icswServiceEnumBase(
         "image-server",

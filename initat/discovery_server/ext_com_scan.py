@@ -41,7 +41,6 @@ from initat.tools import logging_tools, process_tools, server_command, net_tools
     ipvx_tools
 from .discovery_struct import ExtCom
 
-
 DEFAULT_NRPE_PORT = 5666
 # the mapping between the result of the server command and the result of the
 # asset run
@@ -387,12 +386,14 @@ class WmiScanBatch(ScanBatch):
                                             )
                                             self.log(traceback.format_exc(e))
 
-                self.log("Created {}, updated {}, created {}, found {}".format(
-                    logging_tools.get_plural("net device", len(created_ips)),
-                    logging_tools.get_plural("net device", len(updated_nds)),
-                    logging_tools.get_plural("ip", len(created_ips)),
-                    logging_tools.get_plural("existing ip", len(existing_ips)),
-                ))
+                self.log(
+                    "Created {}, updated {}, created {}, found {}".format(
+                        logging_tools.get_plural("net device", len(created_ips)),
+                        logging_tools.get_plural("net device", len(updated_nds)),
+                        logging_tools.get_plural("ip", len(created_ips)),
+                        logging_tools.get_plural("existing ip", len(existing_ips)),
+                    )
+                )
 
             self.finish()
 
@@ -914,32 +915,34 @@ class Dispatcher(object):
             "device__com_capability_list"
         ):
             if schedule_item.planned_date < _now:
-                cap_dict = {
-                    _com.matchcode: True for _com in schedule_item.device.com_capability_list.all()
-                }
+                # check for allowed
+                if self.discovery_process.EC.consume("asset", schedule_item.device):
+                    cap_dict = {
+                        _com.matchcode: True for _com in schedule_item.device.com_capability_list.all()
+                    }
 
-                _dev = schedule_item.device
-                if _dev.idx not in self.__device_planned_runs:
-                    self.__device_planned_runs[_dev.idx] = []
+                    _dev = schedule_item.device
+                    if _dev.idx not in self.__device_planned_runs:
+                        self.__device_planned_runs[_dev.idx] = []
 
-                self.discovery_process.get_route_to_devices([_dev])
-                self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
-                new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
-                new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
+                    self.discovery_process.get_route_to_devices([_dev])
+                    self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
+                    new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
+                    new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
 
-                self.__device_planned_runs[_dev.idx].append(new_pr)
+                    self.__device_planned_runs[_dev.idx].append(new_pr)
 
-                if cap_dict.get("hm", False):
-                    self._do_hm_scan(schedule_item, new_pr)
-                elif cap_dict.get("nrpe", False):
-                    self._do_nrpe_scan(schedule_item, new_pr)
-                else:
-                    self.log(
-                        "Skipping non-capable device {}".format(
-                            unicode(schedule_item.device)
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
+                    if cap_dict.get("hm", False):
+                        self._do_hm_scan(schedule_item, new_pr)
+                    elif cap_dict.get("nrpe", False):
+                        self._do_nrpe_scan(schedule_item, new_pr)
+                    else:
+                        self.log(
+                            "Skipping non-capable device {}".format(
+                                unicode(schedule_item.device)
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                 schedule_item.delete()
 
         zmq_con = net_tools.zmq_connection(

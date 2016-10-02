@@ -33,6 +33,66 @@ from initat.tools import logging_tools, process_tools, threading_tools, server_c
 MAX_RESEND_COUNTER = 5
 
 
+class EggConsumeObject(object):
+    def __init__(self, proc):
+        # process or any instance with a log facility attached
+        self.__process = proc
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__process.log(u"[EC] {}".format(what), log_level)
+
+    def init(self, global_config):
+        from django.db.models import Q
+        from initat.cluster.backbone.models import icswEggConsumer
+        self.__global_config = global_config
+        _my_consumers = icswEggConsumer.objects.filter(Q(config_service_enum__enum_name=self.__global_config["SERVICE_ENUM_NAME"]))
+        self.consumers = {_ec.action: _ec for _ec in _my_consumers}
+
+    def _get_pk_from_object(self, obj_def):
+        if type(obj_def) in [int, long]:
+            return obj_def
+        else:
+            return obj_def.idx
+
+    def consume(self, action, obj_def):
+        from django.db.models import Q
+        from initat.cluster.backbone.models import icswEggRequest
+        if action in self.consumers:
+            _con = self.consumers[action]
+            _pk = self._get_pk_from_object(obj_def)
+            try:
+                _cur_req = icswEggRequest.objects.get(
+                    Q(egg_consumer=_con) &
+                    Q(object_id=_pk),
+                )
+            except icswEggRequest.DoesNotExist:
+                _cur_req = icswEggRequest.objects.create(
+                    egg_consumer=_con,
+                    object_id=_pk,
+
+                )
+            _cur_req.consume()
+            _allowed = _cur_req.valid
+            self.log(
+                "action {} on {} not allowed".format(
+                    action,
+                    unicode(obj_def),
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        else:
+            self.log(
+                "unknown consume action '{}' for {} (known actions: {})".format(
+                    action,
+                    unicode(obj_def),
+                    ", ".join(sorted(self.consumers.keys())) or "none",
+                ),
+                logging_tools.LOG_LEVEL_CRITICAL
+            )
+            _allowed = False
+        return _allowed
+
+
 class ConfigCheckObject(object):
     def __init__(self, proc):
         self.__process = proc
@@ -111,6 +171,7 @@ class ConfigCheckObject(object):
         # late import (for clients without django)
         if self.srv_type_enum.value.server_service:
             from initat.tools import config_tools
+            from django.db.models import Q
             from initat.cluster.backbone.models import LogSource
         if self.srv_type_enum.value.instance_name is None:
             raise KeyError("No instance_name set for srv_type_enum '{}'".format(self.srv_type_enum.name))
@@ -138,12 +199,18 @@ class ConfigCheckObject(object):
         if self.srv_type_enum.value.server_service:
             self.__sql_info = config_tools.server_check(service_type_enum=self.srv_type_enum)
             if self.__sql_info is None or not self.__sql_info.effective_device:
+                # this can normally not happen due to start / stop via meta-server
                 self.log("Not a valid {}".format(self.srv_type_enum.name), logging_tools.LOG_LEVEL_ERROR)
                 sys.exit(5)
             else:
+                # check eggConsumers
                 # set values
                 _opts.extend(
                     [
+                        (
+                            "SERVICE_ENUM_NAME",
+                            configfile.str_c_var(self.srv_type_enum.name),
+                        ),
                         (
                             "SERVER_SHORT_NAME",
                             configfile.str_c_var(process_tools.get_machine_name(True)),
@@ -298,6 +365,11 @@ class ConfigCheckMixin(threading_tools.ICSWAutoInit):
     def _flush_log_cache(self):
         while self.__log_cache:
             self.__log_template.log(*self.__log_cache.pop(0))
+
+
+class EggConsumeMixin(threading_tools.ICSWAutoInit):
+    def __init__(self):
+        self.EC = EggConsumeObject(self)
 
 
 class ServerStatusMixin(object):

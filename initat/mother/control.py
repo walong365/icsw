@@ -31,12 +31,11 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import device, macbootlog, mac_ignore, \
-    log_source_lookup, LogSource, DeviceLogEntry, user, LicenseUsage, LicenseEnum, \
-    LicenseParameterTypeEnum
+    log_source_lookup, LogSource, DeviceLogEntry, user
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import config_tools, configfile, icmp_class, ipvx_tools, logging_tools, \
-    process_tools, server_command, threading_tools
+    process_tools, server_command, threading_tools, server_mixins
 from .command_tools import simple_command
 from .config import global_config
 from .devicestate import DeviceState
@@ -62,8 +61,6 @@ class Host(object):
             init_logger=True
         )
         self.log("added client, type is {}".format("META" if self.device.is_meta_device else "real"))
-        # log license usage
-        LicenseUsage.log_usage(LicenseEnum.netboot, LicenseParameterTypeEnum.device, self.device)
         self.additional_lut_keys = set()
         # clear ip_dict
         self.ip_dict = {}
@@ -158,6 +155,7 @@ class Host(object):
         # import pprint
         # pprint.pprint(connection.queries)
         _added = len(query)
+        _ignored = 0
         if _added:
             Host.g_log(
                 "found {}: {}".format(
@@ -166,14 +164,20 @@ class Host(object):
                 )
             )
             for cur_dev in query:
-                Host.set_device(cur_dev)
+                if Host.set_device(cur_dev) is None:
+                    _ignored += 1
         else:
             Host.g_log(
                 "found no hosts",
                 logging_tools.LOG_LEVEL_WARN,
             )
         e_time = time.time()
-        Host.g_log("sync took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+        Host.g_log(
+            "sync took {}, ignored: {:d}".format(
+                logging_tools.get_diff_time_str(e_time - s_time),
+                _ignored,
+            )
+        )
         return _added
         # pprint.pprint(connection.queries)
 
@@ -202,11 +206,15 @@ class Host(object):
 
     @staticmethod
     def set_device(new_dev):
-        new_mach = Host(new_dev)
-        Host.__unique_keys.add(new_dev.pk)
-        Host.device_state.add_device(new_dev)
-        # check network settings
-        new_mach.check_network_settings()
+        if Host.process.EC.consume("handle", new_dev):
+            new_mach = Host(new_dev)
+            Host.__unique_keys.add(new_dev.pk)
+            Host.device_state.add_device(new_dev)
+            # check network settings
+            new_mach.check_network_settings()
+            return new_mach
+        else:
+            return None
 
     @staticmethod
     def delete_device(dev_spec, remove_from_unique_keys=True):
@@ -1294,7 +1302,7 @@ class ICMPProcess(threading_tools.process_obj):
         self.__log_template.close()
 
 
-class NodeControlProcess(threading_tools.process_obj):
+class NodeControlProcess(threading_tools.process_obj, server_mixins.EggConsumeMixin):
     def process_init(self):
         global_config.close()
         # check log type (queue or direct)
@@ -1308,6 +1316,7 @@ class NodeControlProcess(threading_tools.process_obj):
         db_tools.close_connection()
         self.node_src = log_source_lookup("node", None)
         self.mother_src = LogSource.objects.get(Q(pk=global_config["LOG_SOURCE_IDX"]))
+        self.EC.init(global_config)
         # close database connection
         simple_command.setup(self)
         self.sc = config_tools.server_check(service_type_enum=icswServiceEnum.mother_server)

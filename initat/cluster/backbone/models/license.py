@@ -21,26 +21,26 @@
 # -*- coding: utf-8 -*-
 #
 
-""" database definitions for license management """
+""" database definitions for license / ova management """
 
 import collections
 import datetime
 import logging
 import operator
 
+import django.utils.timezone
 import enum
 from dateutil import relativedelta
-from initat.tools import logging_tools
+from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
 from django.db import models, transaction, IntegrityError
-from django.contrib.contenttypes.models import ContentType
 from django.db.models import signals, Q, Count
 from django.dispatch import receiver
-import django.utils.timezone
 
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import memoize_with_expiry
 from initat.cluster.backbone.models.rms import ext_license
+from initat.tools import logging_tools
 from .license_xml import ICSW_XML_NS, ICSW_XML_NS_NAME, ICSW_XML_NS_MAP, LIC_FILE_RELAX_NG_DEFINITION
 
 __all__ = [
@@ -597,10 +597,15 @@ class icswEggCradle(models.Model):
 
     def calc(self):
         _avail = 0
+        _installed = 0
         for _basket in icswEggBasket.objects.get_valid_baskets():
             if _basket:
                 _avail += _basket.eggs
+                _installed += _basket.eggs
+        for _cons in self.icsweggconsumer_set.all():
+            _avail -= _cons.get_all_consumed()
         self.available = _avail
+        self.installed = _installed
         self.save(update_fields=["available", "installed"])
 
     def __unicode__(self):
@@ -732,13 +737,15 @@ class icswEggEvaluationDef(models.Model):
                 _cur_consum = icswEggConsumer.objects.get(
                     Q(action=_entry["action"].action) &
                     Q(content_type=_entry["action"].content_type) &
-                    Q(config_service_enum=_entry["db_enum"])
+                    Q(config_service_enum=_entry["db_enum"]) &
+                    Q(egg_cradle=self.egg_cradle)
                 )
             except icswEggConsumer.DoesNotExist:
                 # create new
                 _cur_consum = icswEggConsumer.objects.create(
                     egg_evaluation_def=self,
                     xml_node_reference="",
+                    egg_cradle=self.egg_cradle,
                     content_type=_entry["action"].content_type,
                     action=_entry["action"].action,
                     config_service_enum=_entry["db_enum"],
@@ -770,6 +777,8 @@ class icswEggConsumer(models.Model):
     idx = models.AutoField(primary_key=True)
     # evaluation reference
     egg_evaluation_def = models.ForeignKey(icswEggEvaluationDef)
+    # cradle
+    egg_cradle = models.ForeignKey(icswEggCradle)
     # xml reference, points to an UUID
     xml_node_reference = models.TextField(default="")
     # content type
@@ -790,6 +799,33 @@ class icswEggConsumer(models.Model):
     class Meta:
         abstract = False
         ordering = ("content_type__model", "config_service_enum__enum_name", "action")
+
+    def get_all_consumed(self):
+        _ws = self.icsweggrequest_set.filter(Q(is_lock=False) & (Q(valid=True))).values_list("weight", flat=True)
+        if _ws.count():
+            return sum(_ws)
+        else:
+            return 0
+
+    def consume(self, request):
+        _target_weight = 1
+        _avail = self.egg_cradle.available
+        if _avail > _target_weight:
+            self.egg_cradle.available -= _target_weight
+            self.egg_cradle.save(update_fields=["available"])
+            request.valid = True
+        else:
+            request.valid = False
+        request.weight = _target_weight
+
+    def get_info_line(self):
+        return [
+            logging_tools.form_entry(self.action, header="action"),
+            logging_tools.form_entry(unicode(self.config_service_enum), header="ConfigService"),
+            logging_tools.form_entry_right(self.multiplier, header="Weight"),
+            logging_tools.form_entry_center(unicode(self.content_type), header="ContentType"),
+            logging_tools.form_entry_right(self.get_all_consumed(), header="consumed"),
+        ]
 
     def __unicode__(self):
         return u"EggConsumer {}@{} -> {} per {}".format(
@@ -824,12 +860,22 @@ class icswEggRequest(models.Model):
     object_id = models.IntegerField(null=True)
     # effective number of eggs
     weight = models.IntegerField(default=0)
-    # lock, is a lock (now eggs should be consumed, always returns false)
+    # lock, is a lock (no eggs should be consumed, always returns false)
     is_lock = models.BooleanField(default=False)
     # valid, enough eggs present
+    # generate an request even when not enough eggs are present, then valid=False
     valid = models.BooleanField(default=False)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
+
+    def consume(self):
+        if self.is_lock:
+            self.weight = 0
+            self.valid = False
+        else:
+            self.egg_consumer.consume(self)
+        self.save(update_fields=["weight", "valid"])
+        return self.valid
 
     class Meta:
         abstract = False

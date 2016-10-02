@@ -29,11 +29,8 @@ import dateutil.parser
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.available_licenses import LicenseEnum
-from initat.cluster.backbone.models import device, GraphSetting
+from initat.cluster.backbone.models import device
 from initat.cluster.backbone.serializers import GraphSettingSerializerCustom
-from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsage, \
-    LicenseParameterTypeEnum
 from initat.tools import logging_tools, process_tools, server_mixins, server_command, threading_tools
 from .graph_color import Colorizer
 from .graph_graph import RRDGraph
@@ -42,7 +39,7 @@ from ..config import global_config
 FLOAT_FMT = "{:.6f}"
 
 
-class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMixin):
+class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMixin, server_mixins.EggConsumeMixin):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(
@@ -53,6 +50,7 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
             init_logger=True,
         )
         db_tools.close_connection()
+        self.EC.init(global_config)
         self.register_func("graph_rrd", self._graph_rrd)
         self.graph_root = global_config["GRAPH_ROOT"]
         self.graph_root_debug = global_config["GRAPH_ROOT_DEBUG"]
@@ -127,15 +125,16 @@ class GraphProcess(threading_tools.process_obj, server_mixins.OperationalErrorMi
             Q(pk__in=orig_dev_pks) & Q(machinevector__pk__gt=0)
         ).values_list("pk", flat=True)
         dev_pks = [
-            dev_pk for dev_pk in orig_dev_pks
-            if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.graphing, dev_pk)
+            dev_pk for dev_pk in orig_dev_pks if not self.EC.consume("graph", dev_pk)
         ]
         if len(orig_dev_pks) != len(dev_pks):
             self.log(
-                "Access to device rrds denied to to locking: {}".format(set(orig_dev_pks).difference(dev_pks)),
+                "Access to device rrds denied to to ova limits: {}".format(
+                    set(orig_dev_pks).difference(dev_pks)
+                ),
                 logging_tools.LOG_LEVEL_ERROR,
             )
-        LicenseUsage.log_usage(LicenseEnum.graphing, LicenseParameterTypeEnum.device, dev_pks)
+
         graph_keys = json.loads(srv_com["*graph_key_list"])
         para_dict = {
             para.tag: para.text for para in srv_com.xpath(".//parameters", smart_strings=False)[0]

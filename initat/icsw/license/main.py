@@ -44,11 +44,22 @@ else:
     REGISTRATION_URL = "http://www.initat.org/cluster/registration"
 
 
+def ova_show(opts):
+    print("Recalc ova info")
+    _sys_c = icswEggCradle.objects.get_system_cradle()
+    _sys_c.calc()
+    print("System cradle info: {}".format(unicode(_sys_c)))
+    _out_list = logging_tools.new_form_list()
+    for _cons in _sys_c.icsweggconsumer_set.all():
+        _out_list.append(_cons.get_info_line())
+    print unicode(_out_list)
+
+
 def ova_init(opts):
-    _cur_sc = icswEggCradle.objects.get_system_cradle()
+    _sys_c = icswEggCradle.objects.get_system_cradle()
     # _cur_sc.delete()
     # _cur_sc = None
-    if _cur_sc is None:
+    if _sys_c is None:
         _sys_c = icswEggCradle.objects.create_system_cradle()
         print("created System cradle '{}'".format(unicode(_sys_c)))
     # icswEggBasket.objects.all().delete()
@@ -59,14 +70,7 @@ def ova_init(opts):
         _dummy_d = icswEggEvaluationDef.objects.create_dummy_def()
         print("Added dummy def '{}'".format(_dummy_d))
     icswEggEvaluationDef.objects.get_active_def().create_consumers()
-    print("System cradle info: {}".format(unicode(icswEggCradle.objects.get_system_cradle())))
-    print(
-        "Consumer info ({}):".format(
-            logging_tools.get_plural("consumer", icswEggConsumer.objects.all().count())
-        )
-    )
-    for _cons in icswEggConsumer.objects.all():
-        print unicode(_cons)
+    ova_show(opts)
 
 
 def show_license_info(opts):
@@ -213,5 +217,7 @@ def main(opts):
     elif opts.subcom == "ova":
         if opts.init:
             ova_init(opts)
+        if opts.show:
+            ova_show(opts)
     else:
         print("unknown subcom '{}'".format(opts.subcom))

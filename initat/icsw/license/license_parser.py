@@ -92,6 +92,7 @@ class Parser(object):
     def _add_ovum_parser(self, sub_parser):
         _act = sub_parser.add_parser("ova", help="ova handling")
         _act.set_defaults(subcom="ova", execute=self._execute)
+        _act.add_argument("--show", default=False, action="store_true", help="show ova information [%(default)s]")
         _act.add_argument("--init", default=False, action="store_true", help="init basic ova structures [%(default)s]")
 
     def _execute(self, opt_ns):
