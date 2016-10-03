@@ -33,7 +33,7 @@ from lxml.builder import E
 from initat.cluster.backbone.models import device_variable, device
 from initat.collectd.collectd_types.base import value, PerfdataObject
 from initat.collectd.config import global_config
-from initat.tools import logging_tools, process_tools, rrd_tools
+from initat.tools import logging_tools, process_tools, rrd_tools, server_mixins
 
 
 class FileCreator(object):
@@ -208,10 +208,12 @@ class HostActiveRRD(object):
             self.set_time = cur_time
 
 
-class host_matcher(object):
+class HostMatcher(object):
     def __init__(self, log_com):
         self.__log_com = log_com
         self.log("init host_matcher")
+        self.EC = server_mixins.EggConsumeObject(self)
+        self.EC.init(global_config)
         # dict, from {uuid, fqdn} to _dev
         self.__match = {}
         # dict: pk -> HostActiveRRD struct
@@ -263,9 +265,10 @@ class host_matcher(object):
             else:
                 match_dev = None
         if match_dev:
-            if match_dev.pk not in self.__active_dict:
-                self.__active_dict[match_dev.pk] = HostActiveRRD(match_dev.pk)
-            self.__active_dict[match_dev.pk].set_active_rrds()
+            if self.EC.consume("graph", match_dev):
+                if match_dev.pk not in self.__active_dict:
+                    self.__active_dict[match_dev.pk] = HostActiveRRD(match_dev.pk)
+                self.__active_dict[match_dev.pk].set_active_rrds()
         return match_dev
 
     def check_dir_structure(self, match_dev):

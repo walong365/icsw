@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -36,7 +36,6 @@ from initat.mother.config import global_config
 
 
 def main():
-    prog_name = global_config.name()
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),

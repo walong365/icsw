@@ -34,12 +34,12 @@ MAX_RESEND_COUNTER = 5
 
 
 class EggConsumeObject(object):
-    def __init__(self, proc):
+    def __init__(self, parent):
         # process or any instance with a log facility attached
-        self.__process = proc
+        self.__parent = parent
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__process.log(u"[EC] {}".format(what), log_level)
+        self.__parent.log(u"[EC] {}".format(what), log_level)
 
     def init(self, global_config):
         from django.db.models import Q
