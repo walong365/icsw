@@ -109,8 +109,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-md-3 icsw-formlabel"></label>
-                        <div class="controls col-md-6" ng-class="form_data.comment.$invalid && 'has-error'">
+                        <div class="controls icsw-buttoncol" ng-class="form_data.comment.$invalid && 'has-error'">
                             <icsw-tools-button type="create" ng-show="form_data.$valid" value="create Device" ng-click="create_device()"/>
                             <span ng-show="!form_data.$valid" class="text-danger">Formular data is not valid (some fields missing... ?)</span>
                         </div>

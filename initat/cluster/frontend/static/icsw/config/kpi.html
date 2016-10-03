@@ -1,13 +1,12 @@
 
 <script type="text/ng-template" id="icsw.config.kpi">
-
-    <h2>
-        Key Performance Indicators
-        <icsw-tools-button type="create" ng-click="create_new_kpi()" ng-show="acl_create(null, 'backbone.kpi.kpi')"></icsw-tools-button>
-    </h2>
-
-    <icsw-config-kpi-configuration-table></icsw-config-kpi-configuration-table>
-
+    <div class="container-fluid">
+        <h3>
+            Key Performance Indicators
+            <icsw-tools-button type="create" ng-click="create_new_kpi()" ng-show="acl_create(null, 'backbone.kpi.kpi')"></icsw-tools-button>
+        </h3>
+        <icsw-config-kpi-configuration-table></icsw-config-kpi-configuration-table>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.edit_dialog">
@@ -17,10 +16,10 @@
         <uib-tabset>
             <uib-tab heading="Basic">
                 <uib-accordion close-others="false">
-                    <div uib-accordion-group class="panel-default" heading="Basic properties" is-open="true">
+                    <div uib-accordion-group class="panel-default" style="margin-top:15px;" heading="Basic Properties" is-open="true">
                         <form class="form-horizontal">
                             <div class="form-group">
-                                <label class="control-label col-sm-2">Name:</label>
+                                <label class="control-label col-sm-2 icsw-formlabel">Name:</label>
 
                                 <div class="controls col-sm-6">
                                     <input
@@ -32,7 +31,7 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="control-label col-sm-2">Time range:</label>
+                                <label class="control-label col-sm-2 icsw-formlabel">Time Range:</label>
 
                                 <div class="controls col-sm-6">
                                     <ui-select ng-model="cur_edit_kpi.time_range">
@@ -46,42 +45,44 @@
                                         <div style="margin-top: 10px">
                                         Last
                                         <input class="form-control " type="number" ng-model="cur_edit_kpi.time_range_parameter"/>
-                                        days
+                                        Days
                                         </div>
                                     </div>
                                 </div>
 
                             </div>
 
-                            <div class="col-sm-2"></div>
-                            <div class="checkbox col-sm-10">
-                                <label>
-                                    <input class="" ng-model="cur_edit_kpi.enabled" type="checkbox"/>
-                                    Enabled
+                            <div class="form-group">
+                                <label class="control-label col-sm-2 icsw-formlabel">
+                                    KPI Enabled
                                 </label>
+                                <div class="controls col-sm-6">
+                                    <input class="" ng-model="cur_edit_kpi.enabled" type="checkbox"/>
+                                </div>
                             </div>
 
-                            <div class="col-sm-2"></div>
-                            <div class="checkbox col-sm-10">
-                                <label>
-                                    <input class="" ng-model="cur_edit_kpi.soft_states_as_hard_states" type="checkbox"/>
-                                    Interpret soft states as hard states (historic only)
+                            <div class="form-group">
+                                <label class="control-label col-sm-2 icsw-formlabel">
+                                    Interpret Soft States as Hard States (Historic only)
                                 </label>
+                                <div class="controls col-sm-6">
+                                    <input class="" ng-model="cur_edit_kpi.soft_states_as_hard_states" type="checkbox"/>
+                                </div>
                             </div>
                         </form>
                     </div>
                 </uib-accordion>
             </uib-tab>
-            <uib-tab heading="Data source" select="on_data_source_tab_selected()">
+            <uib-tab heading="Data Source" select="on_data_source_tab_selected()">
                 <icsw-config-kpi-dev-mon-selection></icsw-config-kpi-dev-mon-selection>
 
                 <icsw-config-kpi-dev-mon-linker></icsw-config-kpi-dev-mon-linker>
             </uib-tab>
 
-            <uib-tab heading="KPI calculation">
+            <uib-tab heading="KPI Calculation">
 
                 <uib-accordion close-others="false">
-                    <div uib-accordion-group class="panel-default" heading="Formula" is-open="true">
+                    <div uib-accordion-group class="panel-default" heading="Formula" is-open="true" style="margin-top:15px;">
                         <div ui-ace="ace_options" ng-model="cur_edit_kpi.formula"></div>
                     </div>
                     <div uib-accordion-group class="panel-default" heading="Evaluation" is-open="true" ng-show="true">
@@ -110,7 +111,7 @@
 
 <script type="text/ng-template" id="icsw.config.kpi.dev_mon_selection">
     <uib-accordion close-others="false">
-        <div uib-accordion-group class="panel-default" heading="Select device and monitoring categories" is-open="true">
+        <div uib-accordion-group class="panel-default" heading="Select Device and Monitoring Categories" is-open="true" style="margin-top:15px;">
             <div class="row">
                 <div class="col-md-6">
                     Device Categories
@@ -180,7 +181,7 @@
 <script type="text/ng-template" id="icsw.config.kpi.configuration_table">
 
     <div ng-show="kpi.length == 0">
-        <div uib-alert type="info">
+        <div uib-alert type="info" class="alert-warning">
             No KPIs defined.
             <span ng-show="acl_create(null, 'backbone.kpi.kpi')">Please define one using the 'create' button.</span>
         </div>
@@ -194,7 +195,7 @@
             <th>Result</th>
             <th>Last calculation</th>
             -->
-            <th>actions</th>
+            <th>Actions</th>
         </tr>
         <tr ng-repeat="entry in entries_displayed">
             <td>{{entry.name}}</td>
@@ -220,44 +221,47 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.kpi.evaluation_table">
-    <div ng-show="kpi.length == 0">
-        <div uib-alert type="info">
-            No KPIs defined.
+    <div class="container-fluid">
+        <h3>Key Performance Indicators</h3>
+        <div ng-show="kpi.length == 0">
+            <div uib-alert type="info" class="alert-warning">
+                No KPIs defined.
+            </div>
         </div>
-    </div>
-    <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed icsw-table-striped-2-by-2" style="width: 1250px" ng-show="kpi.length>0">
-        <tr>
-            <th st-sort="name">Name</th>
-            <th st-sort="formula">Formula</th>
-            <th>Time span</th>
-            <th>Result</th>
-            <th>Last calculation</th>
-        </tr>
-        <tr ng-repeat-start="entry in entries_displayed" ng-show="entry.enabled">
-            <td>{{entry.name}}</td>
-            <td>
-                <div ng-show="!entry._show_full_formula">
-                    <pre>{{entry.formula | limit_text:100:false }} <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = true"
-                        ng-show="entry.formula.length > 100" >show full formula</button> </pre>
-                </div>
+        <table st-table="entries_displayed" st-safe-src="kpi" class="table table-condensed icsw-table-striped-2-by-2" style="width: 1250px" ng-show="kpi.length>0">
+            <tr>
+                <th st-sort="name">Name</th>
+                <th st-sort="formula">Formula</th>
+                <th>Time span</th>
+                <th>Result</th>
+                <th>Last Calculation</th>
+            </tr>
+            <tr ng-repeat-start="entry in entries_displayed" ng-show="entry.enabled">
+                <td>{{entry.name}}</td>
+                <td>
+                    <div ng-show="!entry._show_full_formula">
+                        <pre>{{entry.formula | limit_text:100:false }} <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = true"
+                            ng-show="entry.formula.length > 100" >show full formula</button> </pre>
+                    </div>
 
-                <div ng-show="entry._show_full_formula">
-                    <pre>{{entry.formula}}</pre>
-                    <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = false">hide full formula</button>
-                </div>
-            </td>
-            <td>{{entry.time_range}}</td>
-            <td>{{get_result_from_kpi_entry(entry)}}</td>
-            <td>
-                <div ng-show="entry.result">
-                    {{entry.result.date | datetime_concise}}
-                </div>
-            </td>
-        </tr>
-        <tr ng-repeat-end ng-show="entry.enabled">
-            <td colspan="99" style="border-top-width: 0" width="1000">
-                <icsw-config-kpi-evaluation-graph kpi-idx="entry.idx"></icsw-config-kpi-evaluation-graph>
-            </td>
-        </tr>
-    </table>
+                    <div ng-show="entry._show_full_formula">
+                        <pre>{{entry.formula}}</pre>
+                        <button class="btn btn-info btn-xs" ng-click="entry._show_full_formula = false">hide full formula</button>
+                    </div>
+                </td>
+                <td>{{entry.time_range}}</td>
+                <td>{{get_result_from_kpi_entry(entry)}}</td>
+                <td>
+                    <div ng-show="entry.result">
+                        {{entry.result.date | datetime_concise}}
+                    </div>
+                </td>
+            </tr>
+            <tr ng-repeat-end ng-show="entry.enabled">
+                <td colspan="99" style="border-top-width: 0" width="1000">
+                    <icsw-config-kpi-evaluation-graph kpi-idx="entry.idx"></icsw-config-kpi-evaluation-graph>
+                </td>
+            </tr>
+        </table>
+    </div>
 </script>

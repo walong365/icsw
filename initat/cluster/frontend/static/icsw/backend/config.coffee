@@ -173,7 +173,7 @@ config_module = angular.module(
                 config.$$config_help_html = config.$hint.help_text_html or "<p/>"
             else
                 config.$$config_help_text = "---"
-                config.$$config_help_html = "<span>No help text</span>"
+                config.$$config_help_html = ""
 
         _enrich_config: (config) =>
             # console.log @cse_lut
