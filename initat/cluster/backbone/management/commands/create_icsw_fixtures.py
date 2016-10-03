@@ -386,6 +386,7 @@ class Command(BaseCommand):
         factories.PartitionFS(name="gpfs", identifier="f", descr="GPFS Filesystem", hexid="00", kernel_module="mmfs26", need_hexid=False)
         factories.PartitionFS(name="biosboot", identifier="e", descr="BIOS Boot Partition", hexid="ef02")
         factories.PartitionFS(name="ntfs", identifier="f", descr="NTFS", hexid="07")
+        factories.PartitionFS(name="fat", identifier="f", descr="Windows FAT", need_hexid=False, hexid="")
         # LogLevel
         factories.LogLevelFactory(identifier="c", level=logging_tools.LOG_LEVEL_CRITICAL, name="critical")
         factories.LogLevelFactory(identifier="e", level=logging_tools.LOG_LEVEL_ERROR, name="error")
