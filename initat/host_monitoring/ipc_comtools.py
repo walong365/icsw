@@ -21,7 +21,73 @@ import time
 
 import zmq
 
-from initat.tools import process_tools, server_command
+from initat.tools import process_tools, server_command, logging_tools
+
+
+class IPCCommandHandler(object):
+    def __init__(self, parent):
+        self.__parent = parent
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__parent.log(u"[ICH] {}".format(what), log_level)
+
+    def handle(self, data):
+        # parse ipc command
+        if data.count(";") > 1:
+            if data.startswith(";"):
+                # new format
+                proto_version, data = data[1:].split(";", 1)
+            else:
+                proto_version, data = ("0", data)
+            proto_version = int(proto_version)
+            if proto_version == 0:
+                parts = data.split(";", 3)
+                # insert default timeout of 10 seconds
+                parts.insert(3, "10")
+                parts.insert(4, "0")
+            elif proto_version == 1:
+                parts = data.split(";", 4)
+                parts.insert(4, "0")
+            else:
+                parts = data.split(";", 5)
+            src_id = parts.pop(0)
+            # parse new format
+            if parts[4].endswith(";"):
+                com_part = parts[4][:-1]
+            else:
+                com_part = parts[4]
+            # iterative parser
+            try:
+                arg_list = []
+                while com_part.count(";"):
+                    cur_size, cur_str = com_part.split(";", 1)
+                    cur_size = int(cur_size)
+                    com_part = cur_str[cur_size + 1:]
+                    arg_list.append(cur_str[:cur_size].decode("utf-8"))
+                if com_part:
+                    raise ValueError("not fully parsed ({})".format(com_part))
+                else:
+                    cur_com = arg_list.pop(0) if arg_list else ""
+                    srv_com = server_command.srv_command(command=cur_com, identity=src_id)
+                    _e = srv_com.builder()
+                    srv_com[""].extend(
+                        [
+                            _e.host(parts[0]),
+                            _e.port(parts[1]),
+                            _e.timeout(parts[2]),
+                            _e.raw_connect(parts[3]),
+                            _e.arguments(
+                                *[getattr(_e, "arg{:d}".format(arg_idx))(arg) for arg_idx, arg in enumerate(arg_list)]
+                            ),
+                            _e.arg_list(" ".join(arg_list)),
+                        ]
+                    )
+            except:
+                self.log("error parsing {}: {}".format(data, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                srv_com = None
+        else:
+            src_id, srv_com = (None, None)
+        return src_id, srv_com
 
 
 def send_and_receive_zmq(target_host, command, *args, **kwargs):

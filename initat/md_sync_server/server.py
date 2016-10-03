@@ -33,6 +33,7 @@ from initat.md_sync_server.config import global_config, CS_NAME
 from initat.md_sync_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins, config_store
+from initat.host_monitoring.ipc_comtools import IPCCommandHandler
 from initat.tools.server_mixins import RemoteCall
 from .syncer import SyncerProcess
 from .sync_config import RemoteServer
@@ -55,6 +56,7 @@ class server_process(
         self.read_config_store()
         # log config
         self.CC.log_config()
+        self.ICH = IPCCommandHandler(self)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
@@ -358,7 +360,9 @@ class server_process(
 
     def _recv_command_ipc(self, *args, **kwargs):
         _data = self.receiver_socket.recv()
-        self.log("got '{}' via IPC".format(_data))
+        src_id, srv_com = self.ICH.handle(_data)
+        print srv_com.pretty_print()
+        self.log("got '{}' via IPC (from {})".format(_data, src_id))
 
     @RemoteCall()
     def stop_mon_process(self, srv_com, **kwargs):
