@@ -1,6 +1,6 @@
 <script type="text/ng-template" id="icsw.livestatus.filter.display">
     <div>
-        <ui-select ng-model="struct.cur_filter" ng-change="changed()" style="width:240px;">
+        <ui-select ng-model="struct.cur_filter" ng-change="changed()">
             <ui-select-match class="ui-select-match" placeholder="Filter">
                 {{ $select.selected.name }}
             </ui-select-match>
