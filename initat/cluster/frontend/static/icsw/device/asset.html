@@ -143,13 +143,13 @@
                 <td class="text-center">{{ assetbatch.idx }}</td>
                 <td class="text-center">{{ assetbatch.$$run_start_time }}</td>
                 <td class="text-center">{{ assetbatch.$$run_time }}</td>
-                <td class="text-center"><div ng-show="assetbatch.packages_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.packages_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
-                <td class="text-center"><div ng-show="assetbatch.pending_updates_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.pending_updates_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
-                <td class="text-center"><div ng-show="assetbatch.installed_updates_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.installed_updates_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
-                <td class="text-center"><div ng-show="assetbatch.memory_modules_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.memory_modules_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
-                <td class="text-center"><div ng-show="assetbatch.cpus_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.cpus_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
-                <td class="text-center"><div ng-show="assetbatch.gpus_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.gpus_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
-                <td class="text-center"><div ng-show="assetbatch.network_devices_length > 0" class="alert-success"><strong>Available</strong></div><div ng-show="assetbatch.network_devices_length == 0" class="alert-danger"><strong>Not Available</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$packages_availability_class"><strong>{{ assetbatch.$$packages_availability_text }}</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$pending_updates_availability_class"><strong>{{ assetbatch.$$pending_updates_availability_text }}</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$installed_updates_availability_class"><strong>{{ assetbatch.$$installed_updates_availability_text }}</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$memory_modules_availability_class"><strong>{{ assetbatch.$$memory_modules_availability_text }}</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$cpus_availability_class"><strong>{{ assetbatch.$$cpus_availability_text }}</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$gpus_availability_class"><strong>{{ assetbatch.$$gpus_availability_text }}</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$network_devices_availability_class"><strong>{{ assetbatch.$$network_devices_availability_text }}</strong></div></td>
                 <td class="text-center">
                     <div>
                         <button type="button" class="btn btn-sm btn-primary" ng-disabled="!assetbatch.is_finished_processing" ng-click="open_in_new_tab(assetbatch, -1)">{{ assetbatch.is_finished_processing ? "Open in new Tab" : "Still Processing..." }}</button>

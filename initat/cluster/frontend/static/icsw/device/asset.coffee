@@ -240,6 +240,29 @@ device_asset_module = angular.module(
         if obj.run_start_time
             _moment = moment(obj.run_start_time)
             obj.$$run_start_time = _moment.format("YYYY-MM-DD HH:mm:ss")
+            
+        info_not_available_class = "alert-danger"
+        info_not_available_text = "Not Available"
+        info_available_class = "alert-success"
+        info_available_text = "Available"
+
+        info_list_names = [
+            "packages",
+            "pending_updates"
+            "installed_updates"
+            "memory_modules"
+            "cpus"
+            "gpus"
+            "network_devices"
+        ]
+
+        for info_list_name in info_list_names
+            obj["$$" + info_list_name + "_availability_class"] = info_not_available_class
+            obj["$$" + info_list_name + "_availability_text"] = info_not_available_text
+
+            if obj[info_list_name + "_length"] > 0
+                obj["$$" + info_list_name + "_availability_class"] = info_available_class
+                obj["$$" + info_list_name + "_availability_text"] = info_available_text
 
     salt_schedule_item = (obj) ->
         obj.$$planned_time = moment(obj.planned_date).format("YYYY-MM-DD HH:mm:ss")
