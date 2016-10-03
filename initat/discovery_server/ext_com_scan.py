@@ -945,13 +945,6 @@ class Dispatcher(object):
                         )
                 schedule_item.delete()
 
-        zmq_con = net_tools.zmq_connection(
-            "server:{}".format(process_tools.get_machine_name()),
-            context=self.discovery_process.zmq_context,
-            # todo: generate best value
-            timeout=120,
-        )
-
         # step 1: init commands
 
         for _dev_idx, prfd_list in self.__device_planned_runs.iteritems():
