@@ -70,6 +70,7 @@ class server_process(
         self.register_func("send_command", self._send_command)
         self.register_func("register_remote", self._register_remote)
         self.register_func("send_signal", self._send_signal)
+        self.register_func("ocp_command", self._ocp_command)
         self.register_timer(self._update, 30, instant=True)
         # _srv_com = server_command.srv_command(command="status")
         # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
@@ -235,9 +236,10 @@ class server_process(
         else:
             self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
 
-    def _ocsp_results(self, *args, **kwargs):
-        _src_proc, _src_pid, lines = args
-        self._write_external_cmd_file(lines)
+    def _ocp_command(self, *args, **kwargs):
+        # from syncer process
+        srv_com = server_command.command(source=args[2])
+        self._handle_ocp_event(srv_com)
 
     def _handle_ocp_event(self, in_com):
         com_type = in_com["command"].text
@@ -266,30 +268,8 @@ class server_process(
             target_com,
             ";".join(targ_list)
         )
-        self._write_external_cmd_file(out_line)
-
-    def _write_external_cmd_file(self, lines):
-        if type(lines) != list:
-            lines = [lines]
-        if self.__external_cmd_file:
-            try:
-                codecs.open(self.__external_cmd_file, "w", "utf-8").write("\n".join(lines + [""]))
-            except:
-                self.log(
-                    "error writing to {}: {}".format(
-                        self.__external_cmd_file,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-                raise
-        else:
-            self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
-
-    def _set_external_cmd_file(self, *args, **kwargs):
-        _src_proc, _src_id, ext_name = args
-        self.log("setting external cmd_file to '{}'".format(ext_name))
-        self.__external_cmd_file = ext_name
+        if self._icinga_pc:
+            self._icinga_pc.write_external_cmd_file(out_line)
 
     def _init_network_sockets(self):
         self.network_bind(
@@ -361,8 +341,10 @@ class server_process(
     def _recv_command_ipc(self, *args, **kwargs):
         _data = self.receiver_socket.recv()
         src_id, srv_com = self.ICH.handle(_data)
-        print srv_com.pretty_print()
-        self.log("got '{}' via IPC (from {})".format(_data, src_id))
+        if srv_com is not None:
+            self.send_to_process("syncer", "check_result", unicode(srv_com))
+        else:
+            self.log("cannot interpret {}".format(_data), logging_tools.LOG_LEVEL_ERROR)
 
     @RemoteCall()
     def stop_mon_process(self, srv_com, **kwargs):

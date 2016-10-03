@@ -180,7 +180,7 @@ class SyncConfig(object):
             )
         return _r_dict
 
-    def send_slave_command(self, action):
+    def send_slave_command(self, action, **kwargs):
         # sends slave command (==action) to local sync master
         self.__process.send_sync_command(
             server_command.srv_command(
@@ -188,6 +188,7 @@ class SyncConfig(object):
                 action=action,
                 master="1" if self.master else "0",
                 slave_uuid=self.slave_uuid,
+                **kwargs
             )
         )
 
