@@ -1,15 +1,16 @@
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from enum import IntEnum
 import re
+from docutils.nodes import entry
 
 
 SIZE_RE = re.compile("(\d*) ([kMG])B")
+INDEX_RE = re.compile("(\d)*$")
 BINARY_FACTOR = {
     "k": 1024,
     "M": 1024 ** 2,
     "G": 1024 ** 3,
 }
-
 MEMORY_FORM_FACTORS = {
     0: "Unknown",
     1: "Other",
@@ -123,8 +124,55 @@ def parse_size(size_str):
         return int(num) * BINARY_FACTOR[prefix]
 
 
+def _parse_lsblk(dump):
+    escape_re = re.compile('\\\\x(\d\d)')
+
+    def to_bool(s):
+        return bool(int(s))
+
+    def to_int(s):
+        return int(s) if s else None
+    mappers = {
+        'RA': int,
+        'RO': to_bool,
+        'RM': to_bool,
+        'SIZE': to_int,
+        'ALIGNMENT': int,
+        'MIN-IO': int,
+        'OPT-IO': int,
+        'PHY-SEC': int,
+        'LOG-SEC': int,
+        'ROTA': to_bool,
+        'RQ-SIZE': int,
+        'DISC-ALN': int,
+        'DISC-GRAN': int,
+        'DISC-MAX': int,
+        'DISC-ZERO': int,
+        'WSAME': int,
+        'RAND': to_bool,
+    }
+
+    def unescape(match):
+        return chr(int(match.groups()[0], base=16))
+
+    lines = dump.split('\n')
+    header = lines[0].split()
+    rows = []
+    for line in lines[1:]:
+        line = line.strip()
+        data = line.split(' ')
+        data = [escape_re.sub(unescape, d).strip() for d in data]
+        data = OrderedDict([(k, v) for (k, v) in zip(header, data)])
+        for (field_name, func) in mappers.items():
+            data[field_name] = func(data[field_name])
+        rows.append(data)
+
+    return rows
+
+
 class Hardware(object):
-    def __init__(self, lshw_tree=None, win32_tree=None, dmi_head=None):
+    def __init__(self, lshw_dump=None, win32_tree=None, dmi_head=None,
+                 lsblk_dump=None):
         self.cpus = []
         self.memory = None
         self.memory_modules = []
@@ -132,39 +180,77 @@ class Hardware(object):
         self.hdds = []
         self.network_devices = []
 
-        if lshw_tree is not None:
-            self._process_lshw(lshw_tree)
+        self._partitions = []
+
+        if lsblk_dump:
+            self._process_lsblk(lsblk_dump)
+        if lshw_dump is not None:
+            self._process_lshw(lshw_dump)
         if win32_tree:
             self._process_win32(win32_tree)
         if dmi_head:
             self._process_dmi_head(dmi_head)
 
-    def _process_lshw(self, lshw_tree):
-        for sub_tree in lshw_tree.xpath(
+    def _process_lsblk(self, lsblk_dump):
+        self._lsblk_dump = lsblk_dump
+        entries = _parse_lsblk(lsblk_dump)
+        type_entries = defaultdict(list)
+        for e in entries:
+            type_entries[e['TYPE']].append(e)
+
+        # disk
+        name_object = {}
+        for disk_entry in type_entries['disk']:
+            hdd = HardwareHdd(lsblk_entry=disk_entry)
+            self.hdds.append(hdd)
+            name_object[hdd.device_name] = hdd
+        # partitions
+        self._partitions = []
+        self._logicals = []
+        for part_entry in type_entries['part']:
+            partition = Partition(lsblk_entry=part_entry)
+            logical = LogicalDisc(lsblk_entry=part_entry)
+            partition.logical = logical
+            self._logicals.append(logical)
+            self._partitions.append(partition)
+            # add partition to the disk
+            parent_hdd = name_object.get(partition._parent)
+            if parent_hdd:
+                parent_hdd.partitions.append(partition)
+
+        self.type_entries = type_entries
+
+    def _process_lshw(self, lshw_dump):
+        for sub_tree in lshw_dump.xpath(
                 "//node[@id='cpu' and @class='processor']"):
             self.cpus.append(HardwareCPU(sub_tree))
 
-        sub_tree = lshw_tree.xpath(
+        sub_tree = lshw_dump.xpath(
             "/list/node/node[@id='core' and @class='bus']"
             "/node[@id='memory' and @class='memory']")[0]
         self.memory = HardwareMemory(sub_tree)
 
-        for sub_tree in lshw_tree.xpath(
+        for sub_tree in lshw_dump.xpath(
                 "//node[@id='memory' and @class='memory']/node"):
             memory_module = MemoryModule(sub_tree)
             # don't add empty slots
             if memory_module.capacity:
                 self.memory_modules.append(memory_module)
 
-        for sub_tree in lshw_tree.xpath(
+        for sub_tree in lshw_dump.xpath(
                 "//node[@id='display' and @class='display']"):
             self.gpus.append(HardwareGPU(sub_tree))
 
-        for sub_tree in lshw_tree.xpath(
+        # add further disk information not available from lsblk
+        device_hdds = {hdd.device_name: hdd for hdd in self.hdds}
+        for sub_tree in lshw_dump.xpath(
                 "//node[@id='disk' and @class='disk']"):
-            self.hdds.append(HardwareHdd(sub_tree))
+            lshw_hdd = HardwareHdd(sub_tree)
+            hdd = device_hdds.get(lshw_hdd.device_name)
+            if hdd:
+                hdd.update(lshw_hdd)
 
-        for sub_tree in lshw_tree.xpath(
+        for sub_tree in lshw_dump.xpath(
                 "//node[@id='network' and @class='network']"):
             self.network_devices.append(
                 HardwareNetwork(sub_tree)
@@ -239,12 +325,12 @@ class HardwareBase(object):
     # a dict of the form {prop_name: (handle_key, func)}
     DMI_ELEMENTS = {}
 
-    def __init__(self, lshw_tree=None, win32_tree=None, dmi_handle=None):
+    def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None):
         self._tree = None
         self._path_w32 = None
 
-        if lshw_tree is not None:
-            self._tree = lshw_tree
+        if lshw_dump is not None:
+            self._tree = lshw_dump
             self._populate_lshw()
         elif win32_tree:
             self._tree = win32_tree
@@ -258,10 +344,16 @@ class HardwareBase(object):
 
     def __repr__(self):
         infos = []
-        for (key, value) in self.__dict__.items():
-            if not key.startswith('_') and value is not None:
-                infos.append('{}={}'.format(key, repr(value)))
+        for (name, value) in self.__dict__.items():
+            if not name.startswith('_') and value is not None:
+                infos.append('{}={}'.format(name, repr(value)))
         return '{}({})'.format(self.__class__.__name__, ', '.join(infos))
+
+    def update(self, hw_instance):
+        for (name, value) in hw_instance.__dict__.items():
+            cur_value = getattr(self, name)
+            if cur_value is None:
+                setattr(self, name, value)
 
     def _populate_lshw(self):
         for (prop_name, (xpath_expr, func)) in self.LSHW_ELEMENTS.items():
@@ -313,13 +405,13 @@ class HardwareCPU(HardwareBase):
         'number_of_cores': ('NumberOfCores', int),
     }
 
-    def __init__(self, lshw_tree=None, win32_tree=None, dmi_handle=None):
+    def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None):
         self.product = None
         self.manufacturer = None
         self.version = None
         self.serial = None
         self.number_of_cores = None
-        super(HardwareCPU, self).__init__(lshw_tree, win32_tree, dmi_handle)
+        super(HardwareCPU, self).__init__(lshw_dump, win32_tree, dmi_handle)
 
 
 class HardwareMemory(HardwareBase):
@@ -360,14 +452,14 @@ class MemoryModule(HardwareBase):
         'type': ('Type', str),
     }
 
-    def __init__(self, lshw_tree=None, win32_tree=None, dmi_handle=None):
+    def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None):
         self.manufacturer = None
         self.capacity = None
         self.serial = None
         self.bank_label = None
         self.form_factor = None
         self.type = None
-        super(MemoryModule, self).__init__(lshw_tree, win32_tree, dmi_handle)
+        super(MemoryModule, self).__init__(lshw_dump, win32_tree, dmi_handle)
 
     def _populate_win32(self):
         super(MemoryModule, self)._populate_win32()
@@ -388,10 +480,10 @@ class HardwareGPU(HardwareBase):
         'product': ('Name', str),
     }
 
-    def __init__(self, lshw_tree=None, win32_tree=None, dmi_handle=None):
+    def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None):
         self.description = None
         self.product = None
-        super(HardwareGPU, self).__init__(lshw_tree, win32_tree, dmi_handle)
+        super(HardwareGPU, self).__init__(lshw_dump, win32_tree, dmi_handle)
 
 
 class HardwareHdd(HardwareBase):
@@ -415,15 +507,26 @@ class HardwareHdd(HardwareBase):
         'size': ('Size', int),
     }
 
-    def __init__(self, lshw_tree=None, win32_tree=None, dmi_handle=None):
+    def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None,
+                 lsblk_entry=None):
         self.description = None
         self.product = None
         self.device_name = None
         self.serial = None
         self.size = None
+        self._lsblk_entry = lsblk_entry
 
         self.partitions = []
-        super(HardwareHdd, self).__init__(lshw_tree, win32_tree, dmi_handle)
+
+        if lsblk_entry:
+            self._populate_lsblk()
+
+        super(HardwareHdd, self).__init__(lshw_dump, win32_tree, dmi_handle)
+
+    def _populate_lsblk(self):
+        entry = self._lsblk_entry
+        self.device_name = entry['KNAME']
+        self.product = entry['MODEL']
 
 
 class Partition(HardwareBase):
@@ -435,7 +538,6 @@ class Partition(HardwareBase):
         'index': (None, int),
         'bootable': (None, str),
         'device_name': ('logicalname', str),
-        'type': (None, str),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394135(v=vs.85).aspx
     WIN32_ELEMENTS = {
@@ -443,18 +545,31 @@ class Partition(HardwareBase):
         'index': ('Index', int),
         'bootable': ('Bootable', bool),
         'device_name': ('DeviceID', str),
-        'type': ('Type', str),
     }
 
-    def __init__(self, lshw_tree=None, win32_tree=None, dmi_handle=None):
+    def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None,
+                 lsblk_entry=None):
         self.size = None
         self.index = None
         self.bootable = None
         self.device_name = None
+        self._lsblk_entry = lsblk_entry
 
         self.logical = None
 
-        super(Partition, self).__init__(lshw_tree, win32_tree, dmi_handle)
+        if lsblk_entry:
+            self._populate_lsblk()
+
+        super(Partition, self).__init__(lshw_dump, win32_tree, dmi_handle)
+
+    def _populate_lsblk(self):
+        entry = self._lsblk_entry
+        self.size = entry['SIZE']
+        match = INDEX_RE.search(entry['KNAME'])
+        if match:
+            self.index = match.group()
+        self.device_name = entry['KNAME']
+        self._parent = entry['PKNAME']
 
     def _set_from_logical_win32(self, logical_disc):
         self.free_space = logical_disc.free_space
@@ -463,21 +578,40 @@ class Partition(HardwareBase):
 
 class LogicalDisc(HardwareBase):
     """Represents the file system level information."""
+    type_map = {
+        'vfat': 'fat',
+    }
 
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394173(v=vs.85).aspx
     WIN32_ELEMENTS = {
         'device_name': ('DeviceID', str),
+        'mount_point': ('DeviceID', str),
         'file_system': ('FileSystem', str),
         'size': ('Size', int),
         'free_space': ('FreeSpace', int),
     }
 
-    def __init__(self, lshw_tree=None, win32_tree=None, dmi_handle=None):
+    def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None,
+            lsblk_entry=None):
         self.device_name = None
+        self.mount_point = None
         self.file_system = None
         self.size = None
         self.free_space = None
-        super(LogicalDisc, self).__init__(lshw_tree, win32_tree, dmi_handle)
+        self._lsblk_entry = lsblk_entry
+
+        if lsblk_entry:
+            self._populate_lsblk()
+
+        super(LogicalDisc, self).__init__(lshw_dump, win32_tree, dmi_handle)
+
+    def _populate_lsblk(self):
+        entry = self._lsblk_entry
+        self.device_name = entry['KNAME']
+        self.mount_point = entry['MOUNTPOINT']
+        self.file_system = self.type_map.get(entry['FSTYPE'], entry['FSTYPE'])
+        self.size = entry['SIZE']
+        self.free_space = 0
 
 
 class HardwareNetwork(HardwareBase):
@@ -499,14 +633,14 @@ class HardwareNetwork(HardwareBase):
         'speed': ('Speed', int),
     }
 
-    def __init__(self, lshw_tree=None, win32_tree=None, dmi_handle=None):
+    def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None):
         self.product = None
         self.manufacturer = None
         self.device_name = None
         self.mac_address = None
         self.speed = None  # bit/s
         super(HardwareNetwork, self).__init__(
-            lshw_tree,
+            lshw_dump,
             win32_tree,
             dmi_handle,
         )

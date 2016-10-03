@@ -1053,7 +1053,7 @@ class Dispatcher(object):
             (AssetType.DMI, "dmiinfo", 15),
             (AssetType.PCI, "pciinfo", 15),
             (AssetType.LSHW, "lshw", 15),
-            (AssetType.PARTITION, "partinfo", 15),
+            (AssetType.LSBLK, "lsblk", 15),
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command, timeout) in enumerate(cmd_tuples):
