@@ -32,17 +32,16 @@ import time
 import zmq
 from lxml import etree
 
-from initat.client_version import VERSION_STRING
 from initat.host_monitoring import limits
 from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring.hm_mixins import HMHRMixin
 from initat.host_monitoring.modules.network_mod import ping_command
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, \
-    server_command, threading_tools, uuid_tools, config_store
+    server_command, threading_tools, uuid_tools
 from initat.tools.server_mixins import ICSWBasePool
+from .ipc_comtools import IPCCommandHandler
 from .config import global_config
-from .constants import RELAY_SETTINGS_CS_NAME
 from .discovery import ZMQDiscovery
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
@@ -81,6 +80,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         # pending_connection.init(self)
         # global timeout value for host connections
         self.__global_timeout = self.CC.CS["hr.connection.timeout"]
+        self.ICH = IPCCommandHandler(self)
         self._show_config()
         HostConnection.init(self, self.CC.CS["hm.socket.backlog.size"], self.__global_timeout, self.__verbose)
         # init lut
@@ -101,10 +101,8 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.__local_pings = {}
         self.__local_ping = ping_command("ping")
         self.register_timer(self._check_timeout, 2)
-        self.__last_master_contact = None
         self.register_func("socket_result", self._socket_result)
         self.register_func("socket_ping_result", self._socket_ping_result)
-        self._init_master()
         if self.objgraph:
             self.register_timer(self._objgraph_run, 30, instant=True)
         if not self._init_commands():
@@ -162,115 +160,6 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                         ),
                         logging_tools.LOG_LEVEL_CRITICAL,
                     )
-
-    def _init_master(self):
-        self.__master_sync_id = None
-        # register_to_master_timer set ?
-        self.__rmt_set = False
-        self.master_ip = None
-        self.master_port = None
-        self.master_uuid = None
-        _master_found = False
-        if config_store.ConfigStore.exists(RELAY_SETTINGS_CS_NAME):
-            new_store = config_store.ConfigStore(
-                RELAY_SETTINGS_CS_NAME,
-                log_com=self.log,
-                access_mode=config_store.AccessModeEnum.LOCAL,
-                fix_access_mode=True,
-            )
-            try:
-                self._register_master(
-                    new_store["master_ip"],
-                    new_store["master_uuid"],
-                    new_store["master_port"]
-                )
-            except:
-                pass
-            else:
-                _master_found = True
-            # self._register_master(master_xml.attrib["ip"], master_xml.attrib["uuid"], int(master_xml.attrib["port"]), write=False)
-        if not _master_found:
-            self.log(
-                "no master settings found or CS not defined ({})".format(RELAY_SETTINGS_CS_NAME),
-                logging_tools.LOG_LEVEL_WARN
-            )
-
-    def _handle_relayer_info_result(self, srv_com):
-        sync_id = int(srv_com["*sync_id"])
-        ok = sync_id == self.__master_sync_id
-        self.log(
-            "got ack for syncer_id {:d} (sent: {})".format(
-                sync_id,
-                self.__master_sync_id,
-            ),
-            logging_tools.LOG_LEVEL_OK if ok else logging_tools.LOG_LEVEL_ERROR,
-        )
-        if ok:
-            self.__master_sync_id = None
-
-    def _contact_master(self):
-        if self.master_ip:
-            # updated monitoring version
-            self._get_mon_version()
-            if self.__master_sync_id:
-                self.log("master_sync_id still set, closing connection and retrying", logging_tools.LOG_LEVEL_ERROR)
-                self.__master_sync_id = False
-
-            self.__master_sync_id = int(time.time())
-            srv_com = server_command.srv_command(
-                command="relayer_info",
-                host=self.master_ip,
-                port="{:d}".format(self.master_port),
-                relayer_version=VERSION_STRING,
-                uuid=uuid_tools.get_uuid().get_urn(),
-                mon_version=self.__mon_version,
-                sync_id="{:d}".format(self.__master_sync_id),
-            )
-            self.log(
-                u"send master info (Rel {}, Mon {})".format(
-                    VERSION_STRING,
-                    self.__mon_version
-                )
-            )
-            self._send_to_nhm_service(None, srv_com, None, register=False)
-
-    def _register_master(self, master_ip, master_uuid, master_port, write=True):
-        self.master_ip = master_ip
-        self.master_uuid = master_uuid
-        self.master_port = master_port
-        _ets = etree.tostring  # @UndefinedVariable
-        if write:
-            if config_store.ConfigStore.exists(RELAY_SETTINGS_CS_NAME):
-                _store = config_store.ConfigStore(
-                    RELAY_SETTINGS_CS_NAME,
-                    log_com=self.log,
-                    fix_access_mode=True,
-                    access_mode=config_store.AccessModeEnum.LOCAL,
-                )
-            else:
-                _store = config_store.ConfigStore(
-                    RELAY_SETTINGS_CS_NAME,
-                    log_com=self.log,
-                    read=False,
-                    fix_access_mode=True,
-                    access_mode=config_store.AccessModeEnum.LOCAL,
-                )
-            _store["master_ip"] = self.master_ip
-            _store["master_uuid"] = self.master_uuid
-            _store["master_port"] = self.master_port
-            self.log("creating config_store {}".format(RELAY_SETTINGS_CS_NAME))
-            _store.write()
-        conn_str = u"tcp://{}:{:d}".format(self.master_ip, self.master_port)
-        self.log(u"registered master at {} ({})".format(conn_str, self.master_uuid))
-        ZMQDiscovery.set_mapping(conn_str, self.master_uuid)
-        if not self.__rmt_set:
-            self.__rmt_set = True
-            # force connection
-            self._contact_master()
-            # report to master after 5 seconds
-            self.register_timer(self._contact_master, 5, instant=False, oneshot=True)
-            # report to master every 10 minutes
-            self.register_timer(self._contact_master, 600, instant=False)
 
     def _init_filecache(self):
         self.__last_tried = {}
@@ -569,7 +458,6 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         else:
             src_id = None
         xml_input = data.startswith("<")
-        srv_com = None
         if xml_input:
             srv_com = server_command.srv_command(source=data)
             srv_com["source_socket"] = src
@@ -578,58 +466,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             else:
                 srv_com["identity"] = src_id
         else:
-            if data.count(";") > 1:
-                if data.startswith(";"):
-                    # new format
-                    proto_version, data = data[1:].split(";", 1)
-                else:
-                    proto_version, data = ("0", data)
-                proto_version = int(proto_version)
-                if proto_version == 0:
-                    parts = data.split(";", 3)
-                    # insert default timeout of 10 seconds
-                    parts.insert(3, "10")
-                    parts.insert(4, "0")
-                elif proto_version == 1:
-                    parts = data.split(";", 4)
-                    parts.insert(4, "0")
-                else:
-                    parts = data.split(";", 5)
-                src_id = parts.pop(0)
-                # parse new format
-                if parts[4].endswith(";"):
-                    com_part = parts[4][:-1]
-                else:
-                    com_part = parts[4]
-                # iterative parser
-                try:
-                    arg_list = []
-                    while com_part.count(";"):
-                        cur_size, cur_str = com_part.split(";", 1)
-                        cur_size = int(cur_size)
-                        com_part = cur_str[cur_size + 1:]
-                        arg_list.append(cur_str[:cur_size].decode("utf-8"))
-                    if com_part:
-                        raise ValueError("not fully parsed ({})".format(com_part))
-                    else:
-                        cur_com = arg_list.pop(0) if arg_list else ""
-                        srv_com = server_command.srv_command(command=cur_com, identity=src_id)
-                        _e = srv_com.builder()
-                        srv_com[""].extend(
-                            [
-                                _e.host(parts[0]),
-                                _e.port(parts[1]),
-                                _e.timeout(parts[2]),
-                                _e.raw_connect(parts[3]),
-                                _e.arguments(
-                                    *[getattr(_e, "arg{:d}".format(arg_idx))(arg) for arg_idx, arg in enumerate(arg_list)]
-                                ),
-                                _e.arg_list(" ".join(arg_list)),
-                            ]
-                        )
-                except:
-                    self.log("error parsing {}: {}".format(data, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
-                    srv_com = None
+            src_id, srv_com = self.ICH.handle(data)
         if srv_com is not None:
             if self.__verbose:
                 self.log(
@@ -643,7 +480,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 # check target host, rewrite to ip
                 t_host = srv_com["host"].text
                 if t_host == "DIRECT":
-                    self._handle_direct_command(src_id, srv_com)
+                    self.log("ignoring DIRECT commands, please update", logging_tools.LOG_LEVEL_ERROR)
                 else:
                     try:
                         ip_addr = self._resolve_address(t_host)
@@ -738,52 +575,6 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 ", ".join(["{:d}={:s}".format(cur_pid, logging_tools.get_size_str(process_tools.get_mem_info(cur_pid))) for cur_pid in pid_list]),
                 logging_tools.get_plural("message", self.__num_messages))
             )
-
-    def _handle_direct_command(self, src_id, srv_com):
-        # only DIRECT command from ccollclientzmq
-        # print "*", src_id
-        cur_com = srv_com["command"].text
-        if self.__verbose:
-            self.log("got DIRECT command {}".format(cur_com))
-        elif cur_com == "register_master":
-            self._register_master(
-                srv_com["master_ip"].text,
-                srv_com["identity"].text,
-                int(srv_com["master_port"].text)
-            )
-        else:
-            # add to cache ?
-            self._send_to_master(srv_com)
-
-    def send_passive_results_to_master(self, result_list):
-        self.log("sending {} to master".format(logging_tools.get_plural("passive result", len(result_list))))
-        srv_com = server_command.srv_command(
-            command="passive_check_results"
-        )
-        _bldr = srv_com.builder()
-        srv_com["results"] = _bldr.passive_results(
-            *[
-                # FIXME, TODO
-                _bldr.passive_result("d")
-            ]
-        )
-        self._send_to_master(srv_com)
-
-    def send_passive_results_as_chunk_to_master(self, ascii_chunk):
-        self.log("sending passive chunk (size {:d}) to master".format(len(ascii_chunk)))
-        srv_com = server_command.srv_command(
-            command="passive_check_results_as_chunk",
-            ascii_chunk=ascii_chunk,
-        )
-        self._send_to_master(srv_com)
-
-    def _send_to_master(self, srv_com):
-        if self.master_ip:
-            srv_com["host"] = self.master_ip
-            srv_com["port"] = "{:d}".format(self.master_port)
-            self._send_to_nhm_service(None, srv_com, None, register=False)
-        else:
-            self.log("no master-ip set, discarding message", logging_tools.LOG_LEVEL_WARN)
 
     def _ext_com_result(self, sub_s):
         self.log("external command gave:")
@@ -953,7 +744,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             else:
                 srv_result = server_command.srv_command(source=data[1])
                 if "command" in srv_result and srv_result["*command"] in ["relayer_info"]:
-                    self._handle_relayer_info_result(srv_result)
+                    self.log("relayer_info command no longer supported", logging_tools.LOG_LEVEL_ERROR)
                 elif "identity" in srv_result:
                     cur_id = srv_result["identity"].text
                     if cur_id in self.__nhm_dict:
