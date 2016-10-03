@@ -7,7 +7,7 @@
 # This file is part of host-monitoring
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -23,10 +23,6 @@
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
 import StringIO
-import base64
-import bz2
-import commands
-import marshal
 import os
 import resource
 import socket
@@ -36,24 +32,24 @@ import time
 import zmq
 from lxml import etree
 
-from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.client_version import VERSION_STRING
-from initat.host_monitoring import limits, hm_classes
+from initat.host_monitoring import limits
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring.hm_mixins import HMHRMixin
 from initat.host_monitoring.modules.network_mod import ping_command
 from initat.icsw.service.instance import InstanceXML
-from initat.tools import configfile, logging_tools, process_tools, \
+from initat.tools import logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
 from initat.tools.server_mixins import ICSWBasePool
 from .config import global_config
-from .constants import ICINGA_TOP_DIR, RELAY_SETTINGS_CS_NAME
+from .constants import RELAY_SETTINGS_CS_NAME
 from .discovery import ZMQDiscovery
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
 from .host_monitoring_struct import HostConnection, host_message
 
 
-class relay_code(ICSWBasePool, HMHRMixin):
+class RelayCode(ICSWBasePool, HMHRMixin):
     def __init__(self):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False
@@ -86,7 +82,6 @@ class relay_code(ICSWBasePool, HMHRMixin):
         # global timeout value for host connections
         self.__global_timeout = self.CC.CS["hr.connection.timeout"]
         self._show_config()
-        self._get_mon_version()
         HostConnection.init(self, self.CC.CS["hm.socket.backlog.size"], self.__global_timeout, self.__verbose)
         # init lut
         self.__old_send_lut = {}
@@ -133,20 +128,6 @@ class relay_code(ICSWBasePool, HMHRMixin):
             for line in lines:
                 self.log(u" - {}".format(line))
         sys.stdout = cur_stdout
-
-    def _get_mon_version(self):
-        _icinga_bin = "/opt/icinga/bin/icinga"
-        self.__mon_version = "N/A"
-        if os.path.isfile(_icinga_bin):
-            cur_stat, cur_out = commands.getstatusoutput("{} -v".format(_icinga_bin))
-            lines = cur_out.split("\n")
-            self.log("'{} -v' gave {:d}, first 5 lines:".format(_icinga_bin, cur_stat))
-            for _line in lines[:5]:
-                self.log("  {}".format(_line))
-            lines = [line.lower() for line in lines if line.lower().startswith("icinga")]
-            if lines:
-                self.__mon_version = lines.pop(0).strip().split()[-1]
-        self.log("mon_version is '{}'".format(self.__mon_version))
 
     def _hup_error(self, err_cause):
         self.log("got SIGHUP ({})".format(err_cause), logging_tools.LOG_LEVEL_WARN)
@@ -407,6 +388,7 @@ class relay_code(ICSWBasePool, HMHRMixin):
         # raw_nhm (not host monitoring) dictionary for timeout, raw connections (no XML)
         self.__raw_nhm_dict = {}
         self.__nhm_connections = set()
+        # also used in md-sync-server/server, ToDo: Refactor
         sock_list = [
             ("ipc", "receiver", zmq.PULL, 2),  # @UndefinedVariable
             ("ipc", "sender", zmq.PUB, 1024),  # @UndefinedVariable
@@ -448,13 +430,12 @@ class relay_code(ICSWBasePool, HMHRMixin):
                 raise
             else:
                 setattr(self, "{}_socket".format(short_sock_name), cur_socket)
-                _backlog_size = self.CC.CS["hm.socket.backlog.size"]
                 os.chmod(file_name, 0777)
-                cur_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-                cur_socket.setsockopt(zmq.SNDHWM, hwm_size)  # @UndefinedVariable
-                cur_socket.setsockopt(zmq.RCVHWM, hwm_size)  # @UndefinedVariable
-                if sock_type == zmq.PULL:  # @UndefinedVariable
-                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command_ipc)  # @UndefinedVariable
+                cur_socket.setsockopt(zmq.LINGER, 0)
+                cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
+                cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
+                if sock_type == zmq.PULL:
+                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command_ipc)
         self.client_socket = process_tools.get_socket(
             self.zmq_context,
             "ROUTER",
@@ -464,7 +445,7 @@ class relay_code(ICSWBasePool, HMHRMixin):
             rcvhwm=2,
             immediate=True,
         )
-        self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)  # @UndefinedVariable
+        self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)
 
     def _init_network_sockets(self):
         client = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
@@ -764,17 +745,6 @@ class relay_code(ICSWBasePool, HMHRMixin):
         cur_com = srv_com["command"].text
         if self.__verbose:
             self.log("got DIRECT command {}".format(cur_com))
-        elif cur_com == "call_command":
-            # also check for version ? compare with file versions ? deleted files ? FIXME
-            cmdline = srv_com["cmdline"].text
-            self.log("got command '{}'".format(cmdline))
-            new_ss = hm_classes.subprocess_struct(
-                server_command.srv_command(command=cmdline, result="0"),
-                cmdline,
-                cb_func=self._ext_com_result
-            )
-            new_ss.run()
-            self.__delayed.append(new_ss)
         elif cur_com == "register_master":
             self._register_master(
                 srv_com["master_ip"].text,

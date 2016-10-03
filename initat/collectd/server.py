@@ -6,7 +6,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -40,7 +40,7 @@ from initat.tools import config_tools, configfile, logging_tools, process_tools,
     server_command, server_mixins, threading_tools, uuid_tools
 from .aggregate import aggregate_process
 from .background import SNMPJob, BackgroundJob, IPMIBuilder
-from .collectd_struct import CollectdHostInfo, var_cache, ext_com, host_matcher, FileCreator
+from .collectd_struct import CollectdHostInfo, var_cache, ext_com, HostMatcher, FileCreator
 from .config import global_config, IPC_SOCK_SNMP
 from .dbsync import SyncProcess
 from .resize import resize_process
@@ -115,7 +115,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self.register_func("disable_rrd_cached", self.disable_rrd_cached)
         self.register_func("enable_rrd_cached", self.enable_rrd_cached)
         self.sync_from_disk_to_ram()
-        self.hm = host_matcher(self.log)
+        self.hm = HostMatcher(self.log)
         self.fc = FileCreator(self.log)
         self.__last_sent = {}
         self.__snmp_running = True

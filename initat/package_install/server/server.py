@@ -6,7 +6,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -39,6 +39,7 @@ from .structs import Client
 class server_process(
     server_mixins.ICSWBasePool,
     server_mixins.RemoteCallMixin,
+    server_mixins.EggConsumeMixin,
 ):
     def __init__(self):
         threading_tools.process_pool.__init__(
@@ -55,6 +56,7 @@ class server_process(
         db_tools.close_connection()
         self.CC.log_config()
         self.CC.re_insert_config()
+        self.EC.init(global_config)
         self._init_clients()
         self._init_network_sockets()
         self.add_process(RepoProcess("repo"), start=True)
@@ -352,5 +354,8 @@ class server_process(
                     )
                     srv_com.set_result("unknown command '{}'".format(cur_com), server_command.SRV_REPLY_STATE_ERROR)
             else:
-                srv_com = cur_client.new_command(srv_com)
+                if self.EC.consume("handle", cur_client.device):
+                    srv_com = cur_client.new_command(srv_com)
+                else:
+                    srv_com.set_result("ova resource error", server_command.SRV_REPLY_STATE_ERROR)
         return srv_com

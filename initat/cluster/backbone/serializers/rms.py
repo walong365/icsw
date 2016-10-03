@@ -1,11 +1,11 @@
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,

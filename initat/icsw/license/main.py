@@ -7,7 +7,7 @@
 # This file is part of icsw
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -28,9 +28,10 @@ import urllib2
 from lxml import etree
 
 from initat.cluster.backbone import license_file_reader
-from initat.cluster.backbone.models import License, device_variable
+from initat.cluster.backbone.models import License, device_variable, icswEggCradle, icswEggBasket, \
+    icswEggEvaluationDef, icswEggConsumer
 from initat.constants import VERSION_CS_NAME
-from initat.tools import process_tools, hfp_tools, config_store
+from initat.tools import process_tools, hfp_tools, config_store, logging_tools
 
 __all__ = [
     "main",
@@ -41,6 +42,78 @@ if process_tools.get_machine_name() in ["eddie"]:
     REGISTRATION_URL = "http://localhost:8081/icsw/api/v2/GetLicenseFile"
 else:
     REGISTRATION_URL = "http://www.initat.org/cluster/registration"
+
+
+def ova_show(opts):
+    print("Recalc ova info")
+    _sys_c = icswEggCradle.objects.get_system_cradle()
+    _sys_c.calc()
+    print("System cradle info: {}".format(unicode(_sys_c)))
+    _out_list = logging_tools.new_form_list()
+    for _cons in _sys_c.icsweggconsumer_set.all():
+        _out_list.append(_cons.get_info_line())
+    print unicode(_out_list)
+
+
+def ova_init(opts):
+    _sys_c = icswEggCradle.objects.get_system_cradle()
+    if False:
+        _sys_c.delete()
+        _sys_c = None
+    if _sys_c is None:
+        _sys_c = icswEggCradle.objects.create_system_cradle()
+        print("created System cradle '{}'".format(unicode(_sys_c)))
+    # icswEggBasket.objects.all().delete()
+    if not icswEggBasket.objects.num_valid_baskets():
+        _sys_b = icswEggBasket.objects.create_dummy_basket(eggs=500)
+        print("Added dummy basket '{}'".format(unicode(_sys_b)))
+    if not icswEggEvaluationDef.objects.get_active_def():
+        _dummy_d = icswEggEvaluationDef.objects.create_dummy_def()
+        print("Added dummy def '{}'".format(_dummy_d))
+    icswEggEvaluationDef.objects.get_active_def().create_consumers()
+    ova_show(opts)
+
+
+def show_license_info(opts):
+    def len_info(type_str, in_f):
+        if len(in_f):
+            return "{} ({})".format(
+                logging_tools.get_plural(type_str, len(in_f)),
+                ", ".join(sorted(list(in_f))),
+            )
+        else:
+            return "no {}".format(type_str)
+
+    _infos = License.objects.get_license_info()
+    print("License info, {}:".format(logging_tools.get_plural("entry", len(_infos))))
+    for _info in _infos:
+        _cl_info = sorted(list(set(_info["cluster_licenses"].keys()) | set(_info["parameters"].keys())))
+        print("")
+        print("-" * 40)
+        print("")
+        print(
+            "Customer: {}, name: {}, type: {}, {}".format(
+                _info["customer"],
+                _info["name"],
+                _info["type_name"],
+                len_info("Cluster", _cl_info),
+            )
+        )
+        for _cl_name in _cl_info:
+            _sets = {"lics": set(), "paras": set()}
+            for _skey, _dkey in [("cluster_licenses", "lics"), ("parameters", "paras")]:
+                # import pprint
+                # pprint.pprint(_info)
+                for _entry in _info.get(_skey, {}).get(_cl_name, []):
+                    # print _entry
+                    _sets[_dkey].add(_entry["id"])
+            print(
+                "Cluster {}: {}, {}".format(
+                    _cl_name,
+                    len_info("License", _sets["lics"]),
+                    len_info("Parameter", _sets["paras"]),
+                )
+            )
 
 
 def _install_license(content):
@@ -64,11 +137,11 @@ def _install_license(content):
         if len(lic_file_node):
             lic_file_content = lic_file_node[0].text
             # validate
-            license_file_reader.LicenseFileReader(lic_file_content)
             # NOTE: this check currently isn't functional as the license file contains the creation time
-            if License.objects.filter(license_file=lic_file_content).exists():
+            if License.objects.license_exists(lic_file_content):
                 print("License file already added.")
             else:
+                license_file_reader.LicenseFileReader(lic_file_content)
                 new_lic = License(file_name="uploaded_via_command_line", license_file=lic_file_content)
                 new_lic.save()
                 print("Successfully added license file: {}".format(unicode(new_lic)))
@@ -140,5 +213,12 @@ def main(opts):
         install_license_file(opts)
     elif opts.subcom == "show_cluster_id":
         show_cluster_id(opts)
+    elif opts.subcom == "show_license_info":
+        show_license_info(opts)
+    elif opts.subcom == "ova":
+        if opts.init:
+            ova_init(opts)
+        if opts.show:
+            ova_show(opts)
     else:
         print("unknown subcom '{}'".format(opts.subcom))

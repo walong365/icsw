@@ -5,7 +5,7 @@
 # this file is part of discovery-server
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -19,28 +19,26 @@
 #
 """ discovery-server, discovery part """
 
-import time
 import copy
+import time
 
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, net_ip, ActiveDeviceScanEnum, config
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, config_tools, threading_tools
+from initat.tools.server_mixins import EggConsumeMixin
 from .config import global_config
 from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin, NRPEScanMixin, Dispatcher
 from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
 
 
-class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, NRPEScanMixin):
+class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, NRPEScanMixin, EggConsumeMixin):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
-        # self.add_process(build_process("build"), start=True)
         db_tools.close_connection()
         self.register_func("fetch_partition_info", self._fetch_partition_info)
         self.register_func("scan_network_info", self._scan_network_info)
@@ -51,6 +49,7 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         self.register_func("wmi_scan", self._wmi_scan)
         self.register_func("nrpe_scan", self._nrpe_scan)
         self.register_func("ext_con_result", self._ext_con_result)
+        self.EC.init(global_config)
         self._server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         self._config = config.objects.get(Q(pk=global_config["CONFIG_IDX"]))
         self.__run_idx = 0
@@ -103,14 +102,8 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
         total_result = ResultNode()
         if "devices" in srv_com:
             for _dev_xml in srv_com["devices"]:
-                try:
-                    _dev = device.objects.get(Q(pk=int(_dev_xml.get("pk", "0"))))
-                    if LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.discovery_server, _dev):
-                        raise RuntimeError(u"Device {} is locked by license lock list for discovery server".format(_dev))
-                except:
-                    res_node = ResultNode(error="device not available: {}".format(process_tools.get_except_info()))
-                else:
-                    LicenseUsage.log_usage(LicenseEnum.discovery_server, LicenseParameterTypeEnum.device, _dev)
+                _dev = device.objects.get(Q(pk=int(_dev_xml.get("pk", "0"))))
+                if self.EC.consume("discover", _dev):
                     if not self.device_is_capable(_dev, scan_type_enum):
                         res_node = ResultNode(
                             error=u"device {} is missing the required ComCapability '{}'".format(
@@ -127,6 +120,8 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
                             res_node = ResultNode(ok=u"starting scan for device {}".format(unicode(_dev)))
                         else:
                             res_node = ResultNode(warning=u"lock not possible for device {}".format(unicode(_dev)))
+                else:
+                    res_node = ResultNode(error="device not allowed (ova error)")
                 total_result.merge(res_node)
             srv_com.set_result(*total_result.get_srv_com_result())
         else:

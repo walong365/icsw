@@ -6,7 +6,7 @@
 # Send feedback to: <g.kaufmann@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -1235,6 +1235,38 @@ class AssetBatch(models.Model):
     installed_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_installed_updates")
 
     displays = models.ManyToManyField(AssetHWDisplayEntry)
+
+    @property
+    def packages_length(self):
+        return self.packages.count()
+
+    @property
+    def packages_install_times_length(self):
+        return self.packages_install_times.count()
+
+    @property
+    def cpus_length(self):
+        return self.cpus.count()
+
+    @property
+    def memory_modules_length(self):
+        return self.memory_modules.count()
+
+    @property
+    def gpus_length(self):
+        return self.gpus.count()
+
+    @property
+    def network_devices_length(self):
+        return self.network_devices.count()
+
+    @property
+    def pending_updates_length(self):
+        return self.pending_updates.count()
+
+    @property
+    def installed_updates_length(self):
+        return self.installed_updates.count()
 
     @property
     def is_finished_processing(self):

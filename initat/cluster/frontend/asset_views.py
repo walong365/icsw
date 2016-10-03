@@ -5,7 +5,7 @@
 # This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -47,7 +47,8 @@ from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
     AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
-    StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer, AssetBatchSerializer
+    StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer, \
+    AssetBatchSerializer, SimpleAssetBatchSerializer
 
 try:
     from openpyxl import Workbook
@@ -60,14 +61,34 @@ logger = logging.getLogger(__name__)
 
 class AssetBatchViewSet(viewsets.ViewSet):
     def list(self, request):
-        if "pks" in request.query_params:
-            queryset = AssetBatch.objects.prefetch_related("packages_install_times", "installed_updates",
-                "pending_updates", "memory_modules", "cpus", "gpus").filter(
-                Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
-            )
+        if "assetbatch_pks" in request.query_params:
+            queryset = AssetBatch.objects.prefetch_related(
+                    "packages",
+                    "packages_install_times",
+                    "installed_updates",
+                    "pending_updates",
+                    "memory_modules",
+                    "cpus",
+                    "gpus",
+                    "network_devices").filter(idx__in=json.loads(request.query_params.getlist("assetbatch_pks")[0]))
         else:
-            queryset = AssetBatch.objects.all()
-        serializer = AssetBatchSerializer(queryset, many=True)
+            if "device_pks" in request.query_params:
+                queryset = AssetBatch.objects.prefetch_related(
+                    "packages",
+                    "packages_install_times",
+                    "installed_updates",
+                    "pending_updates",
+                    "memory_modules",
+                    "cpus",
+                    "gpus",
+                    "network_devices").filter(device__in=json.loads(request.query_params.getlist("device_pks")[0]))
+            else:
+                queryset = AssetBatch.objects.all()
+
+        if "simple" in request.query_params:
+            serializer = SimpleAssetBatchSerializer(queryset, many=True)
+        else:
+            serializer = AssetBatchSerializer(queryset, many=True)
         return Response(serializer.data)
 
 

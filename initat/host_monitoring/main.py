@@ -7,7 +7,7 @@
 # This file is part of host-monitoring
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -41,11 +41,11 @@ def run_code(prog_name, global_config):
     if COLLCLIENT:
         prog_name = "collclient"
     if prog_name in ["collserver"]:
-        from initat.host_monitoring.server import server_code
-        ret_state = server_code().loop()
+        from initat.host_monitoring.server import ServerCode
+        ret_state = ServerCode().loop()
     elif prog_name in ["collrelay"]:
-        from initat.host_monitoring.relay import relay_code
-        ret_state = relay_code().loop()
+        from initat.host_monitoring.relay import RelayCode
+        ret_state = RelayCode().loop()
     elif prog_name == "collclient":
         from initat.host_monitoring.client import client_code
         ret_state = client_code(global_config)

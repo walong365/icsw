@@ -7,7 +7,7 @@
 # This file is part of host-monitoring
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -51,7 +51,7 @@ from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 IDLE_LOOP_GRANULARITY = 10000.0
 
 
-class server_code(ICSWBasePool, HMHRMixin):
+class ServerCode(ICSWBasePool, HMHRMixin):
     def __init__(self):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False

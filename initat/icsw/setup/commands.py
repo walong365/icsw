@@ -7,7 +7,7 @@
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -671,7 +671,10 @@ def call_update_funcs(opts):
     call_manage(["create_cdg", "--name", opts.system_group_name])
     call_manage(["migrate_to_domain_name"])
     call_manage(["migrate_to_config_catalog"])
+    # at first sync config enums
     call_icsw(["config", "enum", "--sync"])
+    # then init ova system
+    call_icsw(["license", "ova", "--init"])
 
 
 @SetupLogger

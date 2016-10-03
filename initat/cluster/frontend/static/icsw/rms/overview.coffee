@@ -5,7 +5,7 @@
 # This file is part of webfrontend
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -2001,7 +2001,7 @@ rms_module = angular.module(
     return {
         restrict: "E"
         controller: "icswRmsFairShareTreeCtrl"
-        template: $templateCache.get("icsw.rms.fairshare.tree")
+        template: $templateCache.get("icsw.rms.fair.share.tree")
         scope: true
     }
 ]).controller("icswRmsFairShareTreeCtrl",
@@ -2057,8 +2057,8 @@ rms_module = angular.module(
                 _routes = icswAcessLevelService.get_routing_info().routing
                 $scope.struct.to_date = moment()
                 $scope.struct.from_date = moment().subtract(moment.duration(4, "week"))
-                if "rms-server" of _routes
-                    _server = _routes["rms-server"][0]
+                if "rms_server" of _routes
+                    _server = _routes["rms_server"][0]
                     _device = _dt.all_lut[_server[2]]
                     if _device?
                         $scope.struct.devices.push(_device)

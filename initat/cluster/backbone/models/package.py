@@ -1,11 +1,11 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
 # This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -27,13 +27,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
+from lxml import etree
+from lxml.builder import E
 
 from initat.cluster.backbone.models.functions import check_empty_string
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseParameterTypeEnum, LicenseEnum, \
-    LicenseLockListDeviceService
-
 
 __all__ = [
     "package_repo",
@@ -556,13 +553,7 @@ def package_device_connection_pre_save(sender, **kwargs):
         if cur_inst.target_state not in ["upgrade", "keep", "install", "erase"]:
             raise ValidationError("unknown target state '{}'".format(cur_inst.target_state))
 
-        if LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.package_install, cur_inst.device):
-            raise ValidationError(
-                u"Device {} is locked from accessing the license package install.".format(cur_inst.device)
-            )
-
 
 @receiver(signals.post_save, sender=package_device_connection)
 def package_device_connection_post_save(sender, instance, raw, **kwargs):
-    if not raw:
-        LicenseUsage.log_usage(LicenseEnum.package_install, LicenseParameterTypeEnum.device, instance.device)
+    pass

@@ -5,7 +5,7 @@
 # This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -26,12 +26,10 @@ import logging
 from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Q, signals, CASCADE
-import collections
+from django.db.models import Q, signals
 from django.dispatch import receiver
 
 from initat.cluster.backbone.models.functions import check_integer, check_empty_string
-from initat.cluster.backbone.models.license import LicenseEnum, LicenseUsage, LicenseParameterTypeEnum
 
 __all__ = [
     "config_catalog",
@@ -269,14 +267,14 @@ class device_config(models.Model):
 
 @receiver(signals.post_save, sender=device_config)
 def device_config_post_save(sender, instance, raw, **kwargs):
-    if not raw:
-        log_usage_data = collections.defaultdict(lambda: [])
-
-        for mcc in instance.config.mon_check_command_set.all().select_related("mon_service_templ"):
-            if mcc.mon_service_templ is not None and mcc.mon_service_templ.any_notification_enabled():
-                log_usage_data[instance.device_id].append(mcc)
-
-        LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
+    pass
+    # if not raw:
+    #    log_usage_data = collections.defaultdict(lambda: [])
+    #
+    #    for mcc in instance.config.mon_check_command_set.all().select_related("mon_service_templ"):
+    #        if mcc.mon_service_templ is not None and mcc.mon_service_templ.any_notification_enabled():
+    #            log_usage_data[instance.device_id].append(mcc)
+    #    LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 class config_str(models.Model):

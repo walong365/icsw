@@ -5,7 +5,7 @@
 # this file is part of discovery-server
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -40,7 +40,6 @@ from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, net_tools, \
     ipvx_tools
 from .discovery_struct import ExtCom
-
 
 DEFAULT_NRPE_PORT = 5666
 # the mapping between the result of the server command and the result of the
@@ -387,12 +386,14 @@ class WmiScanBatch(ScanBatch):
                                             )
                                             self.log(traceback.format_exc(e))
 
-                self.log("Created {}, updated {}, created {}, found {}".format(
-                    logging_tools.get_plural("net device", len(created_ips)),
-                    logging_tools.get_plural("net device", len(updated_nds)),
-                    logging_tools.get_plural("ip", len(created_ips)),
-                    logging_tools.get_plural("existing ip", len(existing_ips)),
-                ))
+                self.log(
+                    "Created {}, updated {}, created {}, found {}".format(
+                        logging_tools.get_plural("net device", len(created_ips)),
+                        logging_tools.get_plural("net device", len(updated_nds)),
+                        logging_tools.get_plural("ip", len(created_ips)),
+                        logging_tools.get_plural("existing ip", len(existing_ips)),
+                    )
+                )
 
             self.finish()
 
@@ -893,18 +894,25 @@ class Dispatcher(object):
 
         # prestep: close all pending AssetRuns
         _pending = 0
-        for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.SCANNING)).select_related("asset_batch"):
-            diff_time = abs((_now - pending_run.run_start_time).seconds)
-            # get rid of old(er) running (==most likely broken) runs
-            if diff_time > 1800:
-                pending_run.state_finished(RunResult.FAILED, "runaway run")
-                _pending += 1
-        for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.PLANNED)).select_related("asset_batch"):
-            diff_time = abs((_now - pending_run.created).seconds)
-            # get rid of old(er) running (==most likely broken) runs
-            if diff_time > 1800:
-                pending_run.state_finished(RunResult.FAILED, "runaway run")
-                _pending += 1
+        for pending_run in AssetRun.objects.filter(
+                run_status__in=(RunStatus.SCANNING, RunStatus.PLANNED)).select_related("asset_batch"):
+            if pending_run.run_start_time:
+                diff_time = abs((_now - pending_run.run_start_time).seconds)
+                # get rid of old(er) running (==most likely broken) runs
+                if diff_time > 1800:
+                    pending_run.state_finished(RunResult.FAILED, "runaway run")
+                    _pending += 1
+
+        for asset_batch in AssetBatch.objects.filter(
+            run_status__in=[BatchStatus.RUNNING, BatchStatus.FINISHED_RUNS, BatchStatus.GENERATING_ASSETS]):
+            if asset_batch.run_start_time:
+                diff_time = abs((_now - asset_batch.run_start_time).seconds)
+                if diff_time > 1800:
+                    asset_batch.run_end_time = _now
+                    asset_batch.run_status = BatchStatus.FINISHED
+                    asset_batch.save()
+                    _pending += 1
+
         if _pending:
             self.log("Closed {}".format(logging_tools.get_plural("pending AssetRun", _pending)), logging_tools.LOG_LEVEL_ERROR)
 
@@ -914,40 +922,35 @@ class Dispatcher(object):
             "device__com_capability_list"
         ):
             if schedule_item.planned_date < _now:
-                cap_dict = {
-                    _com.matchcode: True for _com in schedule_item.device.com_capability_list.all()
-                }
+                # check for allowed
+                if self.discovery_process.EC.consume("asset", schedule_item.device):
+                    cap_dict = {
+                        _com.matchcode: True for _com in schedule_item.device.com_capability_list.all()
+                    }
 
-                _dev = schedule_item.device
-                if _dev.idx not in self.__device_planned_runs:
-                    self.__device_planned_runs[_dev.idx] = []
+                    _dev = schedule_item.device
+                    if _dev.idx not in self.__device_planned_runs:
+                        self.__device_planned_runs[_dev.idx] = []
 
-                self.discovery_process.get_route_to_devices([_dev])
-                self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
-                new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
-                new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
+                    self.discovery_process.get_route_to_devices([_dev])
+                    self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
+                    new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
+                    new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
 
-                self.__device_planned_runs[_dev.idx].append(new_pr)
+                    self.__device_planned_runs[_dev.idx].append(new_pr)
 
-                if cap_dict.get("hm", False):
-                    self._do_hm_scan(schedule_item, new_pr)
-                elif cap_dict.get("nrpe", False):
-                    self._do_nrpe_scan(schedule_item, new_pr)
-                else:
-                    self.log(
-                        "Skipping non-capable device {}".format(
-                            unicode(schedule_item.device)
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
+                    if cap_dict.get("hm", False):
+                        self._do_hm_scan(schedule_item, new_pr)
+                    elif cap_dict.get("nrpe", False):
+                        self._do_nrpe_scan(schedule_item, new_pr)
+                    else:
+                        self.log(
+                            "Skipping non-capable device {}".format(
+                                unicode(schedule_item.device)
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                 schedule_item.delete()
-
-        zmq_con = net_tools.zmq_connection(
-            "server:{}".format(process_tools.get_machine_name()),
-            context=self.discovery_process.zmq_context,
-            # todo: generate best value
-            timeout=120,
-        )
 
         # step 1: init commands
 

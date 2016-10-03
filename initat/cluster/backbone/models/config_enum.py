@@ -5,7 +5,7 @@
 # This file is part of icsw-server
 #
 # This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License Version 2 as
+# it under the terms of the GNU General Public License Version 3 as
 # published by the Free Software Foundation.
 #
 # This program is distributed in the hope that it will be useful,
@@ -23,7 +23,7 @@
 
 from enum import Enum
 
-from initat.cluster.backbone.models.service_enum_base import icswServiceEnumBase
+from initat.cluster.backbone.models.service_enum_base import icswServiceEnumBase, EggAction
 from initat.cluster.backbone.models.functions import register_service_enum
 
 
@@ -31,16 +31,26 @@ class AppEnum(Enum):
     config_server = icswServiceEnumBase(
         "config-server",
         "enables node provisioning features",
-        msi_block_name="cluster-config-server"
+        msi_block_name="cluster-config-server",
+        egg_actions=[
+            EggAction("configure", "device"),
+        ]
     )
     cluster_server = icswServiceEnumBase(
         "cluster-server",
         "sets device as a cluster-server (DB access)",
+        egg_actions=[
+            EggAction("allegro", "user", weight=100),
+            EggAction("vdesktop", "user", weight=20),
+        ]
     )
     mother_server = icswServiceEnumBase(
         "mother-server",
         "enables basic nodeboot via PXE functionalities",
-        msi_block_name="mother"
+        msi_block_name="mother",
+        egg_actions=[
+            EggAction("handle", "device"),
+        ]
     )
     monitor_server = icswServiceEnumBase(
         "monitor-server",
@@ -50,6 +60,10 @@ class AppEnum(Enum):
     discovery_server = icswServiceEnumBase(
         "discovery-server",
         "enables network discovery and inventory",
+        egg_actions=[
+            EggAction("discover", "device"),
+            EggAction("asset", "device"),
+        ]
     )
     logcheck_server = icswServiceEnumBase(
         "logcheck-server",
@@ -58,20 +72,32 @@ class AppEnum(Enum):
     package_server = icswServiceEnumBase(
         "package-server",
         "enables packge-server functionalities (RPM/deb distribution)",
+        egg_actions=[
+            EggAction("handle", "device"),
+        ]
     )
     collectd_server = icswServiceEnumBase(
         "collectd-server",
         "Collect MachineVectors from remote machines and store them",
-        msi_block_name="collectd"
+        msi_block_name="collectd",
+        egg_actions=[
+            EggAction("graph", "device"),
+        ]
     )
     rms_server = icswServiceEnumBase(
         "rms-server",
         "device hosts the RMS-server (Jobsystem)",
+        egg_actions=[
+            EggAction("handle", "device"),
+        ]
     )
     grapher_server = icswServiceEnumBase(
         "grapher-server",
         "Draw graphs, frontend to collectd",
         msi_block_name="rrd-grapher",
+        egg_actions=[
+            EggAction("graph", "device"),
+        ]
     )
     image_server = icswServiceEnumBase(
         "image-server",
