@@ -894,18 +894,25 @@ class Dispatcher(object):
 
         # prestep: close all pending AssetRuns
         _pending = 0
-        for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.SCANNING)).select_related("asset_batch"):
-            diff_time = abs((_now - pending_run.run_start_time).seconds)
-            # get rid of old(er) running (==most likely broken) runs
-            if diff_time > 1800:
-                pending_run.state_finished(RunResult.FAILED, "runaway run")
-                _pending += 1
-        for pending_run in AssetRun.objects.filter(Q(run_status=RunStatus.PLANNED)).select_related("asset_batch"):
-            diff_time = abs((_now - pending_run.created).seconds)
-            # get rid of old(er) running (==most likely broken) runs
-            if diff_time > 1800:
-                pending_run.state_finished(RunResult.FAILED, "runaway run")
-                _pending += 1
+        for pending_run in AssetRun.objects.filter(
+                run_status__in=(RunStatus.SCANNING, RunStatus.PLANNED)).select_related("asset_batch"):
+            if pending_run.run_start_time:
+                diff_time = abs((_now - pending_run.run_start_time).seconds)
+                # get rid of old(er) running (==most likely broken) runs
+                if diff_time > 1800:
+                    pending_run.state_finished(RunResult.FAILED, "runaway run")
+                    _pending += 1
+
+        for asset_batch in AssetBatch.objects.filter(
+            run_status__in=[BatchStatus.RUNNING, BatchStatus.FINISHED_RUNS, BatchStatus.GENERATING_ASSETS]):
+            if asset_batch.run_start_time:
+                diff_time = abs((_now - asset_batch.run_start_time).seconds)
+                if diff_time > 1800:
+                    asset_batch.run_end_time = _now
+                    asset_batch.run_status = BatchStatus.FINISHED
+                    asset_batch.save()
+                    _pending += 1
+
         if _pending:
             self.log("Closed {}".format(logging_tools.get_plural("pending AssetRun", _pending)), logging_tools.LOG_LEVEL_ERROR)
 
