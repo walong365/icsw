@@ -42,7 +42,7 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 
 from initat.report_server.report import PDFReportGenerator, generate_csv_entry_for_assetrun
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
-    AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
+    AssetPackageVersion, AssetType, StaticAssetTemplate, user, BatchStatus, RunResult, PackageTypeEnum, \
     AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue, StaticAssetTemplateFieldType
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
@@ -341,7 +341,9 @@ class AssetPackageViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def get_all(self, request):
         queryset = AssetPackage.objects.all().prefetch_related(
-            "assetpackageversion_set"
+            "assetpackageversion_set",
+            "assetpackageversion_set__assetbatch_set",
+            "assetpackageversion_set__assetbatch_set__device"
         ).order_by(
             "name",
             "package_type",

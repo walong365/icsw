@@ -205,6 +205,19 @@ class AssetPackageVersion(models.Model):
     release = models.TextField(default="", blank=True)
     created = models.DateTimeField(auto_now_add=True)
 
+    @property
+    def install_info(self):
+        _dict = {}
+        for assetbatch in self.assetbatch_set.all():
+            if assetbatch.device.idx not in _dict:
+                _dict[assetbatch.device.idx] = {}
+                _dict[assetbatch.device.idx]["device_name"] = assetbatch.device.full_name
+                _dict[assetbatch.device.idx]["install_history_list"] = []
+
+            _dict[assetbatch.device.idx]["install_history_list"].append(assetbatch.run_start_time)
+
+        return _dict
+
     def __lt__(self, other):
         return self.name < other.name
 

@@ -76,7 +76,6 @@ class ShallowPastAssetBatchSerializer(serializers.ModelSerializer):
             "idx", "device", "run_start_time", "run_time"
         )
 
-
 class AssetHardwareEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
@@ -91,7 +90,7 @@ class AssetPackageVersionInstallTimeSerializer(serializers.ModelSerializer):
 class AssetPackageVersionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetPackageVersion
-        fields = ("idx", "size", "version", "release", "info", "created")
+        fields = ("idx", "size", "version", "release", "info", "created", "install_info")
 
 
 class AssetPackageSerializer(serializers.ModelSerializer):
