@@ -101,35 +101,35 @@ angular.module(
             @f_services = 0
             # possible service states
             @service_state_list = [
-                new StateEntry("srv", 0, "O", true, "show OK states", "btn-success")
-                new StateEntry("srv", 1, "W", true, "show warning states", "btn-warning")
-                new StateEntry("srv", 2, "C", true, "show critical states", "btn-danger")
-                new StateEntry("srv", 3, "U", true, "show unknown states", "btn-danger")
-                new StateEntry("srv", 5, "p", true, "show pending states", "btn-primary")
+                new StateEntry("srv", 0, "O", true, "show OK States", "btn-success")
+                new StateEntry("srv", 1, "W", true, "show Warning States", "btn-warning")
+                new StateEntry("srv", 2, "C", true, "show Critical States", "btn-danger")
+                new StateEntry("srv", 3, "U", true, "show Unknown States", "btn-danger")
+                new StateEntry("srv", 5, "p", true, "show Pending States", "btn-primary")
             ]
             @service_state_lut = {}
 
             # possibel service type states
             @service_type_list = [
-                new StateTypeEntry("srv", 0, "S", true, "show soft states", "btn-primary")
-                new StateTypeEntry("srv", 1, "H", true, "show hard states", "btn-primary")
+                new StateTypeEntry("srv", 0, "S", true, "show Soft States", "btn-primary")
+                new StateTypeEntry("srv", 1, "H", true, "show Hard States", "btn-primary")
             ]
             @service_type_lut = {}
 
             # possible host states
             @host_state_list = [
-                new StateEntry("dev", 0, "U", true, "show Up states", "btn-success")
-                new StateEntry("dev", 1, "D", true, "show Down states", "btn-warning")
-                new StateEntry("dev", 2, "?", true, "show unreachable states", "btn-danger")
-                new StateEntry("dev", 4, "M", true, "show unmonitored devs", "btn-primary")
-                new StateEntry("dev", 5, "p", true, "show pending devs", "btn-primary")
+                new StateEntry("dev", 0, "U", true, "show Up States", "btn-success")
+                new StateEntry("dev", 1, "D", true, "show Down States", "btn-warning")
+                new StateEntry("dev", 2, "?", true, "show Unreachable States", "btn-danger")
+                new StateEntry("dev", 4, "M", true, "show Unmonitored Devices", "btn-primary")
+                new StateEntry("dev", 5, "p", true, "show Pending Devices", "btn-primary")
             ]
             @host_state_lut = {}
 
             # possibel host type states
             @host_type_list = [
-                new StateTypeEntry("dev", 0, "S", true, "show soft states", "btn-primary")
-                new StateTypeEntry("dev", 1, "H", true, "show hard states", "btn-primary")
+                new StateTypeEntry("dev", 0, "S", true, "show Soft States", "btn-primary")
+                new StateTypeEntry("dev", 1, "H", true, "show Hard States", "btn-primary")
             ]
             @host_type_lut = {}
 
@@ -364,8 +364,7 @@ angular.module(
                                 key: "seg.#{_idx}.t"
                                 transform: "translate(#{_middle_x}, #{_middle_y + 4})"
                                 fontFamily: "fontAwesome"
-                                className: "cursorpointer"
-                                fontSize: "10px"
+                                className: "cursorpointer svg-filter-text"
                                 pointerEvents: "none"
                                 alignmentBaseline: "middle"
                                 textAnchor: "middle"
@@ -438,10 +437,13 @@ angular.module(
                 svg(
                     {
                         key: "top"
-                        width: "#{_width}px"
-                        height: "#{_height}px"
+                        #width: "#{_width}px"
+                        width: "100%"
+                        #height: "#{_height}px"
+                        height: "auto"
                         fontFamily: "'Open-Sans', sans-serif"
                         fontSize: "10pt"
+                        viewBox: "5 11 210 121"
                     }
                     [
                         g(
@@ -459,9 +461,9 @@ angular.module(
                                         ry: 50
                                         width: 200
                                         height: 100
+                                        className: if _lf.linked then "svg-strokelocked" else "svg-strokeunlocked"
                                         style: {
                                             fill: "none",
-                                            stroke: if _lf.linked then "#ff4444" else "#ffdddd",
                                             strokeWidth: "3px"
                                         }
                                     }
@@ -482,20 +484,16 @@ angular.module(
                                                 height: 30
                                                 rx: 3
                                                 ry: 3
-                                                style: {
-                                                    fill: "#ffffff"
-                                                    stroke: "#000000"
-                                                    strokeWidth: "1px"
-                                                }
+                                                className: "svg-box"
                                             }
                                         )
                                         text(
                                             {
                                                 key: "linktext"
-                                                x: 0
-                                                y: 12
+                                                x: -1
+                                                y: 13
                                                 fontFamily: "fontAwesome"
-                                                className: "cursorpointer"
+                                                className: "cursorpointer svg-txt-color"
                                                 fontSize: "30px"
                                                 alignmentBaseline: "middle"
                                                 textAnchor: "middle"
@@ -523,20 +521,18 @@ angular.module(
                                             rect(
                                                 {
                                                     key: "textrect"
-                                                    x: -40
-                                                    y: -8
-                                                    width: 80
+                                                    x: -21
+                                                    y: -9
+                                                    width: 61
                                                     height: 16
-                                                    style: {
-                                                        fill: "#ffffff"
-                                                        stroke: "#000000"
-                                                        strokeWidth: "1px"
-                                                    }
+                                                    className: "svg-box"
                                                 }
                                             )
                                             text(
                                                 {
                                                     key: "text"
+                                                    y: 5
+                                                    x: 10
                                                     className: "svg-filter-head-text"
                                                 }
                                                 "#{_host_text}"
@@ -561,19 +557,17 @@ angular.module(
                                                 {
                                                     key: "textrect"
                                                     x: -40
-                                                    y: -8
-                                                    width: 80
+                                                    y: -9
+                                                    width: 61
                                                     height: 16
-                                                    style: {
-                                                        fill: "#ffffff"
-                                                        stroke: "#000000"
-                                                        strokeWidth: "1px"
-                                                    }
+                                                    className: "svg-box"
                                                 }
                                             )
                                             text(
                                                 {
                                                     key: "text"
+                                                    y: 5
+                                                    x: -10
                                                     className: "svg-filter-head-text"
                                                 }
                                                 "#{_service_text}"
@@ -608,9 +602,9 @@ angular.module(
             # predefined filters
             scope.filter_list = [
                 new DefinedFilter("c", "Custom", "")
-                new DefinedFilter("a", "All Services and hosts", "O:W:C:U:p;U:D:?:M:p;S:H;S:H;ul")
-                new DefinedFilter("um", "All Unmonitored and pending hosts", "O:W:C:U:p;M:p;S:H;S:H;ul")
-                new DefinedFilter("upp", "All hard problems on up hosts", "O:W:C:U:p;U;H;H;l")
+                new DefinedFilter("a", "All Services and Hosts", "O:W:C:U:p;U:D:?:M:p;S:H;S:H;ul")
+                new DefinedFilter("um", "All Unmonitored and Pending Hosts", "O:W:C:U:p;M:p;S:H;S:H;ul")
+                new DefinedFilter("upp", "All Hard Problems on Up Hosts", "O:W:C:U:p;U;H;H;l")
             ]
 
             scope.filter_changed = () ->

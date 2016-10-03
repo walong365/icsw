@@ -36,6 +36,7 @@ __all__ = [
     "sys_partition",
     "lvm_lv",
     "lvm_vg",
+    "LogicalDisc",
     "partition",
     "partition_disc",
     "partition_table",
@@ -219,8 +220,6 @@ def partition_pre_save(sender, **kwargs):
         if cur_inst.partition_fs_id:
             if cur_inst.partition_fs.name == "swap":
                 cur_inst.mountpoint = "swap"
-            if not cur_inst.partition_fs.need_mountpoint():
-                cur_inst.mountpoint = ""
             cur_inst.partition_hex = cur_inst.partition_fs.hexid
 
 

@@ -18,24 +18,29 @@
 
 .svg-sh-type { fill: #8888ff ; }
 .svg-filter-text {
-    text-anchor: middle;
+    /*text-anchor: middle;
     alignment-baseline: middle;
-    paint-order: stroke;
+    paint-order: stroke;*/
     font-size: 12px;
-    fill: #ffffff;
-    stroke: #000000;
+    fill: #444444;
+    /*stroke: #000000;
     stroke-width: 1px;
-    pointer-events: none;
+    pointer-events: none;*/
 }
 .svg-filter-head-text {
     text-anchor: middle;
     alignment-baseline: middle;
     paint-order: stroke;
-    font-size: 15px;
-    fill: #000000;
+    font-size: 14px;
+    fill: #777777;
     stroke: #ffffff;
     stroke-width: 0.5px;
     pointer-events: none;
+}
+.svg-box {
+    fill: #ffffff;
+    stroke: #555555;
+    stroke-width: 0.5px;
 }
 .svg-outline { stroke-width: 0.5px; stroke: #000000; }
 
@@ -43,10 +48,12 @@
 .svg-plandown { fill: #4c9d83; }
 .svg-active { fill: #9999ff; }
 .svg-inactive { fill: #eeeeee; }
+.svg-strokelocked { stroke: #d64f31; }
+.svg-strokeunlocked { stroke: #dddddd; }
 .svg-white { fill: #ffffff; }
 .svg-danger { fill: #d90000; } /* prepare removal */
 
-.svg-txt_color { fill: #555555; }
+.svg-txt-color { fill: #555555; }
 .default-text { fill: #555555; font-size: 12px; }
 
 .sb-lines { stroke: #ffffff; stroke-width: 0.5; }

@@ -1,3 +1,57 @@
+<!--<style> .timeline {
+    white-space:nowrap;
+    overflow-x: scroll;
+    padding:0px 0 0px 0;
+    position:relative;
+}
+
+.timeline-entry {
+    display:inline-block;
+    vertical-align:top;
+    background:#13519C;
+    color:#fff;
+    padding:0px;
+    font-size:12px;
+    text-align:center;
+    position:relative;
+    border-top:4px solid #06182E;
+    border-radius:3px;
+    min-width:200px;
+    max-width:500px;
+}
+
+.timeline-entry img {
+    display:block;
+    max-width:100%;
+    height:auto;
+    margin-bottom:10px;
+}
+
+.timeline-entry h1 {
+    color:#fff;
+    font-size:18px;
+    font-family:Georgia, serif;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+.timeline-entry h2 {
+    letter-spacing:.2em;
+    margin-bottom:10px;
+    font-size:14px;
+}
+
+.timeline-bar {
+    height:4px;
+    background:#eee;
+    width:100%;
+    position:relative;
+    top:13px;
+    left:0;
+}
+</style>
+-->
+
 <script type="text/ng-template" id="icsw/device/asset/overview">
     <icsw-device-asset-overview icsw-sel-man="0"></icsw-device-asset-overview>
 </script>
@@ -257,7 +311,7 @@
                 <td>{{ package.$$package_type }}</td>
                 <td class="text-right">{{ package.$$num_versions }}</td>
                 <td class="text-right">
-                    <icsw-tools-button size="xs" type="show" is-show="!package.$$expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
+                    <icsw-tools-button size="xs" type="show" is-show="!package.$$expanded" ng-click="expand($event, package)"></icsw-tools-button>
                 </td>
             </tr>
 
@@ -281,14 +335,43 @@
                         <tr>
                             <th>Version</th>
                             <th>Release</th>
-                            <th>Comment</th>
                             <th>Size</th>
+                            <th class="text-right">Action</th>
                         </tr>
-                        <tr ng-repeat="obj in package.$$versions_shown">
-                            <td>{{ obj.version }}</td>
-                            <td>{{ obj.$$release }}</td>
-                            <td>{{ obj.$$info }}</td>
-                            <td>{{ obj.$$size }}</td>
+                        <tr ng-repeat-start="version in package.$$versions_shown">
+                            <td>{{ version.version }}</td>
+                            <td>{{ version.$$release }}</td>
+                            <td>{{ version.$$size }}</td>
+                            <td class="text-right">
+                                <icsw-tools-button size="xs" type="show" is-show="!obj.$$expanded" ng-click="expand($event, version)"></icsw-tools-button>
+                            </td>
+                        </tr>
+                        <tr ng-repeat-end ng-if="version.$$expanded">
+                            <td colspan="99">
+                                <table class="table table-condensed table-striped simple-border">
+                                    <thead>
+                                        <tr>
+                                            <th>Device</th>
+                                            <th>Seen (From)</th>
+                                            <th>Seen (Until)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="device_obj in version.install_info">
+                                            <td>{{ device_obj.device_name }}</td>
+                                            <td>{{ get_history_timeline(device_obj, true) }}</td>
+                                            <td>{{ get_history_timeline(device_obj, false) }}</td>
+                                            <!--<td>
+                                                <div class="timeline">
+                                                    <div class="timeline-entry" ng-repeat="time_str in device_obj.install_history_list">
+                                                        <h1>{{ format_time(time_str) }}</h1>
+                                                    </div>
+                                                </div>
+                                            </td>-->
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
                         </tr>
                     </table>
                 </td>

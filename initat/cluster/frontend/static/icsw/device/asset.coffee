@@ -173,7 +173,9 @@ device_asset_module = angular.module(
                 $scope.struct.device_tree = data[0]
                 $scope.struct.disp_setting_tree = data[1]
                 $scope.struct.package_tree = data[2]
-                #console.log($scope.struct.package_tree)
+
+                console.log(data[2])
+
                 $scope.struct.devices.length = 0
                 for dev in devs
                     # filter out metadevices
@@ -213,6 +215,12 @@ device_asset_module = angular.module(
                                 simple: angular.toJson(1)
                             }
                         )
+                        Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
+                            {
+                                device_pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                                simple: angular.toJson(1)
+                            }
+                        )
                     ]
                 ).then(
                     (result) ->
@@ -223,7 +231,10 @@ device_asset_module = angular.module(
 
                         $scope.struct.data_loaded = true
 
-                        #start_timer()
+                        for asset_batch in $scope.struct.asset_batch_list
+                            if !asset_batch.is_finished_processing
+                                start_timer()
+                                break
                 )
         )
 
@@ -579,8 +590,37 @@ device_asset_module = angular.module(
 (
     $scope, $q, ICSW_URLS, icswSimpleAjaxCall
 ) ->
-    $scope.expand_package = ($event, pack) ->
-        pack.$$expanded = !pack.$$expanded
+    $scope.expand = ($event, obj) ->
+        if obj.$$expanded == undefined
+            obj.$$expanded = false
+        obj.$$expanded = !obj.$$expanded
+
+    $scope.format_time = (string) ->
+         return moment(string).format("YYYY-MM-DD HH:mm:ss")
+
+    $scope.get_history_timeline = (obj, from) ->
+        moment_list = []
+        for timestring in obj.install_history_list
+            moment_obj = moment(timestring)
+            moment_list.push(moment_obj)
+
+        moment_list.sort(
+            (a, b) ->
+                return a - b
+        )
+
+        history_string = "N/A"
+
+        if moment_list.length == 1
+            history_string = moment_list[0].format("YYYY-MM-DD HH:mm:ss")
+
+        else if moment_list.length > 1
+            if !from
+                history_string = moment_list[moment_list.length - 1].format("YYYY-MM-DD HH:mm:ss")
+            else
+                history_string = moment_list[0].format("YYYY-MM-DD HH:mm:ss")
+
+        return history_string
 
     $scope.downloadCsv = ->
         icswSimpleAjaxCall(
