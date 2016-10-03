@@ -47,6 +47,7 @@ class server_process(
     VersionCheckMixin,
 ):
     def __init__(self):
+        process_tools.ALLOW_MULTIPLE_INSTANCES = False
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.monitor_slave, global_config)
         self.CC.check_config()
@@ -306,6 +307,59 @@ class server_process(
         vector_socket.connect(conn_str)
         self.vector_socket = vector_socket
 
+        # copy from relay, Refactor
+        self.__nhm_connections = set()
+        sock_list = [
+            ("ipc", "receiver", zmq.PULL, 2),
+        ]
+        [setattr(self, "{}_socket".format(short_sock_name), None) for _sock_proto, short_sock_name, _a0, _b0 in sock_list]
+        for _sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
+            sock_name = process_tools.get_zmq_ipc_name(short_sock_name, s_name="md-sync-server", connect_to_root_instance=True)
+            file_name = sock_name[5:]
+            self.log(
+                "init {} ipc_socket '{}' (HWM: {:d})".format(
+                    short_sock_name,
+                    sock_name,
+                    hwm_size
+                )
+            )
+            if os.path.exists(file_name):
+                self.log("removing previous file")
+                try:
+                    os.unlink(file_name)
+                except:
+                    self.log("... {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+            wait_iter = 0
+            while os.path.exists(file_name) and wait_iter < 100:
+                self.log("socket {} still exists, waiting".format(sock_name))
+                time.sleep(0.1)
+                wait_iter += 1
+            cur_socket = self.zmq_context.socket(sock_type)
+            try:
+                process_tools.bind_zmq_socket(cur_socket, sock_name)
+                # client.bind("tcp://*:8888")
+            except zmq.ZMQError:
+                self.log(
+                    "error binding {}: {}".format(
+                        short_sock_name,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
+                raise
+            else:
+                setattr(self, "{}_socket".format(short_sock_name), cur_socket)
+                os.chmod(file_name, 0777)
+                cur_socket.setsockopt(zmq.LINGER, 0)
+                cur_socket.setsockopt(zmq.SNDHWM, hwm_size)
+                cur_socket.setsockopt(zmq.RCVHWM, hwm_size)
+                if sock_type == zmq.PULL:
+                    self.register_poller(cur_socket, zmq.POLLIN, self._recv_command_ipc)
+
+    def _recv_command_ipc(self, *args, **kwargs):
+        _data = self.receiver_socket.recv()
+        self.log("got '{}' via IPC".format(_data))
+
     @RemoteCall()
     def stop_mon_process(self, srv_com, **kwargs):
         self.config_store["mon_is_running"] = False
@@ -421,4 +475,5 @@ class server_process(
     def loop_post(self):
         self.network_unbind()
         self.vector_socket.close()
+        self.receiver_socket.close()
         self.CC.close()

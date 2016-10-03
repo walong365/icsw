@@ -51,7 +51,7 @@ from .long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
 IDLE_LOOP_GRANULARITY = 10000.0
 
 
-class server_code(ICSWBasePool, HMHRMixin):
+class ServerCode(ICSWBasePool, HMHRMixin):
     def __init__(self):
         # monkey path process tools to allow consistent access
         process_tools.ALLOW_MULTIPLE_INSTANCES = False

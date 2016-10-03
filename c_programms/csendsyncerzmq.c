@@ -1,5 +1,5 @@
 /*
-    Copyright (C) 2001-2004,2009,2011-2015 Andreas Lang-Nevyjel, init.at
+    Copyright (C) 2013-2014 Andreas Lang-Nevyjel, init.at
 
     Send feedback to: <lang-nevyjel@init.at>
 
@@ -45,18 +45,15 @@
 #define STATE_OK 0
 #define STATE_WARNING 1
 #define STATE_CRITICAL 2
-#define FNAME "/var/run/.hoststat"
-#define SERVICE_NAME "tell_mother"
+#define SERVICE_NAME "md-sync-server"
 
 /* internal buffer sizes */
 #define ERRSTR_SIZE 512
 #define HOSTB_SIZE 256
-#define SENDBUFF_SIZE 32768
-#define IOBUFF_SIZE 32768
+#define IOBUFF_SIZE 16384
+#define SENDBUFF_SIZE 16384
 
 #include "parse_uuid.c"
-
-char *host_b;
 
 int err_message(char *str)
 {
@@ -65,10 +62,10 @@ int err_message(char *str)
     if (!errstr)
         return -ENOMEM;
     if (errno) {
-        sprintf(errstr, "An error occured : %s (%d) %s (%s)\n", str, errno,
-                strerror(errno), host_b);
+        sprintf(errstr, "An error occured (%d) : %s (%d) %s\n", getpid(), str,
+                errno, strerror(errno));
     } else {
-        sprintf(errstr, "An error occured : %s (%s)\n", str, host_b);
+        sprintf(errstr, "An error occured (%d) : %s\n", getpid(), str);
     }
     syslog(LOG_DAEMON | LOG_ERR, errstr);
     fprintf(stderr, errstr);
@@ -92,67 +89,51 @@ void mysigh(int dummy)
 int main(int argc, char **argv)
 {
     int ret, num, inlen, file, i /*, time */ , port, rchar, verbose, quiet,
-        retcode, write_file, timeout;
+        retcode, timeout, file_size;
     struct in_addr sia;
     struct hostent *h;
-    char *iobuff, *sendbuff, *filebuff, *act_pos, *act_source, *act_bp,
-        *dest_host, *src_ip, *uuid_buffer;
+    struct stat st;
+    char *iobuff, *filebuff, *act_pos, *act_source, *act_bp,
+        *dest_host, *uuid_buffer, *send_buffer;
     struct itimerval mytimer;
     struct sigaction *alrmsigact;
     struct utsname myuts;
     int colons_passed = 0;
+    int sendbuff_size = 1024;
 
     retcode = STATE_CRITICAL;
 
     timeout = 10;
-    port = 8000;
     verbose = 0;
     quiet = 0;
-    write_file = 1;
     h = NULL;
-    host_b = (char *)malloc(HOSTB_SIZE);
+    send_buffer = (char *)malloc(SENDBUFF_SIZE);
+    send_buffer[0] = 0;
     dest_host = (char *)malloc(HOSTB_SIZE);
-    src_ip = (char *)malloc(HOSTB_SIZE);
     dest_host[0] = 0;
-    src_ip[0] = 0;
     // get uts struct
     uname(&myuts);
     sprintf(dest_host, "localhost");
     while (1) {
-        rchar = getopt(argc, argv, "+vm:p:ht:wqi:");
+        rchar = getopt(argc, argv, "+vht:q");
         //printf("%d %c\n", rchar, rchar);
         switch (rchar) {
-        case 'p':
-            port = strtol(optarg, NULL, 10);
-            break;
-        case 'm':
-            sprintf(dest_host, optarg);
-            //h = gethostbyname(optarg);
-            //if (!h) err_exit("Can't resolve hostname");
-            break;
         case 't':
             timeout = strtol(optarg, NULL, 10);
             break;
         case 'v':
             verbose = 1;
             break;
-        case 'i':
-            sprintf(src_ip, optarg);
-            break;
         case 'q':
             quiet = 1;
-            break;
-        case 'w':
-            write_file = 0;
             break;
         case 'h':
         case '?':
             printf
-                ("Usage: %s [-t TIMEOUT] [-m HOST] [-i SRC_IP] [-p PORT] [-h] [-v] [-w] [-q] command\n",
+                ("Usage: %s [-t TIMEOUT] [-p PORT] [-h] [-v] [-q] filename\n",
                  basename(argv[0]));
-            printf("  defaults: port=%d, timeout=%d, dest_host=%s\n", port,
+            printf("  defaults: port=%d, timeout=%d\n", port,
                    timeout, dest_host);
-            free(host_b);
             exit(STATE_CRITICAL);
             break;
         }
@@ -160,57 +141,22 @@ int main(int argc, char **argv)
             break;
     }
     // generate connection string
-    sprintf(host_b, "tcp://%s:%d", dest_host, port);
 /*  errno = 0;*/
     //if (!h) err_exit("Wrong host or no host given!\n");
-    sendbuff = (char *)malloc(SENDBUFF_SIZE);
-    filebuff = (char *)malloc(SENDBUFF_SIZE);
-    if (!sendbuff) {
-        free(host_b);
-        exit(ENOMEM);
-    }
-    // mimic XML
-    sprintf(filebuff, "");
+    // get file size
     for (i = optind; i < argc; i++) {
-        // skip first space
-        if (i > optind)
-            sprintf(filebuff, "%s ", filebuff);
-        int new_len;
-        new_len = strlen(filebuff) + strlen(argv[i]) + 1;
-        if (new_len > SENDBUFF_SIZE) {
-            err_exit("buffer overrun");
-        }
-        sprintf(filebuff, "%s%s", filebuff, argv[i]);
-//        if (act_pos != sendbuff) *act_pos++=' ';
-//        act_source = argv[i];
-//        while (*act_source) *act_pos++=*act_source++;
-//        *act_pos = 0;
+        if (verbose) {
+            printf("[%2d] %s\n", i, argv[i]);
+        };
+        sprintf(send_buffer, "%s%d;%s;", send_buffer, strlen(argv[i]), argv[i]);
     }
-    struct sysinfo s_info;
-    sysinfo(&s_info);
-    int cur_uptime = s_info.uptime;
-    sprintf(sendbuff,
-            "<?xml version='1.0'?><ics_batch><nodeinfo>%s</nodeinfo><uptime>%d</uptime></ics_batch>",
-            filebuff, cur_uptime);
-    sendbuff[SENDBUFF_SIZE] = '\0';     /* terminate optarg for secure use of strlen() */
-    if (!strlen(sendbuff))
-        err_exit("Nothing to send!\n");
-    //printf("Send: %s %d\n", sendbuff, strlen(sendbuff));
-    // check if we have to write to FNAME
-    if (write_file) {
-        file =
-            open(FNAME, O_NOFOLLOW | O_WRONLY | O_CREAT | O_TRUNC,
-                 S_IREAD | S_IWRITE | S_IRGRP | S_IROTH);
-        if (file < 0)
-            err_exit("Can't open statusfile " FNAME " for writing");
-        if (write(file, filebuff, strlen(filebuff)) < 0)
-            err_message("Failed to write to " FNAME);
-        if (close(file) < 0)
-            err_message("Failed to close " FNAME);
-    }
+    send_buffer[SENDBUFF_SIZE] = '\0';  /* terminate optarg for secure use of strlen() */
     void *context = zmq_init(1);
-    void *requester = zmq_socket(context, ZMQ_DEALER);
-    char *identity_str = parse_uuid(src_ip);
+    void *requester = zmq_socket(context, ZMQ_PUSH);
+    char *identity_str = malloc(1000);
+    identity_str[0] = 0;
+    sprintf(identity_str, "%s:%s:%d", myuts.nodename, "sender", getpid());
+
     int tcp_keepalive, tcp_keepalive_idle;
     tcp_keepalive = 1;
     tcp_keepalive_idle = 300;
@@ -221,8 +167,7 @@ int main(int argc, char **argv)
                    sizeof(tcp_keepalive_idle));
     alrmsigact = (struct sigaction *)malloc(sizeof(struct sigaction));
     if (!alrmsigact) {
-        free(host_b);
-        free(sendbuff);
+        free(send_buffer);
         free(filebuff);
         exit(ENOMEM);
     }
@@ -233,39 +178,27 @@ int main(int argc, char **argv)
         if (verbose) {
             printf
                 ("send buffer has %d bytes, nodename is '%s', servicename is '%s', identity_string is '%s', pid is %d\n",
-                 strlen(sendbuff), myuts.nodename, SERVICE_NAME, identity_str,
+                 strlen(send_buffer), myuts.nodename, SERVICE_NAME, identity_str,
                  getpid());
-            printf("target is '%s'\n", host_b);
+            printf("send_str: '%s'\n", send_buffer);
         };
         getitimer(ITIMER_REAL, &mytimer);
         mytimer.it_value.tv_sec = timeout;
         mytimer.it_value.tv_usec = 0;
         setitimer(ITIMER_REAL, &mytimer, NULL);
         // send
-        zmq_connect(requester, host_b);
+        zmq_connect(requester, "ipc:///var/run/icsw/sockets/md-sync-server/receiver");
         zmq_msg_t request;
-        zmq_msg_init_size(&request, strlen(sendbuff));
-        memcpy(zmq_msg_data(&request), sendbuff, strlen(sendbuff));
+        zmq_msg_init_size(&request, strlen(send_buffer));
+        memcpy(zmq_msg_data(&request), send_buffer, strlen(send_buffer));
         zmq_sendmsg(requester, &request, 0);
         zmq_msg_close(&request);
-        // receive
-        zmq_msg_t reply;
-        zmq_msg_init(&reply);
-        zmq_recvmsg(requester, &reply, 0);
-        int reply_size = zmq_msg_size(&reply);
-        char *recv_buffer = malloc(reply_size + 1);
-        memcpy(recv_buffer, zmq_msg_data(&reply), reply_size);
-        recv_buffer[reply_size] = 0;
-        zmq_msg_close(&reply);
-        printf("%s\n", recv_buffer);
         retcode = STATE_OK;
     }
     zmq_close(requester);
     zmq_term(context);
-    free(sendbuff);
+    free(send_buffer);
     free(filebuff);
-    free(host_b);
     free(dest_host);
-    free(src_ip);
     exit(retcode);
 }

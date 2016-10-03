@@ -267,14 +267,14 @@ class all_commands(host_type_config):
         check_coms += [
             mon_check_command(
                 name="ochp-command",
-                command_line="$USER2$ -m DIRECT -s ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"{}\"".format(
+                command_line="/opt/cluster/sbin/csendsyncerzmq ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"{}\"".format(
                     "$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"
                 ),
                 description="OCHP Command"
             ),
             mon_check_command(
                 name="ocsp-command",
-                command_line="$USER2$ -m DIRECT -s ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"{}\" ".format(
+                command_line="/opt/cluster/sbin/csendsyncerzmq ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"{}\" ".format(
                     "$SERVICEOUTPUT$|$SERVICEPERFDATA$" if enable_perfd else "$SERVICEOUTPUT$"
                 ),
                 description="OCSP Command"

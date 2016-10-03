@@ -90,10 +90,13 @@ class SyncerProcess(threading_tools.process_obj):
             )
 
     def send_to_config_server(self, srv_com):
-        self.send_command(
-            self.__master_config.master_uuid,
-            unicode(srv_com),
-        )
+        if self.__master_config:
+            self.send_command(
+                self.__master_config.master_uuid,
+                unicode(srv_com),
+            )
+        else:
+            self.log("master_config still None in send_to_config_server()", logging_tools.LOG_LEVEL_WARN)
 
     def _distribute_info(self, dist_info, **kwargs):
         self.log("distribution info has {}".format(logging_tools.get_plural("entry", len(dist_info))))

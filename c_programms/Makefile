@@ -10,6 +10,7 @@ INDENT_OPTIONS=-linux --no-tabs --indent-level4
 ###############################################################################
 # Directories
 ###############################################################################
+
 ICSW_BASE=/opt/cluster
 ICSW_SBIN=$(ICSW_BASE)/sbin
 ifeq ($(shell getconf LONG_BIT), 64)
@@ -21,7 +22,7 @@ endif
 ###############################################################################
 # Files
 ###############################################################################
-progs=csnmpclientzmq ccollclientzmq tell_mother_zmq hoststatus_zmq send_collectd_zmq
+progs=csnmpclientzmq ccollclientzmq tell_mother_zmq hoststatus_zmq send_collectd_zmq csendsyncerzmq
 
 ###############################################################################
 # Targets
