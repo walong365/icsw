@@ -443,7 +443,7 @@ angular.module(
                         height: "auto"
                         fontFamily: "'Open-Sans', sans-serif"
                         fontSize: "10pt"
-                        viewBox: "0 10 220 160"
+                        viewBox: "5 11 210 121"
                     }
                     [
                         g(
