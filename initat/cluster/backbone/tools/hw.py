@@ -2,6 +2,7 @@ from collections import defaultdict, OrderedDict
 from enum import IntEnum
 import re
 from docutils.nodes import entry
+from initat.tools.server_command import srv_command
 
 
 SIZE_RE = re.compile("(\d*) ([kMG])B")
@@ -174,15 +175,16 @@ def _parse_lsblk(dump):
 
 class Hardware(object):
     def __init__(self, lshw_dump=None, win32_tree=None, dmi_head=None,
-                 lsblk_dump=None):
+                 lsblk_dump=None, partinfo_tree=None):
         self.cpus = []
         self.memory = None
         self.memory_modules = []
         self.gpus = []
         self.hdds = []
+        self.logical_disks = []
         self.network_devices = []
 
-        self._partitions = []
+        self._mount_point_logical_disks = {}
 
         if lsblk_dump:
             self._process_lsblk(lsblk_dump)
@@ -192,6 +194,8 @@ class Hardware(object):
             self._process_win32(win32_tree)
         if dmi_head:
             self._process_dmi_head(dmi_head)
+        if partinfo_tree is not None:
+            self._process_partinfo(partinfo_tree)
 
     def _process_lsblk(self, lsblk_dump):
         self._lsblk_dump = lsblk_dump
@@ -200,27 +204,26 @@ class Hardware(object):
         for e in entries:
             type_entries[e['TYPE']].append(e)
 
-        # disk
         name_object = {}
         for disk_entry in type_entries['disk']:
             hdd = HardwareHdd(lsblk_entry=disk_entry)
             self.hdds.append(hdd)
             name_object[hdd.device_name] = hdd
-        # partitions
-        self._partitions = []
-        self._logicals = []
+        # disk, partitions
         for part_entry in type_entries['part']:
             partition = Partition(lsblk_entry=part_entry)
             logical = LogicalDisc(lsblk_entry=part_entry)
             partition.logical = logical
-            self._logicals.append(logical)
-            self._partitions.append(partition)
             # add partition to the disk
             parent_hdd = name_object.get(partition._parent)
             if parent_hdd:
                 parent_hdd.partitions.append(partition)
-
-        self.type_entries = type_entries
+        # logical disk
+        for entry in entries:
+            logical = LogicalDisc(lsblk_entry=entry)
+            if logical.mount_point:
+                self._mount_point_logical_disks[logical.mount_point] = \
+                    logical
 
     def _process_lshw(self, lshw_dump):
         for sub_tree in lshw_dump.xpath(
@@ -274,6 +277,7 @@ class Hardware(object):
         logical_path_logical = {}
         for sub_tree in win32_tree['Win32_LogicalDisk']:
             logical = LogicalDisc(win32_tree=sub_tree)
+            self.logical_disks.append(logical)
             logical_path_logical[logical._path_w32] = logical
 
         partition_path_logical = self._map_win32(
@@ -310,6 +314,30 @@ class Hardware(object):
             # don't add empty slots
             if memory_module.capacity:
                 self.memory_modules.append(memory_module)
+
+    def _process_partinfo(self, partinfo_tree):
+        info_keys = ['dev_dict', 'partitions', 'lvm_dict', 'disk_usage']
+
+        # parse result XML
+        result = srv_command(source=partinfo_tree)
+        self._partinfo_tree = {}
+        for info_key in info_keys:
+            res_tree = result[info_key]
+            if not isinstance(res_tree, dict):
+                res_tree = result._interpret_el(res_tree)
+            self._partinfo_tree[info_key] = res_tree
+
+        # add disk usage information to logical disks
+        disk_free = self._partinfo_tree['disk_usage']
+        for usage in disk_free:
+            mountpoint = usage['mountpoint']
+            try:
+                logical = self._mount_point_logical_disks[mountpoint]
+            except KeyError:
+                pass
+            else:
+                logical.free_space = usage['free']
+                self.logical_disks.append(logical)
 
     @staticmethod
     def _map_win32(sub_tree):
@@ -616,6 +644,8 @@ class LogicalDisc(HardwareBase):
         entry = self._lsblk_entry
         self.device_name = entry['KNAME']
         self.mount_point = entry['MOUNTPOINT']
+        if self.mount_point == '[SWAP]':
+            self.mount_point = None
         self.file_system = self.type_map.get(entry['FSTYPE'], entry['FSTYPE'])
         self.size = entry['SIZE']
         self.free_space = 0

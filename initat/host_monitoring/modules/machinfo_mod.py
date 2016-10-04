@@ -86,6 +86,19 @@ class _general(hm_classes.hm_module):
             "{} -aOrbp".format(self.lsblk_bin))
         return server_command.compress(_lsblk_result)
 
+    def _disk_usage_int(self):
+        usages = []
+        for partition in psutil.disk_partitions():
+            try:
+                disk_usage = psutil.disk_usage(partition.mountpoint)
+            except OSError:
+                pass
+            else:
+                res = dict(disk_usage.__dict__)
+                res['mountpoint'] = partition.mountpoint
+                usages.append(res)
+        return usages
+
     def _dmiinfo_int(self):
         # _dmi_stat, _dmi_result = commands.getstatusoutput(self.dmi_bin)
         with tempfile.NamedTemporaryFile() as tmp_file:
@@ -2136,6 +2149,7 @@ class partinfo_command(hm_classes.hm_command):
             } for _part in _all_parts
         ]
         srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
+        srv_com["disk_usage"] = self.module._disk_usage_int()
 
     def interpret(self, srv_com, cur_ns):
         dev_dict, lvm_dict = (

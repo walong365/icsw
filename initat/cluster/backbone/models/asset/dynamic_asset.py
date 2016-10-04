@@ -1106,6 +1106,7 @@ class AssetBatch(models.Model):
             AssetType.LSHW: "lshw_dump",
             AssetType.DMI: "dmi_head",
             AssetType.LSBLK: "lsblk_dump",
+            AssetType.PARTITION: "partinfo_tree",
             }
 
         # search for relevant asset runs and Base64 decode and unzip the result
@@ -1125,17 +1126,19 @@ class AssetBatch(models.Model):
                         blob = run.raw_result
                         arg_value = json.loads(blob)
                     elif run.scan_type == ScanType.HM:
-
                         tree = run.raw_result
-                        blob = tree.xpath(
-                            'ns0:{}'.format(arg_name),
-                            namespaces=tree.nsmap
-                        )[0].text
-                        blob = bz2.decompress(base64.b64decode(blob))
-                        if run.run_type == AssetType.LSHW:
-                            arg_value = etree.fromstring(blob)
+                        if run.run_type == AssetType.PARTITION:
+                            arg_value = tree
                         else:
-                            arg_value = blob
+                            blob = tree.xpath(
+                                'ns0:{}'.format(arg_name),
+                                namespaces=tree.nsmap
+                            )[0].text
+                            blob = bz2.decompress(base64.b64decode(blob))
+                            if run.run_type == AssetType.LSHW:
+                                arg_value = etree.fromstring(blob)
+                            else:
+                                arg_value = blob
 
                 run_results[arg_name] = arg_value
 
@@ -1176,7 +1179,6 @@ class AssetBatch(models.Model):
 
         # set the discs and partitions
         fs_dict = {fs.name: fs for fs in partition_fs.objects.all()}
-
         name = "_".join([self.device.name, "part", str(self.idx)])
         partition_table_ = partition_table(
             name=name,
@@ -1187,6 +1189,8 @@ class AssetBatch(models.Model):
             disc = partition_disc(
                 partition_table=partition_table_,
                 disc=hdd.device_name,
+                size=hdd.size,
+                serial=hdd.serial if hdd.serial else '',
             )
             disc.save()
 
@@ -1205,18 +1209,21 @@ class AssetBatch(models.Model):
                 except KeyError:
                     pass
                 partition_.partition_fs = partition_fs_
-                if hdd_partition.logical:
+                if logical:
                     partition_.mountpoint = logical.mount_point
                 partition_.save()
-                if logical:
-                    logical = LogicalDisc(
-                        device_name=logical.device_name,
-                        partition_fs=partition_fs_,
-                        size=logical.size,
-                        free_space=logical.free_space,
-                    )
-                    logical.save()
-                    logical.partitions.add(partition_)
+
+        for logical in hw.logical_disks:
+            logical_db = LogicalDisc(
+                partition_table=partition_table_,
+                device_name=logical.device_name,
+                partition_fs=partition_fs_,
+                size=logical.size,
+                free_space=logical.free_space,
+            )
+            logical_db.save()
+            logical_db.partitions.add(partition_)
+
         self.partition_table = partition_table_
         # set the partition info on the device
         self.device.act_partition_table = partition_table_
