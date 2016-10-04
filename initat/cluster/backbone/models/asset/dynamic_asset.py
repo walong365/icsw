@@ -1004,12 +1004,8 @@ class AssetBatch(models.Model):
     displays = models.ManyToManyField(AssetHWDisplayEntry)
 
     @property
-    def partition_table(self):
-        return self.device.act_partition_table
-
-    @property
     def partition_table_length(self):
-        if self.device.act_partition_table:
+        if self.partition_table:
             return 1
         return 0
 
