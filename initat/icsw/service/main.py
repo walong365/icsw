@@ -33,6 +33,7 @@ from .. import icsw_logging
 from . import transition
 from .constants import STATE_DICT, LIC_STATE_DICT, CONF_STATE_DICT
 from .tools import query_local_meta_server
+from initat.icsw.icsw_tools import ICSW_DEBUG_MODE
 
 
 def show_form_list(form_list):
@@ -132,11 +133,20 @@ def main(opt_ns):
     if opt_ns.childcom == "version":
         version_command(opt_ns)
     elif opt_ns.childcom == "status":
+        if ICSW_DEBUG_MODE:
+            # activatge debug mode
+            from django.conf import settings
+            settings.DEBUG = True
         if opt_ns.interactive:
             from . import console
             console.main(opt_ns, cur_c, inst_xml)
         else:
             cur_c.check_system(opt_ns, inst_xml)
+            if ICSW_DEBUG_MODE:
+                from django.db import connection
+                import pprint
+                pprint.pprint(connection.queries)
+                print("performed {:d} queries".format(len(connection.queries)))
             form_list = cur_c.instance_to_form_list(opt_ns, inst_xml.tree)
             show_form_list(form_list)
             _res = inst_xml.tree.findall(".//result")

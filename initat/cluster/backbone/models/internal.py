@@ -25,6 +25,7 @@
 from django.db import models
 from django.db.models import Q
 from django.db.utils import ProgrammingError, DatabaseError
+from initat.cluster.backbone.models.functions import memoize_with_expiry
 
 
 __all__ = [
@@ -52,6 +53,7 @@ class ICSWVersion(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     @staticmethod
+    @memoize_with_expiry(5)
     def get_latest_db_dict():
         try:
             if ICSWVersion.objects.all().count():

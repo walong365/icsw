@@ -136,7 +136,12 @@ class _LicenseManager(models.Manager):
         # TODO: new_install?
         if not self._license_readers:
             return LicenseState.none
-        return max([r.get_license_state(license, parameters) for r in self._license_readers])
+        _states = [r.get_license_state(license, parameters) for r in self._license_readers]
+        _valid_states = [_state for _state in _states if _state not in [LicenseState.fp_mismatch]]
+        if len(_valid_states):
+            return max(_valid_states)
+        else:
+            return LicenseState.fp_mismatch
 
     ########################################
     # Accessors for actual program logic
@@ -157,6 +162,7 @@ class _LicenseManager(models.Manager):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         _pure_content = LicenseFileReader.get_pure_data(lic_content)
         _present = False
+        # only compare with the latest version ? ToDo, Fixme
         for value in self.values_list("license_file", flat=True):
             _loc_pc = LicenseFileReader.get_pure_data(value)
             if _loc_pc == _pure_content:
@@ -214,11 +220,15 @@ class _LicenseManager(models.Manager):
     @memoize_with_expiry(10, _cache=_license_readers_cache)
     def _license_readers(self):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
+        from initat.cluster.backbone.models import device_variable
+        from initat.tools import hfp_tools
+        cluster_id = device_variable.objects.get_cluster_id()
+        cur_fp = hfp_tools.get_server_fp(serialize=True)
         readers = []
         for file_content, file_name in self.values_list('license_file', 'file_name'):
             try:
                 readers.append(
-                    LicenseFileReader(file_content, file_name)
+                    LicenseFileReader(file_content, file_name, cluster_id=cluster_id, current_fingerprint=cur_fp)
                 )
             except LicenseFileReader.InvalidLicenseFile as e:
                 logger.error(
@@ -253,6 +263,7 @@ class License(models.Model):
     class Meta:
         app_label = "backbone"
         verbose_name = "License"
+        ordering = ("idx",)
 
 
 @receiver(signals.post_save, sender=License)

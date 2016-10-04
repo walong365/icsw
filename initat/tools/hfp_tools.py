@@ -47,8 +47,10 @@ def get_server_fp(serialize=False):
     _devs_with_server = {
         _dev.pk: _dev for _dev in device.objects.filter(
             Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.cluster_server.name)
+        ).select_related(
+            "domain_tree_node",
         ).prefetch_related(
-            "hardwarefingerprint_set"
+            "hardwarefingerprint_set",
         ).all()
     }
     _s_dict = {}
