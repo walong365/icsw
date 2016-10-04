@@ -75,22 +75,6 @@ class SyncerProcess(threading_tools.process_obj):
         if self.__local_master:
             self.__local_master.send_satellite_info()
 
-    # def send_to_config_server(self, srv_com):
-    #    # only called on distribution master
-    #    if self.__master_config:
-    #        self.send_command(
-    #            self.__master_config.master_uuid,
-    #            unicode(srv_com),
-    #        )
-    #    else:
-    #        self.log("master_config still None in send_to_config_server()", logging_tools.LOG_LEVEL_WARN)
-
-    # def send_to_sync_master(self, srv_com):
-    #    self.send_command(
-    #        self.__local_master.config_store["master.uuid"],
-    #        unicode(srv_com),
-    #    )
-
     def _distribute_info(self, dist_info, **kwargs):
         self.log("distribution info has {}".format(logging_tools.get_plural("entry", len(dist_info))))
         for _di in dist_info:
