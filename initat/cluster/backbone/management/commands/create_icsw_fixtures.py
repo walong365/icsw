@@ -372,7 +372,7 @@ class Command(BaseCommand):
         factories.LogSourceFactory(identifier="webfrontend", description="via Webfrontend", device=None)
         factories.LogSourceFactory(identifier="commandline", description="via CommandLine", device=None)
         # partition fs
-        factories.PartitionFS(name="unknown", identifier="f", descr="Unknown Filesystem")
+        factories.PartitionFS(name="unknown", identifier="f", descr="Unknown Filesystem", need_hexid=False, hexid="")
         factories.PartitionFS(name="reiserfs", identifier="f", descr="ReiserFS Filesystem", hexid="83", kernel_module="reiserfs")
         factories.PartitionFS(name="ext2", identifier="f", descr="Extended 2 Fileystem", hexid="83", kernel_module="ext2")
         factories.PartitionFS(name="ext3", identifier="f", descr="Extended 3 Fileystem", hexid="83", kernel_module="ext3")
