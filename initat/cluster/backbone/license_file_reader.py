@@ -284,6 +284,7 @@ class LicenseFileReader(object):
                 'date': pack_xml.findtext("icsw:package-meta/icsw:package-date", namespaces=ICSW_XML_NS_MAP),
                 'customer': package_customer_map[pack_xml].findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
                 'type_name': pack_xml.findtext("icsw:package-meta/icsw:package-type-name", namespaces=ICSW_XML_NS_MAP),
+                # attention: the following structure is also used in webfrontend / license.coffee:67ff
                 "lic_info": {
                     cluster_xml.get("id"): {
                         "licenses": extract_cluster_data(
