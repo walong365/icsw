@@ -246,6 +246,10 @@ class ReportDataAvailable(View):
                 idx_list = _list
                 break
 
+        assetbatch_id = request.POST.get("assetbatch_id", None)
+        if assetbatch_id:
+            assetbatch_id = int(assetbatch_id)
+
         pk_setting_dict = {}
 
         meta_devices = []
@@ -260,7 +264,7 @@ class ReportDataAvailable(View):
                 meta_devices.append(_device)
                 continue
 
-            selected_runs = _select_assetruns_for_device(_device)
+            selected_runs = _select_assetruns_for_device(_device, assetbatch_id=assetbatch_id)
             selected_run_info_array = \
                 [(ar.run_type, str(ar.run_start_time), ar.asset_batch.idx) for ar in selected_runs]
 
@@ -367,7 +371,5 @@ def _init_report_settings(request):
     for _device in device.objects.filter(idx__in=[int(pk) for pk in pk_settings.keys()]):
         if not _device.is_meta_device:
             _devices.append(_device)
-
-    print "**", pk_settings, _devices
 
     return pk_settings, _devices

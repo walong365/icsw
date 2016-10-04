@@ -47,7 +47,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 
-from initat.cluster.backbone.models import network
+from initat.cluster.backbone.models import network, AssetBatch
 from initat.cluster.backbone.models import user
 from initat.cluster.backbone.models.report import ReportHistory
 from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
@@ -1110,7 +1110,7 @@ class PDFReportGenerator(ReportGenerator):
         report.add_buffer_to_report(_buffer)
 
     def __generate_device_assetrun_reports(self, _device, report_settings, root_report):
-        assetruns = _select_assetruns_for_device(_device)
+        assetruns = _select_assetruns_for_device(_device, assetbatch_id=report_settings["assetbatch_id"])
 
         row_collector = RowCollector()
 
@@ -2177,7 +2177,7 @@ class XlsxReportGenerator(ReportGenerator):
             self.__generate_device_overview(_device, workbook)
             device_report = DeviceReport(_device, self.device_settings[_device.idx], _device.full_name)
 
-            selected_runs = _select_assetruns_for_device(_device)
+            selected_runs = _select_assetruns_for_device(_device, self.device_settings[_device.idx]["assetbatch_id"])
 
             for ar in selected_runs:
                 if not device_report.module_selected(ar):
@@ -2514,18 +2514,24 @@ def _generate_hardware_info_data_dict(_devices):
     return data
 
 
-def _select_assetruns_for_device(_device):
+def _select_assetruns_for_device(_device, assetbatch_id=None):
     selected_asset_runs = []
+    selected_assetbatch = None
 
-    # search latest assetbatch and generate
-    if _device.assetbatch_set.all():
-        for assetbatch in reversed(sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)):
-            if assetbatch.is_finished_processing:
-                for assetrun in assetbatch.assetrun_set.all():
-                    if assetrun.has_data():
-                        selected_asset_runs.append(assetrun)
-                break
+    if assetbatch_id:
+        selected_assetbatch = AssetBatch.objects.get(idx=assetbatch_id)
+    else:
+        # search latest assetbatch and generate
+        if _device.assetbatch_set.all():
+            for assetbatch in reversed(sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)):
+                if assetbatch.is_finished_processing:
+                    selected_assetbatch = assetbatch
+                    break
 
+    if selected_assetbatch:
+        for assetrun in selected_assetbatch.assetrun_set.all():
+            if assetrun.has_data():
+                selected_asset_runs.append(assetrun)
     sorted_runs = {}
 
     for ar in selected_asset_runs:

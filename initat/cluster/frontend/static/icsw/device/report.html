@@ -405,9 +405,10 @@
     </td>
     <td style="height:40px; vertical-align: middle;">{{ obj.comment }}</td>
     <td style="height:40px; vertical-align: middle;">
-        <select class="form-control" ng-show="obj.$$available_scans.length > 0" ng-model="obj.$$selected_assetbatch">
+        <select class="form-control" ng-show="obj.$$available_scans.length > 0" ng-model="obj.$$selected_assetbatch" ng-change="assetbatch_selection_change(obj)">
             <option ng-repeat="scan in obj.$$available_scans" value="{{scan.idx}}">{{scan.$$report_option_string}}</option>
         </select>
+        <div class="text-center" ng-show="obj.$$available_scans.length == 0">No scan data available!</div>
     </td>
 </script>
 
