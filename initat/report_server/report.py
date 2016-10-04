@@ -1519,26 +1519,48 @@ class PDFReportGenerator(ReportGenerator):
                     style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD))])
 
-        data = [["Name", "Driver Version"]]
+        data = [["Name"]]
         for gpu in hardware_report_ar.asset_batch.gpus.all():
             data.append([Paragraph(str(gpu.name), style_sheet["BodyText"])])
 
         p0_2 = Paragraph('<b>GPUs:</b>', style_sheet["BodyText"])
         t_2 = Table(data,
-                    colWidths=(available_width * 0.88 * 0.50,
-                               available_width * 0.88 * 0.50),
+                    colWidths=(available_width * 0.88 * 1.0),
                     style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
         data = [["Name", "Serialnumber", "Size"]]
-        if hardware_report_ar.asset_batch.partition_table:
-            for hdd in hardware_report_ar.asset_batch.partition_table.partition_disc_set.all():
-                data.append([Paragraph(str(hdd.disc), style_sheet["BodyText"]),
-                                 Paragraph(str("N/A"), style_sheet["courier"]),
-                                 Paragraph(str("N/A"), style_sheet["BodyText"])])
+        if hardware_report_ar.asset_batch.device.act_partition_table:
+            for hdd in hardware_report_ar.asset_batch.device.act_partition_table.partition_disc_set.all():
+                hdd_name = "N/A"
+                hdd_serial = "N/A"
+                hdd_size = "N/A"
 
-        p0_3 = Paragraph('<b>HDDs:</b>', style_sheet["BodyText"])
+                if hdd.disc:
+                    hdd_name = hdd.disc
+                if hdd.serial:
+                    hdd_serial = hdd.serial
+                if hdd.size:
+                    hdd_size = sizeof_fmt(hdd.size)
+
+                data.append([Paragraph(hdd_name, style_sheet["BodyText"]),
+                                 Paragraph(hdd_serial, style_sheet["courier"]),
+                                 Paragraph(hdd_size, style_sheet["BodyText"])])
+
+                for partition in hdd.partition_set.all():
+                    mountpoint = "N/A"
+                    if partition.mountpoint:
+                        mountpoint = partition.mountpoint
+
+                    size = "N/A"
+                    if partition.size:
+                        size = sizeof_fmt(partition.size)
+
+                    data.append([mountpoint, "", size])
+
+
+        p0_3 = Paragraph('<b>HDDs & Partitions:</b>', style_sheet["BodyText"])
         t_3 = Table(data,
                     colWidths=(available_width * 0.88 * 0.33,
                                available_width * 0.88 * 0.34,
