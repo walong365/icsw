@@ -229,7 +229,6 @@ class LicenseFileReader(object):
         for reader in license_readers:
             packages_xml = reader.get_license_packages_xml()
             customer_xml = reader.get_customer_xml()
-            print reader.current_fingerprint
             # packages might be contained in multiple package files; we need to take each exactly once in the highest id
             for pack_xml in packages_xml:
                 uuid = pack_xml.findtext("icsw:package-meta/icsw:package-uuid", namespaces=ICSW_XML_NS_MAP)
