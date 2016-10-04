@@ -72,7 +72,7 @@ class server_process(
         self.register_func("send_signal", self._send_signal)
         self.register_func("ocp_command", self._ocp_command)
         self.__latest_status_query = None
-        self.register_timer(self._update, 3, instant=True)
+        self.register_timer(self._update, 30, instant=True)
         # _srv_com = server_command.srv_command(command="status")
         # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
 
