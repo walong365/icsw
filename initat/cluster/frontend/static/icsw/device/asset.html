@@ -189,6 +189,7 @@
                 <th class="text-center">CPU Info</th>
                 <th class="text-center">GPU Info</th>
                 <th class="text-center">NIC Info</th>
+                <th class="text-center">HDD Info</th>
                 <th class="text-center">Action</th>
             </tr>
         </thead>
@@ -204,6 +205,7 @@
                 <td class="text-center"><div ng-class="assetbatch.$$cpus_availability_class"><strong>{{ assetbatch.$$cpus_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$gpus_availability_class"><strong>{{ assetbatch.$$gpus_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$network_devices_availability_class"><strong>{{ assetbatch.$$network_devices_availability_text }}</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$partition_table_availability_class"><strong>{{ assetbatch.$$partition_table_availability_text }}</strong></div></td>
                 <td class="text-center">
                     <div>
                         <button type="button" class="btn btn-sm btn-primary" ng-disabled="!assetbatch.is_finished_processing" ng-click="open_in_new_tab(assetbatch, -1)">{{ assetbatch.is_finished_processing ? "Open in new Tab" : "Still Processing..." }}</button>
@@ -687,6 +689,60 @@
     </table>
 </script>
 
+<script type="text/ng-template" id="icsw.asset.details.hw.hdd">
+    <h3>
+        HDD & Partition Information
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        st-safe-src="tab.asset_batch.hdds"
+        st-table="assets_shown_hdd_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Identifier</th>
+                <th>Serialnumber</th>
+                <th>Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat-start="obj in assets_shown_hdd_entries">
+                <td>{{ obj.identifier }}</td>
+                <td>{{ obj.serialnumber }}</td>
+                <td>{{ obj.size }}</td>
+            </tr>
+            <tr ng-repeat-end ng-if="obj.partitions.length > 0">
+                <td colspan="99">
+                    <table class="table table-condensed table-striped simple-border">
+                        <thead>
+                            <tr>
+                                <th>Mountpoint</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="partition in obj.partitions">
+                                <td>{{ partition.mountpoint }}</td>
+                                <td>{{ partition.size }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
 <script type="text/ng-template" id="icsw.asset.details.all">
     <br/>
     <uib-tabset>
@@ -731,6 +787,12 @@
                 <span>Installed Network Devices(s)</span>
             </uib-tab-heading>
             <icsw-asset-details-hardware-nic-table icsw-tab="tab"></icsw-asset-details-hardware-nic-table>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>HDD & Partition Information</span>
+            </uib-tab-heading>
+            <icsw-asset-details-hardware-hdd-table icsw-tab="tab"></icsw-asset-details-hardware-hdd-table>
         </uib-tab>
     </uib-tabset>
 </script>

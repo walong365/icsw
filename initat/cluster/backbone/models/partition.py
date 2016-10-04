@@ -352,7 +352,7 @@ class partition_table(models.Model):
         if u"/" in sys_mps:
             prob_list.append(
                 (
-                    logging_tools.LOG_LEVEL_ERROR, "'/' is defined as system parition", True
+                    logging_tools.LOG_LEVEL_ERROR, "'/' is defined as system partition", True
                 )
             )
         if u"/" not in phys_mps:
