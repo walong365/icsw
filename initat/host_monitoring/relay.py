@@ -808,6 +808,28 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                     server_command.SRV_REPLY_STATE_CRITICAL,
                 )
 
+    def send_passive_results_to_master(self, result_list):
+        self.log("sending {} to master".format(logging_tools.get_plural("passive result", len(result_list))))
+        srv_com = server_command.srv_command(
+            command="passive_check_results"
+        )
+        _bldr = srv_com.builder()
+        srv_com["results"] = _bldr.passive_results(
+            *[
+                # FIXME, TODO
+                _bldr.passive_result("d")
+            ]
+        )
+        self._send_to_master(srv_com)
+
+    def send_passive_results_as_chunk_to_master(self, ascii_chunk):
+        self.log("sending passive chunk (size {:d}) to master".format(len(ascii_chunk)))
+        srv_com = server_command.srv_command(
+            command="passive_check_results_as_chunk",
+            ascii_chunk=ascii_chunk,
+        )
+        self._send_to_master(srv_com)
+
     def _show_config(self):
         try:
             for log_line, log_level in global_config.get_log():

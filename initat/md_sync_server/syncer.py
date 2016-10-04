@@ -54,6 +54,7 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("distribute_info", self._distribute_info)
         self.register_func("satellite_info", self._satellite_info)
         self.register_func("slave_command", self._slave_command)
+        self.register_func("check_result", self._check_result)
         self.__build_in_progress, self.__build_version = (False, 0)
         # setup local master, always set (also on satellite nodes)
         self.__local_master = None
@@ -72,16 +73,21 @@ class SyncerProcess(threading_tools.process_obj):
         self.__log_template.close()
 
     def _init_local_master(self):
+        # init local master as soon as MD_TYPE is set / known
         if not self.__local_master and "MD_TYPE" in global_config:
+            # this is called on all devices with a mon instance
+            self.log("init local master")
             self.__local_master = SyncConfig(self, None, distributed=False)
             if self.__master_config:
+                # only on distribution master
                 self.__master_config.set_local_master(self.__local_master)
+            # to be registered at dist master ?
             self._check_for_register_at_master()
         self._send_satellite_info()
 
     def _send_satellite_info(self):
         if self.__registered_at_master and self.__local_master:
-            self.send_to_config_server(
+            self.send_to_sync_master(
                 server_command.srv_command(
                     command="satellite_info",
                     uuid=self.__local_master.config_store["slave.uuid"],
@@ -90,6 +96,7 @@ class SyncerProcess(threading_tools.process_obj):
             )
 
     def send_to_config_server(self, srv_com):
+        # only called on distribution master
         if self.__master_config:
             self.send_command(
                 self.__master_config.master_uuid,
@@ -97,6 +104,15 @@ class SyncerProcess(threading_tools.process_obj):
             )
         else:
             self.log("master_config still None in send_to_config_server()", logging_tools.LOG_LEVEL_WARN)
+
+    def send_to_sync_master(self, srv_com):
+        if self.__registered_at_master:
+            self.send_command(
+                self.__local_master.config_store["master.uuid"],
+                unicode(srv_com),
+            )
+        else:
+            self.log("slave not registered at master")
 
     def _distribute_info(self, dist_info, **kwargs):
         self.log("distribution info has {}".format(logging_tools.get_plural("entry", len(dist_info))))
@@ -158,6 +174,7 @@ class SyncerProcess(threading_tools.process_obj):
         self.send_info_message()
 
     def send_info_message(self):
+        # from dist master to md-config-server
         info_list = [
             _entry.get_info_dict() for _entry in [self.__master_config] + self.__slave_configs.values()
         ]
@@ -166,7 +183,7 @@ class SyncerProcess(threading_tools.process_obj):
             action="info_list",
             slave_info=server_command.compress(info_list, json=True)
         )
-        self.send_command(self.__master_config.master_uuid, unicode(srv_com))
+        self.send_to_config_server(srv_com)
 
     def send_command(self, src_id, srv_com):
         self.send_pool_message("send_command", src_id, srv_com)
@@ -199,6 +216,7 @@ class SyncerProcess(threading_tools.process_obj):
     def _check_for_register_at_master(self):
         if not self.__registered_at_master and "master.uuid" in self.__local_master.config_store:
             self.__registered_at_master = True
+            # open connection to master server
             self.send_pool_message(
                 "register_remote",
                 self.__local_master.config_store["master.ip"],
@@ -256,6 +274,15 @@ class SyncerProcess(threading_tools.process_obj):
                 self.log("unknown slave '{}'".format(slave_name), logging_tools.LOG_LEVEL_CRITICAL)
         else:
             self.log("unknown build_info '{}'".format(str(args)), logging_tools.LOG_LEVEL_CRITICAL)
+
+    def _check_result(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        if self.__master_config:
+            # distribution master, forward to ocsp / ochp process
+            self.send_pool_message("ocp_command", unicode(srv_com))
+        else:
+            # distribution slave, send to sync-master
+            self.send_to_sync_master(srv_com)
 
     def _slave_command(self, *args, **kwargs):
         # generic slave command

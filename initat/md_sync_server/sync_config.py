@@ -74,12 +74,13 @@ class FileInfo(object):
 
     def store_result(self, remote_result):
         self.created = remote_result["created"]
-        print "*", self.created, remote_result["version"], self.target_version
+        # print "*", self.created, remote_result["version"], self.target_version
         if remote_result["version"] != self.target_version:
             self.created = False
 
     @property
     def is_pending(self):
+        # print "ip", self.created, self.error, self.path
         return True if (not self.created and not self.error) else False
 
     @property
@@ -194,8 +195,8 @@ class SyncConfig(object):
         return r_dict
 
     def store_satellite_info(self, si_info):
-        import pprint
-        pprint.pprint(si_info)
+        # import pprint
+        # pprint.pprint(si_info)
         for _key in si_info.get("config_store", {}).keys():
             self.config_store[_key] = si_info["config_store"][_key]
         if "store_info" in si_info:
@@ -221,7 +222,7 @@ class SyncConfig(object):
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
-            "[sc {}] {}".format(
+            u"[sc {}] {}".format(
                 self.name if self.name else "master",
                 what
             ),
@@ -328,7 +329,8 @@ class SyncConfig(object):
     def _build_file_content(self, _send_list):
         srv_com = self._get_slave_srv_command(
             "file_content_bulk",
-            version="{:d}".format(int(self.send_time)),
+            config_version_send="{:d}".format(self.config_version_send),
+            send_time="{:d}".format(int(self.send_time)),
         )
         _bld = srv_com.builder()
 
@@ -404,6 +406,7 @@ class SyncConfig(object):
 
     def handle_remote_sync_slave(self, srv_com):
         # max uncompressed send size
+        self.config_version_build = int(srv_com["*config_version_build"])
         MAX_SEND_SIZE = 65536
         cur_time = time.time()
         if self.slave_ip:
@@ -433,7 +436,7 @@ class SyncConfig(object):
                     version="{:d}".format(int(self.send_time)),
                 )
                 _bld = srv_com.builder()
-                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs]),
+                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
                 self.send_slave_command(srv_com)
             _send_list, _send_size = ([], 0)
             # clear file dict
@@ -499,7 +502,7 @@ class SyncConfig(object):
             self._clear_dir(dir_name)
 
     def handle_direct_file_content_bulk(self, srv_com):
-        new_vers = int(srv_com["*version"])
+        new_vers = int(srv_com["*config_version_send"])
         _file_list = srv_com["file_list"][0]
         _bulk = bz2.decompress(base64.b64decode(srv_com["*bulk"]))
         cur_offset = 0

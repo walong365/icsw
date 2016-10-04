@@ -144,6 +144,11 @@ int main(int argc, char **argv)
 /*  errno = 0;*/
     //if (!h) err_exit("Wrong host or no host given!\n");
     // get file size
+    char *identity_str = malloc(1000);
+    identity_str[0] = 0;
+    sprintf(identity_str, "%s:%s:%d", myuts.nodename, "sender", getpid());
+    sprintf(send_buffer, ";2;%s;%s;%d;%d;%d;", identity_str, "", 0,
+            timeout, 0);
     for (i = optind; i < argc; i++) {
         if (verbose) {
             printf("[%2d] %s\n", i, argv[i]);
@@ -153,9 +158,6 @@ int main(int argc, char **argv)
     send_buffer[SENDBUFF_SIZE] = '\0';  /* terminate optarg for secure use of strlen() */
     void *context = zmq_init(1);
     void *requester = zmq_socket(context, ZMQ_PUSH);
-    char *identity_str = malloc(1000);
-    identity_str[0] = 0;
-    sprintf(identity_str, "%s:%s:%d", myuts.nodename, "sender", getpid());
 
     int tcp_keepalive, tcp_keepalive_idle;
     tcp_keepalive = 1;

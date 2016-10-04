@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ interface to control icinga daemon for md-sync-server """
+
+import codecs
 import os
 import time
 import subprocess
@@ -62,6 +64,8 @@ class ExternalProcess(object):
                     )
                 else:
                     self.log("created {}".format(_name))
+            else:
+                self.log("file {} already present".format(_name))
         self.start_time = time.time()
         self.log("starting command '{}'".format(self.__command))
         self.popen = subprocess.Popen(
@@ -121,6 +125,7 @@ class ProcessControl(object):
         self._target_state = target_state
         self.log("init (pid_file_name={})".format(self.__pid_file_name))
         self.__ext_process = None
+        self.__external_cmd_file = None
         self._kill_old_instances()
         self.check_state()
 
@@ -158,6 +163,24 @@ class ProcessControl(object):
         else:
             _pid = None
         return _pid
+
+    def write_external_cmd_file(self, lines):
+        if self.check_state() and self.__external_cmd_file and os.path.exists(self.__external_cmd_file):
+            if type(lines) != list:
+                lines = [lines]
+            try:
+                codecs.open(self.__external_cmd_file, "w", "utf-8").write("\n".join(lines + [""]))
+            except:
+                self.log(
+                    "error writing to {}: {}".format(
+                        self.__external_cmd_file,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                raise
+        else:
+            self.log("process not running or external cmd file not present", logging_tools.LOG_LEVEL_ERROR)
 
     def _kill_old_instances(self):
         self.log("checking for old instances")
@@ -251,8 +274,7 @@ class ProcessControl(object):
                 print _proc
 
     def start(self):
-        if self.__ext_process:
-            self.stop()
+        self.stop()
         self.log("starting process")
         _com = "{} -d {}".format(
             os.path.join(
@@ -291,6 +313,16 @@ class ProcessControl(object):
         )
         self.__ext_process.run()
         self.__ext_process.wait()
+        self.__external_cmd_file = os.path.join(
+            global_config["MD_BASEDIR"],
+            "var",
+            "icinga.cmd"
+        )
         if self.__ext_process.popen.returncode is not None:
+            self.log(
+                "returncode is {}, closing ext_process".format(
+                    self.__ext_process.popen.returncode
+                ),
+            )
             self.__ext_process.close()
             self.__ext_process = None

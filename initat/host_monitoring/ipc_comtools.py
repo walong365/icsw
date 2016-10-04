@@ -32,6 +32,10 @@ class IPCCommandHandler(object):
         self.__parent.log(u"[ICH] {}".format(what), log_level)
 
     def handle(self, data):
+        # for format see ccollclientzmq.c and csendsyncerzmq.c
+        # ;<VERSION>;<ID_STR>;<HOST>;<PORT>;<TIMEOUT>;<RAW>;<ARG>;<ARG>;
+        # for csendsyncerzmq:
+        # ;2;<ID_STR>;;0;10;0;{ARGS...}
         # parse ipc command
         if data.count(";") > 1:
             if data.startswith(";"):

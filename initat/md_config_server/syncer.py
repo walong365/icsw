@@ -218,8 +218,7 @@ class SyncerProcess(threading_tools.process_obj):
                 # if not self.__md_struct.num_runs:
                 #    self.__md_struct.sync_start = cluster_timezone.localize(datetime.datetime.now())
                 # self.__md_struct.num_runs += 1
-
-                _slave.send_slave_command("sync_slave")
+                _slave.send_slave_command("sync_slave", config_version_build="{:d}".format(_slave.config_version_build))
             else:
                 self.log("unknown slave '{}'".format(slave_name), logging_tools.LOG_LEVEL_CRITICAL)
         else:
