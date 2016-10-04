@@ -96,16 +96,16 @@
                     <br/>
                     <div class="panel panel-default">
                         <div class="panel-body" style="padding: 6px 15px">
-                            <div class="input-group">
-                                <br/><label class="control-label">AssetBatch Selection Mode</label><br/>
-                               <select class="form-control" ng-model="struct.assetbatch_selection_mode" ng-change="assetbatch_selection_mode_change()">
-                                   <option value="-1">---Please select---</option>
+                            <!--<div class="input-group">
+                                <br/>
+                                <label class="control-label">AssetBatch Selection Mode</label><br/>
+                                <select class="form-control" ng-model="struct.assetbatch_selection_mode" ng-change="assetbatch_selection_mode_change()">
+                                    <option value="-1">---Please select---</option>
                                     <option value="0">Latest assetbatch</option>
                                     <option value="1">Latest complete assetbatch without errors</option>
                                     <option value="2">Mixed mode</option>
                                 </select>
-                            </div>
-                            </br>
+                            </div>-->
                             <table
                                 class="table table-hover table-condensed table-striped"
                                 style="width:auto;"
@@ -121,22 +121,22 @@
                                 >
                                     <thead>
                                         <tr>
-                                            <th class="text-center" colspan=3>Device Information Module</th>
+                                            <th class="text-center" colspan=4>Device Information Module</th>
 
                                         </tr>
                                         <tr>
-                                            <th>Name</th>
-                                            <th>Selection</th>
-                                            <th>Description</th>
+                                            <th class="text-center">Name</th>
+                                            <th class="text-center">Selection</th>
+                                            <th class="text-center">Description</th>
+                                            <th class="text-center">Selected Scan</th>
                                         </tr>
                                         <tr>
-                                            <th>
-                                            </th>
+                                            <th></th>
                                             <th>
                                                 <input type="button" class="btn btn-sm btn-primary" ng-click="select_device_modules()" value="Select" style="display: block; margin: 0 auto;"/>
                                             </th>
-                                            <th>
-                                            </th>
+                                            <th></th>
+                                            <th></th>
                                         </tr>
                                     </thead>
 
@@ -184,28 +184,28 @@
                                     </thead>
                                     <tbody>
                                         <tr ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)">
-                                            <td style="height:30px">
+                                            <td style="height:40px; vertical-align: middle;">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$packages_selected_button_title }}" ng-disabled="obj.$packages_selected_button_disabled" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
                                                  </div>
                                             </td>
-                                            <td style="height:30px">
+                                            <td style="height:40px; vertical-align: middle;">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$licenses_selected_button_title }}" ng-disabled="obj.$licenses_selected_button_disabled" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
                                                 </div>
                                             </td>
-                                            <td style="height:30px">
+                                            <td style="height:40px; vertical-align: middle;">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$installed_updates_button_title }}" ng-disabled="obj.$installed_updates_button_disabled" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
                                                  </div>
                                             </td>
-                                            <td style="height:30px">
+                                            <td style="height:40px; vertical-align: middle;">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$avail_updates_button_title }}" ng-disabled="obj.$avail_updates_button_disabled" ng-class="obj.$avail_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 3)"/>
                                                 </div>
                                             </td>
                                             <!--
-                                            <td style="height:30px">
+                                            <td style="height:40px">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$process_report_button_title }}" ng-disabled="obj.$process_report_button_disabled" ng-class="obj.$process_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 4)"/>
                                                 </div>
@@ -252,23 +252,23 @@
 
                                     <tbody>
                                         <tr ng-repeat="obj in entries_displayed" ng-class="get_tr_class(obj)">
-                                            <td style="height:30px">
+                                            <td style="height:40px; vertical-align: middle;">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$hardware_report_button_title }}" ng-disabled="obj.$hardware_report_button_disabled" ng-class="obj.$hardware_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 5)"/>
                                                 </div>
                                             </td>
-                                            <td style="height:30px">
+                                            <td style="height:40px; vertical-align: middle;">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$dmi_report_button_title }}" ng-disabled="obj.$dmi_report_button_disabled" ng-class="obj.$dmi_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 6)"/>
                                                 </div>
                                             </td>
-                                            <td style="height:30px">
+                                            <td style="height:40px; vertical-align: middle;">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$pci_report_button_title }}" ng-disabled="obj.$pci_report_button_disabled" ng-class="obj.$pci_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 7)"/>
                                                 </div>
                                             </td>
                                             <!--
-                                            <td style="height:30px">
+                                            <td style="height:40px">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$lstopo_report_button_title }}" ng-disabled="obj.$lstopo_report_button_disabled" ng-class="obj.$lstopo_report_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 8)"/>
                                                 </div>
@@ -399,19 +399,25 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.tree.report.row">
-    <td style="height:30px">{{ obj.name }}</td>
-    <td style="height:30px">
+    <td style="height:40px; vertical-align: middle;">{{ obj.name }}</td>
+    <td style="height:40px; vertical-align: middle;">
         <input type="button" ng-class="get_dev_sel_class()" ng-click="toggle_dev_sel()" value="enabled"/>
     </td>
-    <td style="height:30px">{{ obj.comment }}</td>
+    <td style="height:40px; vertical-align: middle;">{{ obj.comment }}</td>
+    <td style="height:40px; vertical-align: middle;">
+        <select class="form-control" ng-show="obj.$$available_scans.length > 0" ng-model="obj.$$selected_assetbatch">
+            <option ng-repeat="scan in obj.$$available_scans" value="{{scan.idx}}">{{scan.$$report_option_string}}</option>
+        </select>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.device.tree.meta.report.row">
-    <td style="height:30px"><strong>{{ group.name }}</strong></td>
-    <td style="height:30px">
+    <td style="height:40px; vertical-align: middle;"><strong>{{ group.name }}</strong></td>
+    <td style="height:40px; vertical-align: middle;">
         <div class="btn-group btn-group-xs" ng-show="group.num_devices">
             <input type="button" ng-class="get_dev_sel_class()" ng-click="change_dg_sel()" value="enabled"/>
         </div>
     </td>
-    <td style="height:30px">{{ group.description }}</td>
+    <td style="height:40px; vertical-align: middle;">{{ group.description }}</td>
+    <td style="height:40px; vertical-align: middle;"></td>
 </script>

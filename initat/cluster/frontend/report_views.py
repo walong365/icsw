@@ -246,8 +246,6 @@ class ReportDataAvailable(View):
                 idx_list = _list
                 break
 
-        assetbatch_selection_mode = int(request.POST['assetbatch_selection_mode'])
-
         pk_setting_dict = {}
 
         meta_devices = []
@@ -262,7 +260,7 @@ class ReportDataAvailable(View):
                 meta_devices.append(_device)
                 continue
 
-            selected_runs = _select_assetruns_for_device(_device, assetbatch_selection_mode)
+            selected_runs = _select_assetruns_for_device(_device)
             selected_run_info_array = \
                 [(ar.run_type, str(ar.run_start_time), ar.asset_batch.idx) for ar in selected_runs]
 
