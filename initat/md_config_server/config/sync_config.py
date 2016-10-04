@@ -187,6 +187,7 @@ class SyncConfig(object):
                 command="slave_command",
                 action=action,
                 master="1" if self.master else "0",
+                msg_src="M",
                 slave_uuid=self.slave_uuid,
                 **kwargs
             )

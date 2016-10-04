@@ -231,6 +231,7 @@ class server_process(
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
+            print "E", full_uuid, srv_com
             if full_uuid in self.__slaves:
                 self.log("target is {}".format(unicode(self.__slaves[full_uuid])))
         else:
@@ -419,11 +420,6 @@ class server_process(
         return srv_com
 
     @RemoteCall(target_process="syncer")
-    def satellite_info(self, srv_com, **kwargs):
-        # call from pure slave (==satellite) to this satellite master
-        return srv_com
-
-    @RemoteCall(target_process="syncer")
     def file_content_result(self, srv_com, **kwargs):
         return srv_com
 
@@ -433,6 +429,9 @@ class server_process(
 
     @RemoteCall(target_process="syncer")
     def slave_command(self, srv_com, **kwargs):
+        # slave distribution commands, either
+        # - from distribution slave to master or
+        # - from master to distribution slave
         return srv_com
 
     @RemoteCall()
