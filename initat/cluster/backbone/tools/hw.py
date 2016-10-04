@@ -160,6 +160,8 @@ def _parse_lsblk(dump):
     rows = []
     for line in lines[1:]:
         line = line.strip()
+        if not line:
+            continue
         data = line.split(' ')
         data = [escape_re.sub(unescape, d).strip() for d in data]
         data = OrderedDict([(k, v) for (k, v) in zip(header, data)])
@@ -538,13 +540,16 @@ class Partition(HardwareBase):
         'index': (None, int),
         'bootable': (None, str),
         'device_name': ('logicalname', str),
+        'type': (None, str),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394135(v=vs.85).aspx
+    # Note: WMI doesn't provide any information about the partition type hex.
     WIN32_ELEMENTS = {
         'size': ('Size', int),
         'index': ('Index', int),
         'bootable': ('Bootable', bool),
         'device_name': ('DeviceID', str),
+        'type': ('Type', str),
     }
 
     def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None,
@@ -553,6 +558,7 @@ class Partition(HardwareBase):
         self.index = None
         self.bootable = None
         self.device_name = None
+        self.type = None
         self._lsblk_entry = lsblk_entry
 
         self.logical = None
@@ -569,6 +575,7 @@ class Partition(HardwareBase):
         if match:
             self.index = match.group()
         self.device_name = entry['KNAME']
+        self.type = entry['FSTYPE']
         self._parent = entry['PKNAME']
 
     def _set_from_logical_win32(self, logical_disc):

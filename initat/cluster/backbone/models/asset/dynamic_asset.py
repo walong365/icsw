@@ -1192,13 +1192,15 @@ class AssetBatch(models.Model):
                     size=hdd_partition.size,
                     mountpoint='',
                 )
-                if hdd_partition.logical:
+                partition_fs_ = fs_dict["unknown"]
+                try:
                     partition_fs_ = \
-                        fs_dict[hdd_partition.logical.file_system.lower()]
-                    partition_.mountpoint = logical.mount_point
-                else:
-                    partition_fs_ = fs_dict["empty"]
+                        fs_dict[hdd_partition.type.lower()]
+                except KeyError:
+                    pass
                 partition_.partition_fs = partition_fs_
+                if hdd_partition.logical:
+                    partition_.mountpoint = logical.mount_point
                 partition_.save()
                 if logical:
                     logical = LogicalDisc(
@@ -1227,6 +1229,7 @@ class AssetBatch(models.Model):
             new_network_device.save()
             self.network_devices.add(new_network_device)
 
+        self.save()
         # TODO: Set displays.
 
 
