@@ -157,7 +157,7 @@ class SyncConfig(object):
             self.__md_struct.num_runs += 1
             self.__md_struct.save(update_fields=["sync_start", "num_files", "size_data", "num_transfers", "num_runs"])
         elif action == "sync_end":
-            self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now()),
+            self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
             self.__md_struct.save(update_fields=["sync_end"])
         else:
             self.log("unknown action {} in handle_info_action()".format(action), logging_tools.LOG_LEVEL_ERROR)
