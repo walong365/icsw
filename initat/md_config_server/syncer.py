@@ -140,6 +140,8 @@ class SyncerProcess(threading_tools.process_obj):
         action = srv_com["*action"]
         if action == "info_list":
             info_list = server_command.decompress(srv_com["*slave_info"], json=True)
+            # import pprint
+            # pprint.pprint(info_list)
             for info in info_list:
                 if info["master"]:
                     if self.__master_config is not None:
