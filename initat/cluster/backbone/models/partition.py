@@ -136,6 +136,7 @@ class lvm_vg(models.Model):
 
 class LogicalDisc(models.Model):
     idx = models.AutoField(primary_key=True)
+    partition_table = models.ForeignKey("backbone.partition_table", null=True)
     device_name = models.CharField(max_length=128)
     partition_fs = models.ForeignKey("partition_fs")
     partitions = models.ManyToManyField("partition")
