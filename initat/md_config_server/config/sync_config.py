@@ -122,6 +122,7 @@ class SyncConfig(object):
         # relayer info (== icsw software version)
         self.relayer_version = "?.?-0"
         self.mon_version = "?.?-0"
+        self.livestatus_version = "?.?"
         # clear md_struct
         self.__md_struct = None
         # try to get relayer / mon_version from latest build
@@ -133,6 +134,7 @@ class SyncConfig(object):
             _latest_build = _latest_build[0]
             self.mon_version = _latest_build.mon_version
             self.relayer_version = _latest_build.relayer_version
+            self.livestatus_version = _latest_build.livestatus_version
             self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
 
     def set_info(self, info):
@@ -147,8 +149,10 @@ class SyncConfig(object):
                 _cs["md.version"],
                 _cs["md.release"],
             )
+        if "livestatus.version" in _cs:
+            self.livestatus_version = _cs["livestatus.version"]
         if self.__md_struct:
-            for _attr in ["relayer_version", "mon_version"]:
+            for _attr in ["relayer_version", "mon_version", "livestatus_version"]:
                 setattr(self.__md_struct, _attr, getattr(self, _attr))
             self.__md_struct.save()
 
@@ -280,9 +284,6 @@ class SyncConfig(object):
                 device=self.monitor_server,
                 version=self.config_version_build,
                 build_start=cluster_timezone.localize(datetime.datetime.now()),
-                relayer_version=self.relayer_version,
-                # monitorig daemon
-                mon_version=self.mon_version,
             )
         else:
             self.__md_master = master
@@ -290,9 +291,10 @@ class SyncConfig(object):
             _md = mon_dist_slave(
                 device=self.monitor_server,
                 mon_dist_master=self.__md_master,
-                relayer_version=self.relayer_version,
-                mon_version=self.mon_version,
             )
+        # version info
+        for _attr in ["relayer_versioN", "mon_version", "livestatus_version"]:
+            setattr(_md, _attr, getattr(self, _attr))
         _md.save()
         self.__md_struct = _md
         return self.__md_struct
