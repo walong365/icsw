@@ -136,29 +136,34 @@ class SyncConfig(object):
             self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
 
     def set_info(self, info):
-        if "icsw.version" in info:
+        _cs = info.get("config_store", {})
+        if "icsw.version" in _cs:
             self.relayer_version = "{}-{}".format(
-                info["icsw.version"],
-                info["icsw.release"],
+                _cs["icsw.version"],
+                _cs["icsw.release"],
             )
-        if "md.version" in info:
+        if "md.version" in _cs:
             self.mon_version = "{}-{}".format(
-                info["md.version"],
-                info["md.release"],
+                _cs["md.version"],
+                _cs["md.release"],
             )
-        # print "SI", info
+        if self.__md_struct:
+            for _attr in ["relayer_version", "mon_version"]:
+                setattr(self.__md_struct, _attr, getattr(self, _attr))
+            self.__md_struct.save()
 
     def handle_info_action(self, action, srv_com):
-        if action == "sync_start":
+        if action == "sync_start" and self.__md_struct:
             self.__md_struct.sync_start = cluster_timezone.localize(datetime.datetime.now())
             self.__md_struct.num_files = int(srv_com["*num_files"])
             self.__md_struct.size_data = int(srv_com["*size_data"])
             self.__md_struct.num_transfers = 1
             self.__md_struct.num_runs += 1
             self.__md_struct.save(update_fields=["sync_start", "num_files", "size_data", "num_transfers", "num_runs"])
-        elif action == "sync_end":
+        elif action == "sync_end" and self.__md_struct:
             self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
             self.__md_struct.save(update_fields=["sync_end"])
+            self.__md_struct = None
         else:
             self.log("unknown action {} in handle_info_action()".format(action), logging_tools.LOG_LEVEL_ERROR)
 
@@ -293,13 +298,9 @@ class SyncConfig(object):
         return self.__md_struct
 
     def end_build(self):
-        self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
-        self.__md_struct.save()
-
-    def _send(self, srv_com):
-        self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
-        self.__size_raw += len(unicode(srv_com))
-        self.__num_com += 1
+        if self.__md_struct:
+            self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
+            self.__md_struct.save()
 
     def sync_slave(self):
         self.send_slave_command(
