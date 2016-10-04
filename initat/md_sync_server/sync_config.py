@@ -101,6 +101,7 @@ class SyncConfig(object):
             # distribution slave on remote device
             self.name = None
             self.master = None
+            self.master_config = None
             self.log("init local structure")
             self.__dir_offset = ""
             self.config_store = config_store.ConfigStore(CS_MON_NAME, log_com=self.__process.log, access_mode=config_store.AccessModeEnum.LOCAL)
@@ -180,7 +181,7 @@ class SyncConfig(object):
         # clear md_struct
         self.__md_struct = None
 
-    def add_slaves(self, dist_info):
+    def add_slaves(self, dist_info, inst_xml):
         # dict for all slaves
         self.__slave_configs, self.__slave_lut = ({}, {})
         for _di in dist_info:
@@ -205,7 +206,7 @@ class SyncConfig(object):
                         "register_remote",
                         _slave_c.slave_ip,
                         _slave_c.slave_uuid,
-                        self.__process.inst_xml.get_port_dict(icswServiceEnum.monitor_slave, command=True)
+                        inst_xml.get_port_dict(icswServiceEnum.monitor_slave, command=True)
                     )
         self.send_info_message()
 
@@ -229,7 +230,9 @@ class SyncConfig(object):
         self.send_info_message()
 
     def set_local_master(self, local_master):
+        self.log("linking local_master with master_config")
         self.struct = local_master
+        local_master.master_config = self
 
     def get_satellite_info(self):
         r_dict = {
@@ -309,37 +312,6 @@ class SyncConfig(object):
             self.log("resending files")
             self.distribute()
 
-    def config_ts(self, ts_type):
-        if self.__md_struct:
-            # set config timestamp
-            setattr(self.__md_struct, "config_build_{}".format(ts_type), cluster_timezone.localize(datetime.datetime.now()))
-            self.__md_struct.save()
-
-    def device_count(self, _num):
-        if self.__md_struct:
-            self.__md_struct.num_devices = _num
-            self.__md_struct.save(update_fields=["num_devices"])
-
-    def unreachable_devices(self, num):
-        # set number of unreachable devices
-        if self.__md_struct:
-            self.__md_struct.unreachable_devices = num
-            self.__md_struct.save(update_fields=["unreachable_devices"])
-
-    def unreachable_device(self, dev_pk, dev_name, devg_name):
-        # add unreachable device
-        if self.__md_struct:
-            mon_build_unreachable.objects.create(
-                mon_dist_master=self.__md_struct,
-                device_pk=dev_pk,
-                device_name=dev_name,
-                devicegroup_name=devg_name,
-            )
-
-    def end_build(self):
-        self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
-        self.__md_struct.save()
-
     def send_slave_command(self, action_srvc, **kwargs):
         # send command from local master to remote slave
         if isinstance(action_srvc, basestring):
@@ -373,7 +345,7 @@ class SyncConfig(object):
 
     def _get_config_srv_command(self, action, **kwargs):
         # server command to local md-config-server from distribution master
-        print "SI_COM", action
+        # print "SI_COM", action
         return server_command.srv_command(
             command="slave_info",
             action=action,
@@ -387,7 +359,7 @@ class SyncConfig(object):
         info_list = [
             _entry.get_info_dict() for _entry in [self] + self.__slave_configs.values()
         ]
-        print "ILIST", self.master_uuid, self.slave_uuid
+        # print "ILIST", self.master_uuid, self.slave_uuid
         srv_com = self._get_config_srv_command(
             "info_list",
             slave_info=server_command.compress(info_list, json=True),
@@ -412,6 +384,7 @@ class SyncConfig(object):
         )
 
     def check_for_register_at_master(self):
+        # is called with local_master on distribution master
         if not self.__registered_at_master and "master.uuid" in self.config_store:
             self.__registered_at_master = True
             # open connection to master server
@@ -425,18 +398,23 @@ class SyncConfig(object):
         self.send_satellite_info()
 
     def send_satellite_info(self):
-        if self.__registered_at_master:
-            print "STS", self._get_satellite_info()
-            self.__process.send_to_sync_master(
+        if self.master_config:
+            # send full info when on distribution master
+            self.master_config.send_info_message()
+        else:
+            self.send_to_sync_master(
                 self._get_satellite_info()
             )
-        else:
-            self.log("slave not registered at master")
 
     def send_check_result(self, srv_com):
+        self.send_to_sync_master(srv_com)
+
+    def send_to_sync_master(self, srv_com):
         if self.__registered_at_master:
-            print "SCR", srv_com
-            self.__process.send_to_sync_master(srv_com)
+            self.__process.send_command(
+                self.config_store["master.uuid"],
+                unicode(srv_com),
+            )
         else:
             self.log("slave not registered at master")
 

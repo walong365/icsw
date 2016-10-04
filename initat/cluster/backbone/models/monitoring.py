@@ -54,8 +54,8 @@ __all__ = [
     "mon_service_templ",
     "mon_service_esc_templ",
     # distribution models
-    "mon_dist_master",  # "mon_dist_master_serializer",
-    "mon_dist_slave",  # "mon_dist_slave_serializer",
+    "mon_dist_master",
+    "mon_dist_slave",
     "monitoring_hint",
     "mon_check_command_special",
     # trace
