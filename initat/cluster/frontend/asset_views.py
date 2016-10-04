@@ -70,7 +70,9 @@ class AssetBatchViewSet(viewsets.ViewSet):
                     "memory_modules",
                     "cpus",
                     "gpus",
-                    "network_devices").filter(idx__in=json.loads(request.query_params.getlist("assetbatch_pks")[0]))
+                    "network_devices",
+                    "device",
+                    "device__act_partition_table").filter(idx__in=json.loads(request.query_params.getlist("assetbatch_pks")[0]))
         else:
             if "device_pks" in request.query_params:
                 queryset = AssetBatch.objects.prefetch_related(
@@ -81,7 +83,10 @@ class AssetBatchViewSet(viewsets.ViewSet):
                     "memory_modules",
                     "cpus",
                     "gpus",
-                    "network_devices").filter(device__in=json.loads(request.query_params.getlist("device_pks")[0]))
+                    "network_devices",
+                    "device",
+                    "device__act_partition_table"
+                ).filter(device__in=json.loads(request.query_params.getlist("device_pks")[0]))
             else:
                 queryset = AssetBatch.objects.all()
 

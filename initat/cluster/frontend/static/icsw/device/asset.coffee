@@ -215,12 +215,6 @@ device_asset_module = angular.module(
                                 simple: angular.toJson(1)
                             }
                         )
-                        Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
-                            {
-                                device_pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
-                                simple: angular.toJson(1)
-                            }
-                        )
                     ]
                 ).then(
                     (result) ->
@@ -259,12 +253,13 @@ device_asset_module = angular.module(
 
         info_list_names = [
             "packages",
-            "pending_updates"
-            "installed_updates"
-            "memory_modules"
-            "cpus"
-            "gpus"
-            "network_devices"
+            "pending_updates",
+            "installed_updates",
+            "memory_modules",
+            "cpus",
+            "gpus",
+            "network_devices",
+            "partition_table",
         ]
 
         for info_list_name in info_list_names
@@ -696,9 +691,10 @@ device_asset_module = angular.module(
     }
 ]).controller("icswAssetAssetBatchTableCtrl",
 [
-    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall"
+    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall",
+    "icswTools"
 (
-    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall
+    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall, icswTools
 ) ->
     $scope.struct = {
         selected_assetrun: undefined
@@ -858,6 +854,7 @@ device_asset_module = angular.module(
             ]
         ).then(
             (result) ->
+                #console.log(result[0][0])
                 tab = {}
                 tab.asset_batch = result[0][0]
                 tab.tab_heading_text = "Scan (ID:" + asset_batch.idx + ")"
@@ -865,6 +862,45 @@ device_asset_module = angular.module(
                 for memory_entry in tab.asset_batch.memory_modules
                     memory_entry.$$capacity = "N/A"
                     memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
+
+                tab.asset_batch.hdds = []
+
+                if tab.asset_batch.partition_table
+                    for disc in tab.asset_batch.partition_table.partition_disc_set
+                        o = {
+                            "identifier": "N/A"
+                            "serialnumber": "N/A"
+                            "size": "N/A"
+                            "partitions": []
+                        }
+
+                        if disc.disc
+                            o["identifier"] = disc.disc
+
+                        if disc.serial
+                            o["serialnumber"] = disc.serial
+
+                        if disc.size
+                            o["size"] = disc.size
+
+                        for partition in disc.partition_set
+                            new_partition_o = {
+                                "mountpoint": "N/A"
+                                "size": "N/A"
+                            }
+
+                            if partition.mountpoint
+                                new_partition_o["mountpoint"] = partition.mountpoint
+                            if partition.size
+                                new_partition_o["size"] = icswTools.get_size_str(partition.size, 1024, "Byte")
+
+                            o["partitions"].push(new_partition_o)
+
+                        console.log(o)
+
+                        tab.asset_batch.hdds.push(o)
+
+                #console.log(tab)
 
                 icswAssetPackageTreeService.load($scope.$id).then(
                     (tree) ->
@@ -993,6 +1029,19 @@ device_asset_module = angular.module(
     return {
         restrict: "E"
         template: $templateCache.get("icsw.asset.details.hw.nic")
+        scope: {
+            tab: "=icswTab"
+        }
+    }
+]).directive("icswAssetDetailsHardwareHddTable",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.details.hw.hdd")
         scope: {
             tab: "=icswTab"
         }
