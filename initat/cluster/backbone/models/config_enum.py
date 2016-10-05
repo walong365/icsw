@@ -40,7 +40,7 @@ class AppEnum(Enum):
         "cluster-server",
         "sets device as a cluster-server (DB access)",
         egg_actions=[
-            EggAction("allegro", "user", weight=100),
+            EggAction("allegro", "user", weight=100, timeframe=160),
             EggAction("vdesktop", "user", weight=20),
         ]
     )
@@ -62,7 +62,7 @@ class AppEnum(Enum):
         "enables network discovery and inventory",
         egg_actions=[
             EggAction("discover", "device"),
-            EggAction("asset", "device"),
+            EggAction("asset", "device", timeframe=60),
         ]
     )
     logcheck_server = icswServiceEnumBase(
@@ -96,7 +96,7 @@ class AppEnum(Enum):
         "Draw graphs, frontend to collectd",
         msi_block_name="rrd-grapher",
         egg_actions=[
-            EggAction("graph", "device"),
+            EggAction("graph", "device", timeframe=14),
         ]
     )
     image_server = icswServiceEnumBase(
