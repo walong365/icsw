@@ -167,7 +167,7 @@ angular.module(
                         textAnchor: "middle"
                         fontSize: "#{_text_height}px"
                         className: "svg-txt-color"
-                        # alignmentBaseline: "middle"
+                        # alignmentBaseline: "middle"  # bad for browser/ os compat
                         fontWeight: "bold"
                     }
                     @props.title
@@ -192,7 +192,7 @@ angular.module(
                             key: "svg.text.#{_idx}"
                             textAnchor: "middle"
                             fontSize: "#{_text_size}px"
-                            #alignmentBaseline: "middle"
+                            # alignmentBaseline: "middle"  # bad for browser/ os compat
                             paintOrder: "stroke"
                             className: "svg-stroke default-text"
                         }
@@ -200,7 +200,7 @@ angular.module(
                     )
                 )
             _translate_y = if @props.title? and @props.titleSize? then 70 + @props.titleSize else 70
-            _viewbox = if @props.title? then "3 0 134 156" else "3 3 133 133"
+            _viewbox = if @props.title? then "3 -4 134 156" else "3 3 133 133"
             return div(
                 {
                     key: "div.top"
@@ -209,8 +209,7 @@ angular.module(
                 svg(
                     {
                         key: "svg.top"
-                        width: "100%"
-                        # height: "auto"
+                        width: "99%"  # browser crap
                         viewBox: _viewbox
                     }
                     g(

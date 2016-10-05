@@ -44,6 +44,9 @@
     stroke: #555555;
     stroke-width: 0.5px;
 }
+.svg-box-content {
+    fill: #777777;
+}
 .svg-outline { stroke-width: 0.5px; stroke: #000000; }
 
 /* others */

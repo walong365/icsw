@@ -51,7 +51,7 @@
 
 <script type="text/ng-template" id="icsw.connect.element">
     <!-- the margin-bottom entry fixes issues with scrollbars appearing on the right side of panels -->
-    <div class="panel panel-success" style="height:100%; margin-bottom:0px !important;" icsw-panel-scroller>
+    <div class="panel panel-success" style="height:100%; margin-bottom:0px !important;" icsw-panel-scroller no_x_scroll="1">
         <div class="panel-heading icsw-draggable" ng-show="con_element.$$show_header">
             <span class="badge" uib-tooltip="{{ con_element.__dp_title }}" tooltip-placement="right">
                 {{ con_element.__dp_element_id }}@{{ con_element.__dp_depth }}

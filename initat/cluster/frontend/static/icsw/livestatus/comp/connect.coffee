@@ -314,7 +314,7 @@ angular.module(
         toggle_global_display_state: () =>
             @global_display_state++
             if @global_display_state > 2
-                @global_display_state =0
+                @global_display_state = 0
             (_element.set_display_flags() for _element in @all_elements)
 
         get_panel_class: () =>

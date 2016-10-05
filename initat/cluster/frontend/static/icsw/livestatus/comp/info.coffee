@@ -77,7 +77,6 @@ angular.module(
             return div(
                 {
                     key: "top"
-                    style: { marginTop: "10px" }
                 }
                 React.createElement(
                     icswLivestatusCircleInfoReact

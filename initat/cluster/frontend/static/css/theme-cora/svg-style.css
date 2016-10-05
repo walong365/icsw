@@ -38,9 +38,12 @@
     pointer-events: none;
 }
 .svg-box {
-    fill: #ffffff;
+    fill: #f5f5f5;
     stroke: #ffffff;
     stroke-width: 1px;
+}
+.svg-box-content {
+    fill: #777777;
 }
 .svg-outline { stroke-width: 0.5px; stroke: #dddddd; }
 

@@ -51,14 +51,19 @@ angular.module(
         timeoutPromise = undefined
         delayInMs = 100;
         scope.setupScrolling = (newValue) ->
+            newHeight = if newValue? then newValue else scope.gettotal_height()
             $timeout.cancel(timeoutPromise)
             timeoutPromise = $timeout(()->
                 header_height = scope.get_header_height()
-                $(panel_body).css("height", newValue - header_height - 2)
+
                 x_scroll_diff = panel_body.scrollWidth - $(panel_body).width()
-                $(panel_body).css("overflow-x", if x_scroll_diff < 5 then "hidden" else "auto")
                 y_scroll_diff = panel_body.scrollHeight - $(panel_body).height()
-                $(panel_body).css("overflow-y", if y_scroll_diff < 5 then "hidden" else "auto")
+
+                $(panel_body).css("height", newValue - header_height - 2)
+                $(panel_body).css("overflow-x", if attr.noXScroll? then "hidden" else "auto")
+                $(panel_body).css("overflow-y", if attr.noYScroll? then "hidden" else "auto")
+                # x_scroll_diff2 = panel_body.scrollWidth - $(panel_body).width()
+                # y_scroll_diff2 = panel_body.scrollHeight - $(panel_body).height()
             , delayInMs)
 ])
 
