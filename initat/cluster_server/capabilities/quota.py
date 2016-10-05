@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,14 +24,15 @@ import grp
 import pwd
 import time
 
+import psutil
 from django.db.models import Q
+
 from initat.cluster.backbone.models import user, group, quota_capable_blockdevice, \
     user_quota_setting, group_quota_setting, partition_fs
-from initat.cluster_server.capabilities.base import bg_stuff
+from initat.cluster_server.capabilities.base import BackgroundBase
 from initat.cluster_server.config import global_config
 from initat.host_monitoring import hm_classes
 from initat.tools import logging_tools, process_tools
-import psutil
 
 
 class quota_line(object):
@@ -153,7 +154,7 @@ class quota_line(object):
         return _keys
 
 
-class quota_stuff(bg_stuff):
+class quota_stuff(BackgroundBase):
     class Meta:
         name = "quota_scan"
         description = "scan quotas for all users when device has quotas enabled"

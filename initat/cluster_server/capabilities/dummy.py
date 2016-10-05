@@ -17,12 +17,12 @@
 #
 """ cluster-server """
 
-from initat.cluster_server.capabilities.base import bg_stuff
+from initat.cluster_server.capabilities.base import BackgroundBase
 from initat.host_monitoring import hm_classes
 import time
 
 
-class dummy_stuff(bg_stuff):
+class dummy_stuff(BackgroundBase):
     class Meta:
         name = "dummy"
         description = "Dummy capability, do not use"

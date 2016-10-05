@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -24,7 +24,7 @@ from django.db.models import Q
 from lxml.builder import E
 
 from initat.cluster.backbone.models import device
-from initat.cluster_server.capabilities.base import bg_stuff
+from initat.cluster_server.capabilities.base import BackgroundBase
 from initat.host_monitoring import hm_classes
 from initat.tools import process_tools, logging_tools
 
@@ -270,7 +270,10 @@ class DeviceLookup(object):
                 except device.DoesNotExist:
                     pass
                 except device.MultipleObjectsReturned:
-                    self.log("spec {} / {} is not unique".format(uuid_spec, host_name), logging_tools.LOG_LEVEL_WARN)
+                    self.log(
+                        "name {} is not unique".format(name),
+                        logging_tools.LOG_LEVEL_WARN
+                    )
                     match_dev = None
                 else:
                     match_mode = "name"
@@ -285,7 +288,7 @@ class DeviceLookup(object):
             return None
 
 
-class IBQueryClass(bg_stuff):
+class IBQueryClass(BackgroundBase):
     class Meta:
         name = "infiniband_query"
         description = "Queries IB Network via ibqueryerrors"

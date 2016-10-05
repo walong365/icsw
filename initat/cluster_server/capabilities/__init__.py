@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2014 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2014,2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -27,9 +27,12 @@ from django.db.models import Q
 from lxml import etree
 
 from initat.cluster.backbone import db_tools, factories
-from initat.cluster.backbone.models import config_catalog
+from initat.cluster.backbone.models import config_catalog, icswEggConsumer
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.icsw.service.instance import InstanceXML
 from initat.cluster_server.capabilities import base
 from initat.cluster_server.config import global_config
+from initat.host_monitoring import hm_classes
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
 
 
@@ -43,6 +46,7 @@ class CapabilityProcess(threading_tools.process_obj):
             context=self.zmq_context
         )
         db_tools.close_connection()
+        self._instance = InstanceXML(log_com=self.log)
         self._init_network()
         self._init_capabilities()
         self.__last_user_scan = None
@@ -66,7 +70,10 @@ class CapabilityProcess(threading_tools.process_obj):
         self.vector_socket = vector_socket
         self.log("connected vector_socket to {}".format(conn_str))
         # connection to local collectd server
-        _cc_str = "tcp://localhost:8002"
+        _cc_str = "tcp://localhost:{:d}".format(
+            # get receive port for collectd-server drop
+            self._instance.get_port_dict(icswServiceEnum.collectd_server, ptype="receive")
+        )
         collectd_socket = self.zmq_context.socket(zmq.PUSH)
         collectd_socket.setsockopt(zmq.LINGER, 0)
         collectd_socket.connect(_cc_str)
@@ -88,7 +95,7 @@ class CapabilityProcess(threading_tools.process_obj):
                     _mod = importlib.import_module(_imp_name)
                     for _key in dir(_mod):
                         _value = getattr(_mod, _key)
-                        if inspect.isclass(_value) and issubclass(_value, base.bg_stuff) and _value != base.bg_stuff:
+                        if inspect.isclass(_value) and issubclass(_value, base.BackgroundBase) and _value != base.BackgroundBase:
                             SRV_CAPS.append(_value)
             self.log("checking {}".format(logging_tools.get_plural("capability", len(SRV_CAPS))))
             self.__server_cap_dict = {}
@@ -124,13 +131,35 @@ class CapabilityProcess(threading_tools.process_obj):
                     else:
                         self.log("capability {} is disabled".format(cap_name))
 
+    def add_ova_statistics(self, cur_time, drop_com):
+        _bldr = drop_com.builder
+        # print "*", cur_time, drop_com, _bldr
+        my_vector = _bldr("values")
+        for _csr in icswEggConsumer.objects.all():
+            my_vector.append(
+                hm_classes.mvect_entry(
+                    "icsw.ova.{}.{}".format(_csr.content_type.model, _csr.action),
+                    info="Ova consumed by {} on {}".format(_csr.action, _csr.content_type.model),
+                    default=0,
+                    value=_csr.consumed,
+                    factor=1,
+                    base=1,
+                    valid_until=cur_time + 3600,
+                ).build_xml(_bldr)
+            )
+        drop_com["vector_ova"] = my_vector
+        drop_com["vector_ova"].attrib["type"] = "vector"
+
     def _update(self):
         cur_time = time.time()
         drop_com = server_command.srv_command(command="set_vector")
+
         mach_vectors = []
         for cap_name in self.__cap_list:
             self.__server_cap_dict[cap_name](cur_time, drop_com, mach_vectors)
+        self.add_ova_statistics(cur_time, drop_com)
         self.vector_socket.send_unicode(unicode(drop_com))
+        # print drop_com.pretty_print()
         for _mv in mach_vectors:
             try:
                 self.collectd_socket.send_unicode(etree.tostring(_mv))

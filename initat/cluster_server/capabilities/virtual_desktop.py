@@ -1,6 +1,6 @@
-# Copyright (C) 2014 Bernhard Mallinger
+# Copyright (C) 2014,2016 Bernhard Mallinger, Andreas Lang-Nevyjel
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 3 as
@@ -39,7 +39,7 @@ from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.models import virtual_desktop_protocol, window_manager, \
     virtual_desktop_user_setting
-from initat.cluster_server.capabilities.base import bg_stuff
+from initat.cluster_server.capabilities.base import BackgroundBase
 from initat.cluster_server.config import global_config
 from initat.tools import process_tools
 
@@ -250,7 +250,7 @@ class vncserver(virtual_desktop_server):
         return pwd.getpwuid(uid).pw_gid
 
 
-class virtual_desktop_stuff(bg_stuff):
+class virtual_desktop_stuff(BackgroundBase):
     class Meta:
         name = "virtual_desktop"
         description = "device can offer virtual desktops to users"

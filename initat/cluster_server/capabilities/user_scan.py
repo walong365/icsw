@@ -25,7 +25,7 @@ import scandir
 from django.db.models import Q
 
 from initat.cluster.backbone.models import home_export_list, user, user_scan_result, user_scan_run
-from initat.cluster_server.capabilities.base import bg_stuff
+from initat.cluster_server.capabilities.base import BackgroundBase
 from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, process_tools
 
@@ -78,7 +78,7 @@ class sub_dir(dict):
             self[key].create_db_entries(new_run, key, new_entry)
 
 
-class user_scan_stuff(bg_stuff):
+class user_scan_stuff(BackgroundBase):
     class Meta:
         name = "user_scan"
         description = "scan user dirs for all users found on this device"
