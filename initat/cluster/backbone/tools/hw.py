@@ -322,22 +322,27 @@ class Hardware(object):
         result = srv_command(source=partinfo_tree)
         self._partinfo_tree = {}
         for info_key in info_keys:
-            res_tree = result[info_key]
-            if not isinstance(res_tree, dict):
-                res_tree = result._interpret_el(res_tree)
-            self._partinfo_tree[info_key] = res_tree
-
-        # add disk usage information to logical disks
-        disk_free = self._partinfo_tree['disk_usage']
-        for usage in disk_free:
-            mountpoint = usage['mountpoint']
             try:
-                logical = self._mount_point_logical_disks[mountpoint]
+                res_tree = result[info_key]
             except KeyError:
                 pass
             else:
-                logical.free_space = usage['free']
-                self.logical_disks.append(logical)
+                if not isinstance(res_tree, dict):
+                    res_tree = result._interpret_el(res_tree)
+                self._partinfo_tree[info_key] = res_tree
+
+        # add disk usage information to logical disks
+        disk_free = self._partinfo_tree.get('disk_usage')
+        if disk_free:
+            for usage in disk_free:
+                mountpoint = usage['mountpoint']
+                try:
+                    logical = self._mount_point_logical_disks[mountpoint]
+                except KeyError:
+                    pass
+                else:
+                    logical.free_space = usage['free']
+                    self.logical_disks.append(logical)
 
     @staticmethod
     def _map_win32(sub_tree):
