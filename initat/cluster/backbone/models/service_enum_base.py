@@ -40,6 +40,9 @@ class EggAction(object):
             except ContentType.DoesNotExist:
                 # this can happen during install
                 content_type = None
+            except:
+                # this can happen on UCS installs
+                content_type = None
         self.content_type = content_type
         self.weight = weight
 
