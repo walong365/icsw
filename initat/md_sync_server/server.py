@@ -44,7 +44,6 @@ from .status import StatusProcess, LiveSocket
 class server_process(
     server_mixins.ICSWBasePoolClient,
     server_mixins.RemoteCallMixin,
-    # server_mixins.SendToRemoteServerMixin,
     VersionCheckMixin,
 ):
     def __init__(self):

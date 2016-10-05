@@ -25,9 +25,10 @@
 import argparse
 import time
 
+import zmq
+
 from initat.host_monitoring import limits
 from initat.tools import logging_tools, process_tools, server_command
-import zmq
 
 
 class ExtReturn(object):
