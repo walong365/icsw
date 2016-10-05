@@ -74,17 +74,18 @@ angular.module(
         render: () ->
             _md = @props.monitoring_data
             _md.build_luts()
-            return span(
+            return div(
                 {
                     key: "top"
+                    style: { marginTop: "10px" }
                 }
                 React.createElement(
                     icswLivestatusCircleInfoReact
                     {
-                        size: 140
                         data: _md.service_circle_data
                         title: "#{_md.services.length} Services"
                         titleSize: 14
+                        className: "col-sm-6"
                         focusMode: "simple"
                         showInfo: true
                         showDetails: true
@@ -93,10 +94,10 @@ angular.module(
                 React.createElement(
                     icswLivestatusCircleInfoReact
                     {
-                        size: 140
                         data: _md.device_circle_data
                         title: "#{_md.hosts.length} Devices"
                         titleSize: 14
+                        className: "col-sm-6"
                         showInfo: true
                         showDetails: true
                     }

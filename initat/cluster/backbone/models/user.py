@@ -991,14 +991,14 @@ class user(models.Model):
     def __unicode__(self):
         _add_fields = [
             _entry for _entry in [
-                self.first_name or "",
-                self.last_name or "",
+                unicode(self.first_name) or "",
+                unicode(self.last_name) or "",
                 "[{}]".format("{:d}".format(self.pk) if type(self.pk) in [int, long] else "???"),
             ] if _entry
         ]
         return u"{}{}".format(
             self.login,
-            " ({})".format(" ".join(_add_fields)) if _add_fields else "",
+            u" ({})".format(" ".join(_add_fields)) if _add_fields else "",
         )
 
 
