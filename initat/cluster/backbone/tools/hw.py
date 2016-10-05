@@ -608,7 +608,7 @@ class Partition(HardwareBase):
         if match:
             self.index = match.group()
         self.device_name = entry['KNAME']
-        self.type = entry['FSTYPE']
+        self.type = entry['FSTYPE'].lower()
         self._parent = entry['PKNAME']
 
     def _set_from_logical_win32(self, logical_disc):
@@ -626,7 +626,7 @@ class LogicalDisc(HardwareBase):
     WIN32_ELEMENTS = {
         'device_name': ('DeviceID', str),
         'mount_point': ('DeviceID', str),
-        'file_system': ('FileSystem', str),
+        'file_system': ('FileSystem', unicode.lower),
         'size': ('Size', int),
         'free_space': ('FreeSpace', int),
     }

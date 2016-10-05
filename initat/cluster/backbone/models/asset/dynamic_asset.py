@@ -1202,18 +1202,20 @@ class AssetBatch(models.Model):
                     size=hdd_partition.size,
                     mountpoint='',
                 )
-                partition_fs_ = fs_dict["unknown"]
-                try:
-                    partition_fs_ = \
-                        fs_dict[hdd_partition.type.lower()]
-                except KeyError:
-                    pass
+                partition_fs_ = fs_dict.get(
+                    hdd_partition.type,
+                    fs_dict["unknown"]
+                )
                 partition_.partition_fs = partition_fs_
                 if logical:
                     partition_.mountpoint = logical.mount_point
                 partition_.save()
 
         for logical in hw.logical_disks:
+            partition_fs_ = fs_dict.get(
+                logical.file_system,
+                fs_dict["unknown"]
+            )
             logical_db = LogicalDisc(
                 partition_table=partition_table_,
                 device_name=logical.device_name,
