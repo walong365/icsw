@@ -20,24 +20,24 @@
 """ machine information """
 
 import commands
+import itertools
 import json
 import os
 import platform
-import itertools
 import re
 import statvfs
 import sys
 import tempfile
 import time
 
-import psutil
-from lxml import etree
-
 from initat.client_version import VERSION_STRING
 from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.constants import ZMQ_ID_MAP_STORE
 from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, \
     process_tools, server_command, uuid_tools, config_store, dmi_tools
+from lxml import etree
+import psutil
+
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -49,6 +49,7 @@ class _general(hm_classes.hm_module):
         self.dmi_bin = process_tools.find_file("dmidecode")
         self.lstopo_ng_bin = process_tools.find_file("lstopo-no-graphics")
         self.lshw_bin = process_tools.find_file("lshw")
+        self.lsblk_bin = process_tools.find_file("lsblk")
 
     def init_module(self):
         self.local_lvm_info = partition_tools.lvm_struct("bin")
@@ -80,6 +81,24 @@ class _general(hm_classes.hm_module):
             "{} -xml".format(self.lshw_bin))
         return server_command.compress(_lshw_result)
 
+    def _lsblk_int(self):
+        (_lsblk_stat, _lsblk_result) = commands.getstatusoutput(
+            "{} -aOrbp".format(self.lsblk_bin))
+        return server_command.compress(_lsblk_result)
+
+    def _disk_usage_int(self):
+        usages = []
+        for partition in psutil.disk_partitions():
+            try:
+                disk_usage = psutil.disk_usage(partition.mountpoint)
+            except OSError:
+                pass
+            else:
+                res = dict(disk_usage.__dict__)
+                res['mountpoint'] = partition.mountpoint
+                usages.append(res)
+        return usages
+
     def _dmiinfo_int(self):
         # _dmi_stat, _dmi_result = commands.getstatusoutput(self.dmi_bin)
         with tempfile.NamedTemporaryFile() as tmp_file:
@@ -102,9 +121,6 @@ class _general(hm_classes.hm_module):
                 else:
                     break
             return _result
-        # _parts = psutil.disk_partitions()
-        # for _part in _parts:
-        #     print _follow_link(_part.device)
         self.log("checking valid block_device names and major numbers")
         valid_block_devs, valid_major_nums = ({}, {})
         try:
@@ -2133,6 +2149,7 @@ class partinfo_command(hm_classes.hm_command):
             } for _part in _all_parts
         ]
         srv_com["lvm_dict"] = self.module.local_lvm_info.generate_xml_dict(srv_com.builder)
+        srv_com["disk_usage"] = self.module._disk_usage_int()
 
     def interpret(self, srv_com, cur_ns):
         dev_dict, lvm_dict = (
@@ -2434,6 +2451,15 @@ class lshw_command(hm_classes.hm_command):
         dump = etree.fromstring(server_command.decompress(
                 srv_com["*lshw_dump"]))
         return limits.nag_STATE_OK, "received lshw output"
+
+
+class lsblk_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        srv_com["lsblk_dump"] = self.module._lsblk_int()
+
+    def interpret(self, srv_com, cur_ns):
+        dump = server_command.decompress(srv_com["*lsblk_dump"])
+        return limits.nag_STATE_OK, dump
 
 
 class dmiinfo_command(hm_classes.hm_command):

@@ -64,11 +64,12 @@ angular.module(
                 @calculate_license_state(lic)
                 @set_warning(lic)
             for pack in @pack_list
-                for c_id, lic_list of pack.cluster_licenses
-                    for lic in lic_list
+                for c_id, lic_struct of pack.lic_info
+                    for lic in lic_struct.licenses
                         if lic.id of @lut_by_id
                             lic.$$license = @lut_by_id[lic.id]
                             lic.$$state = icswSystemLicenseFunctions.get_license_state_internal(lic)[3]
+                            # console.log "s=", lic.id, lic.$$state
                             if lic.$$state?
                                 lic.$$bootstrap_class = icswSystemLicenseFunctions.get_license_state_bootstrap_class(lic.$$state.state_id)
                                 lic.$$icon_class = icswSystemLicenseFunctions.get_license_state_icon_class(lic.$$state.state_id)
@@ -98,11 +99,11 @@ angular.module(
                                 states.push(lic_state)
 
                     # has dict of cluster_licenses (get_license_packages django view)
-                    for cluster_id_iter, cluster_lic_list of pack.cluster_licenses
+                    for cluster_id_iter, lic_struct of pack.lic_info
                         # cluster_id is string (actual cluster id)
                         # console.log cluster_id_iter, @cluster_info.CLUSTER_ID
                         if cluster_id_iter == @cluster_info.CLUSTER_ID
-                            check_licenses(cluster_lic_list)
+                            check_licenses(lic_struct.licenses)
 
                 if states.length
                     # NOTE: duplicated in license admin
@@ -236,6 +237,7 @@ angular.module(
         # add this such that licenses with higher parameters have priority if state is equal
         parameters_sortable = _.sum(_.values(issued_lic.parameters))
         # console.log "*", issued_lic.state
+        # console.log "*", issued_lic
         if moment(issued_lic.valid_from) < moment() and moment() < add_grace_period(moment(issued_lic.valid_to))
             if moment() < moment(issued_lic.valid_to)
                 return (

@@ -1,3 +1,57 @@
+<!--<style> .timeline {
+    white-space:nowrap;
+    overflow-x: scroll;
+    padding:0px 0 0px 0;
+    position:relative;
+}
+
+.timeline-entry {
+    display:inline-block;
+    vertical-align:top;
+    background:#13519C;
+    color:#fff;
+    padding:0px;
+    font-size:12px;
+    text-align:center;
+    position:relative;
+    border-top:4px solid #06182E;
+    border-radius:3px;
+    min-width:200px;
+    max-width:500px;
+}
+
+.timeline-entry img {
+    display:block;
+    max-width:100%;
+    height:auto;
+    margin-bottom:10px;
+}
+
+.timeline-entry h1 {
+    color:#fff;
+    font-size:18px;
+    font-family:Georgia, serif;
+    font-weight:bold;
+    margin-bottom:10px;
+}
+
+.timeline-entry h2 {
+    letter-spacing:.2em;
+    margin-bottom:10px;
+    font-size:14px;
+}
+
+.timeline-bar {
+    height:4px;
+    background:#eee;
+    width:100%;
+    position:relative;
+    top:13px;
+    left:0;
+}
+</style>
+-->
+
 <script type="text/ng-template" id="icsw/device/asset/overview">
     <icsw-device-asset-overview icsw-sel-man="0"></icsw-device-asset-overview>
 </script>
@@ -135,6 +189,7 @@
                 <th class="text-center">CPU Info</th>
                 <th class="text-center">GPU Info</th>
                 <th class="text-center">NIC Info</th>
+                <th class="text-center">HDD Info</th>
                 <th class="text-center">Action</th>
             </tr>
         </thead>
@@ -150,6 +205,7 @@
                 <td class="text-center"><div ng-class="assetbatch.$$cpus_availability_class"><strong>{{ assetbatch.$$cpus_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$gpus_availability_class"><strong>{{ assetbatch.$$gpus_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$network_devices_availability_class"><strong>{{ assetbatch.$$network_devices_availability_text }}</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$partition_table_availability_class"><strong>{{ assetbatch.$$partition_table_availability_text }}</strong></div></td>
                 <td class="text-center">
                     <div>
                         <button type="button" class="btn btn-sm btn-primary" ng-disabled="!assetbatch.is_finished_processing" ng-click="open_in_new_tab(assetbatch, -1)">{{ assetbatch.is_finished_processing ? "Open in new Tab" : "Still Processing..." }}</button>
@@ -257,7 +313,7 @@
                 <td>{{ package.$$package_type }}</td>
                 <td class="text-right">{{ package.$$num_versions }}</td>
                 <td class="text-right">
-                    <icsw-tools-button size="xs" type="show" is-show="!package.$$expanded" ng-click="expand_package($event, package)"></icsw-tools-button>
+                    <icsw-tools-button size="xs" type="show" is-show="!package.$$expanded" ng-click="expand($event, package)"></icsw-tools-button>
                 </td>
             </tr>
 
@@ -281,14 +337,43 @@
                         <tr>
                             <th>Version</th>
                             <th>Release</th>
-                            <th>Comment</th>
                             <th>Size</th>
+                            <th class="text-right">Action</th>
                         </tr>
-                        <tr ng-repeat="obj in package.$$versions_shown">
-                            <td>{{ obj.version }}</td>
-                            <td>{{ obj.$$release }}</td>
-                            <td>{{ obj.$$info }}</td>
-                            <td>{{ obj.$$size }}</td>
+                        <tr ng-repeat-start="version in package.$$versions_shown">
+                            <td>{{ version.version }}</td>
+                            <td>{{ version.$$release }}</td>
+                            <td>{{ version.$$size }}</td>
+                            <td class="text-right">
+                                <icsw-tools-button size="xs" type="show" is-show="!obj.$$expanded" ng-click="expand($event, version)"></icsw-tools-button>
+                            </td>
+                        </tr>
+                        <tr ng-repeat-end ng-if="version.$$expanded">
+                            <td colspan="99">
+                                <table class="table table-condensed table-striped simple-border">
+                                    <thead>
+                                        <tr>
+                                            <th>Device</th>
+                                            <th>Seen (From)</th>
+                                            <th>Seen (Until)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr ng-repeat="device_obj in version.install_info">
+                                            <td>{{ device_obj.device_name }}</td>
+                                            <td>{{ get_history_timeline(device_obj, true) }}</td>
+                                            <td>{{ get_history_timeline(device_obj, false) }}</td>
+                                            <!--<td>
+                                                <div class="timeline">
+                                                    <div class="timeline-entry" ng-repeat="time_str in device_obj.install_history_list">
+                                                        <h1>{{ format_time(time_str) }}</h1>
+                                                    </div>
+                                                </div>
+                                            </td>-->
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </td>
                         </tr>
                     </table>
                 </td>
@@ -604,6 +689,104 @@
     </table>
 </script>
 
+<script type="text/ng-template" id="icsw.asset.details.hw.hdd">
+    <h3>
+        HDD & Partition Information
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        st-safe-src="tab.asset_batch.hdds"
+        st-table="assets_shown_hdd_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Identifier</th>
+                <th>Serialnumber</th>
+                <th>Size</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat-start="obj in assets_shown_hdd_entries">
+                <td>{{ obj.identifier }}</td>
+                <td>{{ obj.serialnumber }}</td>
+                <td>{{ obj.size }}</td>
+            </tr>
+            <tr ng-repeat-end ng-if="obj.partitions.length > 0">
+                <td colspan="99">
+                    <table class="table table-condensed table-striped simple-border">
+                        <thead>
+                            <tr>
+                                <th>Mountpoint</th>
+                                <th>Size</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="partition in obj.partitions">
+                                <td>{{ partition.mountpoint }}</td>
+                                <td>{{ partition.size }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    <h3>
+        Logical Volumes
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        st-safe-src="tab.asset_batch.logical_discs"
+        st-table="assets_shown_logical_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Name</th>
+                <th>Filesystem</th>
+                <th>Size</th>
+                <th>Free</th>
+                <th>Fillstatus</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="obj in assets_shown_logical_entries">
+                <td>{{ obj.name }}</td>
+                <td>{{ obj.filesystem_name }}</td>
+                <td>{{ obj.size }}</td>
+                <td>{{ obj.free }}</td>
+                <td>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"
+                        aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( obj.fill_percentage + '%' ) }">
+                            {{ obj.fill_percentage }}%
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+   </table>
+</script>
+
 <script type="text/ng-template" id="icsw.asset.details.all">
     <br/>
     <uib-tabset>
@@ -648,6 +831,12 @@
                 <span>Installed Network Devices(s)</span>
             </uib-tab-heading>
             <icsw-asset-details-hardware-nic-table icsw-tab="tab"></icsw-asset-details-hardware-nic-table>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>HDD & Partition Information</span>
+            </uib-tab-heading>
+            <icsw-asset-details-hardware-hdd-table icsw-tab="tab"></icsw-asset-details-hardware-hdd-table>
         </uib-tab>
     </uib-tabset>
 </script>

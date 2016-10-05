@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -19,12 +19,8 @@
 #
 """ syncer definition for md-config-server """
 
-import base64
-import bz2
 import datetime
-import marshal
 import os
-import stat
 import time
 
 from django.db.models import Q
@@ -126,6 +122,7 @@ class SyncConfig(object):
         # relayer info (== icsw software version)
         self.relayer_version = "?.?-0"
         self.mon_version = "?.?-0"
+        self.livestatus_version = "?.?"
         # clear md_struct
         self.__md_struct = None
         # try to get relayer / mon_version from latest build
@@ -137,24 +134,42 @@ class SyncConfig(object):
             _latest_build = _latest_build[0]
             self.mon_version = _latest_build.mon_version
             self.relayer_version = _latest_build.relayer_version
+            self.livestatus_version = _latest_build.livestatus_version
             self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
 
     def set_info(self, info):
-        if "icsw.version" in info:
+        _cs = info.get("config_store", {})
+        if "icsw.version" in _cs:
             self.relayer_version = "{}-{}".format(
-                info["icsw.version"],
-                info["icsw.release"],
+                _cs["icsw.version"],
+                _cs["icsw.release"],
             )
-        if "md.version" in info:
+        if "md.version" in _cs:
             self.mon_version = "{}-{}".format(
-                info["md.version"],
-                info["md.release"],
+                _cs["md.version"],
+                _cs["md.release"],
             )
-        # print "SI", info
+        if "livestatus.version" in _cs:
+            self.livestatus_version = _cs["livestatus.version"]
+        if self.__md_struct:
+            for _attr in ["relayer_version", "mon_version", "livestatus_version"]:
+                setattr(self.__md_struct, _attr, getattr(self, _attr))
+            self.__md_struct.save()
 
     def handle_info_action(self, action, srv_com):
-        print "**", action
-        print srv_com.pretty_print()
+        if action == "sync_start" and self.__md_struct:
+            self.__md_struct.sync_start = cluster_timezone.localize(datetime.datetime.now())
+            self.__md_struct.num_files = int(srv_com["*num_files"])
+            self.__md_struct.size_data = int(srv_com["*size_data"])
+            self.__md_struct.num_transfers = 1
+            self.__md_struct.num_runs += 1
+            self.__md_struct.save(update_fields=["sync_start", "num_files", "size_data", "num_transfers", "num_runs"])
+        elif action == "sync_end" and self.__md_struct:
+            self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
+            self.__md_struct.save(update_fields=["sync_end"])
+            self.__md_struct = None
+        else:
+            self.log("unknown action {} in handle_info_action()".format(action), logging_tools.LOG_LEVEL_ERROR)
 
     def get_send_data(self):
         _r_dict = {
@@ -180,14 +195,16 @@ class SyncConfig(object):
             )
         return _r_dict
 
-    def send_slave_command(self, action):
+    def send_slave_command(self, action, **kwargs):
         # sends slave command (==action) to local sync master
         self.__process.send_sync_command(
             server_command.srv_command(
                 command="slave_command",
                 action=action,
                 master="1" if self.master else "0",
+                msg_src="M",
                 slave_uuid=self.slave_uuid,
+                **kwargs
             )
         )
 
@@ -267,9 +284,6 @@ class SyncConfig(object):
                 device=self.monitor_server,
                 version=self.config_version_build,
                 build_start=cluster_timezone.localize(datetime.datetime.now()),
-                relayer_version=self.relayer_version,
-                # monitorig daemon
-                mon_version=self.mon_version,
             )
         else:
             self.__md_master = master
@@ -277,47 +291,24 @@ class SyncConfig(object):
             _md = mon_dist_slave(
                 device=self.monitor_server,
                 mon_dist_master=self.__md_master,
-                relayer_version=self.relayer_version,
-                mon_version=self.mon_version,
             )
+        # version info
+        for _attr in ["relayer_version", "mon_version", "livestatus_version"]:
+            setattr(_md, _attr, getattr(self, _attr))
         _md.save()
         self.__md_struct = _md
         return self.__md_struct
 
     def end_build(self):
-        self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
-        self.__md_struct.save()
-
-    def _send(self, srv_com):
-        self.__process.send_command(self.monitor_server.uuid, unicode(srv_com))
-        self.__size_raw += len(unicode(srv_com))
-        self.__num_com += 1
-
-    def _show_pending_info(self):
-        cur_time = time.time()
-        pend_keys = [key for key, value in self.__tcv_dict.iteritems() if type(value) != bool]
-        error_keys = [key for key, value in self.__tcv_dict.iteritems() if value is False]
-        self.log(
-            "{:d} total, {} pending, {} error".format(
-                len(self.__tcv_dict),
-                logging_tools.get_plural("remote file", len(pend_keys)),
-                logging_tools.get_plural("remote file", len(error_keys))
-            ),
-        )
-        if not pend_keys and not error_keys:
-            _dist_time = abs(cur_time - self.send_time)
-            self.log(
-                "actual distribution_set {:d} is OK (in {}, {:.2f} / sec)".format(
-                    int(self.config_version_send),
-                    logging_tools.get_diff_time_str(_dist_time),
-                    self.num_send[self.config_version_send] / _dist_time,
-                )
-            )
-            self.config_version_installed = self.config_version_send
-            self.dist_ok = True
-            self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
+        if self.__md_struct:
+            self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
             self.__md_struct.save()
-            self._check_for_ras()
+
+    def sync_slave(self):
+        self.send_slave_command(
+            "sync_slave",
+            config_version_build="{:d}".format(self.config_version_build)
+        )
 
     def _check_for_ras(self):
         if self.reload_after_sync_flag and self.dist_ok:
@@ -338,88 +329,3 @@ class SyncConfig(object):
             return (_top, [_entry[len(_top):] for _entry in in_list])
         else:
             return ("", [])
-
-    def file_content_info(self, srv_com):
-        cmd = srv_com["command"].text
-        version = int(srv_com["version"].text)
-        file_reply, file_status = srv_com.get_log_tuple()
-        self.log(
-            "handling {} (version {:d}, reply is {})".format(
-                cmd,
-                version,
-                file_reply,
-            ),
-            file_status
-        )
-        if cmd == "file_content_result":
-            file_name = srv_com["file_name"].text
-            # check return state for validity
-            if not server_command.srv_reply_state_is_valid(file_status):
-                self.log("file_state {:d} is not valid".format(file_status), logging_tools.LOG_LEVEL_CRITICAL)
-            self.log(
-                "file_content_status for {} is {} ({:d}), version {:d} (dist: {:d})".format(
-                    file_name,
-                    srv_com["result"].attrib["reply"],
-                    file_status,
-                    version,
-                    self.send_time_lut.get(version, 0),
-                ),
-                file_status
-            )
-            file_names = [file_name]
-        elif cmd == "file_content_bulk_result":
-            num_ok, num_failed = (int(srv_com["num_ok"].text), int(srv_com["num_failed"].text))
-            self.log("{:d} ok / {:d} failed".format(num_ok, num_failed))
-            failed_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["failed_list"].text)))
-            ok_list = marshal.loads(bz2.decompress(base64.b64decode(srv_com["ok_list"].text)))
-            if ok_list:
-                _ok_dir, _ok_list = self._parse_list(ok_list)
-                self.log(
-                    "ok list (beneath {}): {}".format(
-                        _ok_dir,
-                        ", ".join(
-                            sorted(_ok_list)
-                        ) if global_config["DEBUG"] else logging_tools.get_plural("entry", len(_ok_list))
-                    )
-                )
-            if failed_list:
-                _failed_dir, _failed_list = self._parse_list(failed_list)
-                self.log(
-                    "failed list (beneath {}): {}".format(
-                        _failed_dir,
-                        ", ".join(sorted(_failed_list))
-                    )
-                )
-            file_names = ok_list
-        err_dict = {}
-        for file_name in file_names:
-            err_str = None
-            if version in self.send_time_lut:
-                target_vers = self.send_time_lut[version]
-                if version == self.send_time:
-                    if type(self.__tcv_dict[file_name]) in [int, long]:
-                        if self.__tcv_dict[file_name] == target_vers:
-                            if file_status in [logging_tools.LOG_LEVEL_OK, logging_tools.LOG_LEVEL_WARN]:
-                                self.__tcv_dict[file_name] = True
-                            else:
-                                self.__tcv_dict[file_name] = False
-                        else:
-                            err_str = "waits for different version: {:d} != {:d}".format(version, self.__tcv_dict[file_name])
-                    else:
-                        err_str = "already set to {}".format(str(self.__tcv_dict[file_name]))
-                else:
-                    err_str = "version is from an older distribution run ({:d} != {:d})".format(version, self.send_time)
-            else:
-                err_str = "version {:d} not known in send_time_lut".format(version)
-            if err_str:
-                err_dict.setdefault(err_str, []).append(file_name)
-        for err_key in sorted(err_dict.keys()):
-            self.log(
-                "[{:4d}] {} : {}".format(
-                    len(err_dict[err_key]),
-                    err_key,
-                    ", ".join(sorted(err_dict[err_key]))
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-        self._show_pending_info()

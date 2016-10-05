@@ -22,18 +22,16 @@
 import base64
 import bz2
 import datetime
-import marshal
 import os
 import signal
 import stat
-import sys
 import time
 
-from initat.server_version import VERSION_STRING
+from initat.host_monitoring.client_enums import icswServiceEnum
+from initat.server_version import VERSION_MAJOR, VERSION_MINOR
 from initat.tools import logging_tools, process_tools, server_command, config_store
 from .base_config import RemoteServer, SlaveState
 from .config import global_config, CS_MON_NAME
-from initat.server_version import VERSION_MAJOR, VERSION_MINOR
 
 __all__ = [
     "SyncConfig",
@@ -74,12 +72,13 @@ class FileInfo(object):
 
     def store_result(self, remote_result):
         self.created = remote_result["created"]
-        print "*", self.created, remote_result["version"], self.target_version
+        # print "*", self.created, remote_result["version"], self.target_version
         if remote_result["version"] != self.target_version:
             self.created = False
 
     @property
     def is_pending(self):
+        # print "ip", self.created, self.error, self.path
         return True if (not self.created and not self.error) else False
 
     @property
@@ -96,9 +95,13 @@ class SyncConfig(object):
         self.__process = proc
         self.__main_dir = global_config["MD_BASEDIR"]
         self.distributed = kwargs.get("distributed", False)
+        # registered at master
+        self.__registered_at_master = False
         if di_dict is None:
+            # distribution slave on remote device
             self.name = None
             self.master = None
+            self.master_config = None
             self.log("init local structure")
             self.__dir_offset = ""
             self.config_store = config_store.ConfigStore(CS_MON_NAME, log_com=self.__process.log, access_mode=config_store.AccessModeEnum.LOCAL)
@@ -113,6 +116,7 @@ class SyncConfig(object):
             self.name = di_dict.get("name", None)
             self.master = di_dict["master"]
             if self.name:
+                # distribution slave structure on dist master
                 self.struct = None
                 self.config_store = config_store.ConfigStore(CS_MON_NAME, log_com=self.__process.log, access_mode=config_store.AccessModeEnum.LOCAL, read=False)
                 self.__dir_offset = os.path.join("slaves", self.name)
@@ -137,6 +141,8 @@ class SyncConfig(object):
                 # file dict to check distribution state
                 self.__file_dict = {}
             else:
+                # distribution master strcuture
+                self.__slave_configs, self.__slave_lut = ({}, {})
                 # local master structure, is usually none due to delayed check of MD_TYPE in snycer.py
                 self.struct = kwargs["local_master"]
                 self.config_store = None
@@ -175,8 +181,61 @@ class SyncConfig(object):
         # clear md_struct
         self.__md_struct = None
 
+    def set_livestatus_version(self, ls_version):
+        self.config_store["livestatus.version"] = ls_version
+        self.config_store.write()
+
+    def add_slaves(self, dist_info, inst_xml):
+        # dict for all slaves
+        self.__slave_configs, self.__slave_lut = ({}, {})
+        for _di in dist_info:
+            if not _di["master"]:
+                self.log("found slave entry ({})".format(", ".join(sorted(_di.keys()))))
+                _slave_c = SyncConfig(
+                    self.__process,
+                    _di,
+                )
+                self.__slave_configs[_slave_c.pk] = _slave_c
+                self.__slave_lut[_slave_c.name] = _slave_c.pk
+                self.__slave_lut[_slave_c.slave_uuid] = _slave_c.pk
+                self.log(
+                    "  slave {} (IP {}, {})".format(
+                        _slave_c.name,
+                        _slave_c.slave_ip,
+                        _slave_c.slave_uuid,
+                    )
+                )
+                if _slave_c.slave_ip:
+                    self.__process.register_remote(
+                        _slave_c.slave_ip,
+                        _slave_c.slave_uuid,
+                        inst_xml.get_port_dict(icswServiceEnum.monitor_slave, command=True)
+                    )
+        self.send_info_message()
+
+    def get_slave(self, uuid):
+        # for distribution master
+        return self.__slave_configs[self.__slave_lut[uuid]]
+
+    def send_register_msg(self, **kwargs):
+        for _slave_struct in [self] + self.__slave_configs.values():
+            if _slave_struct.master:
+                self.log("register_master not necessary for master")
+            else:
+                master_ip = _slave_struct.master_ip
+                master_uuid = _slave_struct.master_uuid
+                _slave_struct.send_slave_command(
+                    "register_master",
+                    master_ip=master_ip,
+                    master_uuid=master_uuid,
+                    master_port="{:d}".format(global_config["COMMAND_PORT"]),
+                )
+        self.send_info_message()
+
     def set_local_master(self, local_master):
+        self.log("linking local_master with master_config")
         self.struct = local_master
+        local_master.master_config = self
 
     def get_satellite_info(self):
         r_dict = {
@@ -184,7 +243,7 @@ class SyncConfig(object):
         }
         if self.config_store is not None:
             # may be none for local master
-            for _key in ["md.version", "md.release", "icsw.version", "icsw.release"]:
+            for _key in ["md.version", "md.release", "icsw.version", "icsw.release", "livestatus.version"]:
                 if _key in self.config_store:
                     r_dict["config_store"][_key] = self.config_store[_key]
         if self.master is None:
@@ -193,18 +252,19 @@ class SyncConfig(object):
             }
         return r_dict
 
-    def store_satellite_info(self, si_info):
-        import pprint
-        pprint.pprint(si_info)
+    def store_satellite_info(self, si_info, dist_master):
+        # import pprint
+        # pprint.pprint(si_info)
         for _key in si_info.get("config_store", {}).keys():
             self.config_store[_key] = si_info["config_store"][_key]
         if "store_info" in si_info:
-            for _key, _struct in si_info["store_info"].iteritems():
-                if _key not in self.__file_dict:
-                    self.log("key '{}' not known in local file_dict".format(_key), logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    self.__file_dict[_key].store_result(_struct)
-            self._show_pending_info()
+            if self.__file_dict:
+                for _key, _struct in si_info["store_info"].iteritems():
+                    if _key not in self.__file_dict:
+                        self.log("key '{}' not known in local file_dict".format(_key), logging_tools.LOG_LEVEL_ERROR)
+                    else:
+                        self.__file_dict[_key].store_result(_struct)
+                self._show_pending_info(dist_master)
 
     def get_info_dict(self):
         r_dict = {
@@ -221,7 +281,7 @@ class SyncConfig(object):
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
-            "[sc {}] {}".format(
+            u"[sc {}] {}".format(
                 self.name if self.name else "master",
                 what
             ),
@@ -255,37 +315,6 @@ class SyncConfig(object):
             self.log("resending files")
             self.distribute()
 
-    def config_ts(self, ts_type):
-        if self.__md_struct:
-            # set config timestamp
-            setattr(self.__md_struct, "config_build_{}".format(ts_type), cluster_timezone.localize(datetime.datetime.now()))
-            self.__md_struct.save()
-
-    def device_count(self, _num):
-        if self.__md_struct:
-            self.__md_struct.num_devices = _num
-            self.__md_struct.save(update_fields=["num_devices"])
-
-    def unreachable_devices(self, num):
-        # set number of unreachable devices
-        if self.__md_struct:
-            self.__md_struct.unreachable_devices = num
-            self.__md_struct.save(update_fields=["unreachable_devices"])
-
-    def unreachable_device(self, dev_pk, dev_name, devg_name):
-        # add unreachable device
-        if self.__md_struct:
-            mon_build_unreachable.objects.create(
-                mon_dist_master=self.__md_struct,
-                device_pk=dev_pk,
-                device_name=dev_name,
-                devicegroup_name=devg_name,
-            )
-
-    def end_build(self):
-        self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
-        self.__md_struct.save()
-
     def send_slave_command(self, action_srvc, **kwargs):
         # send command from local master to remote slave
         if isinstance(action_srvc, basestring):
@@ -303,20 +332,23 @@ class SyncConfig(object):
         )
         self.__process.send_command(
             self.slave_uuid,
-            unicode(srv_com),
+            srv_com,
         )
 
     def _get_slave_srv_command(self, action, **kwargs):
+        # server command from distribution master to remote slave
         return server_command.srv_command(
             command="slave_command",
             action=action,
             slave_uuid=self.slave_uuid,
+            msg_src="D",
             master="1" if self.master else "0",
             **kwargs
         )
 
     def _get_config_srv_command(self, action, **kwargs):
         # server command to local md-config-server from distribution master
+        # print "SI_COM", action
         return server_command.srv_command(
             command="slave_info",
             action=action,
@@ -325,10 +357,78 @@ class SyncConfig(object):
             **kwargs
         )
 
+    def send_info_message(self):
+        # send info to monitor daemon
+        info_list = [
+            _entry.get_info_dict() for _entry in [self] + self.__slave_configs.values()
+        ]
+        # print "ILIST", self.master_uuid, self.slave_uuid
+        srv_com = self._get_config_srv_command(
+            "info_list",
+            slave_info=server_command.compress(info_list, json=True),
+        )
+        self.send_to_config_server(srv_com)
+
+    def send_to_config_server(self, srv_com):
+        self.__process.send_command(
+            self.master_uuid,
+            unicode(srv_com),
+        )
+
+    def _get_dist_master_srv_command(self, action, **kwargs):
+        # server command from dist slave to dist master
+        return server_command.srv_command(
+            command="slave_command",
+            action=action,
+            slave_uuid=self.config_store["slave.uuid"],
+            msg_src="S",
+            master="1" if self.master else "0",
+            **kwargs
+        )
+
+    def check_for_register_at_master(self):
+        # is called with local_master on distribution master
+        if not self.__registered_at_master and "master.uuid" in self.config_store:
+            self.__registered_at_master = True
+            # open connection to master server
+            self.__process.register_remote(
+                self.config_store["master.ip"],
+                self.config_store["master.uuid"],
+                self.config_store["master.port"],
+            )
+        # send satellite info
+        self.send_satellite_info()
+
+    def send_satellite_info(self):
+        if self.master_config:
+            # send full info when on distribution master
+            self.master_config.send_info_message()
+        else:
+            if self.__registered_at_master:
+                self.send_to_sync_master(
+                    self._get_satellite_info()
+                )
+
+    def send_to_sync_master(self, srv_com):
+        if self.__registered_at_master:
+            self.__process.send_command(
+                self.config_store["master.uuid"],
+                unicode(srv_com),
+            )
+        else:
+            self.log("slave not registered at master")
+
+    def _get_satellite_info(self):
+        return self._get_dist_master_srv_command(
+            "satellite_info",
+            satellite_info=server_command.compress(self.get_satellite_info(), json=True)
+        )
+
     def _build_file_content(self, _send_list):
         srv_com = self._get_slave_srv_command(
             "file_content_bulk",
-            version="{:d}".format(int(self.send_time)),
+            config_version_send="{:d}".format(self.config_version_send),
+            send_time="{:d}".format(int(self.send_time)),
         )
         _bld = srv_com.builder()
 
@@ -343,38 +443,41 @@ class SyncConfig(object):
         srv_com["bulk"] = base64.b64encode(bz2.compress("".join([_parts[-1] for _parts in _send_list])))
         return srv_com
 
-    def _show_pending_info(self):
-        if self.__file_dict:
-            cur_time = time.time()
-            pend_keys = [key for key, value in self.__file_dict.iteritems() if value.is_pending]
-            error_keys = [key for key, value in self.__file_dict.iteritems() if value.is_error]
+    def _show_pending_info(self, dist_master):
+        cur_time = time.time()
+        pend_keys = [key for key, value in self.__file_dict.iteritems() if value.is_pending]
+        error_keys = [key for key, value in self.__file_dict.iteritems() if value.is_error]
+        self.log(
+            "{:d} total, {} pending, {} error".format(
+                len(self.__file_dict),
+                logging_tools.get_plural("remote file", len(pend_keys)),
+                logging_tools.get_plural("remote file", len(error_keys))
+            ),
+        )
+        if not pend_keys and not error_keys:
+            _dist_time = abs(cur_time - self.send_time)
             self.log(
-                "{:d} total, {} pending, {} error".format(
-                    len(self.__file_dict),
-                    logging_tools.get_plural("remote file", len(pend_keys)),
-                    logging_tools.get_plural("remote file", len(error_keys))
-                ),
+                "actual distribution_set {:d} is OK (in {}, {:.2f} / sec)".format(
+                    int(self.config_version_send),
+                    logging_tools.get_diff_time_str(_dist_time),
+                    self.num_send[self.config_version_send] / _dist_time,
+                )
             )
-            if not pend_keys and not error_keys:
-                _dist_time = abs(cur_time - self.send_time)
-                self.log(
-                    "actual distribution_set {:d} is OK (in {}, {:.2f} / sec)".format(
-                        int(self.config_version_send),
-                        logging_tools.get_diff_time_str(_dist_time),
-                        self.num_send[self.config_version_send] / _dist_time,
-                    )
-                )
-                self.config_version_installed = self.config_version_send
-                self.dist_ok = True
-                # self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
-                # self.__md_struct.save()
-                self._check_for_ras()
+            self.config_version_installed = self.config_version_send
+            self.dist_ok = True
+            # self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
+            # self.__md_struct.save()
 
-                self.__process.send_to_config_server(
-                    self._get_config_srv_command(
-                        "sync_end",
-                    )
+            # this makes only sense on slave
+            # self._check_for_ras()
+
+            dist_master.send_to_config_server(
+                self._get_config_srv_command(
+                    "sync_end",
                 )
+            )
+            # clear file_dict
+            self.__file_dict = {}
 
     def _parse_list(self, in_list):
         # return top_dir and simplified list
@@ -393,17 +496,28 @@ class SyncConfig(object):
     # remote actions
     def handle_remote_action(self, action, srv_com):
         _attr_name = "handle_remote_{}".format(action)
-        if not hasattr(self, _attr_name):
-            self.log("unknown remote action '{}'".format(action), logging_tools.LOG_LEVEL_ERROR)
+        try:
+            remote_slave = self.get_slave(srv_com["*slave_uuid"])
+        except:
+            self.log("unable to get slave: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
         else:
-            getattr(self, _attr_name)(srv_com)
+            if not hasattr(self, _attr_name):
+                self.log("unknown remote action '{}'".format(action), logging_tools.LOG_LEVEL_ERROR)
+            else:
+                getattr(remote_slave, _attr_name)(srv_com, self)
 
-    def handle_remote_reload_after_sync(self, srv_com):
+    def handle_remote_reload_after_sync(self, srv_com, dist_master):
         self.reload_after_sync_flag = True
         self.send_slave_command("reload_after_sync")
 
-    def handle_remote_sync_slave(self, srv_com):
+    def handle_remote_satellite_info(self, srv_com, dist_master):
+        si_info = server_command.decompress(srv_com["*satellite_info"], json=True)
+        self.store_satellite_info(si_info, dist_master)
+        dist_master.send_info_message()
+
+    def handle_remote_sync_slave(self, srv_com, dist_master):
         # max uncompressed send size
+        self.config_version_build = int(srv_com["*config_version_build"])
         MAX_SEND_SIZE = 65536
         cur_time = time.time()
         if self.slave_ip:
@@ -433,7 +547,7 @@ class SyncConfig(object):
                     version="{:d}".format(int(self.send_time)),
                 )
                 _bld = srv_com.builder()
-                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs]),
+                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
                 self.send_slave_command(srv_com)
             _send_list, _send_size = ([], 0)
             # clear file dict
@@ -457,7 +571,7 @@ class SyncConfig(object):
                 self.send_slave_command(self._build_file_content(_send_list))
                 _send_list, _send_size = ([], 0)
             self.num_send[self.config_version_send] = 0
-            self.__process.send_to_config_server(
+            dist_master.send_to_config_server(
                 self._get_config_srv_command(
                     "sync_start",
                     num_files=_num_files,
@@ -469,7 +583,7 @@ class SyncConfig(object):
             # self.__md_struct.size_raw = self.__size_raw
             # self.__md_struct.size_data = size_data
             # self.__md_struct.save()
-            self._show_pending_info()
+            self._show_pending_info(dist_master)
         else:
             self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
 
@@ -499,7 +613,7 @@ class SyncConfig(object):
             self._clear_dir(dir_name)
 
     def handle_direct_file_content_bulk(self, srv_com):
-        new_vers = int(srv_com["*version"])
+        new_vers = int(srv_com["*config_version_send"])
         _file_list = srv_com["file_list"][0]
         _bulk = bz2.decompress(base64.b64decode(srv_com["*bulk"]))
         cur_offset = 0
@@ -513,7 +627,7 @@ class SyncConfig(object):
             _size = int(_entry.get("size"))
             self._store_file(_entry.text, new_vers, _bulk[cur_offset:cur_offset + _size])
             cur_offset += _size
-        self.__process._send_satellite_info()
+        self.send_satellite_info()
 
     def _store_file(self, t_file, new_vers, content):
         MON_TOP_DIR = global_config["MD_BASEDIR"]
@@ -641,25 +755,22 @@ class SyncConfig(object):
         if self.reload_after_sync_flag and self.dist_ok:
             self.reload_after_sync_flag = False
             self.log("sending reload")
-            self.__process.send_pool_message(
-                "send_signal",
-                signal.SIGHUP,
-            )
+            self.__process.send_signal(signal.SIGHUP)
 
-    def handle_action(self, action, srv_com):
+    def handle_action(self, action, srv_com, src, dst):
         s_time = time.time()
-        if self.master is None:
-            # direct local action
-            _type = "direct"
-            self.handle_direct_action(action, srv_com)
-        elif self.master:
-            # local action on sync master
-            _type = "local"
-            self.handle_local_action(action, srv_com)
-        else:
-            # remote action
-            _type = "remote"
-            self.handle_remote_action(action, srv_com)
+        # signature
+        _sig = "{}{}".format(src, dst)
+        _type = {
+            # slave to remote (dist slave to dist master)
+            "SR": "remote",
+            # mon server to remote
+            "MR": "remote",
+            # mon server to dist master
+            "MD": "local",
+            "DS": "direct",
+        }[_sig]
+        getattr(self, "handle_{}_action".format(_type))(action, srv_com)
         e_time = time.time()
         self.log(
             "{} action {} took {}".format(

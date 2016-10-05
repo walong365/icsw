@@ -50,14 +50,14 @@ device_report_module = angular.module(
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
     "icswDispatcherSettingTreeService", "Restangular", "icswActiveSelectionService",
     "icswComplexModalService", "$interval", "icswUserService", "icswAssetHelperFunctions",
-    "$http"
+    "$http", "icswReportHelperFunctions"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, FileUploader, icswCSRFService
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
     icswDispatcherSettingTreeService, Restangular, icswActiveSelectionService,
     icswComplexModalService, $interval, icswUserService, icswAssetHelperFunctions,
-    $http
+    $http, icswReportHelperFunctions
 ) ->
     $scope.struct = {
         # list of devices
@@ -87,8 +87,6 @@ device_report_module = angular.module(
 
         user: undefined
 
-        assetbatch_selection_mode: "-1"
-
         available_reports: []
         available_reports_dict: {}
     }
@@ -112,103 +110,33 @@ device_report_module = angular.module(
         )
     refresh_available_reports()
 
-    $scope.assetbatch_selection_mode_change = () ->
+    initialize_buttons = () ->
         for dev in $scope.struct.devices
             dev.$selected_for_report = false
 
-            dev.$packages_selected = false
-            dev.$packages_selected_button_disabled = true
+            icswReportHelperFunctions.disable_device_buttons(dev)
 
-            dev.$licenses_selected = false
-            dev.$licenses_selected_button_disabled = true
+        idx_list = []
 
-            dev.$installed_updates_selected = false
-            dev.$installed_updates_button_disabled = true
+        for _dev in $scope.struct.devices
+            idx_list.push _dev.idx
 
-            dev.$avail_updates_selected = false
-            dev.$avail_updates_button_disabled = true
+        icswSimpleAjaxCall({
+            url: ICSW_URLS.REPORT_REPORT_DATA_AVAILABLE
+            data:
+                idx_list: idx_list
+            dataType: 'json'
+        }).then(
+            (result) ->
+                for device in $scope.struct.devices
+                    if result.pk_setting_dict.hasOwnProperty(device.idx)
 
-            dev.$process_report_selected = false
-            dev.$process_report_button_disabled = true
+                        device_info_obj = result.pk_setting_dict[device.idx]
 
-            dev.$hardware_report_selected = false
-            dev.$hardware_report_button_disabled = true
+                        icswReportHelperFunctions.enable_device_buttons(device, device_info_obj)
 
-            dev.$dmi_report_selected = false
-            dev.$dmi_report_button_disabled = true
-
-            dev.$pci_report_selected = false
-            dev.$pci_report_button_disabled = true
-
-            dev.$lstopo_report_selected = false
-            dev.$lstopo_report_button_disabled = true
-
-        if $scope.struct.assetbatch_selection_mode != ""
-            idx_list = []
-
-            for _dev in $scope.struct.devices
-                idx_list.push _dev.idx
-
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.REPORT_REPORT_DATA_AVAILABLE
-                data:
-                    idx_list: idx_list
-                    assetbatch_selection_mode: $scope.struct.assetbatch_selection_mode
-                dataType: 'json'
-            }).then(
-                (result) ->
-                    for device in $scope.struct.devices
-                        if result.pk_setting_dict.hasOwnProperty(device.idx)
-
-                            device_info_obj = result.pk_setting_dict[device.idx]
-
-                            for obj in device_info_obj
-                                button_title_str = ""
-                                if obj.hasOwnProperty("length")
-                                    asset_type = obj[0]
-                                    asset_run_time = moment(obj[1]).format("YYYY-MM-DD HH:mm:ss")
-                                    asset_batch_id = obj[2]
-
-                                    button_title_str = "AssetBatchId: " + asset_batch_id + "\n" + "AssetRunTime: " + asset_run_time
-
-                                else
-                                    asset_type = obj
-
-                                asset_type_name = icswAssetHelperFunctions.resolve("asset_type", asset_type)
-
-                                if asset_type_name == "Package"
-                                    device.$packages_selected_button_disabled = false
-                                    device.$packages_selected_button_title = button_title_str
-                                else if asset_type_name == "License"
-                                    device.$licenses_selected_button_disabled = false
-                                    device.$licenses_selected_button_title = button_title_str
-                                else if asset_type_name == "Update"
-                                    device.$installed_updates_button_disabled = false
-                                    device.$installed_updates_button_title = button_title_str
-                                else if asset_type_name == "Pending update"
-                                    device.$avail_updates_button_disabled = false
-                                    device.$avail_updates_button_title = button_title_str
-                                else if asset_type_name == "Process"
-                                    device.$process_report_button_disabled = false
-                                    device.$process_report_button_title = button_title_str
-                                else if asset_type_name == "Windows Hardware"
-                                    device.$hardware_report_button_disabled = false
-                                    device.$hardware_report_button_title = button_title_str
-                                else if asset_type_name == "DMI"
-                                    device.$dmi_report_button_disabled = false
-                                    device.$dmi_report_button_title = button_title_str
-                                else if asset_type_name == "PCI"
-                                    device.$pci_report_button_disabled = false
-                                    device.$pci_report_button_title = button_title_str
-                                else if asset_type_name == "Hardware"
-                                    device.$lstopo_report_button_disabled = false
-                                    device.$lstopo_report_button_title= button_title_str
-                                else if asset_type_name == "LSHW"
-                                    device.$hardware_report_button_disabled = false
-                                    device.$hardware_report_button_title = button_title_str
-
-              (not_ok) ->
-                  console.log not_ok
+          (not_ok) ->
+              console.log not_ok
           )
 
     b64_to_blob = (b64_data, content_type, slice_size) ->
@@ -367,51 +295,55 @@ device_report_module = angular.module(
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
+                Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
+                    {
+                        device_pks: angular.toJson((dev.idx for dev in devs))
+                        simple: angular.toJson(1)
+                    }
+                )
             ]
         ).then(
             (data) ->
+                console.log(data[1])
                 $scope.struct.device_tree = data[0]
                 $scope.struct.devices.length = 0
 
                 idx_list = []
 
+                device_to_scan_lut = {}
+
+                data[1].sort(
+                    (a, b) ->
+                        return b.idx - a.idx
+                )
+
+                for scan in data[1]
+                    if scan.is_finished_processing
+                        if device_to_scan_lut[scan.device] == undefined
+                            device_to_scan_lut[scan.device] = []
+
+                        time_str = moment(scan.run_start_time).format("YYYY-MM-DD HH:mm:ss")
+
+                        scan.$$report_option_string = "ID:" + scan.idx + " -- ScanTime:" + time_str
+
+                        device_to_scan_lut[scan.device].push(scan)
+
                 for dev in devs
+                    dev.$$available_scans = []
+                    dev.$$selected_assetbatch = "-1"
+                    if device_to_scan_lut[dev.idx] != undefined
+                        dev.$$available_scans = device_to_scan_lut[dev.idx]
+                        dev.$$selected_assetbatch = "" + device_to_scan_lut[dev.idx][0].idx
+
                     if !dev.is_cluster_device_group
                         dev.$title_str = ""
 
                         dev.$selected_for_report = false
 
-                        dev.$packages_selected = false
-                        dev.$packages_selected_button_disabled = true
-
-                        dev.$licenses_selected = false
-                        dev.$licenses_selected_button_disabled = true
-
-                        dev.$installed_updates_selected = false
-                        dev.$installed_updates_button_disabled = true
-
-                        dev.$avail_updates_selected = false
-                        dev.$avail_updates_button_disabled = true
-
-                        dev.$process_report_selected = false
-                        dev.$process_report_button_disabled = true
-
-                        dev.$hardware_report_selected = false
-                        dev.$hardware_report_button_disabled = true
-
-                        dev.$dmi_report_selected = false
-                        dev.$dmi_report_button_disabled = true
-
-                        dev.$pci_report_selected = false
-                        dev.$pci_report_button_disabled = true
-
-                        dev.$lstopo_report_selected = false
-                        dev.$lstopo_report_button_disabled = true
-
                         $scope.struct.devices.push(dev)
                         idx_list.push(dev.idx)
 
-                $scope.assetbatch_selection_mode_change()
+                initialize_buttons()
         )
         
     $scope.get_tr_class = (obj) ->
@@ -432,7 +364,6 @@ device_report_module = angular.module(
             user_group_overview_module_selected: $scope.struct.user_group_overview_module_selected
             pdf_page_format: $scope.struct.pdf_page_format
             user_idx: $scope.struct.user.idx
-            assetbatch_selection_mode: $scope.struct.assetbatch_selection_mode
         }
         settings.push(setting)
 
@@ -449,6 +380,7 @@ device_report_module = angular.module(
                     dmi_report_selected: device.$dmi_report_selected
                     pci_report_selected: device.$pci_report_selected
                     lstopo_report_selected: device.$lstopo_report_selected
+                    assetbatch_id: device.$$selected_assetbatch
                 }
                 settings.push(setting)
 
@@ -783,9 +715,11 @@ device_report_module = angular.module(
 
 ]).directive("icswDeviceTreeReportRow",
 [
-    "$templateCache", "$compile", "icswActiveSelectionService", "icswDeviceTreeService",
+    "$templateCache", "$compile", "icswActiveSelectionService", "icswDeviceTreeService", "icswSimpleAjaxCall",
+    "ICSW_URLS", "icswReportHelperFunctions"
 (
-    $templateCache, $compile, icswActiveSelectionService, icswDeviceTreeService
+    $templateCache, $compile, icswActiveSelectionService, icswDeviceTreeService, icswSimpleAjaxCall, ICSW_URLS,
+    icswReportHelperFunctions
 ) ->
     return {
         restrict: "EA"
@@ -837,6 +771,111 @@ device_report_module = angular.module(
                     if entry.device_group == device.device_group
                         entry.$selected_for_report = !selected
 
+            scope.assetbatch_selection_change = (device) ->
+                icswReportHelperFunctions.disable_device_buttons(device)
+
+                idx_list = [device.idx]
+
+                icswSimpleAjaxCall({
+                    url: ICSW_URLS.REPORT_REPORT_DATA_AVAILABLE
+                    data:
+                        idx_list: idx_list
+                        assetbatch_id: device.$$selected_assetbatch
+                    dataType: 'json'
+                }).then(
+                    (result) ->
+                        device_info_obj = result.pk_setting_dict[device.idx]
+                        icswReportHelperFunctions.enable_device_buttons(device, device_info_obj)
+                )
+
             element.append(new_el(scope))
+    }
+]).service("icswReportHelperFunctions",
+[
+    "icswAssetHelperFunctions",
+(
+    icswAssetHelperFunctions,
+) ->
+
+    _disable_device_buttons = (device) ->
+        device.$packages_selected = false
+        device.$packages_selected_button_disabled = true
+
+        device.$licenses_selected = false
+        device.$licenses_selected_button_disabled = true
+
+        device.$installed_updates_selected = false
+        device.$installed_updates_button_disabled = true
+
+        device.$avail_updates_selected = false
+        device.$avail_updates_button_disabled = true
+
+        device.$process_report_selected = false
+        device.$process_report_button_disabled = true
+
+        device.$hardware_report_selected = false
+        device.$hardware_report_button_disabled = true
+
+        device.$dmi_report_selected = false
+        device.$dmi_report_button_disabled = true
+
+        device.$pci_report_selected = false
+        device.$pci_report_button_disabled = true
+
+        device.$lstopo_report_selected = false
+        device.$lstopo_report_button_disabled = true
+
+    _enable_device_buttons = (device, device_info_obj) ->
+        for obj in device_info_obj
+            button_title_str = ""
+            if obj.hasOwnProperty("length")
+                asset_type = obj[0]
+                asset_run_time = moment(obj[1]).format("YYYY-MM-DD HH:mm:ss")
+                asset_batch_id = obj[2]
+
+                button_title_str = "AssetBatchId: " + asset_batch_id + "\n" + "AssetRunTime: " + asset_run_time
+
+            else
+                asset_type = obj
+
+            asset_type_name = icswAssetHelperFunctions.resolve("asset_type", asset_type)
+
+            if asset_type_name == "Package"
+                device.$packages_selected_button_disabled = false
+                device.$packages_selected_button_title = button_title_str
+            else if asset_type_name == "License"
+                device.$licenses_selected_button_disabled = false
+                device.$licenses_selected_button_title = button_title_str
+            else if asset_type_name == "Update"
+                device.$installed_updates_button_disabled = false
+                device.$installed_updates_button_title = button_title_str
+            else if asset_type_name == "Pending update"
+                device.$avail_updates_button_disabled = false
+                device.$avail_updates_button_title = button_title_str
+            else if asset_type_name == "Process"
+                device.$process_report_button_disabled = false
+                device.$process_report_button_title = button_title_str
+            else if asset_type_name == "Windows Hardware"
+                device.$hardware_report_button_disabled = false
+                device.$hardware_report_button_title = button_title_str
+            else if asset_type_name == "DMI"
+                device.$dmi_report_button_disabled = false
+                device.$dmi_report_button_title = button_title_str
+            else if asset_type_name == "PCI"
+                device.$pci_report_button_disabled = false
+                device.$pci_report_button_title = button_title_str
+            else if asset_type_name == "Hardware"
+                device.$lstopo_report_button_disabled = false
+                device.$lstopo_report_button_title= button_title_str
+            else if asset_type_name == "LSHW"
+                device.$hardware_report_button_disabled = false
+                device.$hardware_report_button_title = button_title_str
+
+    return {
+        disable_device_buttons: (device) ->
+            return _disable_device_buttons(device)
+
+        enable_device_buttons: (device, device_info_obj) ->
+            return _enable_device_buttons(device, device_info_obj)
     }
 ])

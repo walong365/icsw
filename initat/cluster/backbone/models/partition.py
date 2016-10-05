@@ -36,6 +36,7 @@ __all__ = [
     "sys_partition",
     "lvm_lv",
     "lvm_vg",
+    "LogicalDisc",
     "partition",
     "partition_disc",
     "partition_table",
@@ -135,11 +136,16 @@ class lvm_vg(models.Model):
 
 class LogicalDisc(models.Model):
     idx = models.AutoField(primary_key=True)
+    partition_table = models.ForeignKey("backbone.partition_table", null=True)
     device_name = models.CharField(max_length=128)
     partition_fs = models.ForeignKey("partition_fs")
     partitions = models.ManyToManyField("partition")
     size = models.BigIntegerField(null=True)
     free_space = models.BigIntegerField(null=True)
+
+    @property
+    def filesystem_name(self):
+        return self.partition_fs.name
 
 
 class partition(models.Model):
@@ -219,8 +225,6 @@ def partition_pre_save(sender, **kwargs):
         if cur_inst.partition_fs_id:
             if cur_inst.partition_fs.name == "swap":
                 cur_inst.mountpoint = "swap"
-            if not cur_inst.partition_fs.need_mountpoint():
-                cur_inst.mountpoint = ""
             cur_inst.partition_hex = cur_inst.partition_fs.hexid
 
 
@@ -353,7 +357,7 @@ class partition_table(models.Model):
         if u"/" in sys_mps:
             prob_list.append(
                 (
-                    logging_tools.LOG_LEVEL_ERROR, "'/' is defined as system parition", True
+                    logging_tools.LOG_LEVEL_ERROR, "'/' is defined as system partition", True
                 )
             )
         if u"/" not in phys_mps:

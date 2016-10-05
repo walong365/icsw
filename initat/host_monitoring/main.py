@@ -47,8 +47,8 @@ def run_code(prog_name, global_config):
         from initat.host_monitoring.relay import RelayCode
         ret_state = RelayCode().loop()
     elif prog_name == "collclient":
-        from initat.host_monitoring.client import client_code
-        ret_state = client_code(global_config)
+        from initat.host_monitoring.client import ClientCode
+        ret_state = ClientCode(global_config)
     else:
         print("Unknown mode {}".format(prog_name))
         ret_state = -1

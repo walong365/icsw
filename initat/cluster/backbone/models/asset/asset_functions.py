@@ -243,6 +243,7 @@ class AssetType(IntEnum):
     PCI = 9
     PRETTYWINHW = 10
     PARTITION = 11
+    LSBLK = 12
 
 
 class ScanType(IntEnum):

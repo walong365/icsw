@@ -156,20 +156,24 @@
                 </tbody>
             </table>
             <uib-accordion close-others="true">
-                <div uib-accordion-group class="panel-default"
-                    ng-repeat="data in get_list(pack.cluster_licenses) | orderBy:cluster_order_fun"
+                <div
+                    uib-accordion-group
+                    class="panel-default"
+                    is-open="cluster_accordion_open[$index]"
+                    ng-repeat="data in get_list(pack.lic_info) | orderBy:cluster_order_fun"
                 >
                     <!-- workaround for angular bug https://github.com/angular/angular.js/issues/1286 -->
                     <uib-accordion-heading>
                         <!-- data[0] is cluster_id, data[1] is cluster_licenses -->
                         {{ get_cluster_title(data[0]) }}
-                        <i class="pull-right glyphicon"
-                           ng-class="{'glyphicon-chevron-down': cluster_uib-accordion_open[$index], 'glyphicon-chevron-right': !cluster_uib-accordion_open[$index]}"
+                        <i
+                            class="pull-right glyphicon"
+                            ng-class="{'glyphicon-chevron-down': cluster_accordion_open[$index], 'glyphicon-chevron-right': !cluster_accordion_open[$index]}"
                         ></i>
                     </uib-accordion-heading>
                     <table
                         st-table="entries_displayed"
-                        st-safe-src="data[1]"
+                        st-safe-src="data[1].licenses"
                         class="table table-condensed table-hover"
                         style="width:auto;"
                     >

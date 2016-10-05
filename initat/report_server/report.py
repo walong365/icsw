@@ -47,7 +47,7 @@ from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen.canvas import Canvas
 
-from initat.cluster.backbone.models import network
+from initat.cluster.backbone.models import network, AssetBatch
 from initat.cluster.backbone.models import user
 from initat.cluster.backbone.models.report import ReportHistory
 from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
@@ -820,7 +820,7 @@ class PDFReportGenerator(ReportGenerator):
         _buffer = BytesIO()
         canvas = Canvas(_buffer, self.page_format)
 
-        data = _generate_hardware_info_data_dict(self.devices, self.general_settings["assetbatch_selection_mode"])
+        data = _generate_hardware_info_data_dict(self.devices)
 
         data = sorted(data, key=lambda k: k['group'])
         if data:
@@ -1110,7 +1110,7 @@ class PDFReportGenerator(ReportGenerator):
         report.add_buffer_to_report(_buffer)
 
     def __generate_device_assetrun_reports(self, _device, report_settings, root_report):
-        assetruns = _select_assetruns_for_device(_device, self.general_settings["assetbatch_selection_mode"])
+        assetruns = _select_assetruns_for_device(_device, assetbatch_id=report_settings["assetbatch_id"])
 
         row_collector = RowCollector()
 
@@ -1519,26 +1519,48 @@ class PDFReportGenerator(ReportGenerator):
                     style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD))])
 
-        data = [["Name", "Driver Version"]]
+        data = [["Name"]]
         for gpu in hardware_report_ar.asset_batch.gpus.all():
             data.append([Paragraph(str(gpu.name), style_sheet["BodyText"])])
 
         p0_2 = Paragraph('<b>GPUs:</b>', style_sheet["BodyText"])
         t_2 = Table(data,
-                    colWidths=(available_width * 0.88 * 0.50,
-                               available_width * 0.88 * 0.50),
+                    colWidths=(available_width * 0.88 * 1.0),
                     style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
         data = [["Name", "Serialnumber", "Size"]]
-        if hardware_report_ar.asset_batch.partition_table:
-            for hdd in hardware_report_ar.asset_batch.partition_table.partition_disc_set.all():
-                data.append([Paragraph(str(hdd.disc), style_sheet["BodyText"]),
-                                 Paragraph(str("N/A"), style_sheet["courier"]),
-                                 Paragraph(str("N/A"), style_sheet["BodyText"])])
+        if hardware_report_ar.asset_batch.device.act_partition_table:
+            for hdd in hardware_report_ar.asset_batch.device.act_partition_table.partition_disc_set.all():
+                hdd_name = "N/A"
+                hdd_serial = "N/A"
+                hdd_size = "N/A"
 
-        p0_3 = Paragraph('<b>HDDs:</b>', style_sheet["BodyText"])
+                if hdd.disc:
+                    hdd_name = hdd.disc
+                if hdd.serial:
+                    hdd_serial = hdd.serial
+                if hdd.size:
+                    hdd_size = sizeof_fmt(hdd.size)
+
+                data.append([Paragraph(hdd_name, style_sheet["BodyText"]),
+                                 Paragraph(hdd_serial, style_sheet["courier"]),
+                                 Paragraph(hdd_size, style_sheet["BodyText"])])
+
+                for partition in hdd.partition_set.all():
+                    mountpoint = "N/A"
+                    if partition.mountpoint:
+                        mountpoint = partition.mountpoint
+
+                    size = "N/A"
+                    if partition.size:
+                        size = sizeof_fmt(partition.size)
+
+                    data.append([mountpoint, "", size])
+
+
+        p0_3 = Paragraph('<b>HDDs & Partitions:</b>', style_sheet["BodyText"])
         t_3 = Table(data,
                     colWidths=(available_width * 0.88 * 0.33,
                                available_width * 0.88 * 0.34,
@@ -2155,8 +2177,7 @@ class XlsxReportGenerator(ReportGenerator):
             self.__generate_device_overview(_device, workbook)
             device_report = DeviceReport(_device, self.device_settings[_device.idx], _device.full_name)
 
-            selected_runs = _select_assetruns_for_device(_device,
-                                                         self.general_settings["assetbatch_selection_mode"])
+            selected_runs = _select_assetruns_for_device(_device, self.device_settings[_device.idx]["assetbatch_id"])
 
             for ar in selected_runs:
                 if not device_report.module_selected(ar):
@@ -2396,7 +2417,7 @@ class XlsxReportGenerator(ReportGenerator):
     def __generate_general_device_overview_report(self):
         workbook = Workbook()
 
-        data = _generate_hardware_info_data_dict(self.devices, self.general_settings["assetbatch_selection_mode"])
+        data = _generate_hardware_info_data_dict(self.devices)
 
         if data:
             workbook.remove_sheet(workbook.active)
@@ -2434,11 +2455,11 @@ def sizeof_fmt(num, suffix='B'):
     return "%.1f%s%s" % (num, 'Yi', suffix)
 
 
-def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
+def _generate_hardware_info_data_dict(_devices):
     data = []
 
     for _device in _devices:
-        selected_runs = _select_assetruns_for_device(_device, assetbatch_selection_mode)
+        selected_runs = _select_assetruns_for_device(_device)
 
         cpu_str = "N/A"
         gpu_str = "N/A"
@@ -2493,30 +2514,24 @@ def _generate_hardware_info_data_dict(_devices, assetbatch_selection_mode):
     return data
 
 
-# asset_batch_selection_mode
-# 0 == latest only, 1 == latest fully working, 2 == mixed runs from multiple assetbatches
-def _select_assetruns_for_device(_device, asset_batch_selection_mode=0):
+def _select_assetruns_for_device(_device, assetbatch_id=None):
     selected_asset_runs = []
+    selected_assetbatch = None
 
-    asset_batch_selection_mode = int(asset_batch_selection_mode)
+    if assetbatch_id:
+        selected_assetbatch = AssetBatch.objects.get(idx=assetbatch_id)
+    else:
+        # search latest assetbatch and generate
+        if _device.assetbatch_set.all():
+            for assetbatch in reversed(sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)):
+                if assetbatch.is_finished_processing:
+                    selected_assetbatch = assetbatch
+                    break
 
-    # search latest assetbatch and generate
-    if _device.assetbatch_set.all():
-        for assetbatch in reversed(sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)):
-            if asset_batch_selection_mode == 0:
-                for assetrun in assetbatch.assetrun_set.all():
-                    if assetrun.has_data():
-                        selected_asset_runs.append(assetrun)
-                break
-            elif asset_batch_selection_mode == 1:
-                if assetbatch.is_finished_processing():
-                    selected_asset_runs = assetbatch.assetrun_set.all()
-            elif asset_batch_selection_mode == 2:
-                for assetrun in assetbatch.assetrun_set.all():
-                    if assetrun.has_data():
-                        if AssetType(assetrun.run_type) not in [AssetType(ar.run_type) for ar in selected_asset_runs]:
-                            selected_asset_runs.append(assetrun)
-
+    if selected_assetbatch:
+        for assetrun in selected_assetbatch.assetrun_set.all():
+            if assetrun.has_data():
+                selected_asset_runs.append(assetrun)
     sorted_runs = {}
 
     for ar in selected_asset_runs:

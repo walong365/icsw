@@ -42,7 +42,7 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 
 from initat.report_server.report import PDFReportGenerator, generate_csv_entry_for_assetrun
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
-    AssetPackageVersion, AssetType, StaticAssetTemplate, user, RunStatus, RunResult, PackageTypeEnum, \
+    AssetPackageVersion, AssetType, StaticAssetTemplate, user, BatchStatus, RunResult, PackageTypeEnum, \
     AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue, StaticAssetTemplateFieldType
 from initat.cluster.backbone.models.dispatch import ScheduleItem
 from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
@@ -70,7 +70,9 @@ class AssetBatchViewSet(viewsets.ViewSet):
                     "memory_modules",
                     "cpus",
                     "gpus",
-                    "network_devices").filter(idx__in=json.loads(request.query_params.getlist("assetbatch_pks")[0]))
+                    "network_devices",
+                    "device",
+                    "device__act_partition_table").filter(idx__in=json.loads(request.query_params.getlist("assetbatch_pks")[0]))
         else:
             if "device_pks" in request.query_params:
                 queryset = AssetBatch.objects.prefetch_related(
@@ -81,7 +83,10 @@ class AssetBatchViewSet(viewsets.ViewSet):
                     "memory_modules",
                     "cpus",
                     "gpus",
-                    "network_devices").filter(device__in=json.loads(request.query_params.getlist("device_pks")[0]))
+                    "network_devices",
+                    "device",
+                    "device__act_partition_table"
+                ).filter(device__in=json.loads(request.query_params.getlist("device_pks")[0]))
             else:
                 queryset = AssetBatch.objects.all()
 
@@ -341,7 +346,9 @@ class AssetPackageViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def get_all(self, request):
         queryset = AssetPackage.objects.all().prefetch_related(
-            "assetpackageversion_set"
+            "assetpackageversion_set",
+            "assetpackageversion_set__assetbatch_set",
+            "assetpackageversion_set__assetbatch_set__device"
         ).order_by(
             "name",
             "package_type",

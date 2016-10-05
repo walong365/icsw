@@ -54,8 +54,6 @@ class SyncerProcess(threading_tools.process_obj):
         )
         db_tools.close_connection()
         self.router_obj = config_tools.RouterObject(self.log)
-        self.register_func("file_content_result", self._file_content_result)
-        self.register_func("file_content_bulk_result", self._file_content_result)
         self.register_func("check_for_slaves", self._check_for_slaves)
         self.register_func("check_for_redistribute", self._check_for_redistribute)
         self.register_func("build_info", self._build_info)
@@ -86,6 +84,7 @@ class SyncerProcess(threading_tools.process_obj):
         self.__slave_configs, self.__slave_lut = ({}, {})
         # connect to local relayer
         self.__primary_slave_uuid = routing.get_server_uuid(icswServiceEnum.monitor_slave, master_server.uuid)
+        self.send_pool_message("set_sync_master_uuid", self.__primary_slave_uuid)
         self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", self.__primary_slave_uuid))
         self.send_pool_message("register_remote", "127.0.0.1", self.__primary_slave_uuid, icswServiceEnum.monitor_slave.name)
         _send_data = [self.__master_config.get_send_data()]
@@ -137,19 +136,13 @@ class SyncerProcess(threading_tools.process_obj):
         for slave_config in self.__slave_configs.itervalues():
             slave_config.check_for_resend()
 
-    def _file_content_result(self, *args, **kwargs):
-        srv_com = server_command.srv_command(source=args[0])
-        slave_name = srv_com["slave_name"].text
-        if slave_name in self.__slave_lut:
-            self.__slave_configs[self.__slave_lut[slave_name]].file_content_info(srv_com)
-        else:
-            self.log("unknown slave_name '{}'".format(slave_name), logging_tools.LOG_LEVEL_ERROR)
-
     def _slave_info(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         action = srv_com["*action"]
         if action == "info_list":
             info_list = server_command.decompress(srv_com["*slave_info"], json=True)
+            # import pprint
+            # pprint.pprint(info_list)
             for info in info_list:
                 if info["master"]:
                     if self.__master_config is not None:
@@ -166,8 +159,7 @@ class SyncerProcess(threading_tools.process_obj):
         else:
             _pure_uuid = routing.get_pure_uuid(srv_com["*slave_uuid"])
             if _pure_uuid in self.__slave_lut:
-                _pk = self.__slave_lut[_pure_uuid]
-                self.__slave_configs[_pk].handle_info_action(action, srv_com)
+                self.__slave_configs[self.__slave_lut[_pure_uuid]].handle_info_action(action, srv_com)
             else:
                 self.log("got unknown UUID '{}' ({})".format(srv_com["*slave_uuid"], _pure_uuid), logging_tools.LOG_LEVEL_ERROR)
 
@@ -213,13 +205,7 @@ class SyncerProcess(threading_tools.process_obj):
         elif _bi_type == "sync_slave":
             slave_name = _vals.pop(0)
             if slave_name in self.__slave_lut:
-                _slave = self.__slave_configs[self.__slave_lut[slave_name]]
-                # TODO, set sync_start
-                # if not self.__md_struct.num_runs:
-                #    self.__md_struct.sync_start = cluster_timezone.localize(datetime.datetime.now())
-                # self.__md_struct.num_runs += 1
-
-                _slave.send_slave_command("sync_slave")
+                self.__slave_configs[self.__slave_lut[slave_name]].sync_slave()
             else:
                 self.log("unknown slave '{}'".format(slave_name), logging_tools.LOG_LEVEL_CRITICAL)
         else:

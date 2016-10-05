@@ -372,6 +372,7 @@ class Command(BaseCommand):
         factories.LogSourceFactory(identifier="webfrontend", description="via Webfrontend", device=None)
         factories.LogSourceFactory(identifier="commandline", description="via CommandLine", device=None)
         # partition fs
+        factories.PartitionFS(name="unknown", identifier="f", descr="Unknown Filesystem", need_hexid=False, hexid="")
         factories.PartitionFS(name="reiserfs", identifier="f", descr="ReiserFS Filesystem", hexid="83", kernel_module="reiserfs")
         factories.PartitionFS(name="ext2", identifier="f", descr="Extended 2 Fileystem", hexid="83", kernel_module="ext2")
         factories.PartitionFS(name="ext3", identifier="f", descr="Extended 3 Fileystem", hexid="83", kernel_module="ext3")
@@ -387,6 +388,7 @@ class Command(BaseCommand):
         factories.PartitionFS(name="biosboot", identifier="e", descr="BIOS Boot Partition", hexid="ef02")
         factories.PartitionFS(name="ntfs", identifier="f", descr="NTFS", hexid="07")
         factories.PartitionFS(name="fat", identifier="f", descr="Windows FAT", need_hexid=False, hexid="")
+        factories.PartitionFS(name="linux_raid_member", identifier="f", descr="Linux raid auto", hexid="fd")
         # LogLevel
         factories.LogLevelFactory(identifier="c", level=logging_tools.LOG_LEVEL_CRITICAL, name="critical")
         factories.LogLevelFactory(identifier="e", level=logging_tools.LOG_LEVEL_ERROR, name="error")

@@ -54,8 +54,8 @@ __all__ = [
     "mon_service_templ",
     "mon_service_esc_templ",
     # distribution models
-    "mon_dist_master",  # "mon_dist_master_serializer",
-    "mon_dist_slave",  # "mon_dist_slave_serializer",
+    "mon_dist_master",
+    "mon_dist_slave",
     "monitoring_hint",
     "mon_check_command_special",
     # trace
@@ -118,6 +118,8 @@ class mon_dist_base(models.Model):
     relayer_version = models.CharField(max_length=128, default="")
     # version of monitoring daemon (== icinga)
     mon_version = models.CharField(max_length=128, default="")
+    # version of livestatus version
+    livestatus_version = models.CharField(max_length=128, default="")
     # total build start
     build_start = models.DateTimeField(default=None, null=True)
     # total build end

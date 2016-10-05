@@ -37,7 +37,7 @@ from initat.md_config_server.icinga_log_reader.log_reader import IcingaLogReader
 from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.syncer import SyncerProcess, RemoteServer
-from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile
+from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile, server_command
 from initat.tools.server_mixins import RemoteCall
 
 
@@ -109,6 +109,8 @@ class server_process(
         self.register_exception("hup_error", self._hup_error)
         self._check_notification()
         self._check_special_commands()
+        # sync master uuid
+        self.__sync_master_uuid = None
         # from mixins
         self._check_md_version()
         self._init_network_sockets()
@@ -117,8 +119,7 @@ class server_process(
             self.register_func("register_remote", self._register_remote)
             self.register_func("send_command", self._send_command)
             self.register_func("ocsp_results", self._ocsp_results)
-            self.__external_cmd_file = None
-            self.register_func("external_cmd_file", self._set_external_cmd_file)
+            self.register_func("set_sync_master_uuid", self._set_sync_master_uuid)
 
             self.add_process(SyncerProcess("syncer"), start=True)
             self.add_process(DynConfigProcess("dynconfig"), start=True)
@@ -137,6 +138,10 @@ class server_process(
 
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
+
+    def _set_sync_master_uuid(self, src_proc, src_id, master_uuid, **kwargs):
+        self.log("set sync_master uuid to {}".format(master_uuid))
+        self.__sync_master_uuid = master_uuid
 
     def _check_special_commands(self):
         from initat.md_config_server.special_commands import SPECIAL_DICT
@@ -348,64 +353,36 @@ class server_process(
 
     def _ocsp_results(self, *args, **kwargs):
         _src_proc, _src_pid, lines = args
-        self._write_external_cmd_file(lines)
-
-    def _handle_ocp_event(self, in_com):
-        com_type = in_com["command"].text
-        targ_list = [cur_arg.text for cur_arg in in_com.xpath(".//ns:arguments", smart_strings=False)[0]]
-        target_com = {
-            "ocsp-event": "PROCESS_SERVICE_CHECK_RESULT",
-            "ochp-event": "PROCESS_HOST_CHECK_RESULT",
-        }[com_type]
-        # rewrite state information
-        state_idx, error_state = (1, 1) if com_type == "ochp-event" else (2, 2)
-        targ_list[state_idx] = "{:d}".format({
-            "ok": 0,
-            "up": 0,
-            "warning": 1,
-            "down": 1,
-            "unreachable": 2,
-            "critical": 2,
-            "unknown": 3,
-        }.get(targ_list[state_idx].lower(), error_state))
-        if com_type == "ocsp-event":
-            pass
-        else:
-            pass
-        out_line = "[{:d}] {};{}".format(
-            int(time.time()),
-            target_com,
-            ";".join(targ_list)
-        )
-        self._write_external_cmd_file(out_line)
-
-    def _write_external_cmd_file(self, lines):
-        if type(lines) != list:
-            lines = [lines]
-        if self.__external_cmd_file:
-            try:
-                codecs.open(self.__external_cmd_file, "w", "utf-8").write("\n".join(lines + [""]))
-            except:
-                self.log(
-                    "error writing to {}: {}".format(
-                        self.__external_cmd_file,
-                        process_tools.get_except_info()
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
+        # print "* OCSP", lines
+        if self.__sync_master_uuid:
+            self.send_command(
+                self.__sync_master_uuid,
+                server_command.srv_command(
+                    command="ocsp_lines",
+                    ocsp_lines=server_command.compress(lines, json=True),
                 )
-                raise
+            )
         else:
-            self.log("no external cmd_file defined", logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "no sync_master_uuid set ({})".format(
+                    logging_tools.get_plural("OCSP line", len(lines))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
+        self.send_command(full_uuid, srv_com)
+
+    def send_command(self, full_uuid, srv_com):
+        _srv_com = unicode(srv_com)
         try:
             self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
-            self.main_socket.send_unicode(srv_com)
+            self.main_socket.send_unicode(_srv_com)
         except:
             self.log(
                 "cannot send {:d} bytes to {}: {}".format(
-                    len(srv_com),
+                    len(_srv_com),
                     full_uuid,
                     process_tools.get_except_info(),
                 ),
@@ -461,32 +438,16 @@ class server_process(
         srv_com.set_result("ok processed command sync_http_users")
         return srv_com
 
-    @RemoteCall()
-    def ocsp_event(self, srv_com, **kwargs):
-        self._handle_ocp_event(srv_com)
-
-    @RemoteCall()
-    def ochp_event(self, srv_com, **kwargs):
-        self._handle_ocp_event(srv_com)
-
     @RemoteCall(target_process="dynconfig")
     def monitoring_info(self, srv_com, **kwargs):
         return srv_com
 
     @RemoteCall(target_process="syncer")
-    def file_content_result(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall(target_process="syncer")
     def slave_info(self, srv_com, **kwargs):
         return srv_com
 
     @RemoteCall(target_process="syncer")
     def slave_info(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall(target_process="syncer")
-    def file_content_bulk_result(self, srv_com, **kwargs):
         return srv_com
 
     @RemoteCall()

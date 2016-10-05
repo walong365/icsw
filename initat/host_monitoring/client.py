@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2011-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2011-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -25,14 +25,13 @@
 import difflib
 import os
 
+from initat.host_monitoring import limits
 from initat.host_monitoring.host_monitoring_struct import ExtReturn
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import net_tools, server_command
 
-from initat.host_monitoring import limits
 
-
-def client_code(global_config):
+def ClientCode(global_config):
     from initat.host_monitoring import modules
     if global_config["VERBOSE"] > 1:
         print "{:d} import errors:".format(len(modules.IMPORT_ERRORS))

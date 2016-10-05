@@ -17,6 +17,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+import re
+from collections import OrderedDict
 
 """ asset database, models for dynamic assets """
 
@@ -204,6 +206,19 @@ class AssetPackageVersion(models.Model):
     version = models.TextField(default="", blank=True)
     release = models.TextField(default="", blank=True)
     created = models.DateTimeField(auto_now_add=True)
+
+    @property
+    def install_info(self):
+        _dict = {}
+        for assetbatch in self.assetbatch_set.all():
+            if assetbatch.device.idx not in _dict:
+                _dict[assetbatch.device.idx] = {}
+                _dict[assetbatch.device.idx]["device_name"] = assetbatch.device.full_name
+                _dict[assetbatch.device.idx]["install_history_list"] = []
+
+            _dict[assetbatch.device.idx]["install_history_list"].append(assetbatch.run_start_time)
+
+        return _dict
 
     def __lt__(self, other):
         return self.name < other.name
@@ -952,254 +967,6 @@ class AssetRun(models.Model):
                     )
                 value.save()
 
-    def _generate_assets_partition_hm(self, tree):
-        result = srv_command(source=tree)
-        target_dev = self.asset_batch.device
-        res_node = ResultNode()
-        try:
-            dev_dict, lvm_dict = (
-                result["dev_dict"],
-                result["lvm_dict"],
-            )
-        except KeyError:
-            res_node.error(u"%s: error missing keys in dict" % (target_dev))
-        else:
-            if "sys_dict" in result:
-                sys_dict = result["sys_dict"]
-                for _key, _value in sys_dict.iteritems():
-                    if type(_value) == list and len(_value) == 1:
-                        _value = _value[0]
-                        sys_dict[_key] = _value
-                    # rewrite dict
-                    _value["opts"] = _value["options"]
-            else:
-                partitions = result["*partitions"]
-                sys_dict = {
-                    _part["fstype"]: _part for _part in partitions if not _part["is_disk"]
-                }
-            try:
-                _old_stuff = server_command.decompress(lvm_dict.text)
-            except:
-                lvm_info = partition_tools.lvm_struct("xml", xml=lvm_dict)
-            else:
-                raise ValueError("it seems the client is using pickled transfers")
-            partition_name, partition_info = (
-                "{}_part".format(target_dev.full_name),
-                "generated partition_setup from device '%s'" % (target_dev.full_name))
-            prev_th_dict = {}
-            try:
-                cur_pt = partition_table.objects.get(Q(name=partition_name))
-            except partition_table.DoesNotExist:
-                pass
-            else:
-                # read previous settings
-                for entry in cur_pt.partition_disc_set.all().values_list(
-                    "partition__mountpoint",
-                    "partition__warn_threshold",
-                    "partition__crit_threshold",
-                ):
-                    prev_th_dict[entry[0]] = (entry[1], entry[2])
-                for entry in cur_pt.lvm_vg_set.all().values_list(
-                        "lvm_lv__mountpoint", "lvm_lv__warn_threshold", "lvm_lv__crit_threshold"
-                ):
-                    prev_th_dict[entry[0]] = (entry[1], entry[2])
-                if cur_pt.user_created:
-                    logger.warning(
-                        "prevision partition_table '{}' was user created, not deleting".format(unicode(cur_pt)),
-                    )
-                else:
-                    logger.info("deleting previous partition_table {}".format(unicode(cur_pt)))
-                    for _dev in get_related_models(cur_pt, detail=True):
-                        for _attr_name in ["act_partition_table", "partition_table"]:
-                            if getattr(_dev, _attr_name) == cur_pt:
-                                logger.info("clearing attribute {} of {}".format(_attr_name, unicode(_dev)))
-                                setattr(_dev, _attr_name, None)
-                                _dev.save(update_fields=[_attr_name])
-                    if get_related_models(cur_pt):
-                        raise SystemError("unable to delete partition {}".format(unicode(cur_pt)))
-                    cur_pt.delete()
-                target_dev.act_partition_table = None
-            # fetch partition_fs
-            fs_dict = {}
-            for db_rec in partition_fs.objects.all():
-                fs_dict.setdefault(("{:02x}".format(int(db_rec.hexid, 16))).lower(), {})[db_rec.name] = db_rec
-                fs_dict[db_rec.name] = db_rec
-            new_part_table = partition_table(
-                name=partition_name,
-                description=partition_info,
-                user_created=False,
-            )
-            new_part_table.save()
-            for dev, dev_stuff in dev_dict.iteritems():
-                if dev.startswith("/dev/sr"):
-                    logger.warning("skipping device {}".format(dev))
-                    continue
-                logger.info("handling device %s" % (dev))
-                new_disc = partition_disc(partition_table=new_part_table,
-                                          disc=dev)
-                new_disc.save()
-                for part in sorted(dev_stuff):
-                    part_stuff = dev_stuff[part]
-                    # ("   handling partition %s" % (part))
-                    if "multipath" in part_stuff:
-                        # see machinfo_mod.py, lines 1570 (partinfo_command:interpret)
-                        real_disk = [entry for entry in part_stuff["multipath"]["list"] if entry["status"] == "active"]
-                        if real_disk:
-                            mp_id = part_stuff["multipath"]["id"]
-                            real_disk = real_disk[0]
-                            if part is None:
-                                real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part)
-                            else:
-                                real_disk, real_part = ("/dev/%s" % (real_disk["device"]), part[4:])
-                            if real_disk in dev_dict:
-                                # LVM between
-                                real_part = dev_dict[real_disk][real_part]
-                                for key in ["hextype", "info", "size"]:
-                                    part_stuff[key] = real_part[key]
-                            else:
-                                # no LVM between
-                                real_part = dev_dict["/dev/mapper/%s" % (mp_id)]
-                                part_stuff["hextype"] = "0x00"
-                                part_stuff["info"] = "multipath w/o LVM"
-                                part_stuff["size"] = int(logging_tools.interpret_size_str(part_stuff["multipath"]["size"]) / (1024 * 1024))
-                    hex_type = part_stuff["hextype"]
-                    if hex_type is None:
-                        logger.warning("ignoring partition because hex_type = None")
-                    else:
-                        hex_type = hex_type[2:].lower()
-                        if part is None:
-                            # special multipath without partition
-                            part = "0"
-                        elif part.startswith("part"):
-                            # multipath
-                            part = part[4:]
-                        elif part.startswith("p"):
-                            # compaq array
-                            part = part[1:]
-                        if "mountpoint" in part_stuff:
-                            fs_stuff = fs_dict.get(hex_type, {}).get(part_stuff["fstype"].lower(), None)
-                            if fs_stuff is None and "fstype" in part_stuff and part_stuff["fstype"] in fs_dict:
-                                fs_stuff = fs_dict[part_stuff["fstype"]]
-                            if fs_stuff is not None:
-                                new_part = partition(
-                                    partition_disc=new_disc,
-                                    mountpoint=part_stuff["mountpoint"],
-                                    size=part_stuff["size"],
-                                    pnum=part,
-                                    mount_options=part_stuff["options"] or "defaults",
-                                    fs_freq=part_stuff["dump"],
-                                    fs_passno=part_stuff["fsck"],
-                                    partition_fs=fs_stuff,
-                                    disk_by_info=",".join(part_stuff.get("lut", [])),
-                                )
-                            else:
-                                logger.warning("skipping partition {} because fs_stuff is None".format(part))
-                                new_part = None
-                        else:
-                            if hex_type in fs_dict:
-                                if hex_type == "82":
-                                    new_part = partition(
-                                        partition_disc=new_disc,
-                                        partition_hex=hex_type,
-                                        size=part_stuff["size"],
-                                        pnum=part,
-                                        partition_fs=fs_dict[hex_type].values()[0],
-                                        mount_options="defaults",
-                                    )
-                                else:
-                                    logger.error(
-                                        "skipping partition {} because no mountpoint and no matching fs_dict (hex_type {})".format(
-                                            part,
-                                            hex_type
-                                        ))
-                                    new_part = None
-                            else:
-                                new_part = partition(
-                                    partition_disc=new_disc,
-                                    partition_hex=hex_type,
-                                    size=part_stuff["size"],
-                                    pnum=part,
-                                )
-                                new_part = None
-                                logger.error("no mountpoint defined")
-                        if new_part is not None:
-                            if new_part.mountpoint in prev_th_dict:
-                                new_part.warn_threshold, new_part.crit_threshold = prev_th_dict[new_part.mountpoint]
-                            new_part.save()
-                        _part_name = "%s%s" % (dev, part)
-            for part, part_stuff in sys_dict.iteritems():
-                logger.info("handling part %s (sys)" % (part))
-                if type(part_stuff) == dict:
-                    part_stuff = [part_stuff]
-                for p_stuff in part_stuff:
-                    # ignore tmpfs mounts
-                    if p_stuff["fstype"] in ["tmpfs"]:
-                        pass
-                    else:
-                        new_sys = sys_partition(
-                            partition_table=new_part_table,
-                            name=p_stuff["fstype"] if part == "none" else part,
-                            mountpoint=p_stuff["mountpoint"],
-                            mount_options=p_stuff["opts"],
-                        )
-                        new_sys.save()
-            if lvm_info.lvm_present:
-                logger.info("LVM info is present")
-                # lvm save
-                for vg_name, v_group in lvm_info.lv_dict.get("vg", {}).iteritems():
-                    logger.info("handling VG %s" % (vg_name))
-                    new_vg = lvm_vg(
-                        partition_table=new_part_table,
-                        name=v_group["name"])
-                    new_vg.save()
-                    v_group["db"] = new_vg
-                for lv_name, lv_stuff in lvm_info.lv_dict.get("lv", {}).iteritems():
-                    logger.info("handling LV %s" % (lv_name))
-                    mount_options = lv_stuff.get(
-                        "mount_options", {
-                            "dump": 0,
-                            "fsck": 0,
-                            "mountpoint": "",
-                            "options": "",
-                            "fstype": "",
-                        }
-                    )
-                    mount_options["fstype_idx"] = None
-                    if mount_options["fstype"]:
-                        mount_options["fstype_idx"] = fs_dict.get("83", {}).get(mount_options["fstype"].lower(), None)
-                        if mount_options["fstype_idx"]:
-                            new_lv = lvm_lv(
-                                partition_table=new_part_table,
-                                lvm_vg=lvm_info.lv_dict.get("vg", {})[lv_stuff["vg_name"]]["db"],
-                                name=lv_stuff["name"],
-                                size=lv_stuff["size"],
-                                mountpoint=mount_options["mountpoint"],
-                                mount_options=mount_options["options"],
-                                fs_freq=mount_options["dump"],
-                                fs_passno=mount_options["fsck"],
-                                partition_fs=mount_options["fstype_idx"],
-                            )
-                            if new_lv.mountpoint in prev_th_dict:
-                                new_lv.warn_threshold, new_lv.crit_threshold = prev_th_dict[new_lv.mountpoint]
-                            new_lv.save()
-                            lv_stuff["db"] = new_lv
-                        else:
-                            logger.error(
-                                "no fstype found for LV %s (fstype %s)" % (
-                                    lv_stuff["name"],
-                                    mount_options["fstype"],
-                                )
-                            )
-                    else:
-                        logger.error(
-                            "no fstype found for LV %s" % (lv_stuff["name"])
-                        )
-            # set partition table
-            logger.info(u"set partition_table for '%s'" % (unicode(target_dev)))
-            target_dev.act_partition_table = new_part_table
-            target_dev.partdev = ""
-            target_dev.save(update_fields=["act_partition_table", "partdev"])
-
 
 class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -1235,6 +1002,12 @@ class AssetBatch(models.Model):
     installed_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_installed_updates")
 
     displays = models.ManyToManyField(AssetHWDisplayEntry)
+
+    @property
+    def partition_table_length(self):
+        if self.partition_table:
+            return 1
+        return 0
 
     @property
     def packages_length(self):
@@ -1330,8 +1103,10 @@ class AssetBatch(models.Model):
         etc.) from the acquired asset runs."""
         runs = {
             AssetType.PRETTYWINHW: "win32_tree",
-            AssetType.LSHW: "lshw_tree",
+            AssetType.LSHW: "lshw_dump",
             AssetType.DMI: "dmi_head",
+            AssetType.LSBLK: "lsblk_dump",
+            AssetType.PARTITION: "partinfo_tree",
             }
 
         # search for relevant asset runs and Base64 decode and unzip the result
@@ -1352,17 +1127,23 @@ class AssetBatch(models.Model):
                         arg_value = json.loads(blob)
                     elif run.scan_type == ScanType.HM:
                         tree = run.raw_result
-                        blob = tree.xpath(
-                            'ns0:lshw_dump',
-                            namespaces=tree.nsmap
-                        )[0].text
-                        blob = bz2.decompress(base64.b64decode(blob))
-                        arg_value = etree.fromstring(blob)
+                        if run.run_type == AssetType.PARTITION:
+                            arg_value = tree
+                        else:
+                            blob = tree.xpath(
+                                'ns0:{}'.format(arg_name),
+                                namespaces=tree.nsmap
+                            )[0].text
+                            blob = bz2.decompress(base64.b64decode(blob))
+                            if run.run_type == AssetType.LSHW:
+                                arg_value = etree.fromstring(blob)
+                            else:
+                                arg_value = blob
 
                 run_results[arg_name] = arg_value
 
         # check if we have the necessary asset runs
-        if not ('win32_tree' in run_results or 'lshw_tree' in run_results):
+        if not ('win32_tree' in run_results or 'lshw_dump' in run_results):
             return
         hw = Hardware(**run_results)
 
@@ -1398,7 +1179,6 @@ class AssetBatch(models.Model):
 
         # set the discs and partitions
         fs_dict = {fs.name: fs for fs in partition_fs.objects.all()}
-
         name = "_".join([self.device.name, "part", str(self.idx)])
         partition_table_ = partition_table(
             name=name,
@@ -1409,31 +1189,43 @@ class AssetBatch(models.Model):
             disc = partition_disc(
                 partition_table=partition_table_,
                 disc=hdd.device_name,
+                size=hdd.size,
+                serial=hdd.serial if hdd.serial else '',
             )
             disc.save()
 
             for hdd_partition in hdd.partitions:
+                logical = hdd_partition.logical
                 partition_ = partition(
                     partition_disc=disc,
                     pnum=hdd_partition.index,
                     size=hdd_partition.size,
+                    mountpoint='',
                 )
-                if hdd_partition.logical:
-                    partition_fs_ = \
-                        fs_dict[hdd_partition.logical.file_system.lower()]
-                else:
-                    partition_fs_ = fs_dict["empty"]
+                partition_fs_ = fs_dict.get(
+                    hdd_partition.type,
+                    fs_dict["unknown"]
+                )
                 partition_.partition_fs = partition_fs_
+                if logical:
+                    partition_.mountpoint = logical.mount_point
                 partition_.save()
-                if hdd_partition.logical:
-                    logical = LogicalDisc(
-                        device_name=hdd_partition.logical.device_name,
-                        partition_fs=partition_fs_,
-                        size=hdd_partition.logical.size,
-                        free_space=hdd_partition.logical.free_space,
-                    )
-                    logical.save()
-                    logical.partitions.add(partition_)
+
+        for logical in hw.logical_disks:
+            partition_fs_ = fs_dict.get(
+                logical.file_system,
+                fs_dict["unknown"]
+            )
+            logical_db = LogicalDisc(
+                partition_table=partition_table_,
+                device_name=logical.device_name,
+                partition_fs=partition_fs_,
+                size=logical.size,
+                free_space=logical.free_space,
+            )
+            logical_db.save()
+            logical_db.partitions.add(partition_)
+
         self.partition_table = partition_table_
         # set the partition info on the device
         self.device.act_partition_table = partition_table_
@@ -1452,6 +1244,7 @@ class AssetBatch(models.Model):
             new_network_device.save()
             self.network_devices.add(new_network_device)
 
+        self.save()
         # TODO: Set displays.
 
 

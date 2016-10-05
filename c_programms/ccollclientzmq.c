@@ -169,7 +169,7 @@ int main(int argc, char **argv)
     //printf("%s\n", host_b);
     /*  errno = 0; */
     //if (!h) err_exit("Wrong host or no host given!\n");
-    char identity_str[64];
+    char identity_str[128];
 
     sprintf(identity_str, "%s:%s:%d", myuts.nodename, SERVICE_NAME, getpid());
     sprintf(send_buffer, ";2;%s;%s;%d;%d;%d;", identity_str, host_b, port,

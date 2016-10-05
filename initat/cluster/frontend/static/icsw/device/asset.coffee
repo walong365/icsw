@@ -173,7 +173,7 @@ device_asset_module = angular.module(
                 $scope.struct.device_tree = data[0]
                 $scope.struct.disp_setting_tree = data[1]
                 $scope.struct.package_tree = data[2]
-                #console.log($scope.struct.package_tree)
+
                 $scope.struct.devices.length = 0
                 for dev in devs
                     # filter out metadevices
@@ -223,7 +223,10 @@ device_asset_module = angular.module(
 
                         $scope.struct.data_loaded = true
 
-                        #start_timer()
+                        for asset_batch in $scope.struct.asset_batch_list
+                            if !asset_batch.is_finished_processing
+                                start_timer()
+                                break
                 )
         )
 
@@ -248,12 +251,13 @@ device_asset_module = angular.module(
 
         info_list_names = [
             "packages",
-            "pending_updates"
-            "installed_updates"
-            "memory_modules"
-            "cpus"
-            "gpus"
-            "network_devices"
+            "pending_updates",
+            "installed_updates",
+            "memory_modules",
+            "cpus",
+            "gpus",
+            "network_devices",
+            "partition_table",
         ]
 
         for info_list_name in info_list_names
@@ -472,7 +476,6 @@ device_asset_module = angular.module(
                     }
                 ).then(
                     (result) ->
-                        console.log "result: ", result
                         for obj in result.asset_runs
                             asset_run = $scope.createAssetRunFromObj(obj)
                             devidx_dev_dict[asset_run.device_pk].assetrun_set.push(asset_run)
@@ -579,8 +582,37 @@ device_asset_module = angular.module(
 (
     $scope, $q, ICSW_URLS, icswSimpleAjaxCall
 ) ->
-    $scope.expand_package = ($event, pack) ->
-        pack.$$expanded = !pack.$$expanded
+    $scope.expand = ($event, obj) ->
+        if obj.$$expanded == undefined
+            obj.$$expanded = false
+        obj.$$expanded = !obj.$$expanded
+
+    $scope.format_time = (string) ->
+         return moment(string).format("YYYY-MM-DD HH:mm:ss")
+
+    $scope.get_history_timeline = (obj, from) ->
+        moment_list = []
+        for timestring in obj.install_history_list
+            moment_obj = moment(timestring)
+            moment_list.push(moment_obj)
+
+        moment_list.sort(
+            (a, b) ->
+                return a - b
+        )
+
+        history_string = "N/A"
+
+        if moment_list.length == 1
+            history_string = moment_list[0].format("YYYY-MM-DD HH:mm:ss")
+
+        else if moment_list.length > 1
+            if !from
+                history_string = moment_list[moment_list.length - 1].format("YYYY-MM-DD HH:mm:ss")
+            else
+                history_string = moment_list[0].format("YYYY-MM-DD HH:mm:ss")
+
+        return history_string
 
     $scope.downloadCsv = ->
         icswSimpleAjaxCall(
@@ -656,9 +688,10 @@ device_asset_module = angular.module(
     }
 ]).controller("icswAssetAssetBatchTableCtrl",
 [
-    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall"
+    "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall",
+    "icswTools"
 (
-    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall
+    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall, icswTools
 ) ->
     $scope.struct = {
         selected_assetrun: undefined
@@ -677,8 +710,6 @@ device_asset_module = angular.module(
             }
             ).then(
                 (result) ->
-                    console.log "result: ", result
-
                     uri = 'data:application/pdf;base64,' + result.pdf
                     downloadLink = document.createElement("a")
                     downloadLink.href = uri
@@ -692,7 +723,6 @@ device_asset_module = angular.module(
             )
 
     $scope.downloadXlsx = ->
-        console.log($scope.struct.selected_assetrun)
         if $scope.struct.selected_assetrun != undefined
             icswSimpleAjaxCall({
                 url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_XLSX
@@ -702,8 +732,6 @@ device_asset_module = angular.module(
             }
             ).then(
                 (result) ->
-                    console.log "result: ", result
-
                     uri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + result.xlsx
                     downloadLink = document.createElement("a")
                     downloadLink.href = uri
@@ -717,7 +745,6 @@ device_asset_module = angular.module(
             )
 
     $scope.downloadCsv = ->
-        console.log($scope.struct.selected_assetrun)
         if $scope.struct.selected_assetrun != undefined
             icswSimpleAjaxCall({
                 url: ICSW_URLS.ASSET_EXPORT_ASSETRUNS_TO_CSV
@@ -825,6 +852,62 @@ device_asset_module = angular.module(
                 for memory_entry in tab.asset_batch.memory_modules
                     memory_entry.$$capacity = "N/A"
                     memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
+
+                tab.asset_batch.hdds = []
+                tab.asset_batch.logical_discs = []
+
+                if tab.asset_batch.partition_table
+                    for disc in tab.asset_batch.partition_table.partition_disc_set
+                        o = {
+                            "identifier": "N/A"
+                            "serialnumber": "N/A"
+                            "size": "N/A"
+                            "partitions": []
+                        }
+
+                        if disc.disc
+                            o["identifier"] = disc.disc
+
+                        if disc.serial
+                            o["serialnumber"] = disc.serial
+
+                        if disc.size
+                            o["size"] = icswTools.get_size_str(disc.size, 1024, "Byte")
+
+                        for partition in disc.partition_set
+                            new_partition_o = {
+                                "mountpoint": "N/A"
+                                "size": "N/A"
+                            }
+
+                            if partition.mountpoint
+                                new_partition_o["mountpoint"] = partition.mountpoint
+                            if partition.size
+                                new_partition_o["size"] = icswTools.get_size_str(partition.size, 1024, "Byte")
+
+                            o["partitions"].push(new_partition_o)
+
+                        tab.asset_batch.hdds.push(o)
+
+                    for disc in tab.asset_batch.partition_table.logicaldisc_set
+                        o = {
+                            "name": disc.device_name
+                            "size": "N/A"
+                            "free": "N/A"
+                            "filesystem_name": disc.filesystem_name
+                            "fill_percentage": 100
+                        }
+
+                        if disc.size
+                            o["size"] = icswTools.get_size_str(disc.size, 1024, "Byte")
+
+                        if disc.free_space
+                            o["free"] = icswTools.get_size_str(disc.free_space, 1024, "Byte")
+
+                        if disc.size && disc.free_space
+                            o["fill_percentage"] = (100 - (((disc.free_space / disc.size) * 100))).toFixed(2)
+
+                        tab.asset_batch.logical_discs.push(o)
 
                 icswAssetPackageTreeService.load($scope.$id).then(
                     (tree) ->
@@ -953,6 +1036,19 @@ device_asset_module = angular.module(
     return {
         restrict: "E"
         template: $templateCache.get("icsw.asset.details.hw.nic")
+        scope: {
+            tab: "=icswTab"
+        }
+    }
+]).directive("icswAssetDetailsHardwareHddTable",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.details.hw.hdd")
         scope: {
             tab: "=icswTab"
         }
