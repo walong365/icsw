@@ -293,7 +293,7 @@ class SyncConfig(object):
                 mon_dist_master=self.__md_master,
             )
         # version info
-        for _attr in ["relayer_versioN", "mon_version", "livestatus_version"]:
+        for _attr in ["relayer_version", "mon_version", "livestatus_version"]:
             setattr(_md, _attr, getattr(self, _attr))
         _md.save()
         self.__md_struct = _md
