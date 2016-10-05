@@ -670,8 +670,6 @@ class PlannedRunState(object):
         self._store_result(res, "", s)
 
     def store_zmq_result(self, result):
-        _db_obj = self.run_db_obj
-
         raw_result_str = ""
         error_string = ""
         (status_string, server_result_code) = result.get_result()
@@ -702,7 +700,7 @@ class PlannedRunState(object):
 
     def cancel(self, error_string):
         self._stop()
-        self.run_db_obj.state_finished(RunResult.FAILED)
+        self.generate_assets()
 
     def _stop(self):
         self.running = False
@@ -771,21 +769,6 @@ class PlannedRunsForDevice(object):
             # no more running, delete
             self.to_delete = True
 
-
-class NRPEScanTracker(object):
-    def __init__(self, ip, _now):
-        self.ip = ip
-        self.connections = 1
-        self.scan_start_time = _now
-
-    def __repr__(self):
-        return "ip:{} connections:{} scan_start_time:{}".format(
-            self.ip,
-            self.connections,
-            self.scan_start_time,
-        )
-
-
 class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
@@ -800,10 +783,6 @@ class Dispatcher(object):
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
 
         self.schedule_items = []
-        # not really needed because always called from same process
-        self.schedule_items_lock = threading.Lock()
-
-        self.num_ext_coms_per_ip = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.discovery_process.log("[Disp] {}".format(what), log_level)
@@ -897,16 +876,16 @@ class Dispatcher(object):
         for pending_run in AssetRun.objects.filter(
                 run_status__in=(RunStatus.SCANNING, RunStatus.PLANNED)).select_related("asset_batch"):
             if pending_run.run_start_time:
-                diff_time = abs((_now - pending_run.run_start_time).seconds)
+                diff_time = (_now - pending_run.run_start_time).seconds
                 # get rid of old(er) running (==most likely broken) runs
                 if diff_time > 1800:
                     pending_run.state_finished(RunResult.FAILED, "runaway run")
                     _pending += 1
 
         for asset_batch in AssetBatch.objects.filter(
-            run_status__in=[BatchStatus.RUNNING, BatchStatus.FINISHED_RUNS, BatchStatus.GENERATING_ASSETS]):
+            run_status__in=[BatchStatus.PLANNED, BatchStatus.RUNNING, BatchStatus.FINISHED_RUNS, BatchStatus.GENERATING_ASSETS]):
             if asset_batch.run_start_time:
-                diff_time = abs((_now - asset_batch.run_start_time).seconds)
+                diff_time = (_now - asset_batch.run_start_time).seconds
                 if diff_time > 1800:
                     asset_batch.run_end_time = _now
                     asset_batch.run_status = BatchStatus.FINISHED
@@ -937,11 +916,11 @@ class Dispatcher(object):
                     new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
                     new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
 
-                    self.__device_planned_runs[_dev.idx].append(new_pr)
-
                     if cap_dict.get("hm", False):
+                        self.__device_planned_runs[_dev.idx].append(new_pr)
                         self._do_hm_scan(schedule_item, new_pr)
                     elif cap_dict.get("nrpe", False):
+                        self.__device_planned_runs[_dev.idx].append(new_pr)
                         self._do_nrpe_scan(schedule_item, new_pr)
                     else:
                         self.log(
@@ -950,10 +929,11 @@ class Dispatcher(object):
                             ),
                             logging_tools.LOG_LEVEL_ERROR
                         )
+                        new_pr.asset_batch.state_finished()
+                        new_pr.asset_batch.save()
                 schedule_item.delete()
 
         # step 1: init commands
-
         for _dev_idx, prfd_list in self.__device_planned_runs.iteritems():
             for prfd in prfd_list:
                 if prfd.ip:
@@ -976,25 +956,9 @@ class Dispatcher(object):
                                 #     multi=True
                                 # )
                             else:
-                                if prfd.ip in self.num_ext_coms_per_ip:
-                                    scan_tracker = self.num_ext_coms_per_ip[prfd.ip]
-                                    if scan_tracker.connections == 0:
-                                        prs.start()
-                                        prs.ext_com.run()
-                                        self.__ext_bg_lut[prs.run_idx] = prs
-                                        scan_tracker.connections += 1
-                                        scan_tracker.scan_start_time = _now
-                                    else:
-                                        if (_now - scan_tracker.scan_start_time).seconds > 240:
-                                            scan_tracker.connections = 0
-                                        else:
-                                            # ???, FIXME, ToDo
-                                            pass
-                                else:
-                                    prs.start()
-                                    prs.ext_com.run()
-                                    self.num_ext_coms_per_ip[prfd.ip] = NRPEScanTracker(prfd.ip, _now)
-                                    self.__ext_bg_lut[prs.run_idx] = prs
+                                prs.start()
+                                prs.ext_com.run()
+                                self.__ext_bg_lut[prs.run_idx] = prs
                 else:
                     prfd.cancel("no IP")
         # check for finished ext coms
@@ -1005,10 +969,9 @@ class Dispatcher(object):
             if _ext_com_state is not None:
                 _output = prd.ext_com.communicate()
                 prd.store_nrpe_result(_ext_com_state, _output)
-                self.num_ext_coms_per_ip[prfd.ip].connections -= 1
                 _to_remove.add(key)
             else:
-                diff_time = abs((cur_time - prd.run_db_obj.run_start_time).seconds)
+                diff_time = (cur_time - prd.run_db_obj.run_start_time).seconds
                 if diff_time > prd.timeout:
                     try:
                         prd.ext_com.terminate()
@@ -1022,16 +985,30 @@ class Dispatcher(object):
                     else:
                         self.log("external command terminated due to timeout")
                     prd.cancel("timeout")
-                    self.num_ext_coms_per_ip[prfd.ip].connections -= 1
                     _to_remove.add(key)
         for _key in _to_remove:
             del self.__ext_bg_lut[_key]
+
+        # check for finished hm connections
+        cur_time = timezone.now()
+        _to_remove = set()
+        for key, planned_run_state in self.__ext_con_lut.iteritems():
+            diff_time = (cur_time - planned_run_state.run_db_obj.run_start_time).seconds
+
+            if diff_time > planned_run_state.timeout:
+                planned_run_state.cancel("timeout")
+                _to_remove.add(key)
+
+        for _key in _to_remove:
+            del self.__ext_con_lut[_key]
+
         self._check_for_finished_runs()
 
     def got_result(self, run_idx, srv_reply):
-        prs = self.__ext_con_lut[run_idx]
-        prs.store_zmq_result(srv_reply)
-        del self.__ext_con_lut[run_idx]
+        if run_idx in self.__ext_con_lut:
+            prs = self.__ext_con_lut[run_idx]
+            prs.store_zmq_result(srv_reply)
+            del self.__ext_con_lut[run_idx]
         self._check_for_finished_runs()
 
     def _check_for_finished_runs(self):
@@ -1047,18 +1024,17 @@ class Dispatcher(object):
     def _do_hm_scan(self, schedule_item, planned_run):
         cmd_tuples = [
             (AssetType.PACKAGE, "rpmlist", 30),
-            (AssetType.HARDWARE, "lstopo", 15),
-            (AssetType.PROCESS, "proclist", 15),
-            (AssetType.PENDING_UPDATE, "updatelist", 60),
-            (AssetType.DMI, "dmiinfo", 15),
-            (AssetType.PCI, "pciinfo", 15),
-            (AssetType.LSHW, "lshw", 15),
-            (AssetType.PARTITION, "partinfo", 15),
-            (AssetType.LSBLK, "lsblk", 15),
+            (AssetType.HARDWARE, "lstopo", 30),
+            (AssetType.PROCESS, "proclist", 30),
+            (AssetType.PENDING_UPDATE, "updatelist", 30),
+            (AssetType.DMI, "dmiinfo", 30),
+            (AssetType.PCI, "pciinfo", 30),
+            (AssetType.LSHW, "lshw", 30),
+            (AssetType.PARTITION, "partinfo", 30),
+            (AssetType.LSBLK, "lsblk", 30),
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command, timeout) in enumerate(cmd_tuples):
-            _device = schedule_item.device
             run_index = len(planned_run.asset_batch.assetrun_set.all())
             new_asset_run = AssetRun(
                 run_index=run_index,
@@ -1101,8 +1077,6 @@ class Dispatcher(object):
                 timeout
             )
             ext_com = ExtCom(self.log, _com)
-
-            _device = schedule_item.device
 
             run_index = len(planned_run.asset_batch.assetrun_set.all())
             new_asset_run = AssetRun(

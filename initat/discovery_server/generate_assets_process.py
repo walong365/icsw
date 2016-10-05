@@ -56,7 +56,7 @@ class GenerateAssetsProcess(threading_tools.process_obj):
         except:
             _err = process_tools.get_except_info()
             self.log(
-                "error in generate_assets: {}".format(_err),
+                "error in asset_run.generate_assets: {}".format(_err),
                 logging_tools.LOG_LEVEL_ERROR
             )
             asset_run.interpret_error_string = _err
@@ -78,9 +78,25 @@ class GenerateAssetsProcess(threading_tools.process_obj):
 
     def _process_batch_assets(self, asset_batch_id, **kwargs):
         self.log("start processing of assetbatch {:d}".format(asset_batch_id))
+        s_time = time.time()
         asset_batch = AssetBatch.objects.get(pk=asset_batch_id)
-        asset_batch.generate_assets()
-        self.send_pool_message(
-            "process_batch_assets_finished",
-            asset_batch.idx,
-        )
+        try:
+            asset_batch.generate_assets()
+        except:
+            _err = process_tools.get_except_info()
+            self.log(
+                "error in asset_batch.generate_assets: {}".format(_err),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+        finally:
+            e_time = time.time()
+            self.log(
+                "processing of assetbatch {:d} took {}".format(
+                    asset_batch_id,
+                    logging_tools.get_diff_time_str(e_time - s_time),
+                )
+            )
+            self.send_pool_message(
+                "process_batch_assets_finished",
+                asset_batch.idx,
+            )
