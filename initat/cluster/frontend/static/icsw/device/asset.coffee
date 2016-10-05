@@ -174,8 +174,6 @@ device_asset_module = angular.module(
                 $scope.struct.disp_setting_tree = data[1]
                 $scope.struct.package_tree = data[2]
 
-                console.log(data[2])
-
                 $scope.struct.devices.length = 0
                 for dev in devs
                     # filter out metadevices
@@ -478,7 +476,6 @@ device_asset_module = angular.module(
                     }
                 ).then(
                     (result) ->
-                        console.log "result: ", result
                         for obj in result.asset_runs
                             asset_run = $scope.createAssetRunFromObj(obj)
                             devidx_dev_dict[asset_run.device_pk].assetrun_set.push(asset_run)
@@ -713,8 +710,6 @@ device_asset_module = angular.module(
             }
             ).then(
                 (result) ->
-                    console.log "result: ", result
-
                     uri = 'data:application/pdf;base64,' + result.pdf
                     downloadLink = document.createElement("a")
                     downloadLink.href = uri
@@ -728,7 +723,6 @@ device_asset_module = angular.module(
             )
 
     $scope.downloadXlsx = ->
-        console.log($scope.struct.selected_assetrun)
         if $scope.struct.selected_assetrun != undefined
             icswSimpleAjaxCall({
                 url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_XLSX
@@ -738,8 +732,6 @@ device_asset_module = angular.module(
             }
             ).then(
                 (result) ->
-                    console.log "result: ", result
-
                     uri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + result.xlsx
                     downloadLink = document.createElement("a")
                     downloadLink.href = uri
@@ -753,7 +745,6 @@ device_asset_module = angular.module(
             )
 
     $scope.downloadCsv = ->
-        console.log($scope.struct.selected_assetrun)
         if $scope.struct.selected_assetrun != undefined
             icswSimpleAjaxCall({
                 url: ICSW_URLS.ASSET_EXPORT_ASSETRUNS_TO_CSV
@@ -854,7 +845,6 @@ device_asset_module = angular.module(
             ]
         ).then(
             (result) ->
-                #console.log(result[0][0])
                 tab = {}
                 tab.asset_batch = result[0][0]
                 tab.tab_heading_text = "Scan (ID:" + asset_batch.idx + ")"
@@ -864,6 +854,7 @@ device_asset_module = angular.module(
                     memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
 
                 tab.asset_batch.hdds = []
+                tab.asset_batch.logical_discs = []
 
                 if tab.asset_batch.partition_table
                     for disc in tab.asset_batch.partition_table.partition_disc_set
@@ -881,7 +872,7 @@ device_asset_module = angular.module(
                             o["serialnumber"] = disc.serial
 
                         if disc.size
-                            o["size"] = disc.size
+                            o["size"] = icswTools.get_size_str(disc.size, 1024, "Byte")
 
                         for partition in disc.partition_set
                             new_partition_o = {
@@ -896,11 +887,27 @@ device_asset_module = angular.module(
 
                             o["partitions"].push(new_partition_o)
 
-                        console.log(o)
-
                         tab.asset_batch.hdds.push(o)
 
-                #console.log(tab)
+                    for disc in tab.asset_batch.partition_table.logicaldisc_set
+                        o = {
+                            "name": disc.device_name
+                            "size": "N/A"
+                            "free": "N/A"
+                            "filesystem_name": disc.filesystem_name
+                            "fill_percentage": 100
+                        }
+
+                        if disc.size
+                            o["size"] = icswTools.get_size_str(disc.size, 1024, "Byte")
+
+                        if disc.free_space
+                            o["free"] = icswTools.get_size_str(disc.free_space, 1024, "Byte")
+
+                        if disc.size && disc.free_space
+                            o["fill_percentage"] = (100 - (((disc.free_space / disc.size) * 100))).toFixed(2)
+
+                        tab.asset_batch.logical_discs.push(o)
 
                 icswAssetPackageTreeService.load($scope.$id).then(
                     (tree) ->

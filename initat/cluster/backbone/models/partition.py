@@ -143,6 +143,10 @@ class LogicalDisc(models.Model):
     size = models.BigIntegerField(null=True)
     free_space = models.BigIntegerField(null=True)
 
+    @property
+    def filesystem_name(self):
+        return self.partition_fs.name
+
 
 class partition(models.Model):
     idx = models.AutoField(db_column="partition_idx", primary_key=True)

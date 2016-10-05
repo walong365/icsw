@@ -28,9 +28,9 @@ from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
     AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry, AssetHWGPUEntry, \
     AssetHWLogicalEntry, AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
-    AssetPackageVersionInstallTime, AssetHWNetworkDevice, partition_table, partition_disc, partition
+    AssetPackageVersionInstallTime, AssetHWNetworkDevice
 
-from initat.cluster.backbone.models.partition import partition_disc
+from initat.cluster.backbone.models.partition import partition_table, partition_disc, partition, LogicalDisc
 
 __all__ = [
     "AssetRunSimpleSerializer",
@@ -309,10 +309,18 @@ class StaticAssetTemplateRefsSerializer(serializers.Serializer):
     static_asset_template = serializers.IntegerField()
     device_name = serializers.CharField()
 
+
 class AssetPartitionSerializer(serializers.ModelSerializer):
     class Meta:
         model = partition
         fields = ("idx", "mountpoint", "size")
+
+
+class AssetLogicalDiscSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LogicalDisc
+        fields = ("idx", "device_name", "size", "free_space", "filesystem_name")
+
 
 class AssetPartitionDiscSerializer(serializers.ModelSerializer):
     partition_set = AssetPartitionSerializer(many=True)
@@ -321,12 +329,15 @@ class AssetPartitionDiscSerializer(serializers.ModelSerializer):
         model = partition_disc
         fields = ("idx", "disc", "serial", "size", "partition_set")
 
+
 class AssetPartitionTableSerializer(serializers.ModelSerializer):
     partition_disc_set = AssetPartitionDiscSerializer(many=True)
+    logicaldisc_set = AssetLogicalDiscSerializer(many=True)
 
     class Meta:
         model = partition_table
-        fields = ("idx", "name", "partition_disc_set")
+        fields = ("idx", "name", "partition_disc_set", "logicaldisc_set")
+
 
 class AssetBatchSerializer(serializers.ModelSerializer):
     packages_install_times = AssetPackageVersionInstallTimeSerializer(many=True)
@@ -343,6 +354,7 @@ class AssetBatchSerializer(serializers.ModelSerializer):
         fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "packages",
                   "packages_install_times", "pending_updates", "installed_updates", "cpus", "memory_modules", "gpus",
                   "is_finished_processing", "network_devices", "partition_table")
+
 
 class SimpleAssetBatchSerializer(serializers.ModelSerializer):
     class Meta:
