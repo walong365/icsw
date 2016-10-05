@@ -206,8 +206,7 @@ class SyncConfig(object):
                     )
                 )
                 if _slave_c.slave_ip:
-                    self.__process.send_pool_message(
-                        "register_remote",
+                    self.__process.register_remote(
                         _slave_c.slave_ip,
                         _slave_c.slave_uuid,
                         inst_xml.get_port_dict(icswServiceEnum.monitor_slave, command=True)
@@ -333,7 +332,7 @@ class SyncConfig(object):
         )
         self.__process.send_command(
             self.slave_uuid,
-            unicode(srv_com),
+            srv_com,
         )
 
     def _get_slave_srv_command(self, action, **kwargs):
@@ -392,8 +391,7 @@ class SyncConfig(object):
         if not self.__registered_at_master and "master.uuid" in self.config_store:
             self.__registered_at_master = True
             # open connection to master server
-            self.__process.send_pool_message(
-                "register_remote",
+            self.__process.register_remote(
                 self.config_store["master.ip"],
                 self.config_store["master.uuid"],
                 self.config_store["master.port"],
@@ -406,12 +404,10 @@ class SyncConfig(object):
             # send full info when on distribution master
             self.master_config.send_info_message()
         else:
-            self.send_to_sync_master(
-                self._get_satellite_info()
-            )
-
-    def send_check_result(self, srv_com):
-        self.send_to_sync_master(srv_com)
+            if self.__registered_at_master:
+                self.send_to_sync_master(
+                    self._get_satellite_info()
+                )
 
     def send_to_sync_master(self, srv_com):
         if self.__registered_at_master:
@@ -759,10 +755,7 @@ class SyncConfig(object):
         if self.reload_after_sync_flag and self.dist_ok:
             self.reload_after_sync_flag = False
             self.log("sending reload")
-            self.__process.send_pool_message(
-                "send_signal",
-                signal.SIGHUP,
-            )
+            self.__process.send_signal(signal.SIGHUP)
 
     def handle_action(self, action, srv_com, src, dst):
         s_time = time.time()

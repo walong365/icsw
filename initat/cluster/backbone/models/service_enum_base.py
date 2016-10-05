@@ -35,7 +35,11 @@ class EggAction(object):
     def __init__(self, action, content_type, weight=1):
         self.action = action
         if isinstance(content_type, basestring):
-            content_type = ContentType.objects.get(Q(model=content_type))
+            try:
+                content_type = ContentType.objects.get(Q(model=content_type))
+            except ContentType.DoesNotExist:
+                # this can happen during install
+                content_type = None
         self.content_type = content_type
         self.weight = weight
 
