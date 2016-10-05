@@ -25,12 +25,15 @@ import sys
 
 import zmq
 
+from initat.host_monitoring.client_enums import icswServiceEnum
+from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command
 
 
 def _get_parser():
+    _xml = InstanceXML(quiet=True)
     parser = argparse.ArgumentParser("set a passive check command")
-    parser.add_argument("-p", type=int, default=8010, dest="port", help="target port [%(default)d]")
+    parser.add_argument("-p", type=int, default=_xml.get_port_dict(icswServiceEnum.monitor_slave, command=True), dest="port", help="target port [%(default)d]")
     parser.add_argument("-H", type=str, default="localhost", dest="host", help="target host [%(default)s]")
     parser.add_argument("--device", type=str, default="", help="device [%(default)s]", required=True)
     parser.add_argument("--check", type=str, default="", help="name of check [%(default)s]", required=True)
