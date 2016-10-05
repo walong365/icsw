@@ -107,7 +107,7 @@ class SyncerHandler(object):
         self.log("got passive check result via {}".format(source))
         if self.__master_config:
             # distribution master, send to mon master
-            self.__local_master.send_to_config_server(srv_com)
+            self.__master_config.send_to_config_server(srv_com)
         else:
             if self.__local_master:
                 self.__local_master.send_to_sync_master(srv_com)
