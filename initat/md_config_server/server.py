@@ -37,7 +37,7 @@ from initat.md_config_server.icinga_log_reader.log_reader import IcingaLogReader
 from initat.md_config_server.kpi import KpiProcess
 from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.syncer import SyncerProcess, RemoteServer
-from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile
+from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile, server_command
 from initat.tools.server_mixins import RemoteCall
 
 
@@ -109,6 +109,8 @@ class server_process(
         self.register_exception("hup_error", self._hup_error)
         self._check_notification()
         self._check_special_commands()
+        # sync master uuid
+        self.__sync_master_uuid = None
         # from mixins
         self._check_md_version()
         self._init_network_sockets()
@@ -117,6 +119,7 @@ class server_process(
             self.register_func("register_remote", self._register_remote)
             self.register_func("send_command", self._send_command)
             self.register_func("ocsp_results", self._ocsp_results)
+            self.register_func("set_sync_master_uuid", self._set_sync_master_uuid)
 
             self.add_process(SyncerProcess("syncer"), start=True)
             self.add_process(DynConfigProcess("dynconfig"), start=True)
@@ -135,6 +138,10 @@ class server_process(
 
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
+
+    def _set_sync_master_uuid(self, src_proc, src_id, master_uuid, **kwargs):
+        self.log("set sync_master uuid to {}".format(master_uuid))
+        self.__sync_master_uuid = master_uuid
 
     def _check_special_commands(self):
         from initat.md_config_server.special_commands import SPECIAL_DICT
@@ -346,17 +353,36 @@ class server_process(
 
     def _ocsp_results(self, *args, **kwargs):
         _src_proc, _src_pid, lines = args
-        print "* OCSP", lines
+        # print "* OCSP", lines
+        if self.__sync_master_uuid:
+            self.send_command(
+                self.__sync_master_uuid,
+                server_command.srv_command(
+                    command="ocsp_lines",
+                    ocsp_lines=server_command.compress(lines, json=True),
+                )
+            )
+        else:
+            self.log(
+                "no sync_master_uuid set ({})".format(
+                    logging_tools.get_plural("OCSP line", len(lines))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
+        self.send_command(full_uuid, srv_com)
+
+    def send_command(self, full_uuid, srv_com):
+        _srv_com = unicode(srv_com)
         try:
             self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
-            self.main_socket.send_unicode(srv_com)
+            self.main_socket.send_unicode(_srv_com)
         except:
             self.log(
                 "cannot send {:d} bytes to {}: {}".format(
-                    len(srv_com),
+                    len(_srv_com),
                     full_uuid,
                     process_tools.get_except_info(),
                 ),

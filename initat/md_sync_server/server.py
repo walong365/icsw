@@ -429,6 +429,14 @@ class server_process(
         return srv_com
 
     @RemoteCall()
+    def ocsp_lines(self, srv_com, **kwargs):
+        # OCSP lines from md-config-server
+        _ocsp_lines = server_command.decompress(srv_com["*ocsp_lines"], json=True)
+        if self._icinga_pc:
+            self._icinga_pc.write_external_cmd_file(_ocsp_lines)
+        return None
+
+    @RemoteCall()
     def slave_command(self, srv_com, **kwargs):
         # slave distribution commands, either
         # - from distribution slave to master or

@@ -113,7 +113,6 @@ class SyncerHandler(object):
                 self.__local_master.send_to_sync_master(srv_com)
             else:
                 self.log("local master not set", logging_tools.LOG_LEVEL_ERROR)
-        print srv_com.pretty_print()
 
     def livestatus_info(self, arg_dict):
         self.log("got livestatus dict with {:d} keys".format(len(arg_dict.keys())))

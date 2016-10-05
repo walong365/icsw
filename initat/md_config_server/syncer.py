@@ -84,6 +84,7 @@ class SyncerProcess(threading_tools.process_obj):
         self.__slave_configs, self.__slave_lut = ({}, {})
         # connect to local relayer
         self.__primary_slave_uuid = routing.get_server_uuid(icswServiceEnum.monitor_slave, master_server.uuid)
+        self.send_pool_message("set_sync_master_uuid", self.__primary_slave_uuid)
         self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", self.__primary_slave_uuid))
         self.send_pool_message("register_remote", "127.0.0.1", self.__primary_slave_uuid, icswServiceEnum.monitor_slave.name)
         _send_data = [self.__master_config.get_send_data()]
