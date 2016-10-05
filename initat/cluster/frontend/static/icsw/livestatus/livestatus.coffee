@@ -22,6 +22,7 @@ angular.module(
     "icsw.livestatus.livestatus",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
+        "icsw.panel_tools",
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.livestatus")

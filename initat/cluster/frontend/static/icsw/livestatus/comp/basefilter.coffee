@@ -437,10 +437,7 @@ angular.module(
                 svg(
                     {
                         key: "top"
-                        #width: "#{_width}px"
                         width: "100%"
-                        #height: "#{_height}px"
-                        height: "auto"
                         fontFamily: "'Open-Sans', sans-serif"
                         fontSize: "10pt"
                         viewBox: "5 11 210 121"
@@ -490,7 +487,7 @@ angular.module(
                                         text(
                                             {
                                                 key: "linktext"
-                                                x: -1
+                                                x: 0
                                                 y: 13
                                                 fontFamily: "fontAwesome"
                                                 className: "cursorpointer svg-txt-color"

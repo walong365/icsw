@@ -10,14 +10,17 @@
         <thead>
             <tr>
                 <td colspan="99" style="vertical-align:middle;">
-                    <span icsw-tools-pagination icsw-callback="pagination_changed" st-items-by-page="20" possible-items-by-page="20,50,100,200,500,1000"></span>
-                    <icsw-livestatus-service-circle-info icsw-monitoring-data="struct.monitoring_data"></icsw-livestatus-service-circle-info>
+                    <h3 class="pull-left" style="margin: 3px 10px 0 0;">Services</h3>
+                    <span class="pull-left" style="height:25px;width:25px;">
+                        <icsw-livestatus-service-circle-info icsw-monitoring-data="struct.monitoring_data"></icsw-livestatus-service-circle-info>
+                    </span>
                 </td>
             </tr>
             <tr>
                 <td colspan="99">
-                    <input placeholder="filter..." st-search="$$search_string" class="form-control input-sm" type="search">
-                    </input>
+                    <div class="pull-left"><input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="search"/></div>
+                    <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed"
+                         possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;"></div>
                 </td>
             </tr>
             <tr>
@@ -26,16 +29,16 @@
                 </td>
             </tr>
             <tr>
-                <th st-sort="host_name" st-sort-default="true">device</th>
+                <th st-sort="host_name" st-sort-default="true">Device</th>
                 <th ng-show="show_column.devflags">DevFlags</th>
                 <th ng-show="show_column.devcats">DevCats</th>
-                <th ng-show="show_column.state" st-sort="state">state</th>
-                <th ng-show="show_column.description" st-sort="description">description</th>
+                <th ng-show="show_column.state" st-sort="state">State</th>
+                <th ng-show="show_column.description" st-sort="description">Description</th>
                 <th ng-show="show_column.monflags">MonFlags</th>
                 <th ng-show="show_column.moncats">MonCats</th>
-                <th st-sort="last_check">last check</th>
-                <th st-sort="last_state_change">last change</th>
-                <th ng-show="show_column.output" st-sort="plugin_output">result</th>
+                <th st-sort="last_check">Last Check</th>
+                <th st-sort="last_state_change">Last Change</th>
+                <th ng-show="show_column.output" st-sort="plugin_output">Result</th>
             </tr>
         </thead>
         <tbody>
@@ -79,25 +82,26 @@
 </script>
 
 <script type="text/ng-template" id="icsw.livestatus.device.table.view">
-    <div uib-alert class="alert-warning" ng-show="!struct.monitoring_data.hosts.length">No device results</div>
+    <div uib-alert class="alert-warning" ng-show="!struct.monitoring_data.hosts.length">No Device Results</div>
     <table
         st-table="entries_displayed"
         st-safe-src="struct.monitoring_data.hosts"
         class="table table-condensed table-hover table-striped"
-        style="font-size:100%;width:auto;"
+        style="font-size:100%;"
         ng-if="struct.monitoring_data.hosts.length"
     >
         <thead>
             <tr>
                 <td colspan="99" style="vertical-align:middle;">
-                    <span icsw-tools-pagination icsw-callback="pagination_changed" st-items-by-page="20" possible-items-by-page="20,50,100,200,500,1000"></span>
-                    <icsw-livestatus-device-circle-info icsw-monitoring-data="struct.monitoring_data"></icsw-livestatus-device-circle-info>
+                    <h3 class="pull-left" style="margin: 3px 10px 0 0;">Devices</h3>
+                    <span class="pull-left" style="height:25px;width:25px;"><icsw-livestatus-device-circle-info icsw-monitoring-data="struct.monitoring_data"></icsw-livestatus-device-circle-info></span>
                 </td>
             </tr>
             <tr>
                 <td colspan="99">
-                    <input placeholder="filter..." st-search="$$search_string" class="form-control input-sm" type="search">
-                    </input>
+                    <div class="pull-left"><input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="search"/></div>
+                    <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed"
+                         possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;"></div>
                 </td>
             </tr>
             <tr>
@@ -106,14 +110,14 @@
                 </td>
             </tr>
             <tr>
-                <th st-sort="host_name" st-sort-default="true">device</th>
+                <th st-sort="host_name" st-sort-default="true">Device</th>
                 <th ng-show="show_column.devcats">DevCats</th>
-                <th ng-show="show_column.state" st-sort="state">state</th>
-                <th ng-show="show_column.flags">flags</th>
-                <th ng-show="show_column.description" st-sort="description">description</th>
-                <th st-sort="last_check">last check</th>
-                <th st-sort="last_state_change">last change</th>
-                <th ng-show="show_column.output" st-sort="plugin_output">result</th>
+                <th ng-show="show_column.state" st-sort="state">State</th>
+                <th ng-show="show_column.flags">Flags</th>
+                <th ng-show="show_column.description" st-sort="description">Description</th>
+                <th st-sort="last_check">Last Check</th>
+                <th st-sort="last_state_change">Last Change</th>
+                <th ng-show="show_column.output" st-sort="plugin_output">Result</th>
             </tr>
         </thead>
         <tbody>

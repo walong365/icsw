@@ -209,7 +209,7 @@
 
 <script type="text/ng-template" id="icsw.dashboard.element">
     <!-- the margin-bottom entry fixes issues with scrollbars appearing on the right side of panels -->
-    <div class="panel" ng-class="db_element.$$panel_class" style="height:100%; margin-bottom:0px !important;" icsw-check-elementheight>
+    <div class="panel" ng-class="db_element.$$panel_class" style="height:100%; margin-bottom:0px !important;" icsw-panel-scroller>
         <div class="panel-heading icsw-draggable">
             {{ db_element.title }}
             <span class="pull-right">
@@ -218,6 +218,6 @@
                 <icsw-tools-button size="xs" type="close" value="" ng-click="close()"></icsw-tools-button>
             </span>
         </div>
-        <div style="overflow:auto;" >
+        <div>
     <!-- we dont close the </div> here, this happens in the directive -->
 </script>
