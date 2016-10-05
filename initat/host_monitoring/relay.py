@@ -39,12 +39,12 @@ from initat.host_monitoring.modules.network_mod import ping_command
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command, threading_tools, uuid_tools
 from initat.tools.server_mixins import ICSWBasePool
-from .ipc_comtools import IPCCommandHandler
 from .config import global_config
 from .discovery import ZMQDiscovery
 from .hm_direct import SocketProcess
 from .hm_resolve import ResolveProcess
 from .host_monitoring_struct import HostConnection, host_message
+from .ipc_comtools import IPCCommandHandler
 
 
 class RelayCode(ICSWBasePool, HMHRMixin):
@@ -261,6 +261,13 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 logging_tools.LOG_LEVEL_ERROR
             )
 
+    def send_to_syncer(self, srv_com):
+        try:
+            self.main_socket.send_unicode(self.__local_syncer_uuid, zmq.SNDMORE)
+            self.main_socket.send_unicode(unicode(srv_com))
+        except:
+            self.log("cannot send to local syncer: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+
     def send_result(self, src_id, ret_str):
         self.sender_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
         self.sender_socket.send_unicode(ret_str)
@@ -335,40 +342,30 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         )
         self.register_poller(self.client_socket, zmq.POLLIN, self._recv_nhm_result)
 
+    def _register_local_syncer(self):
+        _inst_xml = InstanceXML(log_com=self.log)
+        self.__local_syncer_uuid = "urn:uuid:{}:{}:".format(
+            uuid_tools.get_uuid(),
+            _inst_xml.get_uuid_postfix(icswServiceEnum.monitor_slave)
+        )
+        self.__local_syncer_addr = "tcp://127.0.0.1:{:d}".format(
+            _inst_xml.get_port_dict(icswServiceEnum.monitor_slave, command=True)
+        )
+        self.log(
+            "connecting to local syncer {} (uuid={})".format(
+                self.__local_syncer_addr,
+                self.__local_syncer_uuid,
+            )
+        )
+        self.main_socket.connect(self.__local_syncer_addr)
+
     def _init_network_sockets(self):
-        client = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-        uuid = "{}:relayer".format(uuid_tools.get_uuid().get_urn())
-        client.setsockopt(zmq.IDENTITY, uuid)  # @UndefinedVariable
-        # AL 2014-02-13, increased SNDHWM / RCVHWM from 10 to 128
-        client.setsockopt(zmq.SNDHWM, 128)  # @UndefinedVariable
-        client.setsockopt(zmq.RCVHWM, 128)  # @UndefinedVariable
-        client.setsockopt(zmq.RECONNECT_IVL_MAX, 500)  # @UndefinedVariable
-        client.setsockopt(zmq.RECONNECT_IVL, 200)  # @UndefinedVariable
-        client.setsockopt(zmq.TCP_KEEPALIVE, 1)  # @UndefinedVariable
-        client.setsockopt(zmq.TCP_KEEPALIVE_IDLE, 300)  # @UndefinedVariable
-        conn_str = "tcp://*:{:d}".format(
-            global_config["COMMAND_PORT"])
-        try:
-            client.bind(conn_str)
-        except zmq.ZMQError:
-            self.log(
-                "error binding to *:{:d}: {}".format(
-                    global_config["COMMAND_PORT"],
-                    process_tools.get_except_info()
-                ),
-                logging_tools.LOG_LEVEL_CRITICAL
-            )
-            client.close()
-            self.network_socket = None
-        else:
-            self.log(
-                "bound to {} (ID {})".format(
-                    conn_str,
-                    uuid
-                )
-            )
-            self.register_poller(client, zmq.POLLIN, self._recv_command_net)  # @UndefinedVariable
-            self.network_socket = client
+        self.network_bind(
+            service_type_enum=icswServiceEnum.host_relay,
+            client_type=icswServiceEnum.host_relay,
+            pollin=self._recv_command_net,
+        )
+        self._register_local_syncer()
 
     def _resolve_address_noresolve(self, target):
         return target
@@ -820,7 +817,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 _bldr.passive_result("d")
             ]
         )
-        self._send_to_master(srv_com)
+        self.send_to_syncer(srv_com)
 
     def send_passive_results_as_chunk_to_master(self, ascii_chunk):
         self.log("sending passive chunk (size {:d}) to master".format(len(ascii_chunk)))
@@ -828,7 +825,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             command="passive_check_results_as_chunk",
             ascii_chunk=ascii_chunk,
         )
-        self._send_to_master(srv_com)
+        self.send_to_syncer(srv_com)
 
     def _show_config(self):
         try:
@@ -862,8 +859,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         HostConnection.global_close()
 
     def _close_io_sockets(self):
-        if self.network_socket:
-            self.network_socket.close()
+        self.network_unbind()
 
     def loop_end(self):
         self._close_ipc_sockets()

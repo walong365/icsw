@@ -44,7 +44,6 @@ from .status import StatusProcess, LiveSocket
 class server_process(
     server_mixins.ICSWBasePoolClient,
     server_mixins.RemoteCallMixin,
-    # server_mixins.SendToRemoteServerMixin,
     VersionCheckMixin,
 ):
     def __init__(self):
@@ -71,6 +70,7 @@ class server_process(
         self.register_func("register_remote", self._register_remote)
         self.register_func("send_signal", self._send_signal)
         self.register_func("ocp_command", self._ocp_command)
+        self.__latest_status_query = None
         self.register_timer(self._update, 30, instant=True)
         # _srv_com = server_command.srv_command(command="status")
         # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
@@ -116,7 +116,16 @@ class server_process(
     def _update(self):
         res_dict = {}
         if "MD_TYPE" in global_config and global_config["MON_CURRENT_STATE"]:
+            _cur_time = time.time()
             cur_s = LiveSocket.get_mon_live_socket()
+            if not self.__latest_status_query or abs(self.__latest_status_query - _cur_time) > 10 * 60:
+                self.__latest_status_query = _cur_time
+                try:
+                    _stat_dict = cur_s.status.call()[0]
+                except:
+                    self.log("error getting status via livestatus: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                else:
+                    self.send_to_process("syncer", "livestatus_info", _stat_dict)
             try:
                 result = cur_s.hosts.columns("name", "state").call()
             except:
@@ -231,7 +240,6 @@ class server_process(
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            print "E", full_uuid, srv_com
             if full_uuid in self.__slaves:
                 self.log("target is {}".format(unicode(self.__slaves[full_uuid])))
         else:

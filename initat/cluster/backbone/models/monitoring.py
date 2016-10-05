@@ -118,6 +118,8 @@ class mon_dist_base(models.Model):
     relayer_version = models.CharField(max_length=128, default="")
     # version of monitoring daemon (== icinga)
     mon_version = models.CharField(max_length=128, default="")
+    # version of livestatus version
+    livestatus_version = models.CharField(max_length=128, default="")
     # total build start
     build_start = models.DateTimeField(default=None, null=True)
     # total build end

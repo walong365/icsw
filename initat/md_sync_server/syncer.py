@@ -48,6 +48,7 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("distribute_info", self._distribute_info)
         self.register_func("slave_command", self._slave_command)
         self.register_func("check_result", self._check_result)
+        self.register_func("livestatus_info", self._livestatus_info)
         self.__build_in_progress, self.__build_version = (False, 0)
         # setup local master, always set (also on satellite nodes)
         self.__local_master = None
@@ -115,6 +116,12 @@ class SyncerProcess(threading_tools.process_obj):
                 self.__local_master.send_check_result(srv_com)
             else:
                 self.log("local master not set", logging_tools.LOG_LEVEL_ERROR)
+
+    def _livestatus_info(self, *args, **kwargs):
+        _arg_dict = args[0]
+        self.log("got livestatus dict with {:d} keys".format(len(_arg_dict.keys())))
+        if self.__local_master:
+            self.__local_master.set_livestatus_version(_arg_dict["livestatus_version"])
 
     def _slave_command(self, *args, **kwargs):
         # generic slave command

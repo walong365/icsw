@@ -29,6 +29,7 @@
                     <th>devices</th>
                     <th title="Monitoring Daemon version" class="text-center">MonDaemon</th>
                     <th title="ICSW Software version" class="text-center">ICSW</th>
+                    <th title="Livestatus version" class="text-center">Livestatus</th>
                     <th>raw size (transfers)</th>
                     <th>data size (files)</th>
                 </tr>
@@ -46,6 +47,7 @@
                     </td>
                     <td class="text-center">{{ build.mon_version }}</td>
                     <td class="text-center">{{ build.relayer_version }}</td>
+                    <td class="text-center">{{ build.livestatus_version }}</td>
                     <td colspan="2"></td>
                 </tr>
                 <tr ng-repeat-end ng-repeat="slave in get_slaves(build)">
@@ -58,6 +60,7 @@
                     <td class="text-right">{{ slave.num_devices }}</td>
                     <td class="text-center">{{ slave.mon_version || '---' }}</td>
                     <td class="text-center">{{ slave.relayer_version || '---' }}</td>
+                    <td class="text-center">{{ slave.livestatus_version }}</td>
                     <td class="text-right">
                         {{ slave.size_raw | get_size:1:1024 }} ({{ slave.num_transfers }})
                     </td>

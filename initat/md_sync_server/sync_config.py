@@ -181,6 +181,10 @@ class SyncConfig(object):
         # clear md_struct
         self.__md_struct = None
 
+    def set_livestatus_version(self, ls_version):
+        self.config_store["livestatus.version"] = ls_version
+        self.config_store.write()
+
     def add_slaves(self, dist_info, inst_xml):
         # dict for all slaves
         self.__slave_configs, self.__slave_lut = ({}, {})
@@ -240,7 +244,7 @@ class SyncConfig(object):
         }
         if self.config_store is not None:
             # may be none for local master
-            for _key in ["md.version", "md.release", "icsw.version", "icsw.release"]:
+            for _key in ["md.version", "md.release", "icsw.version", "icsw.release", "livestatus.version"]:
                 if _key in self.config_store:
                     r_dict["config_store"][_key] = self.config_store[_key]
         if self.master is None:
