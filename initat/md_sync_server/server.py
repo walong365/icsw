@@ -35,7 +35,7 @@ from initat.tools import configfile, logging_tools, process_tools, server_comman
     threading_tools, server_mixins, config_store
 from initat.host_monitoring.ipc_comtools import IPCCommandHandler
 from initat.tools.server_mixins import RemoteCall
-from .syncer import SyncerProcess
+from .syncer import SyncerHandler
 from .sync_config import RemoteServer
 from .status import StatusProcess, LiveSocket
 
@@ -64,13 +64,13 @@ class server_process(
         self.register_timer(self._check_for_pc_control, 10, instant=True)
         self.VCM_check_md_version()
         self._init_network_sockets()
-        self.add_process(SyncerProcess("syncer"), start=True)
         self.add_process(StatusProcess("status"), start=True)
         self.register_func("send_command", self._send_command)
         self.register_func("register_remote", self._register_remote)
-        self.register_func("send_signal", self._send_signal)
-        self.register_func("ocp_command", self._ocp_command)
         self.__latest_status_query = None
+        self.SH = SyncerHandler(self)
+        if "distribute_info" in self.config_store:
+            self.SH.distribute_info(server_command.decompress(self.config_store["distribute_info"], json=True))
         self.register_timer(self._update, 30, instant=True)
         # _srv_com = server_command.srv_command(command="status")
         # self.send_to_remote_server_ip("127.0.0.1", icswServiceEnum.cluster_server, unicode(_srv_com))
@@ -125,7 +125,7 @@ class server_process(
                 except:
                     self.log("error getting status via livestatus: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
                 else:
-                    self.send_to_process("syncer", "livestatus_info", _stat_dict)
+                    self.SH.livestatus_info(_stat_dict)
             try:
                 result = cur_s.hosts.columns("name", "state").call()
             except:
@@ -182,7 +182,7 @@ class server_process(
             self.log("empty result dict for _update()", logging_tools.LOG_LEVEL_WARN)
 
     def _check_for_redistribute(self):
-        self.send_to_process("syncer", "check_for_redistribute")
+        self.SH._check_for_redistribute()
 
     def read_config_store(self):
         self.config_store = config_store.ConfigStore(CS_NAME, log_com=self.log, access_mode=config_store.AccessModeEnum.LOCAL)
@@ -208,33 +208,37 @@ class server_process(
         self.send_to_process("build", "rebuild_config", cache_mode="DYNAMIC")
 
     def process_start(self, src_process, src_pid):
-        if src_process == "syncer" and "distribute_info" in self.config_store:
-            self.send_to_process("syncer", "distribute_info", server_command.decompress(self.config_store["distribute_info"], json=True))
         self.CC.process_added(src_process, src_pid)
 
     def _register_remote(self, *args, **kwargs):
         _src_proc, _src_id, remote_ip, remote_uuid, remote_port = args
+        self.register_remote(remote_ip, remote_uuid, remote_port)
+
+    def register_remote(self, remote_ip, remote_uuid, remote_port):
         if remote_uuid not in self.__slaves:
             rs = RemoteServer(remote_uuid, remote_ip, remote_port)
             self.log("connecting to {}".format(unicode(rs)))
             self.main_socket.connect(rs.conn_str)
             self.__slaves[remote_uuid] = rs
 
-    def _send_signal(self, *args, **kwargs):
+    def send_signal(self, sign):
         if self._icinga_pc is not None:
-            self._icinga_pc.send_signal(args[2])
+            self._icinga_pc.send_signal(sign)
         else:
             self.log("Processcontrol not defined", logging_tools.LOG_LEVEL_ERROR)
 
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
+        self.send_command(full_uuid, srv_com)
+
+    def send_command(self, full_uuid, srv_com):
         try:
             self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
-            self.main_socket.send_unicode(srv_com)
+            self.main_socket.send_unicode(unicode(srv_com))
         except:
             self.log(
                 "cannot send {:d} bytes to '{}': {}".format(
-                    len(srv_com),
+                    len(unicode(srv_com)),
                     full_uuid,
                     process_tools.get_except_info(),
                 ),
@@ -245,12 +249,7 @@ class server_process(
         else:
             self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
 
-    def _ocp_command(self, *args, **kwargs):
-        # from syncer process
-        srv_com = server_command.command(source=args[2])
-        self._handle_ocp_event(srv_com)
-
-    def _handle_ocp_event(self, in_com):
+    def handle_ocp_event(self, in_com):
         com_type = in_com["command"].text
         targ_list = [cur_arg.text for cur_arg in in_com.xpath(".//ns:arguments", smart_strings=False)[0]]
         target_com = {
@@ -351,7 +350,7 @@ class server_process(
         _data = self.receiver_socket.recv()
         src_id, srv_com = self.ICH.handle(_data)
         if srv_com is not None:
-            self.send_to_process("syncer", "check_result", unicode(srv_com))
+            self.SH.check_result(srv_com)
         else:
             self.log("cannot interpret {}".format(_data), logging_tools.LOG_LEVEL_ERROR)
 
@@ -370,7 +369,7 @@ class server_process(
         di_info = server_command.decompress(srv_com["*info"], marshal=True)
         self.config_store["distribute_info"] = server_command.compress(di_info, json=True)
         self.config_store.write()
-        self.send_to_process("syncer", "distribute_info", di_info)
+        self.SH.distribute_info(di_info)
         return None
 
     def _start_stop_mon_process(self, srv_com):
@@ -417,45 +416,43 @@ class server_process(
 
     @RemoteCall()
     def ocsp_event(self, srv_com, **kwargs):
-        self._handle_ocp_event(srv_com)
+        self.handle_ocp_event(srv_com)
+        return None
 
     @RemoteCall()
     def ochp_event(self, srv_com, **kwargs):
-        self._handle_ocp_event(srv_com)
+        self.handle_ocp_event(srv_com)
+        return None
 
     @RemoteCall(target_process="dynconfig")
     def monitoring_info(self, srv_com, **kwargs):
         return srv_com
 
-    @RemoteCall(target_process="syncer")
-    def file_content_result(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall(target_process="syncer")
-    def file_content_bulk_result(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall(target_process="syncer")
+    @RemoteCall()
     def slave_command(self, srv_com, **kwargs):
         # slave distribution commands, either
         # - from distribution slave to master or
         # - from master to distribution slave
-        return srv_com
+        self.SH.slave_command(srv_com)
+        return None
 
     @RemoteCall()
     def passive_check_result(self, srv_com, **kwargs):
+        # from commandline
         # pretend to be synchronous call such that reply is sent right away
-        self.send_to_process("dynconfig", "passive_check_result", unicode(srv_com))
+        self.SH.passive_check_handler(srv_com, "command")
         srv_com.set_result("ok processed command passive_check_result")
         return srv_com
 
-    @RemoteCall(target_process="dynconfig")
+    @RemoteCall()
     def passive_check_results(self, srv_com, **kwargs):
-        return srv_com
+        self.SH.passive_check_handler(srv_com, "mult")
+        return None
 
-    @RemoteCall(target_process="dynconfig")
+    @RemoteCall()
     def passive_check_results_as_chunk(self, srv_com, **kwargs):
-        return srv_com
+        self.SH.passive_check_handler(srv_com, "chunk")
+        return None
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):

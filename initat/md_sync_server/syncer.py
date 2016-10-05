@@ -32,59 +32,46 @@ from .config import global_config
 from .sync_config import SyncConfig
 
 
-class SyncerProcess(threading_tools.process_obj):
-    def process_init(self):
-        # global_config.close()
-        self.__log_template = logging_tools.get_logger(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
-            zmq=True,
-            context=self.zmq_context,
-            init_logger=True
-        )
+class SyncerHandler(object):
+    def __init__(self, process):
+        self.__process = process
         self.inst_xml = InstanceXML(self.log)
         self.__register_timer = False
-        self.register_func("check_for_redistribute", self._check_for_redistribute)
-        self.register_func("distribute_info", self._distribute_info)
-        self.register_func("slave_command", self._slave_command)
-        self.register_func("check_result", self._check_result)
-        self.register_func("livestatus_info", self._livestatus_info)
         self.__build_in_progress, self.__build_version = (False, 0)
         # setup local master, always set (also on satellite nodes)
         self.__local_master = None
         # master config for distribution master (only set on distribution master)
         self.__master_config = None
-        self.register_timer(self._init_local_master, 60, first_timeout=2)
+        self.__process.register_timer(self._init_local_master, 60, first_timeout=2)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_template.log(log_level, what)
+        self.__process.log(log_level, what)
 
     def loop_post(self):
-        self.__log_template.close()
+        pass
 
     def _init_local_master(self):
         # init local master as soon as MD_TYPE is set / known
         if not self.__local_master and "MD_TYPE" in global_config:
             # this is called on all devices with a mon instance
             self.log("init local master")
-            self.__local_master = SyncConfig(self, None, distributed=False)
+            self.__local_master = SyncConfig(self.__process, None, distributed=False)
             if self.__master_config:
                 # only on distribution master
                 self.__master_config.set_local_master(self.__local_master)
             # register at distribution master
             self.__local_master.check_for_register_at_master()
-        if self.__local_master:
+        if self.__local_master and self.__master_config:
             self.__local_master.send_satellite_info()
 
-    def _distribute_info(self, dist_info, **kwargs):
+    def distribute_info(self, dist_info):
         self.log("distribution info has {}".format(logging_tools.get_plural("entry", len(dist_info))))
         for _di in dist_info:
             if _di["master"]:
                 self.log("found master entry")
-                self.__master_config = SyncConfig(self, _di, distributed=True if len(dist_info) > 1 else False, local_master=self.__local_master)
+                self.__master_config = SyncConfig(self.__process, _di, distributed=True if len(dist_info) > 1 else False, local_master=self.__local_master)
                 # register md-config-server
-                self.send_pool_message(
-                    "register_remote",
+                self.__process.register_remote(
                     self.__master_config.master_ip,
                     self.__master_config.master_uuid,
                     _di["master_port"],
@@ -94,38 +81,47 @@ class SyncerProcess(threading_tools.process_obj):
             self.__register_timer = True
             _reg_timeout, _first_timeout = (600, 2)  # (600, 15)
             self.log("will send register_msg in {:d} (then {:d}) seconds".format(_first_timeout, _reg_timeout))
-            self.register_timer(self.__master_config.send_register_msg, _reg_timeout, instant=global_config["DEBUG"], first_timeout=_first_timeout)
+            self.__process.register_timer(self.__master_config.send_register_msg, _reg_timeout, instant=global_config["DEBUG"], first_timeout=_first_timeout)
 
     def send_command(self, src_id, srv_com):
-        self.send_pool_message("send_command", src_id, srv_com)
+        self.__process.send_command(src_id, srv_com)
 
-    def _check_for_redistribute(self, *args, **kwargs):
+    def check_for_redistribute(self):
         for slave_config in self.__slave_configs.itervalues():
             slave_config.check_for_resend()
 
     # pure slave (==satellite) methods
 
-    def _check_result(self, *args, **kwargs):
-        srv_com = server_command.srv_command(source=args[0])
+    def check_result(self, srv_com):
         if self.__master_config:
             # distribution master, forward to ocsp / ochp process
-            self.send_pool_message("ocp_command", unicode(srv_com))
+            self.__process.handle_ocp_event(srv_com)
         else:
             if self.__local_master:
                 # distribution slave, send to sync-master
-                self.__local_master.send_check_result(srv_com)
+                self.__local_master.send_to_sync_master(srv_com)
             else:
                 self.log("local master not set", logging_tools.LOG_LEVEL_ERROR)
 
-    def _livestatus_info(self, *args, **kwargs):
-        _arg_dict = args[0]
-        self.log("got livestatus dict with {:d} keys".format(len(_arg_dict.keys())))
-        if self.__local_master:
-            self.__local_master.set_livestatus_version(_arg_dict["livestatus_version"])
+    def passive_check_handler(self, srv_com, source):
+        self.log("got passive check result via {}".format(source))
+        if self.__master_config:
+            # distribution master, send to mon master
+            self.__master_config.send_to_config_server(srv_com)
+        else:
+            if self.__local_master:
+                self.__local_master.send_to_sync_master(srv_com)
+            else:
+                self.log("local master not set", logging_tools.LOG_LEVEL_ERROR)
+        print srv_com.pretty_print()
 
-    def _slave_command(self, *args, **kwargs):
+    def livestatus_info(self, arg_dict):
+        self.log("got livestatus dict with {:d} keys".format(len(arg_dict.keys())))
+        if self.__local_master:
+            self.__local_master.set_livestatus_version(arg_dict["livestatus_version"])
+
+    def slave_command(self, srv_com):
         # generic slave command
-        srv_com = server_command.srv_command(source=args[0])
         _action = srv_com["*action"]
         # find target
         _master = True if int(srv_com["*master"]) else False
