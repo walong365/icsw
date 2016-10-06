@@ -90,9 +90,9 @@
                                 </icsw-asset-scheduled-runs-table>
                             </div>
                         </uib-tab>
-                        <uib-tab>
+                        <uib-tab ng-click="load_package_tree()">
                             <uib-tab-heading>
-                                <span>Known Packages ({{ struct.package_tree.list.length }})</span>
+                                <span>Known Packages</span>
                             </uib-tab-heading>
 
                             <icsw-asset-known-packages
@@ -690,6 +690,14 @@
 </script>
 
 <script type="text/ng-template" id="icsw.asset.details.hw.hdd">
+    <style>
+        .table > tbody > tr > td {
+            vertical-align: middle !important;
+        }
+        .table > tbody > tr > td > .progress {
+            margin-bottom: 0px !important;
+        }
+    </style>
     <h3>
         HDD & Partition Information
     </h3>
