@@ -29,20 +29,19 @@ import signal
 import time
 
 import networkx
-from django.core.urlresolvers import reverse
 from django.db import connection
 from django.db.models import Q
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import device, device_group, device_variable, mon_ext_host, \
     mon_contactgroup, netdevice, network_type, user, config, config_catalog, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special, mon_check_command
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server import special_commands, constants
-from initat.md_config_server.config import global_config, main_config, all_commands, \
+from initat.md_config_server.config import global_config, monMainConfig, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
     all_services, config_dir, device_templates, service_templates, mon_config, \
     all_host_dependencies, BuildCache, build_safe_name, SimpleCounter
@@ -100,7 +99,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             "domain_tree_node"
         )
         # slave configs
-        self.__gen_config = main_config(self, master_server, distributed=True if len(slave_servers) else False)
+        self.__gen_config = monMainConfig(self, master_server, distributed=True if len(slave_servers) else False)
         self.send_pool_message("external_cmd_file", self.__gen_config.get_command_name())
         self.__gen_config_built = False
         self.__slave_configs, self.__slave_lut = ({}, {})
@@ -110,7 +109,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                     logging_tools.get_plural("slave_server", len(slave_servers)),
                     ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))))
             for cur_dev in slave_servers:
-                _slave_c = main_config(
+                _slave_c = monMainConfig(
                     self,
                     cur_dev,
                     slave_name=cur_dev.full_name,

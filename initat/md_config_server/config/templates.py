@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2014,2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -24,7 +24,8 @@ from initat.tools import logging_tools
 
 
 __all__ = [
-    "device_templates", "service_templates",
+    "device_templates",
+    "service_templates",
 ]
 
 
@@ -45,13 +46,13 @@ class device_templates(dict):
         )
         if self.__default:
             self.log(
-                "Found default device_template named '%s'" % (self.__default.name)
+                "Found default device_template named '{}'".format(self.__default.name)
             )
         else:
             if self.keys():
                 self.__default = self.values()[0]
                 self.log(
-                    "No default device_template found, using '%s'" % (self.__default.name),
+                    "No default device_template found, using '{}'".format(self.__default.name),
                     logging_tools.LOG_LEVEL_WARN
                 )
             else:
@@ -64,7 +65,7 @@ class device_templates(dict):
         return self.__default and True or False
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__build_proc.log("[device_templates] %s" % (what), level)
+        self.__build_proc.log(u"[DevT] {}".format(what), level)
 
     def __getitem__(self, key):
         act_key = key or self.__default.pk
@@ -94,7 +95,12 @@ class service_templates(dict):
             # generate notification options
             not_options = []
             for long_name, short_name in [
-                ("nrecovery", "r"), ("ncritical", "c"), ("nwarning", "w"), ("nunknown", "u"), ("nflapping", "f"), ("nplanned_downtime", "s")
+                ("nrecovery", "r"),
+                ("ncritical", "c"),
+                ("nwarning", "w"),
+                ("nunknown", "u"),
+                ("nflapping", "f"),
+                ("nplanned_downtime", "s"),
             ]:
                 if getattr(srv_templ, long_name):
                     not_options.append(short_name)
@@ -106,15 +112,18 @@ class service_templates(dict):
             srv_templ.contact_groups = list(set(srv_templ.mon_contactgroup_set.all().values_list("name", flat=True)))
         if self.keys():
             self.__default = self.keys()[0]
-        self.log("Found %s (%s)" % (
-            logging_tools.get_plural("device_template", len(self.keys())),
-            ", ".join([cur_v.name for cur_v in self.values()])))
+        self.log(
+            "Found {} ({})".format(
+                logging_tools.get_plural("device_template", len(self.keys())),
+                ", ".join([cur_v.name for cur_v in self.values()])
+            )
+        )
 
     def is_valid(self):
         return True
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__build_proc.log("[service_templates] %s" % (what), level)
+        self.__build_proc.log(u"[SrvT] {}".format(what), level)
 
     def __getitem__(self, key):
         act_key = key or self.__default.pk

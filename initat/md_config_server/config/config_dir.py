@@ -24,7 +24,7 @@ import os
 
 from lxml.builder import E  # @UnresolvedImport
 
-from initat.md_config_server.config.content_emitter import content_emitter
+from initat.md_config_server.config.content_emitter import ContentEmitter
 from initat.tools import configfile, logging_tools, process_tools
 
 __all__ = [
@@ -35,7 +35,7 @@ __all__ = [
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
-class config_dir(content_emitter):
+class config_dir(ContentEmitter):
     def __init__(self, name, gen_conf, build_proc):
         self.name = "{}.d".format(name)
         self.__build_proc = build_proc

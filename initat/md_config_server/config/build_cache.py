@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -28,7 +28,7 @@ from initat.icsw.service.instance import InstanceXML
 
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
     mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency
-from initat.md_config_server.config.var_cache import var_cache
+from initat.md_config_server.config.var_cache import monVarCache
 from initat.snmp.sink import SNMPSink
 from initat.tools import configfile, logging_tools, process_tools
 from initat.cluster.backbone import routing
@@ -71,7 +71,7 @@ class BuildCache(object):
         self.cache_mode = "???"
         self.single_build = False
         self.debug = False
-        self.__var_cache = var_cache(cdg, prefill=full_build)
+        self.__var_cache = monVarCache(cdg, prefill=full_build)
         self.join_char = "_" if global_config["SAFE_NAMES"] else " "
         # device_group user access
         self.dg_user_access = {}

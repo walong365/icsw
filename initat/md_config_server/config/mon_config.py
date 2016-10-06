@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2014,2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -21,7 +21,9 @@
 
 
 __all__ = [
-    "mon_config", "build_safe_name", "SimpleCounter",
+    "mon_config",
+    "build_safe_name",
+    "SimpleCounter",
     "unique_list",
 ]
 
