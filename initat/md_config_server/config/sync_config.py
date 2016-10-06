@@ -120,11 +120,20 @@ class SyncConfig(object):
         # flag for reload after sync
         self.reload_after_sync_flag = False
         # relayer info (== icsw software version)
-        self.relayer_version = "?.?-0"
-        self.mon_version = "?.?-0"
-        self.livestatus_version = "?.?"
         # clear md_struct
         self.__md_struct = None
+        # raw info
+        self.__raw_info = {
+            "version": {
+                "relayer_version": "?.?-0",
+                "mon_version": "?.?-0",
+                "livestatus_version": "?.?",
+            },
+            # system falgs
+            "sysinfo": {},
+            "name": self.__slave_name,
+            "master": self.master or "",
+        }
         # try to get relayer / mon_version from latest build
         if self.master:
             _latest_build = mon_dist_master.objects.filter(Q(device=self.monitor_server)).order_by("-pk")
@@ -132,31 +141,44 @@ class SyncConfig(object):
             _latest_build = mon_dist_slave.objects.filter(Q(device=self.monitor_server)).order_by("-pk")
         if len(_latest_build):
             _latest_build = _latest_build[0]
-            self.mon_version = _latest_build.mon_version
-            self.relayer_version = _latest_build.relayer_version
-            self.livestatus_version = _latest_build.livestatus_version
-            self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
+            for _attr in ["mon_version", "relayer_version", "livestatus_version"]:
+                self.__raw_info["version"][_attr] = getattr(_latest_build, _attr)
+            self.log(
+                "recovered {} from DB".format(self.vers_info)
+            )
+
+    @property
+    def vers_info(self):
+        return "MonVer {} / RelVer {} / LiveVer {} from DB".format(
+            self.__raw_info["version"]["mon_version"],
+            self.__raw_info["version"]["relayer_version"],
+            self.__raw_info["version"]["livestatus_version"],
+        )
+
+    @property
+    def info(self):
+        return self.__raw_info
 
     def set_info(self, info):
-        print "****"
-        import pprint
-        pprint.pprint(info)
+        for _copy_key in ["sysinfo"]:
+            if _copy_key in info:
+                self.__raw_info[_copy_key] = info[_copy_key]
         _cs = info.get("config_store", {})
         if "icsw.version" in _cs:
-            self.relayer_version = "{}-{}".format(
+            self.__raw_info["version"]["relayer_version"] = "{}-{}".format(
                 _cs["icsw.version"],
                 _cs["icsw.release"],
             )
         if "md.version" in _cs:
-            self.mon_version = "{}-{}".format(
+            self.__raw_info["version"]["mon_version"] = "{}-{}".format(
                 _cs["md.version"],
                 _cs["md.release"],
             )
         if "livestatus.version" in _cs:
-            self.livestatus_version = _cs["livestatus.version"]
+            self.__raw_info["version"]["livestatus_version"] = _cs["livestatus.version"]
         if self.__md_struct:
             for _attr in ["relayer_version", "mon_version", "livestatus_version"]:
-                setattr(self.__md_struct, _attr, getattr(self, _attr))
+                setattr(self.__md_struct, _attr, self.__raw_info["version"][_attr])
             self.__md_struct.save()
 
     def handle_info_action(self, action, srv_com):
@@ -282,7 +304,7 @@ class SyncConfig(object):
         self.config_version_build = b_version
         if self.master:
             # re-check relayer version for master
-            self.log("mon / relayer version for master is {} / {}".format(self.mon_version, self.relayer_version))
+            self.log("version for master is {}".format(self.vers_info))
             _md = mon_dist_master(
                 device=self.monitor_server,
                 version=self.config_version_build,
@@ -290,14 +312,14 @@ class SyncConfig(object):
             )
         else:
             self.__md_master = master
-            self.log("mon / relayer version for slave {} is {} / {}".format(self.monitor_server.full_name, self.mon_version, self.relayer_version))
+            self.log("version for slave {} is {}".format(self.monitor_server.full_name, self.vers_info))
             _md = mon_dist_slave(
                 device=self.monitor_server,
                 mon_dist_master=self.__md_master,
             )
         # version info
         for _attr in ["relayer_version", "mon_version", "livestatus_version"]:
-            setattr(_md, _attr, getattr(self, _attr))
+            setattr(_md, _attr, self.__raw_info["version"][_attr])
         _md.save()
         self.__md_struct = _md
         return self.__md_struct

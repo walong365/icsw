@@ -450,6 +450,10 @@ class server_process(
     def slave_info(self, srv_com, **kwargs):
         return srv_com
 
+    @RemoteCall(target_process="syncer")
+    def get_sys_info(self, srv_com, **kwargs):
+        return srv_com
+
     @RemoteCall()
     def passive_check_result(self, srv_com, **kwargs):
         # pretend to be synchronous call such that reply is sent right away

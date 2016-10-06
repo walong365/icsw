@@ -58,6 +58,7 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("check_for_redistribute", self._check_for_redistribute)
         self.register_func("build_info", self._build_info)
         self.register_func("slave_info", self._slave_info)
+        self.register_func("get_sys_info", self._get_sys_info)
         self.__build_in_progress, self.__build_version = (False, 0)
         self.__master_config = None
         # this used to be just set in _check_for_slaves, but apparently check_for_redistribute can be called before that
@@ -131,6 +132,21 @@ class SyncerProcess(threading_tools.process_obj):
 
     def send_command(self, src_id, srv_com):
         self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), unicode(srv_com))
+
+    def _get_sys_info(self, *args, **kwargs):
+        # to get the info to the frontend
+        srv_com = server_command.srv_command(source=args[0])
+        _inst_list = [
+            self.__master_config
+        ] + self.__slave_configs.values()
+        _info_dict = {
+            _dict["name"]: _dict for _dict in [
+                _slave.info for _slave in _inst_list
+            ]
+        }
+        srv_com.set_result("ok set info for {}".format(logging_tools.get_plural("system", len(_inst_list))))
+        srv_com["sys_info"] = server_command.compress(_info_dict, json=True)
+        self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _check_for_redistribute(self, *args, **kwargs):
         for slave_config in self.__slave_configs.itervalues():
