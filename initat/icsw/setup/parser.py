@@ -3,6 +3,7 @@
 from .constants import AVAILABLE_DATABASES, DB_CS_FILENAME
 from .utils import generate_password
 from ..icsw_logging import install_global_logger
+import os
 
 
 class Parser(object):
@@ -130,6 +131,24 @@ class Parser(object):
         )
 
     def add_sqlite_group(self):
+        """
+        if [ -f /etc/debian_version ] ; then
+            usermod -G idg www-data
+        elif [ -f /etc/redhat-release ] ; then
+            usermod -G idg apache
+        else
+            usermod -G idg wwwrun
+        fi
+        """
+        # dummy default user
+        _default_user = "idlog"
+        for _file, _default_user in [
+            ("/etc/debian_version", "www-data"),
+            ("/etc/redhat-release", "apache"),
+            ("/etc/SuSE-release", "wwwrun"),
+        ]:
+            if os.path.exists(_file):
+                break
         group = self.parser.add_argument_group("sqlite database file options")
         group.add_argument(
             "--db-path",
@@ -140,7 +159,7 @@ class Parser(object):
         group.add_argument(
             "--db-file-owner",
             type=str,
-            default="wwwrun",
+            default=_default_user,
             help="owner of the database file"
         )
         group.add_argument(
