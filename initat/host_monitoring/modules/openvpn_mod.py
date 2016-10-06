@@ -465,11 +465,11 @@ class certificate_status_command(hm_classes.hm_command):
                     info_str,
                     logging_tools.get_plural("day", abs(end_diff_time))))
         if num_dict["error"]:
-            ret_state = limits.nag_STATE_CRITICAL
+            ret_state = limits.mon_STATE_CRITICAL
         elif num_dict["warn"]:
-            ret_state = limits.nag_STATE_WARNING
+            ret_state = limits.mon_STATE_WARNING
         else:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         return ret_state, "checked {}, {}{}".format(
             logging_tools.get_plural("certificate", num_dict["total"]),
             ", ".join(
@@ -507,7 +507,7 @@ class openvpn_status_command(hm_classes.hm_command):
         return self._interpret(inst_dict, cur_ns, srv_com["host"].text)
 
     def _check_single_peer(self, clients, vpn_device, inst_name, peer_name, res_field):
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         p_ip = clients.get(peer_name, {}).get("client_ip", "")
         p_ip_str = " at {}".format(p_ip) if p_ip else ""
         if peer_name in clients and clients[peer_name].get("online", True):
@@ -522,7 +522,7 @@ class openvpn_status_command(hm_classes.hm_command):
                     else:
                         # differ, oh-oh
                         p_ip_str = "{} != {}".format(p_ip_str, remote_ip)
-                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                        ret_state = max(ret_state, limits.mon_STATE_WARNING)
                 else:
                     # no p_ip, set p_ip_str according to
                     p_ip_str = " at {}".format(remote_ip)
@@ -557,16 +557,16 @@ class openvpn_status_command(hm_classes.hm_command):
                     p_ip_str
                 )
             )
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
         return ret_state
 
     def _interpret(self, res_dict, cur_ns, host):
         inst_name = cur_ns.instance
         peer_name = cur_ns.peer
         if peer_name == "ALL":
-            ret_state, res_field = (limits.nag_STATE_OK, [logging_tools.get_plural("instance", len(res_dict.keys()))])
+            ret_state, res_field = (limits.mon_STATE_OK, [logging_tools.get_plural("instance", len(res_dict.keys()))])
         else:
-            ret_state, res_field = (limits.nag_STATE_OK, [])
+            ret_state, res_field = (limits.mon_STATE_OK, [])
         if inst_name != "ALL":
             check_instances = [inst_name]
         else:
@@ -600,7 +600,7 @@ class openvpn_status_command(hm_classes.hm_command):
                             vpn_device))
                     elif i_type == "server":
                         if not act_sdict.get("has_verify_script", False):
-                            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                            ret_state = max(ret_state, limits.mon_STATE_WARNING)
                             res_field.append("no tls-verify script")
                         # peer == client
                         if peer_name != "ALL":
@@ -610,7 +610,7 @@ class openvpn_status_command(hm_classes.hm_command):
                                 for _peer_name in peer_name.split(","):
                                     _field = []
                                     _local_state = self._check_single_peer(clients, vpn_device, inst_name, _peer_name, _field)
-                                    if _local_state == limits.nag_STATE_OK:
+                                    if _local_state == limits.mon_STATE_OK:
                                         ok_peers.append(_peer_name)
                                     else:
                                         ret_state = max(ret_state, _local_state)
@@ -640,8 +640,8 @@ class openvpn_status_command(hm_classes.hm_command):
                         res_field.append("{} ({})".format(inst_name, i_type))
                 else:
                     res_field.append("{} ({})".format(inst_name, inst_str))
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             else:
                 res_field.append("no instance '{}' found".format(inst_name))
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
         return ret_state, ", ".join(res_field)

@@ -36,7 +36,7 @@ class ExtReturn(object):
     # has to be returned (passive results for instance)
     # __slots__ = []
     def __init__(self, ret_state=None, ret_str=None, passive_results=None, ascii_chunk=""):
-        self.ret_state = ret_state if ret_state is not None else limits.nag_STATE_OK
+        self.ret_state = ret_state if ret_state is not None else limits.mon_STATE_OK
         self.ret_str = ret_str
         self._ret_field = []
         self.passive_results = passive_results or []
@@ -113,11 +113,11 @@ class SimpleCounter(object):
     @property
     def result(self):
         if self._error:
-            _state = limits.nag_STATE_WARNING if self._unknown_is_warn else limits.nag_STATE_CRITICAL
+            _state = limits.mon_STATE_WARNING if self._unknown_is_warn else limits.mon_STATE_CRITICAL
         elif self._warn and set(self._list) & set(self._warn):
-            _state = limits.nag_STATE_WARNING
+            _state = limits.mon_STATE_WARNING
         else:
-            _state = limits.nag_STATE_OK
+            _state = limits.mon_STATE_OK
         _str = ", ".join(
             [
                 "{:d} {}{}".format(
@@ -377,7 +377,7 @@ class HostConnection(object):
         del host_mes
 
     def return_error(self, host_mes, error_str):
-        host_mes.set_result(limits.nag_STATE_CRITICAL, error_str)
+        host_mes.set_result(limits.mon_STATE_CRITICAL, error_str)
         self.send_result(host_mes)
 
     def _error(self, zmq_sock):
@@ -423,7 +423,7 @@ class HostConnection(object):
                 ret = ExtReturn.get_ext_return(cur_mes.interpret(result))
             except:
                 ret = ExtReturn(
-                    limits.nag_STATE_CRITICAL,
+                    limits.mon_STATE_CRITICAL,
                     "error interpreting result: {}".format(
                         process_tools.get_except_info()
                     )
@@ -438,13 +438,13 @@ class HostConnection(object):
         if mes_id in self.messages:
             cur_mes = self.messages[mes_id]
             if result.startswith("no valid") or is_error:
-                res_tuple = (limits.nag_STATE_CRITICAL, result)
+                res_tuple = (limits.mon_STATE_CRITICAL, result)
             else:
                 HostConnection.relayer_process._old_client(cur_mes.srv_com["host"].text, int(cur_mes.srv_com["port"].text))
                 try:
                     res_tuple = cur_mes.interpret_old(result)
                 except:
-                    res_tuple = (limits.nag_STATE_CRITICAL, "error interpreting result: {}".format(process_tools.get_except_info()))
+                    res_tuple = (limits.mon_STATE_CRITICAL, "error interpreting result: {}".format(process_tools.get_except_info()))
             self.send_result(cur_mes, res_tuple)
         else:
             self.log("unknown id '{}' in _handle_old_result".format(mes_id), logging_tools.LOG_LEVEL_ERROR)
@@ -575,7 +575,7 @@ class host_message(object):
                     server_error[0].attrib["reply"])
         else:
             if result.startswith("error "):
-                return (limits.nag_STATE_CRITICAL,
+                return (limits.mon_STATE_CRITICAL,
                         result)
             else:
                 # copy host, hacky hack

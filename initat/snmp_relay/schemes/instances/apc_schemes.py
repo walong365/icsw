@@ -36,10 +36,10 @@ class apc_rpdu_load_scheme(SNMPRelayScheme):
         act_load = simple_dict[(2, p_idx)]
         act_state = simple_dict[(3, p_idx)]
         ret_state = {
-            1: limits.nag_STATE_OK,
-            2: limits.nag_STATE_OK,
-            3: limits.nag_STATE_WARNING,
-            4: limits.nag_STATE_CRITICAL
+            1: limits.mon_STATE_OK,
+            2: limits.mon_STATE_OK,
+            3: limits.mon_STATE_WARNING,
+            4: limits.mon_STATE_CRITICAL
         }[act_state]
         return ret_state, "load is %.2f Ampere" % (float(act_load) / 10.)
 
@@ -55,14 +55,14 @@ class usv_apc_load_scheme(SNMPRelayScheme):
         try:
             act_load = use_dict[(3, 0)]
         except KeyError:
-            return limits.nag_STATE_CRITICAL, "error getting load"
+            return limits.mon_STATE_CRITICAL, "error getting load"
         else:
-            ret_state, prob_f = (limits.nag_STATE_OK, [])
+            ret_state, prob_f = (limits.mon_STATE_OK, [])
             if act_load > CRIT_LOAD:
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 prob_f.append("load is very high (> %d)" % (CRIT_LOAD))
             elif act_load > WARN_LOAD:
-                ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                ret_state = max(ret_state, limits.mon_STATE_WARNING)
                 prob_f.append("load is high (> %d)" % (WARN_LOAD))
             return ret_state, "load is %d %%%s" % (
                 act_load,
@@ -82,14 +82,14 @@ class usv_apc_output_scheme(SNMPRelayScheme):
             out_dict[(2, 0)],
             out_dict[(1, 0)]
         )
-        ret_state, prob_f = (limits.nag_STATE_OK, [])
+        ret_state, prob_f = (limits.mon_STATE_OK, [])
         if out_freq not in xrange(MIN_HZ, MAX_HZ):
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("output frequency not ok [%d, %d]" % (
                 MIN_HZ,
                 MAX_HZ))
         if out_voltage not in xrange(MIN_VOLT, MAX_VOLT):
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("output voltage is not in range [%d, %d]" % (
                 MIN_VOLT,
                 MAX_VOLT))
@@ -111,14 +111,14 @@ class usv_apc_input_scheme(SNMPRelayScheme):
         in_dict = self._simplify_keys(self.snmp_dict.values()[0])
         in_freq, in_voltage = (int(in_dict[(4, 0)]),
                                int(in_dict[(1, 0)]))
-        ret_state, prob_f = (limits.nag_STATE_OK, [])
+        ret_state, prob_f = (limits.mon_STATE_OK, [])
         if in_freq not in xrange(MIN_HZ, MAX_HZ):
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("input frequency not ok [%d, %d]" % (
                 MIN_HZ,
                 MAX_HZ))
         if in_voltage not in xrange(MIN_VOLT, MAX_VOLT):
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("input voltage is not in range [%d, %d]" % (
                 MIN_VOLT,
                 MAX_VOLT))
@@ -147,29 +147,29 @@ class usv_apc_battery_scheme(SNMPRelayScheme):
             int(bat_dict[(3, 0)]),
             int(bat_dict[(2, 0)]),
             int(bat_dict[(1, 0)]))
-        ret_state, prob_f = (limits.nag_STATE_OK, [])
+        ret_state, prob_f = (limits.mon_STATE_OK, [])
         if need_replacement > 1:
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             prob_f.append("battery needs replacing")
         if act_temp > crit_temp:
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             prob_f.append("temperature is very high (th %d)" % (crit_temp))
         elif act_temp > warn_temp:
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("temperature is high (th %d)" % (warn_temp))
         if act_bat_load < crit_bat_load:
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             prob_f.append("very low load (th %d)" % (crit_bat_load))
         elif act_bat_load < warn_bat_load:
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("not fully loaded (th %d)" % (warn_bat_load))
         # run time in seconds
         run_time = run_time / 100.
         if run_time < 5 * 60:
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             prob_f.append("run time below 5 minutes")
         elif run_time < 10 * 60:
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
             prob_f.append("run time below 10 minutes")
         return ret_state, "bat temperature is %d C, bat load is %d %%, support time is %s %s%s" % (
             act_temp,

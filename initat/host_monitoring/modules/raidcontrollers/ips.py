@@ -247,13 +247,13 @@ class ctrl_type_ips(ctrl_type):
                 )
             )
             if num_error:
-                ret_state = limits.nag_STATE_CRITICAL
+                ret_state = limits.mon_STATE_CRITICAL
             elif num_warn:
-                ret_state = limits.nag_STATE_WARNING
+                ret_state = limits.mon_STATE_WARNING
             else:
-                ret_state = limits.nag_STATE_OK
+                ret_state = limits.mon_STATE_OK
         if not ret_f:
-            return limits.nag_STATE_WARNING, "no controller information found"
+            return limits.mon_STATE_WARNING, "no controller information found"
         else:
             return ret_state, "; ".join(ret_f)
 

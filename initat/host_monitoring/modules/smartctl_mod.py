@@ -111,11 +111,11 @@ class smartstat_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         smartstat = srv_com["*smartstat"]
         if smartstat:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
             ret_f = []
             for _dev in smartstat:
                 if _dev["check_result"]:
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 ret_f.append(
                     "{}: {}".format(
                         _dev["device"],
@@ -124,5 +124,5 @@ class smartstat_command(hm_classes.hm_command):
                 )
             ret_str = ", ".join(ret_f)
         else:
-            ret_state, ret_str = limits.nag_STATE_WARNING, "no devices found"
+            ret_state, ret_str = limits.mon_STATE_WARNING, "no devices found"
         return ret_state, ret_str

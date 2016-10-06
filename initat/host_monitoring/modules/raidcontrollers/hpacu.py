@@ -282,13 +282,13 @@ class ctrl_type_hpacu(ctrl_type):
                             )
                         )
         if error_f:
-            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "Error")
+            ret_state, ret_str = (limits.mon_STATE_CRITICAL, "Error")
             error_str = ", {}: {}".format(logging_tools.get_plural("error", len(error_f)), ", ".join(error_f))
         else:
-            ret_state, ret_str = (limits.nag_STATE_OK, "OK")
+            ret_state, ret_str = (limits.mon_STATE_OK, "OK")
             error_str = ""
         if not num_cont:
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
         if num_array:
             return ret_state, "{}: {}, {} ({}), {} ({}), {} ({}){}".format(
                 ret_str,

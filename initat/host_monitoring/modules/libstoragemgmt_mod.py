@@ -68,14 +68,14 @@ class libstoragemgmt_command(hm_command):
             ("pools", lsm.Pool.STATUS_OK),
             ("disks", lsm.Disk.STATUS_OK),
         )
-        result_status = limits.nag_STATE_OK
+        result_status = limits.mon_STATE_OK
         for key, status_ok in mapping:
             good = bad = 0
             for _, status in result[key]:
                 if status & status_ok:
                     good += 1
                 else:
-                    result_status = limits.nag_STATE_CRITICAL
+                    result_status = limits.mon_STATE_CRITICAL
                     bad += 1
             result_strings.append("{}: (good={} bad={})".format(
                 key, good, bad

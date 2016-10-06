@@ -117,7 +117,7 @@ class SasCtrlInfo(object):
 
 class ShortOutputKeyCache(object):
     def __init__(self):
-        self._state = limits.nag_STATE_OK
+        self._state = limits.mon_STATE_OK
         self._keys = []
         self._results = []
         self._info_strs = []
@@ -451,37 +451,37 @@ class ctrl_type_megaraid_sas(ctrl_type):
                 # correct key not found
                 _val = "not present / key not found"
             # _checked not needed right now ?
-            _checked, _ret_state = (False, limits.nag_STATE_CRITICAL)
+            _checked, _ret_state = (False, limits.mon_STATE_CRITICAL)
             if _entity_type == "v":
                 _checked = True
                 if check == "state":
                     if _val.lower().startswith("optimal"):
-                        _ret_state = limits.nag_STATE_OK
+                        _ret_state = limits.mon_STATE_OK
 
                 elif check == "current_cache_policy":
                     if _val.lower().strip().split()[0].startswith("writeback"):
-                        _ret_state = limits.nag_STATE_OK
+                        _ret_state = limits.mon_STATE_OK
                     else:
-                        _ret_state = limits.nag_STATE_WARNING
+                        _ret_state = limits.mon_STATE_WARNING
             elif _entity_type == "d":
                 if _val.lower() == "online, spun up":
-                    _ret_state = limits.nag_STATE_OK
+                    _ret_state = limits.mon_STATE_OK
             elif _entity_type == "f":
                 if _val.lower() == "ok":
-                    _ret_state = limits.nag_STATE_OK
+                    _ret_state = limits.mon_STATE_OK
             elif _entity_type == "s":
                 if _val.lower() == "ok":
-                    _ret_state = limits.nag_STATE_OK
+                    _ret_state = limits.mon_STATE_OK
             elif _entity_type == "c":
-                _ret_state = limits.nag_STATE_OK
+                _ret_state = limits.mon_STATE_OK
             elif _entity_type == "b":
                 if _val.lower() in ("operational", "optimal"):
-                    _ret_state = limits.nag_STATE_OK
+                    _ret_state = limits.mon_STATE_OK
                 elif not _key_found:
                     _ld = get_log_dict(lines)
                     # state not definde, check for other flags
                     if not _ld.get("battery_pack_missing", True) and not _ld.get("battery_replacement_required", True):
-                        _ret_state = limits.nag_STATE_OK
+                        _ret_state = limits.mon_STATE_OK
             return _ret_state, _val, _entity_type
 
         def get_check_list(d_type, lines):
@@ -747,7 +747,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _key_list = [_entry for _entry in _key_list if _entry.startswith(cur_ns.key)]
             _ok_dict = {}
             _ret_list = []
-            _g_ret_state = limits.nag_STATE_OK
+            _g_ret_state = limits.mon_STATE_OK
             # list for shortened output
             r_list = []
             for _key in sorted(_key_list):
@@ -766,7 +766,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                     _ret_state, _result, _entity_type = check_status(_key, _lines, _check)
                     if _key.count(":b") and _ignore_missing_bbu:
                         # reduce state if necessary
-                        _ret_state = min(_ret_state, limits.nag_STATE_WARNING)
+                        _ret_state = min(_ret_state, limits.mon_STATE_WARNING)
                     if _store_passive and _entity_type != "c":
                         # never store controller checks in passive dict
                         if _short_output:
@@ -782,7 +782,7 @@ class ctrl_type_megaraid_sas(ctrl_type):
                         _ret_list.append(_info_str)
                     _info_str = ""
                     # print _info, _ret_state, _result
-                    if _ret_state != limits.nag_STATE_OK:
+                    if _ret_state != limits.mon_STATE_OK:
                         _ret_list.append("{}: {}".format(_info, _result))
                     else:
                         if single_key:

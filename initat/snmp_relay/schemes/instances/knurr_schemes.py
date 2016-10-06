@@ -49,11 +49,11 @@ class temperature_knurr_scheme(SNMPRelayScheme):
         warn_val, crit_val = (new_dict[5], new_dict[6])
         cur_val = new_dict[3]
         if cur_val > crit_val:
-            cur_state = limits.nag_STATE_CRITICAL
+            cur_state = limits.mon_STATE_CRITICAL
         elif cur_val > warn_val:
-            cur_state = limits.nag_STATE_WARNING
+            cur_state = limits.mon_STATE_WARNING
         else:
-            cur_state = limits.nag_STATE_OK
+            cur_state = limits.mon_STATE_OK
         return cur_state, "temperature %.2f C | temp=%.2f" % (
             cur_val,
             cur_val
@@ -73,9 +73,9 @@ class humidity_knurr_scheme(SNMPRelayScheme):
         low_crit, high_crit = (new_dict[3], new_dict[4])
         cur_val = new_dict[2]
         if cur_val > high_crit or cur_val < low_crit:
-            cur_state = limits.nag_STATE_CRITICAL
+            cur_state = limits.mon_STATE_CRITICAL
         else:
-            cur_state = limits.nag_STATE_OK
+            cur_state = limits.mon_STATE_OK
         return cur_state, "humidity %.2f %% [%.2f - %.2f] | humidity=%.2f" % (
             cur_val,
             low_crit,
@@ -92,9 +92,9 @@ class environment_knurr_base(object):
         )
         del new_dict[4]
         if max(new_dict.values()) == 0:
-            cur_state = limits.nag_STATE_OK
+            cur_state = limits.mon_STATE_OK
         else:
-            cur_state = limits.nag_STATE_CRITICAL
+            cur_state = limits.mon_STATE_CRITICAL
         info_dict = {
             1: "fan1",
             2: "fan2",

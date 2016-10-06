@@ -117,7 +117,7 @@ class MonCheckDefinition(object):
         return []
 
     def mon_result(self, scheme):
-        return limits.nag_STATE_CRITICAL, "not implemented"
+        return limits.mon_STATE_CRITICAL, "not implemented"
 
     def __repr__(self):
         return self.Meta.name

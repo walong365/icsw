@@ -310,7 +310,7 @@ class DynConfigProcess(threading_tools.process_obj):
             self.log("for {}: created {:d}, updated {:d}".format(unicode(cur_dev), n_created, n_updated))
 
     def _check_status_ipmi(self, _val, cur_hint):
-        _ret = limits.nag_STATE_OK
+        _ret = limits.mon_STATE_OK
         if type(_val) in [int, long]:
             form_str = "{:d}"
         else:
@@ -319,9 +319,9 @@ class DynConfigProcess(threading_tools.process_obj):
         _errors = []
         for s_key, c_val in cur_hint.get_limit_list():
             if s_key[1] == "w":
-                _sn, _retc = (1, limits.nag_STATE_WARNING)
+                _sn, _retc = (1, limits.mon_STATE_WARNING)
             else:
-                _sn, _retc = (2, limits.nag_STATE_CRITICAL)
+                _sn, _retc = (2, limits.mon_STATE_CRITICAL)
             _lower = s_key[0] == "l"
             if (_lower and _val <= c_val) or (not _lower and _val >= c_val):
                 _ret = max(_ret, _retc)

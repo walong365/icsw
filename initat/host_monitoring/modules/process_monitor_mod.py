@@ -419,7 +419,7 @@ class procstat_command(hm_classes.hm_command):
                 _form = int(result.get("format", "1"))
                 result = process_tools.decompress_struct(result.text, version=_form)
             except:
-                return limits.nag_STATE_CRITICAL, "cannot decompress: {}".format(process_tools.get_except_info())
+                return limits.mon_STATE_CRITICAL, "cannot decompress: {}".format(process_tools.get_except_info())
             # print result.text
         p_names = cur_ns.arguments
         zombie_ok_list = ["cron"]
@@ -457,11 +457,11 @@ class procstat_command(hm_classes.hm_command):
             else:
                 res_dict["kernel"] += 1
         if res_dict["fail"]:
-            ret_state = limits.nag_STATE_CRITICAL
+            ret_state = limits.mon_STATE_CRITICAL
         elif res_dict["zombie_ok"]:
-            ret_state = limits.nag_STATE_WARNING
+            ret_state = limits.mon_STATE_WARNING
         else:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         if len(p_names) == 1 and len(result) == 1:
             found_name = result.values()[0]["name"]
             if found_name != p_names[0]:
@@ -501,7 +501,7 @@ class procstat_command(hm_classes.hm_command):
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         shit_str = ""
-        _ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
+        _ret_str, ret_state = ("OK", limits.mon_STATE_CRITICAL)
         _copy_struct = result.get("struct", None)
         if parsed_coms.zombie:
             result["num_ok"] += result["num_fail"]
@@ -597,7 +597,7 @@ class proclist_command(hm_classes.hm_command):
             for _val in result.itervalues():
                 _val["state"] = process_tools.PROC_STATUSES_REV[_val["status"]]
         # print etree.tostring(srv_com.tree, pretty_print=True)
-        ret_state = limits.nag_STATE_CRITICAL
+        ret_state = limits.mon_STATE_CRITICAL
         pids = sorted([key for key, value in result.iteritems() if name_re.match(value["name"])])
         for act_pid in pids:
             proc_stuff = result[act_pid]
@@ -690,7 +690,7 @@ class ipckill_command(hm_classes.hm_command):
             srv_com.xpath(".//ns:rem_result[@error='0']", smart_strings=False),
             srv_com.xpath(".//ns:rem_result[@error='1']", smart_strings=False)
         )
-        return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "removed {}{}".format(
+        return limits.mon_STATE_CRITICAL if error_list else limits.mon_STATE_OK, "removed {}{}".format(
             logging_tools.get_plural("entry", len(ok_list)),
             ", error for {}".format(logging_tools.get_plural("entry", len(error_list))) if error_list else ""
         )
@@ -787,7 +787,7 @@ class signal_command(hm_classes.hm_command):
             srv_com.xpath(".//ns:signal[@error='1']/text()", smart_strings=False)
         )
         cur_sig = int(srv_com["signal_list"].attrib["signal"])
-        return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, "sent {:d}[{}] to {}{}".format(
+        return limits.mon_STATE_CRITICAL if error_list else limits.mon_STATE_OK, "sent {:d}[{}] to {}{}".format(
             cur_sig,
             self.get_signal_string(cur_sig),
             logging_tools.get_plural("process", len(ok_list) + len(error_list)),

@@ -58,7 +58,7 @@ class memcached_status_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         if "memcache_stats" in srv_com:
             mc_stats = srv_com["*memcache_stats"]
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
             out_f = []
             for t_srv, cur_stats in mc_stats:
                 # pprint.pprint(mc_stats)
@@ -78,4 +78,4 @@ class memcached_status_command(hm_classes.hm_command):
                 ret_state = max(ret_state, limits.check_ceiling(cur_perc, cur_ns.warn, cur_ns.crit))
             return ret_state, ", ".join(out_f)
         else:
-            return limits.nag_STATE_CRITICAL, "no stats found"
+            return limits.mon_STATE_CRITICAL, "no stats found"

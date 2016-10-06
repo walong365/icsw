@@ -103,7 +103,7 @@ class sge_queue_status_command(hm_classes.hm_command):
             q_list = [q_name] if q_name else q_host.xpath(".//queue/@name", smart_strings=False)
             host_name = q_host.attrib["name"]
             ret_state, out_f = (
-                limits.nag_STATE_OK,
+                limits.mon_STATE_OK,
                 []
             )
             # iterate over all queues
@@ -113,15 +113,15 @@ class sge_queue_status_command(hm_classes.hm_command):
                     qv_dict = dict([(cur_el.attrib["name"], cur_el.text or "") for cur_el in s_queue])
                     for cur_c in qv_dict["state_string"]:
                         ret_state = max(ret_state, {
-                            "u": limits.nag_STATE_CRITICAL,
-                            "a": limits.nag_STATE_CRITICAL,
-                            "A": limits.nag_STATE_CRITICAL,
-                            "C": limits.nag_STATE_OK,
-                            "s": limits.nag_STATE_OK,
-                            "S": limits.nag_STATE_OK,
-                            "d": limits.nag_STATE_WARNING,
-                            "D": limits.nag_STATE_WARNING,
-                            "E": limits.nag_STATE_CRITICAL,
+                            "u": limits.mon_STATE_CRITICAL,
+                            "a": limits.mon_STATE_CRITICAL,
+                            "A": limits.mon_STATE_CRITICAL,
+                            "C": limits.mon_STATE_OK,
+                            "s": limits.mon_STATE_OK,
+                            "S": limits.mon_STATE_OK,
+                            "d": limits.mon_STATE_WARNING,
+                            "D": limits.mon_STATE_WARNING,
+                            "E": limits.mon_STATE_CRITICAL,
                         }[cur_c])
                     out_f.append(
                         "queue %s@%s, %d of %d used, state is %s" % (
@@ -133,7 +133,7 @@ class sge_queue_status_command(hm_classes.hm_command):
                         )
                     )
             if not out_f:
-                ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                ret_state = max(ret_state, limits.mon_STATE_WARNING)
             return ret_state, "; ".join(out_f) or "no Queues found"
         else:
-            return limits.nag_STATE_CRITICAL, "no stats found"
+            return limits.mon_STATE_CRITICAL, "no stats found"

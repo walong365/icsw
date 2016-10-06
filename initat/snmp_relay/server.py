@@ -290,7 +290,7 @@ class server_process(server_mixins.ICSWBasePool):
                 comline = srv_com.xpath(".//ns:command", smart_strings=False)[0].text
                 timeout = int(srv_com.get(".//ns:timeout", "10"))
             except:
-                self._send_return(body, limits.nag_STATE_CRITICAL, "message format error: {}".format(process_tools.get_except_info()))
+                self._send_return(body, limits.mon_STATE_CRITICAL, "message format error: {}".format(process_tools.get_except_info()))
             else:
                 envelope = srv_com["identity"].text
                 parameter_ok = True
@@ -341,7 +341,7 @@ class server_process(server_mixins.ICSWBasePool):
                 comline_split = comline.split()
                 scheme = comline_split.pop(0)
             except:
-                self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error: {}".format(process_tools.get_except_info()))
+                self._send_return(envelope, limits.mon_STATE_CRITICAL, "message format error: {}".format(process_tools.get_except_info()))
             else:
                 self.__ret_dict[envelope] = time.time()
                 if scheme in self.__local_schemes:
@@ -372,7 +372,7 @@ class server_process(server_mixins.ICSWBasePool):
                                 logging_tools.form_entry(_s_name, header="name"),
                             ]
                         )
-                    self._send_return(envelope, limits.nag_STATE_OK, unicode(_out_list))
+                    self._send_return(envelope, limits.mon_STATE_OK, unicode(_out_list))
                     s_type = None
                 else:
                     guess_list = ", ".join(difflib.get_close_matches(scheme, self.__local_schemes.keys() + self.__gen_schemes.keys()))
@@ -380,7 +380,7 @@ class server_process(server_mixins.ICSWBasePool):
                         scheme,
                         ", maybe one of {}".format(guess_list) if guess_list else ", no similar scheme found"
                     )
-                    self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
+                    self._send_return(envelope, limits.mon_STATE_CRITICAL, err_str)
                     s_type = None
                 if s_type:
                     host = self._resolve_address(host)
@@ -423,19 +423,19 @@ class server_process(server_mixins.ICSWBasePool):
                             scheme,
                             process_tools.get_except_info()
                         )
-                        self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
+                        self._send_return(envelope, limits.mon_STATE_CRITICAL, err_str)
                     else:
                         if act_scheme.get_errors():
                             err_str = "problem in creating scheme {}: {}".format(
                                 scheme,
                                 ", ".join(act_scheme.get_errors())
                             )
-                            self._send_return(envelope, limits.nag_STATE_CRITICAL, err_str)
+                            self._send_return(envelope, limits.mon_STATE_CRITICAL, err_str)
                         else:
                             self._start_snmp_fetch(act_scheme)
 
         elif not xml_input:
-            self._send_return(envelope, limits.nag_STATE_CRITICAL, "message format error")
+            self._send_return(envelope, limits.mon_STATE_CRITICAL, "message format error")
         self.__num_messages += 1
         if self.__verbose > 3:
             self.log("recv() done")

@@ -269,9 +269,9 @@ class rpmlist_command(hm_classes.hm_command):
                             ]
                         )
                         out_f.add_line((key, d_flag, s_flag, e_flag, ver, rel, summary))
-            return limits.nag_STATE_OK, "{}\n{}".format(header_line, str(out_f))
+            return limits.mon_STATE_OK, "{}\n{}".format(header_line, str(out_f))
         else:
-            return limits.nag_STATE_CRITICAL, "{}, nothing found".format(header_line)
+            return limits.mon_STATE_CRITICAL, "{}, nothing found".format(header_line)
 
 
 class updatelist_command(hm_classes.hm_command):
@@ -290,12 +290,12 @@ class updatelist_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         update_list = server_command.decompress(srv_com["update_list"].text, pickle=True)
         if update_list:
-            return limits.nag_STATE_OK, "{}: {}".format(
+            return limits.mon_STATE_OK, "{}: {}".format(
                 logging_tools.get_plural("update", len(update_list)),
                 "\n".join(["{:} {:}".format(_name, _vers) for _name, _vers in update_list])
             )
         else:
-            return limits.nag_STATE_OK, "No updates found"
+            return limits.mon_STATE_OK, "No updates found"
 
 
 def rpmlist_int(rpm_root_dir, re_strs, is_debian):

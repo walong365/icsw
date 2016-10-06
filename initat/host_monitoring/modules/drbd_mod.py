@@ -76,23 +76,23 @@ class drbd_status_command(hm_classes.hm_command):
                     # check connection_state
                     c_state = loc_dict["connection_state"].lower()
                     if c_state in ["connected"]:
-                        dev_state = limits.nag_STATE_OK
+                        dev_state = limits.mon_STATE_OK
                     elif c_state in [
                         "unconfigured", "syncsource", "synctarget", "wfconnection", "wfreportparams",
                         "pausedsyncs", "pausedsynct", "wfbitmaps", "wfbitmapt"
                     ]:
-                        dev_state = limits.nag_STATE_WARNING
+                        dev_state = limits.mon_STATE_WARNING
                     else:
-                        dev_state = limits.nag_STATE_CRITICAL
+                        dev_state = limits.mon_STATE_CRITICAL
                     # check states
                     if "state" in loc_dict:
                         state_dict.setdefault(loc_dict["state"][0], []).append(key)
                         for state in loc_dict["state"]:
                             if state not in ["primary", "secondary"]:
-                                dev_state = max(dev_state, limits.nag_STATE_CRITICAL)
+                                dev_state = max(dev_state, limits.mon_STATE_CRITICAL)
                     else:
-                        dev_state = limits.nag_STATE_CRITICAL
-                    if dev_state != limits.nag_STATE_OK:
+                        dev_state = limits.mon_STATE_CRITICAL
+                    if dev_state != limits.mon_STATE_OK:
                         # pprint.pprint(loc_dict)
                         ret_strs.append(
                             "{} ({}, protocol '{}'{}): cs {}, {}, ds {}".format(
@@ -116,11 +116,11 @@ class drbd_status_command(hm_classes.hm_command):
             else:
                 ret_strs = []
                 if not drbd_conf["status_present"]:
-                    ret_state = limits.nag_STATE_WARNING
+                    ret_state = limits.mon_STATE_WARNING
                     ret_strs.append("drbd status not present, module not loaded ?")
                 elif not drbd_conf["config_present"]:
-                    ret_state = limits.nag_STATE_CRITICAL
+                    ret_state = limits.mon_STATE_CRITICAL
                     ret_strs.append("drbd config not present")
                 return ret_state, ", ".join(ret_strs)
         else:
-            return limits.nag_STATE_WARNING, "empty dbrd_config"
+            return limits.mon_STATE_WARNING, "empty dbrd_config"

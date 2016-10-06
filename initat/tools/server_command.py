@@ -21,17 +21,19 @@
 
 import base64
 import bz2
+import collections
 import datetime
+import json
 import marshal
 import os
 import pickle
-import collections
-import json
 import re
 
 from lxml import etree
 from lxml.builder import ElementMaker
 
+from initat.host_monitoring.limits import mon_STATE_CRITICAL, mon_STATE_WARNING, \
+    mon_STATE_OK
 from initat.tools import logging_tools
 
 XML_NS = "http://www.initat.org/lxml/ns"
@@ -58,14 +60,6 @@ SRV_REPLY_STATE_CRITICAL = 3
 SRV_REPLY_STATE_UNSET = 4
 
 
-# copy from limits
-nag_STATE_CRITICAL = 2
-nag_STATE_WARNING = 1
-nag_STATE_OK = 0
-nag_STATE_UNKNOWN = -1
-nag_STATE_DEPENDENT = -2
-
-
 def srv_reply_to_log_level(srv_reply_state):
     return {
         SRV_REPLY_STATE_OK: logging_tools.LOG_LEVEL_OK,
@@ -76,17 +70,17 @@ def srv_reply_to_log_level(srv_reply_state):
 
 def srv_reply_to_nag_state(srv_reply_state):
     return {
-        SRV_REPLY_STATE_OK: nag_STATE_OK,
-        SRV_REPLY_STATE_WARN: nag_STATE_WARNING,
-        SRV_REPLY_STATE_ERROR: nag_STATE_CRITICAL,
-    }.get(srv_reply_state, nag_STATE_CRITICAL)
+        SRV_REPLY_STATE_OK: mon_STATE_OK,
+        SRV_REPLY_STATE_WARN: mon_STATE_WARNING,
+        SRV_REPLY_STATE_ERROR: mon_STATE_CRITICAL,
+    }.get(srv_reply_state, mon_STATE_CRITICAL)
 
 
 def nag_state_to_srv_reply(nag_state):
     return {
-        nag_STATE_OK: SRV_REPLY_STATE_OK,
-        nag_STATE_WARNING: SRV_REPLY_STATE_WARN,
-        nag_STATE_CRITICAL: SRV_REPLY_STATE_ERROR,
+        mon_STATE_OK: SRV_REPLY_STATE_OK,
+        mon_STATE_WARNING: SRV_REPLY_STATE_WARN,
+        mon_STATE_CRITICAL: SRV_REPLY_STATE_ERROR,
     }.get(nag_state, SRV_REPLY_STATE_ERROR)
 
 

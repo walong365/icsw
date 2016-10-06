@@ -93,7 +93,7 @@ class check_file_command(hm_classes.hm_command):
         return self._interpret(hm_classes.net_to_sys(result[3:]), cur_ns)
 
     def _interpret(self, f_dict, cur_ns):
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         file_stat = f_dict["stat"]
         if type(file_stat) == dict:
             file_size = file_stat["st_size"]
@@ -129,7 +129,7 @@ class check_file_command(hm_classes.hm_command):
             if cur_ns.mod_diff_time:
                 md_time = abs(file_mtime - f_dict["local_time"])
                 if md_time > cur_ns.mod_diff_time:
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                     add_array.append("changed %s ago > %s" % (logging_tools.get_diff_time_str(md_time),
                                                               logging_tools.get_diff_time_str(cur_ns.mod_diff_time)))
                 else:
@@ -197,7 +197,7 @@ class call_script_command(hm_classes.hm_command):
                 )
 
     def interpret(self, srv_com, cur_ns):
-        return limits.nag_STATE_OK, srv_com["result"].attrib["reply"]
+        return limits.mon_STATE_OK, srv_com["result"].attrib["reply"]
 
 
 class create_dir_command(hm_classes.hm_command):
@@ -258,13 +258,13 @@ class check_mount_command(hm_classes.hm_command):
         else:
             _ret_f.append("type is {}".format(t_type))
         if _errors:
-            ret_state = limits.nag_STATE_CRITICAL
+            ret_state = limits.mon_STATE_CRITICAL
             _ret_f.extend(_errors)
         elif _warnings:
-            ret_state = limits.nag_STATE_WARNING
+            ret_state = limits.mon_STATE_WARNING
             _ret_f.extend(_warnings)
         else:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         return ret_state, "mountpoint {}: {}".format(
             mount_info[1],
             ", ".join(_ret_f)
@@ -305,4 +305,4 @@ class check_dir_command(hm_classes.hm_command):
                 )
 
     def interpret(self, srv_com, cur_ns):
-        return limits.nag_STATE_OK, "dir {} exists".format(srv_com["result:dir_stat"].attrib["directory"])
+        return limits.mon_STATE_OK, "dir {} exists".format(srv_com["result:dir_stat"].attrib["directory"])

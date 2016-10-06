@@ -475,83 +475,80 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             if "host" in srv_com and "port" in srv_com:
                 # check target host, rewrite to ip
                 t_host = srv_com["host"].text
-                if t_host == "DIRECT":
-                    self.log("ignoring DIRECT commands, please update", logging_tools.LOG_LEVEL_ERROR)
+                try:
+                    ip_addr = self._resolve_address(t_host)
+                except socket.gaierror:
+                    self.log(
+                        "resolve error for '{}'".format(t_host),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                    self.sender_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
+                    self.sender_socket.send_unicode("{:d}\0resolve error".format(limits.mon_STATE_CRITICAL))
                 else:
-                    try:
-                        ip_addr = self._resolve_address(t_host)
-                    except socket.gaierror:
-                        self.log(
-                            "resolve error for '{}'".format(t_host),
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
-                        self.sender_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
-                        self.sender_socket.send_unicode("{:d}\0resolve error".format(limits.nag_STATE_CRITICAL))
+                    _e = srv_com.builder()
+                    srv_com[""].append(_e.host_unresolved(t_host))
+                    cur_host = srv_com.xpath(".//ns:host", smart_strings=False)
+                    if len(cur_host) == 1:
+                        cur_host[0].text = ip_addr
                     else:
-                        _e = srv_com.builder()
-                        srv_com[""].append(_e.host_unresolved(t_host))
-                        cur_host = srv_com.xpath(".//ns:host", smart_strings=False)
-                        if len(cur_host) == 1:
-                            cur_host[0].text = ip_addr
-                        else:
-                            srv_com[""].append(_e.host(ip_addr))
-                        # , _e.host(ip_addr)])
-                        # srv_com["host_unresolved"] = t_host
-                        # srv_com["host"] = ip_addr
-                        # try to get the state of both addresses
-                        if int(srv_com["*port"]) == self.__hm_port:
-                            c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
-                            # just for debug runs
-                            # c_state = "T"
-                            if c_state is None:
-                                # not needed
-                                # HostConnection.delete_hc(srv_com)
-                                if t_host not in self.__last_tried:
-                                    self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
-                                self.__last_tried[t_host] = {
-                                    "T": "0",
-                                    "0": "T",
-                                }[self.__last_tried[t_host]]
-                                c_state = self.__last_tried[t_host]
-                            con_mode = c_state
-                        else:
-                            con_mode = "0"
-                        full_con_mode = {
-                            "0": "zeromMQ",
-                            "T": "TCP",
-                        }
-                        # con_mode = "0"
-                        # decide which code to use
-                        if self.__verbose:
-                            self.log(
-                                "connection to '{}:{:d}' via {}".format(
-                                    t_host,
-                                    int(srv_com["port"].text),
-                                    full_con_mode[con_mode],
-                                )
+                        srv_com[""].append(_e.host(ip_addr))
+                    # , _e.host(ip_addr)])
+                    # srv_com["host_unresolved"] = t_host
+                    # srv_com["host"] = ip_addr
+                    # try to get the state of both addresses
+                    if int(srv_com["*port"]) == self.__hm_port:
+                        c_state = self.__client_dict.get(t_host, self.__client_dict.get(ip_addr, None))
+                        # just for debug runs
+                        # c_state = "T"
+                        if c_state is None:
+                            # not needed
+                            # HostConnection.delete_hc(srv_com)
+                            if t_host not in self.__last_tried:
+                                self.__last_tried[t_host] = "T" if self.__default_0mq else "0"
+                            self.__last_tried[t_host] = {
+                                "T": "0",
+                                "0": "T",
+                            }[self.__last_tried[t_host]]
+                            c_state = self.__last_tried[t_host]
+                        con_mode = c_state
+                    else:
+                        con_mode = "0"
+                    full_con_mode = {
+                        "0": "zeromMQ",
+                        "T": "TCP",
+                    }
+                    # con_mode = "0"
+                    # decide which code to use
+                    if self.__verbose:
+                        self.log(
+                            "connection to '{}:{:d}' via {}".format(
+                                t_host,
+                                int(srv_com["port"].text),
+                                full_con_mode[con_mode],
                             )
-                        _host = srv_com["*host"]
-                        com_name = srv_com["*command"]
-                        if com_name == "ping" and _host in ["127.0.0.1", "localhost"]:
-                            # special handling of local pings
-                            self._handle_local_ping(src_id, srv_com)
-                        elif int(srv_com["port"].text) != self.__hm_port:
-                            # connect to non-host-monitoring service
-                            if con_mode == "0":
-                                self._send_to_nhm_service(src_id, srv_com, xml_input)
-                            else:
-                                self._send_to_old_nhm_service(src_id, srv_com, xml_input)
-                        elif con_mode == "0":
-                            self._send_to_client(src_id, srv_com, xml_input)
-                        elif con_mode == "T":
-                            self._send_to_old_client(src_id, srv_com, xml_input)
+                        )
+                    _host = srv_com["*host"]
+                    com_name = srv_com["*command"]
+                    if com_name == "ping" and _host in ["127.0.0.1", "localhost"]:
+                        # special handling of local pings
+                        self._handle_local_ping(src_id, srv_com)
+                    elif int(srv_com["port"].text) != self.__hm_port:
+                        # connect to non-host-monitoring service
+                        if con_mode == "0":
+                            self._send_to_nhm_service(src_id, srv_com, xml_input)
                         else:
-                            self.log(
-                                "unknown con_mode '{}', error".format(con_mode),
-                                logging_tools.LOG_LEVEL_CRITICAL
-                            )
-                        if self.__verbose:
-                            self.log("send done")
+                            self._send_to_old_nhm_service(src_id, srv_com, xml_input)
+                    elif con_mode == "0":
+                        self._send_to_client(src_id, srv_com, xml_input)
+                    elif con_mode == "T":
+                        self._send_to_old_client(src_id, srv_com, xml_input)
+                    else:
+                        self.log(
+                            "unknown con_mode '{}', error".format(con_mode),
+                            logging_tools.LOG_LEVEL_CRITICAL
+                        )
+                    if self.__verbose:
+                        self.log("send done")
             else:
                 self.log(
                     "some keys missing (host and / or port)",
@@ -563,7 +560,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 logging_tools.LOG_LEVEL_ERROR
             )
             # return a dummy message
-            self._send_result(src_id, "cannot interpret", limits.nag_STATE_CRITICAL)
+            self._send_result(src_id, "cannot interpret", limits.mon_STATE_CRITICAL)
         self.__num_messages += 1
         if self.__num_messages % 1000 == 0:
             pid_list = sorted(list(set(self.CC.msi_block.pids)))
@@ -629,7 +626,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             self._send_result(
                 src_id,
                 "wrong number of arguments ({:d})".format(len(args)),
-                limits.nag_STATE_CRITICAL
+                limits.mon_STATE_CRITICAL
             )
 
     def _socket_ping_result(self, src_proc, src_id, *args):
@@ -735,7 +732,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 srv_result = etree.fromstring(data[1])  # @UndefinedVariable
                 srv_com = self.__raw_nhm_dict[data[0]][1]
                 cur_id = srv_com["identity"].text
-                self._send_result(cur_id, srv_result.findtext("nodestatus"), limits.nag_STATE_OK)
+                self._send_result(cur_id, srv_result.findtext("nodestatus"), limits.mon_STATE_OK)
                 del self.__raw_nhm_dict[data[0]]
             else:
                 srv_result = server_command.srv_command(source=data[1])
@@ -755,7 +752,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                             self._send_result(
                                 cur_id,
                                 "no result tag found",
-                                limits.nag_STATE_CRITICAL,
+                                limits.mon_STATE_CRITICAL,
                             )
                     else:
                         self.log(

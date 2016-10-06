@@ -83,7 +83,7 @@ class get_mvector_command(hm_classes.hm_command):
             re_list = []
         cur_vector = srv_com["data:machine_vector"]
         if cur_ns.raw:
-            return limits.nag_STATE_OK, etree.tostring(cur_vector)  # @UndefinedVariable
+            return limits.mon_STATE_OK, etree.tostring(cur_vector)  # @UndefinedVariable
         else:
             vector_keys = sorted(srv_com.xpath(".//ns:mve/@name", start_el=cur_vector, smart_strings=False))
             used_keys = [key for key in vector_keys if any([cur_re.search(key) for cur_re in re_list]) or not re_list]
@@ -109,7 +109,7 @@ class get_mvector_command(hm_classes.hm_command):
             for mv_num, entry in _list:
                 out_list.append(entry.get_form_entry(mv_num, max_num_keys))
             ret_array.extend(unicode(out_list).split("\n"))
-            return limits.nag_STATE_OK, "\n".join(ret_array)
+            return limits.mon_STATE_OK, "\n".join(ret_array)
 
 
 class machine_vector(object):

@@ -73,7 +73,7 @@ class lmstat_command(hm_classes.hmb_command):
                 # old version
                 s_port, s_name = (l_dict["server_port"],
                                   l_dict["server_name"])
-                return limits.nag_STATE_OK, "ok %s (port %d); %s: %s" % (
+                return limits.mon_STATE_OK, "ok %s (port %d); %s: %s" % (
                     s_name,
                     s_port,
                     logging_tools.get_plural("feature", len(feat_list)),
@@ -85,7 +85,7 @@ class lmstat_command(hm_classes.hmb_command):
                 servers_up = sorted([k for k, v in l_dict["server_status"].iteritems() if v.lower().count("server up")])
                 servers_down = sorted([k for k, v in l_dict["server_status"].iteritems() if k not in servers_up])
                 if servers_down:
-                    return limits.nag_STATE_CRITICAL, "error %s down: %s, %s up: %s; %s: %s" % (
+                    return limits.mon_STATE_CRITICAL, "error %s down: %s, %s up: %s; %s: %s" % (
                         logging_tools.get_plural("server", len(servers_down)),
                         ", ".join(servers_down),
                         logging_tools.get_plural("server", len(servers_up)),
@@ -95,9 +95,9 @@ class lmstat_command(hm_classes.hmb_command):
                 else:
                     num_features = len(feat_list)
                     if num_features:
-                        ret_state, ret_str = (limits.nag_STATE_OK, "ok")
+                        ret_state, ret_str = (limits.mon_STATE_OK, "ok")
                     else:
-                        ret_state, ret_str = (limits.nag_STATE_CRITICAL, "error")
+                        ret_state, ret_str = (limits.mon_STATE_CRITICAL, "error")
                     return ret_state, "%s %s up: %s; %s%s" % (
                         ret_str,
                         logging_tools.get_plural("server", len(servers_up)),
@@ -105,9 +105,9 @@ class lmstat_command(hm_classes.hmb_command):
                         logging_tools.get_plural("feature", len(feat_list)),
                         feat_list and ": %s" % (", ".join(feat_list)) or "")
             else:
-                return limits.nag_STATE_CRITICAL, "error no server_port or server_name key in response"
+                return limits.mon_STATE_CRITICAL, "error no server_port or server_name key in response"
         else:
-            return limits.nag_STATE_CRITICAL, "error %s" % (result)
+            return limits.mon_STATE_CRITICAL, "error %s" % (result)
 
 
 def parse_lmstat_out(out):

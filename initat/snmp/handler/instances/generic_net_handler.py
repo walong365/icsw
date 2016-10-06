@@ -359,7 +359,7 @@ class if_mon(MonCheckDefinition):
             _vector = None
         _vc.set(_key, _val_dict)
         _mon_flags = NetDeviceSNMPMonOptions(scheme.opts.flags)
-        ret_state, r_f = (limits.nag_STATE_OK, [])
+        ret_state, r_f = (limits.mon_STATE_OK, [])
         if _vector is None:
             r_f.append("only one value read out")
         else:
@@ -375,16 +375,16 @@ class if_mon(MonCheckDefinition):
             )
             if _vector[2]:
                 if _vector[2] > 1:
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 else:
-                    ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                    ret_state = max(ret_state, limits.mon_STATE_WARNING)
                 r_f.append(
                     "discards: {:.2f} /sec".format(
                         _vector[2]
                     )
                 )
             if _vector[3]:
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 r_f.append(
                     "errors: {:.2f} / sec".format(
                         _vector[3],
@@ -393,10 +393,10 @@ class if_mon(MonCheckDefinition):
         # check oper status
         if _mon_flags.desired_status == NetDeviceDesiredStateEnum.up and not _val_dict[8]:
             r_f.append("OperStatus is down")
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
         elif _mon_flags.desired_status == NetDeviceDesiredStateEnum.down and _val_dict[8]:
             r_f.append("OperStatus is up")
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
         _low_speed = _val_dict[5]
         _high_speed = _val_dict.get(15, 0) * 1000000
         _speed = max(_low_speed, _high_speed)
@@ -407,7 +407,7 @@ class if_mon(MonCheckDefinition):
                 if _speed in [2 ** 32 - 1, 2 ** 31 - 1]:
                     pass
                 else:
-                    ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                    ret_state = max(ret_state, limits.mon_STATE_WARNING)
                     r_f.append(
                         "measured speed {} differs from target speed {}".format(
                             logging_tools.get_size_str(_speed, strip_spaces=True, per_second=True, divider=1000),

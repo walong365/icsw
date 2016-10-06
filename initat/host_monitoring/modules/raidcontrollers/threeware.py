@@ -273,11 +273,11 @@ class ctrl_type_tw(ctrl_type):
             ret_list.append("no controller found")
             num_error = 1
         if num_error:
-            ret_state = limits.nag_STATE_CRITICAL
+            ret_state = limits.mon_STATE_CRITICAL
         elif num_warn:
-            ret_state = limits.nag_STATE_WARNING
+            ret_state = limits.mon_STATE_WARNING
         else:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         return ret_state, ", ".join(ret_list)
 
 

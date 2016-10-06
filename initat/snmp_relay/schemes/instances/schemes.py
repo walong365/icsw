@@ -41,7 +41,7 @@ class load_scheme(SNMPRelayScheme):
         simple_dict = self._simplify_keys(self.snmp_dict.values()[0])
         load_array = [float(simple_dict[key]) for key in [1, 2, 3]]
         max_load = max(load_array)
-        ret_state = limits.nag_STATE_CRITICAL if max_load > self.opts.crit else (limits.nag_STATE_WARNING if max_load > self.opts.warn else limits.nag_STATE_OK)
+        ret_state = limits.mon_STATE_CRITICAL if max_load > self.opts.crit else (limits.mon_STATE_WARNING if max_load > self.opts.warn else limits.mon_STATE_OK)
         return ret_state, "load 1/5/15: %.2f / %.2f / %.2f" % (
             load_array[0],
             load_array[1],
@@ -72,7 +72,7 @@ class MemoryMixin(object):
             allp = 100
         else:
             allp = 100. * all_used / all_total
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         return ret_state, "meminfo: {:.2f} % of {} phys, {:.2f} % of {} tot".format(
             memp,
             k_str(phys_total),
@@ -148,7 +148,7 @@ class host_process_scheme(SNMPRelayScheme):
                 ]
             )
             ret_state, ret_str = (
-                limits.nag_STATE_OK,
+                limits.mon_STATE_OK,
                 "{:d} Processes, {}".format(
                     len(_dict),
                     _info_str,
@@ -156,7 +156,7 @@ class host_process_scheme(SNMPRelayScheme):
             )
         else:
             ret_state, ret_str = (
-                limits.nag_STATE_OK,
+                limits.mon_STATE_OK,
                 "Process tree has {}".format(logging_tools.get_plural("entry", len(_dict)))
             )
         return ret_state, ret_str
@@ -222,7 +222,7 @@ class snmp_info_scheme(SNMPRelayScheme):
     def process_return(self):
         simple_dict = self.snmp_dict.values()[0]
         self._check_for_missing_keys(simple_dict, needed_keys={(4, 0), (5, 0), (6, 0)})
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         return ret_state, "SNMP Info: contact {}, name {}, location {}".format(
             simple_dict[(4, 0)] or "???",
             simple_dict[(5, 0)] or "???",
@@ -309,7 +309,7 @@ class check_snmp_qos_scheme(SNMPRelayScheme):
     def process_return(self):
         self._build_base_cfg()
         idx_list, idx_set = (self.idx_list, self.idx_set)
-        ret_value, ret_lines = (limits.nag_STATE_OK, [])
+        ret_value, ret_lines = (limits.mon_STATE_OK, [])
         if self.qos_key == 1:
             ret_lines = ["%d" % (value) for value in idx_list]
         elif self.qos_key == 2:
@@ -338,7 +338,7 @@ class check_snmp_qos_scheme(SNMPRelayScheme):
                 value_dict = {key[1]: value for key, value in self.snmp_dict[val_idx_start].iteritems() if key[0] == self.__rev_dict[self.if_idx]}
                 # #pprint.pprint(value_dict)
             except KeyError:
-                ret_value, ret_lines = (limits.nag_STATE_CRITICAL, ["Could not find interface %d, giving up." % (self.if_idx)])
+                ret_value, ret_lines = (limits.mon_STATE_CRITICAL, ["Could not find interface %d, giving up." % (self.if_idx)])
             else:
                 # value dict
                 # reindex value_dict
@@ -354,7 +354,7 @@ class check_snmp_qos_scheme(SNMPRelayScheme):
                     )
                 ]
         else:
-            ret_value = limits.nag_STATE_CRITICAL
+            ret_value = limits.mon_STATE_CRITICAL
             ret_lines = ["unknown key / idx %d / %d" % (self.qos_key,
                                                         self.if_idx)]
         # pprint.pprint(self.snmp_dict)
@@ -398,7 +398,7 @@ class port_info_scheme(SNMPRelayScheme):
         macs = [mac for mac, p_type in port_ref_dict.get(p_num, []) if p_type == 3]
         if macs:
             mac_list, ip_list, host_list = self._transform_macs(macs)
-            return limits.nag_STATE_OK, "port %d (%s): %s" % (
+            return limits.mon_STATE_OK, "port %d (%s): %s" % (
                 p_num,
                 ", ".join(
                     [
@@ -412,7 +412,7 @@ class port_info_scheme(SNMPRelayScheme):
                 ", ".join(host_list + ip_list + mac_list)
             )
         else:
-            return limits.nag_STATE_OK, "port %d: ---" % (p_num)
+            return limits.mon_STATE_OK, "port %d: ---" % (p_num)
 
 
 class trunk_info_scheme(SNMPRelayScheme):
@@ -447,11 +447,11 @@ class trunk_info_scheme(SNMPRelayScheme):
                     )
                 )
         if t_array:
-            return limits.nag_STATE_OK, "%s: %s" % (
+            return limits.mon_STATE_OK, "%s: %s" % (
                 logging_tools.get_plural("trunk", len(t_array)),
                 ", ".join(t_array))
         else:
-            return limits.nag_STATE_OK, "no trunks"
+            return limits.mon_STATE_OK, "no trunks"
 
 
 class ibm_bc_blade_status_scheme(SNMPRelayScheme):
@@ -468,22 +468,22 @@ class ibm_bc_blade_status_scheme(SNMPRelayScheme):
 
     def process_return(self):
         all_blades = self.snmp_dict[self.__blade_oids["idx"]].values()
-        ret_state, state_dict = (limits.nag_STATE_OK, {})
+        ret_state, state_dict = (limits.mon_STATE_OK, {})
         for blade_idx in all_blades:
             loc_dict = {
                 t_name: self._simplify_keys(self.snmp_dict[self.__blade_oids[t_name]])[blade_idx] for t_name in [
                     "exists", "power_state", "health_state", "name"
                 ]
             }
-            loc_state = limits.nag_STATE_OK
+            loc_state = limits.mon_STATE_OK
             if loc_dict["exists"]:
                 if loc_dict["power_state"]:
                     loc_state = max(loc_state, {
-                        0: limits.nag_STATE_UNKNOWN,
-                        1: limits.nag_STATE_OK,
-                        2: limits.nag_STATE_WARNING,
-                        3: limits.nag_STATE_CRITICAL,
-                    }.get(loc_dict["health_state"], limits.nag_STATE_CRITICAL))
+                        0: limits.mon_STATE_UNKNOWN,
+                        1: limits.mon_STATE_OK,
+                        2: limits.mon_STATE_WARNING,
+                        3: limits.mon_STATE_CRITICAL,
+                    }.get(loc_dict["health_state"], limits.mon_STATE_CRITICAL))
                     loc_str = {
                         0: "unknown",
                         1: "good",
@@ -520,13 +520,13 @@ class ibm_bc_storage_status_scheme(SNMPRelayScheme):
                 if key in ["module"]:
                     s_value = int(s_value)
                 store_dict.setdefault(s_key, {})[key] = s_value
-        ret_state, state_dict = (limits.nag_STATE_OK, {})
+        ret_state, state_dict = (limits.mon_STATE_OK, {})
         for idx in sorted(store_dict):
             loc_dict = store_dict[idx]
             if loc_dict["status"] != 1:
-                loc_state, state_str = (limits.nag_STATE_CRITICAL, "problem")
+                loc_state, state_str = (limits.mon_STATE_CRITICAL, "problem")
             else:
-                loc_state, state_str = (limits.nag_STATE_OK, "good")
+                loc_state, state_str = (limits.mon_STATE_OK, "good")
             state_dict.setdefault(state_str, []).append(loc_dict["name"])
             ret_state = max(ret_state, loc_state)
         return ret_state, "%s, %s" % (
@@ -553,11 +553,11 @@ class temperature_probe_scheme(SNMPRelayScheme):
         use_dict = self._simplify_keys(self.snmp_dict.values()[0])
         cur_temp = float(use_dict.values()[0])
         if cur_temp > crit_temp:
-            cur_state = limits.nag_STATE_CRITICAL
+            cur_state = limits.mon_STATE_CRITICAL
         elif cur_temp > warn_temp:
-            cur_state = limits.nag_STATE_WARNING
+            cur_state = limits.mon_STATE_WARNING
         else:
-            cur_state = limits.nag_STATE_OK
+            cur_state = limits.mon_STATE_OK
         return cur_state, "temperature %.2f C | temp=%.2f" % (
             cur_temp,
             cur_temp
@@ -578,11 +578,11 @@ class temperature_probe_hum_scheme(SNMPRelayScheme):
         use_dict = self._simplify_keys(self.snmp_dict.values()[0])
         cur_hum = float(use_dict.values()[0])
         if cur_hum > crit_hum:
-            cur_state = limits.nag_STATE_CRITICAL
+            cur_state = limits.mon_STATE_CRITICAL
         elif cur_hum > warn_hum:
-            cur_state = limits.nag_STATE_WARNING
+            cur_state = limits.mon_STATE_WARNING
         else:
-            cur_state = limits.nag_STATE_OK
+            cur_state = limits.mon_STATE_OK
         return cur_state, "humidity %.2f %% | hum=%.2f%%" % (
             cur_hum,
             cur_hum

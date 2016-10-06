@@ -619,9 +619,9 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
 
     def _handle_power(self, in_dict, **kwargs):
         if in_dict["power"] == "on":
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         else:
-            ret_state = limits.nag_STATE_CRITICAL
+            ret_state = limits.mon_STATE_CRITICAL
         cur_temp = float(in_dict["temp."].split("/")[0][:-1])
         cur_ac = float(in_dict["ac"][:-1])
         return ret_state, "PS '{}' is {}, temp: {:.2f} C, fan1/2: {:d}/{:d}, {:.2f} A | smcipmi psu={:d} temp={:.2f} amps={:.2f} fan1={:d} fan2={:d}".format(
@@ -640,9 +640,9 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
 
     def _handle_blade(self, in_dict, **kwargs):
         if in_dict["power"] == "on" or in_dict["error"]:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         else:
-            ret_state = limits.nag_STATE_CRITICAL
+            ret_state = limits.mon_STATE_CRITICAL
         return ret_state, "blade '{}' is {} ({})".format(
             in_dict["blade"],
             in_dict["power"],
@@ -651,9 +651,9 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
 
     def _handle_gigabit(self, in_dict, **kwargs):
         if in_dict["power"] == "on" or in_dict["error"]:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         else:
-            ret_state = limits.nag_STATE_CRITICAL
+            ret_state = limits.mon_STATE_CRITICAL
         return ret_state, "gigabit switch '{}' is {} ({})".format(
             in_dict["gbsw"],
             in_dict["power"],
@@ -662,9 +662,9 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
 
     def _handle_cmm(self, in_dict, **kwargs):
         if in_dict["status"] == "ok":
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         else:
-            ret_state = limits.nag_STATE_CRITICAL
+            ret_state = limits.mon_STATE_CRITICAL
         return ret_state, "CMM '{}' is {} ({})".format(
             in_dict["cmm"],
             in_dict["status"],
@@ -680,9 +680,9 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
     def _handle_ib(self, in_dict, **kwargs):
         obj_type = kwargs["obj_type"]
         if in_dict["power"] == "on":
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         else:
-            ret_state = limits.nag_STATE_CRITICAL
+            ret_state = limits.mon_STATE_CRITICAL
         return ret_state, "IB switch '{}' is {}".format(
             in_dict[obj_type],
             in_dict["power"],
@@ -695,7 +695,7 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
         )
         r_dict = generate_dict(srv_com.xpath(".//ns:output/text()", smart_strings=False)[0].split("\n"))
         if orig_com == "counter":
-            _g_ret_state = limits.nag_STATE_OK
+            _g_ret_state = limits.mon_STATE_OK
             ascii_chunk = None
             _g_ret_str = ", ".join(
                 [
@@ -734,24 +734,24 @@ class smcipmi_command(hm_classes.hm_command, hm_classes.HMCCacheMixin):
             try:
                 obj_num = int(_arg.strip().split()[-1])
             except:
-                return limits.nag_STATE_CRITICAL, "cannot extract obj_num from argument '{}'".format(_arg)
+                return limits.mon_STATE_CRITICAL, "cannot extract obj_num from argument '{}'".format(_arg)
             else:
                 # obj_key = {"ib" : "ibqdr"}.get(obj_type, obj_type)
                 if obj_type in r_dict:
                     if obj_num in r_dict[obj_type]:
                         return getattr(self, "_handle_{}".format(obj_type))(r_dict[obj_type][obj_num], obj_type=obj_type)
                     else:
-                        return limits.nag_STATE_CRITICAL, "no {}#{:d} found".format(
+                        return limits.mon_STATE_CRITICAL, "no {}#{:d} found".format(
                             obj_type,
                             obj_num,
                         )
                 else:
                     if r_dict:
-                        return limits.nag_STATE_CRITICAL, "key {} not found in {}".format(
+                        return limits.mon_STATE_CRITICAL, "key {} not found in {}".format(
                             obj_type,
                             ", ".join(sorted(r_dict.keys()))
                         )
                     else:
-                        return limits.nag_STATE_CRITICAL, "key {} not found, null result".format(
+                        return limits.mon_STATE_CRITICAL, "key {} not found, null result".format(
                             obj_type,
                         )

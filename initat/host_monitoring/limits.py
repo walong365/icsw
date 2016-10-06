@@ -21,49 +21,49 @@
 from initat.tools import logging_tools
 
 # nagios / icinga exit codes
-nag_STATE_CRITICAL = 2
-nag_STATE_WARNING = 1
-nag_STATE_OK = 0
-nag_STATE_UNKNOWN = -1
-nag_STATE_DEPENDENT = -2
+mon_STATE_CRITICAL = 2
+mon_STATE_WARNING = 1
+mon_STATE_OK = 0
+mon_STATE_UNKNOWN = -1
+mon_STATE_DEPENDENT = -2
 
 
 def get_state_str(in_state):
     return {
-        nag_STATE_CRITICAL: "Critical",
-        nag_STATE_WARNING: "Warning",
-        nag_STATE_OK: "OK",
-        nag_STATE_UNKNOWN: "Unknown",
-        nag_STATE_DEPENDENT: "Dependent"
+        mon_STATE_CRITICAL: "Critical",
+        mon_STATE_WARNING: "Warning",
+        mon_STATE_OK: "OK",
+        mon_STATE_UNKNOWN: "Unknown",
+        mon_STATE_DEPENDENT: "Dependent"
     }.get(in_state, "state {:d} not known".format(in_state))
 
 
 def nag_state_to_log_level(in_state):
     return {
-        nag_STATE_CRITICAL: logging_tools.LOG_LEVEL_CRITICAL,
-        nag_STATE_WARNING: logging_tools.LOG_LEVEL_WARN,
-        nag_STATE_OK: logging_tools.LOG_LEVEL_OK,
-        nag_STATE_UNKNOWN: logging_tools.LOG_LEVEL_ERROR,
-        nag_STATE_DEPENDENT: logging_tools.LOG_LEVEL_WARN
+        mon_STATE_CRITICAL: logging_tools.LOG_LEVEL_CRITICAL,
+        mon_STATE_WARNING: logging_tools.LOG_LEVEL_WARN,
+        mon_STATE_OK: logging_tools.LOG_LEVEL_OK,
+        mon_STATE_UNKNOWN: logging_tools.LOG_LEVEL_ERROR,
+        mon_STATE_DEPENDENT: logging_tools.LOG_LEVEL_WARN
     }.get(in_state, logging_tools.LOG_LEVEL_ERROR)
 
 
 def check_ceiling(value, warn, crit):
     if crit is not None and value >= crit:
-        return nag_STATE_CRITICAL
+        return mon_STATE_CRITICAL
     elif warn is not None and value >= warn:
-        return nag_STATE_WARNING
+        return mon_STATE_WARNING
     else:
-        return nag_STATE_OK
+        return mon_STATE_OK
 
 
 def check_floor(value, warn, crit):
     if crit is not None and value <= crit:
-        return nag_STATE_CRITICAL
+        return mon_STATE_CRITICAL
     elif warn is not None and value <= warn:
-        return nag_STATE_WARNING
+        return mon_STATE_WARNING
     else:
-        return nag_STATE_OK
+        return mon_STATE_OK
 
 
 class range_parameter(object):
@@ -175,42 +175,42 @@ class limits(object):
 
     def check_ceiling(self, val):
         # interpret values as upper limits (for example temperatures)
-        ret_code, state = (nag_STATE_OK, "OK")
+        ret_code, state = (mon_STATE_OK, "OK")
         if type(val) == float:
             if self.crit_val_f is not None:
                 if val >= self.crit_val_f:
-                    ret_code, state = (nag_STATE_CRITICAL, "Critical")
-            if (self.warn_val_f is not None) and ret_code == nag_STATE_OK:
+                    ret_code, state = (mon_STATE_CRITICAL, "Critical")
+            if (self.warn_val_f is not None) and ret_code == mon_STATE_OK:
                 if val >= self.warn_val_f:
-                    ret_code, state = (nag_STATE_WARNING, "Warning")
+                    ret_code, state = (mon_STATE_WARNING, "Warning")
         elif type(val) in [int, long]:
             if self.crit_val is not None:
                 if val >= self.crit_val:
-                    ret_code, state = (nag_STATE_CRITICAL, "Critical")
-            if (self.warn_val is not None) and ret_code == nag_STATE_OK:
+                    ret_code, state = (mon_STATE_CRITICAL, "Critical")
+            if (self.warn_val is not None) and ret_code == mon_STATE_OK:
                 if val >= self.warn_val:
-                    ret_code, state = (nag_STATE_WARNING, "Warning")
+                    ret_code, state = (mon_STATE_WARNING, "Warning")
         else:
-            ret_code, state = (nag_STATE_CRITICAL, "TypeError")
+            ret_code, state = (mon_STATE_CRITICAL, "TypeError")
         return ret_code, state
 
     def check_floor(self, val):
         # interpret values as lower limits (for example RPMs for fans)
-        ret_code, state = (nag_STATE_OK, "OK")
+        ret_code, state = (mon_STATE_OK, "OK")
         if type(val) == float:
             if self.crit_val_f is not None:
                 if val <= self.crit_val_f:
-                    ret_code, state = (nag_STATE_CRITICAL, "Critical")
-            if (self.warn_val_f is not None) and ret_code == nag_STATE_OK:
+                    ret_code, state = (mon_STATE_CRITICAL, "Critical")
+            if (self.warn_val_f is not None) and ret_code == mon_STATE_OK:
                 if val <= self.warn_val_f:
-                    ret_code, state = (nag_STATE_WARNING, "Warning")
+                    ret_code, state = (mon_STATE_WARNING, "Warning")
         elif type(val) in [int, long]:
             if self.crit_val is not None:
                 if val <= self.crit_val:
-                    ret_code, state = (nag_STATE_CRITICAL, "Critical")
-            if (self.warn_val is not None) and ret_code == nag_STATE_OK:
+                    ret_code, state = (mon_STATE_CRITICAL, "Critical")
+            if (self.warn_val is not None) and ret_code == mon_STATE_OK:
                 if val <= self.warn_val:
-                    ret_code, state = (nag_STATE_WARNING, "Warning")
+                    ret_code, state = (mon_STATE_WARNING, "Warning")
         else:
-            ret_code, state = (nag_STATE_CRITICAL, "TypeError")
+            ret_code, state = (mon_STATE_CRITICAL, "TypeError")
         return ret_code, state

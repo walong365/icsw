@@ -180,17 +180,17 @@ class ctrl_type_gdth(ctrl_type):
             else:
                 out_f.append("no %ss" % (what))
         if num_e:
-            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "Error")
+            ret_state, ret_str = (limits.mon_STATE_CRITICAL, "Error")
         elif num_w:
-            ret_state, ret_str = (limits.nag_STATE_WARNING, "Warning")
+            ret_state, ret_str = (limits.mon_STATE_WARNING, "Warning")
         else:
-            ret_state, ret_str = (limits.nag_STATE_OK, "OK")
+            ret_state, ret_str = (limits.mon_STATE_OK, "OK")
         if last_log_line:
             # change ret_state if ret_state == STATE_OK:
-            if ret_state == limits.nag_STATE_OK:
+            if ret_state == limits.mon_STATE_OK:
                 lll = last_log_line.lower().strip()
                 if lll.endswith("started"):
-                    ret_state, ret_str = (limits.nag_STATE_WARNING, "Warning")
+                    ret_state, ret_str = (limits.mon_STATE_WARNING, "Warning")
             out_f.append(last_log_line)
         return ret_state, "{}: {}".format(ret_str, ", ".join(out_f))
 
