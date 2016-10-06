@@ -133,6 +133,7 @@ class SyncConfig(object):
             "sysinfo": {},
             "name": self.__slave_name,
             "master": self.master or "",
+            "latest_contact": 0,
         }
         # try to get relayer / mon_version from latest build
         if self.master:
@@ -160,7 +161,7 @@ class SyncConfig(object):
         return self.__raw_info
 
     def set_info(self, info):
-        for _copy_key in ["sysinfo"]:
+        for _copy_key in ["sysinfo", "latest_contact"]:
             if _copy_key in info:
                 self.__raw_info[_copy_key] = info[_copy_key]
         _cs = info.get("config_store", {})
