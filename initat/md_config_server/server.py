@@ -442,8 +442,10 @@ class server_process(
     def monitoring_info(self, srv_com, **kwargs):
         return srv_com
 
-    @RemoteCall(target_process="syncer")
-    def slave_info(self, srv_com, **kwargs):
+    @RemoteCall()
+    def mon_process_handling(self, srv_com, **kwargs):
+        self.send_to_process("syncer", "mon_process_handling", unicode(srv_com))
+        srv_com.set_result("ok set new flags")
         return srv_com
 
     @RemoteCall(target_process="syncer")

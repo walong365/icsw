@@ -154,7 +154,7 @@ sources = {
             "frontend/static/js/jquery.color.js",
             "frontend/static/js/jquery.blockUI.js",
             # datetime manipulation done right
-            "frontend/static/js/moment-with-locales.js",
+            "frontend/static/js/moment-with-locales.min.js",
             # recurring moment handling, not needed right now
             # "frontend/static/js/moment-recur.js",
             "frontend/static/js/cropper.js",

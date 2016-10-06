@@ -373,10 +373,9 @@ class server_process(
     @RemoteCall()
     def mon_process_handling(self, srv_com, **kwargs):
         _forwarded = srv_com.get("forwarded", False)
-        _dict = {}
         for _key, _default in DEFAULT_PROC_DICT.iteritems():
-            _dict[_key] = srv_com.get(_key, _default)
-            self.config_store[_key] = _dict[_key]
+            if _key in srv_com:
+                self.config_store[_key] = srv_com["*{}".format(_key)]
         self.log(self._get_flag_info())
         self.SH.forward_if_necessary(srv_com)
         self._start_stop_mon_process(srv_com)
