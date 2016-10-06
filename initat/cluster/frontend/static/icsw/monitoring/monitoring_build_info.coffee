@@ -49,21 +49,27 @@ monitoring_build_info_module = angular.module(
             @update(in_list)
 
         update: (in_list) =>
-            in_struct = in_list[0]
-            # console.log "update", in_struct
             @slaves.length = 0
-            for entry in in_struct.slaves
-                @slaves.push(entry)
-            @master = in_struct.master
-            @num_builds = in_struct.num_builds
+            if in_list.length
+                in_struct = in_list[0]
+                # console.log "update", in_struct
+                for entry in in_struct.slaves
+                    @slaves.push(entry)
+                @master = in_struct.master
+                @num_builds = in_struct.num_builds
             @salt()
 
         salt: () =>
             # console.log "salt"
-            @salt_node(@master)
+            if @master
+                @salt_node(@master)
             (@salt_node(_slave) for _slave in @slaves)
 
         salt_node: (node) =>
+            if node.sysinfo.start_process?
+                node.$$sysinfo_ok = true
+            else
+                node.$$sysinfo_ok = false
             if node.latest_contact? and node.latest_contact
                 node.$$latest_contact = moment.unix(node.latest_contact).fromNow()
             else

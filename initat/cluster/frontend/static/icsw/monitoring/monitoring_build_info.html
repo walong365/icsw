@@ -1,10 +1,7 @@
 <script type="text/ng-template" id="icsw.monitoring.build_info">
     <div class="container-fluid">
         <h3>
-            Build info
-            <span ng-show="struct.sys_info">
-                ({{ struct.sys_info.num_builds }} builds, {{ struct.sys_info.master_list.length }} shown)
-            </span>
+            Monitoring control and info
             <span class="text-warning" ng-show="struct.loading">Updating data...</span>
         </h3>
         <uib-accordion close-others="false" ng-if="struct.sys_info">
@@ -18,6 +15,9 @@
             <div uib-accordion-group class="panel-default" is-open="false">
                 <uib-accordion-heading>
                     Build overview
+                    <span ng-show="struct.sys_info">
+                        ({{ struct.sys_info.num_builds }} builds, {{ struct.sys_info.master_list.length }} shown)
+                    </span>
                 </uib-accordion-heading>
                 <table
                     class="table table-condensed table-hover" style="width: auto;"
@@ -90,7 +90,9 @@
     <div>
         <h4>Node setup ({{ struct.nodes.length }}), {{ slaves.length }} slaves defined</h4>
         <table
-            class="table table-condensed table-hover table-striped" style="width: auto;"
+            class="table table-condensed table-hover table-striped"
+            style="width: auto;"
+            ng-show="struct.nodes.length"
         >
             <thead>
                 <tr>
@@ -112,10 +114,10 @@
                     <td class="text-center">{{ node.version.mon_version }}</td>
                     <td class="text-center">{{ node.version.livestatus_version }}</td>
                     <td class="text-center">
-                        <span ng-bind-html="node.sysinfo.start_process | yesno4"></span>
+                        <span ng-show="node.$$sysinfo_ok" ng-bind-html="node.sysinfo.start_process | yesno4"></span>
                     </td>
                     <td class="text-center">
-                        <span ng-bind-html="node.sysinfo.ignore_process | yesno4"></span>
+                        <span ng-show="node.$$sysinfo_ok" ng-bind-html="node.sysinfo.ignore_process | yesno4"></span>
                     </td>
                     <td>{{ node.$$latest_contact }}</td>
                     <!-- <td>
@@ -124,19 +126,22 @@
                 </tr>
             </tbody>
         </table>
-        <div>
-            Autostart: <icsw-tools-button
-                type="enable"
-                size="xs"
-                is-enable="master.sysinfo.start_process"
-                ng-click="toggle_flag($event, 'start_process')"
-            ></icsw-tools-button>
-            Ignore Process: <icsw-tools-button
-                type="enable"
-                size="xs"
-                is-enable="master.sysinfo.ignore_process"
-                ng-click="toggle_flag($event, 'ignore_process')"
-            ></icsw-tools-button>
+        <div ng-show="struct.nodes.length">
+            <div ng-show="struct.nodes[0].$$sysinfo_ok">
+                Autostart: <icsw-tools-button
+                    type="enable"
+                    size="xs"
+                    is-enable="master.sysinfo.start_process"
+                    ng-click="toggle_flag($event, 'start_process')"
+                ></icsw-tools-button>
+                Ignore Process: <icsw-tools-button
+                    type="enable"
+                    size="xs"
+                    is-enable="master.sysinfo.ignore_process"
+                    ng-click="toggle_flag($event, 'ignore_process')"
+                ></icsw-tools-button>
+            </div>
+            <h3 ng-show="!struct.nodes[0].$$sysinfo_ok" class="text-warning">No master syncer found</h3>
         </div>
     </div>
 </script>

@@ -64,15 +64,19 @@ class SysInfoViewSet(viewsets.ViewSet):
     def get_all(self, request):
         srv_com = server_command.srv_command(command="get_sys_info")
         result, _logs = contact_server(request, icswServiceEnum.monitor_server, srv_com)
-        _raw_info = server_command.decompress(result["*sys_info"], json=True)
-        _sys_info = {
-            "master": [entry for entry in _raw_info if entry["master"]][0],
-            "slaves": [_entry for _entry in _raw_info if not _entry["master"]],
-            "num_builds": mon_dist_master.objects.all().count()
-        }
+        if "sys_info" in result:
+            _raw_info = server_command.decompress(result["*sys_info"], json=True)
+            _sys_info = {
+                "master": [entry for entry in _raw_info if entry["master"]][0],
+                "slaves": [_entry for _entry in _raw_info if not _entry["master"]],
+                "num_builds": mon_dist_master.objects.all().count()
+            }
+            _result = [_sys_info]
+        else:
+            _result = []
         # import pprint
         # pprint.pprint(_sys_info)
-        return Response([_sys_info])
+        return Response(_result)
 
 
 class BuildInfoViewSet(viewsets.ViewSet):
