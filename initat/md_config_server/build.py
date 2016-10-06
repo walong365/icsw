@@ -289,7 +289,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             _cmd = None
         if _cmd:
             self.log("Trying to {} {} via collserver-call_script".format(_cmd, global_config["MD_TYPE"]))
-            reply = net_tools.zmq_connection("md_config_server", timeout=10).add_connection(
+            reply = net_tools.ZMQConnection("md_config_server", timeout=10).add_connection(
                 "tcp://localhost:{:d}".format(self.__hm_port),
                 server_command.srv_command(
                     command="call_script",

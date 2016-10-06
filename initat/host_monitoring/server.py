@@ -39,6 +39,7 @@ from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring.hm_mixins import HMHRMixin
 from initat.tools import logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
+from initat.client_version import VERSION_STRING
 from initat.tools.server_mixins import ICSWBasePool
 from .config import global_config
 from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE
@@ -557,6 +558,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
         else:
             src_id = data.split(";")[0]
         cur_com = srv_com["command"].text
+        srv_com["client_version"] = VERSION_STRING
         srv_com.update_source()
         if cur_com in self.__callbacks.keys():
             call_proc, func_name = self.__callbacks[cur_com]
@@ -595,6 +597,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
             src_id = data.pop(0)
             data = data[0]
             srv_com = server_command.srv_command(source=data)
+            srv_com["client_version"] = VERSION_STRING
             if "namespace" in srv_com:
                 # namespace given, parse and use it
                 cur_ns = argparse.Namespace()

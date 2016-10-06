@@ -252,7 +252,7 @@ def contact_server(request, srv_type_enum, send_com, **kwargs):
         # print send_com.pretty_print()
         if request.user:
             send_com["user_id"] = request.user.pk
-        _conn = net_tools.zmq_connection(
+        _conn = net_tools.ZMQConnection(
             kwargs.get("connection_id", "webfrontend"),
             timeout=kwargs.get("timeout", 10)
         )

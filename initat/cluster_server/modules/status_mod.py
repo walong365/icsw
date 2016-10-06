@@ -68,7 +68,7 @@ class server_status(cs_base_class.server_com):
 class server_control(cs_base_class.server_com):
     def _call(self, cur_inst):
         cur_inst.srv_com["command"] = "state{}".format(cur_inst.srv_com["*control"])
-        _result = net_tools.zmq_connection(
+        _result = net_tools.ZMQConnection(
             "icsw_cssc_{:d}".format(os.getpid())
         ).add_connection(
             "tcp://localhost:8012",

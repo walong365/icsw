@@ -64,7 +64,7 @@ def ClientCode(global_config):
             srv_com["arguments:rest"] = " ".join(rest)
             for key, value in vars(cur_ns).iteritems():
                 srv_com["namespace:{}".format(key)] = value
-            result = net_tools.zmq_connection(
+            result = net_tools.ZMQConnection(
                 "{}:{:d}".format(
                     global_config["IDENTITY_STRING"],
                     os.getpid()

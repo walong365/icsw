@@ -1146,7 +1146,7 @@ class RMSJob(object):
         srv_com["config"] = _job_dict
         self.log("added {:d} config keys to srv_com ({:d} content)".format(_added, _content))
         # add all keys from global_config
-        _conn = net_tools.zmq_connection(
+        _conn = net_tools.ZMQConnection(
             "job_{}".format(global_config["FULL_JOB_ID"]),
             timeout=10
         )
@@ -1192,7 +1192,7 @@ class RMSJob(object):
                 arg_str
             )
         )
-        zmq_con = net_tools.zmq_connection("job_{}".format(global_config["FULL_JOB_ID"]))
+        zmq_con = net_tools.ZMQConnection("job_{}".format(global_config["FULL_JOB_ID"]))
         for targ_ip in all_nfs_ips:
             srv_com = server_command.srv_command(command="ping", init_ip="{}".format(targ_ip))
             srv_com["arguments:rest"] = arg_str
@@ -1250,7 +1250,7 @@ class RMSJob(object):
                 )
             )
             # create a new zmq connection object
-            zmq_con2 = net_tools.zmq_connection("job_{}".format(global_config["FULL_JOB_ID"]))
+            zmq_con2 = net_tools.ZMQConnection("job_{}".format(global_config["FULL_JOB_ID"]))
             for targ_ip in all_nfs_ips:
                 srv_com = server_command.srv_command(command="ipckill")
                 arg_str = "--min-uid {:d}".format(global_config["MIN_KILL_UID"])

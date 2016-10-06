@@ -162,7 +162,7 @@ def _insert_bg_job(cmd, cause, obj):
 
 def signal_localhost():
     # signal clusterserver running on localhost
-    _sender = net_tools.zmq_connection("wf_server_notify")
+    _sender = net_tools.ZMQConnection("wf_server_notify")
     # only send no receive
     _sender.add_connection("tcp://localhost:8004", notify_command(), multi=True)
     # close connection / terminate context

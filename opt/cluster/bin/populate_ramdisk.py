@@ -931,7 +931,7 @@ def rescan_kernels():
     srv_com = server_command.srv_command(command="rescan_kernels")
     _conn_str = "tcp://localhost:8000"
     # connection object
-    _conn = net_tools.zmq_connection(
+    _conn = net_tools.ZMQConnection(
         "copy_local_kernel",
         timeout=30,
     )

@@ -154,7 +154,6 @@ setup(
                 "opt/cluster/bin/show_config_script.py",
                 "opt/cluster/bin/resync_config.sh",
                 "opt/cluster/bin/send_mail.py",
-                "opt/cluster/bin/send_command.py",
                 "opt/cluster/bin/send_command_zmq.py",
                 # repo tools
                 # "opt/cluster/bin/migrate_repos.py",

@@ -1,12 +1,12 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (c) 2012-2015 Andreas Lang-Nevyjel, lang-nevyjel@init.at
+# Copyright (c) 2012-2016 Andreas Lang-Nevyjel, lang-nevyjel@init.at
 #
-# this file is part of python-modules-base
+# this file is part of icsw-client
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; version 2 of the License
+# the Free Software Foundation; Version 3 of the License
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -39,7 +39,7 @@ class LocalParser(argparse.ArgumentParser):
         self.add_argument("-t", help="set timeout [%(default)d]", default=10, type=int, dest="timeout")
         self.add_argument(
             "-p",
-            help="port or instance/service [%(default)d]",
+            help="port or instance/service [%(default)s]",
             default="{:d}".format(self.inst_xml.get_port_dict("host-monitoring", command=True)),
             dest="port",
             type=str

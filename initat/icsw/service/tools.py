@@ -32,7 +32,7 @@ def query_local_meta_server(inst_xml, command, services=None):
     )
     if services:
         srv_com["services"] = ",".join(services)
-    return net_tools.zmq_connection(
+    return net_tools.ZMQConnection(
         "icsw_state_{:d}".format(os.getpid())
     ).add_connection(
         "tcp://localhost:{:d}".format(inst_xml.get_port_dict("meta-server", command=True)),
