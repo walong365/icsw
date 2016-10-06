@@ -19,25 +19,29 @@
 #
 """ server process for md-sync-server """
 
-import codecs
 import os
 import time
 
 import zmq
 
-from initat.host_monitoring.hm_classes import mvect_entry
-from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.host_monitoring.client_enums import icswServiceEnum
+from initat.host_monitoring.hm_classes import mvect_entry
+from initat.host_monitoring.ipc_comtools import IPCCommandHandler
 from initat.md_config_server import constants
 from initat.md_sync_server.config import global_config, CS_NAME
+from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.md_sync_server.process import ProcessControl
 from initat.tools import configfile, logging_tools, process_tools, server_command, \
     threading_tools, server_mixins, config_store
-from initat.host_monitoring.ipc_comtools import IPCCommandHandler
 from initat.tools.server_mixins import RemoteCall
-from .syncer import SyncerHandler
-from .sync_config import RemoteServer
 from .status import StatusProcess, LiveSocket
+from .sync_config import RemoteServer
+from .syncer import SyncerHandler
+
+DEFAULT_PROC_DICT = {
+    "ignore_process": False,
+    "start_process": True,
+}
 
 
 @server_mixins.RemoteCallProcess
@@ -66,7 +70,6 @@ class server_process(
         self._init_network_sockets()
         self.add_process(StatusProcess("status"), start=True)
         self.register_func("send_command", self._send_command)
-        self.register_func("register_remote", self._register_remote)
         self.__latest_status_query = None
         self.SH = SyncerHandler(self)
         if "distribute_info" in self.config_store:
@@ -88,8 +91,10 @@ class server_process(
                     self,
                     global_config["MD_TYPE"],
                     _lock_file_name,
-                    target_state=self.config_store["mon_is_running"],
                 )
+                if not self.config_store["ignore_process"]:
+                    # go for a well-defined state
+                    self._icinga_pc._kill_old_instances()
             else:
                 self.log(
                     "MD_TYPE not found in global_config, packages missing",
@@ -101,17 +106,18 @@ class server_process(
         if self._icinga_pc is not None:
             _is_running = self._icinga_pc.check_state()
             global_config["MON_CURRENT_STATE"] = _is_running
-            if global_config["MON_TARGET_STATE"] != global_config["MON_CURRENT_STATE"]:
-                self.log(
-                    "current state differs: {} (target) != {} (current)".format(
-                        global_config["MON_TARGET_STATE"],
-                        global_config["MON_CURRENT_STATE"],
+            if not self.config_store["ignore_process"]:
+                if global_config["MON_TARGET_STATE"] != global_config["MON_CURRENT_STATE"]:
+                    self.log(
+                        "current state differs: {} (target) != {} (current)".format(
+                            global_config["MON_TARGET_STATE"],
+                            global_config["MON_CURRENT_STATE"],
+                        )
                     )
-                )
-                if global_config["MON_TARGET_STATE"]:
-                    self._icinga_pc.start()
-                else:
-                    self._icinga_pc.stop()
+                    if global_config["MON_TARGET_STATE"]:
+                        self._icinga_pc.start()
+                    else:
+                        self._icinga_pc.stop()
 
     def _update(self):
         res_dict = {}
@@ -137,9 +143,9 @@ class server_process(
                 q_list = [int(value["state"]) for value in result]
                 res_dict = {
                     s_name: q_list.count(value) for s_name, value in [
-                        ("unknown", constants.NAG_HOST_UNKNOWN),
-                        ("up", constants.NAG_HOST_UP),
-                        ("down", constants.NAG_HOST_DOWN),
+                        ("unknown", constants.MON_HOST_UNKNOWN),
+                        ("up", constants.MON_HOST_UP),
+                        ("down", constants.MON_HOST_DOWN),
                     ]
                 }
                 res_dict["tot"] = sum(res_dict.values())
@@ -186,16 +192,16 @@ class server_process(
 
     def read_config_store(self):
         self.config_store = config_store.ConfigStore(CS_NAME, log_com=self.log, access_mode=config_store.AccessModeEnum.LOCAL)
-        self.config_store["mon_is_running"] = self.config_store.get("mon_is_running", True)
+        for _key, _default in DEFAULT_PROC_DICT.iteritems():
+            self.config_store[_key] = self.config_store.get(_key, _default)
         global_config.add_config_entries(
             [
-                ("MON_TARGET_STATE", configfile.bool_c_var(self.config_store["mon_is_running"])),
+                ("MON_TARGET_STATE", configfile.bool_c_var(self.config_store["start_process"])),
                 # just a guess
                 ("MON_CURRENT_STATE", configfile.bool_c_var(False)),
             ]
         )
         self.config_store.write()
-        # self.config_store
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:
@@ -209,10 +215,6 @@ class server_process(
 
     def process_start(self, src_process, src_pid):
         self.CC.process_added(src_process, src_pid)
-
-    def _register_remote(self, *args, **kwargs):
-        _src_proc, _src_id, remote_ip, remote_uuid, remote_port = args
-        self.register_remote(remote_ip, remote_uuid, remote_port)
 
     def register_remote(self, remote_ip, remote_uuid, remote_port):
         if remote_uuid not in self.__slaves:
@@ -354,14 +356,25 @@ class server_process(
         else:
             self.log("cannot interpret {}".format(_data), logging_tools.LOG_LEVEL_ERROR)
 
-    @RemoteCall()
-    def stop_mon_process(self, srv_com, **kwargs):
-        self.config_store["mon_is_running"] = False
-        return self._start_stop_mon_process(srv_com)
+    def _get_flag_info(self):
+        return "process flags: {}".format(
+            ", ".join(
+                [
+                    "{}={}".format(_key, self.config_store[_key]) for _key in DEFAULT_PROC_DICT.iterkeys()
+                ]
+            )
+        )
 
     @RemoteCall()
-    def start_mon_process(self, srv_com, **kwargs):
-        self.config_store["mon_is_running"] = True
+    def mon_process_handling(self, srv_com, **kwargs):
+        _dict = {}
+        for _key, _default in DEFAULT_PROC_DICT.iteritems():
+            if _key in srv_com:
+                _dict[_key] = True if int(srv_com["*{}".format(_key)]) else False
+            else:
+                _dict[_key] = _default
+            self.config_store[_key] = _dict[_key]
+        self.log(self._get_flag_info())
         return self._start_stop_mon_process(srv_com)
 
     @RemoteCall()
@@ -373,12 +386,13 @@ class server_process(
         return None
 
     def _start_stop_mon_process(self, srv_com):
-        global_config["MON_TARGET_STATE"] = self.config_store["mon_is_running"]
+        global_config["MON_TARGET_STATE"] = self.config_store["start_process"]
         self.config_store.write()
         if self._icinga_pc:
-            self._icinga_pc._target_state = self.config_store["mon_is_running"]
+            self._icinga_pc._start_process = self.config_store["start_process"]
+            self._icinga_pc._ignore_process = self.config_store["ignore_process"]
             self._check_mon_state()
-        srv_com.set_result("set mon_is_running to {}".format(self.config_store["mon_is_running"]))
+        srv_com.set_result(self._get_flag_info())
         return srv_com
 
     @RemoteCall(target_process="KpiProcess")
@@ -397,17 +411,6 @@ class server_process(
     def get_node_status(self, srv_com, **kwargs):
         return srv_com
 
-    @RemoteCall(target_process="build", target_process_func="build_host_config")
-    def get_host_config(self, srv_com, **kwargs):
-        return srv_com
-
-    @RemoteCall()
-    def rebuild_host_config(self, srv_com, **kwargs):
-        # pretend to be synchronous call such that reply is sent right away
-        self.send_to_process("build", "rebuild_config", cache_mode=srv_com.get("cache_mode", "DYNAMIC"))
-        srv_com.set_result("ok processed command rebuild_host_config")
-        return srv_com
-
     @RemoteCall()
     def sync_http_users(self, srv_com, **kwargs):
         self.send_to_process("build", "sync_http_users")
@@ -423,10 +426,6 @@ class server_process(
     def ochp_event(self, srv_com, **kwargs):
         self.handle_ocp_event(srv_com)
         return None
-
-    @RemoteCall(target_process="dynconfig")
-    def monitoring_info(self, srv_com, **kwargs):
-        return srv_com
 
     @RemoteCall()
     def ocsp_lines(self, srv_com, **kwargs):
@@ -467,7 +466,7 @@ class server_process(
         return self.server_status(srv_com, self.CC.msi_block, global_config)
 
     def loop_end(self):
-        if self._icinga_pc:
+        if self._icinga_pc and not self.config_store["ignore_process"]:
             self._icinga_pc.stop()
 
     def loop_post(self):

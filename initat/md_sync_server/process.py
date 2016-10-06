@@ -118,15 +118,13 @@ class ExternalProcess(object):
 
 
 class ProcessControl(object):
-    def __init__(self, proc, proc_name, pid_file_name, target_state=True):
+    def __init__(self, proc, proc_name, pid_file_name):
         self.__process = proc
         self.__proc_name = proc_name
         self.__pid_file_name = pid_file_name
-        self._target_state = target_state
         self.log("init (pid_file_name={})".format(self.__pid_file_name))
         self.__ext_process = None
         self.__external_cmd_file = None
-        self._kill_old_instances()
         self.check_state()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -182,7 +180,7 @@ class ProcessControl(object):
         else:
             self.log("process not running or external cmd file not present", logging_tools.LOG_LEVEL_ERROR)
 
-    def _kill_old_instances(self):
+    def kill_old_instances(self):
         self.log("checking for old instances")
         for _proc in psutil.process_iter():
             try:
