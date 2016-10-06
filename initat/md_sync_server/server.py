@@ -94,7 +94,7 @@ class server_process(
                 )
                 if not self.config_store["ignore_process"]:
                     # go for a well-defined state
-                    self._icinga_pc._kill_old_instances()
+                    self._icinga_pc.kill_old_instances()
             else:
                 self.log(
                     "MD_TYPE not found in global_config, packages missing",
@@ -228,6 +228,11 @@ class server_process(
             self._icinga_pc.send_signal(sign)
         else:
             self.log("Processcontrol not defined", logging_tools.LOG_LEVEL_ERROR)
+
+    def get_sys_dict(self):
+        # return an info dict for satellite info
+        _r_dict = {_key: self.config_store[_key] for _key in DEFAULT_PROC_DICT}
+        return _r_dict
 
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
@@ -367,15 +372,17 @@ class server_process(
 
     @RemoteCall()
     def mon_process_handling(self, srv_com, **kwargs):
+        _forwarded = srv_com.get("forwarded", False)
         _dict = {}
         for _key, _default in DEFAULT_PROC_DICT.iteritems():
-            if _key in srv_com:
-                _dict[_key] = True if int(srv_com["*{}".format(_key)]) else False
-            else:
-                _dict[_key] = _default
+            _dict[_key] = srv_com.get(_key, _default)
             self.config_store[_key] = _dict[_key]
         self.log(self._get_flag_info())
-        return self._start_stop_mon_process(srv_com)
+        self.SH.forward_if_necessary(srv_com)
+        self._start_stop_mon_process(srv_com)
+        self.SH.send_info_if_necessary(srv_com)
+        # return none if this message was already resent by a dist master
+        return None if _forwarded else srv_com
 
     @RemoteCall()
     def distribute_info(self, srv_com, **kwargs):
@@ -393,7 +400,6 @@ class server_process(
             self._icinga_pc._ignore_process = self.config_store["ignore_process"]
             self._check_mon_state()
         srv_com.set_result(self._get_flag_info())
-        return srv_com
 
     @RemoteCall(target_process="KpiProcess")
     def calculate_kpi_preview(self, srv_com, **kwargs):

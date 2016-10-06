@@ -253,8 +253,6 @@ class SyncConfig(object):
         return r_dict
 
     def store_satellite_info(self, si_info, dist_master):
-        # import pprint
-        # pprint.pprint(si_info)
         for _key in si_info.get("config_store", {}).keys():
             self.config_store[_key] = si_info["config_store"][_key]
         if "store_info" in si_info:
@@ -277,6 +275,7 @@ class SyncConfig(object):
             r_dict.update(self.struct.get_satellite_info())
         else:
             r_dict.update(self.get_satellite_info())
+        r_dict["sysinfo"] = self.__process.get_sys_dict()
         return r_dict
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
@@ -324,7 +323,7 @@ class SyncConfig(object):
 
         self.log(
             u"send {} to {} (UUID={}, {})".format(
-                srv_com["*action"],
+                srv_com.get("action", srv_com["*command"]),
                 unicode(self.name),
                 self.slave_uuid,
                 ", ".join(["{}='{}'".format(_key, str(_value)) for _key, _value in kwargs.iteritems()]),
@@ -494,6 +493,21 @@ class SyncConfig(object):
             return ("", [])
 
     # remote actions
+    def forward_srv_com(self, srv_com):
+        # forward srv com to other dist slaves
+        self.log(
+            "forwarding srv_com '{}' to {}...".format(
+                srv_com["*command"],
+                logging_tools.get_plural("slave", len(self.__slave_configs)),
+            )
+        )
+        # set forward flag
+        srv_com["forwarded"] = True
+        for _slave in self.__slave_configs.itervalues():
+            _slave.send_slave_command(srv_com)
+        # always send info message
+        self.send_info_message()
+
     def handle_remote_action(self, action, srv_com):
         _attr_name = "handle_remote_{}".format(action)
         try:

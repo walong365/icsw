@@ -138,6 +138,9 @@ class SyncConfig(object):
             self.log("recovered MonVer {} / RelVer {} from DB".format(self.mon_version, self.relayer_version))
 
     def set_info(self, info):
+        print "****"
+        import pprint
+        pprint.pprint(info)
         _cs = info.get("config_store", {})
         if "icsw.version" in _cs:
             self.relayer_version = "{}-{}".format(
