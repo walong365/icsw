@@ -2258,6 +2258,9 @@ class XlsxReportGenerator(ReportGenerator):
 
                 generate_csv_entry_for_assetrun(ar, sheet.append)
 
+
+
+
             self.set_progress(int(round((float(idx) / len(self.devices)) * 100)))
             idx += 1
 
@@ -2494,18 +2497,32 @@ class XlsxReportGenerator(ReportGenerator):
 
             sheet.append(header_row)
 
-            for _row in data:
-                row = [
-                    _row['name'],
-                    _row['group'],
-                    _row['cpu'],
-                    _row['gpu'],
-                    _row['memory'],
-                    _row['hdd'],
-                    _row['partition']
-                ]
+            sheet.row_dimensions[1].font = Font(bold=True)
 
+            column_names = ["name", "group", "cpu", "gpu", "memory", "hdd", "partition", "network"]
+            max_str_lengths_per_column = {}
+            i = 0
+            for _row in data:
+                height_needed = 1
+                for column_name in column_names:
+                    if column_name not in max_str_lengths_per_column:
+                        max_str_lengths_per_column[column_name] = 0
+
+                    current_max = max_str_lengths_per_column[column_name]
+                    components = _row[column_name].split("\n")
+                    next_max = max([len(line) for line in components])
+                    height_needed = max(len(components), height_needed)
+
+                    max_str_lengths_per_column[column_name] = max(next_max, current_max)
+
+                row = [_row[column_name] for column_name in column_names]
                 sheet.append(row)
+                sheet.row_dimensions[i + 2].height = height_needed * 15
+                i += 1
+
+            for i in range(len(column_names)):
+                max_len = max_str_lengths_per_column[column_names[i]]
+                sheet.column_dimensions[get_column_letter(i + 1)].width = max(max_len, 20)
 
         return workbook
 
@@ -2531,6 +2548,7 @@ def _generate_hardware_info_data_dict(_devices):
         hdd_str = "N/A"
         partition_str = "N/A"
         memory_str = "N/A"
+        network_str = "N/A"
 
         for assetrun in selected_runs:
             if AssetType(assetrun.run_type) == AssetType.PRETTYWINHW or AssetType(assetrun.run_type) == AssetType.LSHW:
@@ -2546,23 +2564,31 @@ def _generate_hardware_info_data_dict(_devices):
                     else:
                         gpu_str = str(gpu)
 
-                # for hdd in assetrun.asset_batch.hdds.all():
-                #    if hdd_str != "N/A":
-                #        hdd_str += "\n{}".format(str(hdd))
-                #    else:
-                #        hdd_str = str(hdd)
-
-                # for partition in assetrun.asset_batch.partitions.all():
-                #     if partition_str != "N/A":
-                #         partition_str += "\n{}".format(str(partition))
-                #     else:
-                #         partition_str = str(partition)
-
                 for memory_module in assetrun.asset_batch.memory_modules.all():
                     if memory_str != "N/A":
                         memory_str += "\n{}".format(str(memory_module))
                     else:
                         memory_str = str(memory_module)
+
+                for network_device in assetrun.asset_batch.network_devices.all():
+                    if network_str != "N/A":
+                        network_str += "\n{}".format(str(network_device))
+                    else:
+                        network_str = str(network_device)
+
+                if assetrun.asset_batch.partition_table:
+                    for hdd in assetrun.asset_batch.partition_table.partition_disc_set.all():
+                        s = "Name:{} Serial:{} Size:{}".format(hdd.disc, hdd.serial, hdd.size)
+                        if hdd_str != "N/A":
+                            hdd_str += "\n{}".format(s)
+                        else:
+                            hdd_str = s
+
+                    # for partition in assetrun.asset_batch.partitions.all():
+                    #     if partition_str != "N/A":
+                    #         partition_str += "\n{}".format(str(partition))
+                    #     else:
+                    #         partition_str = str(partition)
 
         o = {
             'name': _device.full_name,
@@ -2571,7 +2597,8 @@ def _generate_hardware_info_data_dict(_devices):
             'gpu': gpu_str,
             'hdd': hdd_str,
             'partition': partition_str,
-            'memory': memory_str
+            'memory': memory_str,
+            'network': network_str
         }
 
         data.append(o)
