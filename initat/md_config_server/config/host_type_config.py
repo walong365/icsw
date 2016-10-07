@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2014,2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -19,17 +19,17 @@
 #
 """ host_type_config, part of md-config-server """
 
+from lxml.builder import E
+
 from initat.md_config_server.config.content_emitter import ContentEmitter
-from lxml.builder import E  # @UnresolvedImport
 from initat.tools import logging_tools
 
-
 __all__ = [
-    "monHostTypeConfig",
+    "MonHostTypeConfig",
 ]
 
 
-class monHostTypeConfig(ContentEmitter):
+class MonHostTypeConfig(ContentEmitter):
     def __init__(self, build_process):
         self.__build_proc = build_process
         self.act_content, self.prev_content = ([], [])

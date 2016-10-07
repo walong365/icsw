@@ -23,11 +23,11 @@ import os
 
 
 __all__ = [
-    "base_config",
+    "MonBasicConfig",
 ]
 
 
-class base_config(object):
+class MonBasicConfig(object):
     def __init__(self, name, **kwargs):
         self.__name = name
         self.__dict, self.__key_list = ({}, [])

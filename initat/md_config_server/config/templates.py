@@ -24,12 +24,12 @@ from initat.tools import logging_tools
 
 
 __all__ = [
-    "device_templates",
-    "service_templates",
+    "MonDeviceTemplates",
+    "MonServiceTemplates",
 ]
 
 
-class device_templates(dict):
+class MonDeviceTemplates(dict):
     def __init__(self, build_proc):
         dict.__init__(self)
         self.__build_proc = build_proc
@@ -79,10 +79,10 @@ class device_templates(dict):
                 logging_tools.LOG_LEVEL_ERROR
             )
             act_key = self.__default.pk
-        return super(device_templates, self).__getitem__(act_key)
+        return super(MonDeviceTemplates, self).__getitem__(act_key)
 
 
-class service_templates(dict):
+class MonServiceTemplates(dict):
     def __init__(self, build_proc):
         dict.__init__(self)
         self.__build_proc = build_proc
@@ -137,4 +137,4 @@ class service_templates(dict):
                 logging_tools.LOG_LEVEL_ERROR
             )
             act_key = self.__default.pk
-        return super(service_templates, self).__getitem__(act_key)
+        return super(MonServiceTemplates, self).__getitem__(act_key)

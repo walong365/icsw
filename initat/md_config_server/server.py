@@ -41,7 +41,7 @@ from initat.tools.server_mixins import RemoteCall
 
 
 @server_mixins.RemoteCallProcess
-class server_process(
+class ServerProcess(
     server_mixins.ICSWBasePool,
     VersionCheckMixin,
     server_mixins.RemoteCallMixin,

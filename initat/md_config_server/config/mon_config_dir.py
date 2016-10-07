@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2014,2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -22,20 +22,20 @@
 import codecs
 import os
 
-from lxml.builder import E  # @UnresolvedImport
+from lxml.builder import E
 
 from initat.md_config_server.config.content_emitter import ContentEmitter
 from initat.tools import configfile, logging_tools, process_tools
 
 __all__ = [
-    "config_dir",
+    "MonConfigDir",
 ]
 
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
-class config_dir(ContentEmitter):
+class MonConfigDir(ContentEmitter):
     def __init__(self, name, gen_conf, build_proc):
         self.name = "{}.d".format(name)
         self.__build_proc = build_proc
@@ -132,7 +132,10 @@ class config_dir(ContentEmitter):
                     )
                 else:
                     if _dbg:
-                        self.log("removed {}".format(full_name), logging_tools.LOG_LEVEL_WARN)
+                        self.log(
+                            "removed {}".format(full_name),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
         return cfg_written
 
     def _create_sub_content(self, key):
@@ -153,5 +156,9 @@ class config_dir(ContentEmitter):
                     else:
                         res_xml = res_dict[entry.obj_type]
                     prev_tag = entry.obj_type
-                res_xml.append(getattr(E, entry.obj_type)(**dict([(key, self._build_value_string(key, entry[key])) for key in sorted(entry.iterkeys())])))
+                res_xml.append(
+                    getattr(E, entry.obj_type)(
+                        **dict([(key, self._build_value_string(key, entry[key])) for key in sorted(entry.iterkeys())])
+                    )
+                )
         return list(res_dict.itervalues())

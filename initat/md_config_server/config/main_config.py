@@ -31,9 +31,9 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device, user
-from initat.md_config_server.config.base_config import base_config
-from initat.md_config_server.config.config_dir import config_dir
-from initat.md_config_server.config.host_type_config import monHostTypeConfig
+from initat.md_config_server.config import MonBaseConfig, MonBasicConfig
+from initat.md_config_server.config.mon_config_dir import MonConfigDir
+from initat.md_config_server.config.host_type_config import MonHostTypeConfig
 from initat.tools import config_tools, configfile, logging_tools, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
@@ -104,7 +104,7 @@ class monMainConfig(object):
         return self.__r_dir_dict["var"]
 
     def is_valid(self):
-        ht_conf_names = [key for key, value in self.__dict.iteritems() if isinstance(value, monHostTypeConfig)]
+        ht_conf_names = [key for key, value in self.__dict.iteritems() if isinstance(value, MonHostTypeConfig)]
         invalid = sorted([key for key in ht_conf_names if not self[key].is_valid()])
         if invalid:
             self.log(
@@ -444,7 +444,7 @@ class monMainConfig(object):
 
     def _create_base_config_entries(self):
         # read sql info
-        resource_cfg = base_config("resource", is_host_file=True)
+        resource_cfg = MonBasicConfig("resource", is_host_file=True)
         if os.path.isfile("/opt/{}/libexec/check_dns".format(global_config["MD_TYPE"])):
             resource_cfg["$USER1$"] = "/opt/{}/libexec".format(global_config["MD_TYPE"])
         else:
@@ -609,9 +609,11 @@ class monMainConfig(object):
                 ("max_host_check_spread", global_config["MAX_HOST_CHECK_SPREAD"]),
             ]
         )
-        main_cfg = base_config(global_config["MAIN_CONFIG_NAME"],
-                               is_host_file=True,
-                               values=main_values)
+        main_cfg = MonBasicConfig(
+            global_config["MAIN_CONFIG_NAME"],
+            is_host_file=True,
+            values=main_values
+        )
         for log_descr, en in [
             ("notifications", 1),
             ("service_retries", 1),
@@ -650,7 +652,7 @@ class monMainConfig(object):
             def_user = ",".join(admin_list)
         else:
             def_user = "{}admin".format(global_config["MD_TYPE"])
-        cgi_config = base_config(
+        cgi_config = MonBasicConfig(
             "cgi",
             is_host_file=True,
             values=[
@@ -691,7 +693,7 @@ class monMainConfig(object):
                 www_user, www_group = ("apache", "apache")
             else:
                 www_user, www_group = ("wwwrun", "www")
-            wsgi_config = base_config(
+            wsgi_config = MonBasicConfig(
                 "uwsgi",
                 is_host_file=True,
                 headers=["[uwsgi]"],
@@ -874,11 +876,11 @@ class monMainConfig(object):
         cfg_written, empty_cfg_written = ([], [])
         start_time = time.time()
         for key, stuff in self.__dict.iteritems():
-            if isinstance(stuff, base_config) or isinstance(stuff, monHostTypeConfig) or isinstance(stuff, config_dir):
-                if isinstance(stuff, config_dir):
+            if isinstance(stuff, MonBasicConfig) or isinstance(stuff, MonHostTypeConfig) or isinstance(stuff, MonConfigDir):
+                if isinstance(stuff, MonConfigDir):
                     cfg_written.extend(stuff.create_content(self.__w_dir_dict["etc"]))
                 else:
-                    if isinstance(stuff, base_config):
+                    if isinstance(stuff, MonBasicConfig):
                         act_cfg_name = stuff.get_file_name(self.__w_dir_dict["etc"])
                     else:
                         act_cfg_name = os.path.normpath(
@@ -959,14 +961,14 @@ class monMainConfig(object):
                     self.__r_dir_dict["etc"],
                     "{}.cfg".format(key)
                 ) for key, value in self.__dict.iteritems() if (
-                    not isinstance(value, base_config) or not value.is_host_file
-                ) and (not isinstance(value, config_dir))
+                    not isinstance(value, MonBasicConfig) or not value.is_host_file
+                ) and (not isinstance(value, MonConfigDir))
             ]
         )
         old_file_keys = self[global_config["MAIN_CONFIG_NAME"]]["cfg_file"]
         new_dir_keys = sorted(
             [
-                os.path.join(self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if isinstance(value, config_dir)
+                os.path.join(self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if isinstance(value, MonConfigDir)
             ]
         )
         old_dir_keys = self[global_config["MAIN_CONFIG_NAME"]]["cfg_dir"]

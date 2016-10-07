@@ -42,7 +42,7 @@ from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, monMainConfig, all_commands, \
     all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
-    all_services, config_dir, device_templates, service_templates, mon_config, \
+    all_services, MonConfigDir, MonDeviceTemplates, MonServiceTemplates, MonBaseConfig, \
     all_host_dependencies, BuildCache, build_safe_name, SimpleCounter
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
@@ -360,9 +360,9 @@ class BuildProcess(
         bc_valid = self.__gen_config.is_valid()
         if bc_valid:
             # get device templates
-            dev_templates = device_templates(self)
+            dev_templates = MonDeviceTemplates(self)
             # get serivce templates
-            serv_templates = service_templates(self)
+            serv_templates = MonServiceTemplates(self)
             if dev_templates.is_valid() and serv_templates.is_valid():
                 pass
             else:
@@ -589,7 +589,7 @@ class BuildProcess(
             # services
             cur_gc.add_config(all_services(cur_gc, self))
             # device dir
-            cur_gc.add_config_dir(config_dir("device", cur_gc, self))
+            cur_gc.add_config_dir(MonConfigDir("device", cur_gc, self))
             # host_dependencies
             cur_gc.add_config(all_host_dependencies(cur_gc, self))
             end_time = time.time()
@@ -808,7 +808,7 @@ class BuildProcess(
                     )
                     # now we have the device- and service template
                     host_config_list = []
-                    act_host = mon_config("host", host.full_name)
+                    act_host = MonBaseConfig("host", host.full_name)
                     host_config_list.append(act_host)
                     act_host["host_name"] = host.full_name
                     act_host["display_name"] = host.full_name
@@ -1123,7 +1123,7 @@ class BuildProcess(
                                         logging_tools.LOG_LEVEL_ERROR,
                                     )
                                 else:
-                                    act_host_dep = mon_config("hostdependency", "")
+                                    act_host_dep = MonBaseConfig("hostdependency", "")
                                     _list = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.devices_list]
                                     _dep_list = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.master_list]
                                     if _list and _dep_list:
@@ -1147,7 +1147,7 @@ class BuildProcess(
                         # add service dependencies
                         if use_service_deps:
                             for s_dep in _bc.get_dependencies("sd", host.pk):
-                                act_service_dep = mon_config("servicedependency", "")
+                                act_service_dep = MonBaseConfig("servicedependency", "")
                                 if s_dep.mon_service_cluster_id:
                                     # check reachability
                                     _unreachable = [_bc.get_host(_dev_pk) for _dev_pk in s_dep.master_list if not _bc.get_host(_dev_pk).reachable]
@@ -1652,7 +1652,7 @@ class BuildProcess(
                 # import pprint
                 # pprint.pprint(p_dict)
                 for parent, clients in p_dict.iteritems():
-                    new_hd = mon_config("hostdependency", "")
+                    new_hd = MonBaseConfig("hostdependency", "")
                     new_hd["dependent_host_name"] = clients
                     new_hd["host_name"] = parent
                     new_hd["dependency_period"] = self.mon_host_dep.dependency_period.name
@@ -1754,7 +1754,7 @@ class BuildProcess(
         # for sc_name, sc in sc_array:
         for arg_temp in sc_array:
             # self.__host_service_map.add_service(arg_temp.info, s_check.check_command_pk)
-            act_serv = mon_config("service", arg_temp.info)
+            act_serv = MonBaseConfig("service", arg_temp.info)
             # event handlers
             if s_check.event_handler:
                 act_serv["event_handler"] = s_check.event_handler.name

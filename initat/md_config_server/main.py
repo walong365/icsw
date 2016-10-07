@@ -34,8 +34,8 @@ from initat.md_config_server.config import global_config
 
 
 def run_code():
-    from initat.md_config_server.server import server_process
-    server_process().loop()
+    from initat.md_config_server.server import ServerProcess
+    ServerProcess().loop()
 
 
 def main():

@@ -24,14 +24,14 @@ from initat.cluster.backbone.models import device_variable
 
 
 __all__ = [
-    "monVarCache",
+    "MonVarCache",
 ]
 
 
 # a similiar structure is used in the server process of rrd-grapher
-class monVarCache(dict):
+class MonVarCache(dict):
     def __init__(self, cdg, prefill=False):
-        super(monVarCache, self).__init__(self)
+        super(MonVarCache, self).__init__(self)
         self.__cdg = cdg
         self.__prefill = prefill
         if prefill:

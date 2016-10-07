@@ -23,13 +23,13 @@ from initat.tools import configfile, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
-from initat.md_config_server.config.mon_config import *
-from initat.md_config_server.config.base_config import base_config
+from initat.md_config_server.config.mon_base_config import *
+from initat.md_config_server.config.base_config import MonBasicConfig
 from initat.md_config_server.config.content_emitter import ContentEmitter
-from initat.md_config_server.config.var_cache import monVarCache
+from initat.md_config_server.config.var_cache import MonVarCache
 from initat.md_config_server.config.build_cache import BuildCache
-from initat.md_config_server.config.config_dir import config_dir
-from initat.md_config_server.config.host_type_config import monHostTypeConfig
+from initat.md_config_server.config.mon_config_dir import MonConfigDir
+from initat.md_config_server.config.host_type_config import MonHostTypeConfig
 from initat.md_config_server.config.main_config import monMainConfig
 from initat.md_config_server.config.sync_config import SyncConfig
 from initat.md_config_server.config.check_command import CheckCommand

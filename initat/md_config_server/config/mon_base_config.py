@@ -21,10 +21,10 @@
 
 
 __all__ = [
-    "mon_config",
+    "MonBaseConfig",
     "build_safe_name",
     "SimpleCounter",
-    "unique_list",
+    "MonUniqueList",
 ]
 
 
@@ -36,36 +36,36 @@ def build_safe_name(in_str):
     return in_str
 
 
-class mon_config(dict):
+class MonBaseConfig(dict):
     def __init__(self, obj_type, name, **kwargs):
         # dict-like object, uses {key, list} as storage
         self.obj_type = obj_type
         self.name = name
-        super(mon_config, self).__init__()
+        super(MonBaseConfig, self).__init__()
         for _key, _value in kwargs.iteritems():
             self[_key] = _value
 
     def __setitem__(self, key, value):
         if type(value) == list:
             if key in self:
-                super(mon_config, self).__getitem__(key).extend(value)
+                super(MonBaseConfig, self).__getitem__(key).extend(value)
             else:
                 # important: create a new list
-                super(mon_config, self).__setitem__(key, [_val for _val in value])
+                super(MonBaseConfig, self).__setitem__(key, [_val for _val in value])
         else:
             if key in self:
-                super(mon_config, self).__getitem__(key).append(value)
+                super(MonBaseConfig, self).__getitem__(key).append(value)
             else:
-                super(mon_config, self).__setitem__(key, [value])
+                super(MonBaseConfig, self).__setitem__(key, [value])
 
     def __getitem__(self, key):
         if key == "name":
             return self.name
         else:
-            return super(mon_config, self).__getitem__(key)
+            return super(MonBaseConfig, self).__getitem__(key)
 
 
-class unique_list(object):
+class MonUniqueList(object):
     def __init__(self):
         self._list = set()
 
