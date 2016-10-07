@@ -670,7 +670,7 @@ class HardwareNetwork(HardwareBase):
     WIN32_ELEMENTS = {
         'product': ('ProductName', str),
         'manufacturer': ('Manufacturer', str),
-        'device_name': ('DeviceID', str),
+        'device_name': ('NetConnectionID', str),
         'mac_address': ('MACAddress', str),
         'speed': ('Speed', int),
     }

@@ -34,6 +34,8 @@ from django.utils import timezone
 from django.conf import settings
 from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
+from openpyxl.styles import Font
+from openpyxl.utils.cell import get_column_letter
 from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.lib import colors
 from reportlab.lib.colors import HexColor
@@ -1643,11 +1645,52 @@ class PDFReportGenerator(ReportGenerator):
                            ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
+        data = [["Device", "Product", "Manufacturer", "Speed", "MAC"]]
+        for network_device in hardware_report_ar.asset_batch.network_devices.all():
+            device_name = "N/A"
+            product_name = "N/A"
+            manufacturer = "N/A"
+            speed = "N/A"
+            mac_address = "N/A"
+
+            if network_device.device_name:
+                device_name = network_device.device_name
+
+            if network_device.product_name:
+                product_name = network_device.product_name
+
+            if network_device.manufacturer:
+                manufacturer = network_device.manufacturer
+
+            if network_device.speed:
+                speed = str(network_device.speed)
+
+            if network_device.mac_address:
+                mac_address = network_device.mac_address
+
+            data.append([Paragraph(device_name, style_sheet["BodyText"]),
+                         Paragraph(product_name, style_sheet["BodyText"]),
+                         Paragraph(manufacturer, style_sheet["BodyText"]),
+                         Paragraph(speed, style_sheet["BodyText"]),
+                         Paragraph(mac_address, style_sheet["BodyText"])])
+
+        p0_6 = Paragraph('<b>Network Devices:</b>', style_sheet["BodyText"])
+        t_6 = Table(data,
+                    colWidths=(available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2),
+                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ])
+
         data = [[p0_1, t_1],
                 [p0_2, t_2],
                 [p0_3, t_3],
                 [p0_4, t_4],
-                [p0_5, t_5]]
+                [p0_5, t_5],
+                [p0_6, t_6]]
 
         t_body = Table(data, colWidths=(available_width * 0.10, available_width * 0.90),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
