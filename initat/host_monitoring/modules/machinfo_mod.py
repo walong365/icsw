@@ -1307,7 +1307,7 @@ class df_command(hm_classes.hm_command):
                     logging_tools.get_plural("partition", len(all_parts))
                 )
             else:
-                return limits.nag_STATE_CRITICAL, "no partitions found"
+                return limits.mon_STATE_CRITICAL, "no partitions found"
 
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
@@ -1350,12 +1350,12 @@ class version_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         try:
-            return limits.nag_STATE_OK, "version is {}".format(srv_com["version"].text)
+            return limits.mon_STATE_OK, "version is {}".format(srv_com["version"].text)
         except:
-            return limits.nag_STATE_CRITICAL, "version not found"
+            return limits.mon_STATE_CRITICAL, "version not found"
 
     def interpret_old(self, result, parsed_coms):
-        act_state = limits.nag_STATE_OK
+        act_state = limits.mon_STATE_OK
         return act_state, "version is {}".format(result)
 
 
@@ -1370,9 +1370,9 @@ class get_0mq_id_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         try:
-            return limits.nag_STATE_OK, "0MQ id is {}".format(srv_com["zmq_id"].text)
+            return limits.mon_STATE_OK, "0MQ id is {}".format(srv_com["zmq_id"].text)
         except:
-            return limits.nag_STATE_CRITICAL, "version not found"
+            return limits.mon_STATE_CRITICAL, "version not found"
 
 
 class status_command(hm_classes.hm_command):
@@ -1381,12 +1381,12 @@ class status_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         try:
-            return limits.nag_STATE_OK, "status is {}".format(srv_com["status_str"].text)
+            return limits.mon_STATE_OK, "status is {}".format(srv_com["status_str"].text)
         except:
-            return limits.nag_STATE_CRITICAL, "status unknown"
+            return limits.mon_STATE_CRITICAL, "status unknown"
 
     def interpret_old(self, result, parsed_coms):
-        act_state = limits.nag_STATE_OK
+        act_state = limits.mon_STATE_OK
         return act_state, "status is {}".format(result)
 
 
@@ -1396,12 +1396,12 @@ class get_uuid_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         try:
-            return limits.nag_STATE_OK, "uuid is {}".format(srv_com["uuid"].text)
+            return limits.mon_STATE_OK, "uuid is {}".format(srv_com["uuid"].text)
         except:
-            return limits.nag_STATE_CRITICAL, "uuid not found"
+            return limits.mon_STATE_CRITICAL, "uuid not found"
 
     def interpret_old(self, result, parsed_coms):
-        act_state = limits.nag_STATE_OK
+        act_state = limits.mon_STATE_OK
         return act_state, "uuid is {}".format(result.split()[1])
 
 
@@ -1427,7 +1427,7 @@ class swap_command(hm_classes.hm_command):
             swap_dict = srv_com["mem"]
             swap_total, swap_free = (swap_dict["SwapTotal"], swap_dict["SwapFree"])
         if swap_total == 0:
-            return limits.nag_STATE_CRITICAL, "no swap space found"
+            return limits.mon_STATE_CRITICAL, "no swap space found"
         else:
             swap = 100 * float(swap_total - swap_free) / swap_total
             ret_state = limits.check_ceiling(swap, cur_ns.warn, cur_ns.crit)
@@ -1443,7 +1443,7 @@ class swap_command(hm_classes.hm_command):
             int(result["swapfree"])
         )
         if swaptot == 0:
-            return limits.nag_STATE_CRITICAL, "no swap space found"
+            return limits.mon_STATE_CRITICAL, "no swap space found"
         else:
             swap = 100 * (swaptot - swapfree) / swaptot
             ret_state = limits.check_ceiling(swap, parsed_coms.warn, parsed_coms.crit)
@@ -1569,7 +1569,7 @@ class sysinfo_command(hm_classes.hm_command):
         need_keys = {"vendor", "version", "arch"}
         miss_keys = [key for key in need_keys if not "sysinfo:{}".format(key) in srv_com]
         if miss_keys:
-            return limits.nag_STATE_CRITICAL, "{}missing : {}".format(
+            return limits.mon_STATE_CRITICAL, "{}missing : {}".format(
                 logging_tools.get_plural("key", len(miss_keys)),
                 ", ".join(miss_keys)
             )
@@ -1587,14 +1587,14 @@ class sysinfo_command(hm_classes.hm_command):
                     )
                 else:
                     ret_str += ", no image info"
-            return limits.nag_STATE_OK, ret_str
+            return limits.mon_STATE_OK, ret_str
 
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
         need_keys = ["vendor", "version", "arch"]
         mis_keys = [k for k in need_keys if k not in result]
         if mis_keys:
-            return limits.nag_STATE_CRITICAL, "{} missing : {}".format(
+            return limits.mon_STATE_CRITICAL, "{} missing : {}".format(
                 logging_tools.get_plural("key", len(mis_keys)),
                 ", ".join(mis_keys)
             )
@@ -1606,7 +1606,7 @@ class sysinfo_command(hm_classes.hm_command):
                     ret_str += ", image is %s (version %s)" % (ii_dict["image_name"], ii_dict["image_version"])
                 else:
                     ret_str += ", no image info"
-            return limits.nag_STATE_OK, ret_str
+            return limits.mon_STATE_OK, ret_str
 
 
 class load_command(hm_classes.hm_command):
@@ -1629,11 +1629,11 @@ class load_command(hm_classes.hm_command):
             float(srv_com["load5"].text),
             float(srv_com["load15"].text))
         max_load = max([load_1, load_5, load_15])
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         if cur_ns.warn is not None:
-            ret_state = max(ret_state, limits.nag_STATE_WARNING if max_load >= cur_ns.warn else limits.nag_STATE_OK)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING if max_load >= cur_ns.warn else limits.mon_STATE_OK)
         if cur_ns.crit is not None:
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL if max_load >= cur_ns.crit else limits.nag_STATE_OK)
+            ret_state = max(ret_state, limits.mon_STATE_CRITICAL if max_load >= cur_ns.crit else limits.mon_STATE_OK)
         return ret_state, "load (1/5/15): %.2f %.2f %.2f | load1=%.2f load5=%.2f load15=%.2f" % (
             load_1, load_5, load_15,
             load_1, load_5, load_15
@@ -1667,7 +1667,7 @@ class uptime_command(hm_classes.hm_command):
         up_d = int(up_m / (60 * 24))
         up_h = int((up_m - up_d * (60 * 24)) / 60)
         up_m = up_m - 60 * (up_d * 24 + up_h)
-        return limits.nag_STATE_OK, "up for {}, {:d}:{:02d}".format(
+        return limits.mon_STATE_OK, "up for {}, {:d}:{:02d}".format(
             logging_tools.get_plural("day", up_d),
             up_h,
             up_m
@@ -1675,7 +1675,7 @@ class uptime_command(hm_classes.hm_command):
 
     def interpret_old(self, result, parsed_coms):
         result = hm_classes.net_to_sys(result[3:])
-        return limits.nag_STATE_OK, "up for {} days, {} hours and {} mins".format(
+        return limits.mon_STATE_OK, "up for {} days, {} hours and {} mins".format(
             result["up_days"],
             result["up_hours"],
             result["up_minutes"]
@@ -1694,19 +1694,19 @@ class date_command(hm_classes.hm_command):
         remote_date = int(srv_com["local_time"].text)
         diff_time = int(abs(remote_date - local_date))
         if diff_time > err_diff:
-            return limits.nag_STATE_CRITICAL, "%s (diff %d > %d seconds)" % (
+            return limits.mon_STATE_CRITICAL, "%s (diff %d > %d seconds)" % (
                 time.ctime(remote_date),
                 diff_time,
                 err_diff
             )
         elif diff_time > warn_diff:
-            return limits.nag_STATE_WARNING, "%s (diff %d > %d seconds)" % (
+            return limits.mon_STATE_WARNING, "%s (diff %d > %d seconds)" % (
                 time.ctime(remote_date),
                 diff_time,
                 warn_diff
             )
         else:
-            return limits.nag_STATE_OK, "%s" % (time.ctime(remote_date))
+            return limits.mon_STATE_OK, "%s" % (time.ctime(remote_date))
 
     def interpret_old(self, result, parsed_coms):
         warn_diff, err_diff = (10, 5 * 60)
@@ -1716,19 +1716,19 @@ class date_command(hm_classes.hm_command):
             remote_date = time.mktime(time.strptime(remote_date))
         diff_time = int(abs(remote_date - local_date))
         if diff_time > err_diff:
-            return limits.nag_STATE_CRITICAL, "%s (diff %d > %d seconds)" % (
+            return limits.mon_STATE_CRITICAL, "%s (diff %d > %d seconds)" % (
                 time.ctime(remote_date),
                 diff_time,
                 err_diff
             )
         elif diff_time > warn_diff:
-            return limits.nag_STATE_WARNING, "%s (diff %d > %d seconds)" % (
+            return limits.mon_STATE_WARNING, "%s (diff %d > %d seconds)" % (
                 time.ctime(remote_date),
                 diff_time,
                 warn_diff
             )
         else:
-            return limits.nag_STATE_OK, "%s" % (time.ctime(remote_date))
+            return limits.mon_STATE_OK, "%s" % (time.ctime(remote_date))
 
 
 class macinfo_command(hm_classes.hm_command):
@@ -1780,22 +1780,22 @@ class macinfo_command(hm_classes.hm_command):
             mac_list = []
             for sub_el in sorted(srv_com["macinfo"].iterkeys()):
                 mac_list.append("%s (%s)" % (sub_el, srv_com["macinfo"][sub_el]))
-            return limits.nag_STATE_OK, "{}: {}".format(
+            return limits.mon_STATE_OK, "{}: {}".format(
                 logging_tools.get_plural("device", len(mac_list)),
                 ", ".join(sorted(mac_list))
             )
         else:
-            return limits.nag_STATE_CRITICAL, "no macaddresses found"
+            return limits.mon_STATE_CRITICAL, "no macaddresses found"
 
     def interpret_old(self, result, parsed_coms):
         if result.startswith("ok"):
             net_dict = hm_classes.net_to_sys(result[3:])
-            return limits.nag_STATE_OK, "{:d} ether-devices found: {}".format(
+            return limits.mon_STATE_OK, "{:d} ether-devices found: {}".format(
                 len(net_dict.keys()),
                 ", ".join(["%s (%s)" % (k, net_dict[k]) for k in net_dict.keys()])
             )
         else:
-            return limits.nag_STATE_CRITICAL, "error parsing return"
+            return limits.mon_STATE_CRITICAL, "error parsing return"
 
 
 class umount_command(hm_classes.hm_command):
@@ -1831,7 +1831,7 @@ class umount_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         ok_list, error_list = (srv_com.xpath(".//ns:umount_result[@error='0']", smart_strings=False),
                                srv_com.xpath(".//ns:umount_result[@error='1']", smart_strings=False))
-        return limits.nag_STATE_CRITICAL if error_list else limits.nag_STATE_OK, \
+        return limits.mon_STATE_CRITICAL if error_list else limits.mon_STATE_OK, \
             "".join(
                 [
                     "tried to unmount %s" % (logging_tools.get_plural("entry", len(ok_list) + len(error_list))),
@@ -1874,9 +1874,9 @@ class ksminfo_command(hm_classes.hm_command):
                 info_field.append("running")
             else:
                 info_field.append("not running")
-            return limits.nag_STATE_OK, "KSM info: {}".format(", ".join(info_field))
+            return limits.mon_STATE_OK, "KSM info: {}".format(", ".join(info_field))
         else:
-            return limits.nag_STATE_CRITICAL, "ksm problem: {]".format(ksm_info.text)
+            return limits.mon_STATE_CRITICAL, "ksm problem: {]".format(ksm_info.text)
 
 
 class hugepageinfo_command(hm_classes.hm_command):
@@ -1894,7 +1894,7 @@ class hugepageinfo_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         hpage_info = srv_com["hpages"]
         if type(hpage_info) == dict:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
             info_field = []
             for page_dir, page_dict in hpage_info.iteritems():
                 local_size = page_dir.split("-")[-1].lower()
@@ -1907,7 +1907,7 @@ class hugepageinfo_command(hm_classes.hm_command):
                 else:
                     local_size = None
                     info_field.append("cannot interpret %s" % (local_size))
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 if local_size is not None:
                     hpage_info = {key: int(value) * local_size if value.isdigit() else value for key, value in page_dict.iteritems()}
                     info_field.append("%s: %s reserved, %s used" % (
@@ -1916,7 +1916,7 @@ class hugepageinfo_command(hm_classes.hm_command):
                         logging_tools.get_size_str(hpage_info["nr_hugepages"] - hpage_info["free_hugepages"], strip_spaces=True)))
             return ret_state, "hugepage info: %s" % (", ".join(info_field))
         else:
-            return limits.nag_STATE_CRITICAL, "hugepage problem: %s" % (hpage_info.text)
+            return limits.mon_STATE_CRITICAL, "hugepage problem: %s" % (hpage_info.text)
 
 
 class thugepageinfo_command(hm_classes.hm_command):
@@ -1939,7 +1939,7 @@ class thugepageinfo_command(hm_classes.hm_command):
             enable_state = [entry[1:-1] for entry in thpage_f_info["enabled"].strip().split() if entry.startswith("[")][0]
             defrag_state = [entry[1:-1] for entry in thpage_f_info["defrag"].strip().split() if entry.startswith("[")][0]
             if enable_state in ["always", "madvise"]:
-                ret_state = limits.nag_STATE_OK
+                ret_state = limits.mon_STATE_OK
                 ret_str = "info: enable=%s, defrag=%s, full_scans=%d, pages_to_scan=%d, collapsed: %d (%s), alloc/scan time: %.2f/%.2f secs" % (
                     enable_state,
                     defrag_state,
@@ -1951,9 +1951,9 @@ class thugepageinfo_command(hm_classes.hm_command):
                     float(thpage_d_info["scan_sleep_millisecs"]) / 1000.,
                 )
             else:
-                ret_state, ret_str = (limits.nag_STATE_WARNING, "warning: enable=%s, defrag=%s" % (enable_state, defrag_state))
+                ret_state, ret_str = (limits.mon_STATE_WARNING, "warning: enable=%s, defrag=%s" % (enable_state, defrag_state))
         else:
-            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "problem: %s, %s" % (thpage_d_info.text, thpage_f_info.text))
+            ret_state, ret_str = (limits.mon_STATE_CRITICAL, "problem: %s, %s" % (thpage_d_info.text, thpage_f_info.text))
         return ret_state, "transparent hugepage {}".format(ret_str)
 
 
@@ -2008,9 +2008,9 @@ class pciinfo_command(hm_classes.hm_command):
         else:
             _dump = None
         if _dump is not None:
-            return limits.nag_STATE_OK, "\n".join(cmr_b)
+            return limits.mon_STATE_OK, "\n".join(cmr_b)
         else:
-            return limits.nag_STATE_CRITICAL, "no PCI-dump found"
+            return limits.mon_STATE_CRITICAL, "no PCI-dump found"
 
 
 class cpuflags_command(hm_classes.hm_command):
@@ -2037,7 +2037,7 @@ class cpuflags_command(hm_classes.hm_command):
                         cpu_database.CPU_FLAG_LUT.get(flag.upper(), flag)[:140]
                     )
                 )
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         return ret_state, "\n".join(ret_lines)
 
 
@@ -2046,7 +2046,7 @@ class cpuinfo_command(hm_classes.hm_command):
         srv_com["cpuinfo"] = self.module._cpuinfo_int(srv_com)
 
     def interpret(self, srv_com, cur_ns):
-        ret_state, pre_str = (limits.nag_STATE_OK, "OK")
+        ret_state, pre_str = (limits.mon_STATE_OK, "OK")
         header_errors = []
         out_list = logging_tools.new_form_list()
         try:
@@ -2103,7 +2103,7 @@ class lvminfo_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         lvm_struct = srv_com["lvm_dict"]
         if lvm_struct.get("type", "???") == "str":
-            return limits.nag_STATE_CRITICAL, "cannot interpret old return value"
+            return limits.mon_STATE_CRITICAL, "cannot interpret old return value"
         else:
             lvm_struct = lvm_struct[0]
             if lvm_struct.attrib["lvm_present"] == "1":
@@ -2126,9 +2126,9 @@ class lvminfo_command(hm_classes.hm_command):
                                 sub_el.attrib["uuid"]
                             )
                         )
-                return limits.nag_STATE_OK, "\n".join(out_f)
+                return limits.mon_STATE_OK, "\n".join(out_f)
             else:
-                return limits.nag_STATE_WARNING, "no LVM-binaries found"
+                return limits.mon_STATE_WARNING, "no LVM-binaries found"
 
 
 class partinfo_command(hm_classes.hm_command):
@@ -2268,7 +2268,7 @@ class partinfo_command(hm_classes.hm_command):
         if lvm_stuff.lvm_present:
             ret_f.append("LVM info")
             ret_f.append(lvm_stuff.get_info(short=False))
-        return limits.nag_STATE_OK, "\n".join(ret_f)
+        return limits.mon_STATE_OK, "\n".join(ret_f)
 
 
 class mdstat_command(hm_classes.hm_command):
@@ -2298,9 +2298,9 @@ class mdstat_command(hm_classes.hm_command):
                     cur_raid["blocks"] = int(parts[0])
                 elif parts[1] == "resync":
                     cur_raid["resync"] = parts[3]
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         if any(["resync" in cur_raid for cur_raid in raid_list]):
-            ret_state = limits.nag_STATE_WARNING
+            ret_state = limits.mon_STATE_WARNING
         if raid_list:
             ret_str = ", ".join(
                 [
@@ -2326,7 +2326,7 @@ class uname_command(hm_classes.hm_command):
         uname_list = []
         for _idx, sub_el in enumerate(srv_com["uname"]):
             uname_list.append(sub_el.text)
-        return limits.nag_STATE_OK, "{}, kernel {}".format(uname_list[0], uname_list[2])
+        return limits.mon_STATE_OK, "{}, kernel {}".format(uname_list[0], uname_list[2])
 
 
 class cpufreq_info_command(hm_classes.hm_command):
@@ -2374,12 +2374,12 @@ class cpufreq_info_command(hm_classes.hm_command):
         _num_cpus = len(info_dict.keys())
         _unknown = [key for key, value in info_dict.iteritems() if value is None]
         _offline = [key for key, value in info_dict.iteritems() if value is False]
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         all_govs = set([value["scaling_governor"] for value in info_dict.itervalues() if value and "scaling_governor" in value])
         all_drivers = set([value["scaling_driver"] for value in info_dict.itervalues() if value and "scaling_driver" in value])
         ret_f = ["found {}".format(logging_tools.get_plural("CPU", _num_cpus))]
         if _unknown:
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
             ret_f.append(
                 "{} without cpufreq info: {}".format(
                     logging_tools.get_plural("CPU", len(_unknown)),
@@ -2397,7 +2397,7 @@ class cpufreq_info_command(hm_classes.hm_command):
             if all_govs == {cur_ns.governor}:
                 ret_f.append("governor is {}".format(cur_ns.governor))
             else:
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 ret_f.append(
                     "found {}: {} != {}".format(
                         logging_tools.get_plural("governor", len(all_govs)),
@@ -2416,7 +2416,7 @@ class cpufreq_info_command(hm_classes.hm_command):
             if all_drivers == {cur_ns.driver}:
                 ret_f.append("driver is {}".format(cur_ns.driver))
             else:
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 ret_f.append(
                     "found {}: {} != {}".format(
                         logging_tools.get_plural("driver", len(all_drivers)),
@@ -2440,7 +2440,7 @@ class lstopo_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         dump = etree.fromstring(server_command.decompress(srv_com["*lstopo_dump"]))
-        return limits.nag_STATE_OK, "received lstopo output"
+        return limits.mon_STATE_OK, "received lstopo output"
 
 
 class lshw_command(hm_classes.hm_command):
@@ -2450,7 +2450,7 @@ class lshw_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         dump = etree.fromstring(server_command.decompress(
                 srv_com["*lshw_dump"]))
-        return limits.nag_STATE_OK, "received lshw output"
+        return limits.mon_STATE_OK, "received lshw output"
 
 
 class lsblk_command(hm_classes.hm_command):
@@ -2459,7 +2459,7 @@ class lsblk_command(hm_classes.hm_command):
 
     def interpret(self, srv_com, cur_ns):
         dump = server_command.decompress(srv_com["*lsblk_dump"])
-        return limits.nag_STATE_OK, dump
+        return limits.mon_STATE_OK, dump
 
 
 class dmiinfo_command(hm_classes.hm_command):
@@ -2507,7 +2507,7 @@ class dmiinfo_command(hm_classes.hm_command):
                             )
                         )
                 _out_f.append("")
-            return limits.nag_STATE_OK, "\n".join(_out_f)
+            return limits.mon_STATE_OK, "\n".join(_out_f)
             if False:
                 # old parser code
                 dec_lines = []

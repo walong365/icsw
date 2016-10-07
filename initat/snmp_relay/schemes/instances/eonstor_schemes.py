@@ -35,7 +35,7 @@ class eonstor_object(object):
         self.name = in_dict[8]
         self.state = int(in_dict[kwargs.get("state_key", 13)])
         # default values
-        self.nag_state, self.state_strs = (limits.nag_STATE_OK, [])
+        self.nag_state, self.state_strs = (limits.mon_STATE_OK, [])
         self.out_string = ""
         self.long_string = ""
 
@@ -44,11 +44,11 @@ class eonstor_object(object):
         pass
 
     def set_error(self, err_str):
-        self.nag_state = max(self.nag_state, limits.nag_STATE_CRITICAL)
+        self.nag_state = max(self.nag_state, limits.mon_STATE_CRITICAL)
         self.state_strs.append(err_str)
 
     def set_warn(self, warn_str):
-        self.nag_state = max(self.nag_state, limits.nag_STATE_WARNING)
+        self.nag_state = max(self.nag_state, limits.mon_STATE_WARNING)
         self.state_strs.append(warn_str)
 
     def get_state_str(self):
@@ -56,7 +56,7 @@ class eonstor_object(object):
 
     def get_ret_str(self, **kwargs):
         out_str = self.long_string if (self.long_string and kwargs.get("long_format", False)) else self.out_string
-        if self.nag_state == limits.nag_STATE_OK and out_str:
+        if self.nag_state == limits.mon_STATE_OK and out_str:
             return "%s: %s" % (
                 self.name,
                 out_str,
@@ -73,23 +73,23 @@ class eonstor_object(object):
 
 class eonstor_disc(eonstor_object):
     lu_dict = {
-        0: ("New Drive", limits.nag_STATE_OK),
-        1: ("On-Line Drive", limits.nag_STATE_OK),
-        2: ("Used Drive", limits.nag_STATE_OK),
-        3: ("Spare Drive", limits.nag_STATE_OK),
-        4: ("Drive Initialization in Progress", limits.nag_STATE_WARNING),
-        5: ("Drive Rebuild in Progress", limits.nag_STATE_WARNING),
-        6: ("Add Drive to Logical Drive in Progress", limits.nag_STATE_WARNING),
-        9: ("Global Spare Drive", limits.nag_STATE_OK),
-        int("11", 16): ("Drive is in process of Cloning another Drive", limits.nag_STATE_WARNING),
-        int("12", 16): ("Drive is a valid Clone of another Drive", limits.nag_STATE_OK),
-        int("13", 16): ("Drive is in process of Copying from another Drive", limits.nag_STATE_WARNING),
-        int("3f", 16): ("Drive Absent", limits.nag_STATE_OK),
+        0: ("New Drive", limits.mon_STATE_OK),
+        1: ("On-Line Drive", limits.mon_STATE_OK),
+        2: ("Used Drive", limits.mon_STATE_OK),
+        3: ("Spare Drive", limits.mon_STATE_OK),
+        4: ("Drive Initialization in Progress", limits.mon_STATE_WARNING),
+        5: ("Drive Rebuild in Progress", limits.mon_STATE_WARNING),
+        6: ("Add Drive to Logical Drive in Progress", limits.mon_STATE_WARNING),
+        9: ("Global Spare Drive", limits.mon_STATE_OK),
+        int("11", 16): ("Drive is in process of Cloning another Drive", limits.mon_STATE_WARNING),
+        int("12", 16): ("Drive is a valid Clone of another Drive", limits.mon_STATE_OK),
+        int("13", 16): ("Drive is in process of Copying from another Drive", limits.mon_STATE_WARNING),
+        int("3f", 16): ("Drive Absent", limits.mon_STATE_OK),
         # int("8x", 16) : "SCSI Device (Type x)",
-        int("fc", 16): ("Missing Global Spare Drive", limits.nag_STATE_CRITICAL),
-        int("fd", 16): ("Missing Spare Drive", limits.nag_STATE_CRITICAL),
-        int("fe", 16): ("Missing Drive", limits.nag_STATE_CRITICAL),
-        int("ff", 16): ("Failed Drive", limits.nag_STATE_CRITICAL)
+        int("fc", 16): ("Missing Global Spare Drive", limits.mon_STATE_CRITICAL),
+        int("fd", 16): ("Missing Spare Drive", limits.mon_STATE_CRITICAL),
+        int("fe", 16): ("Missing Drive", limits.mon_STATE_CRITICAL),
+        int("ff", 16): ("Failed Drive", limits.mon_STATE_CRITICAL)
     }
 
     def __init__(self, in_dict):
@@ -98,9 +98,9 @@ class eonstor_disc(eonstor_object):
         self.name = "Disc{:d}".format(disk_num)
         if self.state in self.lu_dict:
             state_str, state_val = self.lu_dict[self.state]
-            if state_val == limits.nag_STATE_WARNING:
+            if state_val == limits.mon_STATE_WARNING:
                 self.set_warn(state_str)
-            elif state_val == limits.nag_STATE_CRITICAL:
+            elif state_val == limits.mon_STATE_CRITICAL:
                 self.set_error(state_str)
         elif self.state & int("80", 16) == int("80", 16):
             self.name = "SCSI Disc {:d}".format(self.state & ~int("80", 16))
@@ -133,23 +133,23 @@ class eonstor_disc(eonstor_object):
 
 class eonstor_ld(eonstor_object):
     lu_dict = {
-        0: ("Good", limits.nag_STATE_OK),
-        1: ("Rebuilding", limits.nag_STATE_WARNING),
-        2: ("Initializing", limits.nag_STATE_WARNING),
-        3: ("Degraded", limits.nag_STATE_CRITICAL),
-        4: ("Dead", limits.nag_STATE_CRITICAL),
-        5: ("Invalid", limits.nag_STATE_CRITICAL),
-        6: ("Incomplete", limits.nag_STATE_CRITICAL),
-        7: ("Drive missing", limits.nag_STATE_CRITICAL)
+        0: ("Good", limits.mon_STATE_OK),
+        1: ("Rebuilding", limits.mon_STATE_WARNING),
+        2: ("Initializing", limits.mon_STATE_WARNING),
+        3: ("Degraded", limits.mon_STATE_CRITICAL),
+        4: ("Dead", limits.mon_STATE_CRITICAL),
+        5: ("Invalid", limits.mon_STATE_CRITICAL),
+        6: ("Incomplete", limits.mon_STATE_CRITICAL),
+        7: ("Drive missing", limits.mon_STATE_CRITICAL)
     }
 
     def __init__(self, in_dict):
         eonstor_object.__init__(self, "ld", in_dict, state_key=7)
         self.name = "LD"
         state_str, state_val = self.lu_dict[int(in_dict[6]) & 7]
-        if state_val == limits.nag_STATE_WARNING:
+        if state_val == limits.mon_STATE_WARNING:
             self.set_warn(state_str)
-        elif state_val == limits.nag_STATE_CRITICAL:
+        elif state_val == limits.mon_STATE_CRITICAL:
             self.set_error(state_str)
         if self.state & 1:
             self.set_warn("rebuilding")
@@ -477,7 +477,7 @@ class eonstor_info_scheme(SNMPRelayScheme):
                 dev_dict[dev_idx] = eonstor_voltage(dev_stuff)
         for disc_idx, disc_stuff in self._reorder_dict(self.snmp_dict[tuple(self.__th_disc)]).iteritems():
             dev_dict["d{:d}".format(disc_idx)] = eonstor_disc(disc_stuff)
-        ret_state, ret_field = (limits.nag_STATE_OK, [])
+        ret_state, ret_field = (limits.mon_STATE_OK, [])
         for key in sorted(dev_dict.keys()):
             value = dev_dict[key]
             if value.nag_state:
@@ -530,7 +530,7 @@ class eonstor_proto_scheme(SNMPRelayScheme):
             dev_idx = self.opts.iarg
         else:
             dev_idx = 0
-        ret_state, ret_field = (limits.nag_STATE_OK, [])
+        ret_state, ret_field = (limits.mon_STATE_OK, [])
         raw_dict = {}
         if dev_idx:
             if dev_idx in dev_dict:
@@ -541,7 +541,7 @@ class eonstor_proto_scheme(SNMPRelayScheme):
                     ret_state = value.nag_state
                     ret_field.append(value.get_ret_str(long_format=True) or "%s is OK" % (value.name))
             else:
-                ret_state = limits.nag_STATE_CRITICAL
+                ret_state = limits.mon_STATE_CRITICAL
                 ret_field.append("idx %d not found in dict (possible values: %s)" % (
                     dev_idx,
                     ", ".join(["%d" % (key) for key in sorted(dev_dict.keys())])))
@@ -554,7 +554,7 @@ class eonstor_proto_scheme(SNMPRelayScheme):
             ret_field.sort()
         if self.xml_input:
             self.srv_com["eonstor_info"] = raw_dict
-            return limits.nag_STATE_OK, "ok got info"
+            return limits.mon_STATE_OK, "ok got info"
         else:
             return ret_state, "; ".join(ret_field) or "no errors or warnings"
 
@@ -667,7 +667,7 @@ class eonstor_get_counter_scheme(eonstor_proto_scheme):
         info_dict["ld_ids"] = self._reorder_dict(self.snmp_dict[self.ld_oid]).keys()
         if self.xml_input:
             self.srv_com["eonstor_info"] = info_dict
-            return limits.nag_STATE_OK, "ok got info"
+            return limits.mon_STATE_OK, "ok got info"
         else:
             # FIXME
-            return limits.nag_STATE_OK, process_tools.sys_to_net(info_dict)
+            return limits.mon_STATE_OK, process_tools.sys_to_net(info_dict)

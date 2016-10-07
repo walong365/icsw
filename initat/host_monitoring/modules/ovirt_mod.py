@@ -459,9 +459,9 @@ class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
                         )
                     ]
                     if _state in ["up"]:
-                        _nag_state = limits.nag_STATE_OK
+                        _nag_state = limits.mon_STATE_OK
                     else:
-                        _nag_state = limits.nag_STATE_CRITICAL
+                        _nag_state = limits.mon_STATE_CRITICAL
                     _passive_dict["list"].append(
                         (
                             _prefix,
@@ -473,14 +473,14 @@ class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
                     _passive_dict["list"].append(
                         (
                             _prefix,
-                            limits.nag_STATE_CRITICAL,
+                            limits.mon_STATE_CRITICAL,
                             "domain not found",
                         )
                     )
         _error_list = []
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         if _ref:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
             for _state in ["up", "down"]:
                 _current = _state_dict.get(_state, 0)
                 if _current != _ref[_state]:
@@ -490,7 +490,7 @@ class ovirt_overview_command(hm_classes.hm_command, OvirtBaseMixin):
                             _ref[_state],
                         )
                     )
-                    ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                    ret_state = max(ret_state, limits.mon_STATE_WARNING)
 
         if _ref is None:
             ascii_chunk = ""
@@ -559,9 +559,9 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
                     _sd = _sd[0]
                     _state = _sd.findtext(".//external_status/state")
                     if _state in ["ok"]:
-                        _nag_state = limits.nag_STATE_OK
+                        _nag_state = limits.mon_STATE_OK
                     else:
-                        _nag_state = limits.nag_STATE_CRITICAL
+                        _nag_state = limits.mon_STATE_CRITICAL
                     _stype = _sd.findtext("type")
                     _ret_f = [
                         "state is {}".format(_state),
@@ -582,12 +582,12 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
                                 logging_tools.get_size_str(_committed),
                             )
                             if _pused > 95:
-                                _nag_state = max(_nag_state, limits.nag_STATE_CRITICAL)
+                                _nag_state = max(_nag_state, limits.mon_STATE_CRITICAL)
                             elif _pused > 90:
-                                _nag_state = max(_nag_state, limits.nag_STATE_WARNING)
+                                _nag_state = max(_nag_state, limits.mon_STATE_WARNING)
                         except:
                             _ret_f.append("cannot evaluate size")
-                            _nag_state = max(_nag_state, limits.nag_STATE_WARNING)
+                            _nag_state = max(_nag_state, limits.mon_STATE_WARNING)
                         else:
                             _ret_f.append(_size_str)
                     _passive_dict["list"].append(
@@ -601,7 +601,7 @@ class ovirt_storagedomains_command(hm_classes.hm_command, OvirtBaseMixin):
                     _passive_dict["list"].append(
                         (
                             _prefix,
-                            limits.nag_STATE_CRITICAL,
+                            limits.mon_STATE_CRITICAL,
                             "StorageDomain not found",
                         )
                     )
@@ -672,9 +672,9 @@ class ovirt_hosts_command(hm_classes.hm_command, OvirtBaseMixin):
                     _state = _host.findtext(".//status/state")
                     _htype = _host.findtext("type")
                     if _state in ["up"]:
-                        _nag_state = limits.nag_STATE_OK
+                        _nag_state = limits.mon_STATE_OK
                     else:
-                        _nag_state = limits.nag_STATE_CRITICAL
+                        _nag_state = limits.mon_STATE_CRITICAL
                     _ret_f = [
                         "state is {}".format(_state),
                         "type is {}".format(_htype),
@@ -705,7 +705,7 @@ class ovirt_hosts_command(hm_classes.hm_command, OvirtBaseMixin):
                     _passive_dict["list"].append(
                         (
                             _prefix,
-                            limits.nag_STATE_CRITICAL,
+                            limits.mon_STATE_CRITICAL,
                             "Host {} not found".format(run_name),
                         )
                     )

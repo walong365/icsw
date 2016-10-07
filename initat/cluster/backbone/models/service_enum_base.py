@@ -32,7 +32,8 @@ __all__ = [
 
 
 class EggAction(object):
-    def __init__(self, action, content_type, weight=1):
+    def __init__(self, action, content_type, weight=1, timeframe=0):
+        # timeframe is in days
         self.action = action
         if isinstance(content_type, basestring):
             try:
@@ -40,8 +41,12 @@ class EggAction(object):
             except ContentType.DoesNotExist:
                 # this can happen during install
                 content_type = None
+            except:
+                # this can happen on UCS installs
+                content_type = None
         self.content_type = content_type
         self.weight = weight
+        self.timeframe_secs = 24 * 3600 * timeframe
 
     def __unicode__(self):
         return u"{} {}".format(self.action, unicode(self.content_type))

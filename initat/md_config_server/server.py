@@ -19,7 +19,6 @@
 #
 """ server process for md-config-server """
 
-import codecs
 import time
 
 import zmq
@@ -30,21 +29,21 @@ from initat.cluster.backbone.models import mon_notification, config_str, config_
     mon_check_command_special, mon_check_command, SpecialGroupsEnum
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.md_config_server.build import build_process
+from initat.md_config_server.build import BuildProcess
 from initat.md_config_server.config import global_config
 from initat.md_config_server.dynconfig import DynConfigProcess
 from initat.md_config_server.icinga_log_reader.log_reader import IcingaLogReader
 from initat.md_config_server.kpi import KpiProcess
-from initat.md_config_server.mixins import version_check_mixin
 from initat.md_config_server.syncer import SyncerProcess, RemoteServer
-from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile
+from initat.md_sync_server.mixins import VersionCheckMixin
+from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile, server_command
 from initat.tools.server_mixins import RemoteCall
 
 
 @server_mixins.RemoteCallProcess
 class server_process(
     server_mixins.ICSWBasePool,
-    version_check_mixin,
+    VersionCheckMixin,
     server_mixins.RemoteCallMixin,
     server_mixins.SendToRemoteServerMixin,
 ):
@@ -109,14 +108,17 @@ class server_process(
         self.register_exception("hup_error", self._hup_error)
         self._check_notification()
         self._check_special_commands()
+        # sync master uuid
+        self.__sync_master_uuid = None
         # from mixins
-        self._check_md_version()
+        self.VCM_check_md_version()
         self._init_network_sockets()
 
         if "MD_TYPE" in global_config:
             self.register_func("register_remote", self._register_remote)
             self.register_func("send_command", self._send_command)
             self.register_func("ocsp_results", self._ocsp_results)
+            self.register_func("set_sync_master_uuid", self._set_sync_master_uuid)
 
             self.add_process(SyncerProcess("syncer"), start=True)
             self.add_process(DynConfigProcess("dynconfig"), start=True)
@@ -135,6 +137,10 @@ class server_process(
 
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
+
+    def _set_sync_master_uuid(self, src_proc, src_id, master_uuid, **kwargs):
+        self.log("set sync_master uuid to {}".format(master_uuid))
+        self.__sync_master_uuid = master_uuid
 
     def _check_special_commands(self):
         from initat.md_config_server.special_commands import SPECIAL_DICT
@@ -326,10 +332,11 @@ class server_process(
     def process_start(self, src_process, src_pid):
         if src_process == "syncer":
             self.send_to_process("syncer", "check_for_slaves")
-            self.add_process(build_process("build"), start=True)
+            self.add_process(BuildProcess("build"), start=True)
         elif src_process == "build":
             self.send_to_process("build", "check_for_slaves")
             if global_config["RELOAD_ON_STARTUP"]:
+                # send reload to md-sync-server, ToDo, Fixme
                 self.send_to_process("build", "reload_md_daemon")
             if global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]:
                 self.send_to_process("build", "rebuild_config", cache_mode=global_config["INITIAL_CONFIG_CACHE_MODE"])
@@ -346,17 +353,36 @@ class server_process(
 
     def _ocsp_results(self, *args, **kwargs):
         _src_proc, _src_pid, lines = args
-        print "* OCSP", lines
+        # print "* OCSP", lines
+        if self.__sync_master_uuid:
+            self.send_command(
+                self.__sync_master_uuid,
+                server_command.srv_command(
+                    command="ocsp_lines",
+                    ocsp_lines=server_command.compress(lines, json=True),
+                )
+            )
+        else:
+            self.log(
+                "no sync_master_uuid set ({})".format(
+                    logging_tools.get_plural("OCSP line", len(lines))
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
 
     def _send_command(self, *args, **kwargs):
         _src_proc, _src_id, full_uuid, srv_com = args
+        self.send_command(full_uuid, srv_com)
+
+    def send_command(self, full_uuid, srv_com):
+        _srv_com = unicode(srv_com)
         try:
             self.main_socket.send_unicode(full_uuid, zmq.SNDMORE)  # @UndefinedVariable
-            self.main_socket.send_unicode(srv_com)
+            self.main_socket.send_unicode(_srv_com)
         except:
             self.log(
                 "cannot send {:d} bytes to {}: {}".format(
-                    len(srv_com),
+                    len(_srv_com),
                     full_uuid,
                     process_tools.get_except_info(),
                 ),
@@ -416,12 +442,18 @@ class server_process(
     def monitoring_info(self, srv_com, **kwargs):
         return srv_com
 
+    @RemoteCall()
+    def mon_process_handling(self, srv_com, **kwargs):
+        self.send_to_process("syncer", "mon_process_handling", unicode(srv_com))
+        srv_com.set_result("ok set new flags")
+        return srv_com
+
     @RemoteCall(target_process="syncer")
     def slave_info(self, srv_com, **kwargs):
         return srv_com
 
     @RemoteCall(target_process="syncer")
-    def slave_info(self, srv_com, **kwargs):
+    def get_sys_info(self, srv_com, **kwargs):
         return srv_com
 
     @RemoteCall()

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,18 +22,18 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
-from lxml import etree  # @UnresolvedImport
 import os
 import re
 import time
 
+import zmq
+from lxml import etree
+
 from initat.host_monitoring import limits
 from initat.host_monitoring.constants import MAPPING_FILE_IDS
 from initat.host_monitoring.host_monitoring_struct import host_message
-from lxml.builder import E  # @UnresolvedImport
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command, config_store
-import zmq
 
 CS_NAME = "hr.0mq-mapping"
 
@@ -92,7 +92,7 @@ class ZMQDiscovery(object):
     def send_return(self, error_msg):
         self.log(error_msg, logging_tools.LOG_LEVEL_ERROR)
         dummy_mes = host_message(self.srv_com["command"].text, self.src_id, self.srv_com, self.xml_input)
-        dummy_mes.set_result(limits.nag_STATE_CRITICAL, error_msg)
+        dummy_mes.set_result(limits.mon_STATE_CRITICAL, error_msg)
         self.send_result(dummy_mes)
 
     def send_result(self, host_mes, result=None):

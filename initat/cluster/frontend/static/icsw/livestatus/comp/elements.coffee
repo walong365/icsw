@@ -74,7 +74,7 @@ angular.module(
             else
                 _fm = "none"
 
-            _w = @props.size
+            _w = 140  # @props.size  # not needed anymore due to viewBox
             _d = @props.data
 
             _total = _.sum((_el.value for _el in _d))
@@ -162,13 +162,13 @@ angular.module(
                 _title_el = text(
                     {
                         x: "#{_w/2}px"
-                        y: "#{_text_height/2 + 4}px"
+                        y: "#{_text_height/2 + 3}px"
                         key: "svg.title"
                         textAnchor: "middle"
                         fontSize: "#{_text_height}px"
                         className: "svg-txt-color"
-                        alignmentBaseline: "middle"
-
+                        # alignmentBaseline: "middle"  # bad for browser/ os compat
+                        fontWeight: "bold"
                     }
                     @props.title
                 )
@@ -192,23 +192,25 @@ angular.module(
                             key: "svg.text.#{_idx}"
                             textAnchor: "middle"
                             fontSize: "#{_text_size}px"
-                            alignmentBaseline: "middle"
+                            # alignmentBaseline: "middle"  # bad for browser/ os compat
                             paintOrder: "stroke"
                             className: "svg-stroke default-text"
                         }
                         _text
                     )
                 )
-            return span(
+            _translate_y = if @props.title? and @props.titleSize? then 70 + @props.titleSize else 70
+            _viewbox = if @props.title? then "3 -4 134 156" else "3 3 133 133"
+            return div(
                 {
                     key: "div.top"
-
+                    className: @props.className
                 }
                 svg(
                     {
                         key: "svg.top"
-                        width: "#{_w}px"
-                        height: "#{_w + _text_height}px"
+                        width: "99%"  # browser crap
+                        viewBox: _viewbox
                     }
                     g(
                         {
@@ -218,7 +220,8 @@ angular.module(
                         g(
                             {
                                 key: "content"
-                                transform: "translate(#{_w/2}, #{_w/2 + _text_height})"
+                                # transform: "translate(#{_w/2}, #{_w/2 + _text_height})"
+                                transform: "translate(70, #{_translate_y})"
                             }
                             _p_list
                             _text_list
@@ -244,10 +247,10 @@ angular.module(
                     React.createElement(
                         icswLivestatusCircleInfoReact
                         {
-                            size: 26
+                            # size: 26
                             data: scope.mon_data.service_circle_data
-                            title: "Services"
-                            titleSize: 5
+                            # title: "Services"
+                            # titleSize: 5
                             showInfo: false
                         }
                     )
@@ -278,10 +281,10 @@ angular.module(
                     React.createElement(
                         icswLivestatusCircleInfoReact
                         {
-                            size: 26
+                            # size: 26
                             data: scope.mon_data.device_circle_data
-                            title: "Devices"
-                            titleSize: 5
+                            # title: "Devices"
+                            # titleSize: 5
                             showInfo: false
                         }
                     )

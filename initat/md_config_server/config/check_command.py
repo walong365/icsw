@@ -19,20 +19,19 @@
 #
 """ config part of md-config-server """
 
-from initat.cluster.backbone.models import mon_device_templ, mon_service_templ, \
-    TOP_MONITORING_CATEGORY, parse_commandline
+from initat.cluster.backbone.models import TOP_MONITORING_CATEGORY, parse_commandline
 from initat.md_config_server.config.mon_config import mon_config
 from initat.tools import configfile, logging_tools, process_tools
 
 
 __all__ = [
-    "check_command",
+    "CheckCommand",
 ]
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
-class check_command(object):
+class CheckCommand(object):
     def __init__(self, name, com_line, config, template, descr, exclude_devices=None, **kwargs):
         self.__name = name
         self.__nag_name = kwargs.pop("icinga_name", self.__name)
@@ -60,7 +59,7 @@ class check_command(object):
         self._generate_md_com_line()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        check_command.gen_conf.log("[cc %s] %s" % (self.__name, what), log_level)
+        CheckCommand.gen_conf.log("[cc %s] %s" % (self.__name, what), log_level)
 
     @property
     def command_line(self):
@@ -159,106 +158,3 @@ class check_command(object):
 
     def __repr__(self):
         return "%s [%s]" % (self.__name, self.command_line)
-
-
-class device_templates(dict):
-    def __init__(self, build_proc):
-        dict.__init__(self)
-        self.__build_proc = build_proc
-        self.__default = None
-        for dev_templ in mon_device_templ.objects.all().select_related("host_check_command"):
-            self[dev_templ.pk] = dev_templ
-            if dev_templ.is_default:
-                self.__default = dev_templ
-        self.log(
-            "Found {} ({})".format(
-                logging_tools.get_plural("device_template", len(self.keys())),
-                ", ".join([cur_dt.name for cur_dt in self.itervalues()])
-            )
-        )
-        if self.__default:
-            self.log(
-                "Found default device_template named '%s'" % (self.__default.name)
-            )
-        else:
-            if self.keys():
-                self.__default = self.values()[0]
-                self.log(
-                    "No default device_template found, using '%s'" % (self.__default.name),
-                    logging_tools.LOG_LEVEL_WARN
-                )
-            else:
-                self.log(
-                    "No device_template founds, skipping configuration....",
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-
-    def is_valid(self):
-        return self.__default and True or False
-
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__build_proc.log("[device_templates] %s" % (what), level)
-
-    def __getitem__(self, key):
-        act_key = key or self.__default.pk
-        if act_key not in self:
-            self.log(
-                "key {} not known, using default {} ({:d})".format(
-                    str(act_key),
-                    unicode(self.__default),
-                    self.__default.pk,
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            act_key = self.__default.pk
-        return super(device_templates, self).__getitem__(act_key)
-
-
-class service_templates(dict):
-    def __init__(self, build_proc):
-        dict.__init__(self)
-        self.__build_proc = build_proc
-        self.__default = 0
-        for srv_templ in mon_service_templ.objects.all().prefetch_related(
-            "mon_device_templ_set",
-            "mon_contactgroup_set"
-        ):
-            # db_rec["contact_groups"] = set()
-            # generate notification options
-            not_options = []
-            for long_name, short_name in [
-                ("nrecovery", "r"), ("ncritical", "c"), ("nwarning", "w"), ("nunknown", "u"), ("nflapping", "f"), ("nplanned_downtime", "s")
-            ]:
-                if getattr(srv_templ, long_name):
-                    not_options.append(short_name)
-            if not not_options:
-                not_options.append("n")
-            srv_templ.notification_options = not_options
-            self[srv_templ.pk] = srv_templ
-            self[srv_templ.name] = srv_templ
-            srv_templ.contact_groups = list(set(srv_templ.mon_contactgroup_set.all().values_list("name", flat=True)))
-        if self.keys():
-            self.__default = self.keys()[0]
-        self.log("Found %s (%s)" % (
-            logging_tools.get_plural("device_template", len(self.keys())),
-            ", ".join([cur_v.name for cur_v in self.values()])))
-
-    def is_valid(self):
-        return True
-
-    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
-        self.__build_proc.log("[service_templates] %s" % (what), level)
-
-    def __getitem__(self, key):
-        act_key = key or self.__default.pk
-        if act_key not in self:
-            self.log(
-                "key {} not known, using default {} ({:d})".format(
-                    str(act_key),
-                    unicode(self.__default),
-                    self.__default.pk,
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            act_key = self.__default.pk
-        return super(service_templates, self).__getitem__(act_key)

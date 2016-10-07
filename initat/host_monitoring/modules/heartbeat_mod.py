@@ -79,10 +79,10 @@ class corosync_status_command(hm_classes.hm_command):
     def _interpret(self, r_lines, parsed_coms, **kwargs):
         coro_stat = kwargs.get("status", 0)
         if coro_stat:
-            ret_state, out_f = (limits.nag_STATE_CRITICAL, r_lines)
+            ret_state, out_f = (limits.mon_STATE_CRITICAL, r_lines)
         else:
             hb_dict = self._parse_lines(r_lines)
-            ret_state, out_f = (limits.nag_STATE_OK, ["node_id is {}".format(hb_dict["node_id"])])
+            ret_state, out_f = (limits.mon_STATE_OK, ["node_id is {}".format(hb_dict["node_id"])])
             ring_keys = sorted(hb_dict["rings"].keys())
             if ring_keys:
                 for ring_key in ring_keys:
@@ -104,10 +104,10 @@ class corosync_status_command(hm_classes.hm_command):
                         _count = int(ring_stat.split("[", 1)[1].split()[0])
                         ret_state = max(ret_state, limits.check_ceiling(_count, parsed_coms.warn, parsed_coms.crit))
                     else:
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                        ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             else:
                 out_f.append("no rings defined")
-                ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                ret_state = max(ret_state, limits.mon_STATE_WARNING)
         return ret_state, ", ".join(out_f)
 
 
@@ -128,7 +128,7 @@ class heartbeat_status_command(hm_classes.hm_command):
             r_dict = {"output": r_dict,
                       "host": ""}
         hb_dict = self._parse_lines(r_dict)
-        ret_state, out_f = (limits.nag_STATE_OK, [])
+        ret_state, out_f = (limits.mon_STATE_OK, [])
         out_f.append("stack is {} ({}), DC is {}".format(
             hb_dict["stack"],
             hb_dict["version"],
@@ -144,7 +144,7 @@ class heartbeat_status_command(hm_classes.hm_command):
                     )
                 )
                 if not online:
-                    ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                    ret_state = max(ret_state, limits.mon_STATE_WARNING)
         for res_name in sorted(hb_dict["resources"]):
             stuff = hb_dict["resources"][res_name]
             if "node" in stuff:

@@ -58,19 +58,19 @@ class lsmodinfo_command(hm_classes.hm_command):
             _required = set(cur_ns.required.split(","))
             _found = set([_part[0] for _part in modules])
             if _required & _found == _required:
-                return limits.nag_STATE_OK, "{} found: {}".format(
+                return limits.mon_STATE_OK, "{} found: {}".format(
                     logging_tools.get_plural("required module", len(_required)),
                     ", ".join(sorted(list(_required)))
                 )
             else:
                 _missing = _required - _found
-                return limits.nag_STATE_CRITICAL, "{} required, {} missing: {}".format(
+                return limits.mon_STATE_CRITICAL, "{} required, {} missing: {}".format(
                     logging_tools.get_plural("module", len(_required)),
                     logging_tools.get_plural("module", len(_missing)),
                     ", ".join(sorted(list(_missing)))
                 )
         else:
-            return limits.nag_STATE_OK, "loaded {}".format(logging_tools.get_plural("module", len(modules)))
+            return limits.mon_STATE_OK, "loaded {}".format(logging_tools.get_plural("module", len(modules)))
 
 
 class mountinfo_command(hm_classes.hm_command):
@@ -89,8 +89,8 @@ class mountinfo_command(hm_classes.hm_command):
         if len(_mount):
             _mount = _mount[0]
             if _mount[2] == cur_ns.filesys:
-                return limits.nag_STATE_OK, "mountpoint {} has filesystem {}".format(cur_ns.mountpoint, cur_ns.filesys)
+                return limits.mon_STATE_OK, "mountpoint {} has filesystem {}".format(cur_ns.mountpoint, cur_ns.filesys)
             else:
-                return limits.nag_STATE_CRITICAL, "mountpoint {} has wrong filesystem: {} != {}".format(cur_ns.mountpoint, _mount[2], cur_ns.filesys)
+                return limits.mon_STATE_CRITICAL, "mountpoint {} has wrong filesystem: {} != {}".format(cur_ns.mountpoint, _mount[2], cur_ns.filesys)
         else:
-            return limits.nag_STATE_CRITICAL, "mountpoint {} not found".format(cur_ns.mountpoint)
+            return limits.mon_STATE_CRITICAL, "mountpoint {} not found".format(cur_ns.mountpoint)

@@ -256,15 +256,15 @@ class postgresql_connection_info_command(hm_classes.hm_command):
             )
             _perc = _used * 100. / max(1, _max)
             if _perc > 85:
-                _state = limits.nag_STATE_CRITICAL
+                _state = limits.mon_STATE_CRITICAL
             elif _perc > 75:
-                _state = limits.nag_STATE_WARNING
+                _state = limits.mon_STATE_WARNING
             else:
-                _state = limits.nag_STATE_OK
+                _state = limits.mon_STATE_OK
             return _state, "connection info: {:d} of {:d} used ({:.2f} %)".format(
                 _used,
                 _max,
                 _perc,
             )
         else:
-            return limits.nag_STATE_CRITICAL, "no connection info found"
+            return limits.mon_STATE_CRITICAL, "no connection info found"

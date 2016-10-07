@@ -35,6 +35,7 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from rest_framework import viewsets, status
 from lxml.builder import E
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from rest_framework.generics import ListAPIView, RetrieveAPIView
@@ -42,7 +43,8 @@ from rest_framework.response import Response
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
-    parse_commandline, mon_check_command_special, device
+    parse_commandline, mon_check_command_special, device, mon_dist_master
+from initat.cluster.backbone.serializers import mon_dist_master_serializer
 from initat.cluster.backbone.models.functions import duration, cluster_timezone
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
@@ -55,6 +57,35 @@ from initat.md_config_server.icinga_log_reader.log_reader_utils import host_serv
 from initat.tools import server_command, logging_tools
 
 logger = logging.getLogger("cluster.monitoring")
+
+
+class SysInfoViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
+    def get_all(self, request):
+        srv_com = server_command.srv_command(command="get_sys_info")
+        result, _logs = contact_server(request, icswServiceEnum.monitor_server, srv_com)
+        if "sys_info" in result:
+            _raw_info = server_command.decompress(result["*sys_info"], json=True)
+            _sys_info = {
+                "master": [entry for entry in _raw_info if entry["master"]][0],
+                "slaves": [_entry for _entry in _raw_info if not _entry["master"]],
+            }
+        else:
+            _sys_info = {}
+        _sys_info["num_builds"] = mon_dist_master.objects.all().count()
+        # import pprint
+        # pprint.pprint(_sys_info)
+        return Response([_sys_info])
+
+
+class BuildInfoViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
+    def get_all(self, request):
+        _count = int(request.GET.get("count", 50))
+        _masters = mon_dist_master.objects.all().prefetch_related(
+            "mon_dist_slave_set"
+        ).order_by("-pk")[:_count]
+        return Response(mon_dist_master_serializer(_masters, many=True).data)
 
 
 class create_config(View):
@@ -163,6 +194,22 @@ class get_node_config(View):
                 request.xml_response.error("no config", logger=logger)
         else:
             request.xml_response.error("no config", logger=logger)
+
+
+class toggle_sys_flag(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _data = json.loads(request.POST["json"])
+        _new_state = not _data["current_state"]
+        # print _data, _new_state
+        # request.xml_response.info("set flag {} to {}".format(_data["name"], _new_state))
+        srv_com = server_command.srv_command(
+            command="mon_process_handling",
+            **{_data["name"]: _new_state}
+        )
+        # print srv_com.pretty_print()
+        contact_server(request, icswServiceEnum.monitor_server, srv_com, timeout=30)
 
 
 class get_node_status(View):

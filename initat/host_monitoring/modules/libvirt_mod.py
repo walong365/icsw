@@ -193,7 +193,7 @@ class libvirt_status_command(hm_classes.hm_command):
         return self._interpret(r_dict, parsed_coms)
 
     def _interpret(self, r_dict, cur_ns):
-        ret_state, out_f = (limits.nag_STATE_OK, [])
+        ret_state, out_f = (limits.mon_STATE_OK, [])
         if "info" in r_dict:
             out_f.append(
                 "type is {}, version is {:d}.{:d} on an {}".format(
@@ -204,7 +204,7 @@ class libvirt_status_command(hm_classes.hm_command):
                 )
             )
         else:
-            ret_state = limits.nag_STATE_CRITICAL
+            ret_state = limits.mon_STATE_CRITICAL
             out_f.append("libvirt is not running")
         return ret_state, ", ".join(out_f)
 
@@ -229,7 +229,7 @@ class domain_overview_command(hm_classes.hm_command):
         return self._interpret(r_dict, parsed_coms)
 
     def _interpret(self, dom_dict, cur_ns):
-        ret_state, out_f = (limits.nag_STATE_OK, [])
+        ret_state, out_f = (limits.mon_STATE_OK, [])
         if "running" in dom_dict and "defined" in dom_dict:
             pass
         else:
@@ -283,7 +283,7 @@ class domain_status_command(hm_classes.hm_command):
         return self._interpret(r_dict, parsed_coms)
 
     def _interpret(self, dom_dict, cur_ns):
-        ret_state, out_f = (limits.nag_STATE_OK, [])
+        ret_state, out_f = (limits.mon_STATE_OK, [])
         if cur_ns and cur_ns.arguments:
             if "desc" in dom_dict and dom_dict["desc"]:
                 xml_doc = etree.fromstring(dom_dict["desc"])  # @UndefinedVariable
@@ -299,12 +299,12 @@ class domain_status_command(hm_classes.hm_command):
                 )
             else:
                 if "cm" in dom_dict and dom_dict["cm"]:
-                    ret_state = limits.nag_STATE_CRITICAL
+                    ret_state = limits.mon_STATE_CRITICAL
                     out_f.append("domain '{}' not running".format(dom_dict["cm"]))
                 else:
-                    ret_state = limits.nag_STATE_WARNING
+                    ret_state = limits.mon_STATE_WARNING
                     out_f.append("no domain-info in result (domain {} not running)".format(", ".join(cur_ns.arguments)))
         else:
-            ret_state = limits.nag_STATE_WARNING
+            ret_state = limits.mon_STATE_WARNING
             out_f.append("no domain-name give")
         return ret_state, ", ".join(out_f)

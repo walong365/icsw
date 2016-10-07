@@ -108,7 +108,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
         if match_keys:
             for cur_key in sorted(match_keys):
                 ctrl_dict = ctrl_dict[cur_key]
-                ret_state = limits.nag_STATE_OK
+                ret_state = limits.mon_STATE_OK
                 ret_f = ["Info from {}".format(cur_key)]
                 for ctrl_info in ctrl_dict["ctrl_list"]:
                     ret_f.append(
@@ -118,7 +118,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
                         )
                     )
                     if ctrl_info["status"].lower() not in ["primary", "secondary"]:
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                        ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 for ctrl_key in [key for key in ctrl_dict.keys() if key.split("_")[1].isdigit()]:
                     cur_dict = ctrl_dict[ctrl_key]
                     # pprint.pprint(cur_dict)
@@ -131,10 +131,10 @@ class ctrl_type_ibmbcraid(ctrl_type):
                     if "BBU Charging" in cur_dict:
                         if cur_dict["BBU Charging"]:
                             ctrl_f.append("BBU Charging")
-                            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                            ret_state = max(ret_state, limits.mon_STATE_WARNING)
                     else:
                         ctrl_f.append("no BBU Charge info")
-                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                        ret_state = max(ret_state, limits.mon_STATE_WARNING)
                     if "BBU State" in cur_dict:
                         if cur_dict["BBU State"].split()[0] != "1" or cur_dict["BBU Fault Code"].split()[0] != "0":
                             ctrl_f.append(
@@ -143,12 +143,12 @@ class ctrl_type_ibmbcraid(ctrl_type):
                                     cur_dict["BBU Fault Code"]
                                 )
                             )
-                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                     else:
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                        ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                         ctrl_f.append("BBU State missing")
                     if cur_dict["Current Status"].lower() not in ["primary", "secondary"]:
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                        ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                     vol_info = [logging_tools.get_plural("volume", len(cur_dict["volumes"]))]
                     for cur_vol in cur_dict["volumes"]:
                         if cur_vol["status"] != "VBL INI":
@@ -183,7 +183,7 @@ class ctrl_type_ibmbcraid(ctrl_type):
                         ret_f.append(logging_tools.get_plural("spare", len(spares)))
                     else:
                         ret_f.append("No spares found")
-                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                        ret_state = max(ret_state, limits.mon_STATE_WARNING)
                     if problems:
                         ret_f.append(
                             "{} found: {}".format(
@@ -201,13 +201,13 @@ class ctrl_type_ibmbcraid(ctrl_type):
                                 )
                             )
                         )
-                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                        ret_state = max(ret_state, limits.mon_STATE_WARNING)
                 else:
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                     ret_f.append("missing drive info")
             return ret_state, "; ".join(ret_f)
         else:
-            return limits.nag_STATE_CRITICAL, "no controller found"
+            return limits.mon_STATE_CRITICAL, "no controller found"
 
 
 class ibmbcraid_status_command(hm_classes.hm_command):

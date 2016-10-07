@@ -145,7 +145,7 @@ class HostMonitoringMixin(object):
                 scan_dev.target_ip,
             )
         )
-        zmq_con = net_tools.zmq_connection(
+        zmq_con = net_tools.ZMQConnection(
             "server:{}".format(process_tools.get_machine_name()),
             context=self.zmq_context
         )
@@ -239,7 +239,7 @@ class HostMonitoringMixin(object):
                 "on" if strict_mode else "off",
             )
         )
-        zmq_con = net_tools.zmq_connection(
+        zmq_con = net_tools.ZMQConnection(
             "server:{}".format(process_tools.get_machine_name()),
             context=self.zmq_context
         )

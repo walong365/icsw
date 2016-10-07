@@ -135,7 +135,7 @@ class rest_logging(object):
             u"[{}{}] {}".format(
                 self.__name__,
                 u" {}".format(self.__obj_name) if self.__obj_name else "",
-                what
+                unicode(what)
             )
         )
 

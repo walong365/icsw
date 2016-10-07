@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -32,7 +32,6 @@ class base_config(object):
         self.__name = name
         self.__dict, self.__key_list = ({}, [])
         self.is_host_file = kwargs.get("is_host_file", False)
-        self.belongs_to_ndo = kwargs.get("belongs_to_ndo", False)
         self.headers = kwargs.get("headers", [])
         for key, value in kwargs.get("values", []):
             self[key] = value
@@ -79,5 +78,5 @@ class base_config(object):
             else:
                 value = [value]
             for act_v in value:
-                c_lines.append("%s=%s" % (key, act_v))
+                c_lines.append(u"{}={}".format(key, act_v))
         self.act_content = self.headers + c_lines

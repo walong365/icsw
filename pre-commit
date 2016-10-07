@@ -16,7 +16,7 @@ PYLINT_RETURN=$(($pylint_fatal | $pylint_error | $pylint_warning))
 PYLINT_RC=pylintrc-init
 PEP8="pep8"
 
-function check_command() {
+function CheckCommand() {
     if which $1 > /dev/null 2>&1 || [ -f $1 ]; then
         :
     else
@@ -62,9 +62,9 @@ fi
 
 FILES_TO_CHECK=$(git diff --staged --name-only --diff-filter="AM" | grep ".py$")
 
-check_command $PEP8
-check_command $UNITTEST
-check_command $PYLINT
+CheckCommand $PEP8
+CheckCommand $UNITTEST
+CheckCommand $PYLINT
 
 # Pop stash back
 #trap "git stash pop" 0 2 15 # SIG_EXIT, SIG_INT, SIG_TERM

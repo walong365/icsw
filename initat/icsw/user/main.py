@@ -9,7 +9,7 @@
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; version 2 of the License
+# the Free Software Foundation; Version 3 of the License
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -388,7 +388,7 @@ def do_chpasswd(cur_opts, log_com):
     srv_com["server_key:old_password"] = base64.b64encode(bz2.compress(get_pass("please enter current password:")))
     srv_com["server_key:new_password_1"] = base64.b64encode(bz2.compress(get_pass("please enter the new password:")))
     srv_com["server_key:new_password_2"] = base64.b64encode(bz2.compress(get_pass("please reenter the new password:")))
-    _conn = net_tools.zmq_connection(
+    _conn = net_tools.ZMQConnection(
         "pwd_change_request",
         timeout=cur_opts.timeout,
     )
@@ -398,7 +398,7 @@ def do_chpasswd(cur_opts, log_com):
     # _res_str, _res_state = ("ok", logging_tools.LOG_LEVEL_OK)
     print("change gave [{}]: {}".format(logging_tools.get_log_level_str(_res_state), _res_str))
     if _res_state == logging_tools.LOG_LEVEL_OK:
-        _conn = net_tools.zmq_connection(
+        _conn = net_tools.ZMQConnection(
             "ldap_update_request",
             timeout=cur_opts.timeout,
         )

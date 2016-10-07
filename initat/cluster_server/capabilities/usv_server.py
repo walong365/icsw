@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,13 +17,14 @@
 #
 """ cluster-server, USV handling """
 
-from initat.cluster_server.capabilities.base import bg_stuff
 import commands
-from initat.tools import logging_tools
+
+from initat.cluster_server.capabilities.base import BackgroundBase
 from initat.host_monitoring import hm_classes
+from initat.tools import logging_tools
 
 
-class usv_server_stuff(bg_stuff):
+class usv_server_stuff(BackgroundBase):
     class Meta:
         creates_machvector = True
         name = "usv_server"

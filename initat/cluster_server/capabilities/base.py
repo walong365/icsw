@@ -21,16 +21,16 @@ from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, mail_tools
 
 
-class bg_stuff(object):
+class BackgroundBase(object):
     class Meta:
         min_time_between_runs = 30
         creates_machvector = False
 
     def __init__(self, srv_process, sql_info):
         # copy Meta keys
-        for key in dir(bg_stuff.Meta):
+        for key in dir(BackgroundBase.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
-                setattr(self.Meta, key, getattr(bg_stuff.Meta, key))
+                setattr(self.Meta, key, getattr(BackgroundBase.Meta, key))
         # self.__name = name
         self.server_process = srv_process
         self.sql_info = sql_info

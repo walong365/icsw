@@ -289,30 +289,30 @@ class ipsec_status_command(hm_classes.hm_command):
                                 _con_dict[conn_name].feed_tunnel(tunnel_id, _parts)
             if not first_arg:
                 if _con_dict:
-                    ret_state, ret_list = (limits.nag_STATE_OK, [])
+                    ret_state, ret_list = (limits.mon_STATE_OK, [])
                     for con_name in sorted(_con_dict):
                         if _con_dict[con_name].tunnel_rekeying():
                             ret_list.append("{} is rekeying".format(con_name))
-                            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                            ret_state = max(ret_state, limits.mon_STATE_WARNING)
                         elif _con_dict[con_name].tunnel_installed():
                             ret_list.append("{} ok".format(con_name))
                         else:
                             ret_list.append("no installed tunnel for {}".format(con_name))
-                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                     return ret_state, ", ".join(ret_list)
                 else:
-                    return limits.nag_STATE_WARNING, "no connections defined"
+                    return limits.mon_STATE_WARNING, "no connections defined"
             else:
                 if first_arg in _con_dict:
                     _conn = _con_dict[first_arg]
                     if _conn.tunnel_rekeying():
-                        return limits.nag_STATE_WARNING, "connection {} is defined but tunnel is rekeying".format(_conn.name)
+                        return limits.mon_STATE_WARNING, "connection {} is defined but tunnel is rekeying".format(_conn.name)
                     elif _conn.tunnel_installed():
-                        return limits.nag_STATE_OK, "connection {} is defined and tunnel is installed".format(_conn.name)
+                        return limits.mon_STATE_OK, "connection {} is defined and tunnel is installed".format(_conn.name)
                     else:
-                        return limits.nag_STATE_CRITICAL, "connection {} is defined but no tunnel installed".format(_conn.name)
+                        return limits.mon_STATE_CRITICAL, "connection {} is defined but no tunnel installed".format(_conn.name)
                 else:
-                    return limits.nag_STATE_CRITICAL, "connection '{}' not found (defined: {})".format(
+                    return limits.mon_STATE_CRITICAL, "connection '{}' not found (defined: {})".format(
                         first_arg,
                         ", ".join(sorted(_con_dict)) or "none"
                     )
@@ -321,19 +321,19 @@ class ipsec_status_command(hm_classes.hm_command):
             if not first_arg:
                 # overview
                 if con_dict:
-                    ret_state, ret_list = (limits.nag_STATE_OK, [])
+                    ret_state, ret_list = (limits.mon_STATE_OK, [])
                     for con_name in sorted(con_dict):
                         if "erouted" in con_dict[con_name]["flags"]:
                             ret_list.append("{} ok".format(con_name))
                         else:
                             ret_list.append("{} is not erouted".format(con_name))
-                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                     return ret_state, ", ".join(ret_list)
                 else:
-                    return limits.nag_STATE_WARNING, "no connections defined"
+                    return limits.mon_STATE_WARNING, "no connections defined"
             elif first_arg in con_dict:
                 con_stuff = con_dict[first_arg]
-                ret_state, ret_list = (limits.nag_STATE_OK, [])
+                ret_state, ret_list = (limits.mon_STATE_OK, [])
                 if "erouted" in con_stuff["flags"]:
                     ret_list.append("is erouted")
                     for key in con_stuff["keys"]:
@@ -341,13 +341,13 @@ class ipsec_status_command(hm_classes.hm_command):
                             ret_list.append("{}: {}".format(key, "/".join(con_stuff["keys"][key])))
                 else:
                     ret_list.append("is not erouted")
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 return ret_state, "connection {}: {}".format(
                     first_arg,
                     ", ".join(ret_list)
                 )
             else:
-                return limits.nag_STATE_CRITICAL, "error connection '{}' not found (defined: {})".format(
+                return limits.mon_STATE_CRITICAL, "error connection '{}' not found (defined: {})".format(
                     first_arg,
                     ", ".join(sorted(con_dict)) or "none"
                 )

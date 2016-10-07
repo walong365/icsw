@@ -21,11 +21,11 @@
 
 
 __all__ = [
-    "content_emitter",
+    "ContentEmitter",
 ]
 
 
-class content_emitter(object):
+class ContentEmitter(object):
     def ignore_content(self, in_dict):
         return False
 

@@ -366,7 +366,7 @@ angular.module(
                                 fontFamily: "fontAwesome"
                                 className: "cursorpointer svg-filter-text"
                                 pointerEvents: "none"
-                                alignmentBaseline: "middle"
+                                # alignmentBaseline: "middle"  # bad for browser/ os compat
                                 textAnchor: "middle"
                             }
                             entry.data.iconCode
@@ -437,10 +437,7 @@ angular.module(
                 svg(
                     {
                         key: "top"
-                        #width: "#{_width}px"
-                        width: "100%"
-                        #height: "#{_height}px"
-                        height: "auto"
+                        width: "98%"  # browser crap
                         fontFamily: "'Open-Sans', sans-serif"
                         fontSize: "10pt"
                         viewBox: "5 11 210 121"
@@ -490,12 +487,12 @@ angular.module(
                                         text(
                                             {
                                                 key: "linktext"
-                                                x: -1
+                                                x: 0
                                                 y: 13
                                                 fontFamily: "fontAwesome"
-                                                className: "cursorpointer svg-txt-color"
+                                                className: "cursorpointer svg-box-content"
                                                 fontSize: "30px"
-                                                alignmentBaseline: "middle"
+                                                # alignmentBaseline: "middle"  # bad for browser/ os compat
                                                 textAnchor: "middle"
                                                 pointerEvents: "painted"
                                                 onClick: (event) =>
@@ -503,6 +500,13 @@ angular.module(
                                                     @setState({filter_state_str: _lf.get_filter_state_str()})
                                                     _filter_changed()
                                             }
+                                            title(
+                                                {
+                                                    key: "title.linktext"
+                                                }
+                                            if _lf.linked then "Unlink Devices and Services" else
+                                                "Link Services to Devices"
+                                            )
                                             if _lf.linked then "\uf023" else "\uf13e"
                                         )
                                     ]

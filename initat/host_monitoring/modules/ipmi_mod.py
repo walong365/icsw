@@ -238,14 +238,14 @@ class ipmi_sensor_command(hm_classes.hm_command):
             if cur_ns.arguments:
                 el = s_list[0]
                 cur_value = float(el.attrib["value"])
-                ret_state = limits.nag_STATE_OK
+                ret_state = limits.mon_STATE_OK
                 for t_name, log, t_state in [
-                    ("lowern", False, limits.nag_STATE_CRITICAL),
-                    ("lowerc", False, limits.nag_STATE_CRITICAL),
-                    ("lowerw", False, limits.nag_STATE_WARNING),
-                    ("upperw", True, limits.nag_STATE_WARNING),
-                    ("upperc", True, limits.nag_STATE_CRITICAL),
-                    ("uppern", True, limits.nag_STATE_CRITICAL),
+                    ("lowern", False, limits.mon_STATE_CRITICAL),
+                    ("lowerc", False, limits.mon_STATE_CRITICAL),
+                    ("lowerw", False, limits.mon_STATE_WARNING),
+                    ("upperw", True, limits.mon_STATE_WARNING),
+                    ("upperc", True, limits.mon_STATE_CRITICAL),
+                    ("uppern", True, limits.mon_STATE_CRITICAL),
                 ]:
                     if l_dict[t_name] is not None:
                         if (log and cur_value >= l_dict[t_name]) or (not log and cur_value <= l_dict[t_name]):
@@ -273,9 +273,9 @@ class ipmi_sensor_command(hm_classes.hm_command):
                         x_key = "limit_{}".format(l_key)
                         v_list.append(logging_tools.form_entry(el.attrib.get(x_key, "-"), header=x_key))
                     out_list.append(v_list)
-                return limits.nag_STATE_OK, "found {}:\n{}".format(
+                return limits.mon_STATE_OK, "found {}:\n{}".format(
                     logging_tools.get_plural("IPMI sensor", len(keys)),
                     unicode(out_list)
                 )
         else:
-            return limits.nag_STATE_WARNING, "no IPMI sensors found"
+            return limits.mon_STATE_WARNING, "no IPMI sensors found"

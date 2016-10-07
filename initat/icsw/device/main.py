@@ -153,7 +153,7 @@ def device_syslog(opt_ns, cur_dev, j_logs):
             ]
         )
         _conn_str = "tcp://{}:{:d}".format(_ls_ip, _ls_port)
-        _result = net_tools.zmq_connection(
+        _result = net_tools.ZMQConnection(
             "icsw_state_{:d}".format(os.getpid())
         ).add_connection(
             _conn_str,

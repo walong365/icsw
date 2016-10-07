@@ -249,7 +249,7 @@ class SyslogCheckCommand(MonCommand):
             if not _log:
                 res.error("no logs found (max_minutes={:d})".format(max_minutes))
                 _res_list = [
-                    ("syslog check {}".format(_check.name), limits.nag_STATE_CRITICAL, "no logs found") for _check in checks
+                    ("syslog check {}".format(_check.name), limits.mon_STATE_CRITICAL, "no logs found") for _check in checks
                 ]
             else:
                 res.ok("lines to scan: {:d}, checks: {:d}, minutes: {:d}".format(len(_log), len(checks), max_minutes))
@@ -284,7 +284,7 @@ class SyslogCheckCommand(MonCommand):
                         _res_list.append(
                             (
                                 "slc {}".format(_check.name),
-                                limits.nag_STATE_WARNING,
+                                limits.mon_STATE_WARNING,
                                 "no expressions defined",
                             )
                         )
@@ -315,7 +315,7 @@ class SyslogCheckExpression(object):
             self.regexp = re.compile(".*")
         self.found = 0
         self.checked = 0
-        self.ret_state = limits.nag_STATE_OK
+        self.ret_state = limits.mon_STATE_OK
 
     def __repr__(self):
         return "format {}, level {}, found {:d}".format(
@@ -330,9 +330,9 @@ class SyslogCheckExpression(object):
             if self.regexp.search(line.text):
                 self.found += 1
                 if self.level == "warn":
-                    self.ret_state = max(self.ret_state, limits.nag_STATE_WARNING)
+                    self.ret_state = max(self.ret_state, limits.mon_STATE_WARNING)
                 elif self.level == "crit":
-                    self.ret_state = max(self.ret_state, limits.nag_STATE_CRITICAL)
+                    self.ret_state = max(self.ret_state, limits.mon_STATE_CRITICAL)
 
     @property
     def match_str(self):

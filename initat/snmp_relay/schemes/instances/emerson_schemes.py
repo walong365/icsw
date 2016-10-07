@@ -32,7 +32,7 @@ class current_pdu_emerson_scheme(SNMPRelayScheme):
     def process_return(self):
         new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
 
-        cur_state = limits.nag_STATE_OK
+        cur_state = limits.mon_STATE_OK
 
         info_dict = {
             1: "L1",
@@ -58,7 +58,7 @@ class currentLLG_pdu_emerson_scheme(SNMPRelayScheme):
     def process_return(self):
         new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
 
-        cur_state = limits.nag_STATE_OK
+        cur_state = limits.mon_STATE_OK
 
         info_dict = {
             1: "L1-L2",
@@ -87,7 +87,7 @@ class voltageLL_pdu_emerson_scheme(SNMPRelayScheme):
     def process_return(self):
         new_dict = self._simplify_keys(dict([(key[0], int(value)) for key, value in self.snmp_dict.values()[0].iteritems()]))
 
-        cur_state = limits.nag_STATE_OK
+        cur_state = limits.mon_STATE_OK
 
         info_dict = {
             1: "L1-L2",

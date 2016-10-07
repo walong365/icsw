@@ -733,7 +733,7 @@ class MetaService(Service):
         if self.name in ["meta-server"]:
             from initat.tools import net_tools, server_command
             self.log("sending signal-restart")
-            _result = net_tools.zmq_connection(
+            _result = net_tools.ZMQConnection(
                 "icsw_restart_{:d}".format(os.getpid())
             ).add_connection(
                 "tcp://localhost:8012",

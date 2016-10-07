@@ -23,13 +23,13 @@
     /*paint-order: stroke;*/
     font-size: 12px;
     fill: #ffffff;
+    pointer-events: none;
     /*stroke: #000000;*/
     /*stroke-width: 1px;*/
-    /*pointer-events: none;*/
 }
 .svg-filter-head-text {
     text-anchor: middle;
-    alignment-baseline: middle;
+    /*alignment-baseline: middle;*/
     paint-order: stroke;
     font-size: 15px;
     fill: #777777;
@@ -38,9 +38,12 @@
     pointer-events: none;
 }
 .svg-box {
-    fill: #ffffff;
+    fill: #f5f5f5;
     stroke: #ffffff;
     stroke-width: 1px;
+}
+.svg-box-content {
+    fill: #777777;
 }
 .svg-outline { stroke-width: 0.5px; stroke: #dddddd; }
 

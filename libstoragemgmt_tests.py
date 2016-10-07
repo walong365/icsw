@@ -40,7 +40,7 @@ class LibstoragemgmtCommandTest(NoDBTestCase):
     def test_good(self):
         result = self.command.interpret(self.srv_com_good)
         expected = (
-            limits.nag_STATE_OK,
+            limits.mon_STATE_OK,
             "systems: (good=1 bad=0), pools: (good=2 bad=0), disks: "
             "(good=6 bad=0)"
         )
@@ -49,7 +49,7 @@ class LibstoragemgmtCommandTest(NoDBTestCase):
     def test_bad(self):
         result = self.command.interpret(self.srv_com_bad)
         expected = (
-            limits.nag_STATE_CRITICAL,
+            limits.mon_STATE_CRITICAL,
             "systems: (good=0 bad=1), pools: (good=1 bad=1), disks: "
             "(good=5 bad=1)"
         )

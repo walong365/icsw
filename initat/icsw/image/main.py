@@ -30,7 +30,7 @@ from initat.tools import logging_tools, server_command, net_tools
 
 def query_local_server(inst, cmd):
     _port = inst.get_port_dict("server", ptype="command")
-    _result = net_tools.zmq_connection(
+    _result = net_tools.ZMQConnection(
         "icsw_image_{:d}".format(os.getpid())
     ).add_connection(
         "tcp://localhost:{:d}".format(_port),

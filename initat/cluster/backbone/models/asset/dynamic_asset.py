@@ -542,6 +542,7 @@ class AssetRun(models.Model):
             )
         )
         self.run_status = new_state
+        self.save()
 
     def has_data(self):
         return RunResult(self.run_result) == RunResult.SUCCESS
@@ -1080,6 +1081,7 @@ class AssetBatch(models.Model):
             )
         )
         self.run_status = new_state
+        self.save()
 
     def run_done(self):
         if all(r.run_status == RunStatus.FINISHED

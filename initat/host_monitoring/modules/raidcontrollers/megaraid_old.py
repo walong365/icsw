@@ -55,7 +55,7 @@ class ctrl_type_megaraid(ctrl_type):
 
     def _interpret(self, ctrl_dict, cur_ns):
         num_c, num_d, num_e = (len(ctrl_dict.keys()), 0, 0)
-        ret_state, ret_str = (limits.nag_STATE_OK, "OK")
+        ret_state, ret_str = (limits.mon_STATE_OK, "OK")
         drive_stats = []
         for ctrl_num, ctrl_stuff in ctrl_dict.iteritems():
             for log_num, log_stuff in ctrl_stuff.get("logical_lines", {}).iteritems():
@@ -69,7 +69,7 @@ class ctrl_type_megaraid(ctrl_type):
                                                                     ctrl_num,
                                                                     status))
         if num_e:
-            ret_state, ret_str = (limits.nag_STATE_CRITICAL, "Error")
+            ret_state, ret_str = (limits.mon_STATE_CRITICAL, "Error")
         return ret_state, "%s: %s on %s, %s" % (ret_str,
                                                 logging_tools.get_plural("logical drive", num_d),
                                                 logging_tools.get_plural("controller", num_c),

@@ -267,10 +267,10 @@ class SNMPRelayScheme(object):
         self.__errors.append(what)
 
     def process_return(self):
-        return limits.nag_STATE_CRITICAL, "process_return() not implemented for {}".format(self.name)
+        return limits.mon_STATE_CRITICAL, "process_return() not implemented for {}".format(self.name)
 
     def _send_cache_warn(self):
-        act_state = limits.nag_STATE_WARNING
+        act_state = limits.mon_STATE_WARNING
         self.send_return(act_state, "warning cache warming up")
 
     def _send_ok_return(self):
@@ -278,7 +278,7 @@ class SNMPRelayScheme(object):
             act_state, act_str = self.process_return()
         except:
             act_state, act_str = (
-                limits.nag_STATE_CRITICAL,
+                limits.mon_STATE_CRITICAL,
                 "error in process_return() for {}: {}".format(
                     self.name,
                     process_tools.get_except_info()
@@ -296,7 +296,7 @@ class SNMPRelayScheme(object):
             ", ".join(self.__errors) or "unspecified error",
             ", ".join([".".join(["{:d}".format(part) for part in oid]) for oid in self.__missing_headers]) or "none",
         )
-        self.send_return(limits.nag_STATE_CRITICAL, err_str, True)
+        self.send_return(limits.mon_STATE_CRITICAL, err_str, True)
 
     def send_return(self, ret_state, ret_str, log_it=False):
         self.return_sent = True

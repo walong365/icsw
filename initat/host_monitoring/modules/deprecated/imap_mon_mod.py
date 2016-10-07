@@ -221,7 +221,7 @@ class imap_queue_command(hm_classes.hmb_command):
     def client_call(self, result, parsed_coms):
         lim = parsed_coms[0]
         result = hm_classes.net_to_sys(result[3:])
-        return limits.nag_STATE_OK, "OK: %s: %s" % (logging_tools.get_plural("queue", len(result)),
+        return limits.mon_STATE_OK, "OK: %s: %s" % (logging_tools.get_plural("queue", len(result)),
                                                     ", ".join(["%s: %s" % (q_name, result[q_name]) for q_name in sorted(result.keys())]))
 
 
@@ -235,7 +235,7 @@ class imap_users_command(hm_classes.hmb_command):
 
     def client_call(self, result, parsed_coms):
         u_list = hm_classes.net_to_sys(result[3:])
-        return limits.nag_STATE_OK, "OK: %s" % (logging_tools.get_plural("user", len(u_list)))
+        return limits.mon_STATE_OK, "OK: %s" % (logging_tools.get_plural("user", len(u_list)))
 
 
 class imap_userlist_command(hm_classes.hmb_command):
@@ -248,7 +248,7 @@ class imap_userlist_command(hm_classes.hmb_command):
 
     def client_call(self, result, parsed_coms):
         u_list = sorted(hm_classes.net_to_sys(result[3:]))
-        return limits.nag_STATE_OK, "OK: %s\n%s" % (logging_tools.get_plural("user", len(u_list)),
+        return limits.mon_STATE_OK, "OK: %s\n%s" % (logging_tools.get_plural("user", len(u_list)),
                                                     "\n".join(u_list))
 
 
@@ -262,7 +262,7 @@ class imap_userinfo_command(hm_classes.hmb_command):
 
     def client_call(self, result, parsed_coms):
         u_dict = hm_classes.net_to_sys(result[3:])
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         used = u_dict["total_size"]
         if "max_size" in u_dict:
             max_size = u_dict["max_size"]
@@ -270,10 +270,10 @@ class imap_userinfo_command(hm_classes.hmb_command):
             quota_perc = "%.2f %%" % (perc_used)
             quota_info = "%s of %s" % (quota_perc, logging_tools.get_size_str(max_size, long_version=True).strip())
             if perc_used > 100:
-                ret_state = limits.nag_STATE_CRITICAL
+                ret_state = limits.mon_STATE_CRITICAL
                 used_info = "over quota (%s)" % (quota_info)
             elif perc_used > 80:
-                ret_state = limits.nag_STATE_WARNING
+                ret_state = limits.mon_STATE_WARNING
                 used_info = "reaching quota (%s)" % (quota_info)
             else:
                 used_info = "quota ok (%s)" % (quota_info)
@@ -281,7 +281,7 @@ class imap_userinfo_command(hm_classes.hmb_command):
             used_info = "no quota info"
         account_stat = u_dict.get("mail_account", "unknown")
         if account_stat.lower() != "unlocked":
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
         return ret_state, "%s %s (%s), used size is %s, %s" % (
             limits.get_state_str(ret_state),
             (u_dict.get("user_name", "name not set").split("/")[0]).strip(),
@@ -302,12 +302,12 @@ class imap_serviceinfo_command(hm_classes.hmb_command):
     def client_call(self, result, parsed_coms):
         s_dict = hm_classes.net_to_sys(result[3:])
         if s_dict:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
             if s_dict["act_state"].lower() not in ["enabled", "started"]:
-                ret_state = limits.nag_STATE_CRITICAL
+                ret_state = limits.mon_STATE_CRITICAL
             ret_str = "%s: %s %s" % (limits.get_state_str(ret_state),
                                      s_dict["name"],
                                      s_dict["act_state"])
         else:
-            ret_state, ret_str = limits.nag_STATE_CRITICAL, "Error no info found"
+            ret_state, ret_str = limits.mon_STATE_CRITICAL, "Error no info found"
         return ret_state, ret_str

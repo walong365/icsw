@@ -238,7 +238,7 @@ class sensor_command(hm_classes.hmb_command):
         if re.match("^.*emp.*$", result["sensor"]):
             what = "C"
             if val_i == -1:
-                ret_state = limits.nag_STATE_WARNING
+                ret_state = limits.mon_STATE_WARNING
                 state = "Can't read"
             else:
                 ret_state, state = lim.check_ceiling(val)
@@ -246,7 +246,7 @@ class sensor_command(hm_classes.hmb_command):
             what = "RPM"
             ret_state, state = lim.check_floor(val)
             if (val_i == -1) or (val_i == 0):
-                ret_state = limits.nag_STATE_WARNING
+                ret_state = limits.mon_STATE_WARNING
                 state = "Can't read"
             else:
                 ret_state, state = lim.check_floor(val)

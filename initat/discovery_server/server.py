@@ -159,7 +159,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         _from_name, _from_pid, run_idx, conn_str, srv_com = args
         srv_com = server_command.srv_command(source=srv_com)
         srv_com["discovery_run_idx"] = "{:d}".format(run_idx)
-        _new_con = net_tools.zmq_connection(
+        _new_con = net_tools.ZMQConnection(
             "ext_con_discovery_{:d}".format(run_idx),
             context=self.zmq_context,
             poller_base=self,

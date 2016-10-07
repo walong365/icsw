@@ -1003,14 +1003,14 @@ class ping_command(hm_classes.hm_command):
             ping_res_list = srv_com["result:ping_results"]
         else:
             ping_res_list = [srv_com["result:ping_result"]]
-        ret_state, ret_f = (limits.nag_STATE_OK, [])
+        ret_state, ret_f = (limits.mon_STATE_OK, [])
         multi_ping = len(ping_res_list) > 1
         if multi_ping:
             ret_f.append(logging_tools.get_plural("target", len(ping_res_list)))
         for ping_res in ping_res_list:
             target = ping_res.attrib["target"]
             if ping_res.text:
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 ret_f.append("{}: {}".format(target, ping_res.text))
             else:
                 time_f = map(float, srv_com.xpath("ns:times/ns:time/text()", start_el=ping_res, smart_strings=False))
@@ -1032,14 +1032,14 @@ class ping_command(hm_classes.hm_command):
                 if mean_time is not None:
                     rta_ms = mean_time * 1000
                     if num_loss >= c_loss or rta_ms > c_rta:
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                        ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                     elif num_loss >= w_loss or rta_ms > w_rta:
-                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                        ret_state = max(ret_state, limits.mon_STATE_WARNING)
                 else:
                     if num_loss >= c_loss:
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                        ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                     elif num_loss >= w_loss:
-                        ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                        ret_state = max(ret_state, limits.mon_STATE_WARNING)
                 if num_received == 0:
                     ret_f.append(
                         "{}: no reply ({} sent) | rta=0.0 min=0.0 max=0.0 sent={:d} loss={:d}".format(
@@ -1210,7 +1210,7 @@ class net_command(hm_classes.hm_command):
         )
         if not connected:
             add_errors.append("No cable connected?")
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
         else:
             if not any([dev_name.startswith(prefix) for prefix in ETHTOOL_DEVICES]):
                 # not a ethtool-capable device
@@ -1251,10 +1251,10 @@ class net_command(hm_classes.hm_command):
                                 ret_state = self._check_duplex(slave_name, cur_ns, slave_dict["duplex"], add_oks, add_errors, ret_state)
                         else:
                             add_errors.append("no slaves found")
-                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                     else:
                         add_errors.append("no bonding info found")
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                        ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 elif dev_name.startswith("ib"):
                     if cur_ns.speed:
                         # get speed from ibv_dict
@@ -1267,7 +1267,7 @@ class net_command(hm_classes.hm_command):
                             ret_state = self._compare_speed("", add_oks, add_errors, ret_state, target_speed, ib_speed)
                         else:
                             add_errors.append("no speed info found")
-                            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                         # pprint.pprint(ibv_dict)
                         # print ethtool_dict, dev_name, cur_ns
             else:
@@ -1282,7 +1282,7 @@ class net_command(hm_classes.hm_command):
                 add_oks.append("IB state: {}".format(cur_state))
             else:
                 add_errors.append("IB state: {}".format(cur_state))
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
         return ret_state, "{}, {} rx; {} tx{}{} | rx={:d} tx={:d}".format(
             dev_name,
             self.beautify_speed(value_dict["rx"]),
@@ -1301,9 +1301,9 @@ class net_command(hm_classes.hm_command):
                 ret_state = self._compare_speed(str_prefix, add_oks, add_errors, ret_state, target_speed, dev_str)
             else:
                 add_errors.append("{}Cannot check target_speed: no ethtool information".format(str_prefix))
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
         else:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         return ret_state
 
     def _compare_speed(self, str_prefix, add_oks, add_errors, ret_state, target_speed, dev_speed):
@@ -1317,7 +1317,7 @@ class net_command(hm_classes.hm_command):
                     self.beautify_speed(dev_speed)
                 )
             )
-            ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+            ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
         return ret_state
 
     def _check_duplex(self, dev_name, cur_ns, duplex_str, add_oks, add_errors, ret_state):
@@ -1336,14 +1336,14 @@ class net_command(hm_classes.hm_command):
                             ethtool_duplex
                         )
                     )
-                    ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                    ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             else:
                 add_errors.append(
                     "{}Cannot check duplex mode: not present in ethtool information".format(str_prefix)
                 )
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
         else:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
         return ret_state
 
     def interpret_old(self, result, parsed_coms):
@@ -1463,7 +1463,7 @@ class net_command(hm_classes.hm_command):
                         try:
                             targ_speed_bit = parse_speed_bit(parsed_coms.speed)
                         except ValueError:
-                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '{}' for net: {}".format(
+                            return limits.mon_STATE_CRITICAL, "Error parsing target_speed '{}' for net: {}".format(
                                 parsed_coms.speed,
                                 process_tools.get_except_info())
                         else:
@@ -1479,14 +1479,14 @@ class net_command(hm_classes.hm_command):
                                     )
                             else:
                                 add_errors.append("no rate entry found")
-                                ret_state = limits.nag_STATE_CRITICAL
+                                ret_state = limits.mon_STATE_CRITICAL
                     else:
                         add_errors.append("Link has wrong state ({})".format(ethtool_stuff["state"]))
-                        ret_state = limits.nag_STATE_CRITICAL
+                        ret_state = limits.mon_STATE_CRITICAL
                 else:
                     # no state, cannot check if up or down
                     add_errors.append("Cannot check target_speed: no state information")
-                    ret_state = limits.nag_STATE_CRITICAL
+                    ret_state = limits.mon_STATE_CRITICAL
                     connected = False
             else:
                 if connected:
@@ -1494,7 +1494,7 @@ class net_command(hm_classes.hm_command):
                         try:
                             targ_speed_bit = parse_speed_bit(parsed_coms.speed)
                         except ValueError:
-                            return limits.nag_STATE_CRITICAL, "Error parsing target_speed '{}' for net: {}".format(
+                            return limits.mon_STATE_CRITICAL, "Error parsing target_speed '{}' for net: {}".format(
                                 parsed_coms.speed,
                                 process_tools.get_except_info())
                         else:
@@ -1510,17 +1510,17 @@ class net_command(hm_classes.hm_command):
                                             ethtool_stuff["speed"]
                                         )
                                     )
-                                ret_state = limits.nag_STATE_CRITICAL
+                                ret_state = limits.mon_STATE_CRITICAL
                     else:
                         add_errors.append("Cannot check target_speed: no ethtool information")
-                        ret_state = limits.nag_STATE_CRITICAL
+                        ret_state = limits.mon_STATE_CRITICAL
         if parsed_coms.duplex and not device.startswith("ib"):
             if connected:
                 if "duplex" in ethtool_stuff:
                     try:
                         targ_duplex = parse_duplex_str(parsed_coms.duplex)
                     except ValueError:
-                        return limits.nag_STATE_CRITICAL, "Error parsing target_duplex '{}' for net: {}".format(
+                        return limits.mon_STATE_CRITICAL, "Error parsing target_duplex '{}' for net: {}".format(
                             parsed_coms.duplex,
                             process_tools.get_except_info()
                         )
@@ -1533,13 +1533,13 @@ class net_command(hm_classes.hm_command):
                                     connected = False
                                 else:
                                     add_errors.append("duplex_mode differ: {} != {}".format(parsed_coms.duplex, ethtool_stuff["duplex"]))
-                                ret_state = limits.nag_STATE_CRITICAL
+                                ret_state = limits.mon_STATE_CRITICAL
                 else:
                     add_errors.append("Cannot check duplex mode: no ethtool information")
-                    ret_state = limits.nag_STATE_CRITICAL
+                    ret_state = limits.mon_STATE_CRITICAL
         if not connected:
             add_errors.append("No cable connected?")
-            ret_state = max(ret_state, limits.nag_STATE_WARNING)
+            ret_state = max(ret_state, limits.mon_STATE_WARNING)
         report_device = result.get("report_device", device)
         return ret_state, "{}, {} rx; {} tx{}{}{}".format(
             device,
@@ -1573,7 +1573,7 @@ class bridge_info_command(hm_classes.hm_command):
                     ", ".join(sorted(br_stuff["interfaces"]))
                 )
             )
-        return limits.nag_STATE_OK, "{}".format("\n".join(out_f))
+        return limits.mon_STATE_OK, "{}".format("\n".join(out_f))
 
 
 class network_info_command(hm_classes.hm_command):
@@ -1641,7 +1641,7 @@ class network_info_command(hm_classes.hm_command):
                 )
             for net in net_stuff["inet"]:
                 out_list.append([logging_tools.form_entry("  - inet {}".format(net))])
-        return limits.nag_STATE_OK, "found {}:\n{}".format(
+        return limits.mon_STATE_OK, "found {}:\n{}".format(
             logging_tools.get_plural("network device", len(net_names)),
             str(out_list)
         )
@@ -1666,18 +1666,18 @@ class iptables_info_command(hm_classes.hm_command):
         res_dict = srv_com["rules_stat"]
         detail_level, required_chain = (res_dict.pop("detail_level"), res_dict.pop("required_chain"))
         if not res_dict:
-            return limits.nag_STATE_CRITICAL, "No chains found according to filter ({}, {.d})".format(
+            return limits.mon_STATE_CRITICAL, "No chains found according to filter ({}, {.d})".format(
                 required_chain,
                 int(detail_level)
             )
         else:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
             all_chains = sum([c_dict.keys() for c_dict in res_dict.itervalues()], [])
             num_lines = sum([sum([c_dict["lines"] for _c_key, c_dict in t_dict.iteritems()], 0) for _t_key, t_dict in res_dict.iteritems()], 0)
             if cur_ns.crit is not None and num_lines < cur_ns.crit:
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             elif cur_ns.warn is not None and num_lines < cur_ns.warn:
-                ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                ret_state = max(ret_state, limits.mon_STATE_WARNING)
             return ret_state, "{}{} ({}, {:d}): {}".format(
                 logging_tools.get_plural("chain", len(all_chains)),
                 " ({})".format(all_chains[0]) if len(all_chains) == 1 else "",
@@ -1735,14 +1735,14 @@ class ntp_status_command(hm_classes.hm_command):
                     peer_name = _line[1:].split()[0]
                     _peers[peer_name] = _line[0]
                     _peer_types.setdefault(_line[0], []).append(peer_name)
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
             if "*" in _peer_types:
                 primary_peer = _peer_types["*"][0]
                 if primary_peer == "LOCAL(0)":
-                    ret_state = max(ret_state, limits.nag_STATE_WARNING)
+                    ret_state = max(ret_state, limits.mon_STATE_WARNING)
             else:
                 primary_peer = None
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             if "+" in _peer_types:
                 good_peers = set(_peer_types["+"])
             else:
@@ -1761,4 +1761,4 @@ class ntp_status_command(hm_classes.hm_command):
                 )
             )
         else:
-            return limits.nag_STATE_CRITICAL, _lines[0]
+            return limits.mon_STATE_CRITICAL, _lines[0]

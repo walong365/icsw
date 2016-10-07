@@ -54,7 +54,7 @@ class cups_status_command(hm_classes.hm_command):
             multi_printer = False
             print_dict = {print_dict[0]: print_dict[1]}
         print_res_dict = {}
-        ret_state = limits.nag_STATE_OK
+        ret_state = limits.mon_STATE_OK
         for p_name, p_stuff in print_dict.iteritems():
             since_idx = p_stuff.index("since")
             pre_time, post_time = (p_stuff[0: since_idx], p_stuff[since_idx + 6:])
@@ -63,7 +63,7 @@ class cups_status_command(hm_classes.hm_command):
             pre_time = pre_time.strip().replace("  ", " ").replace("  ", " ").replace(".", ",")
             post_time = post_time.strip().replace("  ", " ").replace("  ", " ")
             if not [True for pf in ["idle, enabled", "now printing"] if pre_time.lower().startswith(pf)]:
-                ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
             print_res_dict[p_name] = "{} (since {})".format(pre_time, post_time)
         return ret_state, ", ".join(
             [

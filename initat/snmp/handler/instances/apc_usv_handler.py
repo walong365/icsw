@@ -216,7 +216,7 @@ class usv_mon_all(usv_mon_base):
                     _metric.unit,
                 )
             )
-        return limits.nag_STATE_OK, ", ".join(ret_f)
+        return limits.mon_STATE_OK, ", ".join(ret_f)
 
 
 class usv_mon_detail(usv_mon_base):
@@ -251,7 +251,7 @@ class usv_mon_detail(usv_mon_base):
         _type = scheme.opts.type
         _metric = [_m for _m in USV_METRICS if _m.short == _type][0]
         _value = _val_dict[_metric.key]
-        return limits.nag_STATE_OK, "{} is {} {}".format(
+        return limits.mon_STATE_OK, "{} is {} {}".format(
             _metric.info,
             _value,
             _metric.unit,

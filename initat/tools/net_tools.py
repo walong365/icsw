@@ -30,8 +30,15 @@ import zmq
 
 from initat.tools import process_tools, server_command, logging_tools
 
+__all__ = [
+    "ZMQConnection",
+    "zmq_connection",
+    "SendCommand",
+    "SendCommandDefaults",
+]
 
-class zmq_connection(object):
+
+class ZMQConnection(object):
     def __init__(self, identity_str, **kwargs):
         self.__ext_context = "context" in kwargs
         if self.__ext_context:
@@ -437,3 +444,6 @@ class SendCommand(object):
                 print("no result node found in reply")
                 self.ret_state = 2
         return srv_reply
+
+# old compat layer for proepilogue.py
+zmq_connection = ZMQConnection

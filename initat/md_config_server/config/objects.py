@@ -24,8 +24,8 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, device_group, mon_check_command, mon_period, \
     mon_contact, mon_contactgroup, category_tree, TOP_MONITORING_CATEGORY, mon_notification, \
     host_check_command, mon_check_command_special
-from initat.md_config_server.config.check_command import check_command
-from initat.md_config_server.config.host_type_config import host_type_config
+from initat.md_config_server.config.check_command import CheckCommand
+from initat.md_config_server.config.host_type_config import monHostTypeConfig
 from initat.md_config_server.config.mon_config import mon_config, unique_list, build_safe_name
 from initat.tools import cluster_location, configfile, logging_tools, process_tools
 
@@ -45,9 +45,9 @@ __all__ = [
 ]
 
 
-class all_host_dependencies(host_type_config):
+class all_host_dependencies(monHostTypeConfig):
     def __init__(self, gen_conf, build_proc):
-        host_type_config.__init__(self, build_proc)
+        monHostTypeConfig.__init__(self, build_proc)
         self.__obj_list = []
 
     def get_name(self):
@@ -60,9 +60,9 @@ class all_host_dependencies(host_type_config):
         return self.__obj_list
 
 
-class time_periods(host_type_config):
+class time_periods(monHostTypeConfig):
     def __init__(self, gen_conf, build_proc):
-        host_type_config.__init__(self, build_proc)
+        monHostTypeConfig.__init__(self, build_proc)
         self.__obj_list, self.__dict = ([], {})
         self._add_time_periods_from_db()
 
@@ -95,9 +95,9 @@ class time_periods(host_type_config):
         return self.__dict.values()
 
 
-class all_service_groups(host_type_config):
+class all_service_groups(monHostTypeConfig):
     def __init__(self, gen_conf, build_proc):
-        host_type_config.__init__(self, build_proc)
+        monHostTypeConfig.__init__(self, build_proc)
         self.__obj_list, self.__dict = ([], {})
         # dict : which host has which service_group defined
         self.__host_srv_lut = {}
@@ -135,10 +135,10 @@ class all_service_groups(host_type_config):
         return self.__dict.values()
 
 
-class all_commands(host_type_config):
+class all_commands(monHostTypeConfig):
     def __init__(self, gen_conf, build_proc):
-        check_command.gen_conf = gen_conf
-        host_type_config.__init__(self, build_proc)
+        CheckCommand.gen_conf = gen_conf
+        monHostTypeConfig.__init__(self, build_proc)
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
@@ -318,7 +318,7 @@ class all_commands(host_type_config):
                 com_line = mccs_dict[ngc.mon_check_command_special_id].command_line
             else:
                 com_line = ngc.command_line
-            cc_s = check_command(
+            cc_s = CheckCommand(
                 ngc_name,
                 com_line,
                 ngc.config.name if ngc.config_id else None,
@@ -362,9 +362,9 @@ class all_commands(host_type_config):
         return self.__dict.keys()
 
 
-class all_contacts(host_type_config):
+class all_contacts(monHostTypeConfig):
     def __init__(self, gen_conf, build_proc):
-        host_type_config.__init__(self, build_proc)
+        monHostTypeConfig.__init__(self, build_proc)
         self.__obj_list, self.__dict = ([], {})
         self._add_contacts_from_db(gen_conf)
 
@@ -445,9 +445,9 @@ class all_contacts(host_type_config):
         return self.__dict.values()
 
 
-class all_contact_groups(host_type_config):
+class all_contact_groups(monHostTypeConfig):
     def __init__(self, gen_conf, build_proc):
-        host_type_config.__init__(self, build_proc)
+        monHostTypeConfig.__init__(self, build_proc)
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
@@ -497,9 +497,9 @@ class all_contact_groups(host_type_config):
         return self.__dict.values()
 
 
-class all_host_groups(host_type_config):
+class all_host_groups(monHostTypeConfig):
     def __init__(self, gen_conf, build_proc):
-        host_type_config.__init__(self, build_proc)
+        monHostTypeConfig.__init__(self, build_proc)
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
@@ -557,10 +557,10 @@ class all_host_groups(host_type_config):
         return self.__dict.values()
 
 
-class all_hosts(host_type_config):
+class all_hosts(monHostTypeConfig):
     """ only a dummy, now via device.d """
     def __init__(self, gen_conf, build_proc):
-        host_type_config.__init__(self, build_proc)
+        monHostTypeConfig.__init__(self, build_proc)
 
     def refresh(self, gen_conf):
         pass
@@ -572,10 +572,10 @@ class all_hosts(host_type_config):
         return []
 
 
-class all_services(host_type_config):
+class all_services(monHostTypeConfig):
     """ only a dummy, now via device.d """
     def __init__(self, gen_conf, build_proc):
-        host_type_config.__init__(self, build_proc)
+        monHostTypeConfig.__init__(self, build_proc)
 
     def refresh(self, gen_conf):
         pass

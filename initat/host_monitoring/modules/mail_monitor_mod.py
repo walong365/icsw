@@ -582,7 +582,7 @@ class ext_mailq_commandX(object):  # hm_classes.hmb_command):
         lim = parsed_coms[0]
         result = hm_classes.net_to_sys(result[3:])
         raw_output = lim.get_add_flag("R")
-        ret_str, ret_state = ("OK", limits.nag_STATE_CRITICAL)
+        ret_str, ret_state = ("OK", limits.mon_STATE_CRITICAL)
         if not raw_output:
             ret_state, ret_str = lim.check_ceiling(result["num_mails"])
             result = "{}: {} in queue, format '{}' via '{}'".format(

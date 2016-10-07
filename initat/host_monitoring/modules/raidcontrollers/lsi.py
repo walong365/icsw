@@ -101,7 +101,7 @@ class ctrl_type_lsi(ctrl_type):
 
     def _interpret(self, in_dict, cur_ns):
         if "ctrls" in in_dict and in_dict["ctrls"]:
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
             c_array = []
             for c_name in sorted(in_dict["ctrls"]):
                 ctrl_dict = in_dict["ctrls"][c_name]
@@ -118,7 +118,7 @@ class ctrl_type_lsi(ctrl_type):
                         )
                     )
                     if vol_stat.lower() != "okay":
-                        ret_state = max(ret_state, limits.nag_STATE_CRITICAL)
+                        ret_state = max(ret_state, limits.mon_STATE_CRITICAL)
                 c_array.append("{} ({}{}){}".format(
                     c_name,
                     ctrl_dict["controller_type"],
@@ -127,7 +127,7 @@ class ctrl_type_lsi(ctrl_type):
                 ))
             return ret_state, "; ".join(c_array)
         else:
-            return limits.nag_STATE_WARNING, "no controller found"
+            return limits.mon_STATE_WARNING, "no controller found"
 
 
 class lsi_status_command(hm_classes.hm_command):

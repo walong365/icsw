@@ -38,7 +38,7 @@ from django.db.models import signals, Q, Count
 from django.dispatch import receiver
 
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.functions import memoize_with_expiry
+from initat.cluster.backbone.models.functions import memoize_with_expiry, cluster_timezone
 from initat.cluster.backbone.models.rms import ext_license
 from initat.tools import logging_tools
 from .license_xml import ICSW_XML_NS, ICSW_XML_NS_NAME, ICSW_XML_NS_MAP, LIC_FILE_RELAX_NG_DEFINITION
@@ -770,6 +770,9 @@ class icswEggEvaluationDef(models.Model):
             if _entry["action"].weight != _cur_consum.multiplier:
                 _cur_consum.multiplier = _entry["action"].weight
                 _cur_consum.valid = False
+            if _entry["action"].timeframe_secs != _cur_consum.timeframe_secs:
+                _cur_consum.timeframe_secs = _entry["action"].timeframe_secs
+                _cur_consum.valid = False
             _cur_consum.save()
 
     class Meta:
@@ -810,6 +813,8 @@ class icswEggConsumer(models.Model):
     dynamic_multiplier = models.BooleanField(default=False)
     # valid, parameters have not changed (after installing a new XML file)
     valid = models.BooleanField(default=False)
+    # timeframe in seconds
+    timeframe_secs = models.IntegerField(default=0)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
@@ -842,6 +847,12 @@ class icswEggConsumer(models.Model):
             self.consumed += _to_consume
             self.save(update_fields=["consumed"])
             self.egg_cradle.save(update_fields=["available"])
+            if self.timeframe_secs:
+                request.valid_until = cluster_timezone.localize(
+                    datetime.datetime.now() + datetime.timedelta(seconds=self.timeframe_secs)
+                )
+            else:
+                request.valid_until = None
             request.valid = True
         else:
             request.valid = False
@@ -853,6 +864,10 @@ class icswEggConsumer(models.Model):
             logging_tools.form_entry(unicode(self.config_service_enum), header="ConfigService"),
             logging_tools.form_entry_right(self.multiplier, header="Weight"),
             logging_tools.form_entry_center(unicode(self.content_type), header="ContentType"),
+            logging_tools.form_entry_right(
+                logging_tools.get_diff_time_str(self.timeframe_secs) if self.timeframe_secs else "---",
+                header="timeframe",
+            ),
             logging_tools.form_entry_right(self.get_all_consumed(), header="consumed"),
         ]
 
@@ -895,6 +910,8 @@ class icswEggRequest(models.Model):
     # valid, enough eggs present
     # generate an request even when not enough eggs are present, set valid=False
     valid = models.BooleanField(default=False)
+    # valid until, used for locks with a limited validity
+    valid_until = models.DateTimeField(default=None, null=True)
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
@@ -906,7 +923,7 @@ class icswEggRequest(models.Model):
         else:
             # consum from egg_consumer
             self.egg_consumer.consume(self)
-        self.save(update_fields=["weight", "valid"])
+        self.save(update_fields=["weight", "valid", "valid_until"])
         return self.valid
 
     class Meta:

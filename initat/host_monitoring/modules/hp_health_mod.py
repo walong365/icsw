@@ -56,10 +56,10 @@ class HPDimm(object):
         if dimm_list:
             present_dimms = [entry for entry in dimm_list if entry["present"].lower() == "yes"]
             ret_v = ["found {}".format(logging_tools.get_plural("DIMM", len(present_dimms)))]
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
             for entry in dimm_list:
                 if entry["status"].lower() != "ok":
-                    ret_state = max(limits.nag_STATE_CRITICAL, ret_state)
+                    ret_state = max(limits.mon_STATE_CRITICAL, ret_state)
                 ret_v.append(
                     "DIMM module {} (processor {}, {}): {}".format(
                         entry["module"],
@@ -70,7 +70,7 @@ class HPDimm(object):
                 )
             return ret_state, "; ".join(ret_v)
         else:
-            return limits.nag_STATE_CRITICAL, "nothing returned"
+            return limits.mon_STATE_CRITICAL, "nothing returned"
 
 
 class HPPsu(object):
@@ -97,10 +97,10 @@ class HPPsu(object):
         psu_list = srv_com["*result"]
         if psu_list:
             ret_v = [u"found {}".format(logging_tools.get_plural("PSU", len(psu_list)))]
-            ret_state = limits.nag_STATE_OK
+            ret_state = limits.mon_STATE_OK
             for entry in psu_list:
                 if entry["condition"].lower() != "ok":
-                    ret_state = max(limits.nag_STATE_CRITICAL, ret_state)
+                    ret_state = max(limits.mon_STATE_CRITICAL, ret_state)
                     ret_v.append(
                         u"PS {}, present: {}, condition: {}".format(
                             entry["num"],
@@ -117,7 +117,7 @@ class HPPsu(object):
                     )
             return ret_state, "; ".join(ret_v)
         else:
-            return limits.nag_STATE_CRITICAL, "nothing returned"
+            return limits.mon_STATE_CRITICAL, "nothing returned"
 
 
 class hp_health_bg(hm_classes.subprocess_struct):
