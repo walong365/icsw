@@ -20,7 +20,7 @@
 """ config part of md-config-server """
 
 from initat.cluster.backbone.models import TOP_MONITORING_CATEGORY, parse_commandline
-from initat.md_config_server.config.mon_base_config import MonBaseConfig
+from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig
 from initat.tools import configfile, logging_tools, process_tools
 
 
@@ -110,7 +110,7 @@ class CheckCommand(object):
         return out_list
 
     def get_mon_config(self):
-        return MonBaseConfig(
+        return StructuredMonBaseConfig(
             "command",
             self.__nag_name,
             command_name=self.__nag_name,

@@ -24,7 +24,7 @@ import os
 
 from lxml.builder import E
 
-from initat.md_config_server.config.content_emitter import ContentEmitter
+from initat.md_config_server.config.content_emitter import StructuredContentEmitter
 from initat.tools import configfile, logging_tools, process_tools
 
 __all__ = [
@@ -35,7 +35,7 @@ __all__ = [
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
-class MonConfigDir(ContentEmitter):
+class MonConfigDir(StructuredContentEmitter):
     def __init__(self, name, gen_conf, build_proc):
         self.name = "{}.d".format(name)
         self.__build_proc = build_proc
@@ -50,13 +50,17 @@ class MonConfigDir(ContentEmitter):
         # ???
         self.clear()
 
+    def get_file_name(self, etc_dir):
+        if self.__name in ["uwsgi"]:
+            return "/opt/cluster/etc/uwsgi/icinga.wsgi.ini"
+        else:
+            return os.path.normpath(os.path.join(etc_dir, "{}.cfg".format(self.__name)))
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__build_proc.log(what, log_level)
 
-    def get_name(self):
-        return self.name
-
     def add_device(self, c_list, host):
+        print "*** ad", c_list[0].name, host
         host_conf = c_list[0]
         self.host_pks.add(host.pk)
         self[host_conf.name] = c_list

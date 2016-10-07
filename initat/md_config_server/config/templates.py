@@ -61,6 +61,7 @@ class MonDeviceTemplates(dict):
                     logging_tools.LOG_LEVEL_ERROR
                 )
 
+    @property
     def is_valid(self):
         return self.__default and True or False
 
@@ -119,6 +120,7 @@ class MonServiceTemplates(dict):
             )
         )
 
+    @property
     def is_valid(self):
         return True
 

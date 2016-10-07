@@ -19,12 +19,17 @@
 #
 """ config part of md-config-server """
 
+import os
+from .content_emitter import StructuredContentEmitter, FlatContentEmitter
+
 
 __all__ = [
     "MonBaseConfig",
     "build_safe_name",
     "SimpleCounter",
     "MonUniqueList",
+    "StructuredMonBaseConfig",
+    "FlatMonBaseConfig",
 ]
 
 
@@ -37,32 +42,46 @@ def build_safe_name(in_str):
 
 
 class MonBaseConfig(dict):
-    def __init__(self, obj_type, name, **kwargs):
+    def __init__(self, obj_type, name, *args, **kwargs):
         # dict-like object, uses {key, list} as storage
+        # every key references to a (unique) list of items
         self.obj_type = obj_type
         self.name = name
         super(MonBaseConfig, self).__init__()
+        for _key, _value in args:
+            self[_key] = _value
         for _key, _value in kwargs.iteritems():
             self[_key] = _value
+        self.act_content, self.prev_content = ([], [])
+
+    def get_file_name(self, etc_dir):
+        if self.name in ["uwsgi"]:
+            return "/opt/cluster/etc/uwsgi/icinga.wsgi.ini"
+        else:
+            return os.path.normpath(os.path.join(etc_dir, "{}.cfg".format(self.name)))
 
     def __setitem__(self, key, value):
-        if type(value) == list:
-            if key in self:
-                super(MonBaseConfig, self).__getitem__(key).extend(value)
-            else:
-                # important: create a new list
-                super(MonBaseConfig, self).__setitem__(key, [_val for _val in value])
+        _cur_v = self.setdefault(key, [])
+        if type(value) != list:
+            value = [value]
+        if self.obj_type == "flat":
+            _cur_v.extend([_v for _v in value if _v not in _cur_v])
         else:
-            if key in self:
-                super(MonBaseConfig, self).__getitem__(key).append(value)
-            else:
-                super(MonBaseConfig, self).__setitem__(key, [value])
+            _cur_v.extend([_v for _v in value])
 
     def __getitem__(self, key):
         if key == "name":
             return self.name
         else:
             return super(MonBaseConfig, self).__getitem__(key)
+
+
+class StructuredMonBaseConfig(MonBaseConfig, StructuredContentEmitter):
+    pass
+
+
+class FlatMonBaseConfig(MonBaseConfig, FlatContentEmitter):
+    pass
 
 
 class MonUniqueList(object):

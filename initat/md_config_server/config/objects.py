@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 """ config part of md-config-server """
 
 from django.db.models import Q
@@ -25,8 +26,8 @@ from initat.cluster.backbone.models import device, device_group, mon_check_comma
     mon_contact, mon_contactgroup, category_tree, TOP_MONITORING_CATEGORY, mon_notification, \
     host_check_command, mon_check_command_special
 from initat.md_config_server.config.check_command import CheckCommand
-from initat.md_config_server.config.host_type_config import MonHostTypeConfig
-from initat.md_config_server.config.mon_base_config import MonBaseConfig, MonUniqueList, build_safe_name
+from initat.md_config_server.config.mon_base_container import MonBaseContainer
+from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig, MonUniqueList, build_safe_name
 from initat.tools import cluster_location, configfile, logging_tools, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
@@ -40,84 +41,67 @@ __all__ = [
     "all_contacts",
     "all_contact_groups",
     "all_host_groups",
-    "all_hosts",
-    "all_services",
 ]
 
 
-class all_host_dependencies(MonHostTypeConfig):
+class all_host_dependencies(MonBaseContainer):
     def __init__(self, gen_conf, build_proc):
-        MonHostTypeConfig.__init__(self, build_proc)
-        self.__obj_list = []
-
-    def get_name(self):
-        return "hostdependency"
-
-    def add_host_dependency(self, new_hd):
-        self.__obj_list.append(new_hd)
-
-    def get_object_list(self):
-        return self.__obj_list
+        MonBaseContainer.__init__(self, "hostdependency", build_proc)
 
 
-class time_periods(MonHostTypeConfig):
+class time_periods(MonBaseContainer):
     def __init__(self, gen_conf, build_proc):
-        MonHostTypeConfig.__init__(self, build_proc)
-        self.__obj_list, self.__dict = ([], {})
+        MonBaseContainer.__init__(self, "timeperiod", build_proc)
+        self.refresh(gen_conf)
+
+    def refresh(self, gen_conf):
         self._add_time_periods_from_db()
-
-    def get_name(self):
-        return "timeperiod"
 
     def _add_time_periods_from_db(self):
         for cur_per in mon_period.objects.all():
-            nag_conf = MonBaseConfig(
+            nag_conf = StructuredMonBaseConfig(
                 "timeperiod",
                 cur_per.name,
                 timeperiod_name=cur_per.name,
                 alias=cur_per.alias.strip() if cur_per.alias.strip() else []
             )
             for short_s, long_s in [
-                ("mon", "monday"), ("tue", "tuesday"), ("wed", "wednesday"), ("thu", "thursday"),
-                ("fri", "friday"), ("sat", "saturday"), ("sun", "sunday")
+                ("mon", "monday"),
+                ("tue", "tuesday"),
+                ("wed", "wednesday"),
+                ("thu", "thursday"),
+                ("fri", "friday"),
+                ("sat", "saturday"),
+                ("sun", "sunday"),
             ]:
-                nag_conf[long_s] = getattr(cur_per, "%s_range" % (short_s))
-            self.__dict[cur_per.pk] = nag_conf
-            self.__obj_list.append(nag_conf)
-
-    def __getitem__(self, key):
-        return self.__dict[key]
-
-    def get_object_list(self):
-        return self.__obj_list
-
-    def values(self):
-        return self.__dict.values()
+                nag_conf[long_s] = getattr(cur_per, "{}_range".format(short_s))
+            self[cur_per.pk] = nag_conf
+            self.add_object(nag_conf)
 
 
-class all_service_groups(MonHostTypeConfig):
+class all_service_groups(MonBaseContainer):
     def __init__(self, gen_conf, build_proc):
-        MonHostTypeConfig.__init__(self, build_proc)
-        self.__obj_list, self.__dict = ([], {})
+        MonBaseContainer.__init__(self, "servicegroup", build_proc)
+        self.refresh(gen_conf)
+
+    def refresh(self, gen_conf):
         # dict : which host has which service_group defined
-        self.__host_srv_lut = {}
         self.cat_tree = category_tree()
         self._add_servicegroups_from_db()
 
-    def get_name(self):
-        return "servicegroup"
-
     def _add_servicegroups_from_db(self):
+        self.__host_srv_lut = {}
+        self.clear()
         for cat_pk in self.cat_tree.get_sorted_pks():
             cur_cat = self.cat_tree[cat_pk]
-            nag_conf = MonBaseConfig(
+            nag_conf = StructuredMonBaseConfig(
                 "servicegroup",
                 cur_cat.full_name,
                 servicegroup_name=cur_cat.full_name,
                 alias="{} group".format(cur_cat.full_name))
             self.__host_srv_lut[cur_cat.full_name] = set()
-            self.__dict[cur_cat.pk] = nag_conf
-            self.__obj_list.append(nag_conf)
+            self[cur_cat.pk] = nag_conf
+            self.add_object(nag_conf)
 
     def clear_host(self, host_name):
         for _key, value in self.__host_srv_lut.iteritems():
@@ -128,30 +112,25 @@ class all_service_groups(MonHostTypeConfig):
         for srv_group in srv_groups:
             self.__host_srv_lut[srv_group].add(host_name)
 
-    def get_object_list(self):
-        return [obj for obj in self.__obj_list if self.__host_srv_lut[obj.name]]
-
-    def values(self):
-        return self.__dict.values()
+    @property
+    def object_list(self):
+        return [obj for obj in self._obj_list if self.__host_srv_lut[obj.name]]
 
 
-class all_commands(MonHostTypeConfig):
+class all_commands(MonBaseContainer):
     def __init__(self, gen_conf, build_proc):
-        CheckCommand.gen_conf = gen_conf
-        MonHostTypeConfig.__init__(self, build_proc)
+        MonBaseContainer.__init__(self, "command", build_proc)
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
-        self.__obj_list, self.__dict = ([], {})
+        CheckCommand.gen_conf = gen_conf
+        self.clear()
         self._add_notify_commands()
         self._add_commands_from_db(gen_conf)
 
     def ignore_content(self, in_dict):
         # ignore commands with empty command line (== meta commands)
         return ("".join(in_dict.get("command_line", [""]))).strip() == ""
-
-    def get_name(self):
-        return "command"
 
     def _expand_str(self, in_str):
         for key, value in self._str_repl_dict.iteritems():
@@ -169,7 +148,7 @@ class all_commands(MonHostTypeConfig):
         md_vers = global_config["MD_VERSION_STRING"]
         md_type = global_config["MD_TYPE"]
         send_mail_prog = "/opt/cluster/sbin/icsw --nodb user --mode mail"
-        send_sms_prog = "/opt/icinga/bin/sendsms"
+        send_sms_prog = "/opt/cluster/icinga/bin/sendsms"
         from_addr = "{}@{}".format(
             global_config["MD_TYPE"],
             global_config["FROM_ADDR"]
@@ -180,8 +159,8 @@ class all_commands(MonHostTypeConfig):
             "$INIT_CLUSTER_NAME$": "{}".format(cluster_name),
         }
 
-        self.__obj_list.append(
-            MonBaseConfig(
+        self.add_object(
+            StructuredMonBaseConfig(
                 "command",
                 "dummy-notify",
                 command_name="dummy-notify",
@@ -201,13 +180,14 @@ class all_commands(MonHostTypeConfig):
                     send_sms_prog,
                     self._expand_str(cur_not.content),
                 )
-            nag_conf = MonBaseConfig(
-                "command",
-                cur_not.name,
-                command_name=cur_not.name,
-                command_line=command_line.replace("\n", "\\n"),
+            self.add_object(
+                StructuredMonBaseConfig(
+                    "command",
+                    cur_not.name,
+                    command_name=cur_not.name,
+                    command_line=command_line.replace("\n", "\\n"),
+                )
             )
-            self.__obj_list.append(nag_conf)
 
     def _add_commands_from_db(self, gen_conf):
         # set of names of configs which point to a full check_config
@@ -215,13 +195,13 @@ class all_commands(MonHostTypeConfig):
         # set of all names
         command_names = MonUniqueList()
         for hc_com in host_check_command.objects.all():
-            cur_nc = MonBaseConfig(
+            cur_nc = StructuredMonBaseConfig(
                 "command",
                 hc_com.name,
                 command_name=hc_com.name,
                 command_line=hc_com.command_line,
             )
-            self.__obj_list.append(cur_nc)
+            self.add_object(cur_nc)
             # simple mon_config, we do not add this to the command dict
             # self.__dict[cur_nc["command_name"]] = cur_nc
             command_names.add(hc_com.name)
@@ -264,32 +244,34 @@ class all_commands(MonHostTypeConfig):
             # set pk of special command
             special_cc.spk = ccs.pk
             check_coms.append(special_cc)
-        check_coms += [
-            mon_check_command(
-                name="ochp-command",
-                command_line="/opt/cluster/sbin/csendsyncerzmq ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"{}\"".format(
-                    "$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"
+        check_coms.extend(
+            [
+                mon_check_command(
+                    name="ochp-command",
+                    command_line="/opt/cluster/sbin/csendsyncerzmq ochp-event \"$HOSTNAME$\" \"$HOSTSTATE$\" \"{}\"".format(
+                        "$HOSTOUTPUT$|$HOSTPERFDATA$" if enable_perfd else "$HOSTOUTPUT$"
+                    ),
+                    description="OCHP Command"
                 ),
-                description="OCHP Command"
-            ),
-            mon_check_command(
-                name="ocsp-command",
-                command_line="/opt/cluster/sbin/csendsyncerzmq ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"{}\" ".format(
-                    "$SERVICEOUTPUT$|$SERVICEPERFDATA$" if enable_perfd else "$SERVICEOUTPUT$"
+                mon_check_command(
+                    name="ocsp-command",
+                    command_line="/opt/cluster/sbin/csendsyncerzmq ocsp-event \"$HOSTNAME$\" \"$SERVICEDESC$\" \"$SERVICESTATE$\" \"{}\" ".format(
+                        "$SERVICEOUTPUT$|$SERVICEPERFDATA$" if enable_perfd else "$SERVICEOUTPUT$"
+                    ),
+                    description="OCSP Command"
                 ),
-                description="OCSP Command"
-            ),
-            mon_check_command(
-                name="check_service_cluster",
-                command_line="/opt/cluster/bin/check_icinga_cluster.py --service -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"",
-                description="Check Service Cluster"
-            ),
-            mon_check_command(
-                name="check_host_cluster",
-                command_line="/opt/cluster/bin/check_icinga_cluster.py --host -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"",
-                description="Check Host Cluster"
-            ),
-        ]
+                mon_check_command(
+                    name="check_service_cluster",
+                    command_line="/opt/cluster/bin/check_icinga_cluster.py --service -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"",
+                    description="Check Service Cluster"
+                ),
+                mon_check_command(
+                    name="check_host_cluster",
+                    command_line="/opt/cluster/bin/check_icinga_cluster.py --host -l \"$ARG1$\" -w \"$ARG2$\" -c \"$ARG3$\" -d \"$ARG4$\" -n \"$ARG5$\"",
+                    description="Check Host Cluster"
+                ),
+            ]
+        )
         safe_names = global_config["SAFE_NAMES"]
         mccs_dict = {mccs.pk: mccs for mccs in mon_check_command_special.objects.all()}
         for ngc in check_coms:
@@ -343,33 +325,18 @@ class all_commands(MonHostTypeConfig):
                 volatile=ngc.volatile,
             )
             nag_conf = cc_s.get_mon_config()
-            self.__obj_list.append(nag_conf)
-            self.__dict[ngc_name] = cc_s  # ag_conf["command_name"]] = cc_s
-
-    def get_object_list(self):
-        return self.__obj_list
-
-    def values(self):
-        return self.__dict.values()
-
-    def __getitem__(self, key):
-        return self.__dict[key]
-
-    def __contains__(self, key):
-        return key in self.__dict
-
-    def keys(self):
-        return self.__dict.keys()
+            self.add_object(nag_conf)
+            self[ngc_name] = cc_s
 
 
-class all_contacts(MonHostTypeConfig):
+class all_contacts(MonBaseContainer):
     def __init__(self, gen_conf, build_proc):
-        MonHostTypeConfig.__init__(self, build_proc)
-        self.__obj_list, self.__dict = ([], {})
-        self._add_contacts_from_db(gen_conf)
+        MonBaseContainer.__init__(self, "contact", build_proc)
+        self.refresh(gen_conf)
 
-    def get_name(self):
-        return "contact"
+    def refresh(self, gen_conf):
+        self.clear()
+        self._add_contacts_from_db(gen_conf)
 
     def _add_contacts_from_db(self, gen_conf):
         all_nots = mon_notification.objects.all()
@@ -394,7 +361,7 @@ class all_contacts(MonHostTypeConfig):
                 alias = contact.user.comment
             else:
                 alias = full_name
-            nag_conf = MonBaseConfig(
+            nag_conf = StructuredMonBaseConfig(
                 "contact",
                 full_name,
                 contact_name=contact.user.login,
@@ -432,83 +399,52 @@ class all_contacts(MonHostTypeConfig):
             u_mail = contact.user.email or "root@localhost"
             nag_conf["email"] = u_mail
             nag_conf["pager"] = contact.user.pager or "----"
-            self.__obj_list.append(nag_conf)
-            self.__dict[contact.pk] = nag_conf
-
-    def __getitem__(self, key):
-        return self.__dict[key]
-
-    def get_object_list(self):
-        return self.__obj_list
-
-    def values(self):
-        return self.__dict.values()
+            self.add_object(nag_conf)
+            self[contact.pk] = nag_conf
 
 
-class all_contact_groups(MonHostTypeConfig):
+class all_contact_groups(MonBaseContainer):
     def __init__(self, gen_conf, build_proc):
-        MonHostTypeConfig.__init__(self, build_proc)
+        MonBaseContainer.__init__(self, "contactgroup", build_proc)
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
-        self.__obj_list, self.__dict = ([], {})
+        self.clear()
         self._add_contact_groups_from_db(gen_conf)
-
-    def get_name(self):
-        return "contactgroup"
 
     def _add_contact_groups_from_db(self, gen_conf):
         # none group
-        self.__dict[0] = MonBaseConfig(
+        self[0] = StructuredMonBaseConfig(
             "contactgroup",
             global_config["NONE_CONTACT_GROUP"],
             contactgroup_name=global_config["NONE_CONTACT_GROUP"],
-            alias="None group")
+            alias="None group"
+        )
         for cg_group in mon_contactgroup.objects.all().prefetch_related("members"):
-            nag_conf = MonBaseConfig(
+            nag_conf = StructuredMonBaseConfig(
                 "contactgroup",
                 cg_group.name,
                 contactgroup_name=cg_group.name,
-                alias=cg_group.alias.strip() if cg_group.alias.strip() else [])
-            self.__dict[cg_group.pk] = nag_conf
+                alias=cg_group.alias.strip() if cg_group.alias.strip() else []
+            )
+            self[cg_group.pk] = nag_conf
+            self.add_object(nag_conf)
             for member in cg_group.members.all():
                 try:
                     nag_conf["members"] = gen_conf["contact"][member.pk]["contact_name"]
                 except:
                     pass
-        self.__obj_list = self.__dict.values()
-
-    def has_key(self, key):
-        return key in self.__dict
-
-    def keys(self):
-        return self.__dict.keys()
-
-    def __getitem__(self, key):
-        return self.__dict[key]
-
-    def __contains__(self, key):
-        return key in self.__dict__
-
-    def get_object_list(self):
-        return self.__obj_list
-
-    def values(self):
-        return self.__dict.values()
 
 
-class all_host_groups(MonHostTypeConfig):
+class all_host_groups(MonBaseContainer):
     def __init__(self, gen_conf, build_proc):
-        MonHostTypeConfig.__init__(self, build_proc)
+        MonBaseContainer.__init__(self, "hostgroup", build_proc)
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
-        self.__obj_list, self.__dict = ([], {})
+        self.clear()
         self.cat_tree = category_tree()
         self._add_host_groups_from_db(gen_conf)
-
-    def get_name(self):
-        return "hostgroup"
 
     def _add_host_groups_from_db(self, gen_conf):
         if "device.d" in gen_conf:
@@ -519,69 +455,40 @@ class all_host_groups(MonHostTypeConfig):
                 # hostgroups by devicegroups
                 # distinct is important here
                 for h_group in device_group.objects.filter(hostg_filter).prefetch_related("device_group").distinct():
-                    nag_conf = MonBaseConfig(
+                    nag_conf = StructuredMonBaseConfig(
                         "hostgroup",
                         h_group.name,
                         hostgroup_name=h_group.name,
                         alias=h_group.description or h_group.name,
-                        members=[])
-                    self.__dict[h_group.pk] = nag_conf
-                    self.__obj_list.append(nag_conf)
-                    nag_conf["members"] = [cur_dev.full_name for cur_dev in h_group.device_group.filter(Q(pk__in=host_pks)).select_related("domain_tree_node")]
+                        members=[]
+                    )
+                    self[h_group.pk] = nag_conf
+                    self.add_object(nag_conf)
+                    nag_conf["members"] = [
+                        cur_dev.full_name for cur_dev in h_group.device_group.filter(Q(pk__in=host_pks)).select_related("domain_tree_node")
+                    ]
                 # hostgroups by categories
                 for cat_pk in self.cat_tree.get_sorted_pks():
                     cur_cat = self.cat_tree[cat_pk]
-                    nag_conf = MonBaseConfig(
+                    nag_conf = StructuredMonBaseConfig(
                         "hostgroup",
                         cur_cat.full_name,
                         hostgroup_name=cur_cat.full_name,
                         alias=cur_cat.comment or cur_cat.full_name,
-                        members=[])
-                    nag_conf["members"] = [cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter).select_related("domain_tree_node")]
+                        members=[]
+                    )
+                    nag_conf["members"] = [
+                        cur_dev.full_name for cur_dev in cur_cat.device_set.filter(host_filter).select_related("domain_tree_node")
+                    ]
                     if nag_conf["members"]:
-                        self.__obj_list.append(nag_conf)
+                        self.add_object(nag_conf)
             else:
-                self.log("empty SQL-Str for in _add_host_groups_from_db()",
-                         logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "empty SQL-Str for in _add_host_groups_from_db()",
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         else:
-            self.log("no host-dict found in gen_dict",
-                     logging_tools.LOG_LEVEL_WARN)
-
-    def __getitem__(self, key):
-        return self.__dict[key]
-
-    def get_object_list(self):
-        return self.__obj_list
-
-    def values(self):
-        return self.__dict.values()
-
-
-class all_hosts(MonHostTypeConfig):
-    """ only a dummy, now via device.d """
-    def __init__(self, gen_conf, build_proc):
-        MonHostTypeConfig.__init__(self, build_proc)
-
-    def refresh(self, gen_conf):
-        pass
-
-    def get_name(self):
-        return "host"
-
-    def get_object_list(self):
-        return []
-
-
-class all_services(MonHostTypeConfig):
-    """ only a dummy, now via device.d """
-    def __init__(self, gen_conf, build_proc):
-        MonHostTypeConfig.__init__(self, build_proc)
-
-    def refresh(self, gen_conf):
-        pass
-
-    def get_name(self):
-        return "service"
-
-    def get_object_list(self):
-        return []
+            self.log(
+                "no host-dict found in gen_dict",
+                logging_tools.LOG_LEVEL_WARN
+            )

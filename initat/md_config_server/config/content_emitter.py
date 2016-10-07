@@ -20,42 +20,94 @@
 """ content emitter for config of md-config-server """
 
 
+from lxml.builder import E
+
+
 __all__ = [
-    "ContentEmitter",
+    "StructuredContentEmitter",
+    "FlatContentEmitter",
 ]
 
 
-class ContentEmitter(object):
-    def ignore_content(self, in_dict):
-        return False
-
-    def _emit_content(self, dest_type, in_dict):
-        if self.ignore_content(in_dict):
-            return []
+class StructuredContentEmitter(object):
+    def emit_content(self):
         _content = [
-            u"define {} {{".format(dest_type)
+            u"define {} {{".format(self.obj_type)
         ] + [
             u"  {} {}".format(
                 act_key,
-                self._build_value_string(act_key, in_dict[act_key])
-            ) for act_key in sorted(in_dict.iterkeys())
+                self._build_value_string(act_key)
+            ) for act_key in sorted(self.iterkeys())
         ] + [
-            u"}", ""
+            u"}",
+            ""
         ]
         return _content
 
-    def _build_value_string(self, _key, in_list):
+    def emit_xml(self):
+        new_node = getattr(
+            E, self.obj_type
+        )(
+            **dict(
+                [
+                    (
+                        key,
+                        self.build_value_string(key)
+                    ) for key in sorted(self.iterkeys())
+                ]
+            )
+        )
+        return new_node
+
+    def _build_value_string(self, _key):
+        in_list = self[_key]
+        # print self.obj_type, _key, in_list
         if in_list:
             # check for unique types
             if len(set([type(_val) for _val in in_list])) != 1:
-                raise ValueError("values in list {} for key {} have different types".format(str(in_list), _key))
+                raise ValueError(
+                    "values in list {} for key {} have different types".format(
+                        str(in_list),
+                        _key
+                    )
+                )
             else:
                 _first_val = in_list[0]
                 if type(_first_val) in [int, long]:
                     return ",".join(["{:d}".format(_val) for _val in in_list])
                 else:
                     if "" in in_list:
-                        raise ValueError("empty string found in list {} for key {}".format(str(in_list), _key))
+                        raise ValueError(
+                            "empty string found in list {} for key {}".format(
+                                str(in_list),
+                                _key
+                            )
+                        )
                     return u",".join([unicode(_val) for _val in in_list])
         else:
             return "-"
+
+
+class FlatContentEmitter(object):
+    def emit_content(self):
+        c_lines = []
+        last_key = None
+        for key in sorted(self.keys()):
+            if last_key:
+                if last_key[0] != key[0]:
+                    c_lines.append("")
+            last_key = key
+            value = self[key]
+            if value is None:
+                # for headers
+                c_lines.append(key)
+            else:
+                if type(value) == list:
+                    pass
+                elif type(value) in [int, long]:
+                    value = ["{:d}".format(value)]
+                else:
+                    value = [value]
+                for act_v in value:
+                    c_lines.append(u"{}={}".format(key, act_v))
+        return c_lines

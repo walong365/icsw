@@ -40,9 +40,8 @@ from initat.cluster.backbone.models import device, device_group, device_variable
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server import special_commands, constants
-from initat.md_config_server.config import global_config, monMainConfig, all_commands, \
-    all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, all_hosts, \
-    all_services, MonConfigDir, MonDeviceTemplates, MonServiceTemplates, MonBaseConfig, \
+from initat.md_config_server.config import global_config, MonMainConfig, all_commands, \
+    all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, MonConfigDir, MonDeviceTemplates, MonServiceTemplates, MonBaseConfig, \
     all_host_dependencies, BuildCache, build_safe_name, SimpleCounter
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
@@ -99,7 +98,7 @@ class BuildProcess(
             "domain_tree_node"
         )
         # slave configs
-        self.__gen_config = monMainConfig(self, master_server, distributed=True if len(slave_servers) else False)
+        self.__gen_config = MonMainConfig(self, master_server, distributed=True if len(slave_servers) else False)
         self.send_pool_message("external_cmd_file", self.__gen_config.get_command_name())
         self.__gen_config_built = False
         self.__slave_configs, self.__slave_lut = ({}, {})
@@ -109,7 +108,7 @@ class BuildProcess(
                     logging_tools.get_plural("slave_server", len(slave_servers)),
                     ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))))
             for cur_dev in slave_servers:
-                _slave_c = monMainConfig(
+                _slave_c = MonMainConfig(
                     self,
                     cur_dev,
                     slave_name=cur_dev.full_name,
@@ -357,18 +356,18 @@ class BuildProcess(
         if rebuild_gen_config:
             self._create_general_config()
             # h_list = []
-        bc_valid = self.__gen_config.is_valid()
+        bc_valid = self.__gen_config.is_valid
         if bc_valid:
             # get device templates
             dev_templates = MonDeviceTemplates(self)
             # get serivce templates
             serv_templates = MonServiceTemplates(self)
-            if dev_templates.is_valid() and serv_templates.is_valid():
+            if dev_templates.is_valid and serv_templates.is_valid:
                 pass
             else:
-                if not dev_templates.is_valid():
+                if not dev_templates.is_valid:
                     self.log("device templates are not valid", logging_tools.LOG_LEVEL_ERROR)
-                if not serv_templates.is_valid():
+                if not serv_templates.is_valid:
                     self.log("service templates are not valid", logging_tools.LOG_LEVEL_ERROR)
                 bc_valid = False
         if bc_valid:
@@ -585,9 +584,9 @@ class BuildProcess(
             # hostgroups
             cur_gc.add_config(all_host_groups(cur_gc, self))
             # hosts
-            cur_gc.add_config(all_hosts(cur_gc, self))
+            # cur_gc.add_config(all_hosts(cur_gc, self))
             # services
-            cur_gc.add_config(all_services(cur_gc, self))
+            # cur_gc.add_config(all_services(cur_gc, self))
             # device dir
             cur_gc.add_config_dir(MonConfigDir("device", cur_gc, self))
             # host_dependencies
@@ -807,6 +806,7 @@ class BuildProcess(
                         )
                     )
                     # now we have the device- and service template
+                    # list of all MonBaseConfigs for given host, first one is always the host part
                     host_config_list = []
                     act_host = MonBaseConfig("host", host.full_name)
                     host_config_list.append(act_host)
@@ -1659,7 +1659,7 @@ class BuildProcess(
                     new_hd["execution_failure_criteria"] = self.mon_host_dep.execution_failure_criteria
                     new_hd["notification_failure_criteria"] = self.mon_host_dep.notification_failure_criteria
                     new_hd["inherits_parent"] = "1" if self.mon_host_dep.inherits_parent else "0"
-                    cur_gc["hostdependency"].add_host_dependency(new_hd)
+                    cur_gc["hostdependency"].add_object(new_hd)
             self.log("created {}".format(logging_tools.get_plural("nagvis map", len(nagvis_maps))))
             # remove old nagvis maps
             nagvis_map_dir = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps")

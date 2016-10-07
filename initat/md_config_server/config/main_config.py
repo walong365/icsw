@@ -31,21 +31,22 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device, user
-from initat.md_config_server.config import MonBaseConfig, MonBasicConfig
+from initat.md_config_server.config import FlatMonBaseConfig
+from initat.md_config_server.config.mon_base_container import MonBaseContainer
 from initat.md_config_server.config.mon_config_dir import MonConfigDir
-from initat.md_config_server.config.host_type_config import MonHostTypeConfig
 from initat.tools import config_tools, configfile, logging_tools, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
 __all__ = [
-    "monMainConfig",
+    "MonMainConfig",
 ]
 
 
-class monMainConfig(object):
+class MonMainConfig(object):
     def __init__(self, proc, monitor_server, **kwargs):
+        # container for all configs for a given monitor server (master or slave)
         self.__process = proc
         self.__slave_name = kwargs.get("slave_name", None)
         self.__main_dir = global_config["MD_BASEDIR"]
@@ -103,9 +104,14 @@ class monMainConfig(object):
     def var_dir(self):
         return self.__r_dir_dict["var"]
 
+    @property
     def is_valid(self):
-        ht_conf_names = [key for key, value in self.__dict.iteritems() if isinstance(value, MonHostTypeConfig)]
-        invalid = sorted([key for key in ht_conf_names if not self[key].is_valid()])
+        ht_conf_names = [key for key, value in self.__dict.iteritems() if isinstance(value, MonBaseContainer)]
+        invalid = sorted(
+            [
+                key for key in ht_conf_names if not self[key].is_valid
+            ]
+        )
         if invalid:
             self.log(
                 "{} invalid: {}".format(
@@ -444,11 +450,19 @@ class monMainConfig(object):
 
     def _create_base_config_entries(self):
         # read sql info
-        resource_cfg = MonBasicConfig("resource", is_host_file=True)
-        if os.path.isfile("/opt/{}/libexec/check_dns".format(global_config["MD_TYPE"])):
-            resource_cfg["$USER1$"] = "/opt/{}/libexec".format(global_config["MD_TYPE"])
+        resource_file = MonBaseContainer("resource", self.__process)
+        resource_cfg = FlatMonBaseConfig("flat", "resource")
+        resource_file.add_object(resource_cfg)
+        if os.path.isfile(os.path.join(global_config["MD_BASEDIR"], "libexec", "check_dns")):
+            resource_cfg["$USER1$"] = os.path.join(
+                global_config["MD_BASEDIR"],
+                "libexec",
+            )
         else:
-            resource_cfg["$USER1$"] = "/opt/{}/lib".format(global_config["MD_TYPE"])
+            resource_cfg["$USER1$"] = os.path.join(
+                global_config["MD_BASEDIR"],
+                "lib",
+            )
         resource_cfg["$USER2$"] = "/opt/cluster/sbin/ccollclientzmq -t %d" % (global_config["CCOLLCLIENT_TIMEOUT"])
         resource_cfg["$USER3$"] = "/opt/cluster/sbin/csnmpclientzmq -t %d" % (global_config["CSNMPCLIENT_TIMEOUT"])
         main_values = [
@@ -464,7 +478,7 @@ class monMainConfig(object):
                 "resource_file",
                 "{}/{}.cfg".format(
                     self.__r_dir_dict["etc"],
-                    resource_cfg.get_name()
+                    resource_cfg.name
                 )
             ),
             ("{}_user".format(global_config["MD_TYPE"]), "idmon"),
@@ -536,7 +550,10 @@ class monMainConfig(object):
         main_values.extend(
             [
                 (
-                    "*broker_module", "{}/mk-livestatus/livestatus.o {}/live".format(
+                    "broker_module", [],
+                ),
+                (
+                    "broker_module", "{}/mk-livestatus/livestatus.o {}/live".format(
                         self.__r_dir_dict[lib_dir_name],
                         self.__r_dir_dict["var"]
                     )
@@ -545,6 +562,9 @@ class monMainConfig(object):
                     "event_broker_options", -1
                 )
             ]
+        )
+        main_values.append(
+            ("cfg_dir", []),
         )
         if self.master:
             main_values.append(
@@ -593,7 +613,6 @@ class monMainConfig(object):
             # add global event handlers
             main_values.extend(
                 [
-                    ("cfg_dir", []),
                     ("ochp_command", "ochp-command"),
                     ("ocsp_command", "ocsp-command"),
                     ("stalking_event_handlers_for_hosts", 1),
@@ -609,11 +628,13 @@ class monMainConfig(object):
                 ("max_host_check_spread", global_config["MAX_HOST_CHECK_SPREAD"]),
             ]
         )
-        main_cfg = MonBasicConfig(
+        main_file = MonBaseContainer(global_config["MAIN_CONFIG_NAME"], self.__process)
+        main_cfg = FlatMonBaseConfig(
+            "flat",
             global_config["MAIN_CONFIG_NAME"],
-            is_host_file=True,
-            values=main_values
+            *main_values
         )
+        main_file.add_object(main_cfg)
         for log_descr, en in [
             ("notifications", 1),
             ("service_retries", 1),
@@ -652,17 +673,19 @@ class monMainConfig(object):
             def_user = ",".join(admin_list)
         else:
             def_user = "{}admin".format(global_config["MD_TYPE"])
-        cgi_config = MonBasicConfig(
+        cgi_file = MonBaseContainer("cgi", self.__process)
+        cgi_config = FlatMonBaseConfig(
+            "flat",
             "cgi",
-            is_host_file=True,
-            values=[
+            *[
                 (
-                    "main_config_file", "%s/%s.cfg" % (
-                        self.__r_dir_dict["etc"], global_config["MAIN_CONFIG_NAME"]
+                    "main_config_file", os.path.join(
+                        self.__r_dir_dict["etc"],
+                        "{}.cfg".format(global_config["MAIN_CONFIG_NAME"])
                     )
                 ),
                 ("physical_html_path", "%s" % (self.__r_dir_dict["share"])),
-                ("url_html_path", "/%s" % (global_config["MD_TYPE"])),
+                ("url_html_path", "/{}".format(global_config["MD_TYPE"])),
                 ("show_context_help", 0),
                 ("use_authentication", 1),
                 # ("default_user_name"        , def_user),
@@ -681,25 +704,26 @@ class monMainConfig(object):
                 ("tac_show_only_hard_state", 1)
             ] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else []
         )
-        self[main_cfg.get_name()] = main_cfg
-        # self[ndomod_cfg.get_name()] = ndomod_cfg
-        self[cgi_config.get_name()] = cgi_config
-        self[resource_cfg.get_name()] = resource_cfg
+        cgi_file.add_object(cgi_config)
+        self[main_file.name] = main_file
+        self[cgi_file.name] = cgi_file
+        self[resource_file.name] = resource_file
         if self.master:
             # wsgi config
+            uwsgi_file = MonBaseContainer("uwsgi", self.__process)
             if os.path.isfile("/etc/debian_version"):
                 www_user, www_group = ("www-data", "www-data")
             elif os.path.isfile("/etc/redhat-release") or os.path.islink("/etc/redhat-release"):
                 www_user, www_group = ("apache", "apache")
             else:
                 www_user, www_group = ("wwwrun", "www")
-            wsgi_config = MonBasicConfig(
+            wsgi_config = FlatMonBaseConfig(
+                "flat",
                 "uwsgi",
-                is_host_file=True,
-                headers=["[uwsgi]"],
-                values=[
+                *[
+                    ("[uwsgi]", None),
                     ("chdir", self.__r_dir_dict[""]),
-                    ("plugin-dir", "/opt/cluster/%s" % (lib_dir_name)),
+                    ("plugin-dir", os.path.join("/opt/cluster", lib_dir_name)),
                     ("cgi-mode", "true"),
                     ("master", "true"),
                     # set vacuum to false because of problems with uwsgi 1.9
@@ -718,8 +742,10 @@ class monMainConfig(object):
                     ("chown-socket", www_user),
                     ("no-site", "true"),
                     # ("route"           , "^/icinga/cgi-bin basicauth:Monitor,init:init"),
-                ])
-            self[wsgi_config.get_name()] = wsgi_config
+                ]
+            )
+            uwsgi_file.add_object(wsgi_config)
+            self[uwsgi_file.name] = uwsgi_file
         if global_config["ENABLE_NAGVIS"] and self.master:
             self._create_nagvis_base_entries()
 
@@ -876,19 +902,11 @@ class monMainConfig(object):
         cfg_written, empty_cfg_written = ([], [])
         start_time = time.time()
         for key, stuff in self.__dict.iteritems():
-            if isinstance(stuff, MonBasicConfig) or isinstance(stuff, MonHostTypeConfig) or isinstance(stuff, MonConfigDir):
+            if isinstance(stuff, FlatMonBaseConfig) or isinstance(stuff, MonBaseContainer) or isinstance(stuff, MonConfigDir):
                 if isinstance(stuff, MonConfigDir):
                     cfg_written.extend(stuff.create_content(self.__w_dir_dict["etc"]))
                 else:
-                    if isinstance(stuff, MonBasicConfig):
-                        act_cfg_name = stuff.get_file_name(self.__w_dir_dict["etc"])
-                    else:
-                        act_cfg_name = os.path.normpath(
-                            os.path.join(
-                                self.__w_dir_dict["etc"],
-                                "{}.cfg".format(key)
-                            )
-                        )
+                    act_cfg_name = stuff.get_file_name(self.__w_dir_dict["etc"])
                     # print "*", key, act_cfg_name
                     stuff.create_content()
                     if stuff.act_content != stuff.old_content:
@@ -946,14 +964,15 @@ class monMainConfig(object):
         return self[config_name]
 
     def add_config(self, config):
-        if self.has_config(config.get_name()):
-            config.set_previous_config(self.get_config(config.get_name()))
-        self[config.get_name()] = config
+        if self.has_config(config.name):
+            config.set_previous_config(self.get_config(config.name))
+        self[config.name] = config
 
     def add_config_dir(self, config_dir):
-        self[config_dir.get_name()] = config_dir
+        self[config_dir.name] = config_dir
 
     def __setitem__(self, key, value):
+        # print "SI", key, type(value)
         self.__dict[key] = value
         new_file_keys = sorted(
             [
@@ -961,23 +980,24 @@ class monMainConfig(object):
                     self.__r_dir_dict["etc"],
                     "{}.cfg".format(key)
                 ) for key, value in self.__dict.iteritems() if (
-                    not isinstance(value, MonBasicConfig) or not value.is_host_file
+                    not isinstance(value, FlatMonBaseConfig)
                 ) and (not isinstance(value, MonConfigDir))
             ]
         )
-        old_file_keys = self[global_config["MAIN_CONFIG_NAME"]]["cfg_file"]
+        # print new_file_keys
+        old_file_keys = self[global_config["MAIN_CONFIG_NAME"]].object_list[0]["cfg_file"]
         new_dir_keys = sorted(
             [
                 os.path.join(self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if isinstance(value, MonConfigDir)
             ]
         )
-        old_dir_keys = self[global_config["MAIN_CONFIG_NAME"]]["cfg_dir"]
+        old_dir_keys = self[global_config["MAIN_CONFIG_NAME"]].object_list[0]["cfg_dir"]
         write_cfg = False
         if old_file_keys != new_file_keys:
-            self[global_config["MAIN_CONFIG_NAME"]]["cfg_file"] = new_file_keys
+            self[global_config["MAIN_CONFIG_NAME"]].object_list[0]["cfg_file"] = new_file_keys
             write_cfg = True
         if old_dir_keys != new_dir_keys:
-            self[global_config["MAIN_CONFIG_NAME"]]["cfg_dir"] = new_dir_keys
+            self[global_config["MAIN_CONFIG_NAME"]].object_list[0]["cfg_dir"] = new_dir_keys
             write_cfg = True
         if write_cfg:
             self._write_entries()
