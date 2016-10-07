@@ -24,6 +24,7 @@ angular.module(
     "icsw.livestatus.comp.connect",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
+        "icsw.panel_tools",
     ]
 ).provider("icswLivestatusPipeRegister", () ->
     _elements = []
