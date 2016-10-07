@@ -1,7 +1,7 @@
 describe('ICSW Basic Interface Tests:', function() {
   var EC = protractor.ExpectedConditions;
 
-  var valid_device_name = undefined;
+  var valid_device_name = "mVdWufzuaG";
   var valid_group_name = undefined;
 
   function makeid()
@@ -35,9 +35,11 @@ describe('ICSW Basic Interface Tests:', function() {
     this.devices_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]'));
     this.device_information_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[3]/a'));
     this.device_tree_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[4]/a'));
-    this.device_connections_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[5]/a'));
-    this.device_configuration_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[6]/a'));
-    this.network_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[7]/a'));
+
+    this.device_assign_configuration_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[5]/a'));
+    this.network_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[6]/a'));
+
+    this.device_power_controlling_connections_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[2]/li[5]/a'));
 
 
     this.get = function() {
@@ -55,7 +57,7 @@ describe('ICSW Basic Interface Tests:', function() {
 
     this.ensure_valid_login = function() {
       this.set_username("admin");
-      this.set_password("init4u")
+      this.set_password("abc123")
       login_button.click();
 
       browser.sleep(5000)
@@ -95,13 +97,14 @@ describe('ICSW Basic Interface Tests:', function() {
   // Test login with valid user
   it('login with valid login should work', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();
     icsw_homepage.get();
 
     icsw_homepage.set_username("admin");
-    icsw_homepage.set_password("init4u");
+    icsw_homepage.set_password("abc123");
 
     icsw_homepage.perform_login().then(function() {
       expect(browser.getTitle()).toEqual('Dashboard');
@@ -111,6 +114,7 @@ describe('ICSW Basic Interface Tests:', function() {
   // Test login with invalid user
   it ('login with invalid login should not work', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();
@@ -130,6 +134,7 @@ describe('ICSW Basic Interface Tests:', function() {
 
   it ('Add new device page should be present', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();
@@ -152,6 +157,7 @@ describe('ICSW Basic Interface Tests:', function() {
 
   it ('Creating a new device should work', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();
@@ -207,6 +213,7 @@ describe('ICSW Basic Interface Tests:', function() {
 
   it ('Creating a duplicate device should not work', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();
@@ -284,6 +291,7 @@ describe('ICSW Basic Interface Tests:', function() {
 
   it ('Device information page should work', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();
@@ -298,11 +306,6 @@ describe('ICSW Basic Interface Tests:', function() {
 
       var title = "Device Information";
       browser.wait(EC.titleIs(title));
-
-      var status_text_element = element(by.xpath("/html/body/div[3]/div/icsw-simple-device-info/div/div/div/span"));
-      browser.wait(EC.and(EC.textToBePresentInElement(status_text_element, "No devices selected"), EC.invisibilityOf(icsw_homepage.overlay_element)));
-
-      expect(status_text_element.getText()).toEqual("No devices selected");
 
       browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.select_all_devices_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
       icsw_homepage.select_all_devices_button.click();
@@ -320,16 +323,17 @@ describe('ICSW Basic Interface Tests:', function() {
   // Check if creating a new device group works
   it ('Creating a new devicegroup should work', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();
     icsw_homepage.get();
 
     icsw_homepage.ensure_valid_login().then(function() {
-      browser.wait(EC.elementToBeClickable(icsw_homepage.devices_menu_button));
+      browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.devices_menu_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
       icsw_homepage.devices_menu_button.click();
 
-      browser.wait(EC.elementToBeClickable(icsw_homepage.device_tree_menu_button));
+      browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.device_tree_menu_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
       icsw_homepage.device_tree_menu_button.click();
 
       var create_device_group_button = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/div/button[2]"));
@@ -338,6 +342,7 @@ describe('ICSW Basic Interface Tests:', function() {
 
       var create_button = element(by.buttonText("Create"));
       browser.wait(EC.and(EC.elementToBeClickable(create_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
+      browser.sleep(2500);
 
       var group_name_field = element(by.model('edit_obj.name'));
       var group_description_field = element(by.model('edit_obj.description'));
@@ -352,23 +357,25 @@ describe('ICSW Basic Interface Tests:', function() {
       group_description_field.sendKeys(group_description);
 
       create_button.click();
-      browser.sleep(1000);
+      browser.sleep(2500);
 
       var filter_field = element(by.model("filter_settings.str_filter"));
       filter_field.sendKeys(group_name);
-      browser.sleep(1000);
+      browser.sleep(2500).then(function() {
 
-      var group_name_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[1]/strong"));
-      var description_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[3]"));
+        var group_name_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[1]/strong"));
+        var description_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[3]"));
 
-      expect(group_name_element.getText()).toEqual(group_name);
-      expect(description_element.getText()).toEqual(group_description);
+        expect(group_name_element.getText()).toEqual(group_name);
+        expect(description_element.getText()).toEqual(group_description);
+      });
     });
   });
 
   // check if creating a device works
   it ('Creating a new device should work', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();
@@ -405,25 +412,27 @@ describe('ICSW Basic Interface Tests:', function() {
       var cancel_button = element(by.buttonText("Cancel"));
       cancel_button.click();
 
-      browser.sleep(1000);
+      browser.sleep(2500);
 
       var filter_field = element(by.model("filter_settings.str_filter"));
       filter_field.sendKeys(name);
-      browser.sleep(1000);
+      browser.sleep(2500).then(function() {
 
-      var group_name_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[1]"));
-      var description_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[4]"));
+        var group_name_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[1]"));
+        var description_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[4]"));
 
-      expect(group_name_element.getText()).toEqual(name);
-      expect(description_element.getText()).toEqual(description);
+        expect(group_name_element.getText()).toEqual(name);
+        expect(description_element.getText()).toEqual(description);
+      });
     });
   });
 
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  // "Connections" tests
+  // "Power Controlling Connections" tests
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-  it ('Connections view should load', function() {
+  it ('Power Controlling Connections view should load', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();
@@ -433,10 +442,10 @@ describe('ICSW Basic Interface Tests:', function() {
       browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.devices_menu_button, EC.invisibilityOf(icsw_homepage.overlay_element))));
       icsw_homepage.devices_menu_button.click();
 
-      browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.device_connections_menu_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
-      icsw_homepage.device_connections_menu_button.click();
+      browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.device_power_controlling_connections_menu_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
+      icsw_homepage.device_power_controlling_connections_menu_button.click();
 
-      var title = 'Device Connections';
+      var title = 'Power Controlling Connections';
 
       browser.wait(EC.titleIs(title));
       expect(browser.getTitle()).toEqual(title);
@@ -449,6 +458,7 @@ describe('ICSW Basic Interface Tests:', function() {
 
   it ('Assigning configurations should work', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();
@@ -458,17 +468,18 @@ describe('ICSW Basic Interface Tests:', function() {
       browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.devices_menu_button, EC.invisibilityOf(icsw_homepage.overlay_element))));
       icsw_homepage.devices_menu_button.click();
 
-      browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.device_configuration_menu_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
-      icsw_homepage.device_configuration_menu_button.click();
+      browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.device_assign_configuration_menu_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
+      icsw_homepage.device_assign_configuration_menu_button.click();
 
       var title = 'Assign Configurations';
 
       browser.wait(EC.titleIs(title));
       expect(browser.getTitle()).toEqual(title);
 
-      var input_field = element(by.xpath("/html/body/div[3]/div/icsw-device-configuration-overview/div[2]/div/input"));
+      var input_field = element(by.xpath("/html/body/div[3]/div/div/icsw-device-configuration-overview/div[2]/div/input"));
       browser.wait(EC.and(EC.presenceOf(input_field), EC.invisibilityOf(icsw_homepage.overlay_element)));
 
+      browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.select_all_devices_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
       icsw_homepage.select_all_devices_button.click();
 
       var popup_message_single = element(by.xpath('//*[@id="toast-container"]/div/div[2]/div'));
@@ -496,6 +507,7 @@ describe('ICSW Basic Interface Tests:', function() {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   it ('Creating a new netdevice should work', function() {
     browser.restart();
+    browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
 
     var icsw_homepage = new icswHomepage();

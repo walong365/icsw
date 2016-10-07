@@ -34,7 +34,9 @@ from django.utils import timezone
 from django.conf import settings
 from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
-from reportlab.graphics.shapes import Drawing, Rect
+from openpyxl.styles import Font
+from openpyxl.utils.cell import get_column_letter
+from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.lib import colors
 from reportlab.lib.colors import HexColor
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
@@ -1531,7 +1533,7 @@ class PDFReportGenerator(ReportGenerator):
                            ])
 
         data = [["Name", "Serialnumber", "Size"]]
-        if hardware_report_ar.asset_batch.device.act_partition_table:
+        if hardware_report_ar.asset_batch.partition_table:
             for hdd in hardware_report_ar.asset_batch.device.act_partition_table.partition_disc_set.all():
                 hdd_name = "N/A"
                 hdd_serial = "N/A"
@@ -1569,37 +1571,59 @@ class PDFReportGenerator(ReportGenerator):
                            ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
-        # data = [["Name", "Size", "Free", "Graph"]]
-        # for partition in hardware_report_ar.asset_batch.partitions.all():
-        #     d = Drawing(10, 10)
-        #     r = Rect(0, 0, 130, 12)
-        #     r.fillColor = colors.red
-        #     d.add(r)
-        #
-        #     if partition.size is not None and partition.free is not None:
-        #         free_length = int((float(partition.free) / float(partition.size)) * 130)
-        #         free_start = 130 - free_length
-        #
-        #         r = Rect(free_start, 0, free_length, 12)
-        #         r.fillColor = colors.green
-        #         d.add(r)
-        #     else:
-        #         d = Paragraph("N/A", style_sheet["BodyText"])
-        #
-        #     data.append([Paragraph(str(partition.name), style_sheet["BodyText"]),
-        #                  Paragraph(sizeof_fmt(partition.size), style_sheet["BodyText"]),
-        #                  Paragraph(sizeof_fmt(partition.free), style_sheet["BodyText"]),
-        #                  d])
-        #
-        # p0_4 = Paragraph('<b>Partitions:</b>', style_sheet["BodyText"])
-        # t_4 = Table(data,
-        #             colWidths=(available_width * 0.88 * 0.25,
-        #                        available_width * 0.88 * 0.25,
-        #                        available_width * 0.88 * 0.25,
-        #                        available_width * 0.88 * 0.25),
-        #             style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
-        #                    ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
-        #                    ])
+        data = [["Name", "Filesystem", "Size", "Free", "Fillstatus"]]
+        if hardware_report_ar.asset_batch.partition_table:
+            for logical_disk in hardware_report_ar.asset_batch.partition_table.logicaldisc_set.all():
+                d = Drawing(10, 10)
+                r = Rect(0, 0, 125, 12)
+                r.fillColor = colors.red
+                d.add(r)
+
+                if logical_disk.size is not None and logical_disk.free_space is not None:
+                    fill_percentage = 100 - int((float(logical_disk.free_space) / float(logical_disk.size)) * 100)
+                    free_length = int((float(logical_disk.free_space) / float(logical_disk.size)) * 125)
+                    free_start = 125 - free_length
+
+                    r = Rect(free_start, 0, free_length, 12)
+                    r.fillColor = colors.green
+                    d.add(r)
+
+                    filled_text = "{}%".format(fill_percentage)
+                    #filled_text_length = stringWidth(filled_text, fontName="SourceSansPro-Regular", fontSize=10)
+                    #filled_length = 125 - free_start
+
+                    s = String(2.0, 2.75, filled_text,
+                            fontName="SourceSansPro-Regular",
+                            fontSize=10,
+                            fillColor=colors.white)
+                    d.add(s)
+                else:
+                    d = Paragraph("N/A", style_sheet["BodyText"])
+
+                name = "N/A"
+                if logical_disk.device_name:
+                    name = logical_disk.device_name
+
+                filesystem_name = "N/A"
+                if logical_disk.filesystem_name:
+                    filesystem_name = logical_disk.filesystem_name
+
+                data.append([Paragraph(name, style_sheet["BodyText"]),
+                             Paragraph(filesystem_name, style_sheet["BodyText"]),
+                             Paragraph(sizeof_fmt(logical_disk.size), style_sheet["BodyText"]),
+                             Paragraph(sizeof_fmt(logical_disk.free_space), style_sheet["BodyText"]),
+                             d])
+
+        p0_4 = Paragraph('<b>Logical Volumes:</b>', style_sheet["BodyText"])
+        t_4 = Table(data,
+                    colWidths=(available_width * 0.88 * 0.20,
+                               available_width * 0.88 * 0.20,
+                               available_width * 0.88 * 0.20,
+                               available_width * 0.88 * 0.20,
+                               available_width * 0.88 * 0.20),
+                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ])
 
         data = [["Banklabel", "Formfactor", "Memorytype", "Manufacturer", "Capacity"]]
         for memory_module in hardware_report_ar.asset_batch.memory_modules.all():
@@ -1621,11 +1645,52 @@ class PDFReportGenerator(ReportGenerator):
                            ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
+        data = [["Device", "Product", "Manufacturer", "Speed", "MAC"]]
+        for network_device in hardware_report_ar.asset_batch.network_devices.all():
+            device_name = "N/A"
+            product_name = "N/A"
+            manufacturer = "N/A"
+            speed = "N/A"
+            mac_address = "N/A"
+
+            if network_device.device_name:
+                device_name = network_device.device_name
+
+            if network_device.product_name:
+                product_name = network_device.product_name
+
+            if network_device.manufacturer:
+                manufacturer = network_device.manufacturer
+
+            if network_device.speed:
+                speed = str(network_device.speed)
+
+            if network_device.mac_address:
+                mac_address = network_device.mac_address
+
+            data.append([Paragraph(device_name, style_sheet["BodyText"]),
+                         Paragraph(product_name, style_sheet["BodyText"]),
+                         Paragraph(manufacturer, style_sheet["BodyText"]),
+                         Paragraph(speed, style_sheet["BodyText"]),
+                         Paragraph(mac_address, style_sheet["BodyText"])])
+
+        p0_6 = Paragraph('<b>Network Devices:</b>', style_sheet["BodyText"])
+        t_6 = Table(data,
+                    colWidths=(available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2,
+                               available_width * 0.88 * 0.2),
+                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ])
+
         data = [[p0_1, t_1],
                 [p0_2, t_2],
                 [p0_3, t_3],
-                #[p0_4, t_4],
-                [p0_5, t_5]]
+                [p0_4, t_4],
+                [p0_5, t_5],
+                [p0_6, t_6]]
 
         t_body = Table(data, colWidths=(available_width * 0.10, available_width * 0.90),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
@@ -2193,6 +2258,9 @@ class XlsxReportGenerator(ReportGenerator):
 
                 generate_csv_entry_for_assetrun(ar, sheet.append)
 
+
+
+
             self.set_progress(int(round((float(idx) / len(self.devices)) * 100)))
             idx += 1
 
@@ -2429,18 +2497,32 @@ class XlsxReportGenerator(ReportGenerator):
 
             sheet.append(header_row)
 
-            for _row in data:
-                row = [
-                    _row['name'],
-                    _row['group'],
-                    _row['cpu'],
-                    _row['gpu'],
-                    _row['memory'],
-                    _row['hdd'],
-                    _row['partition']
-                ]
+            sheet.row_dimensions[1].font = Font(bold=True)
 
+            column_names = ["name", "group", "cpu", "gpu", "memory", "hdd", "partition", "network"]
+            max_str_lengths_per_column = {}
+            i = 0
+            for _row in data:
+                height_needed = 1
+                for column_name in column_names:
+                    if column_name not in max_str_lengths_per_column:
+                        max_str_lengths_per_column[column_name] = 0
+
+                    current_max = max_str_lengths_per_column[column_name]
+                    components = _row[column_name].split("\n")
+                    next_max = max([len(line) for line in components])
+                    height_needed = max(len(components), height_needed)
+
+                    max_str_lengths_per_column[column_name] = max(next_max, current_max)
+
+                row = [_row[column_name] for column_name in column_names]
                 sheet.append(row)
+                sheet.row_dimensions[i + 2].height = height_needed * 15
+                i += 1
+
+            for i in range(len(column_names)):
+                max_len = max_str_lengths_per_column[column_names[i]]
+                sheet.column_dimensions[get_column_letter(i + 1)].width = max(max_len, 20)
 
         return workbook
 
@@ -2466,6 +2548,7 @@ def _generate_hardware_info_data_dict(_devices):
         hdd_str = "N/A"
         partition_str = "N/A"
         memory_str = "N/A"
+        network_str = "N/A"
 
         for assetrun in selected_runs:
             if AssetType(assetrun.run_type) == AssetType.PRETTYWINHW or AssetType(assetrun.run_type) == AssetType.LSHW:
@@ -2481,23 +2564,31 @@ def _generate_hardware_info_data_dict(_devices):
                     else:
                         gpu_str = str(gpu)
 
-                # for hdd in assetrun.asset_batch.hdds.all():
-                #    if hdd_str != "N/A":
-                #        hdd_str += "\n{}".format(str(hdd))
-                #    else:
-                #        hdd_str = str(hdd)
-
-                # for partition in assetrun.asset_batch.partitions.all():
-                #     if partition_str != "N/A":
-                #         partition_str += "\n{}".format(str(partition))
-                #     else:
-                #         partition_str = str(partition)
-
                 for memory_module in assetrun.asset_batch.memory_modules.all():
                     if memory_str != "N/A":
                         memory_str += "\n{}".format(str(memory_module))
                     else:
                         memory_str = str(memory_module)
+
+                for network_device in assetrun.asset_batch.network_devices.all():
+                    if network_str != "N/A":
+                        network_str += "\n{}".format(str(network_device))
+                    else:
+                        network_str = str(network_device)
+
+                if assetrun.asset_batch.partition_table:
+                    for hdd in assetrun.asset_batch.partition_table.partition_disc_set.all():
+                        s = "Name:{} Serial:{} Size:{}".format(hdd.disc, hdd.serial, hdd.size)
+                        if hdd_str != "N/A":
+                            hdd_str += "\n{}".format(s)
+                        else:
+                            hdd_str = s
+
+                    # for partition in assetrun.asset_batch.partitions.all():
+                    #     if partition_str != "N/A":
+                    #         partition_str += "\n{}".format(str(partition))
+                    #     else:
+                    #         partition_str = str(partition)
 
         o = {
             'name': _device.full_name,
@@ -2506,7 +2597,8 @@ def _generate_hardware_info_data_dict(_devices):
             'gpu': gpu_str,
             'hdd': hdd_str,
             'partition': partition_str,
-            'memory': memory_str
+            'memory': memory_str,
+            'network': network_str
         }
 
         data.append(o)
@@ -2519,8 +2611,10 @@ def _select_assetruns_for_device(_device, assetbatch_id=None):
     selected_assetbatch = None
 
     if assetbatch_id:
-        selected_assetbatch = AssetBatch.objects.get(idx=assetbatch_id)
-    else:
+        assetbatch_id = int(assetbatch_id)
+        if assetbatch_id > 0:
+            selected_assetbatch = AssetBatch.objects.get(idx=int(assetbatch_id))
+    if not selected_assetbatch:
         # search latest assetbatch and generate
         if _device.assetbatch_set.all():
             for assetbatch in reversed(sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)):
