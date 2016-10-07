@@ -34,7 +34,7 @@ from django.utils import timezone
 from django.conf import settings
 from openpyxl import Workbook
 from openpyxl.writer.excel import save_virtual_workbook
-from reportlab.graphics.shapes import Drawing, Rect
+from reportlab.graphics.shapes import Drawing, Rect, String
 from reportlab.lib import colors
 from reportlab.lib.colors import HexColor
 from reportlab.lib.enums import TA_LEFT, TA_CENTER
@@ -1531,7 +1531,7 @@ class PDFReportGenerator(ReportGenerator):
                            ])
 
         data = [["Name", "Serialnumber", "Size"]]
-        if hardware_report_ar.asset_batch.device.act_partition_table:
+        if hardware_report_ar.asset_batch.partition_table:
             for hdd in hardware_report_ar.asset_batch.device.act_partition_table.partition_disc_set.all():
                 hdd_name = "N/A"
                 hdd_serial = "N/A"
@@ -1569,37 +1569,59 @@ class PDFReportGenerator(ReportGenerator):
                            ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
-        # data = [["Name", "Size", "Free", "Graph"]]
-        # for partition in hardware_report_ar.asset_batch.partitions.all():
-        #     d = Drawing(10, 10)
-        #     r = Rect(0, 0, 130, 12)
-        #     r.fillColor = colors.red
-        #     d.add(r)
-        #
-        #     if partition.size is not None and partition.free is not None:
-        #         free_length = int((float(partition.free) / float(partition.size)) * 130)
-        #         free_start = 130 - free_length
-        #
-        #         r = Rect(free_start, 0, free_length, 12)
-        #         r.fillColor = colors.green
-        #         d.add(r)
-        #     else:
-        #         d = Paragraph("N/A", style_sheet["BodyText"])
-        #
-        #     data.append([Paragraph(str(partition.name), style_sheet["BodyText"]),
-        #                  Paragraph(sizeof_fmt(partition.size), style_sheet["BodyText"]),
-        #                  Paragraph(sizeof_fmt(partition.free), style_sheet["BodyText"]),
-        #                  d])
-        #
-        # p0_4 = Paragraph('<b>Partitions:</b>', style_sheet["BodyText"])
-        # t_4 = Table(data,
-        #             colWidths=(available_width * 0.88 * 0.25,
-        #                        available_width * 0.88 * 0.25,
-        #                        available_width * 0.88 * 0.25,
-        #                        available_width * 0.88 * 0.25),
-        #             style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
-        #                    ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
-        #                    ])
+        data = [["Name", "Filesystem", "Size", "Free", "Fillstatus"]]
+        if hardware_report_ar.asset_batch.partition_table:
+            for logical_disk in hardware_report_ar.asset_batch.partition_table.logicaldisc_set.all():
+                d = Drawing(10, 10)
+                r = Rect(0, 0, 125, 12)
+                r.fillColor = colors.red
+                d.add(r)
+
+                if logical_disk.size is not None and logical_disk.free_space is not None:
+                    fill_percentage = 100 - int((float(logical_disk.free_space) / float(logical_disk.size)) * 100)
+                    free_length = int((float(logical_disk.free_space) / float(logical_disk.size)) * 125)
+                    free_start = 125 - free_length
+
+                    r = Rect(free_start, 0, free_length, 12)
+                    r.fillColor = colors.green
+                    d.add(r)
+
+                    filled_text = "{}%".format(fill_percentage)
+                    #filled_text_length = stringWidth(filled_text, fontName="SourceSansPro-Regular", fontSize=10)
+                    #filled_length = 125 - free_start
+
+                    s = String(2.0, 2.75, filled_text,
+                            fontName="SourceSansPro-Regular",
+                            fontSize=10,
+                            fillColor=colors.white)
+                    d.add(s)
+                else:
+                    d = Paragraph("N/A", style_sheet["BodyText"])
+
+                name = "N/A"
+                if logical_disk.device_name:
+                    name = logical_disk.device_name
+
+                filesystem_name = "N/A"
+                if logical_disk.filesystem_name:
+                    filesystem_name = logical_disk.filesystem_name
+
+                data.append([Paragraph(name, style_sheet["BodyText"]),
+                             Paragraph(filesystem_name, style_sheet["BodyText"]),
+                             Paragraph(sizeof_fmt(logical_disk.size), style_sheet["BodyText"]),
+                             Paragraph(sizeof_fmt(logical_disk.free_space), style_sheet["BodyText"]),
+                             d])
+
+        p0_4 = Paragraph('<b>Logical Volumes:</b>', style_sheet["BodyText"])
+        t_4 = Table(data,
+                    colWidths=(available_width * 0.88 * 0.20,
+                               available_width * 0.88 * 0.20,
+                               available_width * 0.88 * 0.20,
+                               available_width * 0.88 * 0.20,
+                               available_width * 0.88 * 0.20),
+                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ])
 
         data = [["Banklabel", "Formfactor", "Memorytype", "Manufacturer", "Capacity"]]
         for memory_module in hardware_report_ar.asset_batch.memory_modules.all():
@@ -1624,7 +1646,7 @@ class PDFReportGenerator(ReportGenerator):
         data = [[p0_1, t_1],
                 [p0_2, t_2],
                 [p0_3, t_3],
-                #[p0_4, t_4],
+                [p0_4, t_4],
                 [p0_5, t_5]]
 
         t_body = Table(data, colWidths=(available_width * 0.10, available_width * 0.90),
@@ -2519,8 +2541,10 @@ def _select_assetruns_for_device(_device, assetbatch_id=None):
     selected_assetbatch = None
 
     if assetbatch_id:
-        selected_assetbatch = AssetBatch.objects.get(idx=assetbatch_id)
-    else:
+        assetbatch_id = int(assetbatch_id)
+        if assetbatch_id > 0:
+            selected_assetbatch = AssetBatch.objects.get(idx=int(assetbatch_id))
+    if not selected_assetbatch:
         # search latest assetbatch and generate
         if _device.assetbatch_set.all():
             for assetbatch in reversed(sorted(_device.assetbatch_set.all(), key=lambda ab: ab.idx)):
