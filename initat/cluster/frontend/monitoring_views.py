@@ -69,14 +69,13 @@ class SysInfoViewSet(viewsets.ViewSet):
             _sys_info = {
                 "master": [entry for entry in _raw_info if entry["master"]][0],
                 "slaves": [_entry for _entry in _raw_info if not _entry["master"]],
-                "num_builds": mon_dist_master.objects.all().count()
             }
-            _result = [_sys_info]
         else:
-            _result = []
+            _sys_info = {}
+        _sys_info["num_builds"] = mon_dist_master.objects.all().count()
         # import pprint
         # pprint.pprint(_sys_info)
-        return Response(_result)
+        return Response([_sys_info])
 
 
 class BuildInfoViewSet(viewsets.ViewSet):

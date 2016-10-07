@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" mixins for md-sync-server """
+""" mixins for md-sync-server and md-config-server """
 
 import os
 import time
@@ -61,6 +61,7 @@ class VersionCheckMixin(object):
                 global_config.add_config_entries(
                     [
                         ("MD_TYPE", configfile.str_c_var(md_type)),
+                        ("MD_VERSION_STRING", configfile.str_c_var(md_versrel)),
                         ("MD_VERSION", configfile.str_c_var(md_version)),
                         ("MD_RELEASE", configfile.str_c_var(md_release)),
                         ("MD_BASEDIR", configfile.str_c_var(os.path.join("/opt", "cluster", md_type))),

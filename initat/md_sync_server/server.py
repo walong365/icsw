@@ -115,6 +115,7 @@ class server_process(
                         )
                     )
                     if global_config["MON_TARGET_STATE"]:
+                        self._icinga_pc.check_md_config()
                         self._icinga_pc.start()
                     else:
                         self._icinga_pc.stop()
@@ -202,6 +203,7 @@ class server_process(
             ]
         )
         self.config_store.write()
+        self.log(self._get_flag_info())
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:

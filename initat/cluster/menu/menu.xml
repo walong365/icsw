@@ -197,8 +197,8 @@
             </route>
             <route name="main.monitorbuildinfo">
                 <stateData type="dict" url_str="/monitorbuildinfo" template_str="&lt;icsw-monitoring-build-info&gt;&lt;/icsw-monitoring-build-info&gt;"/>
-                <icswData type="dict" pageTitle_str="Monitoring build info">
-                    <menuEntry type="dict" icon_str="fa-info-circle" name_str="Build info"/>
+                <icswData type="dict" pageTitle_str="Monitoring Control and Buildinfo">
+                    <menuEntry type="dict" icon_str="fa-info-circle" name_str="Control and Info"/>
                     <rights type="list">
                         <value>backbone.mon_check_command.setup_monitoring</value>
                     </rights>

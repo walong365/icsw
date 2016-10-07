@@ -50,13 +50,13 @@ monitoring_build_info_module = angular.module(
 
         update: (in_list) =>
             @slaves.length = 0
-            if in_list.length
-                in_struct = in_list[0]
+            in_struct = in_list[0]
+            if in_struct.master?
                 # console.log "update", in_struct
                 for entry in in_struct.slaves
                     @slaves.push(entry)
                 @master = in_struct.master
-                @num_builds = in_struct.num_builds
+            @num_builds = in_struct.num_builds
             @salt()
 
         salt: () =>

@@ -116,6 +116,13 @@ class ExternalProcess(object):
         else:
             self.log("called wait (pid={:d})".format(pid))
 
+    @property
+    def return_code(self):
+        if self.popen:
+            return self.popen.returncode
+        else:
+            return None
+
 
 class ProcessControl(object):
     def __init__(self, proc, proc_name, pid_file_name):
@@ -271,10 +278,10 @@ class ProcessControl(object):
             if _proc.name == self.__proc_name:
                 print _proc
 
-    def start(self):
-        self.stop()
-        self.log("starting process")
-        _com = "{} -d {}".format(
+    def check_md_config(self):
+        # checks the current config and returns True or False
+        _valid = False
+        _check_com = "{} -v -d {}".format(
             os.path.join(
                 global_config["MD_BASEDIR"],
                 "bin",
@@ -286,11 +293,18 @@ class ProcessControl(object):
                 "icinga.cfg",
             ),
         )
+        self.log("checking md-config")
+        _check_proc = self._start_ext_proc(_check_com)
+        _check_proc.close()
+        return _valid
 
-        self.__ext_process = ExternalProcess(
+    def _start_ext_proc(self, com_str):
+        # start external process with command string com_tr
+        self.log("starting process (com_str {})".format(com_str))
+        ext_proc = ExternalProcess(
             self.log,
             self.__proc_name,
-            _com,
+            com_str,
             {
                 os.path.join(
                     global_config["MD_BASEDIR"],
@@ -309,8 +323,27 @@ class ProcessControl(object):
                 ): True,
             }
         )
-        self.__ext_process.run()
-        self.__ext_process.wait()
+        ext_proc.run()
+        ext_proc.wait()
+        self.log("returncode is {}".format(ext_proc.return_code))
+        return ext_proc
+
+    def start(self):
+        self.stop()
+        _com = "{} -d {}".format(
+            os.path.join(
+                global_config["MD_BASEDIR"],
+                "bin",
+                self.__proc_name,
+            ),
+            os.path.join(
+                global_config["MD_BASEDIR"],
+                "etc",
+                "icinga.cfg",
+            ),
+        )
+
+        self.__ext_process = self._start_ext_proc(_com)
         self.__external_cmd_file = os.path.join(
             global_config["MD_BASEDIR"],
             "var",

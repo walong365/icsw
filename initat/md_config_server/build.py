@@ -25,7 +25,6 @@ import json
 import operator
 import os
 import os.path
-import signal
 import time
 
 import networkx
@@ -47,12 +46,15 @@ from initat.md_config_server.config import global_config, monMainConfig, all_com
     all_host_dependencies, BuildCache, build_safe_name, SimpleCounter
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
-from initat.md_config_server.mixins import version_check_mixin
-from initat.tools import config_tools, configfile, logging_tools, net_tools, process_tools, \
+from initat.md_sync_server.mixins import VersionCheckMixin
+from initat.tools import config_tools, configfile, logging_tools, process_tools, \
     server_command, threading_tools
 
 
-class build_process(threading_tools.process_obj, version_check_mixin):
+class BuildProcess(
+    threading_tools.process_obj,
+    VersionCheckMixin,
+):
     def process_init(self):
         self.__log_template = logging_tools.get_logger(
             global_config["LOG_NAME"],
@@ -62,7 +64,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
             init_logger=True
         )
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
-        self.__icinga_lock_file_name = os.path.join(global_config["MD_BASEDIR"], "var", global_config["MD_LOCK_FILE"])
         db_tools.close_connection()
         self.__mach_loggers = {}
         self.__num_mach_logs = {}
@@ -75,7 +76,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         self.register_func("build_host_config", self._check_call)
         self.register_func("sync_http_users", self._check_call)
         self.register_func("rebuild_config", self._check_call)
-        self.register_func("reload_md_daemon", self._check_call)
         # store pending commands
         self.__pending_commands = []
         # ready (check_for_slaves called)
@@ -217,92 +217,6 @@ class build_process(threading_tools.process_obj, version_check_mixin):
                 }
             )
 
-    def _reload_md_daemon(self, **kwargs):
-        start_daemon, restart_daemon = (False, False)
-        cs_stat, cs_out = self._check_md_config()
-        if not cs_stat:
-            self.log("Checking the {}-config resulted in an error, not trying to (re)start".format(global_config["MD_TYPE"]), logging_tools.LOG_LEVEL_ERROR)
-            self.log("error_output has {}".format(logging_tools.get_plural("line", cs_out.split("\n"))),
-                     logging_tools.LOG_LEVEL_ERROR)
-            for line in cs_out.split("\n"):
-                if line.strip().lower().startswith("error"):
-                    self.log(" - {}".format(line), logging_tools.LOG_LEVEL_ERROR)
-        else:
-            if os.path.isfile(self.__icinga_lock_file_name):
-                try:
-                    pid = file(self.__icinga_lock_file_name, "r").read().strip()
-                except:
-                    self.log(
-                        "Cannot read {} LockFile named '{}', trying to start {}".format(
-                            global_config["MD_TYPE"],
-                            self.__icinga_lock_file_name,
-                            global_config["MD_TYPE"],
-                        ),
-                        logging_tools.LOG_LEVEL_WARN
-                    )
-                    start_daemon = True
-                else:
-                    pid = file(self.__icinga_lock_file_name).read().strip()
-                    try:
-                        pid = int(pid)
-                    except:
-                        self.log(
-                            "PID read from '{}' is not an integer ({}, {}), trying to restart {}".format(
-                                self.__icinga_lock_file_name,
-                                str(pid),
-                                process_tools.get_except_info(),
-                                global_config["MD_TYPE"],
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
-                        restart_daemon = True
-                    else:
-                        try:
-                            os.kill(pid, signal.SIGHUP)
-                        except OSError:
-                            self.log(
-                                "Error signaling pid {:d} with SIGHUP ({:d}), trying to restart {} ({})".format(
-                                    pid,
-                                    signal.SIGHUP,
-                                    global_config["MD_TYPE"],
-                                    process_tools.get_except_info(),
-                                ),
-                                logging_tools.LOG_LEVEL_ERROR
-                            )
-                            restart_daemon = True
-                        else:
-                            self.log("Successfully signaled pid {:d} with SIGHUP ({:d})".format(pid, signal.SIGHUP))
-            else:
-                self.log(
-                    "{} LockFile '{}' not found, trying to start {}".format(
-                        global_config["MD_TYPE"],
-                        self.__icinga_lock_file_name,
-                        global_config["MD_TYPE"]),
-                    logging_tools.LOG_LEVEL_WARN)
-                start_daemon = True
-        if start_daemon:
-            _cmd = "start"
-        elif restart_daemon:
-            _cmd = "restart"
-        else:
-            _cmd = None
-        if _cmd:
-            self.log("Trying to {} {} via collserver-call_script".format(_cmd, global_config["MD_TYPE"]))
-            reply = net_tools.ZMQConnection("md_config_server", timeout=10).add_connection(
-                "tcp://localhost:{:d}".format(self.__hm_port),
-                server_command.srv_command(
-                    command="call_script",
-                    **{
-                        "arguments:arg0": "/etc/init.d/{}".format(global_config["MD_TYPE"]),
-                        "arguments:arg1": _cmd,
-                    }
-                )
-            )
-            if reply is None:
-                self.log("got no reply", logging_tools.LOG_LEVEL_ERROR)
-            else:
-                self.log(*reply.get_log_tuple())
-
     def _sync_http_users(self, *args, **kwargs):
         self.log("syncing http-users")
         self.__gen_config._create_access_entries()
@@ -329,9 +243,9 @@ class build_process(threading_tools.process_obj, version_check_mixin):
 
     def _cleanup_db(self):
         # cleanup tasks for the database
-        num_empty_mhd = mon_host_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).count()
-        num_empty_msd = mon_service_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).count()
-        if num_empty_mhd:
+        num_empty_mhd = mon_host_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None))
+        num_empty_msd = mon_service_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None))
+        if num_empty_mhd.count():
             self.log("removing {} empty mon_host_dependencies".format(num_empty_mhd))
             mon_host_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).delete()
         if num_empty_msd:
@@ -370,7 +284,7 @@ class build_process(threading_tools.process_obj, version_check_mixin):
         single_build = True if len(args) > 0 else False
         if not single_build:
             # from mixin
-            self._check_md_version()
+            self.VCM_check_md_version()
             self._cleanup_db()
             # check for SNMP container config
             self._check_for_snmp_container()
