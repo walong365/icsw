@@ -118,6 +118,8 @@ class SyncConfig(object):
             if self.name:
                 # distribution slave structure on dist master
                 self.struct = None
+                # latest conact
+                self.__latest_contact = None
                 self.config_store = config_store.ConfigStore(CS_MON_NAME, log_com=self.__process.log, access_mode=config_store.AccessModeEnum.LOCAL, read=False)
                 self.__dir_offset = os.path.join("slaves", self.name)
                 for _attr_name in ["slave_ip", "master_ip", "pk", "slave_uuid", "master_uuid"]:
@@ -239,7 +241,7 @@ class SyncConfig(object):
 
     def get_satellite_info(self):
         r_dict = {
-            "config_store": {}
+            "config_store": {},
         }
         if self.config_store is not None:
             # may be none for local master
@@ -253,10 +255,9 @@ class SyncConfig(object):
         return r_dict
 
     def store_satellite_info(self, si_info, dist_master):
-        # import pprint
-        # pprint.pprint(si_info)
         for _key in si_info.get("config_store", {}).keys():
             self.config_store[_key] = si_info["config_store"][_key]
+        self.__latest_contact = time.time()
         if "store_info" in si_info:
             if self.__file_dict:
                 for _key, _struct in si_info["store_info"].iteritems():
@@ -271,12 +272,14 @@ class SyncConfig(object):
             "master": self.master,
             "slave_uuid": self.slave_uuid,
             "state": self.state.name,
+            "latest_contact": self.__latest_contact,
         }
         if self.struct is not None:
             # local master
             r_dict.update(self.struct.get_satellite_info())
         else:
             r_dict.update(self.get_satellite_info())
+        r_dict["sysinfo"] = self.__process.get_sys_dict()
         return r_dict
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
@@ -324,7 +327,7 @@ class SyncConfig(object):
 
         self.log(
             u"send {} to {} (UUID={}, {})".format(
-                srv_com["*action"],
+                srv_com.get("action", srv_com["*command"]),
                 unicode(self.name),
                 self.slave_uuid,
                 ", ".join(["{}='{}'".format(_key, str(_value)) for _key, _value in kwargs.iteritems()]),
@@ -358,6 +361,8 @@ class SyncConfig(object):
         )
 
     def send_info_message(self):
+        # set latest contact for dist master
+        self.__latest_contact = time.time()
         # send info to monitor daemon
         info_list = [
             _entry.get_info_dict() for _entry in [self] + self.__slave_configs.values()
@@ -494,6 +499,21 @@ class SyncConfig(object):
             return ("", [])
 
     # remote actions
+    def forward_srv_com(self, srv_com):
+        # forward srv com to other dist slaves
+        self.log(
+            "forwarding srv_com '{}' to {}...".format(
+                srv_com["*command"],
+                logging_tools.get_plural("slave", len(self.__slave_configs)),
+            )
+        )
+        # set forward flag
+        srv_com["forwarded"] = True
+        for _slave in self.__slave_configs.itervalues():
+            _slave.send_slave_command(srv_com)
+        # always send info message
+        self.send_info_message()
+
     def handle_remote_action(self, action, srv_com):
         _attr_name = "handle_remote_{}".format(action)
         try:

@@ -453,6 +453,7 @@ class srv_command(object):
         return result
 
     def get(self, key, def_value=None):
+        # get does NOT support the automatic interpretation of elements via the "*{key}" snytax (and never will ...)
         xpath_str = ".//{}".format("/".join(["ns:{}".format(sub_arg) for sub_arg in key.split(":")]))
         xpath_res = self.__tree.xpath(xpath_str, smart_strings=False, namespaces={"ns": XML_NS})
         if len(xpath_res) == 1:

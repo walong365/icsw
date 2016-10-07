@@ -43,7 +43,7 @@ TEMPLATE_NAME = "t"
 # maps to transfer for single_build
 SINGLE_BUILD_MAPS = {"device.d", "command"}
 
-# no logner needed
+# no longer needed / required
 
 # IDOMOD_PROCESS_PROCESS_DATA = 2 ** 0
 # IDOMOD_PROCESS_TIMED_EVENT_DATA = 2 ** 1
@@ -71,7 +71,7 @@ SINGLE_BUILD_MAPS = {"device.d", "command"}
 # IDOMOD_PROCESS_STATECHANGE_DATA = 2 ** 23
 # IDOMOD_PROCESS_CONTACT_STATUS_DATA = 2 ** 24
 # IDOMOD_PROCESS_ADAPTIVE_CONTACT_DATA = 2 ** 25
-#
+
 BROKER_PROGRAM_STATE = 2 ** 0
 BROKER_TIMED_EVENTS = 2 ** 1
 BROKER_SERVICE_CHECKS = 2 ** 2

@@ -1,74 +1,147 @@
 <script type="text/ng-template" id="icsw.monitoring.build_info">
     <div class="container-fluid">
         <h3>
-            Build info ({{ struct.masters.length }} builds)
+            Monitoring control and info
             <span class="text-warning" ng-show="struct.loading">Updating data...</span>
         </h3>
+        <uib-accordion close-others="false" ng-if="struct.sys_info">
+            <div uib-accordion-group class="panel-default" is-open="true">
+                <uib-accordion-heading>
+                    Current system setup
+                </uib-accordion-heading>
+                <icsw-monitoring-sys-info-node icsw-master="struct.sys_info.master" icsw-slaves="struct.sys_info.slaves">
+                </icsw-monitoring-sys-info-node>
+            </div>
+            <div uib-accordion-group class="panel-default" is-open="false">
+                <uib-accordion-heading>
+                    Build overview
+                    <span ng-show="struct.sys_info">
+                        ({{ struct.sys_info.num_builds }} builds, {{ struct.sys_info.master_list.length }} shown)
+                    </span>
+                </uib-accordion-heading>
+                <table
+                    class="table table-condensed table-hover" style="width: auto;"
+                    st-table="entries_displayed"
+                    st-safe-src="struct.sys_info.master_list"
+                    ng-show="struct.sys_info.master_list.length > 0"
+                >
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div
+                                    icsw-tools-pagination
+                                    st-items-by-page="10"
+                                    st-displayed-pages="11"
+                                    possible-items-by-page="10,20,50,100,200,500,1000">
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>device (#slaves)</th>
+                            <th>start</th>
+                            <th>conf</th>
+                            <th>run / sync</th>
+                            <th>devices</th>
+                            <th title="Monitoring Daemon version" class="text-center">MonDaemon</th>
+                            <th title="ICSW Software version" class="text-center">ICSW</th>
+                            <th title="Livestatus version" class="text-center">Livestatus</th>
+                            <th>data size (files)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-repeat-start="build in entries_displayed" ng-class="build.$$line_class">
+                            <th>{{ struct.device_tree.all_lut[build.device].full_name }}
+                                <span ng-show="build.mon_dist_slave_set.length">({{ build.mon_dist_slave_set.length }})</span>
+                            </th>
+                            <td>{{ build.$$build_time }} ({{ build.$$build_diff_time }})</td>
+                            <td class="text-right">{{ build.$$build_conf_time }}</td>
+                            <td class="text-right">{{ build.$$build_run_time }}</td>
+                            <td class="text-right" ng-class="{'danger': build.unreachable_devices > 0}">{{ build.num_devices }}
+                                <span ng-show="build.unreachable_devices"> ({{ build.unreachable_devices }})</span>
+                            </td>
+                            <td class="text-center">{{ build.mon_version }}</td>
+                            <td class="text-center">{{ build.relayer_version }}</td>
+                            <td class="text-center">{{ build.livestatus_version }}</td>
+                            <td colspan="2"></td>
+                        </tr>
+                        <tr ng-repeat-end ng-repeat="slave in build.mon_dist_slave_set">
+                            <td>({{ $index + 1 }}) {{ struct.device_tree.all_lut[slave.device].full_name }}</td>
+                            <td>{{ slave.$$sync_start }} ({{ slave.$$sync_diff_time }})</td>
+                            <td class="text-right">{{ slave.$$build_conf_time }}</td>
+                            <td class="text-right">
+                                {{ slave.$$sync_time }} <span ng-show="slave.num_runs > 1">({{ slave.num_runs}} )</span>
+                            </td>
+                            <td class="text-right">{{ slave.num_devices }}</td>
+                            <td class="text-center">{{ slave.mon_version || '---' }}</td>
+                            <td class="text-center">{{ slave.relayer_version || '---' }}</td>
+                            <td class="text-center">{{ slave.livestatus_version }}</td>
+                            <td class="text-right">
+                                {{ slave.size_data | get_size:1:1024 }} ({{ slave.num_files }})
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </uib-accordion>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.monitoring.sys.info.node">
+    <div>
+        <h4>Node setup ({{ struct.nodes.length }}), {{ slaves.length }} slaves defined</h4>
         <table
-            class="table table-condensed table-hover" style="width: auto;"
-            st-table="entries_displayed"
-            st-safe-src="struct.masters"
-            ng-show="struct.masters.length > 0"
+            class="table table-condensed table-hover table-striped"
+            style="width: auto;"
+            ng-show="struct.nodes.length"
         >
             <thead>
                 <tr>
-                    <td colspan="99">
-                        <div
-                            icsw-tools-pagination
-                            st-items-by-page="10"
-                            st-displayed-pages="11"
-                            possible-items-by-page="10,20,50,100,200,500,1000">
-                        </div>
-                    </td>
-                </tr>
-                <tr>
-                    <th>device (#slaves)</th>
-                    <th>start</th>
-                    <th>conf</th>
-                    <th>run / sync</th>
-                    <th>devices</th>
-                    <th title="Monitoring Daemon version" class="text-center">MonDaemon</th>
-                    <th title="ICSW Software version" class="text-center">ICSW</th>
-                    <th title="Livestatus version" class="text-center">Livestatus</th>
-                    <th>raw size (transfers)</th>
-                    <th>data size (files)</th>
+                    <th>Name</th>
+                    <th>SWVersion</th>
+                    <th>MonVersion</th>
+                    <th>LiveVersion</th>
+                    <th>Autostart</th>
+                    <th>Ignore</th>
+                    <th>latest contact</th>
                 </tr>
             </thead>
             <tbody>
-                <tr ng-repeat-start="build in entries_displayed" ng-class="build.$$line_class">
-                    <th>{{ struct.device_tree.all_lut[build.device].full_name }}
-                        <span ng-show="build.mon_dist_slave_set.length">({{ build.mon_dist_slave_set.length }})</span>
-                    </th>
-                    <td>{{ build.$$build_time }} ({{ build.$$build_diff_time }})</td>
-                    <td class="text-right">{{ get_conf_time(build) }}</td>
-                    <td class="text-right">{{ get_run_time(build) }}</td>
-                    <td class="text-right" ng-class="{'danger': build.unreachable_devices > 0}">{{ build.num_devices }}
-                        <span ng-show="build.unreachable_devices"> ({{ build.unreachable_devices }})</span>
+                <tr ng-repeat="node in struct.nodes">
+                    <td>
+                        {{ node.name }}
                     </td>
-                    <td class="text-center">{{ build.mon_version }}</td>
-                    <td class="text-center">{{ build.relayer_version }}</td>
-                    <td class="text-center">{{ build.livestatus_version }}</td>
-                    <td colspan="2"></td>
-                </tr>
-                <tr ng-repeat-end ng-repeat="slave in get_slaves(build)">
-                    <td>({{ $index + 1 }}) {{ struct.device_tree.all_lut[slave.device].full_name }}</td>
-                    <td>{{ get_time(slave.sync_start) }} ({{ get_diff_time(slave.sync_start) }})</td>
-                    <td class="text-right">{{ get_conf_time(slave) }}</td>
-                    <td class="text-right">
-                        {{ get_sync_time(slave) }} <span ng-show="slave.num_runs > 1">({{ slave.num_runs}} )</span>
+                    <td class="text-center">{{ node.version.relayer_version }}</td>
+                    <td class="text-center">{{ node.version.mon_version }}</td>
+                    <td class="text-center">{{ node.version.livestatus_version }}</td>
+                    <td class="text-center">
+                        <span ng-show="node.$$sysinfo_ok" ng-bind-html="node.sysinfo.start_process | yesno4"></span>
                     </td>
-                    <td class="text-right">{{ slave.num_devices }}</td>
-                    <td class="text-center">{{ slave.mon_version || '---' }}</td>
-                    <td class="text-center">{{ slave.relayer_version || '---' }}</td>
-                    <td class="text-center">{{ slave.livestatus_version }}</td>
-                    <td class="text-right">
-                        {{ slave.size_raw | get_size:1:1024 }} ({{ slave.num_transfers }})
+                    <td class="text-center">
+                        <span ng-show="node.$$sysinfo_ok" ng-bind-html="node.sysinfo.ignore_process | yesno4"></span>
                     </td>
-                    <td class="text-right">
-                        {{ slave.size_data | get_size:1:1024 }} ({{ slave.num_files }})
-                    </td>
+                    <td>{{ node.$$latest_contact }}</td>
+                    <!-- <td>
+                        {{ node }}
+                    </td> -->
                 </tr>
             </tbody>
         </table>
+        <div ng-show="struct.nodes.length">
+            <div ng-show="struct.nodes[0].$$sysinfo_ok">
+                Autostart: <icsw-tools-button
+                    type="enable"
+                    size="xs"
+                    is-enable="master.sysinfo.start_process"
+                    ng-click="toggle_flag($event, 'start_process')"
+                ></icsw-tools-button>
+                Ignore Process: <icsw-tools-button
+                    type="enable"
+                    size="xs"
+                    is-enable="master.sysinfo.ignore_process"
+                    ng-click="toggle_flag($event, 'ignore_process')"
+                ></icsw-tools-button>
+            </div>
+            <h3 ng-show="!struct.nodes[0].$$sysinfo_ok" class="text-warning">No master syncer found</h3>
+        </div>
     </div>
 </script>

@@ -161,18 +161,29 @@ device_asset_module = angular.module(
         stop_timer()
     )
 
+    $scope.load_package_tree = () ->
+        console.log("called")
+        blockUI.start("Loading Data...")
+        $q.all(
+            [
+                icswAssetPackageTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.package_tree = data[0]
+                blockUI.stop()
+        )
+
     $scope.new_devsel = (devs) ->
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
                 icswDispatcherSettingTreeService.load($scope.$id)
-                icswAssetPackageTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.disp_setting_tree = data[1]
-                $scope.struct.package_tree = data[2]
 
                 $scope.struct.devices.length = 0
                 for dev in devs
@@ -896,7 +907,11 @@ device_asset_module = angular.module(
                             "free": "N/A"
                             "filesystem_name": disc.filesystem_name
                             "fill_percentage": 100
+                            "fill_bar_style": {}
                         }
+
+                        o["fill_bar_style"]["width"] = 100 + "%"
+                        o["fill_bar_style"]["vertical-align"] = "middle"
 
                         if disc.size
                             o["size"] = icswTools.get_size_str(disc.size, 1024, "Byte")

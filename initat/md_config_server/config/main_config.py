@@ -28,24 +28,23 @@ import shutil
 import sqlite3
 import time
 
-from django.conf import settings
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device, user
 from initat.md_config_server.config.base_config import base_config
 from initat.md_config_server.config.config_dir import config_dir
-from initat.md_config_server.config.host_type_config import host_type_config
+from initat.md_config_server.config.host_type_config import monHostTypeConfig
 from initat.tools import config_tools, configfile, logging_tools, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
 __all__ = [
-    "main_config",
+    "monMainConfig",
 ]
 
 
-class main_config(object):
+class monMainConfig(object):
     def __init__(self, proc, monitor_server, **kwargs):
         self.__process = proc
         self.__slave_name = kwargs.get("slave_name", None)
@@ -105,7 +104,7 @@ class main_config(object):
         return self.__r_dir_dict["var"]
 
     def is_valid(self):
-        ht_conf_names = [key for key, value in self.__dict.iteritems() if isinstance(value, host_type_config)]
+        ht_conf_names = [key for key, value in self.__dict.iteritems() if isinstance(value, monHostTypeConfig)]
         invalid = sorted([key for key in ht_conf_names if not self[key].is_valid()])
         if invalid:
             self.log(
@@ -175,17 +174,19 @@ class main_config(object):
         else:
             self.log("clearing {} dir (slave)".format(self.__w_dir_dict["etc"]))
             for dir_e in os.listdir(self.__w_dir_dict["etc"]):
-                full_path = "%s/%s" % (self.__w_dir_dict["etc"], dir_e)
+                full_path = os.path.join(self.__w_dir_dict["etc"], dir_e)
                 if os.path.isfile(full_path):
                     try:
                         os.unlink(full_path)
                     except:
-                        self.log("Cannot delete file %s: %s" % (full_path, process_tools.get_except_info()),
-                                 logging_tools.LOG_LEVEL_ERROR)
+                        self.log(
+                            "Cannot delete file {}: {}".format(full_path, process_tools.get_except_info()),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
 
     def _create_nagvis_base_entries(self):
         if os.path.isdir(global_config["NAGVIS_DIR"]):
-            self.log("creating base entries for nagvis (under %s)" % (global_config["NAGVIS_DIR"]))
+            self.log("creating base entries for nagvis (under {})".format(global_config["NAGVIS_DIR"]))
             #
             nagvis_main_cfg = ConfigParser.RawConfigParser(allow_no_value=True)
             for sect_name, var_list in [
@@ -222,7 +223,7 @@ class main_config(object):
                 (
                     "paths",
                     [
-                        ("base", "%s/" % (os.path.normpath(global_config["NAGVIS_DIR"]))),
+                        ("base", "{}/".format(os.path.normpath(global_config["NAGVIS_DIR"]))),
                         ("htmlbase", global_config["NAGVIS_URL"]),
                         ("htmlcgi", "/icinga/cgi-bin"),
                     ]
@@ -415,9 +416,13 @@ class main_config(object):
                     nvm_file.write("; <?php return 1; ?>\n")
                     nagvis_main_cfg.write(nvm_file)
             except IOError:
-                self.log("error creating %s: %s" % (
-                    nv_target,
-                    process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "error creating {}: {}".format(
+                        nv_target,
+                        process_tools.get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
             # clear SALT
             config_php = os.path.join(global_config["NAGVIS_DIR"], "share", "server", "core", "defines", "global.php")
             if os.path.exists(config_php):
@@ -430,46 +435,22 @@ class main_config(object):
                         save = True
                     new_lines.append(cur_line)
                 if save:
-                    self.log("saving %s" % (config_php))
+                    self.log("saving {}".format(config_php))
                     file(config_php, "w").write("\n".join(new_lines))
             else:
-                self.log("config.php '%s' does not exist" % (config_php), logging_tools.LOG_LEVEL_ERROR)
+                self.log("config.php '{}' does not exist".format(config_php), logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.log("no nagvis_directory '%s' found" % (global_config["NAGVIS_DIR"]), logging_tools.LOG_LEVEL_ERROR)
+            self.log("no nagvis_directory '{}' found".format(global_config["NAGVIS_DIR"]), logging_tools.LOG_LEVEL_ERROR)
 
     def _create_base_config_entries(self):
         # read sql info
         resource_cfg = base_config("resource", is_host_file=True)
-        if os.path.isfile("/opt/%s/libexec/check_dns" % (global_config["MD_TYPE"])):
-            resource_cfg["$USER1$"] = "/opt/%s/libexec" % (global_config["MD_TYPE"])
+        if os.path.isfile("/opt/{}/libexec/check_dns".format(global_config["MD_TYPE"])):
+            resource_cfg["$USER1$"] = "/opt/{}/libexec".format(global_config["MD_TYPE"])
         else:
-            resource_cfg["$USER1$"] = "/opt/%s/lib" % (global_config["MD_TYPE"])
+            resource_cfg["$USER1$"] = "/opt/{}/lib".format(global_config["MD_TYPE"])
         resource_cfg["$USER2$"] = "/opt/cluster/sbin/ccollclientzmq -t %d" % (global_config["CCOLLCLIENT_TIMEOUT"])
         resource_cfg["$USER3$"] = "/opt/cluster/sbin/csnmpclientzmq -t %d" % (global_config["CSNMPCLIENT_TIMEOUT"])
-        NDOMOD_NAME, NDO2DB_NAME = (
-            "ndomod",
-            "ndo2db"
-        )
-        ndomod_cfg = base_config(
-            NDOMOD_NAME,
-            belongs_to_ndo=True,
-            values=[
-                ("instance_name", "clusternagios"),
-                ("output_type", "unixsocket"),
-                ("output", "%s/ido.sock" % (self.__r_dir_dict["var"])),
-                ("tcp_port", 5668),
-                ("output_buffer_items", 5000),
-                ("buffer_file", "%s/ndomod.tmp" % (self.__r_dir_dict["var"])),
-                ("file_rotation_interval", 14400),
-                ("file_rotation_timeout", 60),
-                ("reconnect_interval", 15),
-                ("reconnect_warning_interval", 15),
-                ("debug_level", 0),
-                ("debug_verbosity", 0),
-                ("debug_file", os.path.join(self.__r_dir_dict["var"], "ndomod.debug")),
-                ("config_output_options", 2)
-            ]
-        )
         main_values = [
             (
                 "log_file",
@@ -481,19 +462,19 @@ class main_config(object):
             ("cfg_file", []),
             (
                 "resource_file",
-                "%s/%s.cfg" % (
+                "{}/{}.cfg".format(
                     self.__r_dir_dict["etc"],
                     resource_cfg.get_name()
                 )
             ),
-            ("%s_user" % (global_config["MD_TYPE"]), "idmon"),
-            ("%s_group" % (global_config["MD_TYPE"]), "idg"),
+            ("{}_user".format(global_config["MD_TYPE"]), "idmon"),
+            ("{}_group".format(global_config["MD_TYPE"]), "idg"),
             ("check_external_commands", 1),
             ("command_check_interval", 1),
             ("command_file", self.get_command_name()),
             ("command_check_interval", "5s"),
-            ("lock_file", "%s/%s" % (self.__r_dir_dict["var"], global_config["MD_LOCK_FILE"])),
-            ("temp_file", "%s/temp.tmp" % (self.__r_dir_dict["var"])),
+            ("lock_file", os.path.join(self.__r_dir_dict["var"], global_config["MD_LOCK_FILE"])),
+            ("temp_file", "{}/temp.tmp".format(self.__r_dir_dict["var"])),
             ("log_rotation_method", "d"),
             ("log_archive_path", self.__r_dir_dict["var/archives"]),
             ("use_syslog", 0),
@@ -610,13 +591,15 @@ class main_config(object):
                 )
         else:
             # add global event handlers
-            main_values.extend([
-                ("cfg_dir", []),
-                ("ochp_command", "ochp-command"),
-                ("ocsp_command", "ocsp-command"),
-                ("stalking_event_handlers_for_hosts", 1),
-                ("stalking_event_handlers_for_services", 1),
-            ])
+            main_values.extend(
+                [
+                    ("cfg_dir", []),
+                    ("ochp_command", "ochp-command"),
+                    ("ocsp_command", "ocsp-command"),
+                    ("stalking_event_handlers_for_hosts", 1),
+                    ("stalking_event_handlers_for_services", 1),
+                ]
+            )
         main_values.extend(
             [
                 ("object_cache_file", "%s/object.cache" % (self.__r_dir_dict["var"])),
@@ -624,7 +607,8 @@ class main_config(object):
                 ("enable_environment_macros", "0"),
                 ("max_service_check_spread", global_config["MAX_SERVICE_CHECK_SPREAD"]),
                 ("max_host_check_spread", global_config["MAX_HOST_CHECK_SPREAD"]),
-            ])
+            ]
+        )
         main_cfg = base_config(global_config["MAIN_CONFIG_NAME"],
                                is_host_file=True,
                                values=main_values)
@@ -637,7 +621,7 @@ class main_config(object):
             ("external_commands", 1 if global_config["LOG_EXTERNAL_COMMANDS"] else 0),
             ("passive_checks", 1 if global_config["LOG_PASSIVE_CHECKS"] else 0)
         ]:
-            main_cfg["log_%s" % (log_descr)] = en
+            main_cfg["log_{}".format(log_descr)] = en
         for to_descr, to in [
             ("service_check", 60),
             ("host_check", 30),
@@ -646,14 +630,14 @@ class main_config(object):
             ("ocsp", 5),
             ("perfdata", 5)
         ]:
-            main_cfg["%s_timeout" % (to_descr)] = to
+            main_cfg["{}_timeout".format(to_descr)] = to
         for th_descr, th in [
             ("low_service", 5.0),
             ("high_service", 20.0),
             ("low_host", 5.0),
             ("high_host", 20.0)
         ]:
-            main_cfg["%s_flap_threshold" % (th_descr)] = th
+            main_cfg["{}_flap_threshold".format(th_descr)] = th
         _uo = user.objects  # @UndefinedVariable
         admin_list = list(
             [
@@ -665,7 +649,7 @@ class main_config(object):
         if admin_list:
             def_user = ",".join(admin_list)
         else:
-            def_user = "%sadmin" % (global_config["MD_TYPE"])
+            def_user = "{}admin".format(global_config["MD_TYPE"])
         cgi_config = base_config(
             "cgi",
             is_host_file=True,
@@ -690,10 +674,13 @@ class main_config(object):
                 ("authorized_for_all_hosts", def_user),
                 ("authorized_for_all_host_commands", def_user),
                 ("authorized_for_all_services", def_user),
-                ("authorized_for_all_service_commands", def_user)] +
-            [("tac_show_only_hard_state", 1)] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else [])
+                ("authorized_for_all_service_commands", def_user)
+            ] + [
+                ("tac_show_only_hard_state", 1)
+            ] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else []
+        )
         self[main_cfg.get_name()] = main_cfg
-        self[ndomod_cfg.get_name()] = ndomod_cfg
+        # self[ndomod_cfg.get_name()] = ndomod_cfg
         self[cgi_config.get_name()] = cgi_config
         self[resource_cfg.get_name()] = resource_cfg
         if self.master:
@@ -741,10 +728,14 @@ class main_config(object):
             htp_file = os.path.join(self.__r_dir_dict["etc"], "http_users.cfg")
             file(htp_file, "w").write(
                 "\n".join(
-                    ["{}:{{SSHA}}{}".format(
-                        cur_u.login,
-                        cur_u.password_ssha.split(":", 1)[1]
-                    ) for cur_u in user.objects.filter(Q(active=True)) if cur_u.password_ssha.count(":")] + [""]  # @UndefinedVariable
+                    [
+                        "{}:{{SSHA}}{}".format(
+                            cur_u.login,
+                            cur_u.password_ssha.split(":", 1)[1]
+                        ) for cur_u in user.objects.filter(
+                            Q(active=True)
+                        ) if cur_u.password_ssha.count(":")
+                    ] + [""]
                 )
             )
             if global_config["ENABLE_NAGVIS"]:
@@ -772,16 +763,30 @@ class main_config(object):
                     cur_c.execute("DELETE FROM roles")
                     cur_c.execute("DELETE FROM roles2perms")
                     admin_role_id = cur_c.execute("INSERT INTO roles VALUES(Null, 'admins')").lastrowid
-                    perms_dict = dict([("%s.%s.%s" % (
-                        cur_perm[1].lower(),
-                        cur_perm[2].lower(),
-                        cur_perm[3].lower()), cur_perm[0]) for cur_perm in cur_c.execute("SELECT * FROM perms")])
+                    perms_dict = {
+                        "{}.{}.{}".format(
+                            cur_perm[1].lower(),
+                            cur_perm[2].lower(),
+                            cur_perm[3].lower()
+                        ): cur_perm[0] for cur_perm in cur_c.execute("SELECT * FROM perms")
+                    }
                     # pprint.pprint(perms_dict)
-                    cur_c.execute("INSERT INTO roles2perms VALUES(%d, %d)" % (
-                        admin_role_id,
-                        perms_dict["*.*.*"]))
+                    cur_c.execute(
+                        "INSERT INTO roles2perms VALUES({:d},{:d})".format(
+                            admin_role_id,
+                            perms_dict["*.*.*"]
+                        )
+                    )
                     role_dict = dict([(cur_role[1].lower().split()[0], cur_role[0]) for cur_role in cur_c.execute("SELECT * FROM roles")])
-                    self.log("role dict: %s" % (", ".join(["%s=%d" % (key, value) for key, value in role_dict.iteritems()])))
+                    self.log(
+                        "role dict: {}".format(
+                            ", ".join(
+                                [
+                                    "{}={:d}".format(key, value) for key, value in role_dict.iteritems()
+                                ]
+                            )
+                        )
+                    )
                     # get nagivs root points
                     nagvis_rds = device.objects.filter(Q(automap_root_nagvis=True)).select_related("domain_tree_node", "device_group")
                     self.log(
@@ -869,16 +874,19 @@ class main_config(object):
         cfg_written, empty_cfg_written = ([], [])
         start_time = time.time()
         for key, stuff in self.__dict.iteritems():
-            if isinstance(stuff, base_config) or isinstance(stuff, host_type_config) or isinstance(stuff, config_dir):
+            if isinstance(stuff, base_config) or isinstance(stuff, monHostTypeConfig) or isinstance(stuff, config_dir):
                 if isinstance(stuff, config_dir):
                     cfg_written.extend(stuff.create_content(self.__w_dir_dict["etc"]))
                 else:
                     if isinstance(stuff, base_config):
                         act_cfg_name = stuff.get_file_name(self.__w_dir_dict["etc"])
                     else:
-                        act_cfg_name = os.path.normpath(os.path.join(
-                            self.__w_dir_dict["etc"],
-                            "%s.cfg" % (key)))
+                        act_cfg_name = os.path.normpath(
+                            os.path.join(
+                                self.__w_dir_dict["etc"],
+                                "{}.cfg".format(key)
+                            )
+                        )
                     # print "*", key, act_cfg_name
                     stuff.create_content()
                     if stuff.act_content != stuff.old_content:
@@ -886,11 +894,13 @@ class main_config(object):
                             codecs.open(act_cfg_name, "w", "utf-8").write(u"\n".join(stuff.act_content + [u""]))
                         except IOError:
                             self.log(
-                                "Error writing content of %s to %s: %s" % (
+                                "Error writing content of {} to {}: {}".format(
                                     key,
                                     act_cfg_name,
-                                    process_tools.get_except_info()),
-                                logging_tools.LOG_LEVEL_CRITICAL)
+                                    process_tools.get_except_info()
+                                ),
+                                logging_tools.LOG_LEVEL_CRITICAL
+                            )
                             stuff.act_content = []
                         else:
                             os.chmod(act_cfg_name, 0644)
@@ -898,8 +908,10 @@ class main_config(object):
                     elif not stuff.act_content:
                         # crate empty config file
                         empty_cfg_written.append(act_cfg_name)
-                        self.log("creating empty file %s" % (act_cfg_name),
-                                 logging_tools.LOG_LEVEL_WARN)
+                        self.log(
+                            "creating empty file {}".format(act_cfg_name),
+                            logging_tools.LOG_LEVEL_WARN
+                        )
                         open(act_cfg_name, "w").write("\n")
                     else:
                         # no change
@@ -941,12 +953,22 @@ class main_config(object):
 
     def __setitem__(self, key, value):
         self.__dict[key] = value
-        new_file_keys = sorted([
-            "%s/%s.cfg" % (self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if
-            (not isinstance(value, base_config) or not (value.is_host_file or value.belongs_to_ndo)) and (not isinstance(value, config_dir))
-        ])
+        new_file_keys = sorted(
+            [
+                os.path.join(
+                    self.__r_dir_dict["etc"],
+                    "{}.cfg".format(key)
+                ) for key, value in self.__dict.iteritems() if (
+                    not isinstance(value, base_config) or not value.is_host_file
+                ) and (not isinstance(value, config_dir))
+            ]
+        )
         old_file_keys = self[global_config["MAIN_CONFIG_NAME"]]["cfg_file"]
-        new_dir_keys = sorted(["%s/%s" % (self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if isinstance(value, config_dir)])
+        new_dir_keys = sorted(
+            [
+                os.path.join(self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if isinstance(value, config_dir)
+            ]
+        )
         old_dir_keys = self[global_config["MAIN_CONFIG_NAME"]]["cfg_dir"]
         write_cfg = False
         if old_file_keys != new_file_keys:

@@ -19,17 +19,17 @@
 #
 """ host_type_config, part of md-config-server """
 
-from initat.md_config_server.config.content_emitter import content_emitter
+from initat.md_config_server.config.content_emitter import ContentEmitter
 from lxml.builder import E  # @UnresolvedImport
 from initat.tools import logging_tools
 
 
 __all__ = [
-    "host_type_config",
+    "monHostTypeConfig",
 ]
 
 
-class host_type_config(content_emitter):
+class monHostTypeConfig(ContentEmitter):
     def __init__(self, build_process):
         self.__build_proc = build_process
         self.act_content, self.prev_content = ([], [])
@@ -58,9 +58,12 @@ class host_type_config(content_emitter):
         if act_list:
             for act_le in act_list:
                 content.extend(self._emit_content(dest_type, act_le))
-            self.log("created {} for {}".format(
-                logging_tools.get_plural("entry", len(act_list)),
-                dest_type))
+            self.log(
+                "created {} for {}".format(
+                    logging_tools.get_plural("entry", len(act_list)),
+                    dest_type
+                )
+            )
         return content
 
     def get_xml(self):

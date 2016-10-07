@@ -36,7 +36,7 @@ class GenerateAssetsProcess(threading_tools.process_obj):
             zmq=True,
             context=self.zmq_context,
         )
-        # self.add_process(build_process("build"), start=True)
+        # self.add_process(BuildProcess("build"), start=True)
         db_tools.close_connection()
         self.register_func("process_assets", self._process_assets)
         self.register_func("process_batch_assets", self._process_batch_assets)

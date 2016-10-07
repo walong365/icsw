@@ -90,29 +90,44 @@ class SyncerHandler(object):
         for slave_config in self.__slave_configs.itervalues():
             slave_config.check_for_resend()
 
+    @property
+    def is_distribution_master(self):
+        return True if self.__master_config else False
+
+    @property
+    def is_distribution_slave(self):
+        return True if (not self.__master_config and self.__local_master) else False
     # pure slave (==satellite) methods
 
     def check_result(self, srv_com):
-        if self.__master_config:
+        if self.is_distribution_master:
             # distribution master, forward to ocsp / ochp process
             self.__process.handle_ocp_event(srv_com)
+        elif self.is_distribution_slave:
+            # distribution slave, send to sync-master
+            self.__local_master.send_to_sync_master(srv_com)
         else:
-            if self.__local_master:
-                # distribution slave, send to sync-master
-                self.__local_master.send_to_sync_master(srv_com)
-            else:
-                self.log("local master not set", logging_tools.LOG_LEVEL_ERROR)
+            self.log("local master not set", logging_tools.LOG_LEVEL_ERROR)
 
     def passive_check_handler(self, srv_com, source):
         self.log("got passive check result via {}".format(source))
-        if self.__master_config:
+        if self.is_distribution_master:
             # distribution master, send to mon master
             self.__master_config.send_to_config_server(srv_com)
+        elif self.is_distribution_slave:
+            self.__local_master.send_to_sync_master(srv_com)
         else:
-            if self.__local_master:
-                self.__local_master.send_to_sync_master(srv_com)
-            else:
-                self.log("local master not set", logging_tools.LOG_LEVEL_ERROR)
+            self.log("local master not set", logging_tools.LOG_LEVEL_ERROR)
+
+    def forward_if_necessary(self, srv_com):
+        # forward command to dist slaves
+        if self.is_distribution_master:
+            self.__master_config.forward_srv_com(srv_com)
+
+    def send_info_if_necessary(self, srv_com):
+        # send info to sync-master if on dist salve (after remote command execution)
+        if self.is_distribution_slave:
+            self.__local_master.send_satellite_info()
 
     def livestatus_info(self, arg_dict):
         self.log("got livestatus dict with {:d} keys".format(len(arg_dict.keys())))
