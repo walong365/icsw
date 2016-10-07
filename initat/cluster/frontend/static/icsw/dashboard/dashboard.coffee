@@ -731,25 +731,6 @@ dashboard_module = angular.module(
     $scope.quicklink_states = icswRouteHelper.get_struct().quicklink_states
     # console.log route_struct
 
-]).directive("watchWindowSize",
-[
-    "$window",
-(
-    $window
-) ->
-    link : (scope, el, attr) ->
-        # NOT INTEGRATED YET!
-        # for SVG fullscreen
-        $el = el[0]
-        w = angular.element($window)
-        scope.getWindowHeight = () ->
-           w.height()
-        scope.$watch(scope.getWindowHeight, (newValue, oldValue) ->
-            if newValue != oldValue
-                offset = $el.getBoundingClientRect().top
-                elementheight = newValue - offset - 16
-                el.css("height", "#{elementheight}px")
-        )
 ])
 
 virtual_desktop_utils = {

@@ -18,7 +18,7 @@ if __name__=="__main__":
         'Win32_PhysicalMemory', 'Win32_PhysicalMemoryArray',
         'Win32_Processor', 'Win32_VideoController', 'Win32_DiskDrive',
         'Win32_DiskPartition', 'Win32_LogicalDisk', 'Win32_NetworkAdapter',
-        'Win32_ComputerSystem',
+        'Win32_ComputerSystem', 'Win32_DesktopMonitor',
     ]
 
     mapping_info = defaultdict(list)

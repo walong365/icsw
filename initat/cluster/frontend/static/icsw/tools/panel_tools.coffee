@@ -25,11 +25,14 @@ angular.module(
     []
 ).directive("icswPanelScroller",
 # corrects panel height for scrolling (dashboard panels)
+# expects 2 child html elements (first header, 2nd body)
+# trigger manually by calling scope.setupScrolling without parameter
 ["$timeout",
 ($timeout) ->
     link : (scope, el, attr) ->
         $el = el[0]
         header_height = 25
+        scope.panelbody_height = 0
         if el.children().length == 2
             panel_body = el.children()[1]
             angular.element(document).ready(() ->
@@ -37,17 +40,16 @@ angular.module(
             )
         else
             el.css("overflow", "auto")
-
         scope.gettotal_height = () ->
             $el.offsetHeight
         scope.get_header_height = () ->
             $(el.children()[0])[0].offsetHeight
 
+        # FIXME: call setupScrolling per parent scope instead of watching it
         scope.$watchGroup([scope.gettotal_height, scope.get_header_height], (newV, oldV, _scope) ->
             if newV != oldV
                 scope.setupScrolling(newV[0])
             )
-
         timeoutPromise = undefined
         delayInMs = 100;
         scope.setupScrolling = (newValue) ->
@@ -55,15 +57,47 @@ angular.module(
             $timeout.cancel(timeoutPromise)
             timeoutPromise = $timeout(()->
                 header_height = scope.get_header_height()
-
-                x_scroll_diff = panel_body.scrollWidth - $(panel_body).width()
-                y_scroll_diff = panel_body.scrollHeight - $(panel_body).height()
-
-                $(panel_body).css("height", newValue - header_height - 2)
+                # x_scroll_diff = panel_body.scrollWidth - $(panel_body).width()
+                # y_scroll_diff = panel_body.scrollHeight - $(panel_body).height()
+                scope.panelbody_height = newValue - header_height - 2
+                $(panel_body).css("height", scope.panelbody_height)
                 $(panel_body).css("overflow-x", if attr.noXScroll? then "hidden" else "auto")
                 $(panel_body).css("overflow-y", if attr.noYScroll? then "hidden" else "auto")
-                # x_scroll_diff2 = panel_body.scrollWidth - $(panel_body).width()
-                # y_scroll_diff2 = panel_body.scrollHeight - $(panel_body).height()
             , delayInMs)
+
+]).directive("icswSubMaxHeight",
+# corrects height for sub elements (svg container)
+# expects 2 child html elements (header, 2nd container)
+# trigger manually by calling scope.setupHeight without parameter
+["$timeout",
+($timeout) ->
+    link : (scope, el, attr) ->
+        struct =
+            main_c : undefined
+            header_c: undefined
+            body_c: undefined
+
+        childwatcher = scope.$watch(
+            () ->
+                $(el.children()[0]).children().length
+            (nv, ov) ->
+                if nv == 2
+                    struct.main_c = el.children()[0]
+                    struct.header_c = $(struct.main_c).children()[0]
+                    struct.body_c = $(struct.main_c).children()[1]
+                    setup_watcher()
+                    childwatcher()
+        )
+        setup_watcher = ()->
+            scope.$watch(
+                () ->
+                    scope.panelbody_height
+                (newValue, oldValue) ->
+                    header_height = $(struct.header_c).outerHeight(true)
+                    newHeight = newValue - header_height - 3
+                    if newHeight > 0
+                        $(struct.body_c).css("height", newHeight)
+            )
+
 ])
 

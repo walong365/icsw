@@ -25,7 +25,7 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "icsw.d3", "ui.select",
         "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools", "icsw.tools", "icsw.tools.table",
-        "icsw.livestatus.comp.functions",
+        "icsw.livestatus.comp.functions", "icsw.panel_tools",
     ]
 ).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegsterProvider) ->
     icswLivestatusPipeRegsterProvider.add("icswLivestatusTopologySelector", true)
@@ -240,12 +240,12 @@ angular.module(
                     .attr('class', 'draggable')
                     # viewBox not viewbox
                     .attr("viewBox", "0 0 1200 760")
-                    .attr("preserveAspectRatio", "xMidYMin meet")
+                    .attr("preserveAspectRatio", "xMidYMid slice")
                     .attr("version", "1.1")
                     .attr("onStart", @_drag_start)
                     .attr("pointer-events", "all")
                     .attr("width", "100%")
-                    .attr("height", 760) #$(window).height()-140)
+                    .attr("height", "100%") #$(window).height()-140)
                     $(element).mousedown(
                         (event) =>
                             mouseCaptureFactory.register_element(element)
@@ -325,7 +325,7 @@ angular.module(
                     .attr("y", "0")
                     .attr("width", "100%")
                     .attr("height", "100%")
-                    .attr("style", "stroke:black; stroke-width:2px; fill-opacity:0;")
+                    .attr("style", "fill-opacity:0;")
                     _top_g = svg.append("g").attr("id", "top")
                     _top_g.append('g').attr('class', 'd3-links')
                     _top_g.append('g').attr('class', 'd3-livestati')
@@ -780,7 +780,7 @@ angular.module(
         constructor: () ->
             super("icswLivestatusNetworkTopology", true, false)
             @set_template(
-                '<icsw-device-network-topology icsw-connect-element="con_element"></icsw-device-network-topology>'
+                '<icsw-device-network-topology icsw-connect-element="con_element" icsw-sub-max-height></icsw-device-network-topology>'
                 "NetworkTopology"
                 8
                 8
