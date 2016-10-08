@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" config part of md-config-server """
+""" cache of various settings and luts for md-config-server """
 
 import json
 import time
@@ -72,7 +72,9 @@ class BuildCache(object):
         self.join_char = "_" if global_config["SAFE_NAMES"] else " "
         # device_group user access
         self.dg_user_access = {}
-        mon_user_pks = list(user.objects.filter(Q(mon_contact__pk__gt=0)).values_list("pk", flat=True))  # @UndefinedVariable
+        mon_user_pks = list(
+            user.objects.filter(Q(mon_contact__pk__gt=0)).values_list("pk", flat=True)
+        )
         for _dg in device_group.objects.all().prefetch_related("user_set"):
             self.dg_user_access[_dg.pk] = list([_user for _user in _dg.user_set.all() if _user.pk in mon_user_pks])
         # all hosts dict
@@ -90,7 +92,9 @@ class BuildCache(object):
         for key, value in self.all_hosts_dict.iteritems():
             value.reachable = value.pk not in self.unreachable_pks
         # traces
-        self.__host_traces = {host.pk: list(host.mon_trace_set.all()) for host in self.all_hosts_dict.itervalues()}
+        self.__host_traces = {
+            host.pk: list(host.mon_trace_set.all()) for host in self.all_hosts_dict.itervalues()
+        }
         # host / service clusters
         clusters = {}
         for _obj, _name in [(mon_host_cluster, "hc"), (mon_service_cluster, "sc")]:

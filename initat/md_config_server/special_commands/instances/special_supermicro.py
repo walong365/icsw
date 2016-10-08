@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -23,8 +23,8 @@ from argparse import Namespace
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.host_monitoring.modules import supermicro_mod
-from initat.md_config_server.special_commands.base import SpecialBase
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
+from initat.md_config_server.special_commands.base import SpecialBase
 
 
 class special_supermicro(SpecialBase):

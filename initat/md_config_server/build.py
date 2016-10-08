@@ -21,10 +21,8 @@
 
 import codecs
 import commands
-import json
 import operator
 import os
-import os.path
 import time
 
 import networkx
@@ -53,8 +51,8 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
     def process_init(self):
         # init CC
         self.CC.init(None, global_config)
-        self.__hosts_pending, self.__hosts_waiting = (set(), set())
         db_tools.close_connection()
+        self.__hosts_pending, self.__hosts_waiting = (set(), set())
         self.__mach_loggers = {}
         self.__num_mach_logs = {}
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
@@ -69,7 +67,6 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
         self.__pending_commands = []
         # ready (check_for_slaves called)
         self.__ready = False
-        # self.__host_service_map = host_service_map(self.log)
 
     def loop_post(self):
         for mach_logger in self.__mach_loggers.itervalues():
@@ -122,9 +119,6 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             while self.__pending_commands:
                 _pc = self.__pending_commands.pop(0)
                 self._check_call(*_pc["args"], **_pc["kwargs"])
-
-    def send_command(self, src_id, srv_com):
-        print "DEPRECATED"
 
     def mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK, mach_name=None, **kwargs):
         if "single_build" in kwargs:
@@ -179,29 +173,6 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                     _logger.close()
                     del _logger
             del self.__mach_loggers[mach_name]
-
-    def _check_md_config(self):
-        c_stat, out = commands.getstatusoutput(
-            "{}/bin/{} -v {}/etc/{}.cfg".format(
-                global_config["MD_BASEDIR"],
-                global_config["MD_TYPE"],
-                global_config["MD_BASEDIR"],
-                global_config["MD_TYPE"]
-            )
-        )
-        if c_stat:
-            self.log(
-                "Checking the {}-configuration resulted in an error ({:d})".format(
-                    global_config["MD_TYPE"],
-                    c_stat,
-                ),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            ret_stat = False
-        else:
-            self.log("Checking the {}-configuration returned no error".format(global_config["MD_TYPE"]))
-            ret_stat = True
-        return ret_stat, out
 
     def _check_call(self, *args, **kwargs):
         if self.__ready:
@@ -276,7 +247,6 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             )
 
     def _rebuild_config(self, *args, **kwargs):
-        # self.__host_service_map.start_collecting()
         single_build = True if len(args) > 0 else False
         if not single_build:
             # from mixin
@@ -440,7 +410,6 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             self.log("queries issued: {:d}".format(tot_query_count))
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
                 self.log("{:5d} {}".format(q_idx, act_sql["sql"][:180]))
-        # self.__host_service_map.end_collecting()
         del self.gc
         if single_build:
             return res_node
@@ -662,9 +631,12 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                 img_stuff.save()
         if del_images:
             mon_ext_host.objects.filter(Q(name__in=del_images)).delete()
-        self.log("Inserted {}, deleted {}".format(
-            logging_tools.get_plural("new ext_host_entry", len(new_images)),
-            logging_tools.get_plural("ext_host_entry", len(del_images))))
+        self.log(
+            "Inserted {}, deleted {}".format(
+                logging_tools.get_plural("new ext_host_entry", len(new_images)),
+                logging_tools.get_plural("ext_host_entry", len(del_images))
+            )
+        )
 
     def _create_single_host_config(
         self,
@@ -1405,7 +1377,9 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
         else:
             h_filter &= Q(monitor_server=cur_gc.monitor_server)
         h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
-        return device.objects.exclude(Q(is_meta_device=True)).filter(h_filter).count()
+        return device.objects.exclude(
+            Q(is_meta_device=True)
+        ).filter(h_filter).count()
 
     def _create_host_config_files(self, _bc, cur_gc, d_map, hdep_from_topo):
         """
@@ -1747,11 +1721,8 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
         )
         ret_field = []
 
-        # self.__host_service_map.add_host(host.full_name, host.pk)
-
         # for sc_name, sc in sc_array:
         for arg_temp in sc_array:
-            # self.__host_service_map.add_service(arg_temp.info, s_check.check_command_pk)
             act_serv = StructuredMonBaseConfig("service", arg_temp.info)
             # event handlers
             if s_check.event_handler:
@@ -1867,79 +1838,3 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             # old code, produces a lot of dups
             # valid_ips = sum([net_devices[nd_pk] for _val, nd_pk, _loc_trace in traces], [])
         return valid_ips, traces
-
-
-class host_service_map(object):
-    """
-    UNUSED
-
-    here, we save the host and services we tell icinga
-    then we can later resolve it when parsing the logs
-    """
-    class host_service_data(object):
-        def __init__(self, hosts, services, timestamp):
-            self.hosts = hosts
-            self.services = services
-            self.timestamp = timestamp
-
-    @classmethod
-    def get_mapping(cls, log):
-        '''
-        :return host_service_map.host_service_data:
-        '''
-        retval = None
-        try:
-            data = json.load(open(host_service_map._get_filepath()))
-            retval = cls.host_service_data(data['hosts'], data['services'], data['timestamp'])
-        except Exception as e:
-            log("no host service map available: {}".format(e), logging_tools.LOG_LEVEL_WARN)
-        return retval
-
-    def __init__(self, log):
-        self.clear()
-        self.log = log
-        self._collecting = False
-
-    def clear(self):
-        self._services = {}
-        self._hosts = {}
-
-    def start_collecting(self):
-        self.clear()
-        self._collecting = True
-
-    def end_collecting(self):
-        self._collecting = False
-
-        data = {
-            'hosts': self._hosts,
-            'services': self._services,
-            'timestamp': int(time.time())
-        }
-
-        self.log("writing host service mapping to {}".format(self._get_filepath()))
-        with open(self._get_filepath(), "w") as mapping_file:
-            json.dump(data, mapping_file)
-            mapping_file.flush()
-
-    def add_service(self, service, pk):
-        if not self._collecting:
-            self.log("collecting service mapping for {} outside of rebuild".format(service), logging_tools.LOG_LEVEL_WARN)
-
-        if service in self._services and self._services[service] != pk:
-            self.log("multiple definitions of service {}: {} and {}".format(service, self._services[service], pk), logging_tools.LOG_LEVEL_WARN)
-        else:
-            self._services[service] = pk
-
-    def add_host(self, host, pk):
-        if not self._collecting:
-            self.log("collecting host mapping for {} outside of rebuild".format(host), logging_tools.LOG_LEVEL_WARN)
-
-        if host in self._hosts and self._hosts[host] != pk:
-            self.log("multiple definitions of host {}: {} and {}".format(host, self._hosts[host], pk), logging_tools.LOG_LEVEL_WARN)
-        else:
-            self._hosts[host] = pk
-
-    @staticmethod
-    def _get_filepath():
-        return os.path.join(global_config['MD_BASEDIR'], 'var', 'host_service_map')

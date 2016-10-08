@@ -758,7 +758,12 @@ class MonMainConfig(dict):
                 try:
                     conn = sqlite3.connect(auth_db)
                 except:
-                    self.log("cannot create connection: %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_CRITICAL)
+                    self.log(
+                        "cannot create connection: {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
                 else:
                     cur_c = conn.cursor()
                     cur_c.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
