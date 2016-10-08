@@ -29,7 +29,8 @@ import sqlite3
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device, user
-from initat.md_config_server.config import FlatMonBaseConfig, MonFileContainer, MonDirContainer, CfgEmitStats
+from initat.md_config_server.config import FlatMonBaseConfig, MonFileContainer, MonDirContainer, \
+    CfgEmitStats
 from initat.tools import config_tools, configfile, logging_tools, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
@@ -899,15 +900,12 @@ class MonMainConfig(dict):
             self.log("no config files written")
         return w_stats.total_count
 
-    def has_config(self, config_name):
-        return config_name in self
-
     def get_config(self, config_name):
         return self[config_name]
 
     def add_config(self, config):
-        if self.has_config(config.name):
-            config.set_previous_config(self.get_config(config.name))
+        if config.name in self:
+            self.log("replacing config {}".format(config.name), logging_tools.LOG_LEVEL_WARN)
         self[config.name] = config
 
     def dump_logs(self):
@@ -950,4 +948,3 @@ class MonMainConfig(dict):
             write_cfg = True
         if write_cfg:
             self._write_entries()
-

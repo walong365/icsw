@@ -27,6 +27,8 @@ MonDirContainer: holds a directory of MonFileContainers
 
 import codecs
 import os
+import hashlib
+import time
 
 from lxml.builder import E
 
@@ -50,7 +52,8 @@ class MonFileContainer(dict, LogBufferMixin):
         self.name = name
         # clear list and dict
         self.clear()
-        self.act_content, self.prev_content = ([], [])
+        self._cur_hash = None
+        self._generation = 0
 
     def __repr__(self):
         return u"MonFileContainer {}".format(self.name)
@@ -85,32 +88,47 @@ class MonFileContainer(dict, LogBufferMixin):
         else:
             return os.path.normpath(os.path.join(parent_dir, "{}.cfg".format(self.name)))
 
+    @property
+    def header(self):
+        return [
+            "# created: {}".format(time.ctime()),
+            "# current hash: {}".format(self._cur_hash or "N/A"),
+            "# generation: {:d}".format(self._generation),
+            "",
+        ]
+
     def create_content(self, log_com):
-        # if self.act_content:
-        self.old_content = [_v for _v in self.act_content]
-        self.act_content = self.get_content(log_com)
+        # builds a new config and handles hash changes
+        new_hash, info_str = self.get_content()
+        if new_hash != self._cur_hash:
+            self._cur_hash = new_hash
+            self._generation += 1
+            if info_str:
+                log_com(info_str)
+            return True
+        else:
+            return False
 
-    def set_previous_config(self, prev_conf):
-        self.act_content = prev_conf.act_content
-
-    def get_content(self, log_com):
+    def get_content(self):
+        cur_hash = hashlib.new("md5")
         act_list = self.object_list
-        content = []
+        self._content = []
         _types = {}
         if act_list:
             for act_le in act_list:
                 if self.ignore_content(act_le):
                     continue
                 _types.setdefault(act_le.obj_type, []).append(True)
-                content.extend(act_le.emit_content())
-            log_com(
-                "created {} for {}: {}".format(
-                    logging_tools.get_plural("entry", len(act_list)),
-                    logging_tools.get_plural("object_type", len(_types)),
-                    ", ".join(sorted(_types.keys())),
-                )
+                self._content.extend(act_le.emit_content())
+            [cur_hash.update(_line) for _line in self._content]
+            _info_str = "created {} for {}: {}".format(
+                logging_tools.get_plural("entry", len(act_list)),
+                logging_tools.get_plural("object_type", len(_types)),
+                ", ".join(sorted(_types.keys())),
             )
-        return content
+        else:
+            _info_str = ""
+        return cur_hash.hexdigest(), _info_str
 
     def get_xml(self):
         res_xml = getattr(E, "{}_list".format(self.name))()
@@ -122,10 +140,13 @@ class MonFileContainer(dict, LogBufferMixin):
 
     def write_content(self, cfg_stats, parent_dir, log_com):
         act_cfg_name = self.get_file_name(parent_dir)
-        self.create_content(log_com)
-        if self.act_content != self.old_content:
+        if self.create_content(log_com):
             try:
-                codecs.open(act_cfg_name, "w", "utf-8").write(u"\n".join(self.act_content + [u""]))
+                codecs.open(act_cfg_name, "w", "utf-8").write(
+                    u"\n".join(
+                        self.header + self._content + [u""]
+                    )
+                )
             except IOError:
                 log_com(
                     "Error writing content of {} to {}: {}".format(
@@ -135,11 +156,11 @@ class MonFileContainer(dict, LogBufferMixin):
                     ),
                     logging_tools.LOG_LEVEL_CRITICAL
                 )
-                self.act_content = []
+                self._content = []
             else:
                 os.chmod(act_cfg_name, 0644)
                 cfg_stats.add(act_cfg_name)
-        elif not self.act_content:
+        elif not self._content:
             # crate empty config file
             cfg_stats.add(act_cfg_name, empty=True)
             log_com(
