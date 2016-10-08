@@ -21,14 +21,12 @@
 
 from initat.cluster.backbone.models import TOP_MONITORING_CATEGORY, parse_commandline
 from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig
-from initat.tools import configfile, logging_tools, process_tools
-
+from initat.tools import logging_tools
+from .global_config import global_config
 
 __all__ = [
     "CheckCommand",
 ]
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
 class CheckCommand(object):

@@ -30,14 +30,12 @@ from initat.cluster.backbone.models import device, device_group, mon_check_comma
 from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server.config.var_cache import MonVarCache
 from initat.snmp.sink import SNMPSink
-from initat.tools import configfile, logging_tools, process_tools
+from initat.tools import logging_tools, process_tools
+from .global_config import global_config
 
 __all__ = [
     "BuildCache",
 ]
-
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
 class BuildCache(object):

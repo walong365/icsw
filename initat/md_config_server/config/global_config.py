@@ -19,16 +19,6 @@
 #
 """ config part of md-config-server """
 
-# do NOT import the imports
+from initat.tools import configfile, process_tools
 
-from .global_config import global_config
-
-from initat.md_config_server.config.build_cache import BuildCache
-from initat.md_config_server.config.check_command import CheckCommand
-from initat.md_config_server.config.mon_base_config import *
-from initat.md_config_server.config.mon_config_containers import MonFileContainer, MonDirContainer
-from initat.md_config_server.config.objects import *
-from initat.md_config_server.config.sync_config import SyncConfig
-from initat.md_config_server.config.templates import *
-from initat.md_config_server.config.var_cache import MonVarCache
-from initat.md_config_server.config.main_config import MonMainConfig
+global_config = configfile.get_global_config(process_tools.get_programm_name())

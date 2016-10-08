@@ -26,22 +26,20 @@ MonDirContainer: holds a directory of MonFileContainers
 """
 
 import codecs
-import os
 import hashlib
+import os
 import time
 
 from lxml.builder import E
 
-from initat.tools import logging_tools, process_tools, configfile
+from initat.tools import logging_tools, process_tools
+from .global_config import global_config
 from .mon_base_config import LogBufferMixin
 
 __all__ = [
     "MonFileContainer",
     "MonDirContainer",
 ]
-
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
 
 
 class MonFileContainer(dict, LogBufferMixin):

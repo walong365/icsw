@@ -19,7 +19,6 @@
 #
 """ config part of md-config-server """
 
-import os
 import time
 
 from lxml.builder import E

@@ -29,10 +29,8 @@ from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import mon_dist_master, mon_dist_slave, cluster_timezone, \
     mon_build_unreachable
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.tools import config_tools, configfile, logging_tools, process_tools, server_command
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
-
+from initat.tools import config_tools, logging_tools, process_tools, server_command
+from .global_config import global_config
 
 __all__ = [
     "SyncConfig",

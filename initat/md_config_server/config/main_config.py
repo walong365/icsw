@@ -30,11 +30,9 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import device, user
 from initat.md_config_server.config import FlatMonBaseConfig, MonFileContainer, MonDirContainer, \
-    CfgEmitStats, StructuredMonBaseConfig
-from initat.tools import config_tools, configfile, logging_tools, process_tools
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
-
+    CfgEmitStats
+from initat.tools import config_tools, logging_tools, process_tools
+from .global_config import global_config
 
 __all__ = [
     "MonMainConfig",
@@ -900,9 +898,6 @@ class MonMainConfig(dict):
             self.log("no config files written")
         return w_stats.total_count
 
-    def get_config(self, config_name):
-        return self[config_name]
-
     def add_config(self, config):
         if config.name in self:
             self.log("replacing config {}".format(config.name), logging_tools.LOG_LEVEL_WARN)
@@ -914,9 +909,6 @@ class MonMainConfig(dict):
             for _line, _what in value.buffered_logs:
                 self.log(_line, _what)
         self.log("done")
-
-    def add_config_dir(self, config_dir):
-        self[config_dir.name] = config_dir
 
     def __setitem__(self, key, value):
         # print "SI", key, type(value)

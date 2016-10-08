@@ -26,30 +26,29 @@ from initat.cluster.backbone.models import device, device_group, mon_check_comma
     mon_contact, mon_contactgroup, category_tree, TOP_MONITORING_CATEGORY, mon_notification, \
     host_check_command, mon_check_command_special
 from initat.md_config_server.config.check_command import CheckCommand
-from initat.md_config_server.config.mon_config_containers import MonFileContainer
 from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig, MonUniqueList, build_safe_name
-from initat.tools import cluster_location, configfile, logging_tools, process_tools
-
-global_config = configfile.get_global_config(process_tools.get_programm_name())
+from initat.md_config_server.config.mon_config_containers import MonFileContainer
+from initat.tools import cluster_location, logging_tools
+from .global_config import global_config
 
 
 __all__ = [
-    "all_host_dependencies",
-    "time_periods",
-    "all_service_groups",
-    "all_commands",
-    "all_contacts",
-    "all_contact_groups",
-    "all_host_groups",
+    "MonAllHostDependencies",
+    "MonAllTimePeriods",
+    "MonAllServiceGroups",
+    "MonAllCommands",
+    "MonAllContacts",
+    "MonAllContactGroups",
+    "MonAllHostGroups",
 ]
 
 
-class all_host_dependencies(MonFileContainer):
+class MonAllHostDependencies(MonFileContainer):
     def __init__(self, gen_conf):
         MonFileContainer.__init__(self, "hostdependency")
 
 
-class time_periods(MonFileContainer):
+class MonAllTimePeriods(MonFileContainer):
     def __init__(self, gen_conf):
         MonFileContainer.__init__(self, "timeperiod")
         self.refresh(gen_conf)
@@ -79,7 +78,7 @@ class time_periods(MonFileContainer):
             self.add_object(nag_conf)
 
 
-class all_service_groups(MonFileContainer):
+class MonAllServiceGroups(MonFileContainer):
     def __init__(self, gen_conf):
         MonFileContainer.__init__(self, "servicegroup")
         self.refresh(gen_conf)
@@ -117,7 +116,7 @@ class all_service_groups(MonFileContainer):
         return [obj for obj in self._obj_list if self.__host_srv_lut[obj.name]]
 
 
-class all_commands(MonFileContainer):
+class MonAllCommands(MonFileContainer):
     def __init__(self, gen_conf):
         MonFileContainer.__init__(self, "command")
         self.refresh(gen_conf)
@@ -329,7 +328,7 @@ class all_commands(MonFileContainer):
             self[ngc_name] = cc_s
 
 
-class all_contacts(MonFileContainer):
+class MonAllContacts(MonFileContainer):
     def __init__(self, gen_conf):
         MonFileContainer.__init__(self, "contact")
         self.refresh(gen_conf)
@@ -403,7 +402,7 @@ class all_contacts(MonFileContainer):
             self[contact.pk] = nag_conf
 
 
-class all_contact_groups(MonFileContainer):
+class MonAllContactGroups(MonFileContainer):
     def __init__(self, gen_conf):
         MonFileContainer.__init__(self, "contactgroup")
         self.refresh(gen_conf)
@@ -438,7 +437,7 @@ class all_contact_groups(MonFileContainer):
                     pass
 
 
-class all_host_groups(MonFileContainer):
+class MonAllHostGroups(MonFileContainer):
     def __init__(self, gen_conf):
         MonFileContainer.__init__(self, "hostgroup")
         self.refresh(gen_conf)

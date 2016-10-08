@@ -40,9 +40,9 @@ from initat.cluster.backbone.models import device, device_group, device_variable
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server import special_commands, constants
-from initat.md_config_server.config import global_config, MonMainConfig, all_commands, \
-    all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, MonDirContainer, MonDeviceTemplates, MonServiceTemplates, \
-    all_host_dependencies, BuildCache, build_safe_name, SimpleCounter, MonFileContainer, StructuredMonBaseConfig
+from initat.md_config_server.config import global_config, MonMainConfig, MonAllCommands, \
+    MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, MonDeviceTemplates, MonServiceTemplates, \
+    MonAllHostDependencies, BuildCache, build_safe_name, SimpleCounter, MonFileContainer, StructuredMonBaseConfig
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
@@ -572,25 +572,25 @@ class BuildProcess(
         for cur_gc in gc_list:
             start_time = time.time()
             # misc commands (sending of mails)
-            cur_gc.add_config(all_commands(cur_gc))
+            cur_gc.add_config(MonAllCommands(cur_gc))
             # servicegroups
-            cur_gc.add_config(all_service_groups(cur_gc))
+            cur_gc.add_config(MonAllServiceGroups(cur_gc))
             # timeperiods
-            cur_gc.add_config(time_periods(cur_gc))
+            cur_gc.add_config(MonAllTimePeriods(cur_gc))
             # contacts
-            cur_gc.add_config(all_contacts(cur_gc))
+            cur_gc.add_config(MonAllContacts(cur_gc))
             # contactgroups
-            cur_gc.add_config(all_contact_groups(cur_gc))
+            cur_gc.add_config(MonAllContactGroups(cur_gc))
             # hostgroups
-            cur_gc.add_config(all_host_groups(cur_gc))
+            cur_gc.add_config(MonAllHostGroups(cur_gc))
             # hosts
             # cur_gc.add_config(all_hosts(cur_gc))
             # services
             # cur_gc.add_config(all_services(cur_gc))
             # device dir
-            cur_gc.add_config_dir(MonDirContainer("device"))
+            cur_gc.add_config(MonDirContainer("device"))
             # host_dependencies
-            cur_gc.add_config(all_host_dependencies(cur_gc))
+            cur_gc.add_config(MonAllHostDependencies(cur_gc))
             cur_gc.dump_logs()
             end_time = time.time()
             cur_gc.log("created host_configs in {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
