@@ -41,8 +41,8 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MonMainConfig, all_commands, \
-    all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, MonConfigDir, MonDeviceTemplates, MonServiceTemplates, MonBaseConfig, \
-    all_host_dependencies, BuildCache, build_safe_name, SimpleCounter
+    all_service_groups, time_periods, all_contacts, all_contact_groups, all_host_groups, MonDirContainer, MonDeviceTemplates, MonServiceTemplates, \
+    all_host_dependencies, BuildCache, build_safe_name, SimpleCounter, MonFileContainer, StructuredMonBaseConfig
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
@@ -572,25 +572,26 @@ class BuildProcess(
         for cur_gc in gc_list:
             start_time = time.time()
             # misc commands (sending of mails)
-            cur_gc.add_config(all_commands(cur_gc, self))
+            cur_gc.add_config(all_commands(cur_gc))
             # servicegroups
-            cur_gc.add_config(all_service_groups(cur_gc, self))
+            cur_gc.add_config(all_service_groups(cur_gc))
             # timeperiods
-            cur_gc.add_config(time_periods(cur_gc, self))
+            cur_gc.add_config(time_periods(cur_gc))
             # contacts
-            cur_gc.add_config(all_contacts(cur_gc, self))
+            cur_gc.add_config(all_contacts(cur_gc))
             # contactgroups
-            cur_gc.add_config(all_contact_groups(cur_gc, self))
+            cur_gc.add_config(all_contact_groups(cur_gc))
             # hostgroups
-            cur_gc.add_config(all_host_groups(cur_gc, self))
+            cur_gc.add_config(all_host_groups(cur_gc))
             # hosts
-            # cur_gc.add_config(all_hosts(cur_gc, self))
+            # cur_gc.add_config(all_hosts(cur_gc))
             # services
-            # cur_gc.add_config(all_services(cur_gc, self))
+            # cur_gc.add_config(all_services(cur_gc))
             # device dir
-            cur_gc.add_config_dir(MonConfigDir("device", cur_gc, self))
+            cur_gc.add_config_dir(MonDirContainer("device"))
             # host_dependencies
-            cur_gc.add_config(all_host_dependencies(cur_gc, self))
+            cur_gc.add_config(all_host_dependencies(cur_gc))
+            cur_gc.dump_logs()
             end_time = time.time()
             cur_gc.log("created host_configs in {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
 
@@ -807,8 +808,8 @@ class BuildProcess(
                     )
                     # now we have the device- and service template
                     # list of all MonBaseConfigs for given host, first one is always the host part
-                    host_config_list = []
-                    act_host = MonBaseConfig("host", host.full_name)
+                    host_config_list = MonFileContainer(host.full_name)
+                    act_host = StructuredMonBaseConfig("host", host.full_name)
                     host_config_list.append(act_host)
                     act_host["host_name"] = host.full_name
                     act_host["display_name"] = host.full_name
@@ -1123,7 +1124,7 @@ class BuildProcess(
                                         logging_tools.LOG_LEVEL_ERROR,
                                     )
                                 else:
-                                    act_host_dep = MonBaseConfig("hostdependency", "")
+                                    act_host_dep = StructuredMonBaseConfig("hostdependency", "")
                                     _list = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.devices_list]
                                     _dep_list = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.master_list]
                                     if _list and _dep_list:
@@ -1147,7 +1148,7 @@ class BuildProcess(
                         # add service dependencies
                         if use_service_deps:
                             for s_dep in _bc.get_dependencies("sd", host.pk):
-                                act_service_dep = MonBaseConfig("servicedependency", "")
+                                act_service_dep = StructuredMonBaseConfig("servicedependency", "")
                                 if s_dep.mon_service_cluster_id:
                                     # check reachability
                                     _unreachable = [_bc.get_host(_dev_pk) for _dev_pk in s_dep.master_list if not _bc.get_host(_dev_pk).reachable]
@@ -1245,7 +1246,7 @@ class BuildProcess(
                                             host_config_list.append(act_service_dep)
                                         else:
                                             self.mach_log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
-                        host_nc.add_device(host_config_list, host)
+                        host_nc.add_entry(host_config_list, host)
                     else:
                         self.mach_log("Host {} is disabled".format(host.full_name))
             else:
@@ -1578,7 +1579,7 @@ class BuildProcess(
         # host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
         _p_ok, _p_failed = (0, 0)
         for host_name in sorted(host_names):
-            host = host_nc[host_name][0]
+            host = host_nc[host_name].object_list[0]
             if "possible_parents" in host and not _bc.single_build:
                 # parent list
                 parent_list = set()
@@ -1608,8 +1609,8 @@ class BuildProcess(
                                 if d_map[host_pk] > d_map[parent_idx]:
                                     parent = _bc.get_host(parent_idx).full_name
                                     if parent in host_names and parent != host.name:
-                                        if "_nagvis_map" in host_nc[parent][0]:
-                                            local_nagvis_maps.append(host_nc[parent][0]["_nagvis_map"])
+                                        if "_nagvis_map" in host_nc[parent].object_list[0]:
+                                            local_nagvis_maps.append(host_nc[parent].object_list[0]["_nagvis_map"])
                             else:
                                 self.log("parent_idx {:d} not in distance map, routing cache too old?".format(parent_idx), logging_tools.LOG_LEVEL_ERROR)
                 if "_nagvis_map" not in host and local_nagvis_maps:
@@ -1652,7 +1653,7 @@ class BuildProcess(
                 # import pprint
                 # pprint.pprint(p_dict)
                 for parent, clients in p_dict.iteritems():
-                    new_hd = MonBaseConfig("hostdependency", "")
+                    new_hd = StructuredMonBaseConfig("hostdependency", "")
                     new_hd["dependent_host_name"] = clients
                     new_hd["host_name"] = parent
                     new_hd["dependency_period"] = self.mon_host_dep.dependency_period.name
@@ -1754,7 +1755,7 @@ class BuildProcess(
         # for sc_name, sc in sc_array:
         for arg_temp in sc_array:
             # self.__host_service_map.add_service(arg_temp.info, s_check.check_command_pk)
-            act_serv = MonBaseConfig("service", arg_temp.info)
+            act_serv = StructuredMonBaseConfig("service", arg_temp.info)
             # event handlers
             if s_check.event_handler:
                 act_serv["event_handler"] = s_check.event_handler.name

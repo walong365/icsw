@@ -26,7 +26,7 @@ from initat.cluster.backbone.models import device, device_group, mon_check_comma
     mon_contact, mon_contactgroup, category_tree, TOP_MONITORING_CATEGORY, mon_notification, \
     host_check_command, mon_check_command_special
 from initat.md_config_server.config.check_command import CheckCommand
-from initat.md_config_server.config.mon_base_container import MonBaseContainer
+from initat.md_config_server.config.mon_config_containers import MonFileContainer
 from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig, MonUniqueList, build_safe_name
 from initat.tools import cluster_location, configfile, logging_tools, process_tools
 
@@ -44,14 +44,14 @@ __all__ = [
 ]
 
 
-class all_host_dependencies(MonBaseContainer):
-    def __init__(self, gen_conf, build_proc):
-        MonBaseContainer.__init__(self, "hostdependency", build_proc)
+class all_host_dependencies(MonFileContainer):
+    def __init__(self, gen_conf):
+        MonFileContainer.__init__(self, "hostdependency")
 
 
-class time_periods(MonBaseContainer):
-    def __init__(self, gen_conf, build_proc):
-        MonBaseContainer.__init__(self, "timeperiod", build_proc)
+class time_periods(MonFileContainer):
+    def __init__(self, gen_conf):
+        MonFileContainer.__init__(self, "timeperiod")
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
@@ -79,9 +79,9 @@ class time_periods(MonBaseContainer):
             self.add_object(nag_conf)
 
 
-class all_service_groups(MonBaseContainer):
-    def __init__(self, gen_conf, build_proc):
-        MonBaseContainer.__init__(self, "servicegroup", build_proc)
+class all_service_groups(MonFileContainer):
+    def __init__(self, gen_conf):
+        MonFileContainer.__init__(self, "servicegroup")
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
@@ -117,9 +117,9 @@ class all_service_groups(MonBaseContainer):
         return [obj for obj in self._obj_list if self.__host_srv_lut[obj.name]]
 
 
-class all_commands(MonBaseContainer):
-    def __init__(self, gen_conf, build_proc):
-        MonBaseContainer.__init__(self, "command", build_proc)
+class all_commands(MonFileContainer):
+    def __init__(self, gen_conf):
+        MonFileContainer.__init__(self, "command")
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
@@ -329,9 +329,9 @@ class all_commands(MonBaseContainer):
             self[ngc_name] = cc_s
 
 
-class all_contacts(MonBaseContainer):
-    def __init__(self, gen_conf, build_proc):
-        MonBaseContainer.__init__(self, "contact", build_proc)
+class all_contacts(MonFileContainer):
+    def __init__(self, gen_conf):
+        MonFileContainer.__init__(self, "contact")
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
@@ -403,9 +403,9 @@ class all_contacts(MonBaseContainer):
             self[contact.pk] = nag_conf
 
 
-class all_contact_groups(MonBaseContainer):
-    def __init__(self, gen_conf, build_proc):
-        MonBaseContainer.__init__(self, "contactgroup", build_proc)
+class all_contact_groups(MonFileContainer):
+    def __init__(self, gen_conf):
+        MonFileContainer.__init__(self, "contactgroup")
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):
@@ -436,9 +436,9 @@ class all_contact_groups(MonBaseContainer):
                     pass
 
 
-class all_host_groups(MonBaseContainer):
-    def __init__(self, gen_conf, build_proc):
-        MonBaseContainer.__init__(self, "hostgroup", build_proc)
+class all_host_groups(MonFileContainer):
+    def __init__(self, gen_conf):
+        MonFileContainer.__init__(self, "hostgroup")
         self.refresh(gen_conf)
 
     def refresh(self, gen_conf):

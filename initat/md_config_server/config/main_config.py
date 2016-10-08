@@ -22,18 +22,14 @@
 import ConfigParser
 import base64
 import binascii
-import codecs
 import os
 import shutil
 import sqlite3
-import time
 
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device, user
-from initat.md_config_server.config import FlatMonBaseConfig
-from initat.md_config_server.config.mon_base_container import MonBaseContainer
-from initat.md_config_server.config.mon_config_dir import MonConfigDir
+from initat.md_config_server.config import FlatMonBaseConfig, MonFileContainer, MonDirContainer, CfgEmitStats
 from initat.tools import config_tools, configfile, logging_tools, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
@@ -44,8 +40,9 @@ __all__ = [
 ]
 
 
-class MonMainConfig(object):
+class MonMainConfig(dict):
     def __init__(self, proc, monitor_server, **kwargs):
+        dict.__init__(self)
         # container for all configs for a given monitor server (master or slave)
         self.__process = proc
         self.__slave_name = kwargs.get("slave_name", None)
@@ -80,7 +77,6 @@ class MonMainConfig(object):
             # self.__min_dir = os.path.join(self.__main_dir, "slaves", self.__slave_name)
         self.monitor_server = monitor_server
         self.master = True if not self.__slave_name else False
-        self.__dict = {}
         self._create_directories()
         self._clear_etc_dir()
         self.allow_write_entries = global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]
@@ -106,7 +102,7 @@ class MonMainConfig(object):
 
     @property
     def is_valid(self):
-        ht_conf_names = [key for key, value in self.__dict.iteritems() if isinstance(value, MonBaseContainer)]
+        ht_conf_names = [key for key, value in self.iteritems() if isinstance(value, MonFileContainer)]
         invalid = sorted(
             [
                 key for key in ht_conf_names if not self[key].is_valid
@@ -128,12 +124,6 @@ class MonMainConfig(object):
         # refreshes host- and contactgroup definition
         self["contactgroup"].refresh(self)
         self["hostgroup"].refresh(self)
-
-    def has_key(self, key):
-        return key in self.__dict
-
-    def keys(self):
-        return self.__dict.keys()
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
@@ -450,7 +440,7 @@ class MonMainConfig(object):
 
     def _create_base_config_entries(self):
         # read sql info
-        resource_file = MonBaseContainer("resource", self.__process)
+        resource_file = MonFileContainer("resource")
         resource_cfg = FlatMonBaseConfig("flat", "resource")
         resource_file.add_object(resource_cfg)
         if os.path.isfile(os.path.join(global_config["MD_BASEDIR"], "libexec", "check_dns")):
@@ -539,10 +529,6 @@ class MonMainConfig(object):
             # NDO stuff
         ]
         lib_dir_name = "lib64" if process_tools.get_sys_bits() == 64 else "lib"
-        for sub_dir_name in ["device.d"]:
-            sub_dir = os.path.join(self.__w_dir_dict["etc"], sub_dir_name)
-            if not os.path.isdir(sub_dir):
-                os.mkdir(sub_dir)
         for sub_dir_name in ["df_settings", "manual"]:
             sub_dir = os.path.join(self.__w_dir_dict["etc"], sub_dir_name)
             if os.path.isdir(sub_dir):
@@ -628,7 +614,7 @@ class MonMainConfig(object):
                 ("max_host_check_spread", global_config["MAX_HOST_CHECK_SPREAD"]),
             ]
         )
-        main_file = MonBaseContainer(global_config["MAIN_CONFIG_NAME"], self.__process)
+        main_file = MonFileContainer(global_config["MAIN_CONFIG_NAME"])
         main_cfg = FlatMonBaseConfig(
             "flat",
             global_config["MAIN_CONFIG_NAME"],
@@ -673,7 +659,7 @@ class MonMainConfig(object):
             def_user = ",".join(admin_list)
         else:
             def_user = "{}admin".format(global_config["MD_TYPE"])
-        cgi_file = MonBaseContainer("cgi", self.__process)
+        cgi_file = MonFileContainer("cgi")
         cgi_config = FlatMonBaseConfig(
             "flat",
             "cgi",
@@ -710,7 +696,7 @@ class MonMainConfig(object):
         self[resource_file.name] = resource_file
         if self.master:
             # wsgi config
-            uwsgi_file = MonBaseContainer("uwsgi", self.__process)
+            uwsgi_file = MonFileContainer("uwsgi")
             if os.path.isfile("/etc/debian_version"):
                 www_user, www_group = ("www-data", "www-data")
             elif os.path.isfile("/etc/redhat-release") or os.path.islink("/etc/redhat-release"):
@@ -899,63 +885,19 @@ class MonMainConfig(object):
         if not self.__allow_write_entries:
             self.log("writing entries not allowed", logging_tools.LOG_LEVEL_WARN)
             return 0
-        cfg_written, empty_cfg_written = ([], [])
-        start_time = time.time()
-        for key, stuff in self.__dict.iteritems():
-            if isinstance(stuff, FlatMonBaseConfig) or isinstance(stuff, MonBaseContainer) or isinstance(stuff, MonConfigDir):
-                if isinstance(stuff, MonConfigDir):
-                    cfg_written.extend(stuff.create_content(self.__w_dir_dict["etc"]))
-                else:
-                    act_cfg_name = stuff.get_file_name(self.__w_dir_dict["etc"])
-                    # print "*", key, act_cfg_name
-                    stuff.create_content()
-                    if stuff.act_content != stuff.old_content:
-                        try:
-                            codecs.open(act_cfg_name, "w", "utf-8").write(u"\n".join(stuff.act_content + [u""]))
-                        except IOError:
-                            self.log(
-                                "Error writing content of {} to {}: {}".format(
-                                    key,
-                                    act_cfg_name,
-                                    process_tools.get_except_info()
-                                ),
-                                logging_tools.LOG_LEVEL_CRITICAL
-                            )
-                            stuff.act_content = []
-                        else:
-                            os.chmod(act_cfg_name, 0644)
-                            cfg_written.append(key)
-                    elif not stuff.act_content:
-                        # crate empty config file
-                        empty_cfg_written.append(act_cfg_name)
-                        self.log(
-                            "creating empty file {}".format(act_cfg_name),
-                            logging_tools.LOG_LEVEL_WARN
-                        )
-                        open(act_cfg_name, "w").write("\n")
-                    else:
-                        # no change
-                        pass
-        end_time = time.time()
-        if cfg_written:
-            if global_config["DEBUG"]:
-                self.log(
-                    "wrote {} ({}) in {}".format(
-                        logging_tools.get_plural("config_file", len(cfg_written)),
-                        ", ".join(cfg_written),
-                        logging_tools.get_diff_time_str(end_time - start_time)
-                    )
+        w_stats = CfgEmitStats()
+        for key, stuff in self.iteritems():
+            stuff.write_content(w_stats, self.__w_dir_dict["etc"], self.log)
+        if w_stats.count:
+            self.log(
+                "wrote {} in {}".format(
+                    w_stats.info,
+                    w_stats.runtime,
                 )
-            else:
-                self.log(
-                    "wrote {} in {}".format(
-                        logging_tools.get_plural("config_file", len(cfg_written)),
-                        logging_tools.get_diff_time_str(end_time - start_time)
-                    )
-                )
+            )
         else:
             self.log("no config files written")
-        return len(cfg_written) + len(empty_cfg_written)
+        return w_stats.total_count
 
     def has_config(self, config_name):
         return config_name in self
@@ -968,27 +910,34 @@ class MonMainConfig(object):
             config.set_previous_config(self.get_config(config.name))
         self[config.name] = config
 
+    def dump_logs(self):
+        self.log("starting dump of buffered logs")
+        for key, value in self.iteritems():
+            for _line, _what in value.buffered_logs:
+                self.log(_line, _what)
+        self.log("done")
+
     def add_config_dir(self, config_dir):
         self[config_dir.name] = config_dir
 
     def __setitem__(self, key, value):
         # print "SI", key, type(value)
-        self.__dict[key] = value
+        super(MonMainConfig, self).__setitem__(key, value)
         new_file_keys = sorted(
             [
                 os.path.join(
                     self.__r_dir_dict["etc"],
                     "{}.cfg".format(key)
-                ) for key, value in self.__dict.iteritems() if (
+                ) for key, value in self.iteritems() if (
                     not isinstance(value, FlatMonBaseConfig)
-                ) and (not isinstance(value, MonConfigDir))
+                ) and (not isinstance(value, MonDirContainer))
             ]
         )
         # print new_file_keys
         old_file_keys = self[global_config["MAIN_CONFIG_NAME"]].object_list[0]["cfg_file"]
         new_dir_keys = sorted(
             [
-                os.path.join(self.__r_dir_dict["etc"], key) for key, value in self.__dict.iteritems() if isinstance(value, MonConfigDir)
+                os.path.join(self.__r_dir_dict["etc"], key) for key, value in self.iteritems() if isinstance(value, MonDirContainer)
             ]
         )
         old_dir_keys = self[global_config["MAIN_CONFIG_NAME"]].object_list[0]["cfg_dir"]
@@ -1002,8 +951,3 @@ class MonMainConfig(object):
         if write_cfg:
             self._write_entries()
 
-    def __contains__(self, key):
-        return key in self.__dict
-
-    def __getitem__(self, key):
-        return self.__dict[key]

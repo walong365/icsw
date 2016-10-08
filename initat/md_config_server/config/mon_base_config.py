@@ -20,7 +20,9 @@
 """ config part of md-config-server """
 
 import os
+import time
 from .content_emitter import StructuredContentEmitter, FlatContentEmitter
+from initat.tools import logging_tools
 
 
 __all__ = [
@@ -30,6 +32,8 @@ __all__ = [
     "MonUniqueList",
     "StructuredMonBaseConfig",
     "FlatMonBaseConfig",
+    "CfgEmitStats",
+    "LogBufferMixin",
 ]
 
 
@@ -102,6 +106,68 @@ class MonUniqueList(object):
                     add_idx += 1
             self._list.add(_name)
             return _name
+
+
+class CfgEmitStats(object):
+    def __init__(self):
+        self.__start_time = time.time()
+        self._written = set()
+        self._written_empty = set()
+
+    def add(self, key, empty=False):
+        if empty:
+            self._written_empty.add(key)
+        else:
+            self._written.add(key)
+
+    def merge(self, other_stat):
+        self._written |= other_stat.written
+        self._written_empty |= other_stat.written_empty
+
+    @property
+    def info(self):
+        return "{}, {}".format(
+            logging_tools.get_plural("file", len(self._written)),
+            logging_tools.get_plural("empty file", len(self._written_empty)),
+        )
+
+    @property
+    def total_count(self):
+        return self.count + len(self._written_empty)
+
+    @property
+    def count(self):
+        return len(self._written)
+
+    @property
+    def runtime(self):
+        return logging_tools.get_diff_time_str(time.time() - self.__start_time)
+
+    @property
+    def written(self):
+        return self._written
+
+    @property
+    def written_empty(self):
+        return self._written_empty
+
+    @property
+    def total_written(self):
+        return self._written | self._written_empty
+
+
+class LogBufferMixin(object):
+    def __init__(self):
+        self.__log_buffer = []
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_ERROR):
+        self.__log_buffer.append((what, log_level))
+
+    @property
+    def buffered_logs(self):
+        _logs = self.__log_buffer
+        self.__log_buffer = []
+        return _logs
 
 
 class SimpleCounter(object):

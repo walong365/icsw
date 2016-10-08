@@ -52,7 +52,7 @@ class StructuredContentEmitter(object):
                 [
                     (
                         key,
-                        self.build_value_string(key)
+                        self._build_value_string(key)
                     ) for key in sorted(self.iterkeys())
                 ]
             )

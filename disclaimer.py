@@ -9,10 +9,10 @@ import sys
 import tempfile
 from StringIO import StringIO
 from email.parser import FeedParser
-from lxml import etree  # @UnresolvedImport
+
+from lxml import etree
 
 from initat.tools import logging_tools, process_tools
-
 
 SENDMAIL_BIN = process_tools.find_file("sendmail")
 SPAMC_BIN = process_tools.find_file("spamc")
@@ -160,7 +160,11 @@ class disclaimer_handler(object):
                     u"found code tag '{}' in line '{}' ({})".format(
                         _code,
                         _line,
-                        ", ".join(["{}='{}'".format(_key, _value) for _key, _value in _add_dict.iteritems()])
+                        ", ".join(
+                            [
+                                "{}='{}'".format(_key, _value) for _key, _value in _add_dict.iteritems()
+                            ]
+                        )
                     )
                 )
                 s_str = "{}".format(
