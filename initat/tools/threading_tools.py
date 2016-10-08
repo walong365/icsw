@@ -584,10 +584,12 @@ class exception_handling_mixin(object):
 
 class process_obj(multiprocessing.Process, TimerBase, poller_obj, process_base, exception_handling_mixin, ICSWAutoInit):
     def __init__(self, name, **kwargs):
+        # early init of name
+        self._name = name
         multiprocessing.Process.__init__(self, target=self._code, name=name)
+        ICSWAutoInit.__init__(self)
         TimerBase.__init__(self, loop_timer=kwargs.get("loop_timer", 0))
         poller_obj.__init__(self)
-        ICSWAutoInit.__init__(self)
         self.kill_myself = kwargs.get("kill_myself", False)
         exception_handling_mixin.__init__(self)
         self.__stack_size = kwargs.get("stack_size", DEFAULT_STACK_SIZE)

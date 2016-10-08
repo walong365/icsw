@@ -102,6 +102,10 @@ class ConfigCheckObject(object):
         self.__process.log("[CC] {}".format(what), log_level)
 
     def init(self, srv_type_enum, global_config, add_config_store=True, init_logging=True, native_logging=False, init_msi_block=True):
+        if srv_type_enum is None:
+            # srv_type_enum is None, use value stored in global config
+            from initat.cluster.backbone.server_enums import icswServiceEnum
+            srv_type_enum = getattr(icswServiceEnum, global_config["SERVICE_ENUM_NAME"])
         self.srv_type_enum = srv_type_enum
         self.global_config = global_config
         self.__native_logging = native_logging
@@ -114,12 +118,18 @@ class ConfigCheckObject(object):
             self.__cs = config_store.ConfigStore("client", self.log)
         else:
             self.__cs = None
+        global_config.add_config_entries(
+            [
+                ("SERVICE_ENUM_NAME", configfile.str_c_var(self.srv_type_enum.name))
+            ]
+        )
         if init_logging:
-            global_config.add_config_entries(
-                [
-                    ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
-                ]
-            )
+            if "LOG_DESTINATION" not in global_config:
+                global_config.add_config_entries(
+                    [
+                        ("LOG_DESTINATION", configfile.str_c_var("uds:/var/lib/logging-server/py_log_zmq")),
+                    ]
+                )
 
             if "LOG_NAME" not in global_config:
                 global_config.add_config_entries(
@@ -1094,6 +1104,20 @@ class ICSWBasePool(threading_tools.process_pool, NetworkBindMixin, ServerStatusM
         pass
 
     # to use the log-function of the ConfigCheckMixin
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        ConfigCheckMixin.log(self, what, log_level)
+
+
+# baseprocess for all child process on server side
+class ICSWBaseProcess(threading_tools.process_obj, ConfigCheckMixin, OperationalErrorMixin):
+    def __init__(self, name=None):
+        # this is not very elegant, on child process we get called twice
+        # because of the class iterater in ICSWAutoInit so we call the __init__
+        # of process_obj only if name is set
+        if name is not None:
+            # manually init process_obj
+            threading_tools.process_obj.__init__(self, name)
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         ConfigCheckMixin.log(self, what, log_level)
 

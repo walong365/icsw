@@ -126,6 +126,7 @@ class SyncerProcess(threading_tools.process_obj):
             command="distribute_info",
             info=server_command.compress(_send_data, marshal=True),
         )
+        self.send_pool_message("distribution_info", _send_data)
         self.send_sync_command(distr_info)
 
     def _mon_process_handling(self, *args, **kwargs):

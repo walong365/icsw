@@ -119,6 +119,7 @@ class ServerProcess(
             self.register_func("send_command", self._send_command)
             self.register_func("ocsp_results", self._ocsp_results)
             self.register_func("set_sync_master_uuid", self._set_sync_master_uuid)
+            self.register_func("distribution_info", self._distribution_info)
 
             self.add_process(SyncerProcess("syncer"), start=True)
             self.add_process(DynConfigProcess("dynconfig"), start=True)
@@ -134,6 +135,10 @@ class ServerProcess(
             # )
         else:
             self._int_error("no MD found")
+
+    def _distribution_info(self, *args, **kwarg):
+        dist_info = args[2]
+        self.send_to_process("build", "distribution_info", dist_info)
 
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
@@ -334,7 +339,6 @@ class ServerProcess(
             self.send_to_process("syncer", "check_for_slaves")
             self.add_process(BuildProcess("build"), start=True)
         elif src_process == "build":
-            self.send_to_process("build", "check_for_slaves")
             if global_config["RELOAD_ON_STARTUP"]:
                 # send reload to md-sync-server, ToDo, Fixme
                 self.send_to_process("build", "reload_md_daemon")
@@ -392,11 +396,6 @@ class ServerProcess(
                 self.log("target is {}".format(unicode(self.__remotes[full_uuid])))
         else:
             self.log("sent {:d} bytes to {}".format(len(srv_com), full_uuid))
-
-    def _set_external_cmd_file(self, *args, **kwargs):
-        _src_proc, _src_id, ext_name = args
-        self.log("setting external cmd_file to '{}'".format(ext_name))
-        self.__external_cmd_file = ext_name
 
     def _init_network_sockets(self):
         self.network_bind(

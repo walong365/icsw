@@ -37,7 +37,6 @@ from initat.cluster.backbone.models import device, device_group, device_variable
     mon_contactgroup, netdevice, network_type, user, config, config_catalog, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special, mon_check_command
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MonMainConfig, MonAllCommands, \
@@ -47,21 +46,13 @@ from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, configfile, logging_tools, process_tools, \
-    server_command, threading_tools
+    server_command, server_mixins
 
 
-class BuildProcess(
-    threading_tools.process_obj,
-    VersionCheckMixin,
-):
+class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
     def process_init(self):
-        self.__log_template = logging_tools.get_logger(
-            global_config["LOG_NAME"],
-            global_config["LOG_DESTINATION"],
-            zmq=True,
-            context=self.zmq_context,
-            init_logger=True
-        )
+        # init CC
+        self.CC.init(None, global_config)
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
         db_tools.close_connection()
         self.__mach_loggers = {}
@@ -70,8 +61,7 @@ class BuildProcess(
         self.version = int(time.time())
         self.log("initial config_version is {:d}".format(self.version))
         self.router_obj = config_tools.RouterObject(self.log)
-        self.register_func("check_for_slaves", self._check_for_slaves)
-
+        self.register_func("distribution_info", self._distribution_info)
         self.register_func("build_host_config", self._check_call)
         self.register_func("sync_http_users", self._check_call)
         self.register_func("rebuild_config", self._check_call)
@@ -79,35 +69,41 @@ class BuildProcess(
         self.__pending_commands = []
         # ready (check_for_slaves called)
         self.__ready = False
-
         # self.__host_service_map = host_service_map(self.log)
-
-    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_template.log(log_level, what)
 
     def loop_post(self):
         for mach_logger in self.__mach_loggers.itervalues():
             mach_logger.close()
-        self.__log_template.close()
+        self.CC.close()
 
-    def _check_for_slaves(self, **kwargs):
-        master_server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
-        slave_servers = device.objects.filter(
-            Q(device_config__config__config_service_enum__enum_name=icswServiceEnum.monitor_slave.name)
-        ).select_related(
-            "domain_tree_node"
+    def _distribution_info(self, *args, **kwargs):
+        dist_info = args[0]
+        for _entry in dist_info:
+            # add device entries
+            _entry["device"] = device.objects.get(Q(pk=_entry["pk"]))
+        self.log(
+            "got distribution info, found {}: {}".format(
+                logging_tools.get_plural("slave server", len(dist_info) - 1),
+                ", ".join(
+                    [
+                        _entry["device"].full_name for _entry in dist_info if not _entry["master"]
+                    ]
+                )
+            )
         )
-        # slave configs
-        self.__gen_config = MonMainConfig(self, master_server, distributed=True if len(slave_servers) else False)
-        self.send_pool_message("external_cmd_file", self.__gen_config.get_command_name())
-        self.__gen_config_built = False
-        self.__slave_configs, self.__slave_lut = ({}, {})
-        if len(slave_servers):
-            self.log(
-                "found {}: {}".format(
-                    logging_tools.get_plural("slave_server", len(slave_servers)),
-                    ", ".join(sorted([cur_dev.full_name for cur_dev in slave_servers]))))
-            for cur_dev in slave_servers:
+        master_server = None
+        for entry in dist_info:
+            cur_dev = entry["device"]
+            if entry["master"]:
+                self.__gen_config = MonMainConfig(
+                    self,
+                    cur_dev,
+                    distributed=True if len(dist_info) > 1 else False
+                )
+                master_server = cur_dev
+                self.__gen_config_built = False
+                self.__slave_configs, self.__slave_lut = ({}, {})
+            else:
                 _slave_c = MonMainConfig(
                     self,
                     cur_dev,
@@ -116,17 +112,19 @@ class BuildProcess(
                 )
                 self.__slave_configs[cur_dev.pk] = _slave_c
                 self.__slave_lut[cur_dev.full_name] = cur_dev.pk
-        else:
-            self.log("no slave-servers found")
         self.__ready = True
         if self.__pending_commands:
-            self.log("processing {}".format(logging_tools.get_plural("pending command", len(self.__pending_commands))))
+            self.log(
+                "processing {}".format(
+                    logging_tools.get_plural("pending command", len(self.__pending_commands))
+                )
+            )
             while self.__pending_commands:
                 _pc = self.__pending_commands.pop(0)
                 self._check_call(*_pc["args"], **_pc["kwargs"])
 
     def send_command(self, src_id, srv_com):
-        self.send_pool_message("send_command", "urn:uuid:{}:relayer".format(src_id), srv_com)
+        print "DEPRECATED"
 
     def mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK, mach_name=None, **kwargs):
         if "single_build" in kwargs:
@@ -279,7 +277,6 @@ class BuildProcess(
 
     def _rebuild_config(self, *args, **kwargs):
         # self.__host_service_map.start_collecting()
-
         single_build = True if len(args) > 0 else False
         if not single_build:
             # from mixin

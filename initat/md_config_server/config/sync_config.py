@@ -198,6 +198,7 @@ class SyncConfig(object):
     def get_send_data(self):
         _r_dict = {
             "master": True if not self.__slave_name else False,
+            "pk": self.monitor_server.idx,
             "pure_uuid": self.monitor_server.uuid,
             # todo, FIXME
             "master_port": 8010,
