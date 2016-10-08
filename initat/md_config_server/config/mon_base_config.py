@@ -21,9 +21,10 @@
 
 import os
 import time
-from .content_emitter import StructuredContentEmitter, FlatContentEmitter
-from initat.tools import logging_tools
 
+from lxml.builder import E
+
+from initat.tools import logging_tools
 
 __all__ = [
     "MonBaseConfig",
@@ -35,6 +36,22 @@ __all__ = [
     "CfgEmitStats",
     "LogBufferMixin",
 ]
+
+
+class SimpleCounter(object):
+    def __init__(self):
+        self.num_ok = 0
+        self.num_warning = 0
+        self.num_error = 0
+
+    def error(self, num=1):
+        self.num_error += num
+
+    def warning(self, num=1):
+        self.num_warning += num
+
+    def ok(self, num=1):
+        self.num_ok += num
 
 
 # also used in parse_anovis
@@ -51,6 +68,9 @@ class MonBaseConfig(dict):
         # every key references to a (unique) list of items
         self.obj_type = obj_type
         self.name = name
+        # if set to True change handling of setitem
+        # (allow only unique values, see below)
+        self._flat_values = self.obj_type == "flat"
         super(MonBaseConfig, self).__init__()
         for _key, _value in args:
             self[_key] = _value
@@ -58,17 +78,11 @@ class MonBaseConfig(dict):
             self[_key] = _value
         self.act_content, self.prev_content = ([], [])
 
-    def get_file_name(self, etc_dir):
-        if self.name in ["uwsgi"]:
-            return "/opt/cluster/etc/uwsgi/icinga.wsgi.ini"
-        else:
-            return os.path.normpath(os.path.join(etc_dir, "{}.cfg".format(self.name)))
-
     def __setitem__(self, key, value):
         _cur_v = self.setdefault(key, [])
         if type(value) != list:
             value = [value]
-        if self.obj_type == "flat":
+        if self._flat_values:
             _cur_v.extend([_v for _v in value if _v not in _cur_v])
         else:
             _cur_v.extend([_v for _v in value])
@@ -78,14 +92,6 @@ class MonBaseConfig(dict):
             return self.name
         else:
             return super(MonBaseConfig, self).__getitem__(key)
-
-
-class StructuredMonBaseConfig(MonBaseConfig, StructuredContentEmitter):
-    pass
-
-
-class FlatMonBaseConfig(MonBaseConfig, FlatContentEmitter):
-    pass
 
 
 class MonUniqueList(object):
@@ -170,17 +176,93 @@ class LogBufferMixin(object):
         return _logs
 
 
-class SimpleCounter(object):
-    def __init__(self):
-        self.num_ok = 0
-        self.num_warning = 0
-        self.num_error = 0
+class StructuredContentEmitter(object):
+    def emit_content(self):
+        _content = [
+            u"define {} {{".format(self.obj_type)
+        ] + [
+            u"  {} {}".format(
+                act_key,
+                self._build_value_string(act_key)
+            ) for act_key in sorted(self.iterkeys())
+        ] + [
+            u"}",
+            ""
+        ]
+        return _content
 
-    def error(self, num=1):
-        self.num_error += num
+    def emit_xml(self):
+        new_node = getattr(
+            E, self.obj_type
+        )(
+            **dict(
+                [
+                    (
+                        key,
+                        self._build_value_string(key)
+                    ) for key in sorted(self.iterkeys())
+                ]
+            )
+        )
+        return new_node
 
-    def warning(self, num=1):
-        self.num_warning += num
+    def _build_value_string(self, _key):
+        in_list = self[_key]
+        # print self.obj_type, _key, in_list
+        if in_list:
+            # check for unique types
+            if len(set([type(_val) for _val in in_list])) != 1:
+                raise ValueError(
+                    "values in list {} for key {} have different types".format(
+                        str(in_list),
+                        _key
+                    )
+                )
+            else:
+                _first_val = in_list[0]
+                if type(_first_val) in [int, long]:
+                    return ",".join(["{:d}".format(_val) for _val in in_list])
+                else:
+                    if "" in in_list:
+                        raise ValueError(
+                            "empty string found in list {} for key {}".format(
+                                str(in_list),
+                                _key
+                            )
+                        )
+                    return u",".join([unicode(_val) for _val in in_list])
+        else:
+            return "-"
 
-    def ok(self, num=1):
-        self.num_ok += num
+
+class FlatContentEmitter(object):
+    def emit_content(self):
+        c_lines = []
+        last_key = None
+        for key in sorted(self.keys()):
+            if last_key:
+                if last_key[0] != key[0]:
+                    c_lines.append("")
+            last_key = key
+            value = self[key]
+            if key.count("[") and value == [None]:
+                # for headers
+                c_lines.append(key)
+            else:
+                if type(value) == list:
+                    pass
+                elif type(value) in [int, long]:
+                    value = ["{:d}".format(value)]
+                else:
+                    value = [value]
+                for act_v in value:
+                    c_lines.append(u"{}={}".format(key, act_v))
+        return c_lines
+
+
+class StructuredMonBaseConfig(MonBaseConfig, StructuredContentEmitter):
+    pass
+
+
+class FlatMonBaseConfig(MonBaseConfig, FlatContentEmitter):
+    pass

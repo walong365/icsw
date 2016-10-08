@@ -414,11 +414,13 @@ class all_contact_groups(MonFileContainer):
 
     def _add_contact_groups_from_db(self, gen_conf):
         # none group
-        self[0] = StructuredMonBaseConfig(
-            "contactgroup",
-            global_config["NONE_CONTACT_GROUP"],
-            contactgroup_name=global_config["NONE_CONTACT_GROUP"],
-            alias="None group"
+        self.add_object(
+            StructuredMonBaseConfig(
+                "contactgroup",
+                global_config["NONE_CONTACT_GROUP"],
+                contactgroup_name=global_config["NONE_CONTACT_GROUP"],
+                alias="None group"
+            )
         )
         for cg_group in mon_contactgroup.objects.all().prefetch_related("members"):
             nag_conf = StructuredMonBaseConfig(

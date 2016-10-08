@@ -83,8 +83,8 @@ class MonFileContainer(dict, LogBufferMixin):
         return True
 
     def get_file_name(self, parent_dir):
-        if self.name in ["uwsgi"]:
-            return "/opt/cluster/etc/uwsgi/icinga.wsgi.ini"
+        if self.name.startswith("/"):
+            return self.name
         else:
             return os.path.normpath(os.path.join(parent_dir, "{}.cfg".format(self.name)))
 
@@ -178,7 +178,7 @@ class MonDirContainer(dict, LogBufferMixin):
         dict.__init__(self)
         LogBufferMixin.__init__(self)
         # directory containing MonBaseContainers
-        self.name = "{}.d".format(name)
+        self.name = name
         self.refresh()
 
     def __repr__(self):
@@ -199,9 +199,15 @@ class MonDirContainer(dict, LogBufferMixin):
         self.host_pks.add(host.pk)
         self[c_list.name] = c_list
 
+    def get_file_name(self, parent_dir):
+        if self.name.startswith("/"):
+            return self.name
+        else:
+            return os.path.normpath(os.path.join(parent_dir, "{}.d".format(self.name)))
+
     def write_content(self, cfg_stats, etc_dir, log_com):
         from ..config import CfgEmitStats
-        cfg_dir = os.path.join(etc_dir, self.name)
+        cfg_dir = self.get_file_name(etc_dir)
         if not os.path.isdir(cfg_dir):
             log_com("creating dir {}".format(cfg_dir))
             os.mkdir(cfg_dir)

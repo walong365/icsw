@@ -30,7 +30,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone.models import device, user
 from initat.md_config_server.config import FlatMonBaseConfig, MonFileContainer, MonDirContainer, \
-    CfgEmitStats
+    CfgEmitStats, StructuredMonBaseConfig
 from initat.tools import config_tools, configfile, logging_tools, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())
@@ -554,9 +554,9 @@ class MonMainConfig(dict):
             ("cfg_dir", []),
         )
         if self.master:
-            main_values.append(
-                ("cfg_dir", os.path.join(self.__r_dir_dict["etc"], "manual")),
-            )
+            # main_values.append(
+            #     ("cfg_dir", os.path.join(self.__r_dir_dict["etc"], "manual")),
+            # )
             if global_config["ENABLE_COLLECTD"]:
                 # setup perf
                 # collectd data:
@@ -697,7 +697,7 @@ class MonMainConfig(dict):
         self[resource_file.name] = resource_file
         if self.master:
             # wsgi config
-            uwsgi_file = MonFileContainer("uwsgi")
+            uwsgi_file = MonFileContainer("/opt/cluster/etc/uwsgi/icinga.wsgi.ini")
             if os.path.isfile("/etc/debian_version"):
                 www_user, www_group = ("www-data", "www-data")
             elif os.path.isfile("/etc/redhat-release") or os.path.islink("/etc/redhat-release"):
@@ -921,30 +921,38 @@ class MonMainConfig(dict):
     def __setitem__(self, key, value):
         # print "SI", key, type(value)
         super(MonMainConfig, self).__setitem__(key, value)
-        new_file_keys = sorted(
-            [
-                os.path.join(
-                    self.__r_dir_dict["etc"],
-                    "{}.cfg".format(key)
-                ) for key, value in self.iteritems() if (
-                    not isinstance(value, FlatMonBaseConfig)
-                ) and (not isinstance(value, MonDirContainer))
-            ]
-        )
+        _main_cfg_name = global_config["MAIN_CONFIG_NAME"]
+        new_file_keys, new_dir_keys, new_resource_keys = ([], [], [])
+        for key, value in self.iteritems():
+            _path = value.get_file_name(
+                self.__r_dir_dict["etc"]
+            )
+            if isinstance(value, MonDirContainer):
+                new_dir_keys.append(_path)
+            elif isinstance(value, MonFileContainer):
+                if value.name in ["cgi", _main_cfg_name]:
+                    # ignore main and cgi config file
+                    pass
+                elif value.name.startswith("/"):
+                    # ignore files not residing in etc tree
+                    pass
+                elif value.name.startswith("resource"):
+                    new_resource_keys.append(_path)
+                else:
+                    new_file_keys.append(_path)
         # print new_file_keys
-        old_file_keys = self[global_config["MAIN_CONFIG_NAME"]].object_list[0]["cfg_file"]
-        new_dir_keys = sorted(
-            [
-                os.path.join(self.__r_dir_dict["etc"], key) for key, value in self.iteritems() if isinstance(value, MonDirContainer)
-            ]
-        )
-        old_dir_keys = self[global_config["MAIN_CONFIG_NAME"]].object_list[0]["cfg_dir"]
+        old_file_keys = self[_main_cfg_name].object_list[0]["cfg_file"]
+        old_dir_keys = self[_main_cfg_name].object_list[0]["cfg_dir"]
+        old_resource_keys = self[_main_cfg_name].object_list[0]["resource_file"]
         write_cfg = False
         if old_file_keys != new_file_keys:
-            self[global_config["MAIN_CONFIG_NAME"]].object_list[0]["cfg_file"] = new_file_keys
+            self[_main_cfg_name].object_list[0]["cfg_file"] = new_file_keys
             write_cfg = True
         if old_dir_keys != new_dir_keys:
-            self[global_config["MAIN_CONFIG_NAME"]].object_list[0]["cfg_dir"] = new_dir_keys
+            self[_main_cfg_name].object_list[0]["cfg_dir"] = new_dir_keys
+            write_cfg = True
+        if old_resource_keys != new_resource_keys:
+            self[_main_cfg_name].object_list[0]["resource_file"] = new_resource_keys
             write_cfg = True
         if write_cfg:
             self._write_entries()

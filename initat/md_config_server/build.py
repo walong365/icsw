@@ -687,7 +687,7 @@ class BuildProcess(
         self.__safe_cc_name = global_config["SAFE_CC_NAME"]
         start_time = time.time()
         # set some vars
-        host_nc = cur_gc["device.d"]
+        host_nc = cur_gc["device"]
         # we always check for passive checks
         # if cur_gc.master:
         #    check_for_passive_checks = True
@@ -1533,7 +1533,7 @@ class BuildProcess(
                 cur_host = _bc.get_host(d_pk)
                 # populate valid_ips and invalid_ips
                 getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append((n_i, dom_name))
-        host_nc = cur_gc["device.d"]
+        host_nc = cur_gc["device"]
         # delete host if already present in host_table
         host_names = []
         for host_pk in _bc.host_pks:
