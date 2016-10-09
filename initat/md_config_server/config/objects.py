@@ -26,7 +26,8 @@ from initat.cluster.backbone.models import device, device_group, mon_check_comma
     mon_contact, mon_contactgroup, category_tree, TOP_MONITORING_CATEGORY, mon_notification, \
     host_check_command, mon_check_command_special
 from initat.md_config_server.config.check_command import CheckCommand
-from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig, MonUniqueList, build_safe_name
+from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig, MonUniqueList, \
+    build_safe_name
 from initat.md_config_server.config.mon_config_containers import MonFileContainer
 from initat.tools import cluster_location, logging_tools
 from .global_config import global_config
@@ -448,8 +449,8 @@ class MonAllHostGroups(MonFileContainer):
         self._add_host_groups_from_db(gen_conf)
 
     def _add_host_groups_from_db(self, gen_conf):
-        if "device.d" in gen_conf:
-            host_pks = gen_conf["device.d"].host_pks
+        if "device" in gen_conf:
+            host_pks = gen_conf["device"].host_pks
             hostg_filter = Q(enabled=True) & Q(device_group__enabled=True) & Q(device_group__pk__in=host_pks)
             host_filter = Q(enabled=True) & Q(device_group__enabled=True) & Q(pk__in=host_pks)
             if host_pks:

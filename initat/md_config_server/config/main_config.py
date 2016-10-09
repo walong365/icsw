@@ -31,7 +31,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import device, user
 from initat.md_config_server.config import FlatMonBaseConfig, MonFileContainer, MonDirContainer, \
     CfgEmitStats
-from initat.tools import config_tools, logging_tools, process_tools
+from initat.tools import logging_tools, process_tools
 from .global_config import global_config
 
 __all__ = [
@@ -45,40 +45,18 @@ class MonMainConfig(dict):
         # container for all configs for a given monitor server (master or slave)
         self.__process = proc
         self.__slave_name = kwargs.get("slave_name", None)
-        self.__main_dir = global_config["MD_BASEDIR"]
-        self.distributed = kwargs.get("distributed", False)
         if self.__slave_name:
             self.__dir_offset = os.path.join("slaves", self.__slave_name)
-            master_cfg = config_tools.device_with_config("monitor_server")
-            slave_cfg = config_tools.server_check(
-                host_name=monitor_server.full_name,
-                server_type="monitor_slave",
-                fetch_network_info=True
-            )
-            self.slave_uuid = monitor_server.uuid
-            route = master_cfg["monitor_server"][0].get_route_to_other_device(self.__process.router_obj, slave_cfg)
-            if not route:
-                self.slave_ip = None
-                self.master_ip = None
-                self.log("no route to slave %s found" % (unicode(monitor_server)), logging_tools.LOG_LEVEL_ERROR)
-            else:
-                self.slave_ip = route[0][3][1][0]
-                self.master_ip = route[0][2][1][0]
-                self.log(
-                    "IP-address of slave {} is {} (master: {})".format(
-                        unicode(monitor_server),
-                        self.slave_ip,
-                        self.master_ip
-                    )
-                )
         else:
             self.__dir_offset = ""
-            # self.__min_dir = os.path.join(self.__main_dir, "slaves", self.__slave_name)
         self.monitor_server = monitor_server
+        # is this the config for the main server ?
         self.master = True if not self.__slave_name else False
-        self._create_directories()
-        self._clear_etc_dir()
         self.allow_write_entries = global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]
+        # create directories
+        self._create_directories()
+        # clean them if necessary
+        self._clear_etc_dir()
         self._create_base_config_entries()
         self._write_entries()
         self.allow_write_entries = True
@@ -126,7 +104,7 @@ class MonMainConfig(dict):
 
     def log(self, what, level=logging_tools.LOG_LEVEL_OK):
         self.__process.log(
-            "[mc{}] {}".format(
+            u"[mc{}] {}".format(
                 " {}".format(self.__slave_name) if self.__slave_name else "",
                 what
             ),
@@ -152,10 +130,15 @@ class MonMainConfig(dict):
         ]
         if process_tools.get_sys_bits() == 64:
             dir_names.append("lib64")
+        _main_dir = global_config["MD_BASEDIR"]
         # dir dict for writing on disk
-        self.__w_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, self.__dir_offset, dir_name))) for dir_name in dir_names])
+        self.__w_dir_dict = {
+            dir_name: os.path.normpath(os.path.join(_main_dir, self.__dir_offset, dir_name)) for dir_name in dir_names
+        }
         # dir dict for referencing
-        self.__r_dir_dict = dict([(dir_name, os.path.normpath(os.path.join(self.__main_dir, dir_name))) for dir_name in dir_names])
+        self.__r_dir_dict = {
+            dir_name: os.path.normpath(os.path.join(_main_dir, dir_name)) for dir_name in dir_names
+        }
         for dir_name, full_path in self.__w_dir_dict.iteritems():
             if not os.path.exists(full_path):
                 self.log("Creating directory {}".format(full_path))
@@ -175,13 +158,20 @@ class MonMainConfig(dict):
                         os.unlink(full_path)
                     except:
                         self.log(
-                            "Cannot delete file {}: {}".format(full_path, process_tools.get_except_info()),
+                            "Cannot delete file {}: {}".format(
+                                full_path,
+                                process_tools.get_except_info()
+                            ),
                             logging_tools.LOG_LEVEL_ERROR
                         )
 
     def _create_nagvis_base_entries(self):
         if os.path.isdir(global_config["NAGVIS_DIR"]):
-            self.log("creating base entries for nagvis (under {})".format(global_config["NAGVIS_DIR"]))
+            self.log(
+                "creating base entries for nagvis (under {})".format(
+                    global_config["NAGVIS_DIR"]
+                )
+            )
             #
             nagvis_main_cfg = ConfigParser.RawConfigParser(allow_no_value=True)
             for sect_name, var_list in [
@@ -438,46 +428,47 @@ class MonMainConfig(dict):
             self.log("no nagvis_directory '{}' found".format(global_config["NAGVIS_DIR"]), logging_tools.LOG_LEVEL_ERROR)
 
     def _create_base_config_entries(self):
-        # read sql info
+        _md_type = global_config["MD_TYPE"]
+        _md_basedir = global_config["MD_BASEDIR"]
         resource_file = MonFileContainer("resource")
         resource_cfg = FlatMonBaseConfig("flat", "resource")
         resource_file.add_object(resource_cfg)
-        if os.path.isfile(os.path.join(global_config["MD_BASEDIR"], "libexec", "check_dns")):
+        if os.path.isfile(os.path.join(_md_basedir, "libexec", "check_dns")):
             resource_cfg["$USER1$"] = os.path.join(
-                global_config["MD_BASEDIR"],
+                _md_basedir,
                 "libexec",
             )
         else:
             resource_cfg["$USER1$"] = os.path.join(
-                global_config["MD_BASEDIR"],
+                _md_basedir,
                 "lib",
             )
-        resource_cfg["$USER2$"] = "/opt/cluster/sbin/ccollclientzmq -t %d" % (global_config["CCOLLCLIENT_TIMEOUT"])
-        resource_cfg["$USER3$"] = "/opt/cluster/sbin/csnmpclientzmq -t %d" % (global_config["CSNMPCLIENT_TIMEOUT"])
+        resource_cfg["$USER2$"] = "/opt/cluster/sbin/ccollclientzmq -t {:d}".format(global_config["CCOLLCLIENT_TIMEOUT"])
+        resource_cfg["$USER3$"] = "/opt/cluster/sbin/csnmpclientzmq -t {:d}".format(global_config["CSNMPCLIENT_TIMEOUT"])
         main_values = [
             (
                 "log_file",
-                "{}/{}.log".format(
+                os.path.join(
                     self.__r_dir_dict["var"],
-                    global_config["MD_TYPE"]
+                    "{}.log".format(_md_type),
                 )
             ),
             ("cfg_file", []),
             (
                 "resource_file",
-                "{}/{}.cfg".format(
+                os.path.join(
                     self.__r_dir_dict["etc"],
-                    resource_cfg.name
+                    "{}.cfg".format(resource_cfg.name),
                 )
             ),
-            ("{}_user".format(global_config["MD_TYPE"]), "idmon"),
-            ("{}_group".format(global_config["MD_TYPE"]), "idg"),
+            ("{}_user".format(_md_type), "idmon"),
+            ("{}_group".format(_md_type), "idg"),
             ("check_external_commands", 1),
             ("command_check_interval", 1),
             ("command_file", self.get_command_name()),
             ("command_check_interval", "5s"),
             ("lock_file", os.path.join(self.__r_dir_dict["var"], global_config["MD_LOCK_FILE"])),
-            ("temp_file", "{}/temp.tmp".format(self.__r_dir_dict["var"])),
+            ("temp_file", os.path.join(self.__r_dir_dict["var"], "temp.tmp")),
             ("log_rotation_method", "d"),
             ("log_archive_path", self.__r_dir_dict["var/archives"]),
             ("use_syslog", 0),
@@ -492,7 +483,7 @@ class MonMainConfig(dict):
             ("service_reaper_frequency", 12),
             ("sleep_time", 1),
             ("retain_state_information", 1 if global_config["RETAIN_SERVICE_STATUS"] else 0),  # if self.master else 0),
-            ("state_retention_file", "%s/retention.dat" % (self.__r_dir_dict["var"])),
+            ("state_retention_file", os.path.join(self.__r_dir_dict["var"], "retention.dat")),
             ("retention_update_interval", 60),
             ("use_retained_program_state", 1 if global_config["RETAIN_PROGRAM_STATE"] else 0),
             ("use_retained_scheduling_info", 0),
@@ -538,9 +529,16 @@ class MonMainConfig(dict):
                     "broker_module", [],
                 ),
                 (
-                    "broker_module", "{}/mk-livestatus/livestatus.o {}/live".format(
-                        self.__r_dir_dict[lib_dir_name],
-                        self.__r_dir_dict["var"]
+                    "broker_module", "{} {}".format(
+                        os.path.join(
+                            self.__r_dir_dict[lib_dir_name],
+                            "mk-livestatus",
+                            "livestatus.o"
+                        ),
+                        os.path.join(
+                            self.__r_dir_dict["var"],
+                            "live"
+                        )
                     )
                 ),
                 (
@@ -606,7 +604,7 @@ class MonMainConfig(dict):
             )
         main_values.extend(
             [
-                ("object_cache_file", "%s/object.cache" % (self.__r_dir_dict["var"])),
+                ("object_cache_file", os.path.join(self.__r_dir_dict["var"], "object.cache")),
                 ("use_large_installation_tweaks", "1"),
                 ("enable_environment_macros", "0"),
                 ("max_service_check_spread", global_config["MAX_SERVICE_CHECK_SPREAD"]),
@@ -657,7 +655,7 @@ class MonMainConfig(dict):
         if admin_list:
             def_user = ",".join(admin_list)
         else:
-            def_user = "{}admin".format(global_config["MD_TYPE"])
+            def_user = "{}admin".format(_md_type)
         cgi_file = MonFileContainer("cgi")
         cgi_config = FlatMonBaseConfig(
             "flat",
@@ -669,8 +667,8 @@ class MonMainConfig(dict):
                         "{}.cfg".format(global_config["MAIN_CONFIG_NAME"])
                     )
                 ),
-                ("physical_html_path", "%s" % (self.__r_dir_dict["share"])),
-                ("url_html_path", "/{}".format(global_config["MD_TYPE"])),
+                ("physical_html_path", "{}".format(self.__r_dir_dict["share"])),
+                ("url_html_path", "/{}".format(_md_type)),
                 ("show_context_help", 0),
                 ("use_authentication", 1),
                 # ("default_user_name"        , def_user),
@@ -685,9 +683,8 @@ class MonMainConfig(dict):
                 ("authorized_for_all_host_commands", def_user),
                 ("authorized_for_all_services", def_user),
                 ("authorized_for_all_service_commands", def_user)
-            ] + [
                 ("tac_show_only_hard_state", 1)
-            ] if (global_config["MD_TYPE"] == "icinga" and global_config["MD_RELEASE"] >= 6) else []
+            ]
         )
         cgi_file.add_object(cgi_config)
         self[main_file.name] = main_file
@@ -754,7 +751,7 @@ class MonMainConfig(dict):
             if global_config["ENABLE_NAGVIS"]:
                 # modify auth.db
                 auth_db = os.path.join(global_config["NAGVIS_DIR"], "etc", "auth.db")
-                self.log("modifying authentication info in %s" % (auth_db))
+                self.log("modifying authentication info in {}".format(auth_db))
                 try:
                     conn = sqlite3.connect(auth_db)
                 except:
@@ -823,7 +820,7 @@ class MonMainConfig(dict):
                         else:
                             # create special role
                             target_role = cur_u.login
-                            role_dict[target_role] = cur_c.execute("INSERT INTO roles VALUES(Null, '%s')" % (cur_u.login)).lastrowid
+                            role_dict[target_role] = cur_c.execute("INSERT INTO roles VALUES(Null, '{}')".format(cur_u.login)).lastrowid
                             add_perms = ["auth.logout.*", "overview.view.*", "general.*.*", "user.setoption.*"]
                             perm_names = []
                             for cur_devg in cur_u.allowed_device_groups.values_list("pk", flat=True):
@@ -838,13 +835,13 @@ class MonMainConfig(dict):
                                 if perm_name not in perms_dict:
                                     try:
                                         perms_dict[perm_name] = cur_c.execute(
-                                            "INSERT INTO perms VALUES(Null, '%s', '%s', '%s')" % (
+                                            "INSERT INTO perms VALUES(Null, '{}', '{}', '{}')".format(
                                                 perm_name.split(".")[0].title(),
                                                 perm_name.split(".")[1],
                                                 perm_name.split(".")[2]
                                             )
                                         ).lastrowid
-                                        self.log("permission '%s' has id %d" % (perm_name, perms_dict[perm_name]))
+                                        self.log("permission '{}' has id {:d}".format(perm_name, perms_dict[perm_name]))
                                     except:
                                         self.log(
                                             "cannot create permission '{}': {}".format(
@@ -857,16 +854,16 @@ class MonMainConfig(dict):
                             # add perms
                             for new_perm in add_perms:
                                 if new_perm in perms_dict:
-                                    cur_c.execute("INSERT INTO roles2perms VALUES(%d, %d)" % (
+                                    cur_c.execute("INSERT INTO roles2perms VALUES({:d}, {:d})".format(
                                         role_dict[target_role],
                                         perms_dict[new_perm]))
                             self.log(
-                                "creating new role '%s' with perms %s" % (
+                                "creating new role '{}' with perms {}".format(
                                     target_role,
                                     ", ".join(add_perms)
                                 )
                             )
-                        self.log("creating user '%s' with role %s" % (
+                        self.log("creating user '{}' with role {}".format(
                             unicode(cur_u),
                             target_role,
                         ))

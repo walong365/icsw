@@ -41,7 +41,7 @@ MON_HOST_UNREACHABLE = 2
 TEMPLATE_NAME = "t"
 
 # maps to transfer for single_build
-SINGLE_BUILD_MAPS = {"device.d", "command"}
+SINGLE_BUILD_MAPS = {"device", "command"}
 
 # no longer needed / required
 

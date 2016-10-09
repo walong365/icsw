@@ -1,6 +1,6 @@
 {
   "devDependencies": {
-    "coffee-script": "^1.10.0",
+    "coffee-script": "^1.11.1",
     "connect-modrewrite": "^0.9.0",
     "del": "^2.2.2",
     "gulp": "github:gulpjs/gulp#4.0",

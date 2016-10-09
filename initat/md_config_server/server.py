@@ -332,7 +332,11 @@ class ServerProcess(
 
     def _hup_error(self, err_cause):
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
-        self.send_to_process("build", "rebuild_config", cache_mode="CACHED")
+        srv_com = server_command.srv_command(
+            command="build_host_config",
+            cache_mode="CACHED"
+        )
+        self.send_to_process("build", "build_host_config", unicode(srv_com))
 
     def process_start(self, src_process, src_pid):
         if src_process == "syncer":
@@ -343,7 +347,11 @@ class ServerProcess(
                 # send reload to md-sync-server, ToDo, Fixme
                 self.send_to_process("build", "reload_md_daemon")
             if global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]:
-                self.send_to_process("build", "rebuild_config", cache_mode=global_config["INITIAL_CONFIG_CACHE_MODE"])
+                srv_com = server_command.srv_command(
+                    command="build_host_config",
+                    cache_mode=global_config["INITIAL_CONFIG_CACHE_MODE"],
+                )
+                self.send_to_process("build", "build_host_config", unicode(srv_com))
         self.CC.process_added(src_process, src_pid)
 
     def _register_remote(self, *args, **kwargs):
@@ -425,10 +433,10 @@ class ServerProcess(
         return srv_com
 
     @RemoteCall()
-    def rebuild_host_config(self, srv_com, **kwargs):
+    def build_host_config(self, srv_com, **kwargs):
         # pretend to be synchronous call such that reply is sent right away
-        self.send_to_process("build", "rebuild_config", cache_mode=srv_com.get("cache_mode", "DYNAMIC"))
-        srv_com.set_result("ok processed command rebuild_host_config")
+        self.send_to_process("build", "build_host_config", unicode(srv_com))
+        srv_com.set_result("ok processed command build_host_config")
         return srv_com
 
     @RemoteCall()

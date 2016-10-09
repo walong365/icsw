@@ -173,11 +173,11 @@ monitoring_build_info_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$uibModal", "icswAcessLevelService", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceTreeService",
-    "icswMonitoringSysInfoTreeService",
+    "icswMonitoringSysInfoTreeService", "blockUI", "icswSimpleAjaxCall",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, icswAcessLevelService, $timeout, icswTools, ICSW_URLS, icswDeviceTreeService,
-    icswMonitoringSysInfoTreeService,
+    icswMonitoringSysInfoTreeService, blockUI, icswSimpleAjaxCall,
 ) ->
     icswAcessLevelService.install($scope)
 
@@ -192,44 +192,50 @@ monitoring_build_info_module = angular.module(
         reload_to: undefined
     }
 
-    $scope.load = () ->
+    $scope.load = (initial) ->
         $scope.struct.loading = true
-        $q.all(
-            [
-                icswMonitoringSysInfoTreeService.load($scope.$id)
-                Restangular.all(ICSW_URLS.MON_GET_MON_BUILD_INFO.slice(1)).getList({"count": 100})
+        _wait_list = [
+            icswMonitoringSysInfoTreeService.load($scope.$id)
+            Restangular.all(ICSW_URLS.MON_GET_MON_BUILD_INFO.slice(1)).getList({"count": 100})
+        ]
+        if initial
+            _wait_list.push(
                 icswDeviceTreeService.load($scope.$id)
-            ]
-        ).then(
-            (data) ->
-                $scope.struct.device_tree = data[2]
-                $scope.struct.sys_info = data[0]
-                $scope.struct.sys_info.feed_builds(data[1])
-                $scope.struct.loading = false
-                $scope.struct.reload_to = $timeout($scope.reload, 5000)
-        )
-
-    $scope.reload = () ->
-        $scope.struct.loading = true
+            )
         $q.all(
-            [
-                icswMonitoringSysInfoTreeService.reload($scope.$id)
-                Restangular.all(ICSW_URLS.MON_GET_MON_BUILD_INFO.slice(1)).getList({"count": 100})
-            ]
+            _wait_list
         ).then(
             (data) ->
+                if initial
+                    $scope.struct.device_tree = data[2]
+                    $scope.struct.sys_info = data[0]
                 $scope.struct.sys_info.feed_builds(data[1])
                 $scope.struct.loading = false
-                $scope.struct.reload_to = $timeout($scope.reload, 5000)
+                $scope.struct.reload_to = $timeout(
+                    () ->
+                        $scope.load(false)
+                    10000
+                )
         )
-
 
     $scope.$on("$destroy", () ->
         if $scope.struct.reload_to
             console.log "C"
             $timeout.cancel($scope.struct.reload_to)
     )
-    $scope.load()
+    $scope.load(true)
+
+    $scope.create_config = ($event) ->
+        blockUI.start()
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.MON_CREATE_CONFIG
+            data:
+                cache_mode: "DYNAMIC"
+            title: "create config"
+        ).then(
+            (data) ->
+                blockUI.stop()
+        )
 
 ]).directive('icswMonitoringBuildInfo', () ->
     return {

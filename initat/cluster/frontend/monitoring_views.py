@@ -93,7 +93,7 @@ class create_config(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         srv_com = server_command.srv_command(
-            command="rebuild_host_config",
+            command="build_host_config",
             cache_mode=request.POST.get("cache_mode", "DYNAMIC")
         )
         result = contact_server(request, icswServiceEnum.monitor_server, srv_com, connection_id="wf_mdrc")

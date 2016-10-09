@@ -177,23 +177,20 @@ class MonDirContainer(dict, LogBufferMixin):
         LogBufferMixin.__init__(self)
         # directory containing MonBaseContainers
         self.name = name
-        self.refresh()
+        self.clear()
 
     def __repr__(self):
         return u"MonDirContainer {}".format(self.name)
 
     def clear(self):
+        self.host_pks = set()
         super(MonDirContainer, self).clear()
 
-    def refresh(self):
-        # setup dir
-        self.host_pks = set()
+    def refresh(self, gen_conf):
+        # refresh, simply clear the current container
         self.clear()
 
     def add_entry(self, c_list, host):
-        # add a MonFileContainer
-        # print "*** ad", c_list, type(c_list), host
-        # host_conf = c_list[0]
         self.host_pks.add(host.pk)
         self[c_list.name] = c_list
 

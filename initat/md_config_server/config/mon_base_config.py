@@ -176,6 +176,14 @@ class LogBufferMixin(object):
 
 
 class StructuredContentEmitter(object):
+    """
+    emitter for structured content
+    define <OBJECT> {
+        <KEY1> <VALUE1>
+        ...
+        <KEYn> <VALUEn>
+    }
+    """
     def emit_content(self):
         _content = [
             u"define {} {{".format(self.obj_type)
@@ -235,6 +243,12 @@ class StructuredContentEmitter(object):
 
 
 class FlatContentEmitter(object):
+    """
+    emitter for flat content
+    <KEY1>=<VALUE1>
+    ...
+    <KEYn>=<VALUEn>
+    """
     def emit_content(self):
         c_lines = []
         last_key = None

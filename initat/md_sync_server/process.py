@@ -352,7 +352,7 @@ class ProcessControl(object):
         if self.__ext_process.popen.returncode is not None:
             self.log(
                 "returncode is {}, closing ext_process".format(
-                    self.__ext_process.returncode
+                    self.__ext_process.return_code
                 ),
             )
             self.__ext_process.close()

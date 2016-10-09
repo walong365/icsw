@@ -39,7 +39,8 @@ from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MonMainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, MonDeviceTemplates, MonServiceTemplates, \
-    MonAllHostDependencies, BuildCache, build_safe_name, SimpleCounter, MonFileContainer, StructuredMonBaseConfig
+    MonAllHostDependencies, build_safe_name, SimpleCounter, MonFileContainer, StructuredMonBaseConfig
+from .config.build_cache import BuildCache
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
@@ -62,7 +63,7 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
         self.register_func("distribution_info", self._distribution_info)
         self.register_func("build_host_config", self._check_call)
         self.register_func("sync_http_users", self._check_call)
-        self.register_func("rebuild_config", self._check_call)
+        # self.register_func("rebuild_config", self._check_call)
         # store pending commands
         self.__pending_commands = []
         # ready (check_for_slaves called)
@@ -88,16 +89,13 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                 )
             )
         )
-        master_server = None
         for entry in dist_info:
             cur_dev = entry["device"]
             if entry["master"]:
                 self.__gen_config = MonMainConfig(
                     self,
                     cur_dev,
-                    distributed=True if len(dist_info) > 1 else False
                 )
-                master_server = cur_dev
                 self.__gen_config_built = False
                 self.__slave_configs, self.__slave_lut = ({}, {})
             else:
@@ -105,7 +103,6 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                     self,
                     cur_dev,
                     slave_name=cur_dev.full_name,
-                    master_server=master_server,
                 )
                 self.__slave_configs[cur_dev.pk] = _slave_c
                 self.__slave_lut[cur_dev.full_name] = cur_dev.pk
@@ -191,6 +188,7 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
 
     def _build_host_config(self, srv_com_str, *args, **kwargs):
         srv_com = server_command.srv_command(source=srv_com_str)
+        # all builds are handled via this call
         dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
         dev_cache_modes = list(set(srv_com.xpath(".//device_list/device/@mode", smart_strings=False)))
         if dev_cache_modes:
@@ -206,8 +204,13 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             srv_com["result"] = self._rebuild_config(*dev_names, cache_mode=dev_cache_mode)
             srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
         else:
-            srv_com.set_result("no devices given", server_command.SRV_REPLY_STATE_ERROR)
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
+            cache_mode = srv_com["*cache_mode"]
+            self.log("rebuild config for all hosts with cache_mode '{}'".format(cache_mode))
+            self._rebuild_config(cache_mode=cache_mode)
+            srv_com.set_result("rebuild config for all hosts")
+        if "async_helper_id" in srv_com:
+            # send async results when required
+            self.send_pool_message("remote_call_async_result", unicode(srv_com))
 
     def _cleanup_db(self):
         # cleanup tasks for the database
@@ -942,20 +945,8 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                         act_host["notification_options"] = not_a
                         # check for hostextinfo
                         if host.mon_ext_host_id and host.mon_ext_host_id in ng_ext_hosts:
-                            if self.gc["MD_TYPE"] == "icinga":
-                                # handle for nagios 2, icinga
-                                # act_hostext_info = mon_config("hostextinfo", host.full_name)
-                                # act_hostext_info["host_name"] = host.full_name
-                                for key in ["icon_image", "statusmap_image"]:
-                                    act_host[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
-                            else:
-                                self.log(
-                                    "don't know how to handle hostextinfo for {}_version {:d}".format(
-                                        self.gc["MD_TYPE"],
-                                        self.gc["MD_VERSION"]
-                                    ),
-                                    logging_tools.LOG_LEVEL_ERROR
-                                )
+                            for key in ["icon_image", "statusmap_image"]:
+                                act_host[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
                         # clear host from servicegroups
                         cur_gc["servicegroup"].clear_host(host.full_name)
                         # get check_commands and templates

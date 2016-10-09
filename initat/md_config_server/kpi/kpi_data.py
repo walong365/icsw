@@ -176,9 +176,9 @@ class KpiData(object):
     def _load_data(self):
 
         try:
-            self.icinga_socket = LiveSocket.get_icinga_live_socket()
+            self.icinga_socket = LiveSocket.get_mon_live_socket()
         except IOError as e:
-            self.log(u"error when opening icinga socket: {}".format(e), logging_tools.LOG_LEVEL_ERROR)
+            self.log(u"error when opening monitoring socket: {}".format(e), logging_tools.LOG_LEVEL_ERROR)
             raise
 
         host_rrd_data = self._get_memcached_data()
