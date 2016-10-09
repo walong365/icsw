@@ -295,8 +295,10 @@ class ConfigCheckObject(object):
             self.__msi_block = None
         if not self.__native_logging:
             self.__process.log_template.close()
-        # remove global config
-        self.global_config.delete()
+        if isinstance(self.__process, threading_tools.process_pool):
+            # remove global config if we were called from the process poll
+            print "CLEAR"
+            self.global_config.delete()
 
     def log_config(self):
         _log = self.global_config.get_log(clear=True)

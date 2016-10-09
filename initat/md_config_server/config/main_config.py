@@ -35,15 +35,14 @@ from initat.tools import logging_tools, process_tools
 from .global_config import global_config
 
 __all__ = [
-    "MonMainConfig",
+    "MainConfig",
+    "MainConfigContainer",
 ]
 
 
-class MonMainConfig(dict):
-    def __init__(self, proc, monitor_server, **kwargs):
-        dict.__init__(self)
-        # container for all configs for a given monitor server (master or slave)
-        self.__process = proc
+class MainConfigContainer(object):
+    def __init__(self, process, monitor_server, **kwargs):
+        self.__process = process
         self.__slave_name = kwargs.get("slave_name", None)
         if self.__slave_name:
             self.__dir_offset = os.path.join("slaves", self.__slave_name)
@@ -52,6 +51,36 @@ class MonMainConfig(dict):
         self.monitor_server = monitor_server
         # is this the config for the main server ?
         self.master = True if not self.__slave_name else False
+        self.log("init MainConfigContainer")
+
+    def log(self, what, level=logging_tools.LOG_LEVEL_OK):
+        self.__process.log(
+            u"[mcc{}] {}".format(
+                " {}".format(self.__slave_name) if self.__slave_name else "",
+                what
+            ),
+            level
+        )
+
+    def serialize(self):
+        return {
+            "slave_name": self.__slave_name,
+            "dir_offset": self.__dir_offset,
+            "monitor_server": self.monitor_server.idx,
+            "master": self.master,
+        }
+
+
+class MainConfig(dict):
+    def __init__(self, proc, ser_dict):
+        dict.__init__(self)
+        # container for all configs for a given monitor server (master or slave)
+        self.__process = proc
+        self.__slave_name = ser_dict["slave_name"]
+        self.__dir_offset = ser_dict["dir_offset"]
+        self.monitor_server = device.objects.get(Q(pk=ser_dict["monitor_server"]))
+        # is this the config for the main server ?
+        self.master = ser_dict["master"]
         self.allow_write_entries = global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]
         # create directories
         self._create_directories()
@@ -682,8 +711,8 @@ class MonMainConfig(dict):
                 ("authorized_for_all_hosts", def_user),
                 ("authorized_for_all_host_commands", def_user),
                 ("authorized_for_all_services", def_user),
-                ("authorized_for_all_service_commands", def_user)
-                ("tac_show_only_hard_state", 1)
+                ("authorized_for_all_service_commands", def_user),
+                ("tac_show_only_hard_state", 1),
             ]
         )
         cgi_file.add_object(cgi_config)
@@ -792,7 +821,9 @@ class MonMainConfig(dict):
                             perms_dict["*.*.*"]
                         )
                     )
-                    role_dict = dict([(cur_role[1].lower().split()[0], cur_role[0]) for cur_role in cur_c.execute("SELECT * FROM roles")])
+                    role_dict = {
+                        cur_role[1].lower().split()[0]: cur_role[0] for cur_role in cur_c.execute("SELECT * FROM roles")
+                    }
                     self.log(
                         "role dict: {}".format(
                             ", ".join(
@@ -914,7 +945,7 @@ class MonMainConfig(dict):
 
     def __setitem__(self, key, value):
         # print "SI", key, type(value)
-        super(MonMainConfig, self).__setitem__(key, value)
+        super(MainConfig, self).__setitem__(key, value)
         _main_cfg_name = global_config["MAIN_CONFIG_NAME"]
         new_file_keys, new_dir_keys, new_resource_keys = ([], [], [])
         for key, value in self.iteritems():

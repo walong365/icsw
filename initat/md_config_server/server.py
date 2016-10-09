@@ -29,7 +29,7 @@ from initat.cluster.backbone.models import mon_notification, config_str, config_
     mon_check_command_special, mon_check_command, SpecialGroupsEnum
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.md_config_server.build import BuildProcess
+from initat.md_config_server.build import BuildControl
 from initat.md_config_server.config import global_config
 from initat.md_config_server.dynconfig import DynConfigProcess
 from initat.md_config_server.icinga_log_reader.log_reader import IcingaLogReader
@@ -103,6 +103,8 @@ class ServerProcess(
         self.CC.log_config()
         # re-insert config
         self.CC.re_insert_config()
+        # init build control
+        self.BC = BuildControl(self)
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
@@ -138,7 +140,7 @@ class ServerProcess(
 
     def _distribution_info(self, *args, **kwarg):
         dist_info = args[2]
-        self.send_to_process("build", "distribution_info", dist_info)
+        self.BC.distribution_info(dist_info)
 
     def _check_for_redistribute(self):
         self.send_to_process("syncer", "check_for_redistribute")
@@ -336,23 +338,16 @@ class ServerProcess(
             command="build_host_config",
             cache_mode="CACHED"
         )
-        self.send_to_process("build", "build_host_config", unicode(srv_com))
+        self.BC.handle_command(srv_com)
 
     def process_start(self, src_process, src_pid):
+        db_tools.close_connection()
         if src_process == "syncer":
             self.send_to_process("syncer", "check_for_slaves")
-            self.add_process(BuildProcess("build"), start=True)
-        elif src_process == "build":
-            if global_config["RELOAD_ON_STARTUP"]:
-                # send reload to md-sync-server, ToDo, Fixme
-                self.send_to_process("build", "reload_md_daemon")
-            if global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]:
-                srv_com = server_command.srv_command(
-                    command="build_host_config",
-                    cache_mode=global_config["INITIAL_CONFIG_CACHE_MODE"],
-                )
-                self.send_to_process("build", "build_host_config", unicode(srv_com))
         self.CC.process_added(src_process, src_pid)
+
+    def process_exit(self, src_process, src_pid):
+        self.CC.process_removed(src_pid)
 
     def _register_remote(self, *args, **kwargs):
         _src_proc, _src_id, remote_ip, remote_uuid, remote_enum_name = args
@@ -428,20 +423,23 @@ class ServerProcess(
     def get_kpi_source_data(self, srv_com, **kwargs):
         return srv_com
 
-    @RemoteCall(target_process="build", target_process_func="build_host_config")
+    @RemoteCall()
     def get_host_config(self, srv_com, **kwargs):
+        self.BC.handle_command(srv_com)
+        # ToDo, FIXME, we should return the config
         return srv_com
 
     @RemoteCall()
     def build_host_config(self, srv_com, **kwargs):
         # pretend to be synchronous call such that reply is sent right away
-        self.send_to_process("build", "build_host_config", unicode(srv_com))
+        self.BC.handle_command(srv_com)
         srv_com.set_result("ok processed command build_host_config")
         return srv_com
 
     @RemoteCall()
     def sync_http_users(self, srv_com, **kwargs):
-        self.send_to_process("build", "sync_http_users")
+        # self.send_to_process("build", "sync_http_users")
+        self.BC.handle_command(srv_com)
         srv_com.set_result("ok processed command sync_http_users")
         return srv_com
 

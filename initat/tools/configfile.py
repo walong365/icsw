@@ -550,7 +550,8 @@ class configuration(object):
 
     def delete(self):
         # remove global config
-        for key in self.keys():
+        _keys = list(self.keys())
+        for key in _keys:
             del self[key]
 
     def close(self):

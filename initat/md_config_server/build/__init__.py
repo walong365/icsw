@@ -1,4 +1,4 @@
-# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of md-config-server
 #
@@ -17,16 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" config part of md-config-server """
+""" build structure for md-config-server """
 
-# do NOT import the imports
-
-from .global_config import global_config
-
-from initat.md_config_server.config.check_command import CheckCommand
-from initat.md_config_server.config.mon_base_config import *
-from initat.md_config_server.config.mon_config_containers import MonFileContainer, MonDirContainer
-from initat.md_config_server.config.objects import *
-from initat.md_config_server.config.sync_config import SyncConfig
-from initat.md_config_server.config.templates import *
-from initat.md_config_server.config.main_config import MainConfig, MainConfigContainer
+from .process import BuildProcess
+from .control import BuildControl

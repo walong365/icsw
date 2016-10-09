@@ -35,17 +35,16 @@ from initat.cluster.backbone.models import device, device_group, device_variable
     mon_contactgroup, netdevice, network_type, user, config, config_catalog, \
     mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special, mon_check_command
-from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server import special_commands, constants
-from initat.md_config_server.config import global_config, MonMainConfig, MonAllCommands, \
+from initat.md_config_server.config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, MonDeviceTemplates, MonServiceTemplates, \
     MonAllHostDependencies, build_safe_name, SimpleCounter, MonFileContainer, StructuredMonBaseConfig
-from .config.build_cache import BuildCache
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, configfile, logging_tools, process_tools, \
-    server_command, server_mixins
+    server_mixins
+from ..config.build_cache import BuildCache
 
 
 class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
@@ -56,66 +55,16 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
         self.__mach_loggers = {}
         self.__num_mach_logs = {}
-        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
-        self.version = int(time.time())
-        self.log("initial config_version is {:d}".format(self.version))
+        # self.version = int(time.time())
+        # self.log("initial config_version is {:d}".format(self.version))
         self.router_obj = config_tools.RouterObject(self.log)
-        self.register_func("distribution_info", self._distribution_info)
-        self.register_func("build_host_config", self._check_call)
-        self.register_func("sync_http_users", self._check_call)
-        # self.register_func("rebuild_config", self._check_call)
-        # store pending commands
-        self.__pending_commands = []
-        # ready (check_for_slaves called)
-        self.__ready = False
+        self.register_func("start_build", self._start_build)
 
     def loop_post(self):
+        self.log("build process exiting")
         for mach_logger in self.__mach_loggers.itervalues():
             mach_logger.close()
         self.CC.close()
-
-    def _distribution_info(self, *args, **kwargs):
-        dist_info = args[0]
-        for _entry in dist_info:
-            # add device entries
-            _entry["device"] = device.objects.get(Q(pk=_entry["pk"]))
-        self.log(
-            "got distribution info, found {}: {}".format(
-                logging_tools.get_plural("slave server", len(dist_info) - 1),
-                ", ".join(
-                    [
-                        _entry["device"].full_name for _entry in dist_info if not _entry["master"]
-                    ]
-                )
-            )
-        )
-        for entry in dist_info:
-            cur_dev = entry["device"]
-            if entry["master"]:
-                self.__gen_config = MonMainConfig(
-                    self,
-                    cur_dev,
-                )
-                self.__gen_config_built = False
-                self.__slave_configs, self.__slave_lut = ({}, {})
-            else:
-                _slave_c = MonMainConfig(
-                    self,
-                    cur_dev,
-                    slave_name=cur_dev.full_name,
-                )
-                self.__slave_configs[cur_dev.pk] = _slave_c
-                self.__slave_lut[cur_dev.full_name] = cur_dev.pk
-        self.__ready = True
-        if self.__pending_commands:
-            self.log(
-                "processing {}".format(
-                    logging_tools.get_plural("pending command", len(self.__pending_commands))
-                )
-            )
-            while self.__pending_commands:
-                _pc = self.__pending_commands.pop(0)
-                self._check_call(*_pc["args"], **_pc["kwargs"])
 
     def mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK, mach_name=None, **kwargs):
         if "single_build" in kwargs:
@@ -171,47 +120,6 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                     del _logger
             del self.__mach_loggers[mach_name]
 
-    def _check_call(self, *args, **kwargs):
-        if self.__ready:
-            getattr(self, "_{}".format(kwargs["func_name"]))(*args, **kwargs)
-        else:
-            self.__pending_commands.append(
-                {
-                    "args": args,
-                    "kwargs": kwargs,
-                }
-            )
-
-    def _sync_http_users(self, *args, **kwargs):
-        self.log("syncing http-users")
-        self.__gen_config._create_access_entries()
-
-    def _build_host_config(self, srv_com_str, *args, **kwargs):
-        srv_com = server_command.srv_command(source=srv_com_str)
-        # all builds are handled via this call
-        dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
-        dev_cache_modes = list(set(srv_com.xpath(".//device_list/device/@mode", smart_strings=False)))
-        if dev_cache_modes:
-            dev_cache_mode = dev_cache_modes[0]
-            dev_names = [cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=dev_pks)).select_related("domain_tree_node")]
-            self.log(
-                "starting single build with {}, cache mode is {}: {}".format(
-                    logging_tools.get_plural("device", len(dev_names)),
-                    dev_cache_mode,
-                    ", ".join(sorted(dev_names))
-                )
-            )
-            srv_com["result"] = self._rebuild_config(*dev_names, cache_mode=dev_cache_mode)
-            srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
-        else:
-            cache_mode = srv_com["*cache_mode"]
-            self.log("rebuild config for all hosts with cache_mode '{}'".format(cache_mode))
-            self._rebuild_config(cache_mode=cache_mode)
-            srv_com.set_result("rebuild config for all hosts")
-        if "async_helper_id" in srv_com:
-            # send async results when required
-            self.send_pool_message("remote_call_async_result", unicode(srv_com))
-
     def _cleanup_db(self):
         # cleanup tasks for the database
         num_empty_mhd = mon_host_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None))
@@ -237,8 +145,14 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                 description="container for all SNMP checks",
             )
         _present_coms = set(_container.mon_check_command_set.all().values_list("name", flat=True))
-        _specials = {"snmp {}".format(_special.name): _special for _special in mon_check_command_special.objects.all()}
-        _new = set(["snmp {}".format(_com.Meta.name) for _com in special_commands.special_snmp_general.special_snmp_general(self.log).get_commands()])
+        _specials = {
+            "snmp {}".format(_special.name): _special for _special in mon_check_command_special.objects.all()
+        }
+        _new = set(
+            [
+                "snmp {}".format(_com.Meta.name) for _com in special_commands.special_snmp_general.special_snmp_general(self.log).get_commands()
+            ]
+        )
         _to_create = set(_specials.keys()) & (_new - _present_coms)
         for _name in _to_create:
             _new_mcc = mon_check_command.objects.create(
@@ -249,10 +163,15 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                 command_line="/bin/true",
             )
 
-    def _rebuild_config(self, *args, **kwargs):
+    def _start_build(self, *args, **kwargs):
+        self.__slave_configs, self.__slave_lut = ({}, {})
+        args = list(args)
+        self.__gen_config = MainConfig(self, args.pop(0))
+        self.version = args.pop(0)
         single_build = True if len(args) > 0 else False
         if not single_build:
             # from mixin
+            # todo, remove, move to syncer
             self.VCM_check_md_version()
             self._cleanup_db()
             # check for SNMP container config
@@ -342,8 +261,8 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                 bc_valid = False
         if bc_valid:
             if single_build:
-                if not self.__gen_config_built:
-                    self._create_general_config(write_entries=False)
+                # todo: reduce overhead for single builds
+                self._create_general_config(write_entries=False)
                 # clean device and service entries
                 for key in constants.SINGLE_BUILD_MAPS:
                     if key in self.__gen_config:
@@ -414,6 +333,7 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
                 self.log("{:5d} {}".format(q_idx, act_sql["sql"][:180]))
         del self.gc
+        self._exit_process()
         if single_build:
             return res_node
 
@@ -516,7 +436,6 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
         }, ur_pks
 
     def _create_general_config(self, write_entries=None):
-        self.__gen_config_built = True
         config_list = [self.__gen_config] + self.__slave_configs.values()
         if write_entries is not None:
             prev_awc = self.__gen_config.allow_write_entries
