@@ -8,7 +8,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('backbone', '1016_auto_20161010_1221'),
+        ('backbone', '1017_auto_20161010_1554'),
     ]
 
     operations = [
