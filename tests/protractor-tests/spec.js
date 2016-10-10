@@ -1,7 +1,7 @@
 describe('ICSW Basic Interface Tests:', function() {
   var EC = protractor.ExpectedConditions;
 
-  var valid_device_name = "mVdWufzuaG";
+  var valid_device_name = undefined;
   var valid_group_name = undefined;
 
   function makeid()
@@ -57,10 +57,10 @@ describe('ICSW Basic Interface Tests:', function() {
 
     this.ensure_valid_login = function() {
       this.set_username("admin");
-      this.set_password("abc123")
+      this.set_password("abc123");
       login_button.click();
 
-      browser.sleep(5000)
+      browser.sleep(8000);
       var modal_dialog = element(by.className("modal-footer"));
 
       return modal_dialog.isPresent().then(function(is_present) {
@@ -77,7 +77,7 @@ describe('ICSW Basic Interface Tests:', function() {
     this.perform_login = function() {
       login_button.click();
 
-      return browser.sleep(5000).then(function() {
+      return browser.sleep(8000).then(function() {
         var modal_dialog = element(by.className("modal-footer"));
 
         modal_dialog.isPresent().then(function(is_present) {

@@ -244,6 +244,7 @@ class AssetType(IntEnum):
     PRETTYWINHW = 10
     PARTITION = 11
     LSBLK = 12
+    XRANDR = 13
 
 
 class ScanType(IntEnum):

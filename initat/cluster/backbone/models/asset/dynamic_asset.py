@@ -17,9 +17,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-import re
-from collections import OrderedDict
-
 """ asset database, models for dynamic assets """
 
 import base64
@@ -973,13 +970,11 @@ class AssetBatch(models.Model):
     idx = models.AutoField(primary_key=True)
     run_start_time = models.DateTimeField(null=True, blank=True)
     run_end_time = models.DateTimeField(null=True, blank=True)
-
     # status
     run_status = models.IntegerField(
         choices=[(status.value, status.name) for status in BatchStatus],
         default=BatchStatus.PLANNED.value,
     )
-
     # error string
     error_string = models.TextField(default="")
 
@@ -992,17 +987,15 @@ class AssetBatch(models.Model):
     cpus = models.ManyToManyField(AssetHWCPUEntry)
     memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
     gpus = models.ManyToManyField(AssetHWGPUEntry)
+    displays = models.ManyToManyField(AssetHWDisplayEntry)
     partition_table = models.ForeignKey(
         "backbone.partition_table",
         on_delete=models.SET_NULL,
         null=True,
     )
     network_devices = models.ManyToManyField(AssetHWNetworkDevice)
-
     pending_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_pending_updates")
     installed_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_installed_updates")
-
-    displays = models.ManyToManyField(AssetHWDisplayEntry)
 
     @property
     def partition_table_length(self):
@@ -1033,6 +1026,10 @@ class AssetBatch(models.Model):
     @property
     def network_devices_length(self):
         return self.network_devices.count()
+
+    @property
+    def displays_length(self):
+        return self.displays.count()
 
     @property
     def pending_updates_length(self):
@@ -1109,6 +1106,7 @@ class AssetBatch(models.Model):
             AssetType.DMI: "dmi_head",
             AssetType.LSBLK: "lsblk_dump",
             AssetType.PARTITION: "partinfo_tree",
+            AssetType.XRANDR: "xrandr_dump",
             }
 
         # search for relevant asset runs and Base64 decode and unzip the result
@@ -1144,9 +1142,6 @@ class AssetBatch(models.Model):
 
                 run_results[arg_name] = arg_value
 
-        # check if we have the necessary asset runs
-        if not ('win32_tree' in run_results or 'lshw_dump' in run_results):
-            return
         hw = Hardware(**run_results)
 
         # set the CPUs
@@ -1172,12 +1167,21 @@ class AssetBatch(models.Model):
             new_memory_module.save()
             self.memory_modules.add(new_memory_module)
 
-        # set the GPUs
+        # set the GPUs and displays
         self.gpus.all().delete()
         for gpus in hw.gpus:
             new_gpu = AssetHWGPUEntry(name=gpus.product)
             new_gpu.save()
             self.gpus.add(new_gpu)
+        for display in hw.displays:
+            new_display = AssetHWDisplayEntry(
+                name=display.product,
+                xpixels=display.x_resolution,
+                ypixels=display.y_resolution,
+                manufacturer=display.manufacturer,
+            )
+            new_display.save()
+            self.displays.add(new_display)
 
         # set the discs and partitions
         fs_dict = {fs.name: fs for fs in partition_fs.objects.all()}
