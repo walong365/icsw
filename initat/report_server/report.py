@@ -1679,12 +1679,47 @@ class PDFReportGenerator(ReportGenerator):
                            ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
                            ])
 
+        data = [["Name", "Manufacturer", "Horizontal Resolution", "Vertical Resolution"]]
+        for display in hardware_report_ar.asset_batch.displays.all():
+            name = "N/A"
+            manufacturer = "N/A"
+            xpixels = "N/A"
+            ypixels = "N/A"
+
+            if display.name:
+                name = display.name
+
+            if display.manufacturer:
+                manufacturer = display.manufacturer
+
+            if display.xpixels:
+                xpixels = str(display.xpixels)
+
+            if display.ypixels:
+                ypixels = str(display.ypixels)
+
+            data.append([Paragraph(name, style_sheet["BodyText"]),
+                         Paragraph(manufacturer, style_sheet["BodyText"]),
+                         Paragraph(xpixels, style_sheet["BodyText"]),
+                         Paragraph(ypixels, style_sheet["BodyText"])])
+
+        p0_7 = Paragraph('<b>Displays:</b>', style_sheet["BodyText"])
+        t_7 = Table(data,
+                    colWidths=(available_width * 0.88 * 0.25,
+                               available_width * 0.88 * 0.25,
+                               available_width * 0.88 * 0.25,
+                               available_width * 0.88 * 0.25),
+                    style=[('GRID', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ('BOX', (0, 0), (-1, -1), 0.35, HexColor(0xBDBDBD)),
+                           ])
+
         data = [[p0_1, t_1],
                 [p0_2, t_2],
                 [p0_3, t_3],
                 [p0_4, t_4],
                 [p0_5, t_5],
-                [p0_6, t_6]]
+                [p0_6, t_6],
+                [p0_7, t_7]]
 
         t_body = Table(data, colWidths=(available_width * 0.10, available_width * 0.90),
                        style=[('VALIGN', (0, 0), (0, -1), 'MIDDLE')])
