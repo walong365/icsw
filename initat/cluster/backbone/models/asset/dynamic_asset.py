@@ -1081,13 +1081,14 @@ class AssetBatch(models.Model):
         self.save()
 
     def run_done(self):
-        if all(r.run_status == RunStatus.FINISHED
-               for r in self.assetrun_set.all()):
-            self.state_finished_runs()
-            if all(r.run_result == RunResult.SUCCESS
+        if self.run_status < BatchStatus.GENERATING_ASSETS:
+            if all(r.run_status == RunStatus.FINISHED
                    for r in self.assetrun_set.all()):
-                self.run_result = RunResult.SUCCESS
-            self.save()
+                self.state_finished_runs()
+                if all(r.run_result == RunResult.SUCCESS
+                       for r in self.assetrun_set.all()):
+                    self.run_result = RunResult.SUCCESS
+                self.save()
 
     def __repr__(self):
         return unicode(self)
