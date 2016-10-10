@@ -24,8 +24,8 @@ import re
 import stat
 import subprocess
 import time
-import inflection
 
+import inflection
 import psutil
 
 from initat.host_monitoring import hm_classes, limits

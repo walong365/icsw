@@ -30,14 +30,14 @@ import sys
 import tempfile
 import time
 
+import psutil
+from lxml import etree
+
 from initat.client_version import VERSION_STRING
 from initat.host_monitoring import hm_classes, limits
 from initat.host_monitoring.constants import ZMQ_ID_MAP_STORE
 from initat.tools import cpu_database, logging_tools, partition_tools, pci_database, \
     process_tools, server_command, uuid_tools, config_store, dmi_tools
-from lxml import etree
-import psutil
-
 
 nw_classes = ["ethernet", "network", "infiniband"]
 
@@ -2485,8 +2485,11 @@ class lshw_command(hm_classes.hm_command):
         srv_com["lshw_dump"] = self.module._lshw_int()
 
     def interpret(self, srv_com, cur_ns):
-        dump = etree.fromstring(server_command.decompress(
-                srv_com["*lshw_dump"]))
+        dump = etree.fromstring(
+            server_command.decompress(
+                srv_com["*lshw_dump"]
+            )
+        )
         return limits.mon_STATE_OK, "received lshw output"
 
 
@@ -2504,8 +2507,11 @@ class xrandr_command(hm_classes.hm_command):
         srv_com["xrandr_dump"] = self.module._xrandr_int()
 
     def interpret(self, srv_com, cur_ns):
-        dump = etree.fromstring(server_command.decompress(
-                srv_com["*xrandr_dump"]))
+        dump = etree.fromstring(
+            server_command.decompress(
+                srv_com["*xrandr_dump"]
+            )
+        )
         return limits.nag_STATE_OK, "received xrandr output"
 
 

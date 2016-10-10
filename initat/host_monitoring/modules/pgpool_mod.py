@@ -24,8 +24,8 @@ Checks related to pgpool-II >= 3.0 via SQL interface.
 
 import cPickle
 import os
-from ConfigParser import SafeConfigParser
 import subprocess
+from ConfigParser import SafeConfigParser
 
 from initat.host_monitoring import limits
 from initat.host_monitoring.hm_classes import hm_command, hm_module

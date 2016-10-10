@@ -20,20 +20,9 @@ import commands
 import os
 import re
 import time
-import base64
-import commands
-import os
-import time
-import bz2
-import pickle
 
-from initat.host_monitoring import hm_classes
+from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, server_command
-
-from initat.host_monitoring import hm_classes
-from initat.host_monitoring import limits
-from initat.tools import logging_tools, server_command
-
 
 TEST_OUTPUT_ZYPPER = """Loading repository data...
 Reading installed packages...
