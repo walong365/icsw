@@ -88,7 +88,7 @@ class AssetHWMemoryEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "BankLabel:{} FormFactor:{} Memorytype:{} Manufacturer:{} Capacity:{}".format(
+        return "BankLabel:{}|FormFactor:{}|MemoryType:{}|Manufacturer:{}|Capacity:{}".format(
             self.banklabel,
             self.formfactor,
             self.memorytype,
@@ -110,7 +110,7 @@ class AssetHWCPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} [Cores:{}]".format(self.name, self.numberofcores)
+        return "Name:{}|Cores:{}".format(self.name, self.numberofcores)
 
 
 class AssetHWGPUEntry(models.Model):
@@ -119,7 +119,7 @@ class AssetHWGPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{}".format(self.name)
+        return "Name:{}".format(self.name)
 
 
 class AssetHWLogicalEntry(models.Model):
@@ -130,7 +130,7 @@ class AssetHWLogicalEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} [Size:{} Free:{}]".format(self.name, sizeof_fmt(self.size), sizeof_fmt(self.free))
+        return "Name:{}|Size:{}|Free:{}".format(self.name, sizeof_fmt(self.size), sizeof_fmt(self.free))
 
 
 class AssetHWDisplayEntry(models.Model):
@@ -142,7 +142,7 @@ class AssetHWDisplayEntry(models.Model):
     manufacturer = models.TextField(null=True)
 
     def __unicode__(self):
-        return "{} [Type:{} xpixels:{} ypixels:{} manufacturer:{}]".format(
+        return "Name:{}|Type:{}|xpixels:{}|ypixels:{}|manufacturer:{}".format(
             self.name,
             self.type,
             self.xpixels,
@@ -160,12 +160,12 @@ class AssetHWNetworkDevice(models.Model):
     mac_address = models.TextField(null=True)
 
     def __unicode__(self):
-        return "AssetHWNetworkDevice[Manufacturer:{}|Product Name:{}|"\
-            "Device Name:{}|Speed:{}]".format(
+        return "Name:{}|Manufacturer:{}|Product Name:{}|Speed:{}|MAC:{}".format(
+                self.device_name,
                 self.manufacturer,
                 self.product_name,
-                self.device_name,
                 self.speed,
+                self.mac_address
             )
 
 
@@ -282,7 +282,7 @@ class AssetLicenseEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "AssetLicense name={}".format(self.name)
+        return "{} [license_key:{}]".format(self.name, self.license_key)
 
     class Meta:
         ordering = ("name",)

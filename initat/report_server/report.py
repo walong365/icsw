@@ -100,13 +100,6 @@ pdfmetrics.registerFont(TTFont('SourceSansPro-SemiboldIt',
                                os.path.join(_file_root, "fonts", "SourceSansPro-SemiboldIt.ttf")))
 
 
-
-
-REPORT_TYPES = {
-    'device': None,
-    }
-
-
 class RowCollector(object):
     def __init__(self):
         self.rows_dict = []
@@ -119,17 +112,15 @@ class RowCollector(object):
         self.current_asset_type = None
 
     def collect(self, _row):
-        self.row_info = _row[0:8]
-
         if self.current_asset_type == AssetType.UPDATE:
-            update_name = str(_row[8])
-            # update_version = str(_row[9])
-            # update_release = str(_row[10])
-            # update_kb_idx = str(_row[11])
-            install_date = _row[12]
-            # update_install_date = str(_row[12])
-            update_status = str(_row[13])
-            # update_installed = str(_row[15])
+            update_name = str(_row[0])
+            # update_version = str(_row[1])
+            # update_release = str(_row[2])
+            # update_kb_idx = str(_row[3])
+            install_date = _row[4]
+            update_status = str(_row[5])
+            # update_optional = str(_row[6])
+            # update_installed = str(_row[7])
 
             if type(install_date) != str:
                 install_date = install_date.strftime(ASSET_DATETIMEFORMAT)
@@ -143,8 +134,8 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.LICENSE:
-            license_name = str(_row[8])
-            license_key = str(_row[9])
+            license_name = str(_row[0])
+            license_key = str(_row[1])
 
             o = {
                 'license_name': license_name,
@@ -154,15 +145,15 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.PENDING_UPDATE:
-            update_name = str(_row[8])
-            # update_version = str(_row[9])
-            # update_release = str(_row[10])
-            # update_kb_idx = str(_row[11])
-            # update_install_date = str(_row[12])
-            # update_status = str(_row[13])
-            update_optional = str(_row[14])
-            # update_installed = str(_row[15])
-            update_new_version = str(_row[16])
+            update_name = str(_row[0])
+            # update_version = str(_row[1])
+            # update_release = str(_row[2])
+            # update_kb_idx = str(_row[3])
+            # update_install_date = str(_row[4])
+            # update_status = str(_row[5])
+            update_optional = str(_row[6])
+            # update_installed = str(_row[7])
+            update_new_version = str(_row[8])
 
             o = {
                 'update_name': update_name,
@@ -173,8 +164,8 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.PROCESS:
-            process_name = str(_row[8])
-            process_id = str(_row[9])
+            process_name = str(_row[0])
+            process_id = str(_row[1])
 
             o = {
                 'process_name': process_name,
@@ -184,9 +175,9 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.HARDWARE:
-            hardware_node_type = str(_row[8])
-            hardware_depth = str(_row[9])
-            hardware_attributes = str(_row[10])
+            hardware_node_type = str(_row[0])
+            hardware_depth = str(_row[1])
+            hardware_attributes = str(_row[2])
 
             o = {
                 'hardware_node_type': hardware_node_type,
@@ -197,12 +188,12 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.PACKAGE:
-            package_name = _row[8]
-            package_version = _row[9]
-            package_release = _row[10]
-            package_size = _row[11]
-            package_install_date = _row[12]
-            package_type = _row[13]
+            package_name = _row[0]
+            package_version = _row[1]
+            package_release = _row[2]
+            package_size = _row[3]
+            package_install_date = _row[4]
+            package_type = _row[5]
 
             if package_size and isinstance(package_size, int):
                 if package_type == PackageTypeEnum.WINDOWS.name:
@@ -231,11 +222,11 @@ class RowCollector(object):
             pass
 
         elif self.current_asset_type == AssetType.DMI:
-            handle = str(_row[8])
-            dmi_type = str(_row[9])
-            header = str(_row[10])
-            key = str(_row[11])
-            value = str(_row[12])
+            handle = str(_row[0])
+            dmi_type = str(_row[1])
+            header = str(_row[2])
+            key = str(_row[3])
+            value = str(_row[4])
 
             o = {
                 'handle': handle,
@@ -248,15 +239,15 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.PCI:
-            domain = _row[8]
-            bus = _row[9]
-            slot = _row[10]
-            func = _row[11]
-            position = _row[12]
-            subclass = _row[13]
-            vendor = _row[14]
-            _device = _row[15]
-            revision = _row[16]
+            domain = _row[0]
+            bus = _row[1]
+            slot = _row[2]
+            func = _row[3]
+            position = _row[4]
+            subclass = _row[5]
+            vendor = _row[6]
+            _device = _row[7]
+            revision = _row[8]
 
             o = {
                 'domain': domain,
@@ -837,12 +828,15 @@ class PDFReportGenerator(ReportGenerator):
                                               format=lambda x: "Group: {}".format(x)), ],
                                      getvalue=lambda x: x["group"])]
 
-            header_names_left = [("Device Name", "name", 10.0),
-                                 ("CPU Info", "cpu", 18.0),
-                                 ("GPU Info", "gpu", 18.0),
-                                 ("Memory Info", "memory", 18.0),
-                                 ("HDD Info", "hdd", 18.0),
-                                 ("Partition Info", "partition", 18.0)
+            header_names_left = [("Device Name", "name", 12.0),
+                                 ("CPUs", "cpu", 11.0),
+                                 ("GPUs", "gpu", 11.0),
+                                 ("Memory Modules", "memory", 11.0),
+                                 ("NICs", "network", 11.0),
+                                 ("Displays", "display", 11.0),
+                                 ("HDDs", "hdd", 11.0),
+                                 ("Partitions", "partition", 11.0),
+                                 ("Logical Volumes", "logical", 11.0)
                                  ]
             header_names_right = []
 
@@ -2247,19 +2241,122 @@ class XlsxReportGenerator(ReportGenerator):
             for ar in selected_runs:
                 if not device_report.module_selected(ar):
                     continue
-                sheet = workbook.create_sheet()
-                _title = AssetType(ar.run_type).name
 
-                # xlsx limited to max 31 chars in title
-                if len(_title) > 31:
-                    _title = _title[:31]
+                if ar.run_type == AssetType.PRETTYWINHW or ar.run_type == AssetType.LSHW:
+                    sheet = workbook.create_sheet()
+                    sheet.title = "CPUs"
 
-                sheet.title = _title
+                    header = ["Name", "Cores"]
+                    sheet.append(header)
 
-                generate_csv_entry_for_assetrun(ar, sheet.append)
+                    # add cpu information
+                    for cpu in ar.asset_batch.cpus.all():
+                        row = [
+                            cpu.name,
+                            cpu.numberofcores
+                        ]
 
+                        sheet.append(row)
 
+                    # add gpu information
+                    sheet = workbook.create_sheet()
+                    sheet.title = "GPUs"
 
+                    header = ["Name"]
+                    sheet.append(header)
+                    for gpu in ar.asset_batch.gpus.all():
+                        row = [
+                            gpu.name
+                        ]
+
+                        sheet.append(row)
+
+                    # add memory information
+                    sheet = workbook.create_sheet()
+                    sheet.title = "Memory Modules"
+
+                    header = ["Banklabel", "Formfactor", "MemoryType", "Manufacturer", "Capacity"]
+                    sheet.append(header)
+                    for memory_module in ar.asset_batch.memory_modules.all():
+                        row = [
+                            memory_module.banklabel,
+                            memory_module.formfactor,
+                            memory_module.memorytype,
+                            memory_module.manufacturer,
+                            memory_module.capacity
+
+                        ]
+
+                        sheet.append(row)
+
+                    # add display information
+                    sheet = workbook.create_sheet()
+                    sheet.title = "Displays"
+
+                    header = ["Name", "Manufacturer", "Horizontal Resolution", "Vertical Resolution"]
+                    sheet.append(header)
+                    for display in ar.asset_batch.displays.all():
+                        row = [
+                            display.name,
+                            display.manufacturer,
+                            display.xpixels,
+                            display.ypixels,
+                        ]
+
+                        sheet.append(row)
+
+                    # add network device information
+                    sheet = workbook.create_sheet()
+                    sheet.title = "Network Devices"
+
+                    header = ["Name", "Manufacturer", "Product Name", "Speed", "MAC"]
+                    sheet.append(header)
+                    for network_device in ar.asset_batch.network_devices.all():
+                        row = [
+                            network_device.device_name,
+                            network_device.manufacturer,
+                            network_device.product_name,
+                            network_device.speed,
+                            network_device.mac_address,
+                        ]
+
+                        sheet.append(row)
+
+                    sheet_hdds = workbook.create_sheet()
+                    sheet_hdds.title = "HDDs"
+                    header = ["Name", "Serial", "Size"]
+                    sheet_hdds.append(header)
+
+                    sheet_partitions = workbook.create_sheet()
+                    sheet_partitions.title = "Partitions"
+                    header = ["HDD", "Mountpoint", "Size"]
+                    sheet_partitions.append(header)
+
+                    sheet_logical_volumes = workbook.create_sheet()
+                    sheet_logical_volumes.title = "Logical Volumes"
+                    header = ["Name", "Size", "Free Space", "Filesystem"]
+                    sheet_logical_volumes.append(header)
+
+                    if ar.asset_batch.partition_table:
+                        for hdd in ar.asset_batch.partition_table.partition_disc_set.all():
+                            sheet_hdds.append([hdd.disc, hdd.serial, hdd.size])
+                            for partition in hdd.partition_set.all():
+                                sheet_partitions.append([hdd.disc, partition.mountpoint, partition.size])
+
+                        for logical_volume in ar.asset_batch.partition_table.logicaldisc_set.all():
+                            sheet_logical_volumes.append([logical_volume.device_name,
+                                logical_volume.size, logical_volume.free_space, logical_volume.filesystem_name])
+
+                else:
+                    sheet = workbook.create_sheet()
+                    _title = AssetType(ar.run_type).name
+
+                    # xlsx limited to max 31 chars in title
+                    if len(_title) > 31:
+                        _title = _title[:31]
+
+                    sheet.title = _title
+                    generate_csv_entry_for_assetrun(ar, sheet.append)
 
             self.set_progress(int(round((float(idx) / len(self.devices)) * 100)))
             idx += 1
@@ -2271,11 +2368,13 @@ class XlsxReportGenerator(ReportGenerator):
         zipfile = ZipFile(_buffer, "w")
 
         for workbook, workbook_name in workbooks_general:
+            workbook = postprocess_workbook(workbook)
             s = save_virtual_workbook(workbook)
 
             zipfile.writestr("General_Reports/{}.xlsx".format(workbook_name), s)
 
         for workbook, workbook_name in workbooks_devices:
+            workbook = postprocess_workbook(workbook)
             s = save_virtual_workbook(workbook)
 
             zipfile.writestr("Device_Reports/{}.xlsx".format(workbook_name), s)
@@ -2493,36 +2592,17 @@ class XlsxReportGenerator(ReportGenerator):
             sheet = workbook.create_sheet("General Device Overview")
             sheet.title = "General Device Overview"
 
-            header_row = ["Name", "Group", "CPU Info", "GPU Info", "Memory Info", "HDD Info", "Partition Info"]
+            header_row = ["Name", "Group", "CPUs", "GPUs", "Memory Modules", "Network Devices", "Displays",
+                          "HDDs", "Partitions", "Logical Volumes"]
 
             sheet.append(header_row)
 
-            sheet.row_dimensions[1].font = Font(bold=True)
+            column_names = ["name", "group", "cpu", "gpu", "memory", "network", "display", "hdd", "partition",
+                            'logical']
 
-            column_names = ["name", "group", "cpu", "gpu", "memory", "hdd", "partition", "network"]
-            max_str_lengths_per_column = {}
-            i = 0
             for _row in data:
-                height_needed = 1
-                for column_name in column_names:
-                    if column_name not in max_str_lengths_per_column:
-                        max_str_lengths_per_column[column_name] = 0
-
-                    current_max = max_str_lengths_per_column[column_name]
-                    components = _row[column_name].split("\n")
-                    next_max = max([len(line) for line in components])
-                    height_needed = max(len(components), height_needed)
-
-                    max_str_lengths_per_column[column_name] = max(next_max, current_max)
-
                 row = [_row[column_name] for column_name in column_names]
                 sheet.append(row)
-                sheet.row_dimensions[i + 2].height = height_needed * 15
-                i += 1
-
-            for i in range(len(column_names)):
-                max_len = max_str_lengths_per_column[column_names[i]]
-                sheet.column_dimensions[get_column_letter(i + 1)].width = max(max_len, 20)
 
         return workbook
 
@@ -2549,6 +2629,8 @@ def _generate_hardware_info_data_dict(_devices):
         partition_str = "N/A"
         memory_str = "N/A"
         network_str = "N/A"
+        display_str = "N/A"
+        logical_str = "N/A"
 
         for assetrun in selected_runs:
             if AssetType(assetrun.run_type) == AssetType.PRETTYWINHW or AssetType(assetrun.run_type) == AssetType.LSHW:
@@ -2576,19 +2658,36 @@ def _generate_hardware_info_data_dict(_devices):
                     else:
                         network_str = str(network_device)
 
+                for display in assetrun.asset_batch.displays.all():
+                    if display_str != "N/A":
+                        display_str += "\n{}".format(str(display))
+                    else:
+                        display_str = str(display)
+
+
                 if assetrun.asset_batch.partition_table:
                     for hdd in assetrun.asset_batch.partition_table.partition_disc_set.all():
-                        s = "Name:{} Serial:{} Size:{}".format(hdd.disc, hdd.serial, hdd.size)
+                        s = "Name:{}|Serial:{}|Size:{}".format(hdd.disc, hdd.serial, sizeof_fmt(hdd.size))
                         if hdd_str != "N/A":
                             hdd_str += "\n{}".format(s)
                         else:
                             hdd_str = s
 
-                    # for partition in assetrun.asset_batch.partitions.all():
-                    #     if partition_str != "N/A":
-                    #         partition_str += "\n{}".format(str(partition))
-                    #     else:
-                    #         partition_str = str(partition)
+                        for partition in hdd.partition_set.all():
+                            s = "HDD:{}|Mountpoint:{}|Size:{}".format(hdd.disc, partition.mountpoint,
+                                sizeof_fmt(partition.size))
+                            if partition_str != "N/A":
+                                partition_str += "\n{}".format(s)
+                            else:
+                                partition_str = s
+
+                    for logical_volume in assetrun.asset_batch.partition_table.logicaldisc_set.all():
+                        s = "DeviceName:{}|Size:{}|FreeSpace:{}|Filesystem:{}".format(logical_volume.device_name,
+                            logical_volume.size, logical_volume.free_space, logical_volume.filesystem_name)
+                        if logical_str != "N/A":
+                            logical_str += "\n{}".format(s)
+                        else:
+                            logical_str = s
 
         o = {
             'name': _device.full_name,
@@ -2598,7 +2697,9 @@ def _generate_hardware_info_data_dict(_devices):
             'hdd': hdd_str,
             'partition': partition_str,
             'memory': memory_str,
-            'network': network_str
+            'network': network_str,
+            'display': display_str,
+            'logical': logical_str
         }
 
         data.append(o)
@@ -2656,65 +2757,46 @@ def _select_assetruns_for_device(_device, assetbatch_id=None):
 
 
 def generate_csv_entry_for_assetrun(ar, row_writer_func):
-    base_header = [
-        'Asset Type',
-        'Batch Id',
-        'Start Time',
-        'End Time',
-        'Total Run Time',
-        'device',
-        'status',
-        'result'
-    ]
-
-    if ar.run_start_time and ar.run_end_time:
-        ar_run_time = str((ar.run_end_time - ar.run_start_time).total_seconds())
-    else:
-        ar_run_time = "N/A"
-
-    base_row = [AssetType(ar.run_type).name,
-                str(ar.asset_batch.idx),
-                str(ar.run_start_time),
-                str(ar.run_end_time),
-                ar_run_time,
-                str(ar.asset_batch.device.full_name),
-                RunStatus(ar.run_status).name,
-                RunResult(ar.run_result).name]
+    base_header = []
 
     if ar.run_type == AssetType.PACKAGE:
         base_header.extend([
-            'package_name',
-            'package_version',
-            'package_release',
-            'package_size',
-            'package_install_date',
-            'package_type'])
+            'Name',
+            'Version',
+            'Release',
+            'Size',
+            'Install Time',
+            'Package Type'])
 
         row_writer_func(base_header)
 
-        for package_version in ar.asset_batch.packages.select_related("asset_package").all():
-            row = base_row[:]
+        for package_install_time in ar.asset_batch.packages_install_times.select_related("package_version",
+                "package_version__asset_package").all():
 
-            row.append(package_version.asset_package.name)
+            package_version = package_install_time.package_version
+            asset_package = package_version.asset_package
+
+            row = []
+            row.append(asset_package.name)
             row.append(package_version.version)
             row.append(package_version.release)
             row.append(package_version.size)
-            row.append(package_version.created)
+            row.append(package_install_time.install_time)
             row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
 
             row_writer_func(row)
 
     elif ar.run_type == AssetType.HARDWARE:
         base_header.extend([
-            'hardware_node_type',
-            'hardware_depth',
-            'hardware_attributes',
-            'hardware_info'])
+            'Node Type',
+            'Depth',
+            'Attributes',
+            'Info'])
 
         row_writer_func(base_header)
 
         for hardware_item in ar.assethardwareentry_set.all():
-            row = base_row[:]
+            row = []
 
             row.append(hardware_item.type)
             row.append(hardware_item.depth)
@@ -2734,7 +2816,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
         row_writer_func(base_header)
 
         for _license in ar.assetlicenseentry_set.all():
-            row = base_row[:]
+            row = []
 
             row.append(_license.name)
             row.append(_license.license_key)
@@ -2743,20 +2825,20 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
     elif ar.run_type == AssetType.UPDATE:
         base_header.extend([
-            'update_name',
-            'update_version',
-            'update_release',
-            'update_kb_idx',
-            'update_install_date',
-            'update_status',
-            'update_optional',
-            'update_installed'
+            'Name',
+            'Version',
+            'Release',
+            'KnowledgeBaseIndex',
+            'Install Date',
+            'Status',
+            'Optional',
+            'Installed'
         ])
 
         row_writer_func(base_header)
 
         for update in ar.asset_batch.installed_updates.all():
-            row = base_row[:]
+            row = []
 
             row.append(update.name)
             row.append(update.version)
@@ -2771,14 +2853,14 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
     elif ar.run_type == AssetType.PROCESS:
         base_header.extend([
-            'process_name',
-            'process_id'
+            'Name',
+            'PID'
         ])
 
         row_writer_func(base_header)
 
         for process in ar.assetprocessentry_set.all():
-            row = base_row[:]
+            row = []
 
             row.append(str(process.name))
             row.append(str(process.pid))
@@ -2787,21 +2869,21 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
     elif ar.run_type == AssetType.PENDING_UPDATE:
         base_header.extend([
-            'update_name',
-            'update_version',
-            'update_release',
-            'update_kb_idx',
-            'update_install_date',
-            'update_status',
-            'update_optional',
-            'update_installed',
-            'update_new_version'
+            'Name',
+            'Version',
+            'Release',
+            'KnowledgeBaseIndex',
+            'Install Date',
+            'Status',
+            'Optional',
+            'Installed',
+            'New Version'
         ])
 
         row_writer_func(base_header)
 
         for update in ar.asset_batch.pending_updates.all():
-            row = base_row[:]
+            row = []
 
             row.append(update.name)
             row.append(update.version)
@@ -2817,23 +2899,22 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
     elif ar.run_type == AssetType.PCI:
         base_header.extend([
-            'domain',
-            'bus',
-            'slot',
-            'func',
-            'position',
-            'subclass',
-            'vendor',
-            'device',
-            'revision'
+            'Domain',
+            'Bus',
+            'Slot',
+            'Func',
+            'Position',
+            'Subclass',
+            'Vendor',
+            'Device',
+            'Revision'
         ])
 
         row_writer_func(base_header)
 
         for pci_entry in ar.assetpcientry_set.all():
-            row = base_row[:]
+            row = []
 
-            # row.append(str(pci_entry))
             row.append(str(pci_entry.domain))
             row.append(str(pci_entry.bus))
             row.append(str(pci_entry.slot))
@@ -2849,11 +2930,11 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
     elif ar.run_type == AssetType.DMI:
         base_header.extend([
-            'handle',
-            'dmi_type',
-            'header',
-            'key',
-            'value'
+            'Handle',
+            'Dmi Type',
+            'Header',
+            'Key',
+            'Value'
         ])
 
         row_writer_func(base_header)
@@ -2868,7 +2949,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
                     key = dmi_value.key
                     value = dmi_value.value
 
-                    row = base_row[:]
+                    row = []
 
                     row.append(handle)
                     row.append(dmi_type)
@@ -2878,51 +2959,32 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
                     row_writer_func(row)
 
-    elif ar.run_type == AssetType.PRETTYWINHW or ar.run_type == AssetType.LSHW:
-        base_header.extend([
-            'entry'
-        ])
+def postprocess_workbook(workbook):
+    for sheet in workbook.worksheets:
+        sheet.row_dimensions[1].font = Font(bold=True)
 
-        row_writer_func(base_header)
+        max_str_lengths_per_column = {}
+        i = 0
 
-        for cpu in ar.asset_batch.cpus.all():
-            row = base_row[:]
+        for row in sheet.rows:
+            height_needed = 1
+            for cell in row:
+                col_idx = cell.col_idx
+                if col_idx not in max_str_lengths_per_column:
+                    max_str_lengths_per_column[col_idx] = 0
 
-            row.append(str(cpu))
+                current_max = max_str_lengths_per_column[col_idx]
+                components = str(cell.value).split("\n")
+                next_max = max([len(line) for line in components])
+                height_needed = max(len(components), height_needed)
 
-            row_writer_func(row)
+                max_str_lengths_per_column[col_idx] = max(next_max, current_max)
 
-        for memorymodule in ar.asset_batch.memory_modules.all():
-            row = base_row[:]
+            sheet.row_dimensions[i + 1].height = (height_needed * 11) + 4
+            i += 1
 
-            row.append(str(memorymodule))
+        for col_idx in max_str_lengths_per_column:
+            max_len = max_str_lengths_per_column[col_idx]
+            sheet.column_dimensions[get_column_letter(col_idx)].width = max(max_len, 20)
 
-            row_writer_func(row)
-
-        for gpu in ar.asset_batch.gpus.all():
-            row = base_row[:]
-
-            row.append(str(gpu))
-
-            row_writer_func(row)
-
-        # for hdd in ar.asset_batch.hdds.all():
-        #     row = base_row[:]
-        #
-        #     row.append(str(hdd))
-        #
-        #     row_writer_func(row)
-
-        # for partition in ar.asset_batch.partitions.all():
-        #     row = base_row[:]
-        #
-        #     row.append(str(partition))
-        #
-        #     row_writer_func(row)
-
-        for display in ar.asset_batch.displays.all():
-            row = base_row[:]
-
-            row.append(str(display))
-
-            row_writer_func(row)
+    return workbook

@@ -159,7 +159,7 @@
                                         </tr>
                                         <tr>
                                             <th class="text-center">Installed Packages</th>
-                                            <th class="text-center">Available Licenses</th>
+                                            <!--<th class="text-center">Available Licenses</th>-->
                                             <th class="text-center">Installed Updates</th>
                                             <th class="text-center">Available Updates</th>
                                             <!--<th class="text-center">Process Information</th>-->
@@ -168,9 +168,10 @@
                                             <th>
                                                 <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(0)" value="Select" style="display: block; margin: 0 auto;"/>
                                             </th>
+                                            <!--
                                             <th>
                                                 <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(1)" value="Select" style="display: block; margin: 0 auto;"/>
-                                            </th>
+                                            </th>-->
                                             <th>
                                                 <input type="button" class="btn btn-sm btn-primary" ng-click="select_column(2)" value="Select" style="display: block; margin: 0 auto;"/>
                                             </th>
@@ -189,11 +190,12 @@
                                                     <input type="button" title="{{ obj.$packages_selected_button_title }}" ng-disabled="obj.$packages_selected_button_disabled" ng-class="obj.$packages_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 0)"/>
                                                  </div>
                                             </td>
+                                            <!--
                                             <td style="height:40px; vertical-align: middle;">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$licenses_selected_button_title }}" ng-disabled="obj.$licenses_selected_button_disabled" ng-class="obj.$licenses_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 1)"/>
                                                 </div>
-                                            </td>
+                                            </td>-->
                                             <td style="height:40px; vertical-align: middle;">
                                                 <div class="text-center">
                                                     <input type="button" title="{{ obj.$installed_updates_button_title }}" ng-disabled="obj.$installed_updates_button_disabled" ng-class="obj.$installed_updates_selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="enabled" ng-click="select(obj, 2)"/>
