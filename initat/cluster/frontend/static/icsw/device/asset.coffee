@@ -269,6 +269,7 @@ device_asset_module = angular.module(
             "gpus",
             "network_devices",
             "partition_table",
+            "displays",
         ]
 
         for info_list_name in info_list_names

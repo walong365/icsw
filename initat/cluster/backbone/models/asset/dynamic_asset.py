@@ -51,7 +51,6 @@ __all__ = [
     "AssetHWMemoryEntry",
     "AssetHWCPUEntry",
     "AssetHWGPUEntry",
-    "AssetHWLogicalEntry",
     "AssetHWDisplayEntry",
     "AssetHWNetworkDevice",
     "AssetPackageVersionInstallTime",
@@ -85,7 +84,7 @@ class AssetHWMemoryEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "BankLabel:{} FormFactor:{} Memorytype:{} Manufacturer:{} Capacity:{}".format(
+        return "BankLabel:{}|FormFactor:{}|MemoryType:{}|Manufacturer:{}|Capacity:{}".format(
             self.banklabel,
             self.formfactor,
             self.memorytype,
@@ -107,7 +106,7 @@ class AssetHWCPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} [Cores:{}]".format(self.name, self.numberofcores)
+        return "Name:{}|Cores:{}".format(self.name, self.numberofcores)
 
 
 class AssetHWGPUEntry(models.Model):
@@ -116,18 +115,7 @@ class AssetHWGPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{}".format(self.name)
-
-
-class AssetHWLogicalEntry(models.Model):
-    idx = models.AutoField(primary_key=True)
-    name = models.TextField(null=True)
-    size = models.BigIntegerField(null=True)
-    free = models.BigIntegerField(null=True)
-    created = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "{} [Size:{} Free:{}]".format(self.name, sizeof_fmt(self.size), sizeof_fmt(self.free))
+        return "Name:{}".format(self.name)
 
 
 class AssetHWDisplayEntry(models.Model):
@@ -139,7 +127,7 @@ class AssetHWDisplayEntry(models.Model):
     manufacturer = models.TextField(null=True)
 
     def __unicode__(self):
-        return "{} [Type:{} xpixels:{} ypixels:{} manufacturer:{}]".format(
+        return "Name:{}|Type:{}|xpixels:{}|ypixels:{}|manufacturer:{}".format(
             self.name,
             self.type,
             self.xpixels,
@@ -157,12 +145,12 @@ class AssetHWNetworkDevice(models.Model):
     mac_address = models.TextField(null=True)
 
     def __unicode__(self):
-        return "AssetHWNetworkDevice[Manufacturer:{}|Product Name:{}|"\
-            "Device Name:{}|Speed:{}]".format(
+        return "Name:{}|Manufacturer:{}|Product Name:{}|Speed:{}|MAC:{}".format(
+                self.device_name,
                 self.manufacturer,
                 self.product_name,
-                self.device_name,
                 self.speed,
+                self.mac_address
             )
 
 
@@ -279,7 +267,7 @@ class AssetLicenseEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "AssetLicense name={}".format(self.name)
+        return "{} [license_key:{}]".format(self.name, self.license_key)
 
     class Meta:
         ordering = ("name",)
@@ -1081,13 +1069,14 @@ class AssetBatch(models.Model):
         self.save()
 
     def run_done(self):
-        if all(r.run_status == RunStatus.FINISHED
-               for r in self.assetrun_set.all()):
-            self.state_finished_runs()
-            if all(r.run_result == RunResult.SUCCESS
+        if self.run_status < BatchStatus.GENERATING_ASSETS:
+            if all(r.run_status == RunStatus.FINISHED
                    for r in self.assetrun_set.all()):
-                self.run_result = RunResult.SUCCESS
-            self.save()
+                self.state_finished_runs()
+                if all(r.run_result == RunResult.SUCCESS
+                       for r in self.assetrun_set.all()):
+                    self.run_result = RunResult.SUCCESS
+                self.save()
 
     def __repr__(self):
         return unicode(self)

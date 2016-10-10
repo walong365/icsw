@@ -27,7 +27,7 @@ from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry, \
     StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
     AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry, AssetHWGPUEntry, \
-    AssetHWLogicalEntry, AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
+    AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
     AssetPackageVersionInstallTime, AssetHWNetworkDevice
 
 from initat.cluster.backbone.models.partition import partition_table, partition_disc, partition, LogicalDisc
@@ -232,15 +232,6 @@ class AssetHWHDDEntrySerializer(serializers.ModelSerializer):
         model = partition_disc
         fields = (
             "idx", "disc"
-        )
-
-
-class AssetHWLogicalEntrySerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = AssetHWLogicalEntry
-        fields = (
-            "idx", "name", "size", "free"
         )
 
 
