@@ -423,11 +423,10 @@ class ServerProcess(
     def get_kpi_source_data(self, srv_com, **kwargs):
         return srv_com
 
-    @RemoteCall()
+    @RemoteCall(send_async_return=True, sync=False)
     def get_host_config(self, srv_com, **kwargs):
         self.BC.handle_command(srv_com)
-        # ToDo, FIXME, we should return the config
-        return srv_com
+        return None
 
     @RemoteCall()
     def build_host_config(self, srv_com, **kwargs):

@@ -43,7 +43,7 @@ from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, configfile, logging_tools, process_tools, \
-    server_mixins
+    server_mixins, server_command
 from ..config.build_cache import BuildCache
 
 
@@ -168,6 +168,7 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
         args = list(args)
         self.__gen_config = MainConfig(self, args.pop(0))
         self.version = args.pop(0)
+        srv_com = server_command.srv_command(source=args.pop(0))
         single_build = True if len(args) > 0 else False
         if not single_build:
             # from mixin
@@ -327,6 +328,8 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             res_node = E.config(
                 *sum([cur_gc[key].get_xml() for key in constants.SINGLE_BUILD_MAPS], [])
             )
+            srv_com["result"] = res_node
+            self.send_pool_message("remote_call_async_result", unicode(srv_com))
         if self.gc["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
             self.log("queries issued: {:d}".format(tot_query_count))
@@ -334,8 +337,6 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                 self.log("{:5d} {}".format(q_idx, act_sql["sql"][:180]))
         del self.gc
         self._exit_process()
-        if single_build:
-            return res_node
 
     def _build_distance_map(self, root_node, show_unroutable=True):
         self.log("building distance map, root node is '{}'".format(root_node))
