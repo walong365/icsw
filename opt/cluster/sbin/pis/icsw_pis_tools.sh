@@ -21,8 +21,8 @@ ICSW_BASE=/opt/cluster
 ICSW_BIN=${ICSW_BASE}/bin
 ICSW_SBIN=${ICSW_BASE}/sbin
 ICSW_SGE=${ICSW_BASE}/sge
-ICSW_PIS=${ICSW_SBIN}/pis
 ICSW_ETC=${ICSW_BASE}/etc
+ICSW_PIS=${ICSW_SBIN}/pis
 ICSW_SHARE=${ICSW_BASE}/share
 ICSW_SYSCONF=${SYSCONF}/cluster
 ICSW_TFTP=${ICSW_BASE}/system/tftpboot
@@ -70,7 +70,7 @@ function icsw_cleanup() {
         rm -f ${ICSW_SBIN}/$file.py{c,o}
     done
     # icinga.uwsgi
-    ICINGA_WSGI=/opt/cluster/etc/uwsgi/icinga.wsgi.ini
+    ICINGA_WSGI=${ICSW_ETC}/uwsgi/icinga.wsgi.ini
     if [ -f ${ICINGA_WSGI} ] ; then
         chown idmon.idg ${ICINGA_WSGI}
     fi

@@ -269,6 +269,7 @@ device_asset_module = angular.module(
             "gpus",
             "network_devices",
             "partition_table",
+            "displays",
         ]
 
         for info_list_name in info_list_names
@@ -864,6 +865,20 @@ device_asset_module = angular.module(
                     memory_entry.$$capacity = "N/A"
                     memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
 
+                for display in tab.asset_batch.displays
+                        display.$$manufacturer = "N/A"
+                        if display.manufacturer
+                                display.$$manufacturer = display.manufacturer
+                        display.$$name = "N/A"
+                        if display.name
+                                display.$$name = display.name
+                        display.$$xpixels = "N/A"
+                        if display.xpixels
+                                display.$$xpixels = display.xpixels
+                        display.$$ypixels = "N/A"
+                        if display.ypixels
+                                display.$$ypixels = display.ypixels
+
                 tab.asset_batch.hdds = []
                 tab.asset_batch.logical_discs = []
 
@@ -1064,6 +1079,19 @@ device_asset_module = angular.module(
     return {
         restrict: "E"
         template: $templateCache.get("icsw.asset.details.hw.hdd")
+        scope: {
+            tab: "=icswTab"
+        }
+    }
+]).directive("icswAssetDetailsHardwareDisplayTable",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.details.hw.display")
         scope: {
             tab: "=icswTab"
         }

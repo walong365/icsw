@@ -27,7 +27,7 @@ from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     AssetPackageVersion, AssetBatch, AssetHardwareEntry, AssetProcessEntry, \
     StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
     AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry, AssetHWGPUEntry, \
-    AssetHWLogicalEntry, AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
+    AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
     AssetPackageVersionInstallTime, AssetHWNetworkDevice
 
 from initat.cluster.backbone.models.partition import partition_table, partition_disc, partition, LogicalDisc
@@ -235,21 +235,12 @@ class AssetHWHDDEntrySerializer(serializers.ModelSerializer):
         )
 
 
-class AssetHWLogicalEntrySerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = AssetHWLogicalEntry
-        fields = (
-            "idx", "name", "size", "free"
-        )
-
-
 class AssetHWDisplayEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetHWDisplayEntry
         fields = (
-            "idx", "name", "type", "manufacturer"
+            "idx", "name", "type", "manufacturer", "xpixels", "ypixels",
         )
 
 
@@ -347,13 +338,15 @@ class AssetBatchSerializer(serializers.ModelSerializer):
     cpus = AssetHWCPUEntrySerializer(many=True)
     gpus = AssetHWGPUEntrySerializer(many=True)
     network_devices = AssetHWNetworkDeviceSerializer(many=True)
+    displays = AssetHWDisplayEntrySerializer(many=True)
     partition_table = AssetPartitionTableSerializer()
 
     class Meta:
         model = AssetBatch
         fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "packages",
                   "packages_install_times", "pending_updates", "installed_updates", "cpus", "memory_modules", "gpus",
-                  "is_finished_processing", "network_devices", "partition_table")
+                  "is_finished_processing", "network_devices", "partition_table",
+                  "displays")
 
 
 class SimpleAssetBatchSerializer(serializers.ModelSerializer):
@@ -362,4 +355,4 @@ class SimpleAssetBatchSerializer(serializers.ModelSerializer):
         fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "packages_length",
                   "packages_install_times_length", "pending_updates_length", "installed_updates_length", "cpus_length",
                   "memory_modules_length", "gpus_length", "network_devices_length", "is_finished_processing",
-                  "partition_table_length")
+                  "partition_table_length", "displays_length")

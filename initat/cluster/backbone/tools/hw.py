@@ -67,6 +67,53 @@ MEMORY_TYPES = {
     25: "FBD2",
 }
 
+EDID_MANUFACTURER = {
+    'AAC': 'AcerView',
+    'AOC': 'AOC',
+    'APP': 'Apple Computer',
+    'AST': 'AST Research',
+    'CPL': 'Compal',
+    'CPQ': 'Compaq',
+    'CTX': 'CTX',
+    'DEC': 'DEC',
+    'DEL': 'Dell',
+    'DPC': 'Delta',
+    'DWE': 'Daewoo',
+    'EIZ': 'EIZO',
+    'ELS': 'ELSA',
+    'EPI': 'Envision',
+    'FCM': 'Funai',
+    'FUJ': 'Fujitsu',
+    'GSM': 'LG Electronics',
+    'GWY': 'Gateway 2000',
+    'HEI': 'Hyundai',
+    'HIT': 'Hitachi',
+    'HSL': 'Hansol',
+    'HTC': 'Hitachi/Nissei',
+    'HWP': 'HP',
+    'IBM': 'IBM',
+    'ICL': 'Fujitsu ICL',
+    'IVM': 'Iiyama',
+    'KDS': 'Korea Data Systems',
+    'MEI': 'Panasonic',
+    'MEL': 'Mitsubishi Electronics',
+    'NAN': 'Nanao',
+    'NEC': 'NEC',
+    'NOK': 'Nokia Data',
+    'PHL': 'Philips',
+    'REL': 'Relisys',
+    'SAM': 'Samsung',
+    'SGI': 'SGI',
+    'SNY': 'Sony',
+    'SRC': 'Shamrock',
+    'SUN': 'Sun Microsystems',
+    'TAT': 'Tatung',
+    'TOS': 'Toshiba',
+    'TSB': 'Toshiba',
+    'VSC': 'ViewSonic',
+    'ZCM': 'Zenith',
+}
+
 
 class DMIType(IntEnum):
     system = 1
@@ -173,9 +220,41 @@ def _parse_lsblk(dump):
     return rows
 
 
+def _parse_edid(blob):
+    def _bits(bytes):
+        bin_strs = ["{:08b}".format(ord(b)) for b in bytes]
+        return ''.join(bin_strs)
+
+    def _decode_edi(bits):
+        return chr(int(bits, base=2) + ord('A') - 1)
+
+    # see https://en.wikipedia.org/wiki/Extended_Display_Identification_Data
+    result = {}
+    magic = blob[0:8]
+    assert magic.encode('hex') == '00ffffffffffff00'
+    manufacturer_blob = blob[8:10]
+    manufacturer_bits = _bits(manufacturer_blob)
+    slices = [
+        (1, 6),
+        (6, 11),
+        (11, 16),
+    ]
+    manufacturer = [
+        _decode_edi(manufacturer_bits[slice(*s)])
+        for s in slices
+    ]
+    result['manufacturer'] = EDID_MANUFACTURER.get(''.join(manufacturer))
+    result['product'] = blob[10:12].encode('hex')
+    result['serial'] = blob[12:16].encode('hex')
+    result['week'] = ord(blob[16])
+    result['year'] = ord(blob[17]) + 1990
+    result['version'] = blob[18:19].encode('hex')
+    return result
+
+
 class Hardware(object):
     def __init__(self, lshw_dump=None, win32_tree=None, dmi_head=None,
-                 lsblk_dump=None, partinfo_tree=None):
+                 lsblk_dump=None, partinfo_tree=None, xrandr_dump=None):
         self.cpus = []
         self.memory = None
         self.memory_modules = []
@@ -183,6 +262,7 @@ class Hardware(object):
         self.hdds = []
         self.logical_disks = []
         self.network_devices = []
+        self.displays = []
 
         self._mount_point_logical_disks = {}
 
@@ -196,6 +276,8 @@ class Hardware(object):
             self._process_dmi_head(dmi_head)
         if partinfo_tree is not None:
             self._process_partinfo(partinfo_tree)
+        if xrandr_dump:
+            self._process_xrandr(xrandr_dump)
 
     def _process_lsblk(self, lsblk_dump):
         self._lsblk_dump = lsblk_dump
@@ -262,6 +344,7 @@ class Hardware(object):
                 )
 
     def _process_win32(self, win32_tree):
+        self._win32_tree = win32_tree
         for sub_tree in win32_tree['Win32_Processor']:
             self.cpus.append(HardwareCPU(win32_tree=sub_tree))
 
@@ -307,6 +390,9 @@ class Hardware(object):
                 self.network_devices.append(
                     HardwareNetwork(win32_tree=sub_tree))
 
+        for sub_tree in win32_tree['Win32_DesktopMonitor']:
+            self.displays.append(Display(win32_tree=sub_tree))
+
     def _process_dmi_head(self, dmi_head):
         self.memory_modules = []
         for dmi_handle in dmi_head.assetdmihandle_set.filter(dmi_type=17):
@@ -343,6 +429,117 @@ class Hardware(object):
                 else:
                     logical.free_space = usage['free']
                     self.logical_disks.append(logical)
+
+    def _process_xrandr(self, xrandr_dump):
+        # some helper classes for parsing the
+        class _VirtScreen():
+            def __init__(self, index, resolution):
+                self.index = index
+                self.resolution = resolution
+                self.connections = []
+
+        class _Connection():
+            indent_re = re.compile("([ \t]*)(.*)")
+            info_re = re.compile("(.*?):\s*(.*)")
+            res_re = re.compile("\d+x\d+ ")
+            timing_re = re.compile("[hv]: ")
+
+            def __init__(self, connector, index):
+                self.connector = connector
+                self.index = index
+                self.resolutions = []
+
+                self._infos = OrderedDict()
+                self._state = None
+                self._cur_key = None
+
+            def parse_line(self, line):
+                (indent, remaining) = self.indent_re.match(line).groups()
+                remaining = remaining.rstrip()
+                info_match = self.info_re.match(remaining)
+                res_match = self.res_re.match(remaining)
+                timing_match = self.timing_re.match(remaining)
+                if (indent[0] == '\t' and info_match):
+                    # start of information line
+                    (key, value) = info_match.groups()
+                    self._state = 'info'
+                    self._cur_key = key
+                    self._infos[self._cur_key] = [value]
+                elif (indent[0] == '\t' and len(indent) > 1):
+                    # continuation of information line
+                    assert self._state == 'info'
+                    self._infos[self._cur_key].append(remaining)
+                elif res_match:
+                    # start of resolution info
+                    self._state = 'res'
+                    resolution = ScreenResolution(remaining)
+                    self.resolutions.append(resolution)
+                elif timing_match:
+                    # timing line
+                    assert self._state == 'res'
+                    # discard info
+
+            @property
+            def infos(self):
+                # do a little bit of post-processing
+                res = OrderedDict()
+                for (key, lines) in self._infos.items():
+                    if len(lines) == 1:
+                        res[key] = lines[0]
+                    else:
+                        res[key] = [l for l in lines if l]
+                if 'EDID' in res:
+                    res['EDID'] = str.decode(''.join(res['EDID']), 'hex')
+                return res
+
+        virt_screen_re = re.compile(
+            "Screen (?P<index>\d+): minimum (\d+ x \d+), "
+            "current (?P<resolution>\d+ x \d+), maximum (\d+ x \d+)"
+        )
+        connectors = "DP|HDMI|VIRTUAL"
+        connection_re = re.compile(
+            "(?P<connector>{})(?P<index>\d+) "
+            "(dis)?connected ".format(connectors)
+        )
+        self._xrandr_dump = xrandr_dump
+
+        lines = xrandr_dump.split('\n')
+        virt_screens = []
+        for line in lines:
+            m = virt_screen_re.match(line)
+            # virtual screen
+            if m:
+                virt_screen = _VirtScreen(**m.groupdict())
+                virt_screens.append(virt_screen)
+                continue
+
+            # connection
+            m = connection_re.match(line)
+            if m:
+                connection = _Connection(**m.groupdict())
+                virt_screen.connections.append(connection)
+                continue
+
+            connection.parse_line(line)
+
+        # now create the display objects
+        for virt_screen in virt_screens:
+            for connection in virt_screen.connections:
+                infos = connection.infos
+                if 'EDID' in infos:
+                    edid = _parse_edid(infos['EDID'])
+                    display = Display()
+                    display.manufacturer = edid['manufacturer']
+                    display.product = edid['product']
+                    display.serial = edid['serial']
+                    for resolution in connection.resolutions:
+                        if '+preferred' in resolution.flags:
+                            break
+                    (display.x_resolution, display.y_resolution) = \
+                        map(int, resolution.resolution.split('x'))
+                    self.displays.append(display)
+
+        self.virt_screen = virt_screens
 
     @staticmethod
     def _map_win32(sub_tree):
@@ -686,3 +883,36 @@ class HardwareNetwork(HardwareBase):
             win32_tree,
             dmi_handle,
         )
+
+
+class Display(HardwareBase):
+    # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394122(v=vs.85).aspx
+    WIN32_ELEMENTS = {
+        'manufacturer': ('MonitorManufacturer', str),
+        'product': ('Caption', str),
+        'serial': (None, str),
+        'x_resolution': ('ScreenWidth', int),
+        'y_resolution': ('ScreenHeight', int),
+    }
+
+    def __init__(self, win32_tree=None):
+        self.manufacturer = None
+        self.product = None
+        self.serial = None
+        self.x_resolution = None
+        self.y_resolution = None
+        super(Display, self).__init__(
+            win32_tree=win32_tree,
+        )
+
+
+class ScreenResolution():
+    resolution_re = re.compile(
+        '(\d+x\d+)\s+\(0x([0-9A-Fa-f]+)\)\s+([\d.]+)MHz(.*)'
+    )
+
+    def __init__(self, xrandr_line):
+        match = self.resolution_re.match(xrandr_line)
+        (self.resolution, self.hex, frequency, remainder) = match.groups()
+        self.frequency = float(frequency)
+        self.flags = remainder.split()

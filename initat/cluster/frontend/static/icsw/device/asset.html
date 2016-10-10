@@ -188,6 +188,7 @@
                 <th class="text-center">Memory Module Info</th>
                 <th class="text-center">CPU Info</th>
                 <th class="text-center">GPU Info</th>
+                <th class="text-center">Display Info</th>
                 <th class="text-center">NIC Info</th>
                 <th class="text-center">HDD Info</th>
                 <th class="text-center">Action</th>
@@ -204,6 +205,7 @@
                 <td class="text-center"><div ng-class="assetbatch.$$memory_modules_availability_class"><strong>{{ assetbatch.$$memory_modules_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$cpus_availability_class"><strong>{{ assetbatch.$$cpus_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$gpus_availability_class"><strong>{{ assetbatch.$$gpus_availability_text }}</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$displays_availability_class"><strong>{{ assetbatch.$$displays_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$network_devices_availability_class"><strong>{{ assetbatch.$$network_devices_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$partition_table_availability_class"><strong>{{ assetbatch.$$partition_table_availability_text }}</strong></div></td>
                 <td class="text-center">
@@ -795,6 +797,45 @@
    </table>
 </script>
 
+<script type="text/ng-template" id="icsw.asset.details.hw.display">
+    <h3>
+        Displays
+    </h3>
+    <table
+        class="table table-condensed table-striped simple-border"
+        st-safe-src="tab.asset_batch.displays"
+        st-table="assets_shown_display_entries"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div
+                        icsw-tools-pagination
+                        st-items-by-page="10"
+                        st-displayed-pages="11"
+                        possible-items-by-page="10,20,50,100,200,500"
+                    ></div>
+                </td>
+            </tr>
+            <tr>
+                <th>Manufacturer</th>
+                <th>Product Name</th>
+                <th>X Resolution</th>
+                <th>Y Resolution</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="obj in assets_shown_display_entries">
+                <td>{{ obj.$$manufacturer }}</td>
+                <td>{{ obj.$$name }}</td>
+                <td>{{ obj.$$xpixels }}</td>
+                <td>{{ obj.$$ypixels }}</td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+
+
 <script type="text/ng-template" id="icsw.asset.details.all">
     <br/>
     <uib-tabset>
@@ -845,6 +886,12 @@
                 <span>HDD & Partition Information</span>
             </uib-tab-heading>
             <icsw-asset-details-hardware-hdd-table icsw-tab="tab"></icsw-asset-details-hardware-hdd-table>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                <span>Displays</span>
+            </uib-tab-heading>
+            <icsw-asset-details-hardware-display-table icsw-tab="tab"></icsw-asset-details-hardware-display-table>
         </uib-tab>
     </uib-tabset>
 </script>

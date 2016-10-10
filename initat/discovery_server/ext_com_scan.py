@@ -1032,6 +1032,7 @@ class Dispatcher(object):
             (AssetType.LSHW, "lshw", 30),
             (AssetType.PARTITION, "partinfo", 30),
             (AssetType.LSBLK, "lsblk", 30),
+            (AssetType.XRANDR, "xrandr", 30),
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command, timeout) in enumerate(cmd_tuples):
