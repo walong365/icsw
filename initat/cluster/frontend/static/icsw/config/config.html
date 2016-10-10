@@ -332,7 +332,7 @@
         <fieldset>
             <legend>Actions</legend>
             <div class="form-actions pull-right" style="margin-bottom:15px;">
-                <icsw-tools-button type="delete" ng-click="delete_config()"></icsw-tools-button>
+                <icsw-tools-button type="delete" ng-show="!create_mode" ng-click="delete_config()"></icsw-tools-button>
                 &nbsp;
                 <icsw-tools-button type="close" ng-click="close_config()"></icsw-tools-button>
                 &nbsp;

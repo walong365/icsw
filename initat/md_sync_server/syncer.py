@@ -168,7 +168,7 @@ class SyncerHandler(object):
                     _msg_src,
                     _msg_dst,
                     _action,
-                    "master" if _master else "slave {}".format(_slave.name),
+                    "master" if _master else "slave {}".format(_slave.name or "LOCAL"),
                 )
             )
             _config.handle_action(_action, srv_com, _msg_src, _msg_dst)

@@ -128,6 +128,9 @@ class mon_dist_base(models.Model):
     num_devices = models.IntegerField(default=0)
     # unroutable devices, always zero for slaves
     unreachable_devices = models.IntegerField(default=0)
+    # full build, defaults to True
+    full_build = models.BooleanField(default=True)
+    # creation date
     date = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -433,6 +436,7 @@ class mon_check_command(models.Model):
             "mon_icinga_log_raw_service_notification_data",
             "mon_icinga_log_aggregated_service_data",
             "mon_icinga_log_raw_service_downtime_data",
+            # "categories_set",
             "LicenseUsageDeviceService",
             "LicenseLockListDeviceService",
         ]

@@ -187,11 +187,16 @@ class SyncerProcess(threading_tools.process_obj):
         _bi_type = _vals.pop(0)
         if _bi_type == "start_build":
             # config build started
-            self.__build_in_progress, self.__build_version = (True, _vals.pop(0))
-            self.log("build started ({:d})".format(self.__build_version))
-            self._master_md = self.__master_config.start_build(self.__build_version)
+            self.__build_in_progress, self.__build_version, full_build = (True, _vals.pop(0), _vals.pop(0))
+            self.log(
+                "build started ({:d}, build is {})".format(
+                    self.__build_version,
+                    "full" if full_build else "partial"
+                )
+            )
+            self._master_md = self.__master_config.start_build(self.__build_version, full_build)
             for _conf in self.__slave_configs.values():
-                _conf.start_build(self.__build_version, master=self._master_md)
+                _conf.start_build(self.__build_version, full_build, master=self._master_md)
         elif _bi_type == "end_build":
             self.__build_in_progress = False
             self.log("build ended ({:d})".format(self.__build_version))

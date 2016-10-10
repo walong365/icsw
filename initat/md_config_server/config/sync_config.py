@@ -181,19 +181,22 @@ class SyncConfig(object):
             self.__md_struct.save()
 
     def handle_info_action(self, action, srv_com):
-        if action == "sync_start" and self.__md_struct:
-            self.__md_struct.sync_start = cluster_timezone.localize(datetime.datetime.now())
-            self.__md_struct.num_files = int(srv_com["*num_files"])
-            self.__md_struct.size_data = int(srv_com["*size_data"])
-            self.__md_struct.num_transfers = 1
-            self.__md_struct.num_runs += 1
-            self.__md_struct.save(update_fields=["sync_start", "num_files", "size_data", "num_transfers", "num_runs"])
-        elif action == "sync_end" and self.__md_struct:
-            self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
-            self.__md_struct.save(update_fields=["sync_end"])
-            self.__md_struct = None
+        if self.__md_struct:
+            if action == "sync_start":
+                self.__md_struct.sync_start = cluster_timezone.localize(datetime.datetime.now())
+                self.__md_struct.num_files = int(srv_com["*num_files"])
+                self.__md_struct.size_data = int(srv_com["*size_data"])
+                self.__md_struct.num_transfers = 1
+                self.__md_struct.num_runs += 1
+                self.__md_struct.save(update_fields=["sync_start", "num_files", "size_data", "num_transfers", "num_runs"])
+            elif action == "sync_end":
+                self.__md_struct.sync_end = cluster_timezone.localize(datetime.datetime.now())
+                self.__md_struct.save(update_fields=["sync_end"])
+                self.__md_struct = None
+            else:
+                self.log("unknown action {} in handle_info_action()".format(action), logging_tools.LOG_LEVEL_ERROR)
         else:
-            self.log("unknown action {} in handle_info_action()".format(action), logging_tools.LOG_LEVEL_ERROR)
+            self.log("md_struct not set for action {}".format(action), logging_tools.LOG_LEVEL_WARN)
 
     def get_send_data(self):
         _r_dict = {
@@ -299,7 +302,7 @@ class SyncConfig(object):
                 devicegroup_name=devg_name,
             )
 
-    def start_build(self, b_version, master=None):
+    def start_build(self, b_version, full_build, master=None):
         # generate datbase entry for build
         self.config_version_build = b_version
         if self.master:
@@ -308,6 +311,7 @@ class SyncConfig(object):
             _md = mon_dist_master(
                 device=self.monitor_server,
                 version=self.config_version_build,
+                full_build=full_build,
                 build_start=cluster_timezone.localize(datetime.datetime.now()),
             )
         else:
@@ -315,6 +319,7 @@ class SyncConfig(object):
             self.log("version for slave {} is {}".format(self.monitor_server.full_name, self.vers_info))
             _md = mon_dist_slave(
                 device=self.monitor_server,
+                full_build=full_build,
                 mon_dist_master=self.__md_master,
             )
         # version info

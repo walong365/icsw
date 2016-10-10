@@ -364,18 +364,6 @@ class timedelta_c_var(_conf_var):
 CONFIG_PREFIX = "__ICSW__$conf$__"
 
 
-class InMemoryProxy(object):
-    # simple proxy for md-config-server
-    def __init__(self, g_config):
-        self.global_config = g_config
-        self.__dict = {}
-
-    def __getitem__(self, key):
-        if key not in self.__dict:
-            self.__dict[key] = self.global_config[key]
-        return self.__dict[key]
-
-
 class MemCacheBasedDict(object):
     def __init__(self, mc_client, prefix, single_process_mode):
         self.__spm = single_process_mode
@@ -549,6 +537,7 @@ class configuration(object):
             self.add_config_entries(*args)
 
     def delete(self):
+        print "R"
         # remove global config
         _keys = list(self.keys())
         for key in _keys:
@@ -618,6 +607,7 @@ class configuration(object):
             raise KeyError("Key {} not found in c_dict".format(key))
 
     def __getitem__(self, key):
+        # print os.getpid(), key
         if key in self.__c_dict:
             return self.__c_dict[key].value
         else:

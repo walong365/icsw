@@ -28,6 +28,7 @@ from initat.cluster.backbone.models import device
 from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server.config import MainConfigContainer, global_config
 from initat.tools import logging_tools, server_command
+from ..constants import BuildModes
 
 
 class BuildControl(object):
@@ -69,7 +70,7 @@ class BuildControl(object):
                     self,
                     cur_dev,
                 )
-                self.__slave_configs, self.__slave_lut = ({}, {})
+                self.__slave_configs = {}
             else:
                 _slave_c = MainConfigContainer(
                     self,
@@ -77,7 +78,6 @@ class BuildControl(object):
                     slave_name=cur_dev.full_name,
                 )
                 self.__slave_configs[cur_dev.pk] = _slave_c
-                self.__slave_lut[cur_dev.full_name] = cur_dev.pk
         self.__ready = True
         if not self.__initial_reload_checked:
             self.__initial_reload_checked = True
@@ -131,7 +131,12 @@ class BuildControl(object):
                     ", ".join(sorted(dev_names))
                 )
             )
-            srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
+            srv_com.set_result(
+                "rebuilt config for {}".format(
+                    ", ".join(dev_names)
+                ),
+                server_command.SRV_REPLY_STATE_OK
+            )
             self._rebuild_config(srv_com, *dev_names, cache_mode=dev_cache_mode)
         else:
             cache_mode = srv_com["*cache_mode"]
@@ -140,12 +145,32 @@ class BuildControl(object):
             self._rebuild_config(srv_com, cache_mode=cache_mode)
 
     def _rebuild_config(self, srv_com, *args, **kwargs):
-        self.__process.add_process(BuildProcess("build"), start=True)
-        self.__process.send_to_process(
-            "build",
-            "start_build",
-            self.__master_config.serialize(),
-            self.version,
-            unicode(srv_com),
-            *args
-        )
+        # how many processes to add
+        _b_list = [self.__master_config.serialize()]
+        if len(args):
+            _mode = BuildModes.single_master  # distinct
+        else:
+            _mode = BuildModes.all_master
+        if _mode not in [BuildModes.distinct]:
+            # build config for all hosts, one process per slave
+            _b_list.extend(
+                [_slave.serialize() for _slave in self.__slave_configs.itervalues()]
+            )
+
+        for _build_id, _ser_info in enumerate(_b_list, 1):
+            _p_name = "build{:d}".format(_build_id)
+            self.__process.add_process(BuildProcess(_p_name), start=True)
+            self.__process.send_to_process(
+                _p_name,
+                "start_build",
+                _mode,
+                _ser_info,
+                self.version,
+                unicode(srv_com),
+                *args
+            )
+            # advance mode
+            _mode = {
+                BuildModes.single_master: BuildModes.single_slave,
+                BuildModes.all_master: BuildModes.all_slave,
+            }.get(_mode, _mode)

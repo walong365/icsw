@@ -598,11 +598,6 @@ class SyncConfig(object):
                     size_data=_size_data,
                 )
             )
-            # self.__md_struct.num_files = self.__num_com
-            # self.__md_struct.num_transfers = self.__num_com
-            # self.__md_struct.size_raw = self.__size_raw
-            # self.__md_struct.size_data = size_data
-            # self.__md_struct.save()
             self._show_pending_info(dist_master)
         else:
             self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)

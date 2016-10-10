@@ -142,12 +142,14 @@ monitoring_build_info_module = angular.module(
                     slave.$$sync_start = _get_time(slave.sync_start)
                     slave.$$build_conf_time = _get_conf_time(entry)
                     slave.$$sync_time = _get_sync_time(slave)
+                    slave.$$build_type = if slave.full_build then "full" else "partial"
                 # console.log entry.mon_dist_slave_set
                 # entry.$$slaves = ($scope.struct.device_tree.all_lut[slave])
                 entry.$$build_time = _get_time(entry.build_start)
                 entry.$$build_conf_time = _get_conf_time(entry)
                 entry.$$build_run_time = _get_run_time(entry)
                 entry.$$build_diff_time = _get_diff_time(entry.build_start)
+                entry.$$build_type = if entry.full_build then "full" else "partial"
             # console.log @master_list
             # console.log @slave_list
 

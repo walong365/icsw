@@ -19,6 +19,20 @@
 #
 """ icinga and md-sync-/md-config-server constants """
 
+from enum import Enum
+
+
+class BuildModes(Enum):
+    # build all and redistribute, master process
+    all_master = "all_master"
+    # build all and redistribute, slave process
+    all_slave = "all_slave"
+    # build some and do not redistribute
+    distinct = "distinct"
+    # build one and redistribute, for dynamic updates, master process
+    single_master = "single_master"
+    # build one and redistribute, slave process
+    single_slave = "single_slave"
 
 """
 cache_modes, how to handle to cache for special commands

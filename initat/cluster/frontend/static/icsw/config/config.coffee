@@ -44,11 +44,11 @@ config_module = angular.module(
 [
     "icswConfigTreeService", "$q", "icswTools", "ICSW_URLS", "icswUserService",
     "icswComplexModalService", "icswConfigCatalogBackup", "$compile", "$templateCache",
-    "icswToolsSimpleModalService", "$scope",
+    "icswToolsSimpleModalService", "$scope", "blockUI",
 (
     icswConfigTreeService, $q, icswTools, ICSW_URLS, icswUserService,
     icswComplexModalService, icswConfigCatalogBackup, $compile, $templateCache,
-    icswToolsSimpleModalService, $scope,
+    icswToolsSimpleModalService, $scope, blockUI,
 ) ->
     $scope.struct = {
         # data present
@@ -123,8 +123,10 @@ config_module = angular.module(
     $scope.delete = ($event, cc) ->
         icswToolsSimpleModalService("Really delete ConfigCatalog #{cc.name} ?").then(
             () =>
+                blockUI.start()
                 $scope.struct.config_tree.delete_config_catalog(cc).then(
                     () ->
+                        blockUI.stop()
                         console.log "cc deleted"
                 )
         )
@@ -783,12 +785,12 @@ config_module = angular.module(
 ]).service('icswConfigMonCheckCommandListService',
 [
     "icswSimpleAjaxCall", "icswToolsSimpleModalService",
-    "icswTools", "Restangular", "ICSW_URLS",  "$q",
+    "icswTools", "Restangular", "ICSW_URLS",  "$q", "blockUI",
     "icswConfigTreeService", "icswMonitoringBasicTreeService", "icswMonCheckCommandBackup",
     "icswComplexModalService", "$compile", "$templateCache",
 (
     icswSimpleAjaxCall, icswToolsSimpleModalService,
-    icswTools, Restangular, ICSW_URLS, $q,
+    icswTools, Restangular, ICSW_URLS, $q, blockUI,
     icswConfigTreeService, icswMonitoringBasicTreeService, icswMonCheckCommandBackup,
     icswComplexModalService, $compile, $templateCache
 ) ->
@@ -996,8 +998,10 @@ config_module = angular.module(
         delete: (scope, event, mon) ->
             icswToolsSimpleModalService("Really delete MonCheckCommand #{mon.name} ?").then(
                 () =>
+                    blockUI.start()
                     scope.configTree.delete_mon_check_command(scope.config, mon).then(
                         () ->
+                            blockUI.stop()
                             console.log "mon deleted"
                     )
             )

@@ -105,6 +105,8 @@ class ConfigCheckObject(object):
         if srv_type_enum is None:
             # srv_type_enum is None, use value stored in global config
             from initat.cluster.backbone.server_enums import icswServiceEnum
+            # force reload of global-config
+            global_config.close()
             srv_type_enum = getattr(icswServiceEnum, global_config["SERVICE_ENUM_NAME"])
         self.srv_type_enum = srv_type_enum
         self.global_config = global_config

@@ -45,11 +45,12 @@ from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, configfile, logging_tools, process_tools, \
     server_mixins, server_command
 from ..config.build_cache import BuildCache
+from ..constants import BuildModes
 
 
 class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
     def process_init(self):
-        # init CC
+        # init CC, also re-init global-config
         self.CC.init(None, global_config)
         db_tools.close_connection()
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
@@ -61,7 +62,7 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
         self.register_func("start_build", self._start_build)
 
     def loop_post(self):
-        self.log("build process exiting")
+        self.log("build {} process exiting".format(self.name))
         for mach_logger in self.__mach_loggers.itervalues():
             mach_logger.close()
         self.CC.close()
@@ -125,10 +126,18 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
         num_empty_mhd = mon_host_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None))
         num_empty_msd = mon_service_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None))
         if num_empty_mhd.count():
-            self.log("removing {} empty mon_host_dependencies".format(num_empty_mhd))
+            self.log(
+                "removing {}".format(
+                    logging_tools.get_plural("empty mon_host_dependency", num_empty_mhd),
+                )
+            )
             mon_host_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).delete()
         if num_empty_msd:
-            self.log("removing {} empty mon_service_dependencies".format(num_empty_msd))
+            self.log(
+                "removing {}".format(
+                    logging_tools.get_plural("empty mon_service_dependency", num_empty_msd),
+                )
+            )
             mon_service_dependency.objects.filter(Q(devices=None) & Q(dependent_devices=None)).delete()
 
     def _check_for_snmp_container(self):
@@ -164,21 +173,21 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             )
 
     def _start_build(self, *args, **kwargs):
-        self.__slave_configs, self.__slave_lut = ({}, {})
         args = list(args)
+        _mode = args.pop(0)
         self.__gen_config = MainConfig(self, args.pop(0))
         self.version = args.pop(0)
         srv_com = server_command.srv_command(source=args.pop(0))
         single_build = True if len(args) > 0 else False
-        if not single_build:
+        if _mode == BuildModes.all_master:
             # from mixin
             # todo, remove, move to syncer
             self.VCM_check_md_version()
             self._cleanup_db()
             # check for SNMP container config
             self._check_for_snmp_container()
-        # copy from global_config (speedup)
-        self.gc = configfile.InMemoryProxy(global_config)
+        # copy global_config
+        self.gc = global_config
         hdep_from_topo = self.gc["USE_HOST_DEPENDENCIES"] and self.gc["HOST_DEPENDENCIES_FROM_TOPOLOGY"]
         if hdep_from_topo:
             host_deps = mon_host_dependency_templ.objects.all().order_by("-priority")
@@ -193,8 +202,9 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             # take first cache mode
             cache_mode = DEFAULT_CACHE_MODE
         self.log(
-            "rebuild_config called, single_build is {}, cache_mode is {}, hdep_from_topo is {}".format(
-                str(single_build),
+            "rebuild_config called, version is {:d}, mode is {}, cache_mode is {}, hdep_from_topo is {}".format(
+                self.version,
+                _mode,
                 cache_mode,
                 str(hdep_from_topo),
             )
@@ -202,9 +212,7 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
         if self.gc["DEBUG"]:
             cur_query_count = len(connection.queries)
         cdg = device.objects.get(Q(device_group__cluster_device_group=True))
-        if single_build:
-            build_dv = None
-        else:
+        if _mode in [BuildModes.all_master, BuildModes.single_master]:
             # delete old gauge variables
             device_variable.objects.filter(Q(name="_SYS_GAUGE_") & Q(is_public=False) & Q(device=cdg)).delete()
             # init build variable
@@ -223,29 +231,11 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             else:
                 self.version += 1
             self.log("config_version for full build is {:d}".format(self.version))
-            self.send_pool_message("build_info", "start_build", self.version, target="syncer")
-        # fetch SNMP-stuff from cluster and initialise var cache
-        rebuild_gen_config = False
-        if not h_list:
-            self.log(
-                "rebuilding complete config (for master and {})".format(
-                    logging_tools.get_plural("slave", len(self.__slave_configs))
-                )
-            )
-            rebuild_gen_config = True
+            self.send_pool_message("build_info", "start_build", self.version, _mode == BuildModes.all_master, target="syncer")
         else:
-            # FIXME, handle host-related config for only specified slaves
-            self.log(
-                "rebuilding config for {}: {}".format(
-                    logging_tools.get_plural("host", len(h_list)),
-                    logging_tools.compress_list(h_list)
-                )
-            )
-        if not self.__gen_config:
-            rebuild_gen_config = True
-        if rebuild_gen_config:
-            self._create_general_config()
-            # h_list = []
+            build_dv = None
+        # fetch SNMP-stuff from cluster and initialise var cache
+        self._create_general_config(_mode, write_entries=_mode not in [BuildModes.distinct])
         bc_valid = self.__gen_config.is_valid
         if bc_valid:
             # get device templates
@@ -261,19 +251,17 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                     self.log("service templates are not valid", logging_tools.LOG_LEVEL_ERROR)
                 bc_valid = False
         if bc_valid:
-            if single_build:
-                # todo: reduce overhead for single builds
-                self._create_general_config(write_entries=False)
+            if _mode == BuildModes.distinct:
                 # clean device and service entries
                 for key in constants.SINGLE_BUILD_MAPS:
                     if key in self.__gen_config:
                         self.__gen_config[key].refresh(self.__gen_config)
             self.router_obj.check_for_update()
-            total_hosts = sum([self._get_number_of_hosts(cur_gc, h_list) for cur_gc in [self.__gen_config] + self.__slave_configs.values()])
+            total_hosts = 10  # sum([self._get_number_of_hosts(cur_gc, h_list) for cur_gc in [self.__gen_config] + self.__slave_configs.values()])
             if build_dv:
                 self.log("init gauge with max={:d}".format(total_hosts))
                 build_dv.init_as_gauge(total_hosts)
-            if not single_build:
+            if _mode in [BuildModes.all_master, BuildModes.all_slave]:
                 # build distance map
                 cur_dmap, unreachable_pks = self._build_distance_map(self.__gen_config.monitor_server, show_unroutable=not single_build)
                 self.send_pool_message("build_info", "unreachable_devices", len(unreachable_pks), target="syncer")
@@ -283,15 +271,9 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             else:
                 cur_dmap = {}
                 unreachable_pks = []
-            # todo, move to separate processes
-            gc_list = [self.__gen_config]
-            if not single_build:
-                gc_list.extend(self.__slave_configs.values())
-            # for debugging
-            # time.sleep(60)
-            for cur_gc in gc_list:
+            for cur_gc in [self.__gen_config]:
                 cur_gc.cache_mode = cache_mode
-                if cur_gc.master and not single_build:
+                if _mode == BuildModes.all_master:
                     # recreate access files
                     cur_gc._create_access_entries()
 
@@ -306,27 +288,28 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
                 self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 self._create_host_config_files(_bc, cur_gc, cur_dmap, hdep_from_topo)
                 self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
-                if not single_build:
+                if _mode in [BuildModes.all_master, BuildModes.all_slave, BuildModes.single_master, BuildModes.single_slave]:
                     # refresh implies _write_entries
                     cur_gc.refresh()
-                    if not cur_gc.master:
-                        # write config to disk
-                        cur_gc._write_entries()
+                    # write config to disk
+                    cur_gc.write_entries()
+                    if _mode in [BuildModes.all_slave, BuildModes.single_slave]:
                         # start syncing
                         self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
                 del _bc
             if build_dv:
                 build_dv.delete()
-        if not single_build:
-            cfgs_written = self.__gen_config._write_entries()
-            # if bc_valid and (cfgs_written or rebuild_gen_config):
-            #    # send reload to remote instance ?
-            #    self._reload_md_daemon()
+        if _mode == BuildModes.all_master:
             self.send_pool_message("build_info", "end_build", self.version, target="syncer")
-        else:
+        if _mode in [BuildModes.distinct, BuildModes.single_master]:
             cur_gc = self.__gen_config
             res_node = E.config(
-                *sum([cur_gc[key].get_xml() for key in constants.SINGLE_BUILD_MAPS], [])
+                *sum(
+                    [
+                        cur_gc[key].get_xml() for key in constants.SINGLE_BUILD_MAPS
+                    ],
+                    []
+                )
             )
             srv_com["result"] = res_node
             self.send_pool_message("remote_call_async_result", unicode(srv_com))
@@ -334,8 +317,12 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             tot_query_count = len(connection.queries) - cur_query_count
             self.log("queries issued: {:d}".format(tot_query_count))
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
-                self.log("{:5d} {}".format(q_idx, act_sql["sql"][:180]))
-        del self.gc
+                self.log(
+                    "{:5d} {}".format(
+                        q_idx,
+                        act_sql["sql"][:180]
+                    )
+                )
         self._exit_process()
 
     def _build_distance_map(self, root_node, show_unroutable=True):
@@ -436,53 +423,47 @@ class BuildProcess(server_mixins.ICSWBaseProcess, VersionCheckMixin):
             key: value.md_dist_level for key, value in dm_dict.iteritems()
         }, ur_pks
 
-    def _create_general_config(self, write_entries=None):
-        config_list = [self.__gen_config] + self.__slave_configs.values()
+    def _create_general_config(self, mode, write_entries=None):
         if write_entries is not None:
             prev_awc = self.__gen_config.allow_write_entries
-            for cur_conf in config_list:
-                # set actual value
-                cur_conf.allow_write_entries = write_entries
+            # set actual value
+            self.__gen_config.allow_write_entries = write_entries
         start_time = time.time()
         self._check_image_maps()
-        self._create_gen_config_files(config_list)
+        self._create_gen_config_files(mode)
         end_time = time.time()
         if write_entries is not None:
-            for cur_conf in config_list:
-                # restore to previous value
-                cur_conf.allow_write_entries = prev_awc
+            # restore to previous value
+            self.__gen_config.allow_write_entries = prev_awc
         self.log(
             "creating the total general config took {}".format(
                 logging_tools.get_diff_time_str(end_time - start_time)
             )
         )
 
-    def _create_gen_config_files(self, gc_list):
-        for cur_gc in gc_list:
-            start_time = time.time()
-            # misc commands (sending of mails)
-            cur_gc.add_config(MonAllCommands(cur_gc))
-            # servicegroups
-            cur_gc.add_config(MonAllServiceGroups(cur_gc))
-            # timeperiods
-            cur_gc.add_config(MonAllTimePeriods(cur_gc))
-            # contacts
-            cur_gc.add_config(MonAllContacts(cur_gc))
-            # contactgroups
-            cur_gc.add_config(MonAllContactGroups(cur_gc))
-            # hostgroups
-            cur_gc.add_config(MonAllHostGroups(cur_gc))
-            # hosts
-            # cur_gc.add_config(all_hosts(cur_gc))
-            # services
-            # cur_gc.add_config(all_services(cur_gc))
-            # device dir
-            cur_gc.add_config(MonDirContainer("device"))
-            # host_dependencies
-            cur_gc.add_config(MonAllHostDependencies(cur_gc))
-            cur_gc.dump_logs()
-            end_time = time.time()
-            cur_gc.log("created host_configs in {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
+    def _create_gen_config_files(self, mode):
+        cur_gc = self.__gen_config
+        # misc commands (sending of mails)
+        cur_gc.add_config(MonAllCommands(cur_gc))
+        # servicegroups
+        cur_gc.add_config(MonAllServiceGroups(cur_gc))
+        # timeperiods
+        cur_gc.add_config(MonAllTimePeriods(cur_gc))
+        # contacts
+        cur_gc.add_config(MonAllContacts(cur_gc))
+        # contactgroups
+        cur_gc.add_config(MonAllContactGroups(cur_gc))
+        # hostgroups
+        cur_gc.add_config(MonAllHostGroups(cur_gc))
+        # hosts
+        # cur_gc.add_config(all_hosts(cur_gc))
+        # services
+        # cur_gc.add_config(all_services(cur_gc))
+        # device dir
+        cur_gc.add_config(MonDirContainer("device", full_build=mode in [BuildModes.all_master, BuildModes.all_slave]))
+        # host_dependencies
+        cur_gc.add_config(MonAllHostDependencies(cur_gc))
+        cur_gc.dump_logs()
 
     def _get_mon_ext_hosts(self):
         return {cur_ext.pk: cur_ext for cur_ext in mon_ext_host.objects.all()}

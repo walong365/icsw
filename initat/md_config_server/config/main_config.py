@@ -87,7 +87,7 @@ class MainConfig(dict):
         # clean them if necessary
         self._clear_etc_dir()
         self._create_base_config_entries()
-        self._write_entries()
+        self.write_entries()
         self.allow_write_entries = True
 
     @property
@@ -913,7 +913,7 @@ class MainConfig(dict):
                     conn.commit()
                     conn.close()
 
-    def _write_entries(self):
+    def write_entries(self):
         if not self.__allow_write_entries:
             self.log("writing entries not allowed", logging_tools.LOG_LEVEL_WARN)
             return 0
@@ -980,4 +980,4 @@ class MainConfig(dict):
             self[_main_cfg_name].object_list[0]["resource_file"] = new_resource_keys
             write_cfg = True
         if write_cfg:
-            self._write_entries()
+            self.write_entries()

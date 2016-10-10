@@ -172,9 +172,10 @@ class MonFileContainer(dict, LogBufferMixin):
 
 
 class MonDirContainer(dict, LogBufferMixin):
-    def __init__(self, name):
+    def __init__(self, name, **kwargs):
         dict.__init__(self)
         LogBufferMixin.__init__(self)
+        self.__full_build = kwargs.get("full_build", True)
         # directory containing MonBaseContainers
         self.name = name
         self.clear()
@@ -215,7 +216,7 @@ class MonDirContainer(dict, LogBufferMixin):
         present_entries = set(os.listdir(cfg_dir))
         del_entries = present_entries - new_entries
         _dbg = global_config["DEBUG"]
-        if del_entries:
+        if del_entries and self.__full_build:
             log_com(
                 "removing {} from {}".format(
                     logging_tools.get_plural("entry", len(del_entries)),
