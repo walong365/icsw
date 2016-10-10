@@ -50,6 +50,7 @@ class _general(hm_classes.hm_module):
         self.lstopo_ng_bin = process_tools.find_file("lstopo-no-graphics")
         self.lshw_bin = process_tools.find_file("lshw")
         self.lsblk_bin = process_tools.find_file("lsblk")
+        self.xrandr_bin = process_tools.find_file("xrandr")
 
     def init_module(self):
         self.local_lvm_info = partition_tools.lvm_struct("bin")
@@ -85,6 +86,42 @@ class _general(hm_classes.hm_module):
         (_lsblk_stat, _lsblk_result) = commands.getstatusoutput(
             "{} -aOrbp".format(self.lsblk_bin))
         return server_command.compress(_lsblk_result)
+
+    def _xrandr_int(self):
+        # Note: There is an unmaintained and segfaulting Python API for
+        # xrandr, see https://github.com/meehow/python-xrandr
+
+        def find_x():
+            display_re = re.compile(':(\d+)')
+
+            for proc in psutil.process_iter():
+                if proc.name() in ['X', 'Xorg']:
+                    # try to find the screen and auth file
+                    for arg in proc.cmdline()[1:]:
+                        try:
+                            display = display_re.match(arg).groups()[0]
+                            break
+                        except AttributeError:
+                            pass
+                    else:
+                        continue
+                    try:
+                        index = proc.cmdline().index('-auth')
+                        auth_file = proc.cmdline()[index + 1]
+                    except (ValueError, IndexError):
+                        continue
+                    return (display, auth_file)
+            return (None, None)
+
+        (display, auth_file) = find_x()
+        if display:
+            cmd = "XAUTHORITY={} DISPLAY=:{} {} --verbose".format(
+                auth_file,
+                display,
+                self.xrandr_bin
+            )
+            (xrandr_stat, xrandr_result) = commands.getstatusoutput(cmd)
+            return server_command.compress(xrandr_result)
 
     def _disk_usage_int(self):
         usages = []
@@ -2460,6 +2497,16 @@ class lsblk_command(hm_classes.hm_command):
     def interpret(self, srv_com, cur_ns):
         dump = server_command.decompress(srv_com["*lsblk_dump"])
         return limits.mon_STATE_OK, dump
+
+
+class xrandr_command(hm_classes.hm_command):
+    def __call__(self, srv_com, cur_ns):
+        srv_com["xrandr_dump"] = self.module._xrandr_int()
+
+    def interpret(self, srv_com, cur_ns):
+        dump = etree.fromstring(server_command.decompress(
+                srv_com["*xrandr_dump"]))
+        return limits.nag_STATE_OK, "received xrandr output"
 
 
 class dmiinfo_command(hm_classes.hm_command):
