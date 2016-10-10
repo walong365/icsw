@@ -51,7 +51,6 @@ __all__ = [
     "AssetHWMemoryEntry",
     "AssetHWCPUEntry",
     "AssetHWGPUEntry",
-    "AssetHWLogicalEntry",
     "AssetHWDisplayEntry",
     "AssetHWNetworkDevice",
     "AssetPackageVersionInstallTime",
@@ -117,17 +116,6 @@ class AssetHWGPUEntry(models.Model):
 
     def __unicode__(self):
         return "{}".format(self.name)
-
-
-class AssetHWLogicalEntry(models.Model):
-    idx = models.AutoField(primary_key=True)
-    name = models.TextField(null=True)
-    size = models.BigIntegerField(null=True)
-    free = models.BigIntegerField(null=True)
-    created = models.DateTimeField(auto_now_add=True)
-
-    def __unicode__(self):
-        return "{} [Size:{} Free:{}]".format(self.name, sizeof_fmt(self.size), sizeof_fmt(self.free))
 
 
 class AssetHWDisplayEntry(models.Model):
