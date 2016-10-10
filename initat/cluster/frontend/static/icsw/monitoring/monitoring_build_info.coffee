@@ -194,10 +194,17 @@ monitoring_build_info_module = angular.module(
 
     $scope.load = (initial) ->
         $scope.struct.loading = true
-        _wait_list = [
-            icswMonitoringSysInfoTreeService.load($scope.$id)
+        if initial
+            _wait_list = [
+                icswMonitoringSysInfoTreeService.load($scope.$id)
+            ]
+        else
+            _wait_list = [
+                icswMonitoringSysInfoTreeService.reload($scope.$id)
+            ]
+        _wait_list.push(
             Restangular.all(ICSW_URLS.MON_GET_MON_BUILD_INFO.slice(1)).getList({"count": 100})
-        ]
+        )
         if initial
             _wait_list.push(
                 icswDeviceTreeService.load($scope.$id)

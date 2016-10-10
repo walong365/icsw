@@ -202,7 +202,6 @@ class toggle_sys_flag(View):
     def post(self, request):
         _data = json.loads(request.POST["json"])
         _new_state = not _data["current_state"]
-        # print _data, _new_state
         # request.xml_response.info("set flag {} to {}".format(_data["name"], _new_state))
         srv_com = server_command.srv_command(
             command="mon_process_handling",
