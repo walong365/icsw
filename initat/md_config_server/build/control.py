@@ -131,25 +131,21 @@ class BuildControl(object):
                     ", ".join(sorted(dev_names))
                 )
             )
-            srv_com["result"] = self._rebuild_config(*dev_names, cache_mode=dev_cache_mode)
             srv_com.set_result("rebuilt config for {}".format(", ".join(dev_names)), server_command.SRV_REPLY_STATE_OK)
+            self._rebuild_config(srv_com, *dev_names, cache_mode=dev_cache_mode)
         else:
             cache_mode = srv_com["*cache_mode"]
             self.log("rebuild config for all hosts with cache_mode '{}'".format(cache_mode))
-            self._rebuild_config(cache_mode=cache_mode)
             srv_com.set_result("rebuild config for all hosts")
-        # ToDo, not handled by asnchronous build thread
-        if "async_helper_id" in srv_com:
-            # send async results when required
-            self.send_pool_message("remote_call_async_result", unicode(srv_com))
-        print srv_com.pretty_print()
+            self._rebuild_config(srv_com, cache_mode=cache_mode)
 
-    def _rebuild_config(self, *args, **kwargs):
+    def _rebuild_config(self, srv_com, *args, **kwargs):
         self.__process.add_process(BuildProcess("build"), start=True)
         self.__process.send_to_process(
             "build",
             "start_build",
             self.__master_config.serialize(),
             self.version,
+            unicode(srv_com),
             *args
         )

@@ -297,7 +297,6 @@ class ConfigCheckObject(object):
             self.__process.log_template.close()
         if isinstance(self.__process, threading_tools.process_pool):
             # remove global config if we were called from the process poll
-            print "CLEAR"
             self.global_config.delete()
 
     def log_config(self):
@@ -627,7 +626,7 @@ class RemoteAsyncHelper(object):
     def result(self, srv_com):
         if "async_helper_id" not in srv_com:
             self.log(
-                "asnyc_helper_id  not found in srv_com, discarding message",
+                "no asnyc_helper_id found in srv_com, discarding message",
                 logging_tools.LOG_LEVEL_ERROR
             )
             return None, None, None, None
@@ -857,8 +856,8 @@ class RemoteCallSignature(object):
             ("router", RemoteCallMessageType.flat, False),
         ]:
             raise ValueError("async calls only possible for XML router calls or calls without return message")
-        if not self.sync and not self.target_process:
-            raise ValueError("need target process for async calls")
+        # if not self.sync and not self.target_process:
+        #     raise ValueError("need target process for async calls")
         if "sync" in kwargs and kwargs["sync"] and self.target_process:  # only check this if sync is set explicitly
             raise ValueError("call must by asynchronous when forwarding to target process")
 
@@ -883,9 +882,13 @@ class RemoteCallSignature(object):
         if self.sync:
             return _result
         else:
-            effective_target_func_name = self.target_process_func or self.func_name
-            # print 'effective target name', effective_target_func_name
-            instance.send_to_process(self.target_process, effective_target_func_name, unicode(_result), src_id=src_id)
+            if self.target_process:
+                effective_target_func_name = self.target_process_func or self.func_name
+                # print 'effective target name', effective_target_func_name
+                instance.send_to_process(self.target_process, effective_target_func_name, unicode(_result), src_id=src_id)
+            else:
+                # local async call
+                pass
 
 
 class RemoteServerAddressBase(object):
