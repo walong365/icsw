@@ -1520,7 +1520,11 @@ class ProcessPool(threading_tools.process_pool):
 
 
 if NEW_CODE:
-    global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process=True)
+    try:
+        global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process_mode=True)
+    except:
+        # for old code
+        global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process=True)
 else:
     global_config = configfile.get_global_config(process_tools.get_programm_name())
 

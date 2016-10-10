@@ -37,7 +37,7 @@ _VAR_LUT = {
 }
 
 
-def read_config_from_db(g_config, server_type_enum, sql_info, init_list=[]):
+def read_config_from_db(g_config, sql_info, init_list=[]):
     g_config.add_config_entries(init_list, database=True)
     if sql_info.effective_device:
         # dict of local vars without specified host
@@ -174,19 +174,17 @@ class db_device_variable(object):
         return self.__var_value
 
 
-def strip_description(descr):
-    if descr:
-        descr = " ".join(
-            [
-                entry for entry in descr.strip().split() if not entry.count("(default)")
-            ]
-        )
-    return descr
+def write_config_to_db(g_config, sql_info):
+    def strip_description(descr):
+        if descr:
+            descr = " ".join(
+                [
+                    entry for entry in descr.strip().split() if not entry.count("(default)")
+                    ]
+            )
+        return descr
 
-
-def write_config_to_db(g_config, server_type_enum, sql_info, **kwargs):
     log_lines = []
-    log_com = kwargs.get("log_com", None)
     type_dict = {
         "i": config_int,
         "s": config_str,
@@ -266,7 +264,7 @@ def write_config_to_db(g_config, server_type_enum, sql_info, **kwargs):
     return log_lines
 
 
-class device_recognition(object):
+class DeviceRecognition(object):
     def __init__(self, **kwargs):
         self.short_host_name = kwargs.get("short_host_name", process_tools.get_machine_name())
         try:
