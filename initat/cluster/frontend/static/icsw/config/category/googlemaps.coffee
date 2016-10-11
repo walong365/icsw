@@ -21,7 +21,8 @@
 angular.module(
     "icsw.config.category.googlemaps",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
+        "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
     ]
 ).service("reactT",
 [

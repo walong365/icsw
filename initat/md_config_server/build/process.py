@@ -296,9 +296,8 @@ class BuildProcess(
                     cur_gc.refresh()
                     # write config to disk
                     cur_gc.write_entries()
-                    if _mode in [BuildModes.all_slave, BuildModes.some_slave]:
-                        # start syncing
-                        self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
+                    # start syncing
+                    self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
                 del _bc
             if build_dv:
                 build_dv.delete()
