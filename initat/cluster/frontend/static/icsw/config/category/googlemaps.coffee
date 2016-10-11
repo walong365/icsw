@@ -70,7 +70,7 @@ angular.module(
         }
 
         render: () ->
-            _offset = 130
+            _offset = 50
             loc = @props.location
             _render = div(
                 {
@@ -79,6 +79,8 @@ angular.module(
                         position: "absolute"
                         left: "#{loc.$$gm_x - _offset}px"
                         top: "#{loc.$$gm_y - _offset}px"
+                        width: "100px"
+                        height: "100px"
                     }
                 }
                 [
@@ -109,6 +111,7 @@ angular.module(
                                         key: "c.text"
                                         alignmentBaseline: "middle"
                                         textAnchor: "middle"
+                                        fontSize: "14px"
                                         fill: "#000000"
                                         stroke: "#ffffff"
                                         strokeWidth: "0.5px"
@@ -171,6 +174,7 @@ angular.module(
         onAdd: () =>
             panes = @overlay.getPanes()
             @mydiv = angular.element("<div/>")[0]
+            @mydiv.style.position = "absolute"
             panes.markerLayer.appendChild(@mydiv)
             @element = ReactDOM.render(
                 React.createElement(
@@ -184,13 +188,12 @@ angular.module(
 
         draw: () =>
             _proj = @overlay.getProjection()
-            for _loc in @locations
+            for _loc_proxy in @locations
+                _loc = _loc_proxy.location
                 center = _proj.fromLatLngToDivPixel(new @google_maps.LatLng(_loc.latitude, _loc.longitude))
                 _loc.$$gm_x = center.x
                 _loc.$$gm_y = center.y
             @element.redraw()
-            # @mydiv.style.left = "#{center.x - 10}px"
-            # @mydiv.style.top = "#{center.y - 10}px"
 
 ]).service("icswGoogleMapsLivestatusOverlay",
 [
@@ -205,6 +208,7 @@ angular.module(
         onAdd: () =>
             panes = @overlay.getPanes()
             @mydiv = angular.element("<div/>")[0]
+            @mydiv.style.position = "absolute"
             panes.markerLayer.appendChild(@mydiv)
 
             @element = ReactDOM.render(
@@ -217,8 +221,8 @@ angular.module(
         draw: () =>
             _proj = @overlay.getProjection()
             center = _proj.fromLatLngToDivPixel(@center)
-            @mydiv.style.left = "#{center.x - 10}px"
-            @mydiv.style.top = "#{center.y - 10}px"
+            @mydiv.style.left = "#{center.x}px"
+            @mydiv.style.top = "#{center.y}px"
 
 ]).service("icswGoogleMapsHelper",
 [
@@ -431,10 +435,10 @@ angular.module(
                             angular.extend(marker_overlay, new icswGoogleMapsMarkerOverlay(marker_overlay, $scope.struct.google_maps, $scope.locations))
                             marker_overlay.setMap(_map.control.getGMap())
                             # init overlay
-                            overlay = new $scope.struct.google_maps.OverlayView()
-                            angular.extend(overlay, new icswGoogleMapsLivestatusOverlay(overlay, $scope.struct.google_maps))
+                            # overlay = new $scope.struct.google_maps.OverlayView()
+                            # angular.extend(overlay, new icswGoogleMapsLivestatusOverlay(overlay, $scope.struct.google_maps))
                             # console.log $scope.struct.map_options.control
-                            overlay.setMap(_map.control.getGMap())
+                            # overlay.setMap(_map.control.getGMap())
                             # console.log overlay
                             if _map.control? and _map.control.refresh?
                                 _map.control.refresh(

@@ -206,7 +206,7 @@ angular.module(
                         {
                             # defaults, please check when updating google-maps-angular !
                             key: data.cluster_info.GOOGLE_MAPS_KEY
-                            v: '3.24'  # defaults to latest 3.X anyhow
+                            v: '3.25'  # defaults to latest 3.X anyhow
                             libraries: 'weather,geometry,visualization'
                             transport: "https"
                             china: false

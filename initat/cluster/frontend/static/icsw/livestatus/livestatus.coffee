@@ -51,7 +51,8 @@ angular.module(
                                 "icswLivestatusLocationMap": []
                             }
                             {
-                                "icswLivestatusDeviceTabularDisplay": []
+                                # "icswLivestatusDeviceTabularDisplay": []
+                                "icswLivestatusGeoLocationDisplay": []
                             }
                             {
                                 "icswLivestatusInfoDisplay": []
