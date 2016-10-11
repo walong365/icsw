@@ -126,9 +126,8 @@ class AssetHWDisplayEntry(models.Model):
     manufacturer = models.TextField(null=True)
 
     def __unicode__(self):
-        return "Name:{}|Type:{}|xpixels:{}|ypixels:{}|manufacturer:{}".format(
+        return "Name:{}|xpixels:{}|ypixels:{}|manufacturer:{}".format(
             self.name,
-            self.type,
             self.xpixels,
             self.ypixels,
             self.manufacturer
