@@ -48,9 +48,10 @@ class GenerateAssetsProcess(threading_tools.process_obj):
         self.__log_template.close()
 
     def _process_assets(self, asset_run_id, **kwargs):
-        self.log("start processing of assetrun {:d}".format(asset_run_id))
         s_time = time.time()
         asset_run = AssetRun.objects.get(pk=asset_run_id)
+        asset_batch_id = asset_run.asset_batch.idx
+        self.log("start processing of assetrun [AssetBatch.idx={:d}]".format(asset_batch_id))
         try:
             asset_run.generate_assets()
         except:
@@ -64,8 +65,8 @@ class GenerateAssetsProcess(threading_tools.process_obj):
         finally:
             e_time = time.time()
             self.log(
-                "generate_asset_run for {:d} took {}".format(
-                    asset_run.scan_type,
+                "generate_asset_run for [AssetBatch.idx={:d}] took {}".format(
+                    asset_batch_id,
                     logging_tools.get_diff_time_str(e_time - s_time),
                 )
             )

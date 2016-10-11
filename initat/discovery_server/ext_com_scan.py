@@ -871,29 +871,22 @@ class Dispatcher(object):
         _now = timezone.now().replace(microsecond=0)
         # schedule_items = sorted(ScheduleItem.objects.all(), key=lambda x: x.planned_date)
 
-        # prestep: close all pending AssetRuns
+        # prestep: close all pending scans
         _pending = 0
-        for pending_run in AssetRun.objects.filter(
-                run_status__in=(RunStatus.SCANNING, RunStatus.PLANNED)).select_related("asset_batch"):
-            if pending_run.run_start_time:
-                diff_time = (_now - pending_run.run_start_time).seconds
-                # get rid of old(er) running (==most likely broken) runs
-                if diff_time > 1800:
-                    pending_run.state_finished(RunResult.FAILED, "runaway run")
-                    _pending += 1
 
         for asset_batch in AssetBatch.objects.filter(
             run_status__in=[BatchStatus.PLANNED, BatchStatus.RUNNING, BatchStatus.FINISHED_RUNS, BatchStatus.GENERATING_ASSETS]):
             if asset_batch.run_start_time:
                 diff_time = (_now - asset_batch.run_start_time).seconds
-                if diff_time > 1800:
+                if diff_time > 600:
+                    self.log("Closing pending/processing AssetBatch now={}".format(_now), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("Closing pending/processing AssetBatch run_start_time={}".format(asset_batch.run_start_time), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("Closing pending/processing AssetBatch diff_time={}".format(diff_time), logging_tools.LOG_LEVEL_ERROR)
+
                     asset_batch.run_end_time = _now
                     asset_batch.run_status = BatchStatus.FINISHED
                     asset_batch.save()
                     _pending += 1
-
-        if _pending:
-            self.log("Closed {}".format(logging_tools.get_plural("pending AssetRun", _pending)), logging_tools.LOG_LEVEL_ERROR)
 
         for schedule_item in ScheduleItem.objects.all().select_related(
             "device"
@@ -1023,16 +1016,16 @@ class Dispatcher(object):
 
     def _do_hm_scan(self, schedule_item, planned_run):
         cmd_tuples = [
-            (AssetType.PACKAGE, "rpmlist", 30),
-            (AssetType.HARDWARE, "lstopo", 30),
-            (AssetType.PROCESS, "proclist", 30),
-            (AssetType.PENDING_UPDATE, "updatelist", 30),
-            (AssetType.DMI, "dmiinfo", 30),
-            (AssetType.PCI, "pciinfo", 30),
-            (AssetType.LSHW, "lshw", 30),
-            (AssetType.PARTITION, "partinfo", 30),
-            (AssetType.LSBLK, "lsblk", 30),
-            (AssetType.XRANDR, "xrandr", 30),
+            (AssetType.PACKAGE, "rpmlist", 60),
+            (AssetType.HARDWARE, "lstopo", 60),
+            (AssetType.PROCESS, "proclist", 60),
+            (AssetType.PENDING_UPDATE, "updatelist", 60),
+            (AssetType.DMI, "dmiinfo", 60),
+            (AssetType.PCI, "pciinfo", 60),
+            (AssetType.LSHW, "lshw", 60),
+            (AssetType.PARTITION, "partinfo", 60),
+            (AssetType.LSBLK, "lsblk", 60),
+            (AssetType.XRANDR, "xrandr", 60),
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command, timeout) in enumerate(cmd_tuples):
@@ -1067,9 +1060,7 @@ class Dispatcher(object):
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):
-            timeout = 30
-            if runtype == AssetType.PENDING_UPDATE:
-                timeout = 180
+            timeout = 300
 
             _com = "/opt/cluster/sbin/check_nrpe -H{} -2 -P1048576 -p{} -n -c{} -t{}".format(
                 planned_run.ip,
