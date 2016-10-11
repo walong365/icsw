@@ -26,7 +26,7 @@ describe('ICSW Basic Interface Tests:', function() {
 
     var image_element = element(by.xpath("/html/body/icsw-layout-menubar/nav/div/icsw-menu-progress-bars/ul/li/img"));
 
-    var overlay_element = element(by.xpath("/html/body/div[1]/div/div[1]"));
+    var overlay_element = element(by.xpath("/html/body/div[1]"));
 
     this.overlay_element = overlay_element;
 
@@ -455,7 +455,6 @@ describe('ICSW Basic Interface Tests:', function() {
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // "Assign Configurations" tests
   //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
   it ('Assigning configurations should work', function() {
     browser.restart();
     browser.driver.manage().window().maximize();
@@ -474,31 +473,26 @@ describe('ICSW Basic Interface Tests:', function() {
       var title = 'Assign Configurations';
 
       browser.wait(EC.titleIs(title));
-      expect(browser.getTitle()).toEqual(title);
 
       var input_field = element(by.xpath("/html/body/div[3]/div/div/icsw-device-configuration-overview/div[2]/div/input"));
-      browser.wait(EC.and(EC.presenceOf(input_field), EC.invisibilityOf(icsw_homepage.overlay_element)));
+      browser.wait(EC.presenceOf(input_field));
 
       browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.select_all_devices_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
       icsw_homepage.select_all_devices_button.click();
 
-      var popup_message_single = element(by.xpath('//*[@id="toast-container"]/div/div[2]/div'));
-      browser.wait(EC.and(EC.presenceOf(popup_message_single), EC.invisibilityOf(icsw_homepage.overlay_element)));
-      browser.wait(EC.and(EC.not(EC.presenceOf(popup_message_single)), EC.invisibilityOf(icsw_homepage.overlay_element)));
-
+      var toast_container = element(by.xpath('//*[@id="toast-container"]'));
 
       var config_button = element.all(by.className("glyphicon-minus")).first();
-      browser.wait(EC.and(EC.presenceOf(config_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
+      browser.wait(EC.and(EC.elementToBeClickable(config_button), EC.invisibilityOf(icsw_homepage.overlay_element)))
       config_button.click();
 
-      browser.wait(EC.and(EC.presenceOf(popup_message_single), EC.invisibilityOf(icsw_homepage.overlay_element)));
-      expect(popup_message_single.getText()).toEqual("added config auto-etc-hosts");
-      browser.wait(EC.and(EC.not(EC.presenceOf(popup_message_single)), EC.invisibilityOf(icsw_homepage.overlay_element)));
+      browser.wait(EC.textToBePresentInElement(toast_container, "added config auto-etc-hosts"));
 
       config_button = element(by.className("glyphicon-ok"));
+      browser.wait(EC.and(EC.elementToBeClickable(config_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
       config_button.click();
-      browser.wait(EC.and(EC.presenceOf(popup_message_single), EC.invisibilityOf(icsw_homepage.overlay_element)));
-      expect(popup_message_single.getText()).toEqual("removed config auto-etc-hosts");
+
+      browser.wait(EC.textToBePresentInElement(toast_container, "removed config auto-etc-hosts"));
     });
   });
 
