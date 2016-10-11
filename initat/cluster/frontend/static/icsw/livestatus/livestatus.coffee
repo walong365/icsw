@@ -31,12 +31,12 @@ angular.module(
     "$scope", "$compile", "$templateCache", "Restangular", "icswUserService",
     "$q", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterService",
-    "icswDeviceTreeService", "icswMonLivestatusPipeConnector",
+    "icswDeviceTreeService", "icswMonLivestatusPipeConnector", "$rootScope", "ICSW_SIGNALS",
 (
     $scope, $compile, $templateCache, Restangular, icswUserService,
     $q, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
     icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterService,
-    icswDeviceTreeService, icswMonLivestatusPipeConnector,
+    icswDeviceTreeService, icswMonLivestatusPipeConnector, $rootScope, ICSW_SIGNALS
 ) ->
     # top level controller of monitoring dashboard
 
@@ -132,6 +132,13 @@ angular.module(
                 $scope.struct.connector = new icswMonLivestatusPipeConnector(c_name, user, angular.toJson(_cd[c_name]))
                 $scope.struct.connector_set = true
         )
+    $scope.toggle_gridster_lock = () ->
+        $scope.struct.connector.toggle_global_display_state()
+        is_unlocked = $scope.struct.connector.global_display_state == 1
+        $scope.struct.connector.is_unlocked = is_unlocked
+        $scope.struct.connector.gridsterOpts.resizable.enabled = is_unlocked
+        $scope.struct.connector.gridsterOpts.draggable.enabled = is_unlocked
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_TRIGGER_PANEL_LAYOUTCHECK"))
 
     $scope.new_devsel = (_dev_sel) ->
         console.log "nds"

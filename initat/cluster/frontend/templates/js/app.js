@@ -114,6 +114,7 @@ icsw_app = angular.module(
         "icsw.livestatus.comp.basefilter",
         "icsw.livestatus.comp.functions",
         "icsw.livestatus.comp.topology",
+        "icsw.livestatus.comp.maps",
         "icsw.livestatus.comp.tabular",
         "icsw.livestatus.comp.elements",
         "icsw.livestatus.comp.info",

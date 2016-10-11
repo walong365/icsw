@@ -725,6 +725,8 @@ angular.module(
         ICSW_OVERVIEW_SELECTION_CHANGED: "icsw.overview.selection.changed"
         ICSW_MON_TREE_LOADED: "icsw.mon.tree.loaded"
         ICSW_OVERVIEW_EMIT_SELECTION: "icws.overview.emit.selection"
+        #recalculate panel layout when changed
+        ICSW_TRIGGER_PANEL_LAYOUTCHECK: "icws.tools.panel_tools.panel_check"
         ICSW_NETWORK_TAB_SELECTED: "icsw.network.tab.selected"
         ICSW_DEVICE_SCAN_CHANGED: "icsw.device.scan.changed"
         ICSW_MENU_PROGRESS_BAR_CHANGED: "icsw.menu.progress.bar.changed"
