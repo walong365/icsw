@@ -28,11 +28,11 @@ class BuildModes(Enum):
     # build all and redistribute, slave process
     all_slave = "all_slave"
     # build some and do not redistribute
-    distinct = "distinct"
-    # build one and redistribute, for dynamic updates, master process
-    single_master = "single_master"
-    # build one and redistribute, slave process
-    single_slave = "single_slave"
+    some_check = "some_check"
+    # build some and redistribute, for dynamic updates, master process
+    some_master = "some_master"
+    # build some and redistribute, slave process
+    some_slave = "some_slave"
 
 """
 cache_modes, how to handle to cache for special commands

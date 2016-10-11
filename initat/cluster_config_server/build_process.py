@@ -47,25 +47,32 @@ def pretty_print(name, obj, offset):
         max_len = max([len(key) for key in keys])
         for key in keys:
             lines.extend(pretty_print(
-                ("%s%s" % (key, " " * max_len))[0:max_len],
+                (
+                    "{}{}".format(
+                        key,
+                        " " * max_len
+                    )
+                )[0:max_len],
                 obj[key],
-                len(head_str)))
+                len(head_str)
+            )
+            )
     elif type(obj) in [list, tuple]:
-        head_str = "%s%s(L %d):" % (off_str, name, len(obj))
+        head_str = "{}{}(L {:d}):".format(off_str, name, len(obj))
         lines.append(head_str)
         idx = 0
         for value in obj:
-            lines.extend(pretty_print("%d" % (idx), value, len(head_str)))
+            lines.extend(pretty_print("{:d}".format(idx), value, len(head_str)))
             idx += 1
     elif isinstance(obj, basestring):
         if obj:
-            lines.append("%s%s(S): %s" % (off_str, name, obj))
+            lines.append("{}{}(S): {}".format(off_str, name, obj))
         else:
-            lines.append("%s%s(S): (empty string)" % (off_str, name))
+            lines.append("{}{}(S): (empty string)".format(off_str, name))
     elif type(obj) in [type(2), type(2L)]:
-        lines.append("%s%s(I): %d" % (off_str, name, obj))
+        lines.append("{}{}(I): {:d}".format(off_str, name, obj))
     else:
-        lines.append("%s%s(?): %s" % (off_str, name, str(obj)))
+        lines.append("{}{}(?): {}".format(off_str, name, str(obj)))
     return lines
 
 
@@ -111,7 +118,7 @@ class build_process(threading_tools.process_obj):
         self.__log_template.close()
 
     def _complex_request(self, queue_id, dev_name, req_name, *args, **kwargs):
-        self.log("got request '%s' for '%s' (%d)" % (req_name, dev_name, queue_id))
+        self.log("got request '{}' for '{}' ({:d})".format(req_name, dev_name, queue_id))
         cur_c = build_client.get_client(name=dev_name)
         success = getattr(cur_c, req_name)(*args)
         self.send_pool_message("complex_result", queue_id, success)
@@ -144,7 +151,7 @@ class build_process(threading_tools.process_obj):
                 server_type="node",
                 fetch_network_info=True
             )
-            cur_c.log("server_check report(): %s" % (dev_sc.report()))
+            cur_c.log("server_check report(): {}".format(dev_sc.report()))
             cur_net_tree = network_tree()
             # sanity checks
             if not cur_c.create_config_dir():
@@ -225,7 +232,7 @@ class build_process(threading_tools.process_obj):
             tot_query_count = len(connection.queries) - cur_query_count
             cur_c.log("queries issued: {:d}".format(tot_query_count))
             for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
-                cur_c.log(" %4d %s" % (q_idx, act_sql["sql"][:120]))
+                cur_c.log(" {:4d} {}".format(q_idx, act_sql["sql"][:120]))
         # pprint.pprint(cur_c.get_send_dict())
         self.send_pool_message("client_update", cur_c.get_send_dict())
 
@@ -238,15 +245,15 @@ class build_process(threading_tools.process_obj):
 
     def _to_unicode(self, value):
         if isinstance(value, basestring):
-            value = u"'%s'" % (unicode(value))
+            value = u"'{}'".format(unicode(value))
         elif type(value) in [long, int]:
-            value = "%d" % (value)
+            value = "{:d}".format(value)
         elif type(value) in [list]:
-            value = u"{LIST} [%s]" % (", ".join([self._to_unicode(s_value) for s_value in value]))
+            value = u"{{LIST}} [{}]".format(", ".join([self._to_unicode(s_value) for s_value in value]))
         elif type(value) in [dict]:
-            value = u"{DICT} %s" % (unicode(value))
+            value = u"{{DICT}} {}".format(unicode(value))
         else:
-            value = u"{CLASS %s} '%s'" % (
+            value = u"{{CLASS {}}} '{}'".format(
                 value.__class__.__name__,
                 unicode(value),
             )
@@ -255,10 +262,13 @@ class build_process(threading_tools.process_obj):
     def _generate_config_step2(self, cur_c, b_dev, act_prod_net, boot_netdev, dev_sc):
         self.router_obj.check_for_update()
         running_ip = [ip.ip for ip in dev_sc.identifier_ip_lut["p"] if dev_sc.ip_netdevice_lut[ip.ip].pk == boot_netdev.pk][0]
-        cur_c.log("IP in production network '%s' is %s, network_postfix is '%s'" % (
-            act_prod_net.identifier,
-            running_ip,
-            act_prod_net.postfix))
+        cur_c.log(
+            "IP in production network '{}' is {}, network_postfix is '{}'".format(
+                act_prod_net.identifier,
+                running_ip,
+                act_prod_net.postfix
+            )
+        )
         # multiple configs
         multiple_configs = ["server"]
         all_servers = config_tools.device_with_config("%server%")
@@ -296,17 +306,21 @@ class build_process(threading_tools.process_obj):
                             # store in some dict-like structure
                             # print "***", actual_server.short_host_name, dir(actual_server)
                             # FIXME, postfix not handled
-                            conf_dict["%s:%s" % (actual_server.short_host_name, server_type)] = actual_server.device.full_name
-                            conf_dict["%s:%s_ip" % (actual_server.short_host_name, server_type)] = act_routing_info[0][2][1][0]
+                            conf_dict["{}:{}".format(actual_server.short_host_name, server_type)] = actual_server.device.full_name
+                            conf_dict["{}:{}_ip".format(actual_server.short_host_name, server_type)] = act_routing_info[0][2][1][0]
                             if server_type in ["config_server", "mother_server"] and actual_server.device.pk == b_dev.bootserver_id:
                                 routing_info, act_server = (act_routing_info[0], actual_server)
                             else:
                                 if act_routing_info[0][0] < routing_info[0]:
                                     routing_info, act_server = (act_routing_info[0], actual_server)
                         else:
-                            cur_c.log("empty routing info for %s to %s" % (
-                                server_type,
-                                actual_server.device.name), logging_tools.LOG_LEVEL_WARN)
+                            cur_c.log(
+                                "empty routing info for {} to {}" % (
+                                    server_type,
+                                    actual_server.device.name
+                                ),
+                                logging_tools.LOG_LEVEL_WARN
+                            )
                     if act_server:
                         server_ip = routing_info[2][1][0]
                         # map from server_ip to localized name
@@ -453,4 +467,4 @@ class build_process(threading_tools.process_obj):
                     cur_c.log("config built", state="done")
                 cur_bc.close()
             else:
-                cur_c.log("unknown action '%s'" % (cur_c.command), logging_tools.LOG_LEVEL_ERROR, state="done")
+                cur_c.log("unknown action '{}'".format(cur_c.command), logging_tools.LOG_LEVEL_ERROR, state="done")

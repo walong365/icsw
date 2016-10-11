@@ -32,7 +32,7 @@ __all__ = [
 ]
 
 
-global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process=True)
+global_config = configfile.get_global_config(process_tools.get_programm_name(), single_process_mode=True)
 
 INIT_SQL_SCHEMA_VERSION = 1
 SQL_SCHEMA_VERSION = 2

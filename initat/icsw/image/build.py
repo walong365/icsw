@@ -373,7 +373,9 @@ class ServerProcess(threading_tools.process_pool):
         self.__pending_dirs = [entry for entry in self.__dir_list]
         self.__pending_files = [entry for entry in self.__file_list]
         self.__pending_links = [entry for entry in self.__link_list]
-        self.__pending = dict([(builder_name, False) for builder_name in self.__builder_names])
+        self.__pending = {
+            builder_name: False for builder_name in self.__builder_names
+        }
         for _idx in xrange(global_config["BUILDERS"]):
             self._next_compress()
 

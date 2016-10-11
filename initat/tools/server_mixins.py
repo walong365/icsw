@@ -326,7 +326,6 @@ class ConfigCheckObject(object):
         from initat.tools import cluster_location
         cluster_location.read_config_from_db(
             self.global_config,
-            self.srv_type_enum,
             self.__sql_info,
             default_list,
         )
@@ -342,9 +341,7 @@ class ConfigCheckObject(object):
             )
             cluster_location.write_config_to_db(
                 self.global_config,
-                self.srv_type_enum,
                 self.__sql_info,
-                log_com=self.log,
             )
         else:
             self.log(
@@ -472,7 +469,7 @@ class NetworkBindMixin(object):
                 dev_r = None
             else:
                 # device recognition
-                dev_r = cluster_location.device_recognition()
+                dev_r = cluster_location.DeviceRecognition()
         # virtual sockets
         if hasattr(self, virtual_sockets_name):
             _virtual_sockets = getattr(self, virtual_sockets_name)

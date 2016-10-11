@@ -121,7 +121,6 @@ class AssetHWGPUEntry(models.Model):
 class AssetHWDisplayEntry(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.TextField(null=True)
-    type = models.TextField(null=True)
     xpixels = models.IntegerField(null=True)
     ypixels = models.IntegerField(null=True)
     manufacturer = models.TextField(null=True)

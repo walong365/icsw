@@ -14,7 +14,7 @@
 # GNU General Public License for more details.
 #
 # You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
+# along with this program; if not,   to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ module for handling config files, now implemented using MemCache """
@@ -521,7 +521,7 @@ class MemCacheBasedDict(object):
         self._key_modified(key)
 
 
-class configuration(object):
+class Configuration(object):
     def __init__(self, name, *args, **kwargs):
         inst_xml = instance.InstanceXML(quiet=True)
         _mc_addr = "127.0.0.1"
@@ -574,6 +574,7 @@ class configuration(object):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_array.append((what, log_level))
 
+    @property
     def single_process_mode(self):
         return self.__spm
 
@@ -885,50 +886,5 @@ class configuration(object):
             return options
 
 
-def get_global_config(c_name, single_process=False):
-    return configuration(c_name, single_process_mode=single_process)
-
-
-def check_str_config(in_dict, name, default):
-    if not in_dict:
-        in_dict = {}
-    if name in in_dict:
-        av = in_dict[name]
-    else:
-        av = default
-    in_dict[name] = av
-    return in_dict
-
-
-def check_flag_config(in_dict, name, default):
-    if not in_dict:
-        in_dict = {}
-    if name in in_dict:
-        try:
-            av = int(in_dict[name])
-        except:
-            av = default
-        if av < 0 or av > 1:
-            av = default
-    else:
-        av = default
-    in_dict[name] = av
-    return in_dict
-
-
-def check_int_config(in_dict, name, default, minv=None, maxv=None):
-    if not in_dict:
-        in_dict = {}
-    if name in in_dict:
-        try:
-            av = int(in_dict[name])
-        except:
-            av = default
-        if minv:
-            av = max(av, minv)
-        if maxv:
-            av = min(av, maxv)
-    else:
-        av = default
-    in_dict[name] = av
-    return in_dict
+def get_global_config(c_name, single_process_mode=False):
+    return Configuration(c_name, single_process_mode=single_process_mode)

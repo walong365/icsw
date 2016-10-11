@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -26,12 +26,13 @@ import time
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import kernel
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
 from initat.tools.kernel_sync_tools import KernelHelper
 from .config import global_config
 
 
-class kernel_sync_process(threading_tools.process_obj):
+class KernelSyncProcess(threading_tools.process_obj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(
@@ -44,7 +45,7 @@ class kernel_sync_process(threading_tools.process_obj):
         # close database connection
         db_tools.close_connection()
         self.register_func("rescan_kernels", self._rescan_kernels)
-        self.kernel_dev = config_tools.server_check(server_type="kernel_server")
+        self.kernel_dev = config_tools.server_check(service_type_enum=icswServiceEnum.kernel_server)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)

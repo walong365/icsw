@@ -47,7 +47,7 @@ class write_etc_hosts(cs_base_class.server_com):
         if is_server and serv_idx != self.server_idx:
             server_idxs.append(serv_idx)
         # recognize for which devices i am responsible
-        dev_r = cluster_location.device_recognition()
+        dev_r = cluster_location.DeviceRecognition()
         server_idxs = list(set(server_idxs) | set(dev_r.device_dict.keys()))
         # get all peers to local machine and local netdevices
         my_idxs = netdevice.objects.exclude(

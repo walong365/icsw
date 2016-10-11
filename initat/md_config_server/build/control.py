@@ -148,10 +148,10 @@ class BuildControl(object):
         # how many processes to add
         _b_list = [self.__master_config.serialize()]
         if len(args):
-            _mode = BuildModes.single_master  # distinct
+            _mode = BuildModes.some_master  # some_check
         else:
             _mode = BuildModes.all_master
-        if _mode not in [BuildModes.distinct]:
+        if _mode not in [BuildModes.some_check]:
             # build config for all hosts, one process per slave
             _b_list.extend(
                 [_slave.serialize() for _slave in self.__slave_configs.itervalues()]
@@ -171,6 +171,6 @@ class BuildControl(object):
             )
             # advance mode
             _mode = {
-                BuildModes.single_master: BuildModes.single_slave,
+                BuildModes.some_master: BuildModes.some_slave,
                 BuildModes.all_master: BuildModes.all_slave,
             }.get(_mode, _mode)

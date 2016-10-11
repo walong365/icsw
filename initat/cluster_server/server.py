@@ -173,7 +173,7 @@ class ServerProcess(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
             my_dev.uuid = file_uuid
             my_dev.save()
         # recognize for which devices i am responsible
-        dev_r = cluster_location.device_recognition()
+        dev_r = cluster_location.DeviceRecognition()
         self.device_r = dev_r
         if dev_r.device_dict:
             self.log(

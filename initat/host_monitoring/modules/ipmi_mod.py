@@ -25,7 +25,6 @@ import subprocess
 import time
 
 from initat.host_monitoring import hm_classes, limits
-from initat.host_monitoring.config import global_config
 from initat.tools import logging_tools, process_tools, server_command
 
 IPMI_LIMITS = ["ln", "lc", "lw", "uw", "uc", "un"]
