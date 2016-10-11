@@ -39,7 +39,7 @@ from initat.md_config_server.icinga_log_reader.log_reader import host_service_id
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, logging_tools, process_tools, \
     server_mixins, server_command
-from .mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
+from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
 from ..config.build_cache import BuildCache
 from ..constants import BuildModes
 

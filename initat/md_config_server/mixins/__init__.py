@@ -1,8 +1,8 @@
-# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
+# Copyright (C) 2008-2016 Andreas Lang-Nevyjel, init.at
+#
+# this file is part of md-config-server
 #
 # Send feedback to: <lang-nevyjel@init.at>
-#
-# This file is part of host-monitoring
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 3 as
@@ -18,11 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" logging-server, config """
+"""
+mixins for md-config-server
+"""
 
-from initat.tools import configfile, process_tools
-
-global_config = configfile.get_global_config(
-    process_tools.get_programm_name(),
-    single_process_mode=True
-)
+from .mixins import NagVisMixin, ImageMapMixin, DistanceMapMixin

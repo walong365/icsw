@@ -187,15 +187,21 @@ class StructuredContentEmitter(object):
     def emit_content(self):
         _content = [
             u"define {} {{".format(self.obj_type)
-        ] + [
-            u"  {} {}".format(
-                act_key,
-                self._build_value_string(act_key)
-            ) for act_key in sorted(self.iterkeys())
-        ] + [
-            u"}",
-            ""
         ]
+        for _key in sorted(self.iterkeys()):
+            _info_str, _value_str = self._build_value_string(_key)
+            _content.extend(
+                [
+                    u"    # {}".format(_info_str),
+                    u"    {} {}".format(_key, _value_str),
+                ]
+            )
+        _content.extend(
+            [
+                u"}",
+                ""
+            ]
+        )
         return _content
 
     def emit_xml(self):
@@ -228,7 +234,8 @@ class StructuredContentEmitter(object):
             else:
                 _first_val = in_list[0]
                 if type(_first_val) in [int, long]:
-                    return ",".join(["{:d}".format(_val) for _val in in_list])
+                    _ts = "int"
+                    _vs = ",".join(["{:d}".format(_val) for _val in in_list])
                 else:
                     if "" in in_list:
                         raise ValueError(
@@ -237,9 +244,11 @@ class StructuredContentEmitter(object):
                                 _key
                             )
                         )
-                    return u",".join([unicode(_val) for _val in in_list])
+                    _ts = "str"
+                    _vs = u",".join([unicode(_val) for _val in in_list])
+                return (_ts, _vs)
         else:
-            return "-"
+            return ("empty", "-")
 
 
 class FlatContentEmitter(object):
