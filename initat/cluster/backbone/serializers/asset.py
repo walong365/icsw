@@ -240,7 +240,7 @@ class AssetHWDisplayEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetHWDisplayEntry
         fields = (
-            "idx", "name", "type", "manufacturer", "xpixels", "ypixels",
+            "idx", "name", "manufacturer", "xpixels", "ypixels",
         )
 
 
