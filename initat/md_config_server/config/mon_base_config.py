@@ -192,6 +192,7 @@ class StructuredContentEmitter(object):
             _info_str, _value_str = self._build_value_string(_key)
             _content.extend(
                 [
+                    # add some simple metadata to enable easy parsing of the files
                     u"    # {}".format(_info_str),
                     u"    {} {}".format(_key, _value_str),
                 ]
@@ -246,9 +247,10 @@ class StructuredContentEmitter(object):
                         )
                     _ts = "str"
                     _vs = u",".join([unicode(_val) for _val in in_list])
+                _ts = "{}.{:d}".format(_ts, len(in_list))
                 return (_ts, _vs)
         else:
-            return ("empty", "-")
+            return ("str.0", "-")
 
 
 class FlatContentEmitter(object):
