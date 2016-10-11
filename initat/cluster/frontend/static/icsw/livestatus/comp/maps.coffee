@@ -120,15 +120,18 @@ angular.module(
 
     check_for_maps = () ->
         dev_idxs = (dev.$$icswDevice.idx for dev in $scope.struct.monitoring_data.hosts)
-        if _.difference(dev_idxs, $scope.struct.device_idxs).length
+        if not _.isEqual(dev_idxs.sort(), $scope.struct.device_idxs.sort())
             $scope.struct.device_idxs = dev_idxs
             # check for valid maps for current device selection
             $scope.struct.loc_gfx_list.length = 0
             $scope.struct.page_idx = 1
-            _deactivate_rotation()
+            _rotate = _deactivate_rotation()
             loc_idx_used = []
             for gfx in $scope.struct.cat_tree.gfx_list
-                gfx.$$filtered_dml_list = []
+                if gfx.$$filtered_dml_list?
+                    gfx.$$filtered_dml_list.length = 0
+                else
+                    gfx.$$filtered_dml_list = []
                 for dml in gfx.$dml_list
                     if dml.device in dev_idxs
                         if dml.location_gfx not in loc_idx_used
@@ -136,6 +139,10 @@ angular.module(
                             $scope.struct.loc_gfx_list.push(gfx)
                             gfx.$$page_idx = $scope.struct.loc_gfx_list.length
                         gfx.$$filtered_dml_list.push(dml)
+                gfx.$$filtered_dml_info = "#{gfx.$$filtered_dml_list.length} devices"
+            if _rotate
+                $scope.struct.autorotate = _rotate
+                _activate_rotation()
             $scope.struct.maps_present = $scope.struct.loc_gfx_list.length > 0
         $scope.struct.notifier.notify()
 
@@ -164,14 +171,17 @@ angular.module(
             _pi = 1
         if _pi > $scope.struct.loc_gfx_list.length
             _pi = 1
+        # console.log _pi, $scope.struct.loc_gfx_list.length
         $scope.struct.page_idx = _pi
         $scope.struct.autorotate_timeout = $timeout(_activate_rotation, 8000)
 
     _deactivate_rotation = () ->
+        _cur_rotation = $scope.struct.autorotate
         $scope.struct.autorotate = false
         if $scope.struct.autorotate_timeout
             $timeout.cancel($scope.struct.autorotate_timeout)
             $scope.struct.autorotate_timeout = undefined
+        return _cur_rotation
 
     $scope.toggle_autorotate = () ->
         $scope.struct.autorotate = !$scope.struct.autorotate

@@ -47,7 +47,8 @@ angular.module(
                     "icswLivestatusFilterService": [{
                         "icswLivestatusMonCategoryFilter": [{
                             "icswLivestatusDeviceCategoryFilter": [{
-                                "icswLivestatusMonTabularDisplay": []
+                                #"icswLivestatusMonTabularDisplay": []
+                                "icswLivestatusLocationMap": []
                             }
                             {
                                 "icswLivestatusDeviceTabularDisplay": []
