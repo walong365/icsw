@@ -115,13 +115,20 @@ class SyncConfig(object):
         else:
             self.name = di_dict.get("name", None)
             self.master = di_dict["master"]
+            if "dir_offset" not in di_dict:
+                self.log("old master data found", logging_tools.LOG_LEVEL_WARN)
+                if self.name:
+                    self.__dir_offset = os.path.join("slaves", self.name)
+                else:
+                    self.__dir_offset = ""
+            else:
+                self.__dir_offset = di_dict["dir_offset"]
             if self.name:
                 # distribution slave structure on dist master
                 self.struct = None
                 # latest conact
                 self.__latest_contact = None
                 self.config_store = config_store.ConfigStore(CS_MON_NAME, log_com=self.__process.log, access_mode=config_store.AccessModeEnum.LOCAL, read=False)
-                self.__dir_offset = os.path.join("slaves", self.name)
                 for _attr_name in ["slave_ip", "master_ip", "pk", "slave_uuid", "master_uuid"]:
                     setattr(self, _attr_name, di_dict[_attr_name])
                 if not self.master_ip:
@@ -143,7 +150,7 @@ class SyncConfig(object):
                 # file dict to check distribution state
                 self.__file_dict = {}
             else:
-                # distribution master strcuture
+                # distribution master structure
                 self.__slave_configs, self.__slave_lut = ({}, {})
                 # local master structure, is usually none due to delayed check of MD_TYPE in snycer.py
                 self.struct = kwargs["local_master"]
@@ -154,7 +161,7 @@ class SyncConfig(object):
                 self.master_uuid = di_dict["master_uuid"]
                 self.slave_uuid = None
                 self.log("master uuid is {}@{}, {:d}".format(self.master_uuid, self.master_ip, self.master_port))
-                self.__dir_offset = ""
+            self.log("dir offset is {}".format(self.__dir_offset))
         self.state = SlaveState.init
         self.__dict = {}
         self._create_directories()
@@ -538,7 +545,6 @@ class SyncConfig(object):
     def handle_remote_sync_slave(self, srv_com, dist_master):
         # max uncompressed send size
         self.config_version_build = int(srv_com["*config_version_build"])
-        MAX_SEND_SIZE = 65536
         cur_time = time.time()
         if self.slave_ip:
             self.config_version_send = self.config_version_build
@@ -552,45 +558,10 @@ class SyncConfig(object):
                     self.send_time,
                 )
             )
-            # number of atomic commands
-            _num_files, _size_data = (0, 0)
-            # send content of /etc
-            dir_offset = len(self.__w_dir_dict["etc"])
-            # generation 1 transfer
-            del_dirs = []
-            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                rel_dir = cur_dir[dir_offset + 1:]
-                del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
-            if del_dirs:
-                srv_com = self._get_slave_srv_command(
-                    "clear_directories",
-                    version="{:d}".format(int(self.send_time)),
-                )
-                _bld = srv_com.builder()
-                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
-                self.send_slave_command(srv_com)
-            _send_list, _send_size = ([], 0)
-            # clear file dict
-            self.__file_dict = {}
-            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-                rel_dir = cur_dir[dir_offset + 1:]
-                for cur_file in sorted(file_names):
-                    full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
-                    full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
-                    if os.path.isfile(full_r_path):
-                        self.__file_dict[full_w_path] = FileInfo(full_w_path, self.config_version_send)
-                        _content = file(full_r_path, "r").read()
-                        _size_data += len(_content)
-                        _num_files += 1
-                        if _send_size + len(_content) > MAX_SEND_SIZE:
-                            self._send(self._build_file_content(_send_list))
-                            _send_list, _send_size = ([], 0)
-                        # format: uid, gid, path, content_len, content
-                        _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
-            if _send_list:
-                self.send_slave_command(self._build_file_content(_send_list))
-                _send_list, _send_size = ([], 0)
+            _to_send, _num_files, _size_data = self._get_send_commands()
             self.num_send[self.config_version_send] = 0
+            for _send_com in _to_send:
+                self.send_slave_command(_send_com)
             dist_master.send_to_config_server(
                 self._get_config_srv_command(
                     "sync_start",
@@ -601,6 +572,48 @@ class SyncConfig(object):
             self._show_pending_info(dist_master)
         else:
             self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
+
+    def _get_send_commands(self):
+        MAX_SEND_SIZE = 65536
+        _to_send = []
+        # number of atomic commands
+        _num_files, _size_data = (0, 0)
+        # send content of /etc
+        dir_offset = len(self.__w_dir_dict["etc"])
+        # generation 1 transfer
+        del_dirs = []
+        for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+            rel_dir = cur_dir[dir_offset + 1:]
+            del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
+        if del_dirs:
+            srv_com = self._get_slave_srv_command(
+                "clear_directories",
+                version="{:d}".format(int(self.send_time)),
+            )
+            _bld = srv_com.builder()
+            srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
+            _to_send.append(srv_com)
+        _send_list, _send_size = ([], 0)
+        # clear file dict
+        self.__file_dict = {}
+        for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+            rel_dir = cur_dir[dir_offset + 1:]
+            for cur_file in sorted(file_names):
+                full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
+                full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
+                if os.path.isfile(full_r_path):
+                    self.__file_dict[full_w_path] = FileInfo(full_w_path, self.config_version_send)
+                    _content = file(full_r_path, "r").read()
+                    _size_data += len(_content)
+                    _num_files += 1
+                    if _send_size + len(_content) > MAX_SEND_SIZE:
+                        self._send(self._build_file_content(_send_list))
+                        _send_list, _send_size = ([], 0)
+                    # format: uid, gid, path, content_len, content
+                    _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
+        if _send_list:
+            _to_send.append(self._build_file_content(_send_list))
+        return _to_send, _num_files, _size_data
 
     # local actions
     def handle_local_action(self, action, srv_com):
@@ -614,6 +627,19 @@ class SyncConfig(object):
         self.reload_after_sync_flag = True
         self._check_for_ras()
 
+    def handle_local_sync_slave(self, srv_com):
+        # create send commands
+        _to_send, _num_files, _size_data = self._get_send_commands()
+        self.log(
+            "local sync, handling {} ({})".format(
+                logging_tools.get_plural("file", _num_files),
+                logging_tools.get_size_str(_size_data),
+            )
+        )
+        # and process them
+        for srv_com in _to_send:
+            self.struct.handle_direct_action(srv_com["*action"], srv_com)
+
     # direct actions
     def handle_direct_action(self, action, srv_com):
         _attr_name = "handle_direct_{}".format(action)
@@ -626,6 +652,7 @@ class SyncConfig(object):
         # print srv_com.pretty_print()
         for dir_name in srv_com.xpath(".//ns:directories/ns:directory/text()"):
             self._clear_dir(dir_name)
+        self.send_satellite_info()
 
     def handle_direct_file_content_bulk(self, srv_com):
         new_vers = int(srv_com["*config_version_send"])

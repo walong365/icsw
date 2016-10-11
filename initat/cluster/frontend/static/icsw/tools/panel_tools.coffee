@@ -27,8 +27,8 @@ angular.module(
 # corrects panel height for scrolling (dashboard panels)
 # expects 2 child html elements (first header, 2nd body)
 # trigger manually by calling scope.setupScrolling without parameter
-["$timeout",
-($timeout) ->
+["$timeout", "$rootScope", "ICSW_SIGNALS",
+($timeout, $rootScope, ICSW_SIGNALS) ->
     link : (scope, el, attr) ->
         $el = el[0]
         header_height = 25
@@ -46,12 +46,17 @@ angular.module(
             $(el.children()[0])[0].offsetHeight
 
         # FIXME: call setupScrolling per parent scope instead of watching it
-        scope.$watchGroup([scope.gettotal_height, scope.get_header_height], (newV, oldV, _scope) ->
+        scope.$watch(scope.gettotal_height, (newV, oldV) ->
             if newV != oldV
                 scope.setupScrolling(newV[0])
             )
+
+        $rootScope.$on(ICSW_SIGNALS("ICSW_TRIGGER_PANEL_LAYOUTCHECK"), () ->
+            scope.setupScrolling()
+            )
         timeoutPromise = undefined
         delayInMs = 100;
+
         scope.setupScrolling = (newValue) ->
             newHeight = if newValue? then newValue else scope.gettotal_height()
             $timeout.cancel(timeoutPromise)
@@ -59,7 +64,7 @@ angular.module(
                 header_height = scope.get_header_height()
                 # x_scroll_diff = panel_body.scrollWidth - $(panel_body).width()
                 # y_scroll_diff = panel_body.scrollHeight - $(panel_body).height()
-                scope.panelbody_height = newValue - header_height - 2
+                scope.panelbody_height = newHeight - header_height - 2
                 $(panel_body).css("height", scope.panelbody_height)
                 $(panel_body).css("overflow-x", if attr.noXScroll? then "hidden" else "auto")
                 $(panel_body).css("overflow-y", if attr.noYScroll? then "hidden" else "auto")

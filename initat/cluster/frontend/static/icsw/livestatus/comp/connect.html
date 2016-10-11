@@ -31,8 +31,14 @@
                             </ui-select-choices>
                         </ui-select>
                     </span>
-                    <icsw-tools-button type="enable" is-enable="struct.connector.running" ng-click="struct.connector.toggle_running()"></icsw-tools-button>
-                    <icsw-tools-button type="underscore" ng-click="struct.connector.toggle_global_display_state()"></icsw-tools-button>
+                    <button name="button" class="btn" ng-click="struct.connector.toggle_running()" ng-class="struct.connector.running && 'btn btn-success' || 'btn btn-warning'" style="margin-right:5px;">
+                        <i class="fa" ng-class="struct.connector.running && 'fa fa-heartbeat' || 'fa fa-ban'" aria-hidden="true"></i>
+                        Liveupdates {{ struct.connector.running ? "enabled" : "paused" }}
+                    </button>
+                    <button name="button" class="btn" ng-click="toggle_gridster_lock()" ng-class="struct.connector.is_unlocked && 'btn btn-warning' || 'btn btn-success'">
+                        <i class="fa" ng-class="struct.connector.is_unlocked && 'fa fa-unlock' || 'fa fa-lock'" aria-hidden="true"></i>
+                        Layout {{ struct.connector.is_unlocked ? "unlocked" : "locked" }}
+                    </button>
                 </div>
             </h4>
         </div>

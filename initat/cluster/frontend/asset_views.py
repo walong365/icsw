@@ -733,7 +733,6 @@ class get_fieldvalues_for_template(View):
 
             field_object['value'] = value
 
-
         for static_asset_template in static_asset_templates:
             data[static_asset_template.idx] = {}
 
@@ -758,9 +757,16 @@ class get_fieldvalues_for_template(View):
                         'status': 0
                     }
 
-                    if template_field.field_type == StaticAssetTemplateFieldType.DATE and (template_field.default_value_date < datetime.date.today()):
-                        data[static_asset_template.idx][template_field.ordering]['status'] = 2
-                        field_object['status'] = 2
+                    if template_field.field_type == StaticAssetTemplateFieldType.DATE and template_field.date_check:
+                        warn_delta = datetime.timedelta(days=template_field.date_warn_value)
+                        critical_delta = datetime.timedelta(days=template_field.date_critical_value)
+
+                        if (datetime.date.today() + warn_delta) > template_field.default_value_date:
+                            data[static_asset_template.idx][template_field.ordering]['status'] = 1
+                            field_object['status'] = 1
+                        if (datetime.date.today() + critical_delta) > template_field.default_value_date:
+                            data[static_asset_template.idx][template_field.ordering]['status'] = 2
+                            field_object['status'] = 2
 
                     set_value(field_object)
                     set_aggregate_value(data[static_asset_template.idx][template_field.ordering], field_object)
@@ -782,9 +788,16 @@ class get_fieldvalues_for_template(View):
                         set_aggregate_value(data[static_asset_template.idx][template_field.ordering], field_object)
                         data[static_asset_template.idx][template_field.ordering]['list'].append(field_object)
 
-                        if template_field.field_type == StaticAssetTemplateFieldType.DATE and (template_field_value.value_date < datetime.date.today()):
-                            data[static_asset_template.idx][template_field.ordering]['status'] = 2
-                            field_object["status"] = 2
+                        if template_field.field_type == StaticAssetTemplateFieldType.DATE and template_field.date_check:
+                            warn_delta = datetime.timedelta(days=template_field.date_warn_value)
+                            critical_delta = datetime.timedelta(days=template_field.date_critical_value)
+
+                            if (datetime.date.today() + warn_delta) > template_field.value_date:
+                                data[static_asset_template.idx][template_field.ordering]['status'] = 1
+                                field_object['status'] = 1
+                            if (datetime.date.today() + critical_delta) > template_field.value_date:
+                                data[static_asset_template.idx][template_field.ordering]['status'] = 2
+                                field_object['status'] = 2
 
                         if template_field.consumable:
                             items_left = template_field.consumable_start_value - field_object["value_int"]

@@ -91,7 +91,7 @@ class SyncConfig(object):
         else:
             # hm, for send_* commands
             self.slave_uuid = ""
-            self.__dir_offset = ""
+            self.__dir_offset = "master"
         self.monitor_server = monitor_server
         self.__dict = {}
         self._create_directories()
@@ -203,6 +203,7 @@ class SyncConfig(object):
             "master": True if not self.__slave_name else False,
             "pk": self.monitor_server.idx,
             "pure_uuid": self.monitor_server.uuid,
+            "dir_offset": self.__dir_offset,
             # todo, FIXME
             "master_port": 8010,
             "master_uuid": routing.get_server_uuid(

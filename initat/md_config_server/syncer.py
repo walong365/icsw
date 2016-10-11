@@ -84,6 +84,10 @@ class SyncerProcess(threading_tools.process_obj):
         # slave configs
         self.__master_config = SyncConfig(self, master_server, distributed=True if len(slave_servers) else False)
         self.__slave_configs, self.__slave_lut = ({}, {})
+        # create lut entry for master config
+        self.__slave_configs[master_server.pk] = self.__master_config
+        self.__slave_lut[master_server.full_name] = master_server.pk
+        self.__slave_lut[master_server.uuid] = master_server.pk
         # connect to local relayer
         self.__primary_slave_uuid = routing.get_server_uuid(icswServiceEnum.monitor_slave, master_server.uuid)
         self.send_pool_message("set_sync_master_uuid", self.__primary_slave_uuid)
@@ -142,9 +146,7 @@ class SyncerProcess(threading_tools.process_obj):
     def _get_sys_info(self, *args, **kwargs):
         # to get the info to the frontend
         srv_com = server_command.srv_command(source=args[0])
-        _inst_list = [
-            self.__master_config
-        ] + self.__slave_configs.values()
+        _inst_list = self.__slave_configs.values()
         _info_list = [_slave.info for _slave in _inst_list]
         srv_com.set_result("ok set info for {}".format(logging_tools.get_plural("system", len(_inst_list))))
         srv_com["sys_info"] = server_command.compress(_info_list, json=True)
@@ -196,7 +198,8 @@ class SyncerProcess(threading_tools.process_obj):
             )
             self._master_md = self.__master_config.start_build(self.__build_version, full_build)
             for _conf in self.__slave_configs.values():
-                _conf.start_build(self.__build_version, full_build, master=self._master_md)
+                if not _conf.master:
+                    _conf.start_build(self.__build_version, full_build, master=self._master_md)
         elif _bi_type == "end_build":
             self.__build_in_progress = False
             self.log("build ended ({:d})".format(self.__build_version))
@@ -211,20 +214,12 @@ class SyncerProcess(threading_tools.process_obj):
             self.__master_config.unreachable_device(_vals[0], _vals[1], _vals[2])
         elif _bi_type in ["start_config_build", "end_config_build"]:
             _srv_name = _vals.pop(0)
-            if _srv_name in self.__slave_lut:
-                # slave
-                self.__slave_configs[self.__slave_lut[_srv_name]].config_ts(_bi_type.split("_")[0])
-            else:
-                # master
-                self.__master_config.config_ts(_bi_type.split("_")[0])
+            # slave or master
+            self.__slave_configs[self.__slave_lut[_srv_name]].config_ts(_bi_type.split("_")[0])
         elif _bi_type == "device_count":
             _srv_name = _vals.pop(0)
-            if _srv_name in self.__slave_lut:
-                # slave
-                self.__slave_configs[self.__slave_lut[_srv_name]].device_count(_vals[0])
-            else:
-                # master
-                self.__master_config.device_count(_vals[0])
+            # master or slave
+            self.__slave_configs[self.__slave_lut[_srv_name]].device_count(_vals[0])
         elif _bi_type == "sync_slave":
             slave_name = _vals.pop(0)
             if slave_name in self.__slave_lut:

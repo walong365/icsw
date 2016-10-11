@@ -44,7 +44,7 @@ class MainConfigContainer(object):
         if self.__slave_name:
             self.__dir_offset = os.path.join("slaves", self.__slave_name)
         else:
-            self.__dir_offset = ""
+            self.__dir_offset = "master"
         self.monitor_server = monitor_server
         # is this the config for the main server ?
         self.master = True if not self.__slave_name else False
