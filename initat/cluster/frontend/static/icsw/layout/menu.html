@@ -64,7 +64,7 @@
                     ng-show="!struct.any_selected"
                     title="{{ struct.title_str }}"
                     ng-click="device_selection($event)"
-                >No devices selected</span>
+                >No Devices selected</span>
                 <icsw-tools-button ng-show="!struct.any_selected && struct.tree_valid" type="select" size="xs" value="Select all" ng-click="select_all($event)"></icsw-tools-button>
             </li>
             <li ng-repeat="entry in struct.bc_list track by $index"  class="pull-right">

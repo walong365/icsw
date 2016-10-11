@@ -603,28 +603,35 @@ class AssetRun(models.Model):
                     )
         self._generate_assets_package(assets)
 
+    from django.db import transaction
+
+    @transaction.atomic
     def _generate_assets_package(self, assets):
+        apvs = []
+        install_times = []
+
         # lookup cache
-        lu_cache = {}
-        for idx, ba in enumerate(assets):
-            if idx % 100 == 0:
-                lu_cache = {
-                    _p.name: _p for _p in AssetPackage.objects.filter(
-                        Q(name__in=[_x.name for _x in assets[idx:idx + 100]]) &
-                        Q(package_type=ba.package_type)
-                    ).prefetch_related(
-                        "assetpackageversion_set"
-                    )
-                }
+        lu_cache = {
+            _p.name: _p for _p in AssetPackage.objects.filter(name__in=[_x.name for _x in assets]).prefetch_related(
+                    "assetpackageversion_set"
+            )
+        }
+
+        apvit_lu_cache = { }
+
+        for apvit in AssetPackageVersionInstallTime.objects.all().prefetch_related("package_version"):
+            if apvit.timestamp not in apvit_lu_cache:
+                apvit_lu_cache[apvit.timestamp] = {}
+
+            apvit_lu_cache[apvit.timestamp][apvit.package_version.idx] = apvit
+
+        for ba in assets:
             name = ba.name
             version = ba.version if ba.version else ""
             release = ba.release if ba.release else ""
             size = ba.size if ba.size else 0
             package_type = ba.package_type
 
-            # kwfilterdict['name'] = ba.name
-            # kwfilterdict['version'] = ba.version
-            # kwfilterdict['release'] = ba.release
             if name in lu_cache:
                 ap = lu_cache[ba.name]
 
@@ -640,29 +647,30 @@ class AssetRun(models.Model):
                 ap.save()
                 apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
                 apv.save()
-            self.asset_batch.packages.add(apv)
+
+            apvs.append(apv)
 
             install_time = ba.get_install_time_as_datetime()
 
             if install_time:
                 timestamp = time.mktime(install_time.timetuple())
 
-                apv_install_times = AssetPackageVersionInstallTime.objects.filter(
-                    package_version=apv,
-                    timestamp=timestamp
-                )
+                apv_install_time = None
+                if timestamp in apvit_lu_cache and apv.idx in apvit_lu_cache[timestamp]:
+                    apv_install_time = apvit_lu_cache[timestamp][apv.idx]
 
-                if not apv_install_times:
+                if not apv_install_time:
                     apv_install_time = AssetPackageVersionInstallTime(
                         package_version=apv,
                         timestamp=timestamp
                     )
 
                     apv_install_time.save()
-                else:
-                    apv_install_time = apv_install_times[0]
 
-                self.asset_batch.packages_install_times.add(apv_install_time)
+                install_times.append(apv_install_time)
+
+        self.asset_batch.packages.add(*apvs)
+        self.asset_batch.packages_install_times.add(*install_times)
 
     def _generate_assets_hardware_nrpe(self, data):
         self._generate_assets_hardware(etree.fromstring(data))
