@@ -488,7 +488,6 @@ angular.module(
             _max_x += _size_x / 20
             _min_y -= _size_y / 20
             _max_y += _size_y / 20
-
             # parse current viewBox settings
 
             _vbox = _.map($(@element).find("svg")[0].getAttribute("viewBox").split(" "), (elem) -> return parseInt(elem))
@@ -500,8 +499,8 @@ angular.module(
                 _fact_x = 6.0
                 _fact_y = 6.0
             else
-                _fact_x = _width / (_max_x - _min_x)
-                _fact_y = _height / (_max_y - _min_y)
+                _fact_x = _width / (_max_x - _min_x) * 0.9
+                _fact_y = _height / (_max_y - _min_y) * 0.9
             if _fact_x < _fact_y
                 # x domain is wider than y domain
                 @state.settings.zoom.factor = _fact_x
@@ -617,7 +616,7 @@ angular.module(
         getInitialState: () ->
             return {
                 loading: false
-                with_livestatus: false
+                with_livestatus: true
                 data_present: false
                 graph: undefined
                 settings: undefined
@@ -691,7 +690,7 @@ angular.module(
                             className: "text-danger"
                             key: "infospan"
                         }
-                        " Fetching data from server..."
+                        " Fetching Data from Server ..."
                     )
                 )
             _top_list = [
@@ -797,9 +796,9 @@ angular.module(
 
 ]).directive("icswDeviceNetworkTopology",
 [
-    "ICSW_URLS", "icswDeviceTreeService", "icswNetworkTopologyReactContainer",
+    "ICSW_URLS", "icswDeviceTreeService", "icswNetworkTopologyReactContainer", "$rootScope", "ICSW_SIGNALS",
 (
-    ICSW_URLS, icswDeviceTreeService, icswNetworkTopologyReactContainer,
+    ICSW_URLS, icswDeviceTreeService, icswNetworkTopologyReactContainer, $rootScope, ICSW_SIGNALS
 ) ->
     return {
         restrict: "EA"
@@ -845,6 +844,7 @@ angular.module(
                         struct.mon_data = data
                         _create_element()
                     struct.react_element.new_monitoring_data()
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_SVG_FULLSIZELAYOUT_SETUP"))
             )
 
     }
@@ -852,7 +852,7 @@ angular.module(
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase",
 (
-    $q, $rootScope, icswMonLivestatusPipeBase,
+    $q, $rootScope, icswMonLivestatusPipeBase
 ) ->
     class icswLivestatusTopologySelector extends icswMonLivestatusPipeBase
         constructor: () ->
@@ -877,10 +877,10 @@ angular.module(
 ]).factory("icswDeviceTopologyReactContainer",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceLivestatusDataService",
-    "$timeout", "icswTools",
+    "$timeout", "icswTools", "$rootScope", "ICSW_SIGNALS",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswDeviceLivestatusDataService,
-    $timeout, icswTools,
+    $timeout, icswTools, $rootScope, ICSW_SIGNALS
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
@@ -923,13 +923,13 @@ angular.module(
 
             _draw_options = [
                 ["none", "None"]
-                ["all_with_peers", "All peered"]
-                ["all", "All devices"]
-                ["sel", "selected devices"]
-                ["selp1", "selected devices + 1 (next ring)"]
-                ["selp2", "selected devices + 2"]
-                ["selp3", "selected devices + 3"]
-                ["core", "Core network"]
+                ["all_with_peers", "All Peered"]
+                ["all", "All Devices"]
+                ["sel", "selected Devices"]
+                ["selp1", "selected Devices + 1 (next ring)"]
+                ["selp2", "selected Devices + 2"]
+                ["selp3", "selected Devices + 3"]
+                ["core", "Core Network"]
             ]
             _opts = (
                 option(
@@ -941,7 +941,7 @@ angular.module(
                 ) for [key, info] in _draw_options
             )
             _list = [
-                "Show network topology for "
+                "Show Network Topology for "
                 select(
                     {
                         key: "inpsel"
@@ -970,7 +970,7 @@ angular.module(
                 _list.push(
                     span(
                         {className: "text-danger", key: "infospan"}
-                        " Fetching data from server..."
+                        " Fetching Data from Server ..."
                     )
                 )
             return div(

@@ -14,7 +14,7 @@
                     <tr>
                         <th>Device</th>
                         <th>Coms</th>
-                        <th>BootInfo</th>
+                        <th>Boot Info</th>
                         <th class="text-right">#Ports</th>
                         <th class="text-right">#IPs</th>
                         <th class="text-right">#Peers</th>
@@ -190,7 +190,7 @@
                 <ul class="dropdown-menu">
                     <li ng-click="edit_netdevice(ndip_obj, $event, true)"><a>Netdevice</a></li>
                     <li ng-show="create_netip_ok(ndip_obj)" ng-click="edit_netip(ndip_obj, 'dev', $event, true)"><a>IP Address</a></li>
-                    <li ng-show="create_peer_ok(ndip_obj)" ng-click="edit_peer(ndip_obj, 'dev', $event, true)"><a>Network topology connection</a></li>
+                    <li ng-show="create_peer_ok(ndip_obj)" ng-click="edit_peer(ndip_obj, 'dev', $event, true)"><a>Network Topology Connection</a></li>
                 </ul>
             </div>
             <icsw-tools-button type="reload" value="update network" size="xs"
@@ -269,7 +269,7 @@
             <ul class="dropdown-menu">
                 <li ng-show="network_tree.nw_list.length" ng-click="edit_netip(ndip_obj, 'nd', $event, true)">
                     <a>IP Address</a></li>
-                <li ng-click="edit_peer(ndip_obj, 'nd', $event, true)"><a>Network topology connection</a></li>
+                <li ng-click="edit_peer(ndip_obj, 'nd', $event, true)"><a>Network Topology Connection</a></li>
             </ul>
         </div>
     </td>
@@ -340,14 +340,14 @@
                 </icsw-device-network-overview>
             </uib-tab>
 
-             <uib-tab heading="Network Topology">
+             <uib-tab heading="Network Topology" select="select_tab()">
                 <div>
                     <icsw-device-livestatus icsw-livestatus-view="'nettop'"></icsw-device-livestatus>
                 </div>
             </uib-tab>
             <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')" select="select_tab('cluster')">
                 <div ng-controller="icswDeviceNetworkClusterCtrl">
-                    <h3>Network clusters ({{ clusters.length }} Entries)
+                    <h3>Network Clusters ({{ clusters.length }} Entries)
                     <icsw-tools-button type="reload" value="reload" size="sm" ng-click="reload()"></icsw-tools-button></h3>
                     <table class="table table-condensed table-hover table-striped" style="width:auto;">
                         <thead>

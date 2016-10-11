@@ -74,35 +74,37 @@ angular.module(
 # corrects height for sub elements (svg container)
 # expects 2 child html elements (header, 2nd container)
 # trigger manually by calling scope.setupHeight without parameter
-["$timeout",
-($timeout) ->
+["$rootScope", "ICSW_SIGNALS", "$timeout",
+($rootScope, ICSW_SIGNALS, $timeout) ->
     link : (scope, el, attr) ->
         struct =
             main_c : undefined
             header_c: undefined
             body_c: undefined
-
-        childwatcher = scope.$watch(
-            () ->
-                $(el.children()[0]).children().length
-            (nv, ov) ->
-                if nv == 2
-                    struct.main_c = el.children()[0]
-                    struct.header_c = $(struct.main_c).children()[0]
-                    struct.body_c = $(struct.main_c).children()[1]
-                    setup_watcher()
-                    childwatcher()
-        )
-        setup_watcher = ()->
+        $rootScope.$on(ICSW_SIGNALS("ICSW_SVG_FULLSIZELAYOUT_SETUP"), () ->
+            if $(el.children()[0]).children().length == 2
+                struct.main_c = () ->
+                    el.children()[0]
+                struct.header_c = () ->
+                    $(struct.main_c()).children()[0]
+                struct.body_c = () ->
+                    $(struct.main_c()).children()[1]
+                setup_watcher()
+            )
+        timeoutPromise = undefined
+        delayInMs = 150;
+        setup_watcher = () ->
             scope.$watch(
                 () ->
                     scope.panelbody_height
                 (newValue, oldValue) ->
-                    header_height = $(struct.header_c).outerHeight(true)
-                    newHeight = newValue - header_height - 3
-                    if newHeight > 0
-                        $(struct.body_c).css("height", newHeight)
+                    $timeout.cancel(timeoutPromise)
+                    timeoutPromise = $timeout(() ->
+                        header_height = $(struct.header_c()).outerHeight(true)
+                        newHeight = newValue - header_height - 5  # -5 for FF
+                        if newHeight > 0
+                            $(struct.body_c()).css("height", newHeight)
+                    , delayInMs)
             )
-
 ])
 

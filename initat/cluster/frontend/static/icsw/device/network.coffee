@@ -1245,6 +1245,7 @@ angular.module(
         link: (scope, element, attrs) ->
             scope.select_tab = (name) ->
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_TAB_SELECTED"), name)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_SVG_FULLSIZELAYOUT_SETUP"))
     }
 ]).controller("icswDeviceNetworkClusterCtrl",
 [
