@@ -537,7 +537,6 @@ class Configuration(object):
             self.add_config_entries(*args)
 
     def delete(self):
-        print "R"
         # remove global config
         _keys = list(self.keys())
         for key in _keys:
