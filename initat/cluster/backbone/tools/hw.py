@@ -622,18 +622,18 @@ class HardwareCPU(HardwareBase):
     """Represents the physical CPU."""
 
     LSHW_ELEMENTS = {
-        'product': ('product', str),
-        'manufacturer': ('vendor', str),
-        'version': ('version', str),
-        'serial': ('serial', str),
+        'product': ('product', unicode),
+        'manufacturer': ('vendor', unicode),
+        'version': ('version', unicode),
+        'serial': ('serial', unicode),
         'number_of_cores': ("configuration/setting[@id='cores']/@value", int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394373%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'product': ('Name', str),
-        'manufacturer': ('Manufacturer', str),
-        'version': ('Version', str),
-        'serial': ('ProcessorId', str),
+        'product': ('Name', unicode),
+        'manufacturer': ('Manufacturer', unicode),
+        'version': ('Version', unicode),
+        'serial': ('ProcessorId', unicode),
         'number_of_cores': ('NumberOfCores', int),
     }
 
@@ -661,27 +661,27 @@ class MemoryModule(HardwareBase):
     """Represents a DRAM module."""
 
 #     LSHW_ELEMENTS = {
-#         'manufacturer': ('vendor', str),
+#         'manufacturer': ('vendor', unicode),
 #         'capacity': ('size', int),
-#         'serial': ('serial', str),
-#         'bank_label': ('slot', str),
+#         'serial': ('serial', unicode),
+#         'bank_label': ('slot', unicode),
 #     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394347(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'manufacturer': ('Manufacturer', str),
+        'manufacturer': ('Manufacturer', unicode),
         'capacity': ('Capacity', int),
-        'serial': ('SerialNumber', str),
-        'bank_label': ('DeviceLocator', str),
+        'serial': ('SerialNumber', unicode),
+        'bank_label': ('DeviceLocator', unicode),
         'form_factor': ('FormFactor', int),
         'type': ('MemoryType', int),
     }
     DMI_ELEMENTS = {
-        'manufacturer': ('Manufacturer', str),
+        'manufacturer': ('Manufacturer', unicode),
         'capacity': ('Size', parse_size),
-        'serial': ('Serial Number', str),
-        'bank_label': ('Bank Locator', str),
-        'form_factor': ('Form Factor', str),
-        'type': ('Type', str),
+        'serial': ('Serial Number', unicode),
+        'bank_label': ('Bank Locator', unicode),
+        'form_factor': ('Form Factor', unicode),
+        'type': ('Type', unicode),
     }
 
     def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None):
@@ -703,13 +703,13 @@ class HardwareGPU(HardwareBase):
     """Represents a graphics adapter."""
 
     LSHW_ELEMENTS = {
-        'description': ('description', str),
-        'product': ('product', str),
+        'description': ('description', unicode),
+        'product': ('product', unicode),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394512%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'description': ('Description', str),
-        'product': ('Name', str),
+        'description': ('Description', unicode),
+        'product': ('Name', unicode),
     }
 
     def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None):
@@ -722,20 +722,20 @@ class HardwareHdd(HardwareBase):
     """Represents a hard disc device."""
 
     LSHW_ELEMENTS = {
-        'description': ('description', str),
-        'product': ('product', str),
-        'device_name': ('logicalname', str),
-        'serial': ('serial', str),
+        'description': ('description', unicode),
+        'product': ('product', unicode),
+        'device_name': ('logicalname', unicode),
+        'serial': ('serial', unicode),
         # "size" is the size of the physical disk whereas "capacity" is the
         # size of the corresponding file system (cf. the output of "lsblk")
         'size': ('size', int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394132%28v=vs.85%29.aspx
     WIN32_ELEMENTS = {
-        'description': ('Description', str),
-        'product': ('Caption', str),
-        'device_name': ('DeviceID', str),
-        'serial': ('SerialNumber', str),
+        'description': ('Description', unicode),
+        'product': ('Caption', unicode),
+        'device_name': ('DeviceID', unicode),
+        'serial': ('SerialNumber', unicode),
         'size': ('Size', int),
     }
 
@@ -766,11 +766,11 @@ class Partition(HardwareBase):
     table."""
 
     LSHW_ELEMENTS = {
-        'size': (None, str),
+        'size': (None, unicode),
         'index': (None, int),
-        'bootable': (None, str),
-        'device_name': ('logicalname', str),
-        'type': (None, str),
+        'bootable': (None, unicode),
+        'device_name': ('logicalname', unicode),
+        'type': (None, unicode),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394135(v=vs.85).aspx
     # Note: WMI doesn't provide any information about the partition type hex.
@@ -778,8 +778,8 @@ class Partition(HardwareBase):
         'size': ('Size', int),
         'index': ('Index', int),
         'bootable': ('Bootable', bool),
-        'device_name': ('DeviceID', str),
-        'type': ('Type', str),
+        'device_name': ('DeviceID', unicode),
+        'type': ('Type', unicode),
     }
 
     def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None,
@@ -821,8 +821,8 @@ class LogicalDisc(HardwareBase):
 
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394173(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'device_name': ('DeviceID', str),
-        'mount_point': ('DeviceID', str),
+        'device_name': ('DeviceID', unicode),
+        'mount_point': ('DeviceID', unicode),
         'file_system': ('FileSystem', unicode.lower),
         'size': ('Size', int),
         'free_space': ('FreeSpace', int),
@@ -857,18 +857,18 @@ class HardwareNetwork(HardwareBase):
     """Represents a network device."""
 
     LSHW_ELEMENTS = {
-        'product': ('product', str),
-        'manufacturer': ('vendor', str),
-        'device_name': ('logicalname', str),
+        'product': ('product', unicode),
+        'manufacturer': ('vendor', unicode),
+        'device_name': ('logicalname', unicode),
         'mac_address': ('serial', format_mac_address),
         'speed': ('size', int),
     }
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394216(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'product': ('ProductName', str),
-        'manufacturer': ('Manufacturer', str),
-        'device_name': ('NetConnectionID', str),
-        'mac_address': ('MACAddress', str),
+        'product': ('ProductName', unicode),
+        'manufacturer': ('Manufacturer', unicode),
+        'device_name': ('NetConnectionID', unicode),
+        'mac_address': ('MACAddress', unicode),
         'speed': ('Speed', int),
     }
 
@@ -888,9 +888,9 @@ class HardwareNetwork(HardwareBase):
 class Display(HardwareBase):
     # https://msdn.microsoft.com/en-us/library/windows/desktop/aa394122(v=vs.85).aspx
     WIN32_ELEMENTS = {
-        'manufacturer': ('MonitorManufacturer', str),
-        'product': ('Caption', str),
-        'serial': (None, str),
+        'manufacturer': ('MonitorManufacturer', unicode),
+        'product': ('Caption', unicode),
+        'serial': (None, unicode),
         'x_resolution': ('ScreenWidth', int),
         'y_resolution': ('ScreenHeight', int),
     }

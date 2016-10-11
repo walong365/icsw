@@ -40,4 +40,5 @@ if __name__=="__main__":
 
     info.update(mapping_info)
     output = json.dumps(info)
-    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))
+    compressed = bz2.compress(bytes(output, "utf-8"))
+    print(base64.b64encode(compressed).decode('ascii'))

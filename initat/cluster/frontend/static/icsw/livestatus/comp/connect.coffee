@@ -44,7 +44,7 @@ angular.module(
 [
     "$q", "$rootScope",
 (
-    $q, $rootScope,
+    $q, $rootScope
 ) ->
     class icswMonLivestatusPipeBase
         # use __dp_ as prefix for quasi-private attributes
@@ -67,7 +67,7 @@ angular.module(
             # for frontend / content
             @$$show_content = true
             # for frontend / header
-            @$$show_header = true
+            @$$show_header = false
             console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
 
         close: () =>
@@ -181,11 +181,7 @@ angular.module(
             else
                 @__dp_saved_sizeY = @sizeY
                 @sizeY = 1
-            if @__dp_connector.global_display_state in [1]
-                @$$show_content = false
-            else
-                @$$show_content = @show_content
-            @$$show_header = @__dp_connector.global_display_state in [0, 1]
+            @$$show_header = @__dp_connector.global_display_state == 1
 
         # link with connector
         link_with_connector: (connector, id, depth, path_str) =>
@@ -292,10 +288,10 @@ angular.module(
             @spec_src = spec
             console.log "Connector #{@name} (spec #{@spec_src}, user #{@user.user.login})"
             @root_element = undefined
-            # 0 ... show all
-            # 1 ... no content
-            # 2 ... no header
-            @global_display_state = 2
+            # 0 ... only content, no dragNdrop, no resize - DASHBOARD LOCKED
+            # 1 ... with header, dragNdrop, resize - DASHBOARD UNLOCKED
+            @global_display_state = 0
+            @is_unlocked = false
             # position dict
             @_pos_str = ""
             @build_structure()
@@ -314,7 +310,7 @@ angular.module(
 
         toggle_global_display_state: () =>
             @global_display_state++
-            if @global_display_state > 2
+            if @global_display_state > 1
                 @global_display_state = 0
             (_element.set_display_flags() for _element in @all_elements)
 
@@ -515,13 +511,13 @@ angular.module(
                 minSizeY: 1
                 maxSizeY: null
                 resizable: {
-                   enabled: true,
+                   enabled: false,
                    handles: ['ne', 'se', 'sw', 'nw']
                    stop: (event, element, options) =>
                        @layout_changed()
                 }
                 draggable: {
-                   enabled: true
+                   enabled: false
                    handle: '.icsw-draggable'
                    stop: (event, element, options) =>
                        @layout_changed()
@@ -583,6 +579,4 @@ angular.module(
 ) ->
     $scope.close = () ->
         $scope.con_element.close()
-        
-
 ])
