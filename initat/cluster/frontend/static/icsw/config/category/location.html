@@ -1,11 +1,11 @@
 <script type="text/ng-template" id="icsw/main/category/tree.html">
     <div class="container-fluid">
         <uib-tabset>
-            <uib-tab heading="Device Categories">
+            <uib-tab heading="Category Assignment">
                 <icsw-device-category-overview icsw-sel-man="0">
                 </icsw-device-category-overview>
             </uib-tab>
-            <uib-tab heading="Available Categories">
+            <uib-tab heading="Manage Categories">
                 <icsw-config-category-tree-edit mode="device"></icsw-config-category-tree-edit>
             </uib-tab>
         </uib-tabset>
@@ -36,7 +36,7 @@
                     </uib-tab>
                 </uib-tabset>
             </uib-tab>
-            <uib-tab heading="Available Locations" select="set_active_tab('avail')">
+            <uib-tab heading="Manage Locations" select="set_active_tab('avail')">
                 <icsw-config-category-tree-edit mode="location"></icsw-config-category-tree-edit>
             </uib-tab>
         </uib-tabset>
@@ -45,7 +45,7 @@
 
 <script type="text/ng-template" id="icsw.config.category.location.map.edit">
     <uib-alert type="warning" style="max-width: 500px" ng-if="struct.locations.length == 0">
-        Please create locations in the tab 'Available Locations'.
+        Please create locations in the tab 'Manage Locations'.
     </uib-alert>
     <h3 ng-show="struct.locations.length">Map View, {{ struct.locations.length }} useable Locations</h3>
     <div class="row" ng-if="struct.locations.length > 0">
