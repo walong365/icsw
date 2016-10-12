@@ -20,8 +20,8 @@
                         <label class="control-label col-md-3 icsw-formlabel">
                             Fully qualified device name
                         </label>
-                        <div class="controls col-md-6 maxwidth500" ng-class="form_data.full_name.$invalid && 'has-error'">
-                            <input name="full_name" class="form-control" ng-model="device_data.full_name" required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/" placeholder="device name" ng-blur="device_name_changed()"/>
+                        <div class="controls col-md-6" ng-class="form_data.full_name.$invalid && 'has-error'">
+                            <input name="full_name" class="form-control maxwidth500" ng-model="device_data.full_name" required ng-pattern="/^[a-zA-Z0-9\.\-_]+$/" placeholder="device name" ng-blur="device_name_changed()"/>
                             <span ng-show="form_data.full_name.$invalid" class="text-danger">
                                 Need name without any special characters or whitespace (for instance 'server.my.domain')
                             </span>
@@ -29,11 +29,11 @@
                     </div>
                     <div class="form-group">
                         <label class="control-label col-md-3 icsw-formlabel">Devicegroup</label>
-                        <div class="controls col-md-6 maxwidth500" ng-class="form_data.device_group.$invalid && 'has-error'">
+                        <div class="controls col-md-6" ng-class="form_data.device_group.$invalid && 'has-error'">
                             <input
                                 type="text"
                                 name="device_group"
-                                class="form-control"
+                                class="form-control maxwidth500"
                                 ng-model="device_data.device_group" required ng-pattern="/^[a-zA-Z][a-zA-Z0-9\-_]*$/"
                                 uib-typeahead="value.name for value in device_tree.group_list | filter:$viewValue"
                             />
