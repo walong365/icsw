@@ -394,7 +394,7 @@
     </h3>
     <table
         class="table table-condensed table-striped simple-border"
-        st-safe-src="tab.packages"
+        st-safe-src="tab.asset_batch.packages_install_times"
         st-table="packages_shown"
         st-set-filter="packageFilter"
     >
@@ -410,28 +410,28 @@
                 </td>
             </tr>
             <tr>
-                <th st-sort="$$package.name">Name</th>
-                <th class="text-right" st-sort="version">Version</th>
-                <th st-sort="release">Release</th>
-                <th class="text-right" st-sort="size">Size</th>
-                <th st-sort="$$package.install_time">Installation Time</th>
-                <th class="text-right" st-sort="$$package.$$package_type">Package Type</th>
+                <th st-sort="package_version.asset_package.name">Name</th>
+                <th st-sort="package_version.version" class="text-right">Version</th>
+                <th st-sort="package_version.release">Release</th>
+                <th st-sort="package_version.size" class="text-right">Size</th>
+                <th st-sort="install_time">Installation Time</th>
+                <th class="text-right">Package Type</th>
             </tr>
             <tr>
                 <th colspan="1">
-                    <input st-search="$$package.name" placeholder="filter by name" class="input-sm form-control" type="search"/>
+                    <input st-search="package_version.asset_package.name" placeholder="filter by name" class="input-sm form-control" type="search"/>
                 </th>
                 <th colspan="4">&nbsp;</th>
             </tr>
         </thead>
         <tbody>
-            <tr ng-repeat="vers in packages_shown track by $index">
-                <td>{{ vers.$$package.name }}</td>
-                <td class="text-right">{{ vers.version }}</td>
-                <td>{{ vers.release }}</td>
-                <td class="text-right">{{ vers.$$size }}</td>
-                <td>{{ vers.$$install_time }}</td>
-                <td class="text-right">{{ vers.$$package.$$package_type }}</td>
+            <tr ng-repeat="obj in packages_shown">
+                <td>{{ obj.package_version.asset_package.name }}</td>
+                <td class="text-right">{{ obj.package_version.$$version }}</td>
+                <td>{{ obj.package_version.$$release }}</td>
+                <td class="text-right">{{ obj.package_version.$$size }}</td>
+                <td>{{ obj.$$install_time }}</td>
+                <td class="text-right">{{ obj.package_version.asset_package.$$package_type }}</td>
             </tr>
         </tbody>
     </table>

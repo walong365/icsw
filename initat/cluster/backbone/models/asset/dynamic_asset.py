@@ -648,23 +648,31 @@ class AssetRun(models.Model):
             apvs.append(apv)
 
             install_time = ba.get_install_time_as_datetime()
+            timestamp = time.mktime(install_time.timetuple())
 
-            if install_time:
-                timestamp = time.mktime(install_time.timetuple())
+            apv_install_time = None
+            if timestamp in apvit_lu_cache and apv.idx in apvit_lu_cache[timestamp]:
+                apv_install_time = apvit_lu_cache[timestamp][apv.idx]
 
-                apv_install_time = None
-                if timestamp in apvit_lu_cache and apv.idx in apvit_lu_cache[timestamp]:
-                    apv_install_time = apvit_lu_cache[timestamp][apv.idx]
+            if not apv_install_time:
+                apv_install_time = AssetPackageVersionInstallTime(
+                    package_version=apv,
+                    timestamp=timestamp
+                )
 
-                if not apv_install_time:
-                    apv_install_time = AssetPackageVersionInstallTime(
-                        package_version=apv,
-                        timestamp=timestamp
-                    )
+                apv_install_time.save()
 
-                    apv_install_time.save()
+            install_times.append(apv_install_time)
 
-                install_times.append(apv_install_time)
+        self.asset_batch.packages_status = 1
+        if len(apvs) > 0:
+            self.asset_batch.packages_status = 2
+
+        self.asset_batch.packages_install_times_status = 1
+        if len(install_times) > 0:
+            self.asset_batch.packages_install_times_status = 2
+
+        self.asset_batch.save()
 
         self.asset_batch.packages.add(*apvs)
         self.asset_batch.packages_install_times.add(*install_times)
@@ -724,6 +732,7 @@ class AssetRun(models.Model):
 
     def _generate_assets_pending_update_nrpe(self, data):
         l = json.loads(data)
+        self.asset_batch.pending_updates_status = 1
         for (name, optional) in l:
             asset_update_entry = AssetUpdateEntry.objects.filter(
                 name=name,
@@ -747,6 +756,8 @@ class AssetRun(models.Model):
                 asset_update_entry.save()
 
             self.asset_batch.pending_updates.add(asset_update_entry)
+            self.asset_batch.pending_updates_status = 2
+        self.asset_batch.save()
 
     def _generate_assets_pending_update_hm(self, tree):
         blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0]\
@@ -780,6 +791,7 @@ class AssetRun(models.Model):
 
     def _generate_assets_update_nrpe(self, data):
         l = json.loads(data)
+        self.asset_batch.installed_updates_status = 1
         for (name, up_date, status) in l:
             asset_update_entry = AssetUpdateEntry.objects.filter(
                 name=name,
@@ -805,6 +817,7 @@ class AssetRun(models.Model):
                 asset_update_entry.save()
 
             self.asset_batch.installed_updates.add(asset_update_entry)
+            self.asset_batch.installed_updates_status = 2
 
     def _generate_assets_process_nrpe(self, data):
         l = json.loads(data)
@@ -974,61 +987,38 @@ class AssetBatch(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     # fields generated from raw entries
     packages = models.ManyToManyField(AssetPackageVersion)
+    packages_status = models.IntegerField(default=0)
+
     packages_install_times = models.ManyToManyField(AssetPackageVersionInstallTime)
+    packages_install_times_status = models.IntegerField(default=0)
+
     cpus = models.ManyToManyField(AssetHWCPUEntry)
+    cpus_status = models.IntegerField(default=0)
+
     memory_modules = models.ManyToManyField(AssetHWMemoryEntry)
+    memory_modules_status = models.IntegerField(default=0)
+
     gpus = models.ManyToManyField(AssetHWGPUEntry)
+    gpus_status = models.IntegerField(default=0)
+
     displays = models.ManyToManyField(AssetHWDisplayEntry)
+    displays_status = models.IntegerField(default=0)
+
     partition_table = models.ForeignKey(
         "backbone.partition_table",
         on_delete=models.SET_NULL,
         null=True,
     )
+    partition_table_status = models.IntegerField(default=0)
+
     network_devices = models.ManyToManyField(AssetHWNetworkDevice)
+    network_devices_status = models.IntegerField(default=0)
+
     pending_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_pending_updates")
+    pending_updates_status = models.IntegerField(default=0)
+
     installed_updates = models.ManyToManyField(AssetUpdateEntry, related_name="assetbatch_installed_updates")
-
-    @property
-    def partition_table_length(self):
-        if self.partition_table:
-            return 1
-        return 0
-
-    @property
-    def packages_length(self):
-        return self.packages.count()
-
-    @property
-    def packages_install_times_length(self):
-        return self.packages_install_times.count()
-
-    @property
-    def cpus_length(self):
-        return self.cpus.count()
-
-    @property
-    def memory_modules_length(self):
-        return self.memory_modules.count()
-
-    @property
-    def gpus_length(self):
-        return self.gpus.count()
-
-    @property
-    def network_devices_length(self):
-        return self.network_devices.count()
-
-    @property
-    def displays_length(self):
-        return self.displays.count()
-
-    @property
-    def pending_updates_length(self):
-        return self.pending_updates.count()
-
-    @property
-    def installed_updates_length(self):
-        return self.installed_updates.count()
+    installed_updates_status = models.IntegerField(default=0)
 
     @property
     def is_finished_processing(self):
@@ -1138,7 +1128,7 @@ class AssetBatch(models.Model):
         hw = Hardware(**run_results)
 
         # set the CPUs
-        self.cpus.all().delete()
+        self.cpus_status = 1
         for cpu in hw.cpus:
             new_cpu = AssetHWCPUEntry(
                 name=cpu.product,
@@ -1146,9 +1136,10 @@ class AssetBatch(models.Model):
             )
             new_cpu.save()
             self.cpus.add(new_cpu)
+            self.cpus_status = 2
 
         # set the memory modules
-        self.memory_modules.all().delete()
+        self.memory_modules_status = 1
         for memory_module in hw.memory_modules:
             new_memory_module = AssetHWMemoryEntry(
                 banklabel=memory_module.bank_label,
@@ -1159,13 +1150,17 @@ class AssetBatch(models.Model):
             )
             new_memory_module.save()
             self.memory_modules.add(new_memory_module)
+            self.memory_modules_status = 2
 
         # set the GPUs and displays
-        self.gpus.all().delete()
+        self.gpus_status = 1
         for gpus in hw.gpus:
             new_gpu = AssetHWGPUEntry(name=gpus.product)
             new_gpu.save()
             self.gpus.add(new_gpu)
+            self.gpus_status = 2
+
+        self.displays_status = 1
         for display in hw.displays:
             new_display = AssetHWDisplayEntry(
                 name=display.product,
@@ -1175,6 +1170,7 @@ class AssetBatch(models.Model):
             )
             new_display.save()
             self.displays.add(new_display)
+            self.displays_status = 2
 
         # set the discs and partitions
         fs_dict = {fs.name: fs for fs in partition_fs.objects.all()}
@@ -1184,7 +1180,9 @@ class AssetBatch(models.Model):
             description='partition information generated during asset run',
         )
         partition_table_.save()
+        self.partition_table_status = 1
         for hdd in hw.hdds:
+            self.partition_table_status = 2
             disc = partition_disc(
                 partition_table=partition_table_,
                 disc=hdd.device_name,
@@ -1231,7 +1229,7 @@ class AssetBatch(models.Model):
         self.device.save()
 
         # set the network devices
-        self.network_devices.all().delete()
+        self.network_devices_status = 1
         for network_device in hw.network_devices:
             new_network_device = AssetHWNetworkDevice(
                 manufacturer=network_device.manufacturer,
@@ -1242,6 +1240,7 @@ class AssetBatch(models.Model):
                 )
             new_network_device.save()
             self.network_devices.add(new_network_device)
+            self.network_devices_status = 2
 
         self.save()
         # TODO: Set displays.

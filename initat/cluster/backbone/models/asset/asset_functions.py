@@ -65,8 +65,6 @@ class BaseAssetPackage(object):
                 return datetime.datetime.fromtimestamp(int(self.install_date))
             except:
                 pass
-
-            return None
         else:
             try:
                 year = self.install_date[0:4]
@@ -77,7 +75,7 @@ class BaseAssetPackage(object):
             except:
                 pass
 
-            return None
+        return datetime.datetime.fromtimestamp(0)
 
     def get_as_row(self):
         _name = self.name

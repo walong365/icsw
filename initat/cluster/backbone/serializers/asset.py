@@ -330,8 +330,30 @@ class AssetPartitionTableSerializer(serializers.ModelSerializer):
         fields = ("idx", "name", "partition_disc_set", "logicaldisc_set")
 
 
+class SimpleAssetPackageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssetPackage
+        fields = ("idx", "name", "package_type")
+
+
+class SimpleAssetPackageVersionSerializer(serializers.ModelSerializer):
+    asset_package = SimpleAssetPackageSerializer()
+
+    class Meta:
+        model = AssetPackageVersion
+        fields = ("idx", "size", "version", "release", "asset_package")
+
+
+class SimpleAssetPackageVersionInstallTimeSerializer(serializers.ModelSerializer):
+    package_version = SimpleAssetPackageVersionSerializer()
+
+    class Meta:
+        model = AssetPackageVersionInstallTime
+        fields = ("idx", "package_version", "install_time")
+
+
 class AssetBatchSerializer(serializers.ModelSerializer):
-    packages_install_times = AssetPackageVersionInstallTimeSerializer(many=True)
+    packages_install_times = SimpleAssetPackageVersionInstallTimeSerializer(many=True)
     installed_updates = AssetUpdateEntrySerializer(many=True)
     pending_updates = AssetUpdateEntrySerializer(many=True)
     memory_modules = AssetHWMemoryEntrySerializer(many=True)
@@ -343,7 +365,7 @@ class AssetBatchSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetBatch
-        fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "packages",
+        fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device",
                   "packages_install_times", "pending_updates", "installed_updates", "cpus", "memory_modules", "gpus",
                   "is_finished_processing", "network_devices", "partition_table",
                   "displays")
@@ -352,7 +374,7 @@ class AssetBatchSerializer(serializers.ModelSerializer):
 class SimpleAssetBatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetBatch
-        fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "packages_length",
-                  "packages_install_times_length", "pending_updates_length", "installed_updates_length", "cpus_length",
-                  "memory_modules_length", "gpus_length", "network_devices_length", "is_finished_processing",
-                  "partition_table_length", "displays_length")
+        fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "packages_status",
+                  "packages_install_times_status", "pending_updates_status", "installed_updates_status", "cpus_status",
+                  "memory_modules_status", "gpus_status", "network_devices_status", "is_finished_processing",
+                  "partition_table_status", "displays_status")
