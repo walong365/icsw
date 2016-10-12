@@ -724,10 +724,8 @@ menu_module = angular.module(
         else
             sel_groups = 0
             sel_devices = 0
-        group_plural = if sel_groups == 1 then "group" else "groups"
-        device_plural = if sel_devices == 1 then "device" else "devices"
-        group_plural = if sel_groups == 1 then "group" else "groups"
-        device_plural = if sel_devices == 1 then "device" else "devices"
+        group_plural = if sel_groups == 1 then "Group" else "Groups"
+        device_plural = if sel_devices == 1 then "Device" else "Devices"
         _list = []
         if sel_devices
             _list.push("#{sel_devices} #{device_plural}")

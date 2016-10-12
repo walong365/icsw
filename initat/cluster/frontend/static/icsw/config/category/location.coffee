@@ -126,7 +126,7 @@ angular.module(
     "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswCategoryBackup",
     "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster",
     "icswComplexModalService", "icswLocationGfxBackup", "icswToolsSimpleModalService",
-    "icswCategoryLocationHelper",
+    "icswCategoryLocationHelper", "icswMonitoringResult",
 (
     $scope, $compile, $templateCache, Restangular, $timeout,
     icswCSRFService, $rootScope, ICSW_SIGNALS, icswDeviceTreeService,
@@ -134,7 +134,7 @@ angular.module(
     FileUploader, blockUI, icswTools, ICSW_URLS, icswCategoryBackup,
     icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
     icswComplexModalService, icswLocationGfxBackup, icswToolsSimpleModalService,
-    icswCategoryLocationHelper,
+    icswCategoryLocationHelper, icswMonitoringResult,
 ) ->
     my_loc_helper = icswCategoryLocationHelper.get_location_proxy()
     
@@ -160,13 +160,20 @@ angular.module(
     filter_list = () ->
         # filter location list (run through con_element)
         $scope.struct.locations.length = 0
+        # list of service idxs allowed (for add_host)
+        _allowed_srvc_idxs = (_srvc.$$idx for _srvc in $scope.struct.monitoring_data.services)
         for loc in $scope.struct.orig_locations
             _proxy = my_loc_helper.get(loc)
+            if not _proxy.monitoring_data?
+                _proxy.monitoring_data = new icswMonitoringResult()  # $scope.struct.monitoring_data
+            # reset host and service list
+            _proxy.monitoring_data.clear()
             _dev_idxs = (entry.device for entry in loc.$dml_list)
             _local_idxs = []
             for dev in $scope.struct.monitoring_data.hosts
                 if dev.$$icswDevice.idx in _dev_idxs
                     _local_idxs.push(dev.$$icswDevice.idx)
+                    _proxy.monitoring_data.add_host(dev, _allowed_srvc_idxs)
             _proxy.shown_devs = _local_idxs.length
             _proxy.num_devs = _dev_idxs.length 
             if _local_idxs.length
@@ -175,7 +182,7 @@ angular.module(
     rebuild_list = () ->
         $scope.struct.category_tree.build_location_list($scope.struct.orig_locations)
         if $scope.struct.mode == "show"
-            if $scope.struct.monitoring_datra?
+            if $scope.struct.monitoring_data?
                 filter_list()
                 # set new monitoring data
         else
@@ -203,6 +210,18 @@ angular.module(
         rebuild_list()
     )
 
+    $scope.maps_callback = (cmd) ->
+        if cmd == "map_init"
+            _update_mon_data()
+
+    _update_mon_data = (new_data) ->
+        if $scope.struct.monitoring_data? and $scope.struct.tree_data_valid
+            filter_list()
+            if $scope.struct.google_maps_fn?
+                $scope.struct.google_maps_fn("new_mon_data", $scope.struct.locations)
+            else
+                console.warn "google_maps_fn not valid"
+
     # determine runmode, set by link function
     $scope.set_mode = (mode) ->
         $scope.struct.mode = mode
@@ -215,9 +234,7 @@ angular.module(
                 (new_data) ->
                     if not $scope.struct.monitoring_data?
                         $scope.struct.monitoring_data = new_data
-                    if $scope.struct.tree_data_valid
-                        filter_list()
-                        # console.log "nd", new_data
+                    _update_mon_data()
             )
 
     # utility functions
@@ -239,7 +256,7 @@ angular.module(
     $scope.locate = ($event, loc) ->
         # loc is a real location (not a proxy location)
         # locate map on google-maps location
-        if $scope.struct.google_maps_fn
+        if $scope.struct.google_maps_fn? and $scope.struct.google_maps_fn
             $scope.struct.google_maps_fn("refresh", [loc.latitude, loc.longitude])
             $scope.struct.google_maps_fn("zoom", 11)
         else

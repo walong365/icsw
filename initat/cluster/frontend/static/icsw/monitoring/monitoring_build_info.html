@@ -1,27 +1,28 @@
 <script type="text/ng-template" id="icsw.monitoring.build_info">
     <div class="container-fluid">
         <h3>
-            Monitoring control and info
-            <span class="text-warning" ng-show="struct.loading">Updating data...</span>
+            Monitoring Control and Information
+            <span class="text-warning" ng-show="struct.loading">Updating Data ...</span>
         </h3>
         <uib-accordion close-others="false" ng-if="struct.sys_info">
             <div uib-accordion-group class="panel-default" is-open="true">
                 <uib-accordion-heading>
-                    Current system setup
+                    Current System Setup
                 </uib-accordion-heading>
                 <icsw-monitoring-sys-info-node icsw-master="struct.sys_info.master" icsw-slaves="struct.sys_info.slaves">
                 </icsw-monitoring-sys-info-node>
-                <icsw-tools-button size="sm" type="create" value="Create Config" ng-click="create_config($event)"></icsw-tools-button>
+                <div style="margin-top:10px;"></div>
+                <icsw-tools-button size="sm" type="create" value="Create Configuration" ng-click="create_config($event)"></icsw-tools-button>
             </div>
             <div uib-accordion-group class="panel-default" is-open="false">
                 <uib-accordion-heading>
-                    Build overview
+                    Build Overview
                     <span ng-show="struct.sys_info">
-                        ({{ struct.sys_info.num_builds }} builds, {{ struct.sys_info.master_list.length }} shown)
+                        ({{ struct.sys_info.num_builds }} Builds, {{ struct.sys_info.master_list.length }} shown)
                     </span>
                 </uib-accordion-heading>
                 <table
-                    class="table table-condensed table-hover" style="width: auto;"
+                    class="table table-condensed table-hover" style=""
                     st-table="entries_displayed"
                     st-safe-src="struct.sys_info.master_list"
                     ng-show="struct.sys_info.master_list.length > 0"
@@ -38,16 +39,16 @@
                             </td>
                         </tr>
                         <tr>
-                            <th>device (#slaves)</th>
-                            <th>start</th>
-                            <th>conf</th>
-                            <th>run / sync</th>
-                            <th>devices</th>
-                            <th title="Monitoring Daemon version" class="text-center">MonDaemon</th>
-                            <th title="ICSW Software version" class="text-center">ICSW</th>
-                            <th title="Livestatus version" class="text-center">Livestatus</th>
-                            <th>Build type</th>
-                            <th>data size (files)</th>
+                            <th>Device (#Worker)</th>
+                            <th>Start</th>
+                            <th>Configuration</th>
+                            <th>Run / Sync</th>
+                            <th class="text-right">Devices</th>
+                            <th class="text-center">Monitoring Daemon Version</th>
+                            <th class="text-center">Software Version</th>
+                            <th class="text-center">Livestatus Version</th>
+                            <th>Build Type</th>
+                            <th>Data Size (Files)</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -92,7 +93,7 @@
 
 <script type="text/ng-template" id="icsw.monitoring.sys.info.node">
     <div>
-        <h4>Node setup ({{ struct.nodes.length }}), {{ slaves.length }} slaves defined</h4>
+        <h4>Node Setup ({{ struct.nodes.length }}), {{ slaves.length }} Worker defined</h4>
         <table
             class="table table-condensed table-hover table-striped"
             style="width: auto;"
@@ -101,12 +102,12 @@
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>SWVersion</th>
-                    <th>MonVersion</th>
-                    <th>LiveVersion</th>
+                    <th>Software Version</th>
+                    <th>Monitoring Daemon Version</th>
+                    <th>Liveview Version</th>
                     <th>Autostart</th>
                     <th>Ignore</th>
-                    <th>latest contact</th>
+                    <th>Latest Contact</th>
                 </tr>
             </thead>
             <tbody>

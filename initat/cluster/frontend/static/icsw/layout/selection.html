@@ -178,11 +178,11 @@
 
                     <div ng-show="saved_selections.length">
                         <h3 class="text-success">{{ saved_selections.length }} Saved Selections found</h3>
-                        <div class="row controls form-control-static">
+                        <div class="controls form-control-static">
                             {{  selection_for_dropdown }}
                             <div class="input-group">
                                 <ui-select ng-model="struct.selection_for_dropdown" on-select="use_selection($item, $model)">
-                                    <ui-select-match class="ui-select-match" placeholder="Choose a selection...">
+                                    <ui-select-match class="ui-select-match" placeholder="Choose a Selection ...">
                                         {{ $select.selected.info }}
                                     </ui-select-match>
                                     <ui-select-choices class="ui-select-choices" repeat="sel in saved_selections">
@@ -213,9 +213,9 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="col-md-2 col-xs-2 control-label">
+                        <label class="col-md-2 col-xs-2 control-label icsw-formlabel">
                             <span ng-show="struct.synced">or </span>
-                            create:
+                            Create:
                         </label>
                         <div class="col-md-8 col-xs-8 controls">
                             <input class="form-control" ng-model="struct.selection.db_obj.name" type="text"/>

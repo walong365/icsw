@@ -155,6 +155,8 @@ angular.module(
             monitoring_data: React.PropTypes.object
             draw_parameters: React.PropTypes.object
             return_data: React.PropTypes.object
+            # external trigger, changing this prop will result in a full recalc of the burst
+            external_trigger: React.PropTypes.number
         }
 
         componentDidMount: () ->
@@ -164,6 +166,8 @@ angular.module(
             @leave_timeout = undefined
             @focus_name = ""
             @clicked_focus = ""
+            # current trigger, for external trigger, NOT in state
+            @current_trigger = @props.external_trigger
             return {
                 # to trigger redraw
                 draw_counter: 0
@@ -222,20 +226,21 @@ angular.module(
             @focus_name = ring_el.name
             @clear_timeout()
             # delay export by 200 milliseconds
-            @export_timeout = $timeout(
-                () =>
-                    # console.log "UPDATE"
-                    _services = (el.check for el in ring_el.get_self_and_childs() when el.check.$$ct == "service")
-                    _hosts = []
-                    _host_idxs = []
-                    for _service in _services
-                        if not _service.$$dummy
-                            if _service.$$host_mon_result.$$icswDevice.idx not in _host_idxs
-                                _host_idxs.push(_service.$$host_mon_result.$$icswDevice.idx)
-                                _hosts.push(_service.$$host_mon_result)
-                    @props.return_data.update(_hosts, _services, [], [])
-                if @clicked_focus then 0 else 50
-            )
+            if @props.return_data?
+                @export_timeout = $timeout(
+                    () =>
+                        # console.log "UPDATE"
+                        _services = (el.check for el in ring_el.get_self_and_childs() when el.check.$$ct == "service")
+                        _hosts = []
+                        _host_idxs = []
+                        for _service in _services
+                            if not _service.$$dummy
+                                if _service.$$host_mon_result.$$icswDevice.idx not in _host_idxs
+                                    _host_idxs.push(_service.$$host_mon_result.$$icswDevice.idx)
+                                    _hosts.push(_service.$$host_mon_result)
+                        @props.return_data.update(_hosts, _services, [], [])
+                    if @clicked_focus then 0 else 50
+                )
             # console.log _services
             @setState({focus_element: ring_el})
 
@@ -243,11 +248,17 @@ angular.module(
             if @root_node?
                 @root_node.clear_focus()
             @focus_name = ""
-            if do_export
+            if do_export and @props.return_data?
                 @props.return_data.update([], [], [], [])
             @setState({focus_element: undefined})
 
         render: () ->
+            # not the most elegant way but working for now
+            if @props.external_trigger?
+                if @props.external_trigger != @current_trigger
+                    # clear root node
+                    @root_node = undefined
+                    @current_trigger = @props.external_trigger
             [_outer_width, _outer_height] = [0, 0]
             if @burst_element? and @burst_element.width()
                 [_outer_width, _outer_height] = [@burst_element.width(), @burst_element.height()]
@@ -477,19 +488,6 @@ angular.module(
             # console.log "+++", scope.con_element
             # omitted segments
             scope.width = parseInt(attrs["initialWidth"] or "600")
-            # not working ...
-            if false
-                scope.$watch("size", (new_val) ->
-                    if new_val
-                        console.log "new_width=", new_val
-                        _w = new_val.width / 2
-                        if _w != scope.width
-                            svg_el = element.find("svg")[0]
-                            g_el = element.find("svg > g")[0]
-                            scope.width = _w
-                            svg_el.setAttribute("width", _w)
-                            g_el.setAttribute("transform", "translate(#{_w / 2}, 160)")
-                )
             _mounted = false
 
             scope.$on("$destroy", () ->
@@ -535,5 +533,4 @@ angular.module(
                     )
             )
     }
-
 ])
