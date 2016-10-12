@@ -9,9 +9,7 @@ if(__name__ == "__main__"):
     updateSearcher = update.CreateUpdateSearcher()
     
     search_result = updateSearcher.Search("( IsInstalled = 0 and IsHidden = 0 )")
-   
 
-   
     update_list = []
     # Update items interface: IUpdate
     for i in range(search_result.Updates.Count):

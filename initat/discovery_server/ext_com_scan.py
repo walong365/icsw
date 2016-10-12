@@ -1049,9 +1049,7 @@ class Dispatcher(object):
         cmd_tuples = [
             (AssetType.PACKAGE, LIST_SOFTWARE_CMD),
             (AssetType.HARDWARE, LIST_HARDWARE_CMD),
-            (AssetType.PROCESS, LIST_PROCESSES_CMD),
             (AssetType.UPDATE, LIST_UPDATES_CMD),
-            (AssetType.LICENSE, LIST_KEYS_CMD),
             (AssetType.DMI, DMIINFO_CMD),
             (AssetType.PCI, PCIINFO_CMD),
             (AssetType.PRETTYWINHW, PRETTYWINHW_CMD),
@@ -1059,7 +1057,9 @@ class Dispatcher(object):
         ]
         planned_run.start_feed(cmd_tuples)
         for _idx, (runtype, _command) in enumerate(cmd_tuples):
-            timeout = 300
+            timeout = 30
+            if runtype == AssetType.PENDING_UPDATE:
+                timeout = 3600
 
             _com = "/opt/cluster/sbin/check_nrpe -H{} -2 -P1048576 -p{} -n -c{} -t{}".format(
                 planned_run.ip,

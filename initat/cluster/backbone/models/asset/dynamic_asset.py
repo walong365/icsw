@@ -1247,7 +1247,6 @@ class AssetBatch(models.Model):
             self.network_devices_status = 2
 
         self.save()
-        # TODO: Set displays.
 
 
 class DeviceInventory(models.Model):

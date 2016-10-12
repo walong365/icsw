@@ -1,4 +1,7 @@
 exports.config = {
+  jasmineNodeOpts: {
+    defaultTimeoutInterval: 90000
+  },
   framework: 'jasmine',
   seleniumAddress: 'http://localhost:4444/wd/hub',
   specs: ['spec.js'],
