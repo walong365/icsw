@@ -252,6 +252,9 @@ div[class*="col-"] > ul {
 .tab-pane icsw-simple-device-info > .container-fluid {
     padding: 5px 0px;
 }
+.progress-bar {
+    color: #000000;
+}
 
 /* FORM STYLES START */
 .icsw-formlabel {
