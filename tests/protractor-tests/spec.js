@@ -361,14 +361,9 @@ describe('ICSW Basic Interface Tests:', function() {
 
       var filter_field = element(by.model("filter_settings.str_filter"));
       filter_field.sendKeys(group_name);
-      browser.sleep(2500).then(function() {
 
-        var group_name_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[1]/strong"));
-        var description_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[3]"));
-
-        expect(group_name_element.getText()).toEqual(group_name);
-        expect(description_element.getText()).toEqual(group_description);
-      });
+      var tree_table = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table"))
+      browser.wait(EC.and(EC.textToBePresentInElement(tree_table, group_name), EC.textToBePresentInElement(tree_table, group_description)));
     });
   });
 
@@ -411,19 +406,13 @@ describe('ICSW Basic Interface Tests:', function() {
 
       var cancel_button = element(by.buttonText("Cancel"));
       cancel_button.click();
-
       browser.sleep(2500);
 
       var filter_field = element(by.model("filter_settings.str_filter"));
       filter_field.sendKeys(name);
-      browser.sleep(2500).then(function() {
 
-        var group_name_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[1]"));
-        var description_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table/tbody/tr/td[4]"));
-
-        expect(group_name_element.getText()).toEqual(name);
-        expect(description_element.getText()).toEqual(description);
-      });
+      var tree_table = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table"))
+      browser.wait(EC.and(EC.textToBePresentInElement(tree_table, name), EC.textToBePresentInElement(tree_table, description)));
     });
   });
 

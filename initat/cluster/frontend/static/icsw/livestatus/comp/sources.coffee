@@ -435,12 +435,17 @@ angular.module(
             @generation = 0
             # notifier for new data
             @result_notifier = $q.defer()
+            # counter dicts
             @hosts = []
             @services = []
-            # counter dicts
             @mon_cat_counters = {}
             @device_cat_counters = {}
             @_create_used_fields()
+            @clear()
+
+        clear: () =>
+            @hosts.length = 0
+            @services.length = 0
             @__luts_set = false
 
         new_selection: () =>
@@ -453,7 +458,14 @@ angular.module(
         copy_from: (src) =>
             # copy objects from src
             @update(src.hosts, src.services, src.mon_cat_counters, src.device_cat_counters)
-            
+
+        add_host: (host, allowed_srvc_list) =>
+            @hosts.push(host)
+            for srvc in host.$$service_list
+                if srvc.$$idx in allowed_srvc_list
+                    @services.push(srvc)
+            # console.log "add", host
+
         update: (hosts, services, mon_cat_counters, device_cat_counters) =>
             @generation++
             @__luts_set = false

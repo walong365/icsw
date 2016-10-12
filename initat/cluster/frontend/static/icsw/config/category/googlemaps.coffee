@@ -24,39 +24,7 @@ angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
         "ui.select", "restangular", "uiGmapgoogle-maps", "angularFileUpload"
     ]
-).service("reactT",
-[
-    "$q",
-(
-    $q,
-) ->
-    {svg, rect} = React.DOM
-    return React.createClass(
-        propTypes: {
-            # required types
-        }
-
-        render: () ->
-            _svg = svg(
-                {
-                    key: "svg.top"
-                    width: "100%"
-                    height: "100%"
-                }
-                rect(
-                    {
-                        key: "rect"
-                        width: "20"
-                        height: "20"
-                        fill: "#ff0000"
-                        stroke: "#000000"
-                        strokeWidth: "2px"
-                    }
-                )
-            )
-            return _svg
-    )
-]).service("reactMarkerEntry",
+).service("reactMarkerEntry",
 [
     "$q",
 (
@@ -81,6 +49,7 @@ angular.module(
                         top: "#{loc.$$gm_y - _offset}px"
                         width: "100px"
                         height: "100px"
+                        border: "1px solid black"
                     }
                 }
                 [
@@ -162,11 +131,82 @@ angular.module(
                 )
             )
     )
+]).service("icswReactBurstGraphList",
+[
+    "$q", "icswDeviceLivestatusBurstReactContainer", "icswBurstDrawParameters",
+(
+    $q, icswDeviceLivestatusBurstReactContainer, icswBurstDrawParameters,
+) ->
+    {div, svg, rect} = React.DOM
+    return React.createClass(
+        propTypes: {
+            # required types
+            locations: React.PropTypes.array
+        }
+
+        getInitialState: () ->
+            @draw_params = new icswBurstDrawParameters(
+                {
+                    inner_radius: 20
+                    outer_radius: 60
+                    start_ring: 0
+                    is_interactive: false
+                    omit_small_segments: true
+                }
+            )
+            return {
+                counter: 0
+                external_trigger: 0
+            }
+
+        redraw: () ->
+            @setState({counter: @state.counter + 1})
+
+        new_mon_data: () ->
+            @setState({external_trigger: @state.external_trigger + 1})
+
+        render: () ->
+            # should be equal to outer radius
+            _offset = 60
+            _el_list = []
+            for loc_proxy in @props.locations
+                loc = loc_proxy.location
+                _el_list.push(
+                    div(
+                        {
+                            key: "container.#{loc.idx}"
+                            style: {
+                                position: "absolute"
+                                left: "#{loc.$$gm_x - _offset}px"
+                                top: "#{loc.$$gm_y - _offset}px"
+                                # should be equal to the total width / height
+                                width: "120px"
+                                height: "120px"
+                                # border: "1px solid black"
+                            }
+                        }
+                        React.createElement(
+                            icswDeviceLivestatusBurstReactContainer
+                            {
+                                draw_parameters: @draw_params
+                                monitoring_data: loc_proxy.monitoring_data
+                                external_trigger: @state.external_trigger
+                            }
+                        )
+                    )
+                )
+            return div(
+                {
+                    key: "top"
+                }
+                _el_list
+            )
+    )
 ]).service("icswGoogleMapsMarkerOverlay",
 [
-    "$q", "reactMarkerList",
+    "$q", "reactMarkerList", "icswReactBurstGraphList",
 (
-    $q, reactMarkerList,
+    $q, reactMarkerList, icswReactBurstGraphList,
 ) ->
     class icswGoogleMapsMarkerOverlay
         constructor: (@overlay, @google_maps, @locations) ->
@@ -178,13 +218,18 @@ angular.module(
             panes.markerLayer.appendChild(@mydiv)
             @element = ReactDOM.render(
                 React.createElement(
-                    reactMarkerList
+                    # reactMarkerList
+                    icswReactBurstGraphList
                     {
                         locations: @locations
                     }
                 )
                 @mydiv
             )
+
+        new_mon_data: (locations) =>
+            if @element?
+                @element.new_mon_data()
 
         draw: () =>
             _proj = @overlay.getProjection()
@@ -194,35 +239,6 @@ angular.module(
                 _loc.$$gm_x = center.x
                 _loc.$$gm_y = center.y
             @element.redraw()
-
-]).service("icswGoogleMapsLivestatusOverlay",
-[
-    "$q", "reactT",
-(
-    $q, reactT,
-) ->
-    class icswGoogleMapsLivestatusOverlay
-        constructor: (@overlay, @google_maps) ->
-            @center = new @google_maps.LatLng(48.1, 16.3)
-
-        onAdd: () =>
-            panes = @overlay.getPanes()
-            @mydiv = angular.element("<div/>")[0]
-            @mydiv.style.position = "absolute"
-            panes.markerLayer.appendChild(@mydiv)
-
-            @element = ReactDOM.render(
-                React.createElement(
-                    reactT
-                )
-                @mydiv
-            )
-
-        draw: () =>
-            _proj = @overlay.getProjection()
-            center = _proj.fromLatLngToDivPixel(@center)
-            @mydiv.style.left = "#{center.x}px"
-            @mydiv.style.top = "#{center.y}px"
 
 ]).service("icswGoogleMapsHelper",
 [
@@ -278,10 +294,10 @@ angular.module(
 ]).controller("icswConfigCategoryTreeGoogleMapCtrl",
 [
     "$scope", "$templateCache", "$timeout", "$rootScope", "ICSW_SIGNALS", "icswGoogleMapConfig",
-    "icswGoogleMapsLivestatusOverlay", "icswGoogleMapsMarkerOverlay", "uiGmapIsReady", "icswGoogleMapsHelper",
+    "icswGoogleMapsMarkerOverlay", "uiGmapIsReady", "icswGoogleMapsHelper",
 (
     $scope, $templateCache, $timeout, $rootScope, ICSW_SIGNALS, icswGoogleMapConfig,
-    icswGoogleMapsLivestatusOverlay, icswGoogleMapsMarkerOverlay, uiGmapIsReady, icswGoogleMapsHelper,
+    icswGoogleMapsMarkerOverlay, uiGmapIsReady, icswGoogleMapsHelper,
 ) ->
 
     $scope.struct = {
@@ -314,6 +330,8 @@ angular.module(
                     icswGoogleMapsHelper.leave_map()
             }
         }
+        # marker overlay
+        marker_overlay: undefined
     }
     $scope.set_map_mode = (mode) ->
         console.log "map_mode=", mode
@@ -412,6 +430,16 @@ angular.module(
                 )
             else if fn_name == "zoom"
                 $scope.struct.map_options.control.getGMap().setZoom(args)
+            else if fn_name == "new_mon_data"
+                if not $scope.struct.marker_overlay
+                    # marker overlay
+                    marker_overlay = new $scope.struct.google_maps.OverlayView()
+                    angular.extend(marker_overlay, new icswGoogleMapsMarkerOverlay(marker_overlay, $scope.struct.google_maps, $scope.locations))
+                    marker_overlay.setMap($scope.struct.map_options.control.getGMap())
+                    $scope.struct.marker_overlay = marker_overlay
+                $scope.struct.marker_overlay.new_mon_data(args)
+            else
+                console.warn "got unknown command #{fn_name} (#{args})"
 
     _update = () ->
         if $scope.struct.map_active and $scope.locations? and $scope.locations.length and not $scope.struct.maps_ready
@@ -430,16 +458,6 @@ angular.module(
                             # zoom
                             $scope.zoom_to_locations()
                             # console.log _map.control
-                            # marker overlay
-                            marker_overlay = new $scope.struct.google_maps.OverlayView()
-                            angular.extend(marker_overlay, new icswGoogleMapsMarkerOverlay(marker_overlay, $scope.struct.google_maps, $scope.locations))
-                            marker_overlay.setMap(_map.control.getGMap())
-                            # init overlay
-                            # overlay = new $scope.struct.google_maps.OverlayView()
-                            # angular.extend(overlay, new icswGoogleMapsLivestatusOverlay(overlay, $scope.struct.google_maps))
-                            # console.log $scope.struct.map_options.control
-                            # overlay.setMap(_map.control.getGMap())
-                            # console.log overlay
                             if _map.control? and _map.control.refresh?
                                 _map.control.refresh(
                                     {
