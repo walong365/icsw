@@ -189,12 +189,6 @@ if __name__=="__main__":
         except WindowsError as e:
             break
 
-
-    #for _name in package_names:
-    #    kb = "3135996"
-    #    if kb in _name:
-    #        print _name
-    
     kb_db = {}
     matcher = re.compile(".*(KB\d+).*")
     

@@ -533,10 +533,8 @@ class AssetRun(models.Model):
 
     @property
     def raw_result(self):
-        raw = self.raw_result_str
+        raw = self.raw_result_str.rstrip()
         if self.scan_type == ScanType.NRPE:
-            if raw.startswith("b'"):
-                raw = raw[2:-2]
             result = bz2.decompress(base64.b64decode(raw))
         elif self.scan_type == ScanType.HM:
             # parse XML
