@@ -77,6 +77,7 @@ device_asset_module = angular.module(
 
         # AssetBatch data
         asset_batch_list: []
+        asset_batch_lookup_cache: {}
 
         # Scheduled Runs tab properties
         schedule_items: []
@@ -102,14 +103,12 @@ device_asset_module = angular.module(
                         simple: angular.toJson(1)
                     }
                 )
-                # todo, make faster
-                # icswAssetPackageTreeService.reload($scope.$id)
             ]
         ).then(
             (result) ->
                 set_schedule_items(result[0])
 
-                set_asset_batch_list(result[1])
+                update_asset_batch_list(result[1])
 
                 $scope.struct.reloading = false
 
@@ -135,6 +134,7 @@ device_asset_module = angular.module(
 
     set_asset_batch_list = (asset_batch_list) ->
         $scope.struct.asset_batch_list.length = 0
+        $scope.struct.asset_batch_lookup_cache = {}
 
         dev_lookup_table = {}
 
@@ -146,6 +146,19 @@ device_asset_module = angular.module(
             $scope.struct.asset_batch_list.push(asset_batch)
             salt_asset_batch(asset_batch)
             dev_lookup_table[asset_batch.device].asset_batch_list.push(asset_batch)
+            $scope.struct.asset_batch_lookup_cache[asset_batch.idx] = asset_batch
+
+    update_asset_batch_list = (asset_batch_list) ->
+        for asset_batch in asset_batch_list
+            salt_asset_batch(asset_batch)
+
+            if $scope.struct.asset_batch_lookup_cache[asset_batch.idx] == undefined
+                $scope.struct.asset_batch_list.push(asset_batch)
+                asset_batch.$$device.asset_batch_list.push(asset_batch)
+                $scope.struct.asset_batch_lookup_cache[asset_batch.idx] = asset_batch
+            else
+                old_obj = $scope.struct.asset_batch_lookup_cache[asset_batch.idx]
+                _.extend(old_obj, asset_batch)
 
     set_schedule_items = (sched_list) ->
         $scope.struct.schedule_items.length = 0
@@ -276,7 +289,7 @@ device_asset_module = angular.module(
             obj["$$" + info_list_name + "_availability_class"] = info_not_available_class
             obj["$$" + info_list_name + "_availability_text"] = info_not_available_text
 
-            if obj[info_list_name + "_length"] > 0
+            if obj[info_list_name + "_status"] > 0
                 obj["$$" + info_list_name + "_availability_class"] = info_available_class
                 obj["$$" + info_list_name + "_availability_text"] = info_available_text
 
@@ -343,45 +356,6 @@ device_asset_module = angular.module(
 
         return moreFilteredPackageItems
 
-    $scope.assetchangesetar = ($event) ->
-        ar1 = undefined
-        ar2 = undefined
-
-        for ar in $scope.struct.asset_runs
-            if ar.$$selected && ar1 == undefined
-                ar1 = ar
-            else if ar.$$selected && ar2 == undefined
-                ar2 = ar
-                break
-
-        console.log "ar1: ", ar1
-        console.log "ar2: ", ar2
-
-        if ar1 != undefined && ar2 != undefined
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_GET_ASSETRUN_DIFFS
-                data:
-                    pk1: ar1.idx
-                    pk2: ar2.idx
-                dataType: 'json'
-            }
-            ).then(
-                (result) ->
-                    $scope.struct.show_changeset = true
-                    $scope.struct.added_changeset = result.added
-                    $scope.struct.removed_changeset = result.removed
-                (not_ok) ->
-                    console.log not_ok
-            )
-
-        $scope.struct.num_selected_ar = (_run for _run in $scope.struct.asset_runs when _run.$$selected).length
-        if $scope.struct.num_selected_ar > 2
-            for _run in $scope.struct.asset_runs
-                if _run.run_type == _type and _run.$$selected and _run.run_index != assetrun.run_index
-                    _run.$$selected = false
-                    $scope.struct.num_selected_ar--
-                    break
-
     $scope.scan_device = (_device) ->
         _device.$$scan_device_button_disabled = true
         icswSimpleAjaxCall(
@@ -406,100 +380,6 @@ device_asset_module = angular.module(
                         reload_data()
                     5000
                 )
-        )
-
-
-    $scope.select_asset = ($event, device, assetrun) ->
-        assetrun.$$selected = !assetrun.$$selected
-        if assetrun.$$selected
-            # ensure only assetrun with same type are selected
-            _type = assetrun.run_type
-            for _run in device.assetrun_set
-                if _run.run_type !=_type and _run.$$selected
-                    _run.$$selected = false
-        $scope.struct.num_selected = (_run for _run in device.assetrun_set when _run.$$selected).length
-        if $scope.struct.num_selected > 2
-            # remove selected asset run
-            for _run in device.assetrun_set
-                if _run.run_type == _type and _run.$$selected and _run.run_index != assetrun.run_index
-                    _run.$$selected = false
-                    $scope.struct.num_selected--
-                    break
-            
-
-    $scope.assetchangeset = (device) ->
-        ar1 = undefined
-        ar2 = undefined
-
-        for ar in device.assetrun_set
-            if ar.$$selected && ar1 == undefined
-                ar1 = ar
-            else if ar.$$selected && ar2 == undefined
-                ar2 = ar
-                break
-
-        console.log "ar1: ", ar1
-        console.log "ar2: ", ar2
-        if ar1 != undefined && ar2 != undefined
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_GET_ASSETRUN_DIFFS
-                data:
-                    pk1: ar1.idx
-                    pk2: ar2.idx
-                dataType: 'json'
-            }
-            ).then(
-                (result) ->
-                    device.show_changeset = true
-                    device.added_changeset = result.added
-                    device.removed_changeset = result.removed
-                (not_ok) ->
-                    console.log not_ok
-            )
-
-    $scope.select_devices = (obj) ->
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.ASSET_GET_DEVICES_FOR_ASSET
-                data:
-                    pk: obj[0]
-                dataType: 'json'
-            }
-        ).then(
-            (result) ->
-                new_devs = []
-                pks_s = ''
-                devidx_dev_dict = {}
-
-                for dev in $scope.struct.device_tree.all_list
-                    for pk in result.devices
-                        if dev.idx == pk
-                            dev.assetrun_set = []
-                            new_devs.push(dev)
-                            pks_s = pks_s.concat(dev.idx + ",")
-                            devidx_dev_dict[dev.idx] = dev
-
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.ASSET_GET_ASSETRUNS_FOR_DEVICES
-                        data:
-                            pks: pks_s
-                        dataType: 'json'
-                    }
-                ).then(
-                    (result) ->
-                        for obj in result.asset_runs
-                            asset_run = $scope.createAssetRunFromObj(obj)
-                            devidx_dev_dict[asset_run.device_pk].assetrun_set.push(asset_run)
-                    (not_ok) ->
-                        console.log not_ok
-                )
-
-                $scope.struct.devices.length = 0
-                for dev in new_devs
-                    $scope.struct.devices.push dev
-            (not_ok) ->
-                console.log not_ok
         )
 
     $scope.close_tab = (to_be_closed_tab, _device) ->
@@ -701,9 +581,10 @@ device_asset_module = angular.module(
 ]).controller("icswAssetAssetBatchTableCtrl",
 [
     "$scope", "$q", "ICSW_URLS", "blockUI", "Restangular", "icswAssetPackageTreeService", "icswSimpleAjaxCall",
-    "icswTools"
+    "icswTools", "icswAssetHelperFunctions"
 (
-    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall, icswTools
+    $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall, icswTools,
+    icswAssetHelperFunctions
 ) ->
     $scope.struct = {
         selected_assetrun: undefined
@@ -846,7 +727,6 @@ device_asset_module = angular.module(
 
         blockUI.start("Please wait...")
 
-
         $q.all(
             [
                 Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
@@ -857,13 +737,15 @@ device_asset_module = angular.module(
             ]
         ).then(
             (result) ->
+                console.log(result[0][0])
                 tab = {}
                 tab.asset_batch = result[0][0]
                 tab.tab_heading_text = "Scan (ID:" + asset_batch.idx + ")"
 
                 for memory_entry in tab.asset_batch.memory_modules
                     memory_entry.$$capacity = "N/A"
-                    memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
+                    if memory_entry.capacity
+                        memory_entry.$$capacity = memory_entry.capacity / (1024.0 * 1024.0)
 
                 for display in tab.asset_batch.displays
                         display.$$manufacturer = "N/A"
@@ -878,6 +760,36 @@ device_asset_module = angular.module(
                         display.$$ypixels = "N/A"
                         if display.ypixels
                                 display.$$ypixels = display.ypixels
+
+                for install_time_obj in tab.asset_batch.packages_install_times
+                    install_time_obj.$$install_time = moment(install_time_obj.install_time).format("YYYY-MM-DD HH:mm:ss")
+
+                    package_version = install_time_obj.package_version
+                    asset_package = package_version.asset_package
+
+                    package_version.$$release = "N/A"
+                    if package_version.release
+                        package_version.$$release = package_version.release
+
+                    package_version.$$version = "N/A"
+                    if package_version.version
+                        package_version.$$version = package_version.version
+
+                    asset_package.$$package_type = icswAssetHelperFunctions.resolve("package_type", asset_package.package_type)
+
+                    package_version.$$size = "N/A"
+
+                    if asset_package.$$package_type == "Windows"
+                        if package_version.size > 0
+                            package_version.$$size = Number((package_version.size / 1024).toFixed(2)) + " MByte"
+
+                    if asset_package.$$package_type == "Linux"
+                        if package_version.size > 0
+                            if package_version.size < (1024 * 1024)
+                                package_version.$$size = Number((package_version.size / 1024).toFixed(2)) + " KByte"
+                            else
+                                package_version.$$size = Number((package_version.size / (1024 * 1024)).toFixed(2)) + " MByte"
+
 
                 tab.asset_batch.hdds = []
                 tab.asset_batch.logical_discs = []
@@ -938,28 +850,8 @@ device_asset_module = angular.module(
                             o["fill_percentage"] = (100 - (((disc.free_space / disc.size) * 100))).toFixed(2)
 
                         tab.asset_batch.logical_discs.push(o)
-
-                icswAssetPackageTreeService.load($scope.$id).then(
-                    (tree) ->
-                        tree_up_to_date = true
-                        for package_idx in tab.asset_batch.packages
-                            if tree.version_lut[package_idx] == undefined
-                                tree_up_to_date = false
-                                break
-
-                        if !tree_up_to_date
-                            console.log("not up to date package tree found, reloading")
-                            icswAssetPackageTreeService.reload($scope.$id).then(
-                                (tree) ->
-                                    tab.packages = resolve_package_assets(tree, tab.asset_batch.packages, tab.asset_batch.packages_install_times)
-                                    asset_batch.$$device.info_tabs.push(tab)
-                                    blockUI.stop()
-                            )
-                        else
-                            tab.packages = resolve_package_assets(tree, tab.asset_batch.packages, tab.asset_batch.packages_install_times)
-                            asset_batch.$$device.info_tabs.push(tab)
-                            blockUI.stop()
-                )
+                asset_batch.$$device.info_tabs.push(tab)
+                blockUI.stop()
         )
 
 

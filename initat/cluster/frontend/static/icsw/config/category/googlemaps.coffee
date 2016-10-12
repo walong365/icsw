@@ -137,6 +137,7 @@ angular.module(
 (
     $q, icswDeviceLivestatusBurstReactContainer, icswBurstDrawParameters,
 ) ->
+    OUTER_RAD = 50
     {div, svg, rect} = React.DOM
     return React.createClass(
         propTypes: {
@@ -147,8 +148,8 @@ angular.module(
         getInitialState: () ->
             @draw_params = new icswBurstDrawParameters(
                 {
-                    inner_radius: 20
-                    outer_radius: 60
+                    inner_radius: 10
+                    outer_radius: OUTER_RAD
                     start_ring: 0
                     is_interactive: false
                     omit_small_segments: true
@@ -167,7 +168,8 @@ angular.module(
 
         render: () ->
             # should be equal to outer radius
-            _offset = 60
+            _offset = OUTER_RAD
+            _size = 2 * OUTER_RAD
             _el_list = []
             for loc_proxy in @props.locations
                 loc = loc_proxy.location
@@ -180,8 +182,8 @@ angular.module(
                                 left: "#{loc.$$gm_x - _offset}px"
                                 top: "#{loc.$$gm_y - _offset}px"
                                 # should be equal to the total width / height
-                                width: "120px"
-                                height: "120px"
+                                width: "#{_size}px"
+                                height: "#{_size}px"
                                 # border: "1px solid black"
                             }
                         }
@@ -387,6 +389,9 @@ angular.module(
     build_markers = () ->
         $scope.marker_list.length = 0
         marker_lut = {}
+        if $scope.struct.marker_overlay
+            # do not draw any google markers when a marker overlay is present
+            return
         # console.log "init markers", $scope.locations.length
 
         for _proxy_entry in $scope.locations
@@ -437,6 +442,7 @@ angular.module(
                     angular.extend(marker_overlay, new icswGoogleMapsMarkerOverlay(marker_overlay, $scope.struct.google_maps, $scope.locations))
                     marker_overlay.setMap($scope.struct.map_options.control.getGMap())
                     $scope.struct.marker_overlay = marker_overlay
+                    build_markers()
                 $scope.struct.marker_overlay.new_mon_data(args)
             else
                 console.warn "got unknown command #{fn_name} (#{args})"
@@ -465,8 +471,11 @@ angular.module(
                                         longitude: _map.center.longitude
                                     }
                                 )
+                            if $scope.maps_cb_fn?
+                                $scope.maps_cb_fn("map_init")
                     )
             )
+
     $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), (event) ->
         _update()
     )

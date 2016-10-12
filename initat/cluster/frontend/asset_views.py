@@ -61,34 +61,32 @@ logger = logging.getLogger(__name__)
 
 class AssetBatchViewSet(viewsets.ViewSet):
     def list(self, request):
+        if "simple" in request.query_params:
+            prefetch_list = []
+        else:
+            prefetch_list = [
+                "packages_install_times",
+                "packages_install_times__package_version",
+                "packages_install_times__package_version__asset_package",
+                "installed_updates",
+                "pending_updates",
+                "memory_modules",
+                "cpus",
+                "gpus",
+                "network_devices",
+                "device",
+                "device__act_partition_table"
+            ]
+
         if "assetbatch_pks" in request.query_params:
-            queryset = AssetBatch.objects.prefetch_related(
-                    "packages",
-                    "packages_install_times",
-                    "installed_updates",
-                    "pending_updates",
-                    "memory_modules",
-                    "cpus",
-                    "gpus",
-                    "network_devices",
-                    "device",
-                    "device__act_partition_table").filter(idx__in=json.loads(request.query_params.getlist("assetbatch_pks")[0]))
+            queryset = AssetBatch.objects.prefetch_related(*prefetch_list).filter(
+                idx__in=json.loads(request.query_params.getlist("assetbatch_pks")[0]))
         else:
             if "device_pks" in request.query_params:
-                queryset = AssetBatch.objects.prefetch_related(
-                    "packages",
-                    "packages_install_times",
-                    "installed_updates",
-                    "pending_updates",
-                    "memory_modules",
-                    "cpus",
-                    "gpus",
-                    "network_devices",
-                    "device",
-                    "device__act_partition_table"
-                ).filter(device__in=json.loads(request.query_params.getlist("device_pks")[0]))
+                queryset = AssetBatch.objects.prefetch_related(*prefetch_list).filter(
+                    device__in=json.loads(request.query_params.getlist("device_pks")[0]))
             else:
-                queryset = AssetBatch.objects.all()
+                queryset = AssetBatch.objects.prefetch_related(*prefetch_list).all()
 
         if "simple" in request.query_params:
             serializer = SimpleAssetBatchSerializer(queryset, many=True)
@@ -129,147 +127,6 @@ class get_devices_for_asset(View):
         )
 
 
-class get_assetrun_diffs(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        ar_pk1 = request.POST['pk1']
-        ar_pk2 = request.POST['pk2']
-
-        ar1 = AssetRun.objects.get(pk=int(ar_pk1))
-        ar2 = AssetRun.objects.get(pk=int(ar_pk2))
-
-        removed = ar1.get_asset_changeset(ar2)
-        added = ar2.get_asset_changeset(ar1)
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'added': [str(obj) for obj in added],
-                    'removed': [str(obj) for obj in removed]
-                }
-            ),
-            content_type="application/json"
-        )
-
-
-class get_versions_for_package(View):
-    @method_decorator(login_required)
-    def post(self, request):
-        pk = request.POST['pk']
-
-        ap = AssetPackage.objects.get(pk=int(pk))
-
-        return HttpResponse(
-            json.dumps(
-                {
-                    'versions': [
-                        (v.idx, v.version, v.release, v.size) for v in ap.assetpackageversion_set.all()
-                    ]
-                }
-            ),
-            content_type="application/json"
-        )
-
-
-class get_assets_for_asset_run(View):
-    @method_decorator(login_required)
-    def post(self, request, *args, **kwargs):
-        ar = AssetRun.objects.get(pk=int(request.POST['pk']))
-
-        if ar.run_type == AssetType.PACKAGE:
-            return HttpResponse(
-                json.dumps(
-                    {
-                        'assets': [
-                            (
-                                str(bap.name),
-                                str(bap.version),
-                                str(bap.release),
-                                str(bap.size),
-                                str(bap.install_date) if bap.install_date else "Unknown",
-                                str(bap.package_type.name)
-                            ) for bap in ar.generate_assets_no_save()
-                        ]
-                    }
-                )
-            )
-        elif ar.run_type == AssetType.HARDWARE:
-            return HttpResponse(
-                json.dumps(
-                    {
-                        'assets': [
-                            (
-                                str(bah.type),
-                                str(bah.info_dict)
-                            ) for bah in ar.generate_assets_no_save()
-                        ]
-                    }
-                )
-            )
-        elif ar.run_type == AssetType.LICENSE:
-            return HttpResponse(
-                json.dumps(
-                    {
-                        'assets': [
-                            (
-                                str(bal.name),
-                                str(bal.license_key)
-                            ) for bal in ar.generate_assets_no_save()
-                        ]
-                    }
-                )
-            )
-        elif ar.run_type == AssetType.UPDATE:
-            return HttpResponse(
-                json.dumps(
-                    {
-                        'assets': [
-                            (
-                                str(bau.name),
-                                str(bau.install_date),
-                                str(bau.status)
-                            ) for bau in ar.generate_assets_no_save()
-                        ]
-                    }
-                )
-            )
-        elif ar.run_type == AssetType.PROCESS:
-            return HttpResponse(
-                json.dumps(
-                    {
-                        'assets': [
-                            (
-                                str(bap.name),
-                                str(bap.pid)
-                            ) for bap in ar.generate_assets_no_save()
-                        ]
-                    }
-                )
-            )
-        elif ar.run_type == AssetType.PENDING_UPDATE:
-            return HttpResponse(
-                json.dumps(
-                    {
-                        'assets': [
-                            (
-                                str(bapu.name),
-                                str(bapu.version),
-                                str(bapu.optional)
-                            ) for bapu in ar.generate_assets_no_save()
-                        ]
-                    }
-                )
-            )
-        else:
-            return HttpResponse(
-                json.dumps(
-                    {
-                        'assets': [str(ba) for ba in ar.generate_assets_no_save]
-                    }
-                )
-            )
-
-
 class ScheduledRunViewSet(viewsets.ViewSet):
     def list(self, request):
         if "pks" in request.query_params:
@@ -279,66 +136,6 @@ class ScheduledRunViewSet(viewsets.ViewSet):
         else:
             queryset = ScheduleItem.objects.all()
         serializer = ScheduleItemSerializer(queryset, many=True)
-        return Response(serializer.data)
-
-
-class AssetRunsViewSet(viewsets.ViewSet):
-    def list_all(self, request):
-        if "pks" in request.query_params:
-            queryset = AssetRun.objects.filter(
-                Q(asset_batch__device__in=json.loads(request.query_params.getlist("pks")[0]))
-            )
-        else:
-            queryset = AssetRun.objects.all()
-
-        queryset = queryset.filter(Q(created__gt=timezone.now() - datetime.timedelta(days=30)))
-
-        queryset = queryset.order_by(
-            # should be created, FIXME later
-            "-idx",
-            "-run_start_time")
-        # ).annotate(
-        #     num_packages=Count("asset_batch__packages"),
-        #     num_hardware=Count("assethardwareentry"),
-        #     num_processes=Count("assetprocessentry"),
-        #     num_licenses=Count("assetlicenseentry"),
-        #     num_updates=Sum(Case(When(assetupdateentry__installed=True, then=1), output_field=IntegerField(), default=0)),
-        #     num_pending_updates=Sum(Case(When(assetupdateentry__installed=False, then=1), output_field=IntegerField(), default=0)),
-        #     num_pci_entries=Count("assetpcientry"),
-        #     num_asset_handles=Count("assetdmihead__assetdmihandle"),
-        #     num_hw_entries=Sum("asset_batch__cpus")
-        # )
-
-        for ar in queryset:
-            ar.num_packages = len(ar.asset_batch.packages.all())
-            ar.num_hardware = len(ar.assethardwareentry_set.all())
-            ar.num_processes = len(ar.assetprocessentry_set.all())
-            ar.num_licenses = len(ar.assetlicenseentry_set.all())
-            ar.num_updates = len(ar.assetupdateentry_set.all())
-            ar.num_pending_updates = len(ar.assetupdateentry_set.all())
-            ar.num_pci_entries = len(ar.assetpcientry_set.all())
-            ar.num_asset_handles = 0
-            for dmihead in ar.assetdmihead_set.all():
-                ar.num_asset_handles += len(dmihead.assetdmihandle_set.all())
-            ar.num_hw_entries = len(ar.asset_batch.cpus.all())
-
-        serializer = AssetRunOverviewSerializer(queryset, many=True)
-
-        return Response(serializer.data)
-
-    def get_details(self, request):
-        queryset = AssetRun.objects.prefetch_related(
-            "asset_batch__packages",
-            "assethardwareentry_set",
-            "assetprocessentry_set",
-            "assetupdateentry_set",
-            "assetlicenseentry_set",
-            "assetpcientry_set",
-            "assetdmihead_set__assetdmihandle_set__assetdmivalue_set",
-        ).filter(
-            Q(pk=request.query_params["pk"])
-        )
-        serializer = AssetRunDetailSerializer(queryset, many=True)
         return Response(serializer.data)
 
 
