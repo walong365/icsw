@@ -1,8 +1,7 @@
 from collections import defaultdict
 import wmi
-import bz2
-import base64
 import json
+from common import nrpe_encode
 
 
 def path(wmi_object):
@@ -40,5 +39,4 @@ if __name__=="__main__":
 
     info.update(mapping_info)
     output = json.dumps(info)
-    compressed = bz2.compress(bytes(output, "utf-8"))
-    print(base64.b64encode(compressed).decode('ascii'))
+    print(nrpe_encode(output))

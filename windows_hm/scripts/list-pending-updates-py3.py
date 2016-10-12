@@ -1,8 +1,8 @@
 import win32com
 import win32com.client
 import json
-import bz2
-import base64
+from common import nrpe_encode
+
 
 if(__name__ == "__main__"):
     update = win32com.client.Dispatch('Microsoft.Update.Session')
@@ -20,5 +20,4 @@ if(__name__ == "__main__"):
         update_list.append((title, optional))
 
     output = json.dumps(update_list)
-
-    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))
+    print(nrpe_encode(output))

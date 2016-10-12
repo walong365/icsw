@@ -1,10 +1,11 @@
 import win32pdh
 import time
 import json
-import base64
-import bz2
+from common import nrpe_encode
+
 
 counter_english_map = {}
+
 
 def find_pdh_counter_localized_name(english_name, machine_name = None):
     if not counter_english_map:
@@ -82,8 +83,4 @@ if __name__=="__main__":
             win32pdh.RemoveCounter(hc)
 
     output = json.dumps(pname_pid_list)
-
-    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))
-
-
-
+    print(nrpe_encode(output))

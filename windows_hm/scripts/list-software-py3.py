@@ -1,29 +1,7 @@
-#import win32com.client 
-#from collections import OrderedDict
-#import sys
-#sys.path.append('"C:\\Python27_x86"')
-#strComputer = "." 
-#objWMIService = win32com.client.Dispatch("WbemScripting.SWbemLocator") 
-#objSWbemServices = objWMIService.ConnectServer(strComputer,"root\cimv2") 
-#colItems = objSWbemServices.ExecQuery("Select * from Win32_Product") 
-#for objItem in colItems: 
-#    print "Caption: ", objItem.Caption 
-#    print "Description: ", objItem.Description 
-#    print "Identifying Number: ", objItem.IdentifyingNumber 
-#    print "Install Date: ", objItem.InstallDate 
-#    print "Install Date 2: ", objItem.InstallDate2 
-#    print "Install Location: ", objItem.InstallLocation 
-#    print "Install State: ", objItem.InstallState 
-#    print "Name: ", objItem.Name 
-#    print "Package Cache: ", objItem.PackageCache 
-#    print "SKU Number: ", objItem.SKUNumber 
-#    print "Vendor: ", objItem.Vendor 
-#    print "Version: ", objItem.Version 
- 
 import winreg
 import json
-import bz2
-import base64
+from common import nrpe_encode
+
 
 UNINSTALL_PATH1 = "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
 UNINSTALL_PATH2 = "SOFTWARE\\Wow6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall"
@@ -101,7 +79,4 @@ if __name__=="__main__":
     package_list.sort()
 
     output = json.dumps([(package.displayName, package.displayVersion, package.estimatedSize, package.installDate) for package in package_list])
-
-    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))
-
-    
+    print(nrpe_encode(output))

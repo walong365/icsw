@@ -1,7 +1,8 @@
 import winreg
 import bz2
-import base64
+from common import nrpe_encode
 import json
+
 
 def DecodeKey(rpk):
     rpkOffset = 52
@@ -80,5 +81,5 @@ if __name__=="__main__":
         pass
 
     output = json.dumps(keys)
-
-    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))
+    print(nrpe_encode(output))
+    

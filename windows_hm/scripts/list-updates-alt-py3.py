@@ -1,8 +1,8 @@
 import win32com.client
 import json
 import pywintypes
-import bz2
-import base64
+from common import nrpe_encode
+
 
 class Update:
     def __init__(self):
@@ -51,5 +51,4 @@ if(__name__ == "__main__"):
         updates.append(update)
 
     output = json.dumps([(update.title, update.date.isoformat(), update.status) for update in updates])
-
-    print(base64.b64encode(bz2.compress(bytes(output, "utf-8"))))
+    print(nrpe_encode(output))
