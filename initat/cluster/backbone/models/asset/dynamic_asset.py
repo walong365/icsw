@@ -25,6 +25,7 @@ import datetime
 import json
 import logging
 import time
+import ast
 
 from django.db import models
 from django.db.models import Q
@@ -763,6 +764,7 @@ class AssetRun(models.Model):
         blob = tree.xpath('ns0:update_list', namespaces=tree.nsmap)[0]\
             .text
         l = server_command.decompress(blob, pickle=True)
+        self.asset_batch.pending_updates_status = 1
         for (name, version) in l:
             asset_update_entry = AssetUpdateEntry.objects.filter(
                 name=name,
@@ -788,6 +790,8 @@ class AssetRun(models.Model):
                 asset_update_entry.save()
 
             self.asset_batch.pending_updates.add(asset_update_entry)
+            self.asset_batch.pending_updates_status = 2
+        self.asset_batch.save()
 
     def _generate_assets_update_nrpe(self, data):
         l = json.loads(data)
@@ -818,6 +822,7 @@ class AssetRun(models.Model):
 
             self.asset_batch.installed_updates.add(asset_update_entry)
             self.asset_batch.installed_updates_status = 2
+        self.asset_batch.save()
 
     def _generate_assets_process_nrpe(self, data):
         l = json.loads(data)
@@ -827,8 +832,7 @@ class AssetRun(models.Model):
     def _generate_assets_process_hm(self, tree):
         blob = tree.xpath('ns0:process_tree', namespaces=tree.nsmap)[0]\
             .text
-        # TODO: Remove eval().
-        process_dict = eval(bz2.decompress(base64.b64decode(blob)))
+        process_dict = ast.literal_eval(bz2.decompress(base64.b64decode(blob)))
         self._generate_assets_process(process_dict)
 
     def _generate_assets_process(self, process_dict):
