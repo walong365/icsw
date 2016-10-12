@@ -210,6 +210,18 @@ angular.module(
         rebuild_list()
     )
 
+    $scope.maps_callback = (cmd) ->
+        if cmd == "map_init"
+            _update_mon_data()
+
+    _update_mon_data = (new_data) ->
+        if $scope.struct.monitoring_data? and $scope.struct.tree_data_valid
+            filter_list()
+            if $scope.struct.google_maps_fn?
+                $scope.struct.google_maps_fn("new_mon_data", $scope.struct.locations)
+            else
+                console.warn "google_maps_fn not valid"
+
     # determine runmode, set by link function
     $scope.set_mode = (mode) ->
         $scope.struct.mode = mode
@@ -222,13 +234,7 @@ angular.module(
                 (new_data) ->
                     if not $scope.struct.monitoring_data?
                         $scope.struct.monitoring_data = new_data
-                    if $scope.struct.tree_data_valid
-                        filter_list()
-                        if $scope.struct.google_maps_fn?
-                            $scope.struct.google_maps_fn("new_mon_data", $scope.struct.locations)
-                        else
-                            console.warn "google_maps_fn not valid"
-                        # console.log "nd", new_data
+                    _update_mon_data()
             )
 
     # utility functions

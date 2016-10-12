@@ -77,4 +77,3 @@ class VersionCheckMixin(object):
                 )
         end_time = time.time()
         self.log("monitor-daemon version discovery took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
-
