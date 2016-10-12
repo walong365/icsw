@@ -28,6 +28,7 @@ import time
 
 from django.db import models
 from django.db.models import Q
+from django.db import transaction
 from django.utils import timezone, dateparse
 from lxml import etree
 
@@ -544,6 +545,7 @@ class AssetRun(models.Model):
             raise NotImplemented
         return result
 
+    @transaction.atomic
     def generate_assets(self):
         function_name = '_generate_assets_{}_{}'.format(
             AssetType(self.run_type)._name_.lower(),
@@ -603,9 +605,6 @@ class AssetRun(models.Model):
                     )
         self._generate_assets_package(assets)
 
-    from django.db import transaction
-
-    @transaction.atomic
     def _generate_assets_package(self, assets):
         apvs = []
         install_times = []
@@ -1092,6 +1091,7 @@ class AssetBatch(models.Model):
             unicode(self.device)
         )
 
+    @transaction.atomic
     def generate_assets(self):
         """Set the batch level hardware information (.cpus, .memory_modules
         etc.) from the acquired asset runs."""
