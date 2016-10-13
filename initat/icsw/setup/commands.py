@@ -570,7 +570,13 @@ def migrate_app(_app, **kwargs):
 
 @SetupLogger
 def apply_migration(_app, **kwargs):
-    success = call_manage(["migrate", _app.split(".")[-1], "--noinput"] + kwargs.get("migrate_args", []))
+    success = call_manage(
+        [
+            "migrate", _app.split(".")[-1]
+        ] + kwargs.get("target_migration", []) + [
+            "--noinput"
+        ] + kwargs.get("migrate_args", [])
+    )
     return success
 
 
@@ -585,48 +591,49 @@ def create_db(opts, first_run):
     # check_migrations()
     # schemamigrations
     if first_run:
+        print("Doing fast initial migration")
         # create dummy migrations
         DummyFile(
             os.path.join(MIGRATIONS_DIR, "0001_initial.py"),
             """
-    # -*- coding: utf-8 -*-
-    from __future__ import unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
-    from django.db import models, migrations
-    import datetime
-    import django.db.models.deletion
-    from django.conf import settings
+from django.db import models, migrations
+import datetime
+import django.db.models.deletion
+from django.conf import settings
 
 
-    class Migration(migrations.Migration):
+class Migration(migrations.Migration):
 
-        dependencies = [
-        ]
+    dependencies = [
+    ]
     """
         )
         DummyFile(
             os.path.join(MIGRATIONS_DIR, "0801_merge.py"),
             """
-    # -*- coding: utf-8 -*-
-    from __future__ import unicode_literals
+# -*- coding: utf-8 -*-
+from __future__ import unicode_literals
 
-    from django.db import models, migrations
-    import datetime
-    import django.db.models.deletion
-    from django.conf import settings
+from django.db import models, migrations
+import datetime
+import django.db.models.deletion
+from django.conf import settings
 
 
-    class Migration(migrations.Migration):
+class Migration(migrations.Migration):
 
-        dependencies = [
-            ('backbone', '0800_base'),
-        ]
+    dependencies = [
+        ('backbone', '0800_base'),
+    ]
     """
         )
         # first step: migrate contenttypes
         apply_migration("contenttypes")
         # go to migration 0982
-        apply_migration("backbone", migrate_args=["0982", "--run-syncdb", "--fake-initial"])
+        apply_migration("backbone", target_migration=["0982"], migrate_ars=["--run-syncdb", "--fake-initial"])
         apply_migration("admin")
         apply_migration("reversion")
         apply_migration("backbone", migrate_args=["--run-syncdb", "--fake-initial"])
@@ -874,7 +881,6 @@ def main(args):
             _db_cf_created = True
     else:
         _db_cf_created = False
-    print "*", _db_cf_created
     check_db_rights()
     if call_create_db:
         create_db(args, _db_cf_created)
