@@ -575,7 +575,7 @@ def apply_migration(_app, **kwargs):
 
 
 @SetupLogger
-def create_db(opts):
+def create_db(opts, first_run):
     if os.getuid():
         print("need to be root to create database")
         sys.exit(0)
@@ -584,20 +584,70 @@ def create_db(opts):
     #     clear_migrations()
     # check_migrations()
     # schemamigrations
-    ds0 = DirSave(CMIG_DIR, 799)
-    os.environ["INIT_REMOVE_APP_NAME_1"] = "django.contrib.sites"
-    os.environ["INIT_REMOVE_APP_NAME_2"] = "initat.cluster."
-    for _app in ["auth", "contenttypes", "sites"]:
-        apply_migration(_app)
-    del os.environ["INIT_REMOVE_APP_NAME_1"]
-    for _app in ["sites"]:
-        apply_migration(_app)
-    del os.environ["INIT_REMOVE_APP_NAME_2"]
-    ds0.restore()
-    ds0.cleanup()
-    # we now go for the 0800
-    check_for_0800(opts)
-    apply_migration("backbone")
+    if first_run:
+        # create dummy migrations
+        DummyFile(
+            os.path.join(MIGRATIONS_DIR, "0001_initial.py"),
+            """
+    # -*- coding: utf-8 -*-
+    from __future__ import unicode_literals
+
+    from django.db import models, migrations
+    import datetime
+    import django.db.models.deletion
+    from django.conf import settings
+
+
+    class Migration(migrations.Migration):
+
+        dependencies = [
+        ]
+    """
+        )
+        DummyFile(
+            os.path.join(MIGRATIONS_DIR, "0801_merge.py"),
+            """
+    # -*- coding: utf-8 -*-
+    from __future__ import unicode_literals
+
+    from django.db import models, migrations
+    import datetime
+    import django.db.models.deletion
+    from django.conf import settings
+
+
+    class Migration(migrations.Migration):
+
+        dependencies = [
+            ('backbone', '0800_base'),
+        ]
+    """
+        )
+        # first step: migrate contenttypes
+        apply_migration("contenttypes")
+        # go to migration 0982
+        apply_migration("backbone", migrate_args=["0982", "--run-syncdb", "--fake-initial"])
+        apply_migration("admin")
+        apply_migration("reversion")
+        apply_migration("backbone", migrate_args=["--run-syncdb", "--fake-initial"])
+        apply_migration("auth")
+        apply_migration("sessions")
+        apply_migration("sites")
+    else:
+        ds0 = DirSave(CMIG_DIR, 799)
+        os.environ["INIT_REMOVE_APP_NAME_1"] = "django.contrib.sites"
+        os.environ["INIT_REMOVE_APP_NAME_2"] = "initat.cluster."
+        for _app in ["auth", "contenttypes", "sites"]:
+            apply_migration(_app)
+        del os.environ["INIT_REMOVE_APP_NAME_1"]
+        for _app in ["sites"]:
+            apply_migration(_app)
+        del os.environ["INIT_REMOVE_APP_NAME_2"]
+        ds0.restore()
+        ds0.cleanup()
+        # we now go for the 0800
+        check_for_0800(opts)
+        apply_migration("backbone")
     # reversion needs access to proper user model
     apply_migration("reversion")
 
@@ -819,9 +869,15 @@ def main(args):
         if not create_db_cf(args):
             print("Creation of {} not successfull, exiting".format(DB_ACCESS_CS_NAME))
             sys.exit(3)
+        else:
+            # this flag is used as an indicator for new setups (no 0800 migration needed)
+            _db_cf_created = True
+    else:
+        _db_cf_created = False
+    print "*", _db_cf_created
     check_db_rights()
     if call_create_db:
-        create_db(args)
+        create_db(args, _db_cf_created)
         call_init_webfrontend = True
     if call_migrate_db:
         migrate_db(args)

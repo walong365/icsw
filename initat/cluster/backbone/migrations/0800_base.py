@@ -13,6 +13,7 @@ def db_limit_1():
 
 
 class Migration(migrations.Migration):
+    initial =  True
 
     dependencies = [
         ('backbone', '0001_initial'),

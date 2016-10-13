@@ -95,10 +95,17 @@ class com_instance(object):
 
     def write_start_log(self):
         if self.Meta.write_log:
-            self.log(u"Got command {}, {}: {}".format(
-                self.srv_com["command"].text,
-                logging_tools.get_plural("config", len(self.Meta.actual_configs)),
-                ", ".join(self.Meta.actual_configs) or "none"))
+            self.log(
+                u"Got command {}, {}: {}".format(
+                    self.srv_com["command"].text,
+                    logging_tools.get_plural("config", len(self.Meta.actual_configs)),
+                    ", ".join(
+                        [
+                            conf.name for conf in self.Meta.actual_configs
+                        ]
+                    ) or "none"
+                )
+            )
 
     def write_end_log(self):
         if self.Meta.write_log:
