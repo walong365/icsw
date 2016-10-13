@@ -764,6 +764,7 @@ angular.module(
         _ICSW_DEVICE_TABS_CHANGED: "_icsw.device.tabs.changed"
         _ICSW_CLOSE_CONFIG: "_icsw.close.config"
         _ICSW_DELETE_CONFIG: "_icsw.delete.config"
+        _ICSW_UPDATE_MON_SELECTION: "_icsw.update.mon.selection"
     }
     return (name) ->
         if name not of _dict

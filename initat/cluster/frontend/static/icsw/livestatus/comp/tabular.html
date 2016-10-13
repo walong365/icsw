@@ -25,7 +25,8 @@
             </tr>
             <tr>
                 <td colspan="99">
-                    <icsw-tools-show-hide-columns icsw-callback="columns_changed" columns="state devflags devcats state_type description monflags moncats output" create-show-column="true"></icsw-tools-show-hide-columns>
+                    <icsw-tools-show-hide-columns icsw-callback="columns_changed" columns="state devflags devcats state_type description monflags moncats output" create-show-column="true">
+                    </icsw-tools-show-hide-columns>
                 </td>
             </tr>
             <tr>
@@ -42,7 +43,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr icsw-livestatus-mon-table-row
+            <tr icsw-livestatus-mon-table-row icsw-livestatus-table-row-sel="service"
                 ng-repeat="service in entries_displayed"
             >
             </tr>
@@ -102,6 +103,11 @@
                     <div class="pull-left"><input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="search"/></div>
                     <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed"
                          possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;"></div>
+                    <div class="pull-right">
+                        <span class="label label-success" ng-show="struct.selected">
+                            {{ struct.selected }}
+                        </span>
+                    </div>
                 </td>
             </tr>
             <tr>
@@ -121,7 +127,7 @@
             </tr>
         </thead>
         <tbody>
-            <tr icsw-livestatus-device-table-row
+            <tr icsw-livestatus-device-table-row icsw-livestatus-table-row-sel="host"
                 ng-repeat="host in entries_displayed"
             >
             </tr>

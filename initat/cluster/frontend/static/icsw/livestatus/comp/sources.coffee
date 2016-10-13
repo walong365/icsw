@@ -427,7 +427,9 @@ angular.module(
     $q, icswTools, icswSaltMonitoringResultService,
 ) ->
     class icswMonitoringResult
-        constructor: () ->
+        constructor: (monitoring=true) ->
+            # used for monitoring
+            @monitoring = monitoring
             @id = icswTools.get_unique_id("monres")
             # selection generation
             @sel_generation = 0
@@ -469,12 +471,29 @@ angular.module(
         update: (hosts, services, mon_cat_counters, device_cat_counters) =>
             @generation++
             @__luts_set = false
-            @hosts.length = 0
-            for entry in hosts
-                @hosts.push(entry)
-            @services.length = 0
-            for entry in services
-                @services.push(entry)
+            #console.log @hosts, hosts
+            if @monitoring
+                # monitoring mode, check selection
+                _sel_hosts = (entry.$$icswDevice.idx for entry in @hosts when entry.$$selected)
+                _sel_services = (entry.description for entry in @services when entry.$$selected)
+                @hosts.length = 0
+                for entry in hosts
+                    if entry.$$icswDevice.idx in _sel_hosts
+                        entry.$$selected = true
+                    @hosts.push(entry)
+                @services.length = 0
+                for entry in services
+                    if entry.description in _sel_services
+                        entry.$$selected = true
+                    @services.push(entry)
+            else
+                # special device mode
+                @hosts.length = 0
+                for entry in hosts
+                    @hosts.push(entry)
+                @services.length = 0
+                for entry in services
+                    @services.push(entry)
             @mon_cat_counters = mon_cat_counters
             @device_cat_counters = device_cat_counters
             @_create_used_fields()
@@ -871,7 +890,7 @@ angular.module(
                 # raw selection
                 raw_selection: undefined
                 # monresult to emit
-                mon_result: new icswMonitoringResult()
+                mon_result: new icswMonitoringResult(monitoring=false)
             }
             # todo: get the current selection after the pipe is fully initialised
             @dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) =>

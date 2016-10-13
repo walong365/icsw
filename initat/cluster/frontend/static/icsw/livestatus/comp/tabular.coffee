@@ -73,8 +73,10 @@ angular.module(
 ]).controller("icswLivestatusDeviceMonTableCtrl",
 [
     "$scope", "DeviceOverviewSelection", "DeviceOverviewService",
+    "ICSW_SIGNALS",
 (
     $scope, DeviceOverviewSelection, DeviceOverviewService,
+    ICSW_SIGNALS,
 ) ->
     $scope.struct = {
         # monitoring data
@@ -86,6 +88,8 @@ angular.module(
             "pag": {}
             "columns": {}
         }
+        # selected
+        selected: 4
     }
     $scope.link = (con_element, notifier) ->
         $scope.struct.con_element = con_element
@@ -116,6 +120,13 @@ angular.module(
     $scope.columns_changed = (col_setup) ->
         $scope.struct.settings["columns"] = col_setup
         $scope.struct.con_element.pipeline_settings_changed(angular.toJson($scope.struct.settings))
+
+    $scope.$on(ICSW_SIGNALS("_ICSW_UPDATE_MON_SELECTION"), (event, val) ->
+        $scope.$apply(
+            () ->
+                $scope.struct.selected += val
+        )
+    )
 
 ]).directive("icswLivestatusMonTableRow",
 [
@@ -160,17 +171,17 @@ angular.module(
 (
     $templateCache,
 ) ->
-        return {
-            restrict: "EA"
-            template: $templateCache.get("icsw.livestatus.device.table.view")
-            controller: "icswLivestatusDeviceMonTableCtrl"
-            scope: {
-                # connect element for pipelining
-                con_element: "=icswConnectElement"
-            }
-            link: (scope, element, attrs) ->
-                scope.link(scope.con_element, scope.con_element.new_data_notifier)
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.livestatus.device.table.view")
+        controller: "icswLivestatusDeviceMonTableCtrl"
+        scope: {
+            # connect element for pipelining
+            con_element: "=icswConnectElement"
         }
+        link: (scope, element, attrs) ->
+            scope.link(scope.con_element, scope.con_element.new_data_notifier)
+    }
 ]).directive("icswLivestatusDeviceTableRow",
 [
     "$templateCache",
@@ -180,5 +191,30 @@ angular.module(
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.livestatus.device.table.row")
+    }
+]).directive("icswLivestatusTableRowSel",
+[
+    "$q", "ICSW_SIGNALS",
+(
+    $q, ICSW_SIGNALS,
+) ->
+    return {
+        restrict: "A"
+        scope:
+            element: "=icswLivestatusTableRowSel"
+        link: (scope, element, attrs) ->
+            if not scope.element.$$selected?
+                scope.element.$$selected = false
+            if scope.element.$$selected
+                $(element).addClass("info")
+            $(element).bind("click", () ->
+                scope.element.$$selected = !scope.element.$$selected
+                if scope.element.$$selected
+                    scope.$emit(ICSW_SIGNALS("_ICSW_UPDATE_MON_SELECTION"), 1)
+                    $(element).addClass("info")
+                else
+                    scope.$emit(ICSW_SIGNALS("_ICSW_UPDATE_MON_SELECTION"), -1)
+                    $(element).removeClass("info")
+            )
     }
 ])
