@@ -134,7 +134,7 @@ class ConfigCheckObject(object):
                 )
 
             if "LOG_NAME" not in global_config:
-                _log_name = self._inst_xml[self.srv_type_enum.value.instance_name].attrib["name"],
+                _log_name = self._inst_xml[self.srv_type_enum.value.instance_name].attrib["name"]
                 if log_name_postfix:
                     _log_name = "{}-{}".format(
                         _log_name,
