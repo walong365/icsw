@@ -26,6 +26,7 @@ from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError as RestValidationError
 from django.db.models import Q
 from initat.cluster.backbone import serializers as model_serializers
 from initat.cluster.backbone.models.functions import can_delete_obj
@@ -135,7 +136,7 @@ class rest_logging(object):
             u"[{}{}] {}".format(
                 self.__name__,
                 u" {}".format(self.__obj_name) if self.__obj_name else "",
-                unicode(what)
+                unicode(what),
             )
         )
 
@@ -158,12 +159,12 @@ class rest_logging(object):
         try:
             result = self._func(*args, **kwargs)
         except:
+            exc_info = process_tools.exception_info()
             _err_str = process_tools.get_except_info()
             self.log(
                 u"exception: {}".format(_err_str),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            exc_info = process_tools.exception_info()
             for line in exc_info.log_lines:
                 self.log(u"  {}".format(line))
             result = Response(_err_str, status=status.HTTP_406_NOT_ACCEPTABLE)
@@ -331,7 +332,16 @@ class detail_view(mixins.RetrieveModelMixin,
         # print "silent=", silent
         req_changes = getattr(self, "_{}_put".format(model_name), lambda changed, prev: changed)(request.data, prev_model)
         # try:
-        resp = self.update(request, *args, **kwargs)
+        try:
+            resp = self.update(request, *args, **kwargs)
+        except RestValidationError as exc:
+            _err_str = ", ".join(
+                [
+                    "{}: {}".format(_key, ", ".join(_value)) for _key, _value in exc.detail.iteritems()
+                ]
+            )
+            raise ValidationError(_err_str)
+        #     raise
         # except ValidationError as cur_exc:
         #    print cur_exc
         # print dir(resp), resp.data

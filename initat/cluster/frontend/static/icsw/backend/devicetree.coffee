@@ -724,6 +724,30 @@ angular.module(
             )
             return defer.promise
 
+        update_group: (upd_group) =>
+            console.log "***", upd_group
+            # is update group but in fact we update the corresponding meta device
+            defer = $q.defer()
+            Restangular.restangularizeElement(null, upd_group, ICSW_URLS.REST_DEVICE_GROUP_DETAIL.slice(1).slice(0, -2))
+            upd_group.put().then(
+                (data) =>
+                    # console.log "***", upd_group
+                    # replace device
+                    _.remove(@all_list, (entry) -> return entry.idx == upd_group.device)
+                    _.remove(@group_list, (entry) -> return entry.idx == upd_group.idx)
+                    @group_list.push(data)
+                    s1_defer = $q.defer()
+                    @_fetch_device(data.device, s1_defer, "updated meta")
+                    s1_defer.promise.then(
+                        (done) =>
+                            @reorder()
+                            defer.resolve(data)
+                    )
+                (notok) ->
+                    defer.reject("not saved")
+            )
+            return defer.promise
+
         delete_device_group: (dg_pk) =>
             group = @group_lut[dg_pk]
             _.remove(@all_list, (entry) -> return entry.idx == group.device)
@@ -744,13 +768,10 @@ angular.module(
                     if upd_dev.root_passwd
                         upd_dev.root_passwd_set = true
                     s1_defer = $q.defer()
-                    if not data.is_meta_device
-                        # reload meta device
-                        _group = @group_lut[data.device_group]
-                        _meta = _group.device
-                        @_fetch_device(_group.device, s1_defer, "updated device")
-                    else
-                        s1_defer.resolve("not needed")
+                    # reload meta device
+                    _group = @group_lut[data.device_group]
+                    _meta = _group.device
+                    @_fetch_device(_group.device, s1_defer, "updated device")
                     s1_defer.promise.then(
                         (done) =>
                             @reorder()

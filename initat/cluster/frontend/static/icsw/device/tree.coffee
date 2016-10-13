@@ -52,6 +52,7 @@ angular.module(
     icswConfigTreeService,
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
+
     $scope.struct = {
         # tree is loaded
         tree_loaded: false
@@ -72,6 +73,7 @@ angular.module(
         # redraw trigger
         trigger_redraw: 0
     }
+
     $scope.hide_list = [
         # short, full, default
         ["tln", "DTN", false, "Show top level node"]
@@ -135,7 +137,6 @@ angular.module(
         $q.all(wait_list).then(
             (data) ->
                 console.log "TreeData", data
-                $scope.device_tree = data[2]
                 $scope.struct.device_tree = data[0]
                 $scope.struct.config_tree = data[1]
                 $scope.struct.domain_tree = $scope.struct.device_tree.domain_tree
@@ -288,14 +289,18 @@ angular.module(
         else
             template_name = "icsw.device.tree.many.form"
         sub_scope = $scope.$new(true)
-        console.log "ss=", sub_scope
+        sub_scope.num_selected = () ->
+            act_sel = icswActiveSelectionService.get_selection()
+            return act_sel.tot_dev_sel.length
+
+        # console.log "ss=", sub_scope
         sub_scope.edit_obj = obj
         sub_scope.struct = $scope.struct
         # init form
         icswComplexModalService(
             {
                 message: $compile($templateCache.get(template_name))(sub_scope)
-                title: "Device Setup"
+                title: if is_group then "Devicegroup setup" else "Device setup"
                 closable: true
                 ok_label: if create_mode then "Create" else "Modify"
                 ok_callback: (modal) ->
@@ -329,12 +334,20 @@ angular.module(
                                 )
                         else
                             if single_instance
-                                $scope.struct.device_tree.update_device(sub_scope.edit_obj).then(
-                                    (data) ->
-                                        d.resolve("save")
-                                    (reject) ->
-                                        d.reject("not saved")
-                                )
+                                if is_group
+                                    $scope.struct.device_tree.update_group(sub_scope.edit_obj).then(
+                                        (data) ->
+                                            d.resolve("save")
+                                        (reject) ->
+                                            d.reject("not saved")
+                                    )
+                                else
+                                    $scope.struct.device_tree.update_device(sub_scope.edit_obj).then(
+                                        (data) ->
+                                            d.resolve("save")
+                                        (reject) ->
+                                            d.reject("not saved")
+                                    )
                             else
                                 # multi instance modify
                                 icswSimpleAjaxCall(
@@ -364,10 +377,6 @@ angular.module(
                 # trigger refiltering of list
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
         )
-
-    $scope.num_selected = () ->
-        act_sel = icswActiveSelectionService.get_selection()
-        return act_sel.tot_dev_sel.length
 
     $scope.get_tr_class = (obj) ->
         return if obj.is_meta_device then "success" else ""
@@ -444,6 +453,7 @@ angular.module(
                 if scope.struct.device_tree.get_group(device).cluster_device_group
                     new_el = $compile($templateCache.get("icsw.device.tree.cdg.row"))
                 else
+                    # console.log scope.group
                     new_el = $compile($templateCache.get("icsw.device.tree.meta.row"))
             else
                 new_el = $compile($templateCache.get("icsw.device.tree.row"))
@@ -576,6 +586,7 @@ angular.module(
                             act_sel.add_selection(entry)
                         else
                             act_sel.remove_selection(entry)
+
             scope.deselect_all = () ->
                 icswActiveSelectionService.get_selection().deselect_all_devices()
     }

@@ -67,12 +67,12 @@
 
 <script type="text/ng-template" id="icsw.device.tree.cdg.row">
     <td colspan="2">
-        <strong><em>{{ obj.device_group_obj.name }}</em></strong>
+        <strong><em>{{ group.name }}</em></strong>
     </td>
     <td>{{ struct.device_tree.device_class_tree.lut[obj.device_class].name }}</td>
     <td>{{ group.description }}</td>
     <td colspan="2"></td>
-    <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(group.domain_tree_node) }}</td>
+    <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(device.domain_tree_node) }}</td>
     <td ng-show="num_shown(['tln'])" colspan="{{ num_shown(['tln']) }}"></td>
     <td>
         <icsw-tools-button type="modify" size="sm" ng-click="edit_device_group($event, group)"></icsw-tools-button>
@@ -557,7 +557,7 @@
                 </div>
             </div>
         </fieldset>
-        <fieldset>
+        <fieldset ng-show="!edit_obj.cluster_device_group">
             <legend>Flags</legend>
             <div class="row">
                 <div class="col-md-6">
@@ -565,7 +565,7 @@
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-7">
                                 <label>
-                                    <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.enabled" ng-show="!edit_obj.cluster_device_group" type="checkbox"/>
+                                    <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
                                     Enabled
                                 </label>
                             </div>
