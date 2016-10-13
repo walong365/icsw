@@ -139,9 +139,11 @@ class ConfigCheckObject(object):
                     source="instance"
                 )
                 if log_name_postfix:
-                    _log_name = "{}-{}".format(
-                        _log_name,
-                        log_name_postfix,
+                    _log_name = configfile.str_c_var(
+                        "{}-{}".format(
+                            _log_name,
+                            log_name_postfix,
+                        )
                     )
                 global_config.add_config_entries(
                     [
