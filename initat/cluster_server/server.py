@@ -44,21 +44,22 @@ class ServerProcess(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         long_host_name, mach_name = process_tools.get_fqdn()
         self.__run_command = True if global_config["COMMAND"].strip() else False
-        self.CC.init(icswServiceEnum.cluster_server, global_config, init_msi_block=not self.__run_command)
-        self.CC.check_config()
-        # close DB conncetion (daemonize)
+        # rewrite LOG_NAME if necessary
         if self.__run_command:
-            # rewrite LOG_NAME and PID_NAME
-            global_config["PID_NAME"] = "{}-direct-{}-{:d}".format(
-                global_config["PID_NAME"],
-                "{:04d}{:02d}{:02d}-{:02d}:{:02d}".format(*tuple(time.localtime()[0:5])),
-                os.getpid()
-            )
-            global_config["LOG_NAME"] = "{}-direct-{}".format(
-                global_config["LOG_NAME"],
-                global_config["COMMAND"]
+            self.CC.init(
+                icswServiceEnum.cluster_server,
+                global_config,
+                init_msi_block=False,
+                log_name_postfix="direct-{}".format(global_config["COMMAND"]),
             )
         else:
+            self.CC.init(
+                icswServiceEnum.cluster_server,
+                global_config,
+            )
+        self.CC.check_config()
+        # close DB conncetion (daemonize)
+        if not self.__run_command:
             # create hardware fingerprint
             self.CC.create_hfp()
         db_tools.close_connection()

@@ -632,7 +632,7 @@ class Migration(migrations.Migration):
         )
         # first step: migrate contenttypes
         apply_migration("contenttypes")
-        # go to migration 0982
+        # go to migration 0982'
         apply_migration("backbone", target_migration=["0982"], migrate_ars=["--run-syncdb", "--fake-initial"])
         apply_migration("admin")
         apply_migration("reversion")
