@@ -28,8 +28,6 @@ import time
 import ast
 
 from django.db import models
-from django.db.models import Q
-from django.db import transaction
 from django.utils import timezone, dateparse
 from lxml import etree
 
@@ -544,7 +542,6 @@ class AssetRun(models.Model):
             raise NotImplemented
         return result
 
-    @transaction.atomic
     def generate_assets(self):
         function_name = '_generate_assets_{}_{}'.format(
             AssetType(self.run_type)._name_.lower(),
@@ -605,6 +602,10 @@ class AssetRun(models.Model):
         self._generate_assets_package(assets)
 
     def _generate_assets_package(self, assets):
+        aps_needing_save = []
+        apvs_needing_save = []
+        apvits_needing_save = []
+
         apvs = []
         install_times = []
 
@@ -639,12 +640,12 @@ class AssetRun(models.Model):
                     apv = versions[0]
                 else:
                     apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
-                    apv.save()
+                    apvs_needing_save.append(apv)
             else:
                 ap = AssetPackage(name=name, package_type=package_type)
-                ap.save()
+                aps_needing_save.append(ap)
                 apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
-                apv.save()
+                apvs_needing_save.append(apv)
 
             apvs.append(apv)
 
@@ -661,7 +662,7 @@ class AssetRun(models.Model):
                     timestamp=timestamp
                 )
 
-                apv_install_time.save()
+                apvits_needing_save.append(apv_install_time)
 
             install_times.append(apv_install_time)
 
@@ -673,10 +674,24 @@ class AssetRun(models.Model):
         if len(install_times) > 0:
             self.asset_batch.packages_install_times_status = 2
 
-        self.asset_batch.save()
+        AssetPackage.objects.bulk_create(aps_needing_save)
+
+        # needed to make further bulk_create calls work
+        for apv in apvs_needing_save:
+            ap = apv.asset_package
+            apv.asset_package = ap
+
+        AssetPackageVersion.objects.bulk_create(apvs_needing_save)
+
+        for apvit in apvits_needing_save:
+            apv = apvit.package_version
+            apvit.package_version = apv
+
+        AssetPackageVersionInstallTime.objects.bulk_create(apvits_needing_save)
 
         self.asset_batch.packages.add(*apvs)
         self.asset_batch.packages_install_times.add(*install_times)
+        self.asset_batch.save()
 
     def _generate_assets_hardware_nrpe(self, data):
         self._generate_assets_hardware(etree.fromstring(data))
@@ -1083,7 +1098,6 @@ class AssetBatch(models.Model):
             unicode(self.device)
         )
 
-    @transaction.atomic
     def generate_assets(self):
         """Set the batch level hardware information (.cpus, .memory_modules
         etc.) from the acquired asset runs."""

@@ -349,7 +349,7 @@ class SimpleAssetPackageVersionInstallTimeSerializer(serializers.ModelSerializer
 
     class Meta:
         model = AssetPackageVersionInstallTime
-        fields = ("idx", "package_version", "install_time")
+        fields = ("idx", "package_version", "install_time", "timestamp")
 
 
 class AssetBatchSerializer(serializers.ModelSerializer):

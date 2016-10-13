@@ -762,7 +762,9 @@ device_asset_module = angular.module(
                                 display.$$ypixels = display.ypixels
 
                 for install_time_obj in tab.asset_batch.packages_install_times
-                    install_time_obj.$$install_time = moment(install_time_obj.install_time).format("YYYY-MM-DD HH:mm:ss")
+                    install_time_obj.$$install_time = "N/A"
+                    if install_time_obj.timestamp > 1
+                        install_time_obj.$$install_time = moment.unix(install_time_obj.timestamp).format("YYYY-MM-DD HH:mm:ss")
 
                     package_version = install_time_obj.package_version
                     asset_package = package_version.asset_package
