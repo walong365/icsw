@@ -93,9 +93,9 @@ _PRODUCT_FAMILY_MATRIX = collections.OrderedDict(  # ordered dict so we know whi
         (
             "3.0",
             {
-                InitProduct.CORVUS: u"Corvus splendens",  # Glanzkraehe
-                InitProduct.NOCTUA: u"Strigidae rufipes",  # Rostfusskauz
-                InitProduct.NESTOR: u"Nestor meridionalis",  # Kaka (Waldpapagei)
+                InitProduct.CORVUS: u"CORVUS Corax",  # Kolkrabe
+                InitProduct.NOCTUA: u"NOCTUA Athene",  # Steinkauz
+                InitProduct.NESTOR: u"NESTOR Notabilis",  # Kea
             }
         )
     ]
