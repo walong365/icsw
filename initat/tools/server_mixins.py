@@ -99,7 +99,7 @@ class ConfigCheckObject(object):
         # self.log = self.__process.log
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__process.log("[CC] {}".format(what), log_level)
+        self.__process.log(u"[CC] {}".format(what), log_level)
 
     def init(self, srv_type_enum, global_config, add_config_store=True, init_logging=True, native_logging=False, init_msi_block=True, log_name_postfix=None):
         if srv_type_enum is None:

@@ -59,9 +59,13 @@ class ServerProcess(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
             )
         self.CC.check_config()
         # close DB conncetion (daemonize)
-        if not self.__run_command:
+        if self.__run_command:
+            global_config.mc_prefix = global_config["COMMAND"]
+        else:
             # create hardware fingerprint
             self.CC.create_hfp()
+        # enable memcache backend
+        global_config.enable_mc()
         db_tools.close_connection()
         self.CC.read_config_from_db(
             [
