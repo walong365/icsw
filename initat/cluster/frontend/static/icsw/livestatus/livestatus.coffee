@@ -143,7 +143,7 @@ angular.module(
         $rootScope.$emit(ICSW_SIGNALS("ICSW_TRIGGER_PANEL_LAYOUTCHECK"))
 
     $scope.new_devsel = (_dev_sel) ->
-        console.log "nds"
+        # console.log "nds"
         $scope.struct.connector.new_devsel(_dev_sel)
 
     $scope.$on("$destroy", () ->

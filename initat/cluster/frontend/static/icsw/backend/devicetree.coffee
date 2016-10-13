@@ -1177,8 +1177,8 @@ angular.module(
             )
 
         # network graph functions
-        seed_network_graph: (nodes, links) =>
-            return new icswDeviceTreeGraph(nodes, links, @)
+        seed_network_graph: (nodes, links, xy_dict) =>
+            return new icswDeviceTreeGraph(nodes, links, @, xy_dict)
 
         # dispatcher functions
         salt_dispatcher_infos: (device_list, disp_tree) =>
@@ -1328,12 +1328,15 @@ angular.module(
     $q,
 ) ->
     class icswDeviceTreeGraph
-        constructor: (@nodes, @links, tree) ->
+        constructor: (@nodes, @links, tree, xy_dict) ->
             @device_list = []
             _set_coords = false
             for node in @nodes
                 node.$$device = tree.all_lut[node.id]
                 @device_list.push(node.$$device)
+                if node.id of xy_dict
+                    node.x = xy_dict[node.id].x
+                    node.y = xy_dict[node.id].y
                 if not node.x?
                     _set_coords = true
 
@@ -1343,8 +1346,9 @@ angular.module(
                     _id++
                     # init coordinates if needed
                     _angle = 2 * Math.PI * @nodes.length / _id
-                    node.x = Math.cos(_angle) * 50
-                    node.y = Math.sin(_angle) * 50
+                    if not node.x?
+                        node.x = Math.cos(_angle) * 50
+                        node.y = Math.sin(_angle) * 50
                     node.radius = 10
             # enumerate links
             _id = 0

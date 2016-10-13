@@ -50,7 +50,9 @@ class json_network(View):
     def post(self, request):
         _post = request.POST
         graph_mode = _post["graph_sel"]
+        # devices currently selected (or in monitoring data, dependening on the call)
         dev_list = json.loads(_post["devices"])
+        print dev_list
         logger.info(
             "drawing network, mode is {}, {}".format(
                 graph_mode,

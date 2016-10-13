@@ -99,11 +99,14 @@ angular.module(
             _draw_params = new icswBurstDrawParameters({inner_radius: 20, outer_radius: 30})
             _bursts = []
             if @props.show_livestatus
+                idx = 0
                 for node in @props.nodes
+                    idx++
                     _bursts.push(
                         React.createElement(
                             icswDeviceLivestatusReactBurst
                             {
+                                key: "burst.#{idx}"
                                 node: node
                                 monitoring_data: @props.monitoring_data
                                 draw_parameters: _draw_params
@@ -490,7 +493,11 @@ angular.module(
             _max_y += _size_y / 20
             # parse current viewBox settings
 
-            _vbox = _.map($(@element).find("svg")[0].getAttribute("viewBox").split(" "), (elem) -> return parseInt(elem))
+            _vbox = _.map(
+                $(@element).find("svg")[0].getAttribute("viewBox").split(" "),
+                (elem) ->
+                    return parseInt(elem)
+            )
             _width = parseInt(_vbox[2])
             _height = parseInt(_vbox[3])
 
@@ -647,7 +654,8 @@ angular.module(
                         onClick: (event) =>
                             _load_data()
                     }
-                    " Redraw"
+                    " "
+                    "Redraw"
                 )
             ]
             if @state.data_present
@@ -660,7 +668,8 @@ angular.module(
                             onClick: (event) =>
                                 @graph_command.notify("scale")
                         }
-                        " Scale"
+                        " "
+                        "Scale"
                     )
                 )
                 _list.push(
@@ -672,7 +681,8 @@ angular.module(
                             onClick: (event) =>
                                 @setState({with_livestatus: not @state.with_livestatus})
                         }
-                        " Livestatus"
+                        " "
+                        "Livestatus"
                     )
                 )
                 if false
@@ -735,6 +745,14 @@ angular.module(
             # fetch the network again because we receive no network
             # connection info from the parent pipe element, to be
             # improved, FIXME, ToDo
+            # store previous coordinates
+            xy_dict = {}
+            if @state.graph
+                for node in @state.graph.nodes
+                    xy_dict[node.$$device.idx] = {
+                        x: node.x
+                        y: node.y
+                    }
             icswSimpleAjaxCall(
                 url: ICSW_URLS.NETWORK_JSON_NETWORK
                 data:
@@ -748,7 +766,7 @@ angular.module(
                             loading: false
                             data_present: true
                             graph_id: @state.graph_id + 1
-                            graph: @props.device_tree.seed_network_graph(json.nodes, json.links)
+                            graph: @props.device_tree.seed_network_graph(json.nodes, json.links, xy_dict)
                             settings: {
                                 offset: {
                                     x: 0
@@ -864,7 +882,7 @@ angular.module(
                 1
             )
 
-            @__dp_notify_only_on_devchange = true
+            # @__dp_notify_only_on_devchange = true
             @__dp_async_emit = true
             @new_data_notifier = $q.defer()
 
@@ -877,10 +895,10 @@ angular.module(
 ]).factory("icswDeviceTopologyReactContainer",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceLivestatusDataService",
-    "$timeout", "icswTools", "$rootScope", "ICSW_SIGNALS",
+    "$timeout", "icswTools", "$rootScope", "ICSW_SIGNALS", "icswActiveSelectionService",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, icswDeviceLivestatusDataService,
-    $timeout, icswTools, $rootScope, ICSW_SIGNALS
+    $timeout, icswTools, $rootScope, ICSW_SIGNALS, icswActiveSelectionService,
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
@@ -929,6 +947,10 @@ angular.module(
                 ["selp1", "selected Devices + 1 (next ring)"]
                 ["selp2", "selected Devices + 2"]
                 ["selp3", "selected Devices + 3"]
+                ["inp", "source Devices"]
+                ["inpp1", "source Devices + 1 (next ring)"]
+                ["inpp2", "source Devices + 2"]
+                ["inpp3", "source Devices + 3"]
                 ["core", "Core Network"]
             ]
             _opts = (
@@ -960,12 +982,6 @@ angular.module(
                     _opts
                 )
             ]
-            _top_list = [
-                div(
-                    {key: "div0", className: "form-group form-inline"}
-                    _list
-                )
-            ]
             if @state.loading
                 _list.push(
                     span(
@@ -974,8 +990,8 @@ angular.module(
                     )
                 )
             return div(
-                {key: "top"}
-                _top_list
+                {key: "div0", className: "form-group form-inline"}
+                _list
             )
 
         scale_changed: () ->
@@ -983,6 +999,7 @@ angular.module(
 
         new_monitoring_data: () ->
             # data received, check for any changes
+            # console.log "nd"
             @load_data()
 
         stop_update: () ->
@@ -1020,12 +1037,24 @@ angular.module(
             )
             
         load_data: () ->
-            _fetch_pks = (dev.$$icswDevice.idx for dev in @props.monitoring_data.hosts)
+            draw_type = @state.draw_type
+            # devices currently selected
+            if @state.draw_type.match(/sel/)
+                # devices from global selection
+                _cur_sel = icswActiveSelectionService.get_selection().dev_sel
+            else if @state.draw_type.match(/inp/)
+                # devices from input
+                _cur_sel = (dev.$$icswDevice.idx for dev in @props.monitoring_data.hosts)
+                draw_type = _.replace(draw_type, "inp", "sel")
+            else
+                # something else, no current selection
+                _cur_sel = []
+            # devices in current monitoring data
             icswSimpleAjaxCall(
                 url: ICSW_URLS.NETWORK_JSON_NETWORK
                 data:
-                    graph_sel: @state.draw_type
-                    devices: angular.toJson(_fetch_pks)
+                    graph_sel: draw_type
+                    devices: angular.toJson(_cur_sel)
                 dataType: "json"
             ).then(
                 (json) =>
@@ -1092,6 +1121,7 @@ angular.module(
                 (rejected) ->
                     # stop
                 (data) =>
+                    # console.log "d", data
                     if not struct.mon_data?
                         struct.mon_data = data
                         _create_element()
