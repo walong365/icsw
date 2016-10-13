@@ -178,6 +178,9 @@ def reset_test_server(user, password, server_id, snapshot_id):
 def basic_availability_test(host):
     sys.stdout.write("Checking availability of icsw interface ... ")
     sys.stdout.flush()
+
+    time.sleep(60)
+
     output = subprocess.check_output(["curl", "-s", "http://{}/icsw/api/v2/user/GetInitProduct".format(host)])
 
     if "Corvus splendens" in output and "CORVUS" in output:
@@ -185,6 +188,9 @@ def basic_availability_test(host):
         sys.stdout.flush()
     else:
         sys.stdout.write("error\n")
+        sys.stdout.flush()
+
+        sys.stdout.write(output)
         sys.stdout.flush()
 
 if __name__ == "__main__":
