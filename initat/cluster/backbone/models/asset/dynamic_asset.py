@@ -84,7 +84,7 @@ class AssetHWMemoryEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "BankLabel:{}|FormFactor:{}|MemoryType:{}|Manufacturer:{}|Capacity:{}".format(
+        return u"BankLabel:{}|FormFactor:{}|MemoryType:{}|Manufacturer:{}|Capacity:{}".format(
             self.banklabel,
             self.formfactor,
             self.memorytype,
@@ -106,7 +106,7 @@ class AssetHWCPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "Name:{}|Cores:{}".format(self.name, self.numberofcores)
+        return u"Name:{}|Cores:{}".format(self.name, self.numberofcores)
 
 
 class AssetHWGPUEntry(models.Model):
@@ -115,7 +115,7 @@ class AssetHWGPUEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "Name:{}".format(self.name)
+        return u"Name:{}".format(self.name)
 
 
 class AssetHWDisplayEntry(models.Model):
@@ -126,7 +126,7 @@ class AssetHWDisplayEntry(models.Model):
     manufacturer = models.TextField(null=True)
 
     def __unicode__(self):
-        return "Name:{}|xpixels:{}|ypixels:{}|manufacturer:{}".format(
+        return u"Name:{}|xpixels:{}|ypixels:{}|manufacturer:{}".format(
             self.name,
             self.xpixels,
             self.ypixels,
@@ -143,7 +143,7 @@ class AssetHWNetworkDevice(models.Model):
     mac_address = models.TextField(null=True)
 
     def __unicode__(self):
-        return "Name:{}|Manufacturer:{}|Product Name:{}|Speed:{}|MAC:{}".format(
+        return u"Name:{}|Manufacturer:{}|Product Name:{}|Speed:{}|MAC:{}".format(
                 self.device_name,
                 self.manufacturer,
                 self.product_name,
@@ -248,11 +248,10 @@ class AssetHardwareEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "AssetHardwareEntry {}".format(self.type)
+        return u"AssetHardwareEntry {}".format(self.type)
 
     class Meta:
         ordering = ("idx",)
-
 
 class AssetLicenseEntry(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -265,7 +264,7 @@ class AssetLicenseEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "{} [license_key:{}]".format(self.name, self.license_key)
+        return u"{} [license_key:{}]".format(self.name, self.license_key)
 
     class Meta:
         ordering = ("name",)
@@ -294,7 +293,7 @@ class AssetUpdateEntry(models.Model):
     new_version = models.CharField(default="", max_length=64)
 
     def __unicode__(self):
-        return "AssetUpdate name={}".format(self.name)
+        return u"AssetUpdate name={}".format(self.name)
 
     class Meta:
         ordering = ("name",)
@@ -311,7 +310,7 @@ class AssetProcessEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "AssetProcess pid={:d}".format(self.pid)
+        return u"AssetProcess pid={:d}".format(self.pid)
 
     class Meta:
         ordering = ("pid",)
@@ -340,7 +339,7 @@ class AssetPCIEntry(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "AssetPCIEntry {:04x}:{:02x}:{:02x}.{:x} {}".format(
+        return u"AssetPCIEntry {:04x}:{:02x}:{:02x}.{:x} {}".format(
             self.domain,
             self.bus,
             self.slot,
@@ -361,7 +360,7 @@ class AssetDMIHead(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "AssetDMIHead"
+        return u"AssetDMIHead"
 
 
 class AssetDMIHandle(models.Model):
@@ -379,7 +378,7 @@ class AssetDMIHandle(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "AssetDMIHandle {:d}: {}".format(
+        return u"AssetDMIHandle {:d}: {}".format(
             self.handle,
             self.header,
         )
@@ -400,7 +399,7 @@ class AssetDMIValue(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return "AssetDMIValue {}".format(
+        return u"AssetDMIValue {}".format(
             self.key,
         )
 
@@ -1094,7 +1093,7 @@ class AssetBatch(models.Model):
         return unicode(self)
 
     def __unicode__(self):
-        return "AssetBatch for device '{}'".format(
+        return u"AssetBatch for device '{}'".format(
             unicode(self.device)
         )
 

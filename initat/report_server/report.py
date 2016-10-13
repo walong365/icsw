@@ -113,17 +113,20 @@ class RowCollector(object):
 
     def collect(self, _row):
         if self.current_asset_type == AssetType.UPDATE:
-            update_name = str(_row[0])
+            update_name = _row[0]
             # update_version = str(_row[1])
             # update_release = str(_row[2])
             # update_kb_idx = str(_row[3])
             install_date = _row[4]
-            update_status = str(_row[5])
+            update_status = _row[5]
             # update_optional = str(_row[6])
             # update_installed = str(_row[7])
 
             if type(install_date) != str:
-                install_date = install_date.strftime(ASSET_DATETIMEFORMAT)
+                try:
+                    install_date = install_date.strftime(ASSET_DATETIMEFORMAT)
+                except:
+                    install_date = "N/A"
 
             o = {
                 'update_name': update_name,
@@ -134,8 +137,8 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.LICENSE:
-            license_name = str(_row[0])
-            license_key = str(_row[1])
+            license_name = _row[0]
+            license_key = _row[1]
 
             o = {
                 'license_name': license_name,
@@ -145,15 +148,15 @@ class RowCollector(object):
             self.rows_dict.append(o)
 
         elif self.current_asset_type == AssetType.PENDING_UPDATE:
-            update_name = str(_row[0])
+            update_name = _row[0]
             # update_version = str(_row[1])
             # update_release = str(_row[2])
             # update_kb_idx = str(_row[3])
             # update_install_date = str(_row[4])
             # update_status = str(_row[5])
-            update_optional = str(_row[6])
+            update_optional = _row[6]
             # update_installed = str(_row[7])
-            update_new_version = str(_row[8])
+            update_new_version = _row[8]
 
             o = {
                 'update_name': update_name,
@@ -716,13 +719,15 @@ class PDFReportGenerator(ReportGenerator):
                     s_new += "\n"
                 s_new += header_name[i]
 
-            header_list.append(Element((position, 24), (self.standard_font, header_font_size), text=s_new))
-            detail_list.append(Element((position, 0), (self.standard_font, normal_font_size), key=key))
+            header_list.append(Element((position, 24), (self.standard_font, header_font_size), text=s_new, format=unicode))
+            detail_list.append(Element((position, 0), (self.standard_font, normal_font_size), key=key, format=unicode))
 
             position += available_width * (avail_width_percentage / 100.0)
 
             for _dict in data:
-                s = str(_dict[key])
+                s = _dict[key]
+                if type(s) != unicode or type(s) != str:
+                    s = unicode(_dict[key])
 
                 s_new_comps = ""
 
@@ -763,7 +768,8 @@ class PDFReportGenerator(ReportGenerator):
                     (position, 24),
                     (self.standard_font, header_font_size),
                     text=s_new,
-                    align="right"
+                    align="right",
+                    format=unicode
                 )
             )
             detail_list.append(
@@ -771,7 +777,8 @@ class PDFReportGenerator(ReportGenerator):
                     (position, 0),
                     (self.standard_font, normal_font_size),
                     key=key,
-                    align="right"
+                    align="right",
+                    format=unicode
                 )
             )
 
@@ -3009,9 +3016,11 @@ def postprocess_workbook(workbook):
                     max_str_lengths_per_column[col_idx] = 0
 
                 current_max = max_str_lengths_per_column[col_idx]
-                components = str(cell.value).split("\n")
-                next_max = max([len(line) for line in components])
-                height_needed = max(len(components), height_needed)
+                next_max = current_max
+                if type(cell.value) == unicode:
+                    components = cell.value.split("\n")
+                    next_max = max([len(line) for line in components])
+                    height_needed = max(len(components), height_needed)
 
                 max_str_lengths_per_column[col_idx] = max(next_max, current_max)
 
