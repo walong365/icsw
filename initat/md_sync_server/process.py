@@ -154,6 +154,30 @@ class ProcessControl(object):
                 _pid = file(self.__pid_file_name, "r").read().strip()
                 if len(_pid):
                     _pid = int(_pid.split()[0])
+                    try:
+                        _proc = psutil.Process(_pid)
+                    except:
+                        self.log(
+                            "cannot get process from pid {:d}: {}".format(
+                                _pid,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                        _pid = None
+                    else:
+                        if _proc.name() != self.__proc_name:
+                            self.log(
+                                "process name of pid {:d} does not match {}: {}".format(
+                                    _pid,
+                                    self.__proc_name,
+                                    _proc.name()
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+                            self.log("removing pid file {}".format(self.__pid_file_name))
+                            os.unlink(self.__pid_file_name)
+                            _pid = None
                 else:
                     _pid = None
             except:

@@ -118,7 +118,7 @@ def show_cs_help(options):
                         header="disabled",
                     ),
                     logging_tools.form_entry(
-                        ", ".join(com.Meta.needed_configs) or "---",
+                        ", ".join([_cfg.name for _cfg in com.Meta.needed_configs]) or "---",
                         header="configs"
                     ),
                     logging_tools.form_entry(

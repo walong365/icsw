@@ -99,9 +99,9 @@ class ConfigCheckObject(object):
         # self.log = self.__process.log
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__process.log("[CC] {}".format(what), log_level)
+        self.__process.log(u"[CC] {}".format(what), log_level)
 
-    def init(self, srv_type_enum, global_config, add_config_store=True, init_logging=True, native_logging=False, init_msi_block=True):
+    def init(self, srv_type_enum, global_config, add_config_store=True, init_logging=True, native_logging=False, init_msi_block=True, log_name_postfix=None):
         if srv_type_enum is None:
             # srv_type_enum is None, use value stored in global config
             from initat.cluster.backbone.server_enums import icswServiceEnum
@@ -134,15 +134,21 @@ class ConfigCheckObject(object):
                 )
 
             if "LOG_NAME" not in global_config:
+                _log_name = self._inst_xml[self.srv_type_enum.value.instance_name].attrib["name"]
+                if log_name_postfix:
+                    _log_name = "{}-{}".format(
+                        _log_name,
+                        log_name_postfix,
+                    )
                 global_config.add_config_entries(
                     [
                         (
                             "LOG_NAME",
                             configfile.str_c_var(
-                                self._inst_xml[self.srv_type_enum.value.instance_name].attrib["name"],
+                                _log_name,
                                 source="instance"
                             )
-                        ),
+                        )
                     ]
                 )
             if self.__native_logging:

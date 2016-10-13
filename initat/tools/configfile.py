@@ -365,8 +365,9 @@ CONFIG_PREFIX = "__ICSW__$conf$__"
 
 
 class MemCacheBasedDict(object):
-    def __init__(self, mc_client, prefix, single_process_mode):
+    def __init__(self, mc_client, prefix, single_process_mode, enabled):
         self.__spm = single_process_mode
+        self.__enabled = enabled
         self.mc_client = mc_client
         self.prefix = prefix
         self._dict = {}
@@ -376,6 +377,12 @@ class MemCacheBasedDict(object):
         # update mode, used for faster updates
         self.__update_mode = False
         self._check_mc()
+
+    def enable(self):
+        if not self.__enabled:
+            self.__enabled = True
+            if not self.__spm:
+                self._store_full_dict()
 
     @property
     def update_mode(self):
@@ -397,7 +404,7 @@ class MemCacheBasedDict(object):
         return self.mc_client.set(self._mc_key(key), value)
 
     def _check_mc(self):
-        if not self.__spm:
+        if not self.__spm and self.__enabled:
             _mc_vers = self._get("version")
             if not self._version:
                 # get version
@@ -417,7 +424,7 @@ class MemCacheBasedDict(object):
         self._set("version", self._version)
 
     def _store_full_dict(self):
-        if not self.__spm:
+        if not self.__spm and self.__enabled:
             for _key in self._keys:
                 self._update_key(_key)
             self._store_keys()
@@ -430,7 +437,7 @@ class MemCacheBasedDict(object):
         self._set("k_{}".format(key), self._dict[key].serialize())
 
     def _key_modified(self, key):
-        if not self.__spm:
+        if not self.__spm and self.__enabled:
             self._update_key(key)
             self._store_keys()
 
@@ -513,7 +520,7 @@ class MemCacheBasedDict(object):
         self._check_mc()
         self._keys.remove(key)
         del self._dict[key]
-        if not self.__spm:
+        if not self.__spm and self.__enabled:
             self.mc_client.delete(self._mc_key(key))
             self._store_keys()
 
@@ -524,17 +531,35 @@ class MemCacheBasedDict(object):
 class Configuration(object):
     def __init__(self, name, *args, **kwargs):
         inst_xml = instance.InstanceXML(quiet=True)
+        self.__mc_enabled = kwargs.get("mc_enabled", True)
         _mc_addr = "127.0.0.1"
         _mc_port = inst_xml.get_port_dict("memcached", command=True)
         self.__mc_addr = "{}:{:d}".format(_mc_addr, _mc_port)
         self.__name = name
-        self.__mc_prefix = "{}{}".format(CONFIG_PREFIX, self.__name)
+        self.__backend_init = False
+        self.mc_prefix = ""
         self.__verbose = kwargs.get("verbose", False)
         self.__spm = kwargs.pop("single_process_mode", False)
         self._reopen_mc(True)
         self.clear_log()
         if args:
             self.add_config_entries(*args)
+
+    @property
+    def mc_prefix(self):
+        return self.__mc_prefix
+
+    @mc_prefix.setter
+    def mc_prefix(self, prefix):
+        self.__mc_prefix = "{}{}{}".format(CONFIG_PREFIX, self.__name, prefix)
+        if self.__backend_init:
+            self.__c_dict.prefix = self.__mc_prefix
+
+    def enable_mc(self):
+        # enable memcached backend, can only be enabled (not disabled)
+        if not self.__mc_enabled:
+            self.__mc_enabled = True
+            self.__c_dict.enable()
 
     def delete(self):
         # remove global config
@@ -556,7 +581,8 @@ class Configuration(object):
                 self.__mc_client = memcache.Client([self.__mc_addr])
             except:
                 raise
-        self.__c_dict = MemCacheBasedDict(self.__mc_client, self.__mc_prefix, self.__spm)
+        self.__backend_init = True
+        self.__c_dict = MemCacheBasedDict(self.__mc_client, self.__mc_prefix, self.__spm, self.__mc_enabled)
 
     def get_log(self, **kwargs):
         ret_val = [entry for entry in self.__log_array]
@@ -885,5 +911,9 @@ class Configuration(object):
             return options
 
 
-def get_global_config(c_name, single_process_mode=False):
-    return Configuration(c_name, single_process_mode=single_process_mode)
+def get_global_config(c_name, single_process_mode=False, mc_enabled=True):
+    return Configuration(
+        c_name,
+        single_process_mode=single_process_mode,
+        mc_enabled=mc_enabled
+    )

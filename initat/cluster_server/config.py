@@ -20,4 +20,6 @@
 
 from initat.tools import configfile, process_tools
 
-global_config = configfile.get_global_config(process_tools.get_programm_name())
+# delay memcache backend until we have an unique key
+
+global_config = configfile.get_global_config(process_tools.get_programm_name(), mc_enabled=False)

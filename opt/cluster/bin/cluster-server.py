@@ -19,14 +19,20 @@
 #
 """ cluster-server """
 
-from initat.cluster_server import main
 import sys
+
+from initat.cluster_server import main
 
 if not any(
     [
         _check in sys.argv for _check in [
-            "-c", "-h", "--help", "--show-commands", "--show_commands",
-            "--backup-database", "--backup_database"
+            "-c",
+            "-h",
+            "--help",
+            "--show-commands",
+            "--show_commands",
+            "--backup-database",
+            "--backup_database"
         ]
     ]
 ):
