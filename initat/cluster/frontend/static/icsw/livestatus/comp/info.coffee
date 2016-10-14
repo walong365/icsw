@@ -81,11 +81,10 @@ angular.module(
                 React.createElement(
                     icswLivestatusCircleInfoReact
                     {
-                        data: _md.service_circle_data
-                        title: "#{_md.services.length} Services"
+                        data: _md.device_circle_data
+                        title: "#{_md.hosts.length} Devices"
                         titleSize: 14
                         className: "col-sm-6"
-                        focusMode: "simple"
                         showInfo: true
                         showDetails: true
                     }
@@ -93,10 +92,11 @@ angular.module(
                 React.createElement(
                     icswLivestatusCircleInfoReact
                     {
-                        data: _md.device_circle_data
-                        title: "#{_md.hosts.length} Devices"
+                        data: _md.service_circle_data
+                        title: "#{_md.services.length} Services"
                         titleSize: 14
                         className: "col-sm-6"
+                        focusMode: "simple"
                         showInfo: true
                         showDetails: true
                     }
