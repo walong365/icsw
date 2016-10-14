@@ -277,7 +277,11 @@ class Hardware(object):
         if partinfo_tree is not None:
             self._process_partinfo(partinfo_tree)
         if xrandr_dump:
-            self._process_xrandr(xrandr_dump)
+            try:
+                self._process_xrandr(xrandr_dump)
+            except Exception:
+                # parse error
+                pass
 
     def _process_lsblk(self, lsblk_dump):
         self._lsblk_dump = lsblk_dump
@@ -496,9 +500,9 @@ class Hardware(object):
             "Screen (?P<index>\d+): minimum (\d+ x \d+), "
             "current (?P<resolution>\d+ x \d+), maximum (\d+ x \d+)"
         )
-        connectors = "DP|HDMI|VIRTUAL"
+        connectors = "DP|HDMI|VIRTUAL|DVI-I|VGA"
         connection_re = re.compile(
-            "(?P<connector>{})(?P<index>\d+) "
+            "(?P<connector>{})-?(?P<index>\d+) "
             "(dis)?connected ".format(connectors)
         )
         self._xrandr_dump = xrandr_dump
