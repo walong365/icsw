@@ -19,12 +19,12 @@
             <tr>
                 <td colspan="99">
                     <div class="pull-left">
-                        <input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="search"/>
+                        <input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="Filter ..." type="search"/>
                     </div>
                     <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed"
-                         possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;">
+                         possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin:4px 15px 0 0;">
                     </div>
-                    <div>
+                    <div style="margin-top:4px;">
                         <icsw-tools-button
                             type="modify"
                             size="sm"
@@ -37,21 +37,22 @@
             </tr>
             <tr>
                 <td colspan="99">
-                    <icsw-tools-show-hide-columns icsw-callback="columns_changed" columns="state devflags devcats state_type description monflags moncats output" create-show-column="true">
+                    <icsw-tools-show-hide-columns icsw-callback="columns_changed" columns="State DevFlags DevCats StateType Description MonFlags MonCats Output" create-show-column="true">
                     </icsw-tools-show-hide-columns>
                 </td>
             </tr>
             <tr>
                 <th st-sort="host_name" st-sort-default="true">Device</th>
-                <th ng-show="show_column.devflags">DevFlags</th>
-                <th ng-show="show_column.devcats">DevCats</th>
-                <th ng-show="show_column.state" st-sort="state">State</th>
-                <th ng-show="show_column.description" st-sort="description">Description</th>
-                <th ng-show="show_column.monflags">MonFlags</th>
-                <th ng-show="show_column.moncats">MonCats</th>
-                <th st-sort="last_check">Last Check</th>
-                <th st-sort="last_state_change">Last Change</th>
-                <th ng-show="show_column.output" st-sort="plugin_output">Result</th>
+                <th ng-show="show_column.DevFlags">DevFlags</th>
+                <th ng-show="show_column.DevCats">DevCats</th>
+                <th ng-show="show_column.State" st-sort="State">State</th>
+                <th ng-show="show_column.State" st-sort="State"></th>
+                <th ng-show="show_column.Description" st-sort="Description">Description</th>
+                <th ng-show="show_column.MonFlags">MonFlags</th>
+                <th ng-show="show_column.MonCats">MonCats</th>
+                <th st-sort="LastCheck" class="text-nowrap">Last Check</th>
+                <th st-sort="LastStateChange" class="text-nowrap">Last Change</th>
+                <th ng-show="show_column.Output" st-sort="plugin_output">Result</th>
             </tr>
         </thead>
         <tbody>
@@ -69,29 +70,37 @@
             {{ service.$$host_mon_result.display_name }}
         </button>
     </td>
-    <td class="text-nowrap text-center" ng-show="show_column.devflags">
-        <span ng-show="service.$$host_mon_result.$$icswShowAttemptInfo" class="label" ng-class="service.$$host_mon_result.$$icswAttemptLabelClass">
-            {{ service.$$host_mon_result.$$icswAttemptInfo }}
-        </span>
-        <span ng-show="service.$$host_mon_result.$$icswPassiveCheck" title="host is passive checked" class="glyphicon glyphicon-download"></span>
+    <td class="text-nowrap text-center" ng-show="show_column.DevFlags">
+        <div class="text-nowrap">
+            <span ng-show="service.$$host_mon_result.$$icswShowAttemptInfo" class="label" ng-class="service.$$host_mon_result.$$icswAttemptLabelClass">
+                {{ service.$$host_mon_result.$$icswAttemptInfo }}
+            </span>
+            <span ng-show="service.$$host_mon_result.$$icswPassiveCheck" title="host is passive checked" class="glyphicon glyphicon-download"></span>
+        </div>
     </td>
-    <td ng-show="show_column.devcats" class="text-nowrap">
+    <td ng-show="show_column.DevCats" class="text-nowrap">
         {{ service.$$host_mon_result.$$icswCategories }}
     </td>
-    <td class="text-nowrap" ng-show="show_column.state" ng-class="service.$$icswStateClass">
+    <td class="text-nowrap" ng-show="show_column.State" ng-class="service.$$icswStateClass">
         {{ service.$$icswStateString }}
-        <span ng-show="show_column.state_type" class="pull-right badge">{{ service.$$icswStateTypeString }}</span>
     </td>
-    <td class="text-nowrap" ng-show="show_column.description">{{ service.display_name }}</td>
-    <td class="text-nowrap text-center" ng-show="show_column.monflags">
+    <td ng-show="show_column.State" ng-class="service.$$icswStateClass">
+        <span ng-show="show_column.StateType" class="badge">{{ service.$$icswStateTypeString|capitalize }}</span>
+    </td>
+    <td class="text-nowrap" ng-show="show_column.Description">{{ service.display_name }}</td>
+    <td class="text-nowrap text-center" ng-show="show_column.MonFlags">
         <span class="label" ng-class="service.$$icswAttemptLabelClass" title="attempt info">{{ service.$$icswAttemptInfo }}</span>
         <span class="fa fa-pencil" title="acknowledgment status" ng-show="service.acknowledged == '1'"></span>
         <span ng-show="service.$$icswPassiveCheck" title="service is passive checked" class="glyphicon glyphicon-download"></span>
     </td>
-    <td class="text-nowrap" ng-show="show_column.moncats">{{ service.$$icswCategories }}</td>
+    <td class="text-nowrap" ng-show="show_column.MonCats">{{ service.$$icswCategories }}</td>
     <td class="text-nowrap">{{ service.$$icswLastCheckString }}</td>
     <td class="text-nowrap">{{ service.$$icswLastStateChangeString }}</td>
-    <td ng-show="show_column.output">{{ service.plugin_output }}</td>
+    <td ng-show="show_column.Output">
+        <div ng-class="{'text-nowrap':!service.$$selected}" tooltip-placement="left" uib-tooltip="{{ service.plugin_output }}">
+            {{ service.plugin_output }}
+        </div>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.livestatus.device.table.view">
@@ -115,12 +124,12 @@
             <tr>
                 <td colspan="99">
                     <div class="pull-left">
-                        <input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="search"/>
+                        <input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="Filter ..." type="search"/>
                     </div>
                     <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed"
-                         possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;">
+                         possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin:4px 15px 0 0;">
                     </div>
-                    <div>
+                    <div style="margin-top:4px;">
                         <icsw-tools-button
                             type="modify"
                             size="sm"
@@ -133,18 +142,19 @@
             </tr>
             <tr>
                 <td colspan="99">
-                    <icsw-tools-show-hide-columns icsw-callback="columns_changed" columns="devcats state state_type flags output" create-show-column="true"></icsw-tools-show-hide-columns>
+                    <icsw-tools-show-hide-columns icsw-callback="columns_changed" columns="DevCats State StateType Flags Output" create-show-column="true"></icsw-tools-show-hide-columns>
                 </td>
             </tr>
             <tr>
                 <th st-sort="host_name" st-sort-default="true">Device</th>
-                <th ng-show="show_column.devcats">DevCats</th>
-                <th ng-show="show_column.state" st-sort="state">State</th>
-                <th ng-show="show_column.flags">Flags</th>
-                <th ng-show="show_column.description" st-sort="description">Description</th>
-                <th st-sort="last_check">Last Check</th>
-                <th st-sort="last_state_change">Last Change</th>
-                <th ng-show="show_column.output" st-sort="plugin_output">Result</th>
+                <th ng-show="show_column.DevCats">DevCats</th>
+                <th ng-show="show_column.State" st-sort="State">State</th>
+                <th ng-show="show_column.State"></th>
+                <th ng-show="show_column.Flags">Flags</th>
+                <!--<th ng-show="show_column.Description" st-sort="description">Description</th>-->
+                <th st-sort="last_check" class="text-nowrap">Last Check</th>
+                <th st-sort="last_state_change" class="text-nowrap">Last Change</th>
+                <th ng-show="show_column.Output" st-sort="plugin_output">Result</th>
             </tr>
         </thead>
         <tbody>
@@ -160,21 +170,27 @@
     <td ng-class="host.$$icswStateClass" class="text-nowrap">
         <button type="button" class="btn btn-xs" ng-class="host.$$icswStateBtnClass" ng-click="show_device($event, host)">{{ host.display_name }}</button>
     </td>
-    <td ng-show="show_column.devcats" class="text-nowrap">
+    <td ng-show="show_column.DevCats" class="text-nowrap">
         {{ host.$$icswCategories }}
     </td>
-    <td class="text-nowrap" ng-show="show_column.state" ng-class="host.$$icswStateClass">
+    <td class="text-nowrap" ng-show="show_column.State" ng-class="host.$$icswStateClass">
         {{ host.$$icswStateString }}
-        <span ng-show="show_column.state_type" class="pull-right badge">{{ host.$$icswStateTypeString }}</span>
     </td>
-    <td class="text-nowrap text-center" ng-show="show_column.flags">
+    <td ng-show="show_column.State" ng-class="host.$$icswStateClass">
+        <span ng-show="show_column.StateType" class="badge">{{ host.$$icswStateTypeString }}</span>
+    </td>
+    <td class="text-nowrap text-center" ng-show="show_column.Flags">
         <span class="label" ng-class="host.$$icswAttemptLabelClass" title="attempt info">{{ host.$$icswAttemptInfo }}</span>
         <span class="fa fa-pencil" title="acknowledgment status" ng-show="host.acknowledged == '1'"></span>
         <span ng-show="host.$$icswPassiveCheck" title="host is passive checked" class="glyphicon glyphicon-download"></span>
     </td>
     <td class="text-nowrap">{{ host.$$icswLastCheckString }}</td>
     <td class="text-nowrap">{{ host.$$icswLastStateChangeString }}</td>
-    <td ng-show="show_column.output">{{ host.plugin_output }}</td>
+    <td ng-show="show_column.Output">
+         <div class="text-nowrap" tooltip-placement="left" uib-tooltip="{{ host.plugin_output }}">
+        {{ host.plugin_output }}
+         </div>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.livestatus.modify.entries">
