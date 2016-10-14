@@ -44,6 +44,8 @@ class StatusProcess(threading_tools.process_obj):
             init_logger=True,
         )
         self.register_func("get_node_status", self._get_node_status)
+        self.__columns_fetched = False
+        self.register_timer(self.get_all_columns, 60, first_timeout=3)
         self.__socket = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -52,6 +54,27 @@ class StatusProcess(threading_tools.process_obj):
     def loop_post(self):
         self._close()
         self.__log_template.close()
+
+    def get_all_columns(self):
+        if not self.__columns_fetched:
+            cur_sock = self._open()
+            if cur_sock:
+                col_query = cur_sock.columns
+                _result = col_query.call()
+                _type_dict = {}
+                _dict = {}
+                for entry in _result:
+                    _dict.setdefault(entry["table"], []).append(entry)
+                self.log("tables found: {:d}".format(len(_dict.keys())))
+                for _table in sorted(_dict.keys()):
+                    self.log("dump for table {} ({}):".format(_table, len(_dict[_table])))
+                    _type_dict[_table] = {}
+                    for _entry in _dict[_table]:
+                        self.log("    [{:<6s}] {}: {})".format(_entry["type"], _entry["name"], _entry["description"]))
+                        _type_dict[_table][_entry["name"]] = _entry["type"][0]
+                self.__columns_fetched = True
+                # store type dict
+                self.__type_dict = _type_dict
 
     def _close(self):
         if self.__socket:
@@ -66,6 +89,48 @@ class StatusProcess(threading_tools.process_obj):
                 self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
 
+    def _parse_icinga_dict(self, value):
+        # start with empty dict
+        _loc_dict = {}
+        # dictonary
+        if value.strip():
+            for _kv in value.split(","):
+                if _kv.count("|"):
+                    _lkey, _kv = _kv.split("|")
+                    _lkey = _lkey.lower()
+                    _loc_dict[_lkey] = []
+                if _kv.isdigit():
+                    _kv = int(_kv)
+                _loc_dict[_lkey].append(_kv)
+                if _lkey in {"check_command_pk", "device_pk", "uuid"}:
+                    _loc_dict[_lkey] = _loc_dict[_lkey][0]
+        # print value, _loc_dict
+        return _loc_dict
+
+    def map_values(self, t_type, res_list):
+        _type_dict = self.__type_dict[t_type]
+        for entry in res_list:
+            for _key, _value in entry.iteritems():
+                try:
+                    _type = _type_dict[_key]
+                    if _type == "i":
+                        # integer
+                        entry[_key] = int(_value)
+                    elif _type == "t":
+                        # unix time in seconds
+                        entry[_key] = int(_value)
+                    elif _type == "s":
+                        pass
+                    elif _type == "d":
+                        # special icinga dict
+                        entry[_key] = self._parse_icinga_dict(_value)
+                    else:
+                        # print "*", _key, _type, _value
+                        pass
+                except KeyError:
+                    self.log("unknown key {} for table {}".format(_key, t_type), logging_tools.LOG_LEVEL_ERROR)
+        return res_list
+
     def _get_node_status(self, srv_com_str, **kwargs):
         srv_com = server_command.srv_command(source=srv_com_str)
         # overview mode if overview is a top-level element
@@ -79,9 +144,11 @@ class StatusProcess(threading_tools.process_obj):
         try:
             cur_sock = self._open()
             if cur_sock:
+                if not self.__columns_fetched:
+                    self.get_all_columns()
                 if _host_overview:
                     host_query = cur_sock.hosts.columns(
-                        "host_name",
+                        "name",
                         "address",
                         "state",
                         "plugin_output",
@@ -114,9 +181,9 @@ class StatusProcess(threading_tools.process_obj):
                             "custom_variables",
                             "acknowledged",
                             "acknowledgement_type",
-                        )
+                        ).filter("host_name", "=", dev_names)
                         host_query = cur_sock.hosts.columns(
-                            "host_name",
+                            "name",
                             "address",
                             "state",
                             "plugin_output",
@@ -129,24 +196,68 @@ class StatusProcess(threading_tools.process_obj):
                             "custom_variables",
                             "acknowledged",
                             "acknowledgement_type",
+                        ).filter("name", "=", dev_names)
+                        host_comment_query = cur_sock.comments.columns(
+                            "host_name",
+                            "author",
+                            "comment",
+                            "entry_type",
+                            "entry_time",
+                        ).filter(
+                            "host_name", "=", dev_names
+                        ).filter_raw(
+                            [
+                                "Filter: is_service = 0",
+                                "And: 2"
+                            ]
                         )
-                        service_query = service_query.filter("host_name", "=", dev_names)
-                        host_query = host_query.filter("host_name", "=", dev_names)
+                        service_comment_query = cur_sock.comments.columns(
+                            "host_name",
+                            "author",
+                            "comment",
+                            "entry_type",
+                            "entry_time",
+                        ).filter(
+                            "host_name", "=", dev_names
+                        ).filter_raw(
+                            [
+                                "Filter: is_service = 1",
+                                "And: 2"
+                            ]
+                        )
                     else:
-                        service_query, host_query = (None, None)
+                        service_query, host_query, host_comment_query, service_comment_query = (None, None, None, None)
                 if host_query is not None:
-                    host_result = host_query.call()
+                    host_result = self.map_values("hosts", host_query.call())
                 else:
                     host_result = []
                 if service_query is not None:
-                    service_result = service_query.call()
+                    service_result = self.map_values("services", service_query.call())
                 else:
                     service_result = []
+                if host_comment_query is not None:
+                    host_comment_result = self.map_values("comments", host_comment_query.call())
+                else:
+                    host_comment_result = []
+                if service_comment_query is not None:
+                    service_comment_result = self.map_values("comments", service_comment_query.call())
+                else:
+                    service_comment_result = []
                 if _host_overview:
                     # get dev_names from result
-                    dev_names = [_entry["host_name"] for _entry in host_result]
-                srv_com["service_result"] = json.dumps([_line for _line in service_result if _line.get("host_name", "")])
-                srv_com["host_result"] = json.dumps(host_result)
+                    dev_names = [_entry["name"] for _entry in host_result]
+                srv_com["service_result"] = json.dumps(
+                    [
+                        _line for _line in service_result if _line.get("host_name", "")
+                    ]
+                )
+                srv_com["host_result"] = json.dumps(
+                    host_result
+                )
+                # todo: add host comments to host / service results
+                # import pprint
+                # pprint.pprint(host_comment_result)
+                # pprint.pprint(service_comment_result)
                 srv_com.set_result(
                     "query for {} gave {} and {}".format(
                         logging_tools.get_plural("device", len(dev_names)),
@@ -168,10 +279,10 @@ class StatusProcess(threading_tools.process_obj):
             )
         else:
             self.log(
-                "queried {} in {} ({})".format(
+                "queried {} in {}".format(
                     logging_tools.get_plural("device", len(dev_names)),
                     logging_tools.get_diff_time_str(time.time() - s_time),
-                    u", ".join(sorted(dev_names))
+                    # u", ".join(sorted(dev_names))
                 )
             )
         self.send_pool_message("remote_call_async_result", unicode(srv_com))

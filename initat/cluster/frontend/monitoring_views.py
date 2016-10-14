@@ -257,26 +257,13 @@ class get_node_status(View):
             devices_used = set()
             if len(host_results):
                 for dev_res in json.loads(host_results[0]):
-                    locked = False
-                    for entry in dev_res['custom_variables'].split(","):
-                        split = entry.split("|")
-                        if len(split) == 2 and split[0].lower() == "device_pk":
-                            try:
-                                dev_pk = int(split[1])
-                                locked = LicenseLockListDeviceService.objects.is_device_locked(
-                                    LicenseEnum.monitoring_dashboard,
-                                    dev_pk
-                                )
-                                if not locked:
-                                    devices_used.add(dev_pk)
-                            except ValueError:
-                                logger.warn(
-                                    "Invalid device pk in get_node_result access logging: {}".format(
-                                        entry
-                                    )
-                                )
-
+                    dev_pk = dev_res["custom_variables"]["device_pk"]
+                    locked = LicenseLockListDeviceService.objects.is_device_locked(
+                        LicenseEnum.monitoring_dashboard,
+                        dev_pk
+                    )
                     if not locked:
+                        devices_used.add(dev_pk)
                         host_results_filtered.append(dev_res)
 
                     any_locked |= locked
@@ -317,6 +304,8 @@ class get_node_status(View):
                     "Some entries are on the license lock list and therefore not displayed."
                 )
 
+            # import pprint
+            # pprint.pprint(host_results_filtered)
             # simply copy json dump
             request.xml_response["host_result"] = json.dumps(host_results_filtered)
             request.xml_response["service_result"] = json.dumps(service_results_filtered)

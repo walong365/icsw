@@ -51,6 +51,10 @@ class LiveQuery(object):
         self._columns = args
         return self
 
+    def filter_raw(self, filter_list):
+        self._filters.extend(filter_list)
+        return self
+
     def filter(self, key, op, value):
         if type(value) == list:
             for entry in value:
