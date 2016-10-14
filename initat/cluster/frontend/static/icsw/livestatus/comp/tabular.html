@@ -4,23 +4,35 @@
         st-table="entries_displayed"
         st-safe-src="struct.monitoring_data.services"
         class="table table-condensed table-hover table-striped"
-        style="font-size:100%;width:auto;"
+        style="font-size:100%;"
         ng-if="struct.monitoring_data.services.length"
     >
         <thead>
             <tr>
                 <td colspan="99" style="vertical-align:middle;">
                     <h3 class="pull-left" style="margin: 3px 10px 0 0;">Services</h3>
-                    <span class="pull-left" style="height:25px;width:25px;">
+                    <span class="pull-left" style="height:25px; width:25px;">
                         <icsw-livestatus-service-circle-info icsw-monitoring-data="struct.monitoring_data"></icsw-livestatus-service-circle-info>
                     </span>
                 </td>
             </tr>
             <tr>
                 <td colspan="99">
-                    <div class="pull-left"><input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="search"/></div>
+                    <div class="pull-left">
+                        <input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="search"/>
+                    </div>
                     <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed"
-                         possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;"></div>
+                         possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;">
+                    </div>
+                    <div>
+                        <icsw-tools-button
+                            type="modify"
+                            size="sm"
+                            icsw-value="struct.modify_value"
+                            ng-show="struct.selected"
+                            ng-click="modify_entries($event)"
+                        ></icsw-tools-button>
+                    </div>
                 </td>
             </tr>
             <tr>
@@ -95,18 +107,27 @@
             <tr>
                 <td colspan="99" style="vertical-align:middle;">
                     <h3 class="pull-left" style="margin: 3px 10px 0 0;">Devices</h3>
-                    <span class="pull-left" style="height:25px;width:25px;"><icsw-livestatus-device-circle-info icsw-monitoring-data="struct.monitoring_data"></icsw-livestatus-device-circle-info></span>
+                    <span class="pull-left" style="height:25px; width:25px;">
+                        <icsw-livestatus-device-circle-info icsw-monitoring-data="struct.monitoring_data"></icsw-livestatus-device-circle-info>
+                    </span>
                 </td>
             </tr>
             <tr>
                 <td colspan="99">
-                    <div class="pull-left"><input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="search"/></div>
+                    <div class="pull-left">
+                        <input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="search"/>
+                    </div>
                     <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed"
-                         possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;"></div>
-                    <div class="pull-right">
-                        <span class="label label-success" ng-show="struct.selected">
-                            {{ struct.selected }}
-                        </span>
+                         possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;">
+                    </div>
+                    <div>
+                        <icsw-tools-button
+                            type="modify"
+                            size="sm"
+                            icsw-value="struct.modify_value"
+                            ng-show="struct.selected"
+                            ng-click="modify_entries($event)"
+                        ></icsw-tools-button>
                     </div>
                 </td>
             </tr>
@@ -154,4 +175,28 @@
     <td class="text-nowrap">{{ host.$$icswLastCheckString }}</td>
     <td class="text-nowrap">{{ host.$$icswLastStateChangeString }}</td>
     <td ng-show="show_column.output">{{ host.plugin_output }}</td>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.modify.entries">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Action</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Action
+                </label>
+                <div class="controls col-sm-8">
+                    <ui-select ng-model="edit_obj.action" class="maxwidth500" ng-disabled="false">
+                        <ui-select-match class="ui-select-match" placeholder="Action">
+                            {{ $select.selected.long }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.short as value in valid_actions | props_filter:{long:$select.search}">
+                            <div ng-bind-html="value.long | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset/>
+    </form>
 </script>

@@ -68,66 +68,8 @@ angular.module(
                 con_element: "=icswConnectElement"
             }
             link: (scope, element, attrs) ->
-                scope.link(scope.con_element, scope.con_element.new_data_notifier)
+                scope.link(scope.con_element, scope.con_element.new_data_notifier, "services")
         }
-]).controller("icswLivestatusDeviceMonTableCtrl",
-[
-    "$scope", "DeviceOverviewSelection", "DeviceOverviewService",
-    "ICSW_SIGNALS",
-(
-    $scope, DeviceOverviewSelection, DeviceOverviewService,
-    ICSW_SIGNALS,
-) ->
-    $scope.struct = {
-        # monitoring data
-        monitoring_data: undefined
-        # connection element
-        con_element: undefined
-        # settings
-        settings: {
-            "pag": {}
-            "columns": {}
-        }
-        # selected
-        selected: 4
-    }
-    $scope.link = (con_element, notifier) ->
-        $scope.struct.con_element = con_element
-        if $scope.struct.con_element._settings?
-            $scope.struct.settings = angular.fromJson($scope.struct.con_element._settings)
-            if "pag" of $scope.struct.settings
-                $scope.pagination_settings = $scope.struct.settings["pag"]
-            if "columns" of $scope.struct.settings
-                $scope.columns_from_settings = $scope.struct.settings["columns"]
-        notifier.promise.then(
-            (resolve) ->
-            (rejected) ->
-            (data) ->
-                $scope.struct.monitoring_data = data
-        )
-    
-    $scope.show_device = ($event, dev_check) ->
-        DeviceOverviewSelection.set_selection([dev_check.$$icswDevice])
-        DeviceOverviewService($event)
-
-    $scope.pagination_changed = (pag) ->
-        if not pag?
-            return $scope.struct.settings["pag"]
-        else
-            $scope.struct.settings["pag"] = pag
-            $scope.struct.con_element.pipeline_settings_changed(angular.toJson($scope.struct.settings))
-
-    $scope.columns_changed = (col_setup) ->
-        $scope.struct.settings["columns"] = col_setup
-        $scope.struct.con_element.pipeline_settings_changed(angular.toJson($scope.struct.settings))
-
-    $scope.$on(ICSW_SIGNALS("_ICSW_UPDATE_MON_SELECTION"), (event, val) ->
-        $scope.$apply(
-            () ->
-                $scope.struct.selected += val
-        )
-    )
-
 ]).directive("icswLivestatusMonTableRow",
 [
     "$templateCache",
@@ -180,7 +122,7 @@ angular.module(
             con_element: "=icswConnectElement"
         }
         link: (scope, element, attrs) ->
-            scope.link(scope.con_element, scope.con_element.new_data_notifier)
+            scope.link(scope.con_element, scope.con_element.new_data_notifier, "hosts")
     }
 ]).directive("icswLivestatusDeviceTableRow",
 [
@@ -217,4 +159,103 @@ angular.module(
                     $(element).removeClass("info")
             )
     }
+]).controller("icswLivestatusDeviceMonTableCtrl",
+[
+    "$scope", "DeviceOverviewSelection", "DeviceOverviewService", "$q",
+    "ICSW_SIGNALS", "icswComplexModalService", "$templateCache", "$compile", "blockUI",
+(
+    $scope, DeviceOverviewSelection, DeviceOverviewService, $q,
+    ICSW_SIGNALS, icswComplexModalService, $templateCache, $compile, $blockUI,
+) ->
+    $scope.struct = {
+        # monitoring data
+        monitoring_data: undefined
+        # connection element
+        con_element: undefined
+        # settings
+        settings: {
+            "pag": {}
+            "columns": {}
+        }
+        # selected
+        selected: 0
+        # display type
+        d_type: undefined
+        # value for modify button
+        modify_value: "N/A"
+    }
+    $scope.link = (con_element, notifier, d_type) ->
+        $scope.struct.d_type = d_type
+        console.log $scope.struct.d_type
+        $scope.struct.con_element = con_element
+        if $scope.struct.con_element._settings?
+            $scope.struct.settings = angular.fromJson($scope.struct.con_element._settings)
+            if "pag" of $scope.struct.settings
+                $scope.pagination_settings = $scope.struct.settings["pag"]
+            if "columns" of $scope.struct.settings
+                $scope.columns_from_settings = $scope.struct.settings["columns"]
+        notifier.promise.then(
+            (resolve) ->
+            (rejected) ->
+            (data) ->
+                $scope.struct.monitoring_data = data
+                _update_selected()
+        )
+
+    $scope.show_device = ($event, dev_check) ->
+        DeviceOverviewSelection.set_selection([dev_check.$$icswDevice])
+        DeviceOverviewService($event)
+
+    $scope.pagination_changed = (pag) ->
+        if not pag?
+            return $scope.struct.settings["pag"]
+        else
+            $scope.struct.settings["pag"] = pag
+            $scope.struct.con_element.pipeline_settings_changed(angular.toJson($scope.struct.settings))
+
+    $scope.columns_changed = (col_setup) ->
+        $scope.struct.settings["columns"] = col_setup
+        $scope.struct.con_element.pipeline_settings_changed(angular.toJson($scope.struct.settings))
+
+    _update_selected = () ->
+        $scope.struct.selected = (entry for entry in $scope.struct.monitoring_data[$scope.struct.d_type] when entry.$$selected).length
+        if $scope.struct.selected
+            $scope.struct.modify_value = "modify #{$scope.struct.selected} #{$scope.struct.d_type}"
+        else
+            $scope.struct.modify_value = "N/A"
+
+    $scope.$on(ICSW_SIGNALS("_ICSW_UPDATE_MON_SELECTION"), (event, val) ->
+        # handling of table-row clicks
+        $scope.$apply(
+            () ->
+                _update_selected()
+        )
+    )
+
+    $scope.modify_entries = ($event) ->
+        sub_scope = $scope.$new(true)
+        # action
+        sub_scope.valid_actions = [
+            {short: "none", long: "do nothing"}
+            {short: "ack", long: "Acknowledge"}
+        ]
+        sub_scope.edit_obj = {
+            action: sub_scope.valid_actions[0].short
+        }
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.livestatus.modify.entries"))(sub_scope)
+                title: "Modify entries"
+                ok_label: "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("close")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+        )
+
 ])
