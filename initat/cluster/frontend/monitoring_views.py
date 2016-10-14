@@ -35,26 +35,26 @@ from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from rest_framework import viewsets, status
 from lxml.builder import E
-from initat.cluster.backbone.server_enums import icswServiceEnum
+from rest_framework import viewsets
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
     parse_commandline, mon_check_command_special, device, mon_dist_master
-from initat.cluster.backbone.serializers import mon_dist_master_serializer
 from initat.cluster.backbone.models.functions import duration, cluster_timezone
 from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
     mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, AlertList
+from initat.cluster.backbone.serializers import mon_dist_master_serializer
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
-from initat.tools import server_command, logging_tools
+from initat.tools import server_command
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -687,3 +687,23 @@ class get_hist_service_line_graph_data(ListAPIView):
         return Response([return_data])  # fake a list, see coffeescript
         """
         return Response([return_data])  # fake a list, see coffeescript
+
+
+class SendMonCommand(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        data = json.loads(request.POST["json"])
+        import pprint
+        pprint.pprint(data)
+        _action = data["action"]["short"]
+        if _action != "none":
+            srv_com = server_command.srv_command(
+                command="mon_command",
+                action=_action,
+                type=data["type"],
+                key_list=data["key_list"]
+            )
+            contact_server(request, icswServiceEnum.monitor_server, srv_com)
+
+        request.xml_response.info("handled {}".format(data["action"]["long"]))

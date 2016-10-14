@@ -861,11 +861,15 @@ def main(args):
                 # use existing db_cf
                 setup_db_cf = False
             else:
-                if args.ignore_existing:
-                    print("DB access file {} already exists, ignoring ...".format(DB_ACCESS_CS_NAME))
+                _db_cf_f = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True)
+                if not len(_db_cf_f.keys()):
+                    print("DB access file {} already exists but is empty, ignoring ...".format(DB_ACCESS_CS_NAME))
+                    setup_db_cf = True
+                elif args.ignore_existing:
+                    print("DB access file {} already exists but will be overwritten ...".format(DB_ACCESS_CS_NAME))
                     setup_db_cf = True
                 else:
-                    print("DB access file {} already exists, ignoring ...".format(DB_ACCESS_CS_NAME))
+                    print("DB access file {} already exists, will not setup new database ...".format(DB_ACCESS_CS_NAME))
                     call_create_db = False
                     setup_db_cf = False
     else:

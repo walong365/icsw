@@ -418,6 +418,7 @@ class hard_control(View):
 
 class modify_mbl(View):
     @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
     def post(self, request):
         _post = request.POST
         _mbl = json.loads(_post["mbl"])

@@ -60,6 +60,8 @@ class SyncerProcess(threading_tools.process_obj):
         self.register_func("slave_info", self._slave_info)
         self.register_func("get_sys_info", self._get_sys_info)
         self.register_func("mon_process_handling", self._mon_process_handling)
+        # handling external commands (acks and so on)
+        self.register_func("ext_command", self._ext_command)
         self.__build_in_progress, self.__build_version = (False, 0)
         self.__master_config = None
         # this used to be just set in _check_for_slaves, but apparently check_for_redistribute can be called before that
@@ -91,7 +93,13 @@ class SyncerProcess(threading_tools.process_obj):
         # connect to local relayer
         self.__primary_slave_uuid = routing.get_server_uuid(icswServiceEnum.monitor_slave, master_server.uuid)
         self.send_pool_message("set_sync_master_uuid", self.__primary_slave_uuid)
-        self.log("  master {} (IP {}, {})".format(master_server.full_name, "127.0.0.1", self.__primary_slave_uuid))
+        self.log(
+            "  master {} (IP {}, {})".format(
+                master_server.full_name,
+                "127.0.0.1",
+                self.__primary_slave_uuid
+            )
+        )
         self.send_pool_message("register_remote", "127.0.0.1", self.__primary_slave_uuid, icswServiceEnum.monitor_slave.name)
         _send_data = [self.__master_config.get_send_data()]
         if len(slave_servers):
@@ -134,6 +142,10 @@ class SyncerProcess(threading_tools.process_obj):
         self.send_sync_command(distr_info)
 
     def _mon_process_handling(self, *args, **kwargs):
+        srv_com = server_command.srv_command(source=args[0])
+        self.send_sync_command(srv_com)
+
+    def _ext_command(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self.send_sync_command(srv_com)
 
