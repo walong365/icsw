@@ -11,7 +11,7 @@
 .svg-srv-ok { fill: #92aa00; }
 .svg-srv-warn { fill: #e2972d; }
 .svg-srv-crit { fill: #bb3d1e; }
-.svg-srv-unknown { fill: #bb3d1e; }
+.svg-srv-unknown { fill: #d6644a; }
 .svg-srv-notmonitored { fill: #666666; }
 .svg-srv-pending { fill: #ccccff; }
 .svg-srv-unselected { fill: #dddddd; }
