@@ -283,6 +283,7 @@ monitoring_patterns = [
     url("^get_mon_sys_info$", monitoring_views.SysInfoViewSet.as_view({"get": "get_all"}), name="get_mon_sys_info"),
     url("^get_build_info$", monitoring_views.BuildInfoViewSet.as_view({"get": "get_all"}), name="get_mon_build_info"),
     url("^toggle_sys_flag$", monitoring_views.toggle_sys_flag.as_view(), name="toggle_sys_flag"),
+    url("^send_command$", monitoring_views.SendMonCommand.as_view(), name="send_mon_command"),
 ]
 
 user_patterns = [

@@ -386,6 +386,17 @@ class server_process(
         return None if _forwarded else srv_com
 
     @RemoteCall()
+    def ext_command(self, srv_com, **kwargs):
+        _lines = srv_com["*lines"]
+        if self._icinga_pc:
+            self.log("sending {} as external command".format(logging_tools.get_plural("line", len(_lines))))
+            self._icinga_pc.write_external_cmd_file(_lines)
+        else:
+            self.log("no icinga_pc defined", logging_tools.LOG_LEVEL_ERROR)
+        srv_com.set_result("Ok got command")
+        return None
+
+    @RemoteCall()
     def distribute_info(self, srv_com, **kwargs):
         di_info = server_command.decompress(srv_com["*info"], marshal=True)
         self.config_store["distribute_info"] = server_command.compress(di_info, json=True)

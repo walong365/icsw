@@ -26,7 +26,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
-    mon_check_command_special, mon_check_command, SpecialGroupsEnum
+    mon_check_command_special, mon_check_command, SpecialGroupsEnum, device
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.md_config_server.build import BuildControl
@@ -349,6 +349,38 @@ class ServerProcess(
     def process_exit(self, src_process, src_pid):
         self.CC.process_removed(src_pid)
 
+    def handle_mon_command(self, srv_com):
+        action = srv_com["*action"]
+        t_type = srv_com["*type"]
+        key_list = srv_com["*key_list"]
+        # print key_list
+        self.log(
+            "got mon_command action '{}' ({}, {})".format(
+                action,
+                t_type,
+                logging_tools.get_plural("entry", len(key_list)),
+            )
+        )
+        _ext_lines = []
+        if action == "ack":
+            # acknowleded command
+            if t_type == "hosts":
+                _ext_lines = [
+                    "[{:d}] ACKNOWLEDGE_HOST_PROBLEM;{};1;1;1;ich;done it".format(
+                        int(time.time()),
+                        _dev.full_name
+                    ) for _dev in device.objects.filter(Q(pk__in=key_list))
+                ]
+        else:
+            self.log("")
+        if _ext_lines:
+            self.log("created {}".format(logging_tools.get_plural("line", len(_ext_lines))))
+            ext_com = server_command.srv_command(
+                command="ext_command",
+                lines=_ext_lines,
+            )
+            self.send_to_process("syncer", "ext_command", unicode(ext_com))
+
     def _register_remote(self, *args, **kwargs):
         _src_proc, _src_id, remote_ip, remote_uuid, remote_enum_name = args
         if remote_uuid not in self.__remotes:
@@ -450,6 +482,12 @@ class ServerProcess(
     def mon_process_handling(self, srv_com, **kwargs):
         self.send_to_process("syncer", "mon_process_handling", unicode(srv_com))
         srv_com.set_result("ok set new flags")
+        return srv_com
+
+    @RemoteCall()
+    def mon_command(self, srv_com, **kwargs):
+        self.handle_mon_command(srv_com)
+        srv_com.set_result("handled command")
         return srv_com
 
     @RemoteCall(target_process="syncer")

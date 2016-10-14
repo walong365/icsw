@@ -206,7 +206,7 @@
                         <ui-select-match class="ui-select-match" placeholder="Action">
                             {{ $select.selected.long }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.short as value in valid_actions | props_filter:{long:$select.search}">
+                        <ui-select-choices class="ui-select-choices" repeat="value as value in valid_actions | props_filter:{long:$select.search}">
                             <div ng-bind-html="value.long | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>

@@ -161,10 +161,10 @@ angular.module(
     }
 ]).controller("icswLivestatusDeviceMonTableCtrl",
 [
-    "$scope", "DeviceOverviewSelection", "DeviceOverviewService", "$q",
+    "$scope", "DeviceOverviewSelection", "DeviceOverviewService", "$q", "icswSimpleAjaxCall", "ICSW_URLS",
     "ICSW_SIGNALS", "icswComplexModalService", "$templateCache", "$compile", "blockUI",
 (
-    $scope, DeviceOverviewSelection, DeviceOverviewService, $q,
+    $scope, DeviceOverviewSelection, DeviceOverviewService, $q, icswSimpleAjaxCall, ICSW_URLS,
     ICSW_SIGNALS, icswComplexModalService, $templateCache, $compile, $blockUI,
 ) ->
     $scope.struct = {
@@ -240,7 +240,7 @@ angular.module(
             {short: "ack", long: "Acknowledge"}
         ]
         sub_scope.edit_obj = {
-            action: sub_scope.valid_actions[0].short
+            action: sub_scope.valid_actions[0]
         }
         icswComplexModalService(
             {
@@ -250,7 +250,25 @@ angular.module(
                 closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    d.resolve("close")
+                    if $scope.struct.d_type == "hosts"
+                        key_list = (entry.$$icswDevice.idx for entry in $scope.struct.monitoring_data.hosts when entry.$$selected)
+                    else
+                        key_list = (entry.description for entry in $scope.struct.monitoring_data.services when entry.$$selected)
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.MON_SEND_MON_COMMAND
+                            data:
+                                json: angular.toJson(
+                                    action: sub_scope.edit_obj.action
+                                    type: $scope.struct.d_type
+                                    key_list: key_list
+                                )
+                        }
+                    ).then(
+                        (res) ->
+                            console.log "r=", res
+                            d.resolve("close")
+                    )
                     return d.promise
             }
         ).then(
