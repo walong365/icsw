@@ -168,17 +168,6 @@ class AssetPackage(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     package_type = models.IntegerField(choices=[(pt.value, pt.name) for pt in PackageTypeEnum])
 
-    def __lt__(self, other):
-        return self.name < other.name
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) \
-            and self.name == other.name \
-            and self.package_type == other.package_type
-
-    def __hash__(self):
-        return hash((self.name, self.package_type))
-
 
 class AssetPackageVersion(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -202,16 +191,6 @@ class AssetPackageVersion(models.Model):
             _dict[assetbatch.device.idx]["install_history_list"].append(assetbatch.run_start_time)
 
         return _dict
-
-    def __lt__(self, other):
-        return self.name < other.name
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.version == other.version \
-            and self.release == other.release
-
-    def __hash__(self):
-        return hash((self.version, self.release, self.size))
 
 
 class AssetHardwareEntry(models.Model):
