@@ -57,45 +57,32 @@ describe('ICSW Basic Interface Tests:', function() {
     this.ensure_valid_login = function() {
       this.set_username("admin");
       this.set_password("abc123");
-      login_button.click();
 
-      var deferred = protractor.promise.defer();
-
-      browser.sleep(8000).then(function() {
-        var modal_dialog = element(by.className("modal-footer"));
-        modal_dialog.isPresent().then(function(is_present) {
-          if (is_present) {
-            element(by.className("btn-success")).click();
-            browser.wait(EC.and(EC.elementToBeClickable(image_element), EC.invisibilityOf(overlay_element))).then(function() {
-              expect(browser.getTitle()).toEqual('Dashboard');
-              deferred.fulfill("ok")
-            })
-          } else {
-            expect(browser.getTitle()).toEqual('Dashboard');
-            deferred.fulfill("ok")
-          }
-        })
-      });
-
-      return deferred.promise
+      return this.perform_login(true);
     };
 
-    this.perform_login = function() {
+    this.perform_login = function(ensure_logged_in_status) {
       login_button.click();
 
       var deferred = protractor.promise.defer();
 
-      browser.sleep(8000).then(function() {
-        var modal_dialog = element(by.className("modal-footer"));
+      var modal_backdrop = element(by.xpath("/html/body/div[5]"));
 
-        modal_dialog.isPresent().then(function(is_present) {
-          if (is_present) {
-            element(by.className("btn-success")).click();
-            browser.wait(EC.and(EC.elementToBeClickable(image_element), EC.invisibilityOf(overlay_element))).then(function () {
-              deferred.fulfill("ok")
-            })
-          }
+      browser.wait(EC.presenceOf(modal_backdrop), 10 * 1000).then(function() {
+        var yes_button = element(by.className("btn-success"));
+        browser.wait(EC.and(EC.elementToBeClickable(yes_button), EC.invisibilityOf(overlay_element))).then(function() {
+          yes_button.click();
+          browser.wait(EC.and(EC.titleIs('Dashboard'), EC.invisibilityOf(overlay_element))).then(function() {
+            expect(browser.getTitle()).toEqual('Dashboard');
+            deferred.fulfill("ok")
+          });
         });
+      }, function() {
+        if (ensure_logged_in_status == true) {
+          expect(browser.getTitle()).toEqual('Dashboard');
+        }
+
+        deferred.fulfill("ok")
       });
 
       return deferred.promise
@@ -118,7 +105,7 @@ describe('ICSW Basic Interface Tests:', function() {
     icsw_homepage.set_username("admin");
     icsw_homepage.set_password("abc123");
 
-    icsw_homepage.perform_login().then(function() {
+    icsw_homepage.perform_login(false).then(function() {
       expect(browser.getTitle()).toEqual('Dashboard');
     });
   });
@@ -135,7 +122,7 @@ describe('ICSW Basic Interface Tests:', function() {
     icsw_homepage.set_username("adasdioasiod");
     icsw_homepage.set_password("oasddsaoasas");
 
-    icsw_homepage.perform_login().then(function() {
+    icsw_homepage.perform_login(false).then(function() {
       expect(browser.getTitle()).toEqual('ICSW Login');
     });
   });
@@ -341,8 +328,8 @@ describe('ICSW Basic Interface Tests:', function() {
             create_device_group_button.click();
 
             var create_button = element(by.buttonText("Create"));
-            browser.wait(EC.and(EC.elementToBeClickable(create_button), EC.invisibilityOf(icsw_homepage.overlay_element)));
-            browser.sleep(2500).then(function() {
+
+            browser.wait(EC.and(EC.elementToBeClickable(create_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
               var group_name_field = element(by.model('edit_obj.name'));
               var group_description_field = element(by.model('edit_obj.description'));
 
@@ -356,7 +343,10 @@ describe('ICSW Basic Interface Tests:', function() {
               group_description_field.sendKeys(group_description);
 
               create_button.click();
-              browser.sleep(2500).then(function() {
+
+              var modal_backdrop = element(by.xpath("/html/body/div[5]"));
+
+              browser.wait(EC.and(EC.stalenessOf(modal_backdrop), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
                 var filter_field = element(by.model("filter_settings.str_filter"));
                 filter_field.sendKeys(group_name);
 
@@ -391,32 +381,31 @@ describe('ICSW Basic Interface Tests:', function() {
             create_device_button.click();
 
             var create_button = element(by.buttonText("Create"));
-            browser.wait(EC.and(EC.elementToBeClickable(create_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function(){
-              browser.sleep(2500).then(function() {
-                var name_field = element(by.model('edit_obj.name'));
-                var description_field = element(by.model('edit_obj.comment'));
+            browser.wait(EC.and(EC.elementToBeClickable(create_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
+              var name_field = element(by.model('edit_obj.name'));
+              var description_field = element(by.model('edit_obj.comment'));
 
-                var name = makeid();
-                var description = makeid();
+              var name = makeid();
+              var description = makeid();
 
-                name_field.clear();
-                name_field.sendKeys(name);
+              name_field.clear();
+              name_field.sendKeys(name);
 
-                description_field.clear();
-                description_field.sendKeys(description);
+              description_field.clear();
+              description_field.sendKeys(description);
 
-                create_button.click();
+              create_button.click();
 
-                var cancel_button = element(by.buttonText("Cancel"));
-                cancel_button.click();
-                browser.sleep(2500).then(function() {
+              var cancel_button = element(by.buttonText("Cancel"));
+              cancel_button.click();
 
-                  var filter_field = element(by.model("filter_settings.str_filter"));
-                  filter_field.sendKeys(name);
+              var modal_backdrop = element(by.xpath("/html/body/div[5]"));
+              browser.wait(EC.and(EC.stalenessOf(modal_backdrop), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
+                var filter_field = element(by.model("filter_settings.str_filter"));
+                filter_field.sendKeys(name);
 
-                  var tree_table = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table"))
-                  browser.wait(EC.and(EC.textToBePresentInElement(tree_table, name), EC.textToBePresentInElement(tree_table, description)));
-                });
+                var tree_table = element(by.xpath("/html/body/div[3]/div/div/icsw-device-tree-overview/div/div/table"))
+                browser.wait(EC.and(EC.textToBePresentInElement(tree_table, name), EC.textToBePresentInElement(tree_table, description)));
               });
             });
           });
