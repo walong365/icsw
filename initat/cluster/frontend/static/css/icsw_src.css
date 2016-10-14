@@ -255,7 +255,15 @@ div[class*="col-"] > ul {
 .progress-bar {
     color: #000000;
 }
-
+icsw-connect-element-display .panel[layout_unlocked="true"] h4 {
+    display: none;
+}
+icsw-connect-element-display .panel[layout_unlocked="false"] h4 {
+    display: block;
+    font-size:14px;
+    font-weight:600;
+    margin: 0 0 3px 0;
+}
 /* FORM STYLES START */
 .icsw-formlabel {
     width: 250px;

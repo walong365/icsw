@@ -35,8 +35,9 @@ angular.module(
         constructor: () ->
             super("icswLivestatusMonCategoryFilter", true, true)
             @set_template(
-                '<icsw-config-category-tree-select icsw-mode="filter" icsw-sub-tree="\'mon\'" icsw-mode="filter" icsw-connect-element="con_element"></icsw-config-category-tree-select>'
-                "MonCategoryFilter"
+                '<h4>Monitoring Category Filter</h4>
+                <icsw-config-category-tree-select icsw-mode="filter" icsw-sub-tree="\'mon\'" icsw-mode="filter" icsw-connect-element="con_element"></icsw-config-category-tree-select>'
+                "Monitoring Category Filter"
             )
             @_emit_data = new icswMonitoringResult()
             @_cat_filter = undefined
@@ -75,8 +76,9 @@ angular.module(
         constructor: () ->
             super("icswLivestatusDeviceCategoryFilter", true, true)
             @set_template(
-                '<icsw-config-category-tree-select icsw-mode="filter" icsw-sub-tree="\'device\'" icsw-mode="filter" icsw-connect-element="con_element"></icsw-config-category-tree-select>'
-                "DevCategoryFilter"
+                '<h4>Device Category Filter</h4>
+                <icsw-config-category-tree-select icsw-mode="filter" icsw-sub-tree="\'device\'" icsw-mode="filter" icsw-connect-element="con_element"></icsw-config-category-tree-select>'
+                "Device Category Filter"
             )
             @_emit_data = new icswMonitoringResult()
             @_cat_filter = undefined
