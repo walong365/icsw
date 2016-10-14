@@ -27,32 +27,6 @@ angular.module(
     ]
 ).service("icswSaltMonitoringResultService", [() ->
 
-    _parse_custom_variables = (cvs) ->
-        _cv = {}
-        if cvs
-            first = true
-            for _entry in cvs.split("|")
-                if first
-                    key = _entry.toLowerCase()
-                    first = false
-                else
-                    parts = _entry.split(",")
-                    _cv[key] = parts
-                    key = parts.pop().toLowerCase()
-            # append key of last '|'-split to latest parts
-            parts.push(key)
-            for single_key in ["check_command_pk", "device_pk"]
-                if single_key of _cv
-                    _cv[single_key] = parseInt(_cv[single_key][0])
-            for int_mkey in ["cat_pks"]
-                if int_mkey of _cv
-                    _list = (parseInt(_sv) for _sv in _cv[int_mkey] when _sv != "-")
-                    if _list.length
-                        _cv[int_mkey] = _list
-                    else
-                        delete _cv[int_mkey]
-        return _cv
-
     _get_diff_time = (ts) ->
         if parseInt(ts)
             return moment.unix(ts).fromNow(true)
@@ -91,16 +65,17 @@ angular.module(
     _sanitize_entry = (entry) ->
         entry.$$dummy = false
         entry.state = parseInt(entry.state)
+        # console.log entry.last_check, typeof(entry.last_check)
         if entry.last_check in ["0"] and entry.state != 4
             entry.state = 5
-        if entry.state_type in ["0", "1"]
-            entry.state_type = parseInt(entry.state_type)
-        else
-            entry.state_type = null
-        if entry.check_type in ["0", "1"]
-            entry.check_type = parseInt(entry.check_type)
-        else
-            entry.check_type = null
+        #if entry.state_type in ["0", "1"]
+        #    entry.state_type = parseInt(entry.state_type)
+        #else
+        #    entry.state_type = null
+        #if entry.check_type in ["0", "1"]
+        #    entry.check_type = parseInt(entry.check_type)
+        #else
+        #    entry.check_type = null
         entry.$$icswStateTypeString = {
             null: "???"
             0: "soft"
@@ -126,17 +101,15 @@ angular.module(
         entry.$$icswLastCheckString = _get_diff_time(entry.last_check)
         entry.$$icswLastStateChangeString = _get_diff_time(entry.last_state_change)
 
-        # custom variables
-
-        entry.custom_variables = _parse_custom_variables(entry.custom_variables)
+        # custom variables, already parsed
 
     _get_dummy_entry = (display_name, ct) ->
         entry = {
             display_name: display_name
             $$ct: ct
             $$dummy: false
-            last_check: "0"
-            last_state_change: "0"
+            last_check: 0
+            last_state_change: 0
         }
         return entry
 
@@ -144,9 +117,9 @@ angular.module(
         entry = _get_dummy_entry(display_name, "service")
         # is a dummy entry
         entry.$$dummy = true
-        entry.state = "4"
-        entry.state_type = "1"
-        entry.check_type = "0"
+        entry.state = 4
+        entry.state_type = 1
+        entry.check_type = 0
         salt_service_state(entry)
         return entry
 
@@ -163,11 +136,14 @@ angular.module(
         entry = _get_dummy_entry(dev.full_name, "device")
         entry.$$dummy = true
         # important: state type is 1 (== hard state) and check_type is 0 (== active)
-        entry.state = "4"
-        entry.state_type = "1"
-        entry.check_type = "0"
-        # fake custom vars
-        entry.custom_variables = "DEVICE_PK|#{dev.idx},UUID|#{dev.uuid}"
+        entry.state = 4
+        entry.state_type = 1
+        entry.check_type = 0
+        # custom vars
+        entry.custom_variables = {
+            device_pk: dev.idx
+            uuid: dev.uuid
+        }
         return entry
 
     _state_lut = {
