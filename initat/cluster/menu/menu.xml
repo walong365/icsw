@@ -559,7 +559,7 @@
             <route name="logout">
                 <stateData type="dict" url_str="/empty" templateUrl_str="icsw/logout.html"/>
                 <icswData type="dict" pageTitle_str="Logout">
-                    <menuEntry type="dict" icon_str="fa-sign-out" name_str="Logout"/>
+                    <menuEntry type="dict" icon_str="fa-sign-out" name_str="Logout" title_str="Logout and remember selection"/>
                 </icswData>
             </route>
         </routeSubGroup>

@@ -107,7 +107,6 @@ class StatusProcess(threading_tools.process_obj):
             # ToDo, FIXME: receive full names in srv_command
             dev_names = srv_com.xpath(".//device_list/device/@full_name", smart_strings=False)
             # dev_names = sorted([cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=pk_list))])
-        s_time = time.time()
         try:
             cur_sock = self._open()
             if cur_sock:
@@ -168,11 +167,10 @@ class StatusProcess(threading_tools.process_obj):
                             "entry_time",
                         ).filter(
                             "host_name", "=", dev_names
-                        ).filter_raw(
-                            [
-                                "Filter: is_service = 0",
-                                "And: 2"
-                            ]
+                        ).filter(
+                            "is_service", "=", "0",
+                            method="and",
+                            count=2,
                         )
                         fetch_dict["service_comment"] = cur_sock.comments.columns(
                             "host_name",
@@ -182,12 +180,12 @@ class StatusProcess(threading_tools.process_obj):
                             "entry_time",
                         ).filter(
                             "host_name", "=", dev_names
-                        ).filter_raw(
-                            [
-                                "Filter: is_service = 1",
-                                "And: 2"
-                            ]
+                        ).filter(
+                            "is_service", "=", "1",
+                            method="and",
+                            count=2,
                         )
+                        # print str(fetch_dict["service_comment"])
                 fetch_dict.fetch()
                 srv_com["service_result"] = json.dumps(
                     [

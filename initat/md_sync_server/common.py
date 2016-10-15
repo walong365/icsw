@@ -61,18 +61,15 @@ class LiveQuery(object):
             self._columns = args
         return self
 
-    def filter_raw(self, filter_list):
-        self._filters.extend(filter_list)
-        return self
-
-    def filter(self, key, op, value):
-        if type(value) == list:
-            for entry in value:
-                self._filters.append("Filter: {} {} {}".format(key, op, entry))
-            if len(value) > 1:
-                self._filters.append("Or: {:d}".format(len(value)))
-        else:
-            self._filters.append("Filter: {} {} {}".format(key, op, value))
+    def filter(self, key, op, value, method="or", count=None):
+        if type(value) != list:
+            value = [value]
+        for entry in value:
+            self._filters.append("Filter: {} {} {}".format(key, op, entry))
+        _nv = len(value)
+        _val = count if count is not None else _nv
+        if _val > 1:
+            self._filters.append("{}: {:d}".format(method.title(), _val))
         return self
 
 
