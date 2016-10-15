@@ -32,9 +32,11 @@ angular.module(
 [
     "icswDeviceTreeService", "$q", "icswSimpleAjaxCall", "ICSW_URLS", "$rootScope",
     "Restangular", "icswSavedSelectionService", "ICSW_SIGNALS", "icswUserService",
+    "$timeout",
 (
     icswDeviceTreeService, $q, icswSimpleAjaxCall, ICSW_URLS, $rootScope,
     Restangular, icswSavedSelectionService, ICSW_SIGNALS, icswUserService,
+    $timeout,
 ) ->
 
     class icswSelection
@@ -54,7 +56,22 @@ angular.module(
                 @user = icswUserService.get()
                 if @user.is_authenticated()
                     @sel_var_name = @user.expand_var(@sel_var_name)
-                    if @user.has_var(@sel_var_name)
+                    if @user.has_var(@user.USED_SEL_VAR_NAME)
+                        if not @__user_var_used
+                            @__user_var_used = true
+                            _used_sel = @user.get_var(@user.USED_SEL_VAR_NAME).value
+                            # console.log "used", _used_sel
+                            icswSavedSelectionService.load_selections().then(
+                                (done) =>
+                                    saved_sel = icswSavedSelectionService.get_selection(_used_sel)
+                                    if saved_sel
+                                        # copy from icswActiveSelectionService, fixme
+                                        @update(saved_sel.categories, saved_sel.device_groups, saved_sel.devices, saved_sel.devices)
+                                        @sync_with_db(saved_sel)
+                                        $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
+                            )
+
+                    else if @user.has_var(@sel_var_name)
                         if not @__user_var_used
                             @__user_var_used = true
                             @_last_stored = @user.get_var(@sel_var_name).json_value
@@ -340,11 +357,14 @@ angular.module(
 ) ->
     # used by menu.coffee (menu_base)
     _receivers = 0
+    # @if !DEBUG
     cur_selection = new icswSelection([], [], [], [])
+    # @endif
     # for testing, uses gulp-preprocess
     # @if DEBUG
     cur_selection = new icswSelection([], [], [666, 3, 5, 16, 21], [3, 5, 16, 21, 666])
     # @endif
+    console.log cur_selection
     # cur_selection = new icswSelection([], [], [3, 5], [3, 5])
     # cur_selection = new icswSelection([], [], [3], [3])
     # windowstest
@@ -466,12 +486,30 @@ angular.module(
         )
         return defer.promise
 
+    use_selection = (user, sel) ->
+        if user.is_authenticated()
+            user.set_var(user.USED_SEL_VAR_NAME, sel.name, "s")
+        return sel
+
+    get_selection = (name) ->
+        _f_list = (entry for entry in _list when entry.name == name)
+        if _f_list.length
+            return _f_list[0]
+        else
+            return null
+
     return {
+        use_selection: (user, sel) ->
+            return use_selection(user, sel)
+
         load_selections: () ->
             return load_selections()
 
         save_selection: (user, sel) ->
             return save_selection(user, sel)
+
+        get_selection: (name) ->
+            return get_selection(name)
 
         delete_selection: (sel) ->
             return delete_selection(sel)
@@ -1083,7 +1121,7 @@ angular.module(
         $scope.struct.selection_for_dropdown = undefined
 
     $scope.use_selection = (new_sel, b) ->
-        console.log "use_selection"
+        icswSavedSelectionService.use_selection($scope.struct.user, new_sel)
         $scope.struct.selection_for_dropdown = new_sel
         icswActiveSelectionService.sync_selection(new_sel)
         (cur_tc.clear_selected() for cur_tc in [$scope.tc_devices, $scope.tc_groups, $scope.tc_categories])

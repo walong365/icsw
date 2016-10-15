@@ -67,6 +67,9 @@ user_module = angular.module(
 ) ->
     class icswUser
         constructor: (user) ->
+            # var name for last used selection, not session local
+            # (can be used to automatically load a saved selection)
+            @USED_SEL_VAR_NAME = "$$used_dev_selection"
             @user = undefined
             @update(user)
             @init_vars()
@@ -1829,7 +1832,7 @@ user_module = angular.module(
     $scope, icswDeviceTreeService, icswUserGroupRolePermissionTreeService, $q,
     icswUserGroupRoleTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
-    console.log "o=", $scope.object
+    # console.log "o=", $scope.object
     $scope.struct = {
         # device tree
         device_tree: undefined

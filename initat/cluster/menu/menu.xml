@@ -60,7 +60,7 @@
                 </icswData>
             </route>
         </routeSubGroup>
-        <routeSubGroup name_str="Device Attributes">
+        <routeSubGroup name_str="Attributes">
             <route name="main.configoverview">
                 <stateData type="dict" url_str="/configoverview" templateUrl_str="icsw/main/config/overview.html"/>
                 <icswData type="dict" pageTitle_str="Assignable Configuration Setup">

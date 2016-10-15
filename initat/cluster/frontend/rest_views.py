@@ -295,11 +295,13 @@ class DBPrefetchMixin(object):
         return req_changes
 
 
-class detail_view(mixins.RetrieveModelMixin,
-                  mixins.UpdateModelMixin,
-                  mixins.DestroyModelMixin,
-                  generics.GenericAPIView,
-                  DBPrefetchMixin):
+class detail_view(
+    mixins.RetrieveModelMixin,
+    mixins.UpdateModelMixin,
+    mixins.DestroyModelMixin,
+    generics.GenericAPIView,
+    DBPrefetchMixin,
+):
     @rest_logging
     def get(self, request, *args, **kwargs):
         return self.retrieve(request, *args, **kwargs)
@@ -370,11 +372,12 @@ class detail_view(mixins.RetrieveModelMixin,
             raise ValueError(can_delete_answer.msg)
 
 
-class list_view(mixins.ListModelMixin,
-                mixins.CreateModelMixin,
-                generics.GenericAPIView,
-                DBPrefetchMixin
-                ):
+class list_view(
+    mixins.ListModelMixin,
+    mixins.CreateModelMixin,
+    generics.GenericAPIView,
+    DBPrefetchMixin,
+):
     @rest_logging
     def get(self, request, *args, **kwargs):
         return self.list(request, *args, **kwargs)
@@ -397,7 +400,10 @@ class list_view(mixins.ListModelMixin,
             )
         _obj = new_obj.save()
         resp = Response(new_obj.data)
-        silent = int(request.GET.get('silent', 0))
+        if self.model._meta.object_name in ["user_variable"]:
+            silent = True
+        else:
+            silent = int(request.GET.get('silent', 0))
         if not silent and resp.status_code in [200, 201, 202, 203]:
             # TODO, FIXME, get name (or unicode representation) of new object
             resp.data["_messages"] = [
