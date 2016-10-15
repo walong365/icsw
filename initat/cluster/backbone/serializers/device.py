@@ -24,14 +24,13 @@
 
 from rest_framework import serializers
 
-from initat.cluster.backbone.models import device, device_selection, device_config, device_group, \
+from initat.cluster.backbone.models import device, device_config, device_group, \
     cd_connection, DeviceSNMPInfo, DeviceScanLock, DeviceClass
 
 
 __all__ = [
     "DeviceScanLockSerializer",
     "device_config_help_serializer",
-    "device_selection_serializer",
     "device_group_serializer",
     "cd_connection_serializer",
     "cd_connection_serializer_boot",
@@ -69,14 +68,6 @@ class device_config_help_serializer(serializers.ModelSerializer):
     class Meta:
         model = device_config
         fields = ("idx", "info_string", "homeexport", "createdir", "name", "full_name")
-
-
-class device_selection_serializer(serializers.Serializer):
-    idx = serializers.IntegerField()
-    sel_type = serializers.CharField(max_length=2)
-
-    class Meta:
-        model = device_selection
 
 
 class device_group_serializer(serializers.ModelSerializer):

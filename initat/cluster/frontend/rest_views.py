@@ -57,7 +57,7 @@ import inspect
 
 logger = logging.getLogger("cluster.rest")
 
-SERIALIZER_BLACKLIST = ["device_selection_serializer", "StaticAssetTemplateRefsSerializer", "SubmitJobSerializer"]
+SERIALIZER_BLACKLIST = ["StaticAssetTemplateRefsSerializer", "SubmitJobSerializer"]
 
 # build REST_LIST from models content
 REST_LIST = []

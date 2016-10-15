@@ -52,7 +52,6 @@ logger = logging.getLogger(__name__)
 __all__ = [
     "device",
     "device_group",
-    "device_selection",
     "cd_connection",
     "DeviceSNMPInfo",
     "DeviceClass",
@@ -672,13 +671,6 @@ class DeviceClass(models.Model):
             self.name,
             _ci,
         )
-
-
-class device_selection(object):
-    def __init__(self, sel_str):
-        parts = sel_str.split("__")
-        self.idx = int(parts[1])
-        self.sel_type = {"dev": "d", "devg": "g"}[parts[0]]
 
 
 def _get_top_level_dtn():
