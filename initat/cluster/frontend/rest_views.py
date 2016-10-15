@@ -31,12 +31,12 @@ from django.db.models import Q
 from initat.cluster.backbone import serializers as model_serializers
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.models import get_related_models, get_change_reset_list, device, \
-    domain_name_tree, category_tree, device_selection, device_config, home_export_list, \
+    domain_name_tree, category_tree, device_config, home_export_list, \
     csw_permission, netdevice, cd_connection, ext_license_state_coarse, ext_license_check_coarse, \
     ext_license_version_state_coarse, ext_license_version, ext_license_user, ext_license_client, \
     ext_license_usage_coarse, peer_information
 from initat.cluster.backbone.serializers import device_serializer, \
-    device_selection_serializer, partition_table_serializer_save, partition_disc_serializer_save, \
+    partition_table_serializer_save, partition_disc_serializer_save, \
     partition_disc_serializer_create, device_config_help_serializer, \
     network_with_ip_serializer, ComCapabilitySerializer, peer_information_serializer
 from rest_framework import mixins, generics, status, viewsets, serializers
