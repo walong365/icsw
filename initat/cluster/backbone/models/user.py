@@ -29,7 +29,6 @@ import inspect
 import os
 import random
 import smbpasswd
-import pprint
 import string
 
 import django.core.serializers
@@ -43,10 +42,9 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.encoding import force_text
 
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
     get_vnc_enc
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListUser
 from initat.cluster.backbone.signals import UserChanged, GroupChanged, VirtualDesktopUserSettingChanged, \
     RoleChanged
 from initat.constants import GEN_CS_NAME
@@ -977,7 +975,7 @@ class user(models.Model):
         # foreign keys to ignore
         fk_ignore_list = [
             "user_variable", "user_permission", "user_object_permission", "login_history", "user_quota_setting",
-            "LicenseUsageUser", "LicenseLockListUser", "virtual_desktop_user_setting",
+            "virtual_desktop_user_setting",
         ]
 
     class Meta:
@@ -1493,8 +1491,8 @@ def virtual_desktop_user_setting_post_save(sender, **kwargs):
         if _cur_inst._send_signals:
             VirtualDesktopUserSettingChanged.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_save")
 
-        if _cur_inst.is_running and not _cur_inst.to_delete:
-            LicenseUsage.log_usage(LicenseEnum.virtual_desktop, LicenseParameterTypeEnum.user, _cur_inst.user)
+        # if _cur_inst.is_running and not _cur_inst.to_delete:
+        #    LicenseUsage.log_usage(LicenseEnum.virtual_desktop, LicenseParameterTypeEnum.user, _cur_inst.user)
 
 
 class virtual_desktop_protocol(models.Model):

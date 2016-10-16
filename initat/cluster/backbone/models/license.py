@@ -26,20 +26,18 @@
 import collections
 import datetime
 import logging
-import operator
 
 import django.utils.timezone
 import enum
 from dateutil import relativedelta
 from django.contrib.contenttypes.models import ContentType
 from django.core.exceptions import ValidationError
-from django.db import models, transaction, IntegrityError
-from django.db.models import signals, Q, Count
+from django.db import models
+from django.db.models import signals, Q
 from django.dispatch import receiver
 
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import memoize_with_expiry, cluster_timezone
-from initat.cluster.backbone.models.rms import ext_license
 from initat.tools import logging_tools
 from .license_xml import ICSW_XML_NS, ICSW_XML_NS_NAME, ICSW_XML_NS_MAP, LIC_FILE_RELAX_NG_DEFINITION
 
@@ -48,13 +46,6 @@ __all__ = [
     "License",
     "LicenseEnum",
     "LicenseParameterTypeEnum",
-    "LicenseUsage",
-    "LicenseUsageDeviceService",
-    "LicenseUsageUser",
-    "LicenseUsageExtLicense",
-    "LicenseLockListDeviceService",
-    "LicenseLockListUser",
-    "LicenseLockListExtLicense",
     "ICSW_XML_NS",
     "ICSW_XML_NS_MAP",
     "ICSW_XML_NS_NAME",
@@ -64,9 +55,12 @@ __all__ = [
     "icswEggBasket",
     "icswEggConsumer",
     "icswEggRequest",
+    "LICENSE_USAGE_GRACE_PERIOD",
 ]
 
 logger = logging.getLogger("cluster.icsw_license")
+
+LICENSE_USAGE_GRACE_PERIOD = relativedelta.relativedelta(weeks=2)
 
 
 class InitProduct(enum.Enum):
@@ -282,295 +276,6 @@ def license_save(sender, **kwargs):
 
 ########################################
 # license usage management:
-
-class _LicenseUsageBase(models.Model):
-    idx = models.AutoField(primary_key=True)
-
-    date = models.DateTimeField(auto_now_add=True)
-
-    license = models.CharField(max_length=30, db_index=True)
-
-    class Meta:
-        abstract = True
-        app_label = "backbone"
-
-
-class _LicenseUsageDeviceService(models.Model):
-    device = models.ForeignKey("backbone.device", db_index=True)
-    service = models.ForeignKey("backbone.mon_check_command", db_index=True, null=True, blank=True)
-
-    class Meta:
-        abstract = True
-        unique_together = (("license", "device", "service"),)
-
-
-class _LicenseUsageUser(models.Model):
-    user = models.ForeignKey("backbone.user", db_index=True)
-
-    class Meta:
-        abstract = True
-        unique_together = (("license", "user"),)
-
-
-class _LicenseUsageExtLicense(models.Model):
-    ext_license = models.ForeignKey(ext_license, db_index=True)
-
-    class Meta:
-        abstract = True
-        unique_together = (("license", "ext_license"),)
-
-
-class LicenseUsageDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
-    pass
-
-
-class LicenseUsageUser(_LicenseUsageBase, _LicenseUsageUser):
-    pass
-
-
-class LicenseUsageExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
-    pass
-
-
-class LicenseUsage(object):
-    # utility
-
-    @staticmethod
-    def device_to_pk(dev):
-        from initat.cluster.backbone.models import device
-        # assume obj is pk if it isn't the obj
-        return dev.pk if isinstance(dev, device) else int(dev)
-
-    @staticmethod
-    def service_to_pk(serv):
-        from initat.cluster.backbone.models.monitoring import mon_check_command
-        return serv.pk if isinstance(serv, mon_check_command) else int(serv)
-
-    @staticmethod
-    def user_to_pk(u):
-        from initat.cluster.backbone.models.user import user
-        return u.pk if isinstance(u, user) else int(u)
-
-    @staticmethod
-    def _ext_license_to_pk(lic):
-        from initat.cluster.backbone.models import ext_license
-        return lic.pk if isinstance(lic, ext_license) else int(lic)
-
-    # NOTE: keep in sync with js, see system/license.coffee line 222
-    GRACE_PERIOD = relativedelta.relativedelta(weeks=2)
-
-    @staticmethod
-    def log_usage(license, param_type, value):
-        """
-        Can currently handle missing device ids, all other data must be valid
-        Sometimes we expect iterables and sometimes single objects
-        :type license: LicenseEnum
-        :type param_type: LicenseParameterTypeEnum
-        """
-        from initat.cluster.backbone.models import device, mon_check_command
-
-        # this produces queries for all objects
-        # if that's too slow, we need a manual bulk get_or_create (check with one query, then create missing entries)
-        common_params = {"license": license.name}
-        with transaction.atomic():
-            if param_type == LicenseParameterTypeEnum.device:
-                if not isinstance(value, collections.Iterable):
-                    value = (value, )
-
-                # TODO: generalize this bulk create_if_nonexistent to all tables
-                dev_pks = frozenset(LicenseUsage.device_to_pk(dev) for dev in value)
-                present_keys = frozenset(
-                    LicenseUsageDeviceService.objects.filter(
-                        device_id__in=dev_pks, service=None, **common_params
-                    ).values_list("device_id", flat=True)
-                )
-                dev_pks_missing = dev_pks.difference(present_keys)
-                # check if devices are still present
-                dev_pks_missing_dev_present = device.objects.filter(pk__in=dev_pks_missing).values_list("pk", flat=True)
-                entries_to_add = [
-                    LicenseUsageDeviceService(device_id=dev_pk, service=None, **common_params) for dev_pk in dev_pks_missing_dev_present
-                ]
-                LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
-
-            elif param_type == LicenseParameterTypeEnum.service:
-                if value and any(value.itervalues()):  # not empty
-                    dev_serv_filter = reduce(
-                        operator.ior,
-                        (
-                            Q(
-                                device_id=LicenseUsage.device_to_pk(dev),
-                                service_id=LicenseUsage.service_to_pk(serv)
-                            )
-                            for dev, serv_list in value.iteritems()
-                            for serv in serv_list
-                        )
-                    ) & Q(**common_params)
-
-                    present_entries = frozenset(
-                        LicenseUsageDeviceService.objects.filter(dev_serv_filter).values_list(
-                            "device_id",
-                            "service_id"
-                        )
-                    )
-                    existing_dev_pks = frozenset(device.objects.all().values_list("pk", flat=True))
-                    existing_serv_pks = frozenset(mon_check_command.objects.all().values_list("pk", flat=True))
-                    entries_to_add = []
-                    for dev, serv_list in value.iteritems():
-                        dev_id = LicenseUsage.device_to_pk(dev)
-                        if dev_id in existing_dev_pks:
-                            for serv in serv_list:
-                                serv_id = LicenseUsage.service_to_pk(serv)
-                                if serv_id in existing_serv_pks:
-                                    if (dev_id, serv_id) not in present_entries:
-                                        entries_to_add.append(
-                                            LicenseUsageDeviceService(
-                                                device_id=dev_id,
-                                                service_id=serv_id,
-                                                **common_params
-                                            )
-                                        )
-
-                    LicenseUsageDeviceService.objects.bulk_create(entries_to_add)
-            elif param_type == LicenseParameterTypeEnum.ext_license:
-                try:
-                    LicenseUsageExtLicense.objects.get_or_create(
-                        ext_license_id=LicenseUsage._ext_license_to_pk(value),
-                        **common_params
-                    )
-                except IntegrityError:
-                    pass
-            elif param_type == LicenseParameterTypeEnum.user:
-                try:
-                    LicenseUsageUser.objects.get_or_create(user_id=LicenseUsage.user_to_pk(value), **common_params)
-                except IntegrityError:
-                    pass
-            else:
-                raise RuntimeError("Invalid license parameter type id: {}".format(param_type))
-
-    @classmethod
-    def get_license_usage(cls, license):
-        return {k: v for k, v in cls._get_license_usage_cache()[license].iteritems() if v > 0}
-
-    @staticmethod
-    @memoize_with_expiry(1)
-    def _get_license_usage_cache():
-        """
-        :return: {lic_enum: {param_type_enum: <usage>}}
-        """
-
-        usage_by_lic = {}
-        for lic in LicenseEnum:
-            usage_by_lic[lic] = {param_type: 0 for param_type in LicenseParameterTypeEnum}
-
-        def _add(lic_str, param_type_enum, usage):
-            try:
-                lic_enum = LicenseEnum[lic_str]
-            except KeyError:
-                # old license type
-                pass
-            else:
-                usage_by_lic[lic_enum][param_type_enum] = usage
-
-        for dev_usage in LicenseUsageDeviceService.objects.filter(
-            service__isnull=True
-        ).values('license').annotate(usage=Count('pk')):
-            _add(dev_usage['license'], LicenseParameterTypeEnum.device, dev_usage['usage'])
-
-        for serv_usage in LicenseUsageDeviceService.objects.filter(
-            service__isnull=False
-        ).values('license').annotate(usage=Count('pk')):
-            _add(serv_usage['license'], LicenseParameterTypeEnum.service, serv_usage['usage'])
-
-        for user_usage in LicenseUsageUser.objects.values('license').annotate(usage=Count('pk')):
-            _add(user_usage['license'], LicenseParameterTypeEnum.user, user_usage['usage'])
-
-        for ext_lic_usage in LicenseUsageExtLicense.objects.values('license').annotate(usage=Count('pk')):
-            _add(ext_lic_usage['license'], LicenseParameterTypeEnum.ext_license, ext_lic_usage['usage'])
-
-        return usage_by_lic
-
-
-class _LicenseViolationManager(models.Manager):
-    def is_hard_violated(self, license):
-        """
-        :type license: LicenseEnum
-        """
-        # only hard violations are actual violations, else it's a warning (grace)
-        return license.name in self._get_hard_violated_licenses_names()
-
-    @memoize_with_expiry(1)
-    def _get_hard_violated_licenses_names(self):
-        return frozenset(LicenseViolation.objects.filter(hard=True).values_list('license', flat=True))
-
-
-class LicenseViolation(_LicenseUsageBase):
-    objects = _LicenseViolationManager()
-
-    hard = models.BooleanField(default=False)
-
-    def __unicode__(self):
-        return u"LicenseViolation(license={})".format(self.license)
-
-    __repr__ = __unicode__
-
-
-class _LicenseLockListDeviceServiceManager(models.Manager):
-
-    def is_device_locked(self, license, dev):
-        return LicenseUsage.device_to_pk(dev) in self._get_lock_list_device(license)
-
-    def is_service_locked(self, license, service):
-        return LicenseUsage.service_to_pk(service) in self._get_lock_list_service(license)
-
-    def is_device_service_locked(self, license, device, service, check_device_locks=True):
-        if check_device_locks and self.is_device_locked(license, device):
-            return True
-
-        return (LicenseUsage.device_to_pk(device), LicenseUsage.service_to_pk(service)) in \
-            self._get_lock_list_device_service(license)
-
-    @memoize_with_expiry(20)
-    def _get_lock_list_device(self, license):
-        return frozenset(self.filter(license=license.name, service=None).values_list("device_id", flat=True))
-
-    @memoize_with_expiry(20)
-    def _get_lock_list_service(self, license):
-        return frozenset(self.filter(license=license.name, device=None).values_list("service_id", flat=True))
-
-    @memoize_with_expiry(20)
-    def _get_lock_list_device_service(self, license):
-        return frozenset(self.filter(license=license.name).values_list("device_id", "service_id"))
-
-
-class _LicenseLockListUserManager(models.Manager):
-    def is_user_locked(self, license, user):
-        return LicenseUsage.user_to_pk(user) in self._get_lock_list_user(license)
-
-    @memoize_with_expiry(20)
-    def _get_lock_list_user(self, license):
-        return frozenset(self.filter(license=license.name).values_list("user_id", flat=True))
-
-
-class _LicenseLockListExtLicenseManager(models.Manager):
-    def is_ext_license_locked(self, license, ext_lic):
-        return LicenseUsage._ext_license_to_pk(ext_lic) in self._get_lock_list_ext_license(license)
-
-    @memoize_with_expiry(20)
-    def _get_lock_list_ext_license(self, license):
-        return frozenset(self.filter(license=license.name).values_list("ext_license_id", flat=True))
-
-
-class LicenseLockListDeviceService(_LicenseUsageBase, _LicenseUsageDeviceService):
-    objects = _LicenseLockListDeviceServiceManager()
-
-
-class LicenseLockListUser(_LicenseUsageBase, _LicenseUsageUser):
-    objects = _LicenseLockListUserManager()
-
-
-class LicenseLockListExtLicense(_LicenseUsageBase, _LicenseUsageExtLicense):
-    objects = _LicenseLockListExtLicenseManager()
-
 
 class icswEggCradleManager(models.Manager):
     def create_system_cradle(self):
@@ -831,7 +536,9 @@ class icswEggConsumer(models.Model):
         ordering = ("content_type__model", "config_service_enum__enum_name", "action")
 
     def get_all_consumed(self):
-        _ws = self.icsweggrequest_set.filter(Q(is_lock=False) & (Q(valid=True))).values_list("weight", flat=True)
+        _ws = self.icsweggrequest_set.filter(
+            Q(is_lock=False) & (Q(valid=True))
+        ).values_list("weight", flat=True)
         if _ws.count():
             _sum = sum(_ws)
             if _sum != self.consumed:
@@ -840,6 +547,11 @@ class icswEggConsumer(models.Model):
             return _sum
         else:
             return 0
+
+    def get_num_consumers(self):
+        return self.icsweggrequest_set.filter(
+            Q(is_lock=False) & (Q(valid=True))
+        ).count()
 
     def consume(self, request):
         # if request.valid is False, try to consume it
@@ -876,6 +588,7 @@ class icswEggConsumer(models.Model):
                 logging_tools.get_diff_time_str(self.timeframe_secs) if self.timeframe_secs else "---",
                 header="timeframe",
             ),
+            logging_tools.form_entry_right(self.get_num_consumers(), header="entries"),
             logging_tools.form_entry_right(self.get_all_consumed(), header="consumed"),
         ]
 

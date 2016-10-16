@@ -23,7 +23,6 @@
 """ monitoring views """
 
 import base64
-import collections
 import datetime
 import json
 import logging
@@ -40,11 +39,10 @@ from rest_framework import viewsets
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
+from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
     parse_commandline, mon_check_command_special, device, mon_dist_master
 from initat.cluster.backbone.models.functions import duration, cluster_timezone
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
     mon_icinga_log_raw_base, mon_icinga_log_raw_service_alert_data, AlertList
@@ -54,7 +52,7 @@ from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
-from initat.tools import server_command
+from initat.tools import server_command, server_mixins, logging_tools
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -211,6 +209,11 @@ class toggle_sys_flag(View):
         contact_server(request, icswServiceEnum.monitor_server, srv_com, timeout=30)
 
 
+class DummyLogger(object):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        logger.log(log_level, u"[DL] {}".format(what))
+
+
 class get_node_status(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
@@ -244,6 +247,8 @@ class get_node_status(View):
             timeout=30,
             connect_port_enum=icswServiceEnum.monitor_slave
         )
+        _eco = server_mixins.EggConsumeObject(DummyLogger())
+        _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
         if result:
             # print result.pretty_print()
             host_results = result.xpath(".//ns:host_result/text()", smart_strings=False)
@@ -254,51 +259,26 @@ class get_node_status(View):
             # log and lock access
             any_locked = False
             host_results_filtered = []
-            devices_used = set()
             if len(host_results):
                 for dev_res in json.loads(host_results[0]):
                     dev_pk = dev_res["custom_variables"]["device_pk"]
-                    locked = LicenseLockListDeviceService.objects.is_device_locked(
-                        LicenseEnum.monitoring_dashboard,
-                        dev_pk
-                    )
-                    if not locked:
-                        devices_used.add(dev_pk)
+                    if _eco.consume("dashboard", dev_pk):
                         host_results_filtered.append(dev_res)
-
-                    any_locked |= locked
-
-            LicenseUsage.log_usage(LicenseEnum.monitoring_dashboard, LicenseParameterTypeEnum.device, devices_used)
+                    else:
+                        any_locked = True
 
             service_results_filtered = []
-            services_used = collections.defaultdict(lambda: [])
             if len(service_results):
                 for serv_res in json.loads(service_results[0]):
                     host_pk, service_pk, _ = host_service_id_util.parse_host_service_description(
                         serv_res['description'],
                         log=logger.error
                     )
-                    locked = False
                     if host_pk is not None and service_pk is not None:
-
-                        locked = LicenseLockListDeviceService.objects.is_device_service_locked(
-                            LicenseEnum.monitoring_dashboard, host_pk, service_pk
-                        )
-
-                        if not locked:
-                            services_used[host_pk].append(service_pk)
-
-                    if not locked:
-                        service_results_filtered.append(serv_res)
-
-                    any_locked |= locked
-
-            LicenseUsage.log_usage(
-                LicenseEnum.monitoring_dashboard,
-                LicenseParameterTypeEnum.service,
-                services_used
-            )
-
+                        if _eco.consume("dashboard", host_pk):
+                            service_results_filtered.append(serv_res)
+                        else:
+                            any_locked = True
             if any_locked:
                 request.xml_response.info(
                     "Some entries are on the license lock list and therefore not displayed."
@@ -593,18 +573,14 @@ class get_hist_device_data(ListAPIView):
             data_per_device[d['device_id']].append(d)
 
         data_merged_state_types = {}
+        _eco = server_mixins.EggConsumeObject(DummyLogger())
+        _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
         for device_id, device_data in data_per_device.iteritems():
-            if not LicenseLockListDeviceService.objects.is_device_locked(LicenseEnum.reporting, device_id):
+            if _eco.consume("dashboard", device_id):
                 data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
                     device_data,
                     mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[mon_icinga_log_raw_base.STATE_UNDETERMINED]
                 )
-
-        LicenseUsage.log_usage(
-            LicenseEnum.reporting,
-            LicenseParameterTypeEnum.device,
-            data_merged_state_types.iterkeys()
-        )
 
         return Response([data_merged_state_types])  # fake a list, see coffeescript
 

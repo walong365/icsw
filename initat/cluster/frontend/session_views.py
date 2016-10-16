@@ -43,6 +43,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
 from rest_framework import viewsets
 from rest_framework.response import Response
+from initat.cluster.backbone.server_enums import icswServiceEnum
 
 from initat.cluster.backbone.models import user, login_history, background_job, RouteTrace
 from initat.cluster.backbone.serializers import user_serializer, background_job_serializer
@@ -269,7 +270,7 @@ class session_login(View):
         else:
             # check eggs for allegro
             _eco = server_mixins.EggConsumeObject(DummyLogger())
-            _eco.init({"SERVICE_ENUM_NAME": "cluster_server"})
+            _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.cluster_server.name})
             if _eco.consume("allegro", db_user):
                 login_credentials = (real_user_name, login_password, login_name)
                 _num_dup_sessions = _login(request, db_user, login_credentials)

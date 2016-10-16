@@ -21,6 +21,7 @@
 #
 import itertools
 import json
+import logging
 
 from django.contrib.auth.decorators import login_required
 from django.contrib.contenttypes.models import ContentType
@@ -30,13 +31,19 @@ from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
 from reversion.models import Version
 
-import initat
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListDeviceService
 from initat.cluster.backbone.models.model_history import icsw_deletion_record, icsw_register
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.ext.diff_match_patch import diff_match_patch
 from initat.cluster.frontend.rest_views import rest_logging
+from initat.tools import server_mixins, logging_tools
+
+logger = logging.getLogger("cluster.history")
+
+
+class DummyLogger(object):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        logger.log(log_level, u"[DL] {}".format(what))
 
 
 class get_models_with_history(RetrieveAPIView):
@@ -120,13 +127,12 @@ class get_historical_data(ListAPIView):
             (format_deletion(dele) for dele in deletion_queryset)
         )
 
+        _eco = server_mixins.EggConsumeObject(DummyLogger())
+        _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
         if model == device:
+            print "FILTER"
             allowed_by_lic = (
-                elem for elem in formatted
-                if not LicenseLockListDeviceService.objects.is_device_locked(
-                    LicenseEnum.snapshot,
-                    elem['meta']['object_id']
-                )
+                elem for elem in formatted if _eco.consume("history", elem["meta"]["object_id"])
             )
         else:
             allowed_by_lic = formatted
@@ -213,9 +219,6 @@ class get_historical_data(ListAPIView):
 
             last_entry_by_pk[pk] = entry['data']
             del entry['data']
-
-        if used_device_ids:
-            LicenseUsage.log_usage(LicenseEnum.snapshot, LicenseParameterTypeEnum.device, used_device_ids)
 
         # NOTE: entries must be in chronological, earliest first
         return Response(sorted_data)

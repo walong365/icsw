@@ -21,6 +21,7 @@
 
 import collections
 import itertools
+import logging
 import operator
 from collections import defaultdict
 
@@ -28,10 +29,16 @@ import django
 from django.db import models
 from django.db.models import Max, Min, Prefetch, Q
 
-from initat.cluster.backbone.available_licenses import LicenseParameterTypeEnum
 from initat.cluster.backbone.models import mon_check_command
 from initat.cluster.backbone.models.functions import db_limit_1
-from initat.cluster.backbone.models.license import LicenseLockListDeviceService, LicenseUsage
+from initat.tools import server_mixins, logging_tools
+
+logger = logging.getLogger("cluster.history")
+
+
+class DummyLogger(object):
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        logger.log(log_level, u"[DL] {}".format(what))
 
 
 ########################################
@@ -397,6 +404,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
         return data_merged_state_types
 
     def get_data(self, devices, timespans, license, merge_services=False, use_client_name=True):
+        from initat.cluster.backbone.server_enums import icswServiceEnum
         """
         :param devices: either [device_pk] (meaning all services of these) or {device_pk: (service_pk, service_info)}
         :param license: which license to use for this query
@@ -439,19 +447,14 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
             }
             # can't do regular prefetch_related for queryset, this seems to work
             device_service_timespans = collections.defaultdict(lambda: collections.defaultdict(lambda: set()))
+            _eco = server_mixins.EggConsumeObject(DummyLogger())
+            _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
             for entry in queryset.prefetch_related(Prefetch("service"), Prefetch("timespan")):
 
                 if entry.service is not None:
-                    locked = LicenseLockListDeviceService.objects.is_device_service_locked(
-                        license,
-                        entry.device_id,
-                        entry.service.pk
-                    )
+                    locked = not _eco.consume("history", entry.device_id)
                 else:
-                    locked = LicenseLockListDeviceService.objects.is_device_locked(
-                        license,
-                        entry.device_id
-                    )
+                    locked = not _eco.consume("history", entry.device_id)
 
                 if not locked:
 
@@ -524,10 +527,8 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
 
         # this mode is for an overview of the services of a device without saying anything about a particular service
         if merge_services:
-            LicenseUsage.log_usage(license, LicenseParameterTypeEnum.device, data_per_device.iterkeys())
             return merge_all_services_of_devices(data_per_device)
         else:
-            LicenseUsage.log_usage(license, LicenseParameterTypeEnum.service, used_device_services)
             return merge_service_state_types_per_device(data_per_device)
 
 

@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Bernhard Mallinger (mallinger@init.at)
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This file is part of icsw
 #
@@ -26,7 +26,6 @@ class Parser(object):
     def link(self, sub_parser, **kwargs):
         if not kwargs["server_mode"]:
             return
-        from initat.cluster.backbone.available_licenses import LicenseEnum
 
         lic_parser = sub_parser.add_parser("license", help="license utility")
         lic_sub_parser = lic_parser.add_subparsers()
@@ -70,24 +69,6 @@ class Parser(object):
         )
         install_cluster_parser.set_defaults(subcom="install_license", execute=self._execute)
         install_cluster_parser.add_argument("licensefile", help="License file")
-
-        def add_lock_arguments(p):
-            p.add_argument("-l", "--license", dest="license", help="the license to lock usage of", required=True,
-                           choices=[i.name for i in LicenseEnum])
-            p.add_argument("-d", "--device", dest="device", help="device name")
-            p.add_argument("-s", "--service", dest="service", help="service (=check command)")
-            p.add_argument("-u", "--user", dest="user", help="user name")
-            p.add_argument("-e", "--ext-license", dest="ext_license", help="service (=check command)")
-        lock_parser = lic_sub_parser.add_parser("lock", help="lock entities from using a license")
-        lock_parser.set_defaults(subcom="lock", execute=self._execute)
-        add_lock_arguments(lock_parser)
-
-        unlock_parser = lic_sub_parser.add_parser("unlock", help="unlock entities from using a license")
-        unlock_parser.set_defaults(subcom="unlock", execute=self._execute)
-        add_lock_arguments(unlock_parser)
-
-        show_lock_parser = lic_sub_parser.add_parser("show_locks", help="show current locks")
-        show_lock_parser.set_defaults(subcom="show_locks", execute=self._execute)
 
     def _add_ovum_parser(self, sub_parser):
         _act = sub_parser.add_parser("ova", help="ova handling")

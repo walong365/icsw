@@ -51,14 +51,6 @@
                 </span>
             </li>
             <li class="pull-right cursorpointer">
-                <icsw-tools-button
-                    type="lock"
-                    icsw-hide-text
-                    is-lock="struct.sel_unsynced"
-                    size="xs"
-                    title="{{ struct.lock_info }}"
-                    ng-click="device_selection_ss($event)"
-                ></icsw-tools-button>
                 <span
                     class="label"
                     ng-class="{'label-success': struct.in_sync, 'label-danger': !struct.in_sync}"
@@ -73,6 +65,14 @@
                     title="{{ struct.title_str }}"
                     ng-click="device_selection($event)"
                 >No Devices selected</span>
+                <icsw-tools-button
+                    type="lock"
+                    icsw-hide-text
+                    is-lock="struct.sel_unsynced"
+                    size="xs"
+                    title="{{ struct.lock_info }}"
+                    ng-click="device_selection_ss($event)"
+                ></icsw-tools-button>
                 <icsw-tools-button ng-show="!struct.any_selected" type="select" size="xs" value="Select all" ng-click="select_all($event)"></icsw-tools-button>
             </li>
             <li ng-repeat="entry in struct.bc_list track by $index"  class="pull-right">

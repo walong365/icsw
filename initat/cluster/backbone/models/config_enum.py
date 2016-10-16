@@ -55,7 +55,11 @@ class AppEnum(Enum):
     monitor_server = icswServiceEnumBase(
         "monitor-server",
         "sets device as the monitor master server",
-        msi_block_name="md-config-server"
+        msi_block_name="md-config-server",
+        egg_actions=[
+            EggAction("dashboard", "device", timeframe=60),
+            EggAction("history", "device", timeframe=60),
+        ]
     )
     discovery_server = icswServiceEnumBase(
         "discovery-server",

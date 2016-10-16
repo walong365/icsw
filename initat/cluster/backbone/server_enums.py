@@ -22,9 +22,9 @@
 """ init all enums and create the IcswAppEnum object """
 
 from enum import Enum
-from .models.service_enum_base import icswServiceEnumBase
-from initat.host_monitoring.service_enum_base import icswServiceEnumBaseClient
 
+from initat.host_monitoring.service_enum_base import icswServiceEnumBaseClient
+from .models.service_enum_base import icswServiceEnumBase
 
 __all__ = [
     "icswServiceEnum"
@@ -81,6 +81,8 @@ def init_app_enum():
                 _enum = getattr(icswServiceEnum, _enum_str)
             except AttributeError:
                 print("Unknown ServerEnum '{}'".format(_enum_str))
+                if settings.DEBUG:
+                    raise
             else:
                 _enum.value.add_instance_name(_attr["name"])
 

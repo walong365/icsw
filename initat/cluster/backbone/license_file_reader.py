@@ -32,7 +32,7 @@ from lxml import etree
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, \
-    LicenseUsage
+    LICENSE_USAGE_GRACE_PERIOD
 from initat.cluster.settings import TIME_ZONE
 from initat.tools import process_tools, server_command, logging_tools
 
@@ -137,7 +137,7 @@ class LicenseFileReader(object):
 
         valid_from = parse_date(lic_xml.find("icsw:valid-from", ICSW_XML_NS_MAP).text)
         valid_to = parse_date(lic_xml.find("icsw:valid-to", ICSW_XML_NS_MAP).text)
-        valid_to_plus_grace = valid_to + LicenseUsage.GRACE_PERIOD
+        valid_to_plus_grace = valid_to + LICENSE_USAGE_GRACE_PERIOD
         today = datetime.date.today()
 
         # semantics: valid_from is from 00:00:00 of that day, valid to is till 23:59:59 of that day

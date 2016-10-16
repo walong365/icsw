@@ -33,10 +33,8 @@ from django.views.generic import View
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import ext_license_version_state_coarse, ext_license_usage_coarse, \
     ext_license_state_coarse
-from initat.cluster.backbone.models.license import LicenseUsage, LicenseLockListExtLicense
 from initat.cluster.backbone.serializers import ext_license_state_coarse_serializer, \
     ext_license_version_state_coarse_serializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
@@ -92,14 +90,15 @@ class license_state_coarse_list(ListAPIView):
         lic_id = int(request.GET["lic_id"])
         (duration_type, start, end) = duration_utils.parse_duration_from_request(request)
 
-        if LicenseLockListExtLicense.objects.is_ext_license_locked(LicenseEnum.license_optimisation_management, lic_id):
+        # todo, fixme: replace with egg consumer call
+        if False:   # LicenseLockListExtLicense.objects.is_ext_license_locked(LicenseEnum.license_optimisation_management, lic_id):
             return Response([])
         else:
-            LicenseUsage.log_usage(
-                LicenseEnum.license_optimisation_management,
-                LicenseParameterTypeEnum.ext_lic,
-                lic_id
-            )
+            # LicenseUsage.log_usage(
+            #     LicenseEnum.license_optimisation_management,
+            #     LicenseParameterTypeEnum.ext_lic,
+            #     lic_id
+            # )
 
             logger.debug(
                 "retrieving data for license {} from {} to {}, type {}".format(

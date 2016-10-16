@@ -33,7 +33,6 @@ from rest_framework.response import Response
 from initat.cluster.backbone.available_licenses import LicenseEnum, get_available_licenses
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.backbone.models import License, device_variable
-from initat.cluster.backbone.models.license import LicenseViolation, LicenseUsage
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
@@ -68,7 +67,6 @@ class get_all_licenses(ListAPIView):
                     'name': lic.name,
                     'description': lic.description,
                     'parameter_usage': {
-                        k.to_user_name(): v for k, v in LicenseUsage.get_license_usage(lic.enum_value).iteritems()
                     },
                     "fp_state": License.objects.fingerprint_ok(lic.enum_value)
                 } for lic in get_available_licenses()
@@ -87,16 +85,7 @@ class GetLicenseViolations(ListAPIView):
     @method_decorator(login_required_rest(lambda: []))
     @rest_logging
     def list(self, request, *args, **kwargs):
-        _res = [
-            {
-                viol.license: {
-                    'type': 'hard' if viol.hard else 'soft',
-                    'name': LicenseEnum.id_string_to_user_name(viol.license),
-                    'revocation_date': viol.date + LicenseUsage.GRACE_PERIOD,
-                }
-            } for viol in LicenseViolation.objects.all()
-        ]
-        return Response(_res)
+        return Response([])
 
 
 class GetValidLicenses(RetrieveAPIView):

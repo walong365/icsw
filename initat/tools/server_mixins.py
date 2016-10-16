@@ -70,6 +70,13 @@ class EggConsumeObject(object):
                     egg_consumer=_con,
                     object_id=_pk,
                 )
+            except icswEggRequest.MultipleObjectsReturned:
+                _cur_reqs = icswEggRequest.objects.filter(
+                    Q(egg_consumer=_con) &
+                    Q(object_id=_pk),
+                )
+                print len(_cur_reqs)
+                _cur_req = _cur_reqs[0]
             _cur_req.consume()
             _allowed = _cur_req.valid
             if not _allowed:

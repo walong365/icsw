@@ -21,18 +21,15 @@
 
 import json
 import re
-import enum
-from collections import defaultdict
 
+import enum
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
 
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer
-from initat.cluster.backbone.models.license import LicenseUsage
 from initat.tools import logging_tools
 
 __all__ = [
@@ -436,9 +433,6 @@ class mon_check_command(models.Model):
             "mon_icinga_log_raw_service_notification_data",
             "mon_icinga_log_aggregated_service_data",
             "mon_icinga_log_raw_service_downtime_data",
-            # "categories_set",
-            "LicenseUsageDeviceService",
-            "LicenseLockListDeviceService",
         ]
 
     def __unicode__(self):
@@ -470,16 +464,6 @@ def mon_check_command_pre_save(sender, **kwargs):
             cur_inst.event_handler = None
             cur_inst.save()
             raise ValidationError("cannot be an event handler and reference to another event handler")
-
-
-@receiver(signals.post_save, sender=mon_check_command)
-def _mon_check_command_post(sender, instance, raw, **kwargs):
-    if not raw:
-        if instance.mon_service_templ is not None and instance.mon_service_templ.any_notification_enabled():
-            log_usage_data = {}
-            for dev_pk in instance.get_configured_device_pks():
-                log_usage_data[dev_pk] = [instance]
-            LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 class mon_contact(models.Model):
@@ -985,20 +969,6 @@ class mon_service_templ(models.Model):
     def any_notification_enabled(self):
         return self.nrecovery or self.ncritical or self.nwarning or self.nunknown or self.nflapping or \
             self.nplanned_downtime
-
-
-@receiver(signals.post_save, sender=mon_service_templ)
-def _service_templ_post_save(sender, instance, raw, **kwargs):
-    if not raw:
-        # log here because services which have a template might get a notification by enabling it here
-        if instance.any_notification_enabled():
-            log_usage_data = defaultdict(lambda: [])
-
-            for mcc in instance.mon_check_command_set.all():
-                for dev_pk in mcc.get_configured_device_pks():
-                    log_usage_data[dev_pk].append(mcc)
-
-            LicenseUsage.log_usage(LicenseEnum.notification, LicenseParameterTypeEnum.service, log_usage_data)
 
 
 @receiver(signals.pre_save, sender=mon_service_templ)
