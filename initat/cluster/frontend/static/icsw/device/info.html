@@ -89,10 +89,17 @@
                 </uib-tab-heading>
                 <icsw-device-info-device icsw-struct="entry"></icsw-device-info-device>
             </uib-tab>
-            <uib-tab ng-if="struct.tmd_entries">
+            <uib-tab ng-if="struct.tmd_list.length">
                 <uib-tab-heading>
-                    <span class="text-danger">{{ struct.tmd_entries }} not shown</span>
+                    <span class="text-danger">{{ struct.tmd_list.length }} not shown</span>
                 </uib-tab-heading>
+                <h4>Entries not shown</h4>
+                <ul class="list-group">
+                    <li class="list-group-item" ng-repeat="entry in struct.tmd_list">
+                        <span ng-show="entry.is_devicegroup" class="glyphicon glyphicon-list"></span>
+                        {{ entry.name }}
+                    </li>
+                </ul>
             </uib-tab>
         </uib-tabset>
         <icsw-device-info-device ng-if="struct.data_valid && struct.slist.length == 1" icsw-struct="struct.slist[0]"></icsw-device-info-device>

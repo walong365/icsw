@@ -575,8 +575,8 @@ angular.module(
         devices: []
         # structured list, includes template name
         slist: []
-        # entries unable to display (too many devs)
-        tmd_entries: 0
+        # list unable to display (too many devs)
+        tmd_list: []
         # active tab
         active_tab: 0
     }
@@ -598,6 +598,7 @@ angular.module(
         if in_list.length > 0
             $scope.struct.devices.length = 0
             $scope.struct.slist.length = 0
+            $scope.struct.tmd_list.length = 0
             icswDeviceTreeService.load($scope.$id).then(
                 (tree) ->
                     $scope.struct.device_tree = tree
@@ -620,7 +621,20 @@ angular.module(
                             MAX_DEVS_TO_SHOW = 10
                             for dev in in_list
                                 if $scope.struct.slist.length >= MAX_DEVS_TO_SHOW
-                                    $scope.struct.tmd_entries++
+                                    if dev.is_meta_device
+                                        $scope.struct.tmd_list.push(
+                                            {
+                                                is_devicegroup: true
+                                                name: dev.full_name.substring(8)
+                                            }
+                                        )
+                                    else
+                                        $scope.struct.tmd_list.push(
+                                            {
+                                                is_devicegroup: false
+                                                name: dev.full_name
+                                            }
+                                        )
                                 else
                                     $scope.struct.devices.push(dev)
                                     if dev.is_meta_device

@@ -155,9 +155,10 @@ def _insert_bg_job(cmd, cause, obj):
             thread_local_obj.num_bg_jobs = 1
         else:
             thread_local_obj.num_bg_jobs += 1
-    else:
-        if not _local_pk:
-            logger.error("cannot identify local device")
+    # disable error logging due to problems on UCS (no logserver running)
+    # else:
+    #     if not _local_pk:
+    #         logger.error("cannot identify local device")
 
 
 def signal_localhost():
