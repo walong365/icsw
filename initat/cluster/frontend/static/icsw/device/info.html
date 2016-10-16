@@ -89,6 +89,11 @@
                 </uib-tab-heading>
                 <icsw-device-info-device icsw-struct="entry"></icsw-device-info-device>
             </uib-tab>
+            <uib-tab ng-if="struct.tmd_entries">
+                <uib-tab-heading>
+                    <span class="text-danger">{{ struct.tmd_entries }} not shown</span>
+                </uib-tab-heading>
+            </uib-tab>
         </uib-tabset>
         <icsw-device-info-device ng-if="struct.data_valid && struct.slist.length == 1" icsw-struct="struct.slist[0]"></icsw-device-info-device>
     </div>

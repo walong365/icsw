@@ -117,7 +117,7 @@ angular.module(
     # hm, not needed ?
     # icswActiveSelectionService.register_receiver()
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION_DTL"), (event) ->
         # console.log "icsw_overview_emit_selection received"
         $scope.reload()
     )

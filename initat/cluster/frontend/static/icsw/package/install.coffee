@@ -1205,7 +1205,7 @@ package_module = angular.module(
     
     # manual resolving because icsw-sel-man is not working due to isolated scope
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION_DTL"), (event) ->
         # console.log "icsw_overview_emit_selection received"
         if $scope.struct.device_tree?
             $scope.new_devsel()

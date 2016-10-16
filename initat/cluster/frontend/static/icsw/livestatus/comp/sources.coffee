@@ -869,7 +869,7 @@ angular.module(
                 mon_result: new icswMonitoringResult(monitoring=false)
             }
             # todo: get the current selection after the pipe is fully initialised
-            @dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) =>
+            @dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION_DTL"), (event) =>
                 @get_selection()
             )
             icswActiveSelectionService.register_receiver()

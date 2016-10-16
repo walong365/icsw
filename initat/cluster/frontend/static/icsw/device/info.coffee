@@ -575,6 +575,8 @@ angular.module(
         devices: []
         # structured list, includes template name
         slist: []
+        # entries unable to display (too many devs)
+        tmd_entries: 0
         # active tab
         active_tab: 0
     }
@@ -615,20 +617,24 @@ angular.module(
                     ).then(
                         (data) ->
                             $scope.struct.domain_tree = data[0]
+                            MAX_DEVS_TO_SHOW = 10
                             for dev in in_list
-                                $scope.struct.devices.push(dev)
-                                if dev.is_meta_device
-                                    new_struct = {
-                                        edit_obj: dev
-                                        is_devicegroup: true
-                                    }
+                                if $scope.struct.slist.length >= MAX_DEVS_TO_SHOW
+                                    $scope.struct.tmd_entries++
                                 else
-                                    new_struct = {
-                                        edit_obj: dev
-                                        is_devicegroup: false
-                                    }
-                                $scope.struct.slist.push(new_struct)
-                                create_small_info_fields(new_struct)
+                                    $scope.struct.devices.push(dev)
+                                    if dev.is_meta_device
+                                        new_struct = {
+                                            edit_obj: dev
+                                            is_devicegroup: true
+                                        }
+                                    else
+                                        new_struct = {
+                                            edit_obj: dev
+                                            is_devicegroup: false
+                                        }
+                                    $scope.struct.slist.push(new_struct)
+                                    create_small_info_fields(new_struct)
                             $scope.struct.data_valid = true
                             $scope.struct.active_tab = 0
                     )

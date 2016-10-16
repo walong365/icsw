@@ -104,6 +104,8 @@ menu_module = angular.module(
     $scope.struct = {
         current_user: undefined
         route_counter: 0
+        # device tree is valid ?
+        device_tree_valid: false
     }
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
@@ -118,6 +120,37 @@ menu_module = angular.module(
         # rebind keys to reenable ctrl-s
         _bind_keys()
     )
+
+    _wait_dict = {}
+    $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), () ->
+        $scope.struct.device_tree_valid = true
+        for sig_name, flag of _wait_dict
+            dtl_func_name = "#{sig_name}_DTL"
+            # console.log "delayed emit of #{dtl_func_name}"
+            $rootScope.$emit(ICSW_SIGNALS(dtl_func_name))
+        # clear wait dict
+        _wait_dict = {}
+    )
+    # get a list of all signals with the domain_tree_loaded postfix
+    dtl_func_names = (key for key, value of ICSW_SIGNALS("ALL") when key.match(/_DTL$/))
+    for dtl_func_name in dtl_func_names
+        # unsafe name
+        _unsafe_name = _.replace(dtl_func_name, "_DTL", "")
+        # not waiting for this signal
+        _wait_dict[_unsafe_name] = false
+        $rootScope.$on(ICSW_SIGNALS(_unsafe_name), (event) ->
+            _unsafe_name = ICSW_SIGNALS(event.name)
+            dtl_func_name = "#{_unsafe_name}_DTL"
+            # console.log "got", _unsafe_name, dtl_func_name, event
+            if $scope.struct.device_tree_valid
+                # tree is valid, emit safe signal
+                # console.log "synced emit of #{dtl_func_name}"
+                $rootScope.$emit(ICSW_SIGNALS(dtl_func_name))
+            else
+                # not loaded, store
+                _wait_dict[_unsafe_name] = true
+        )
+
     $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params, options) ->
         if options.icswRegister?
             # copy to to_params

@@ -52,44 +52,58 @@ angular.module(
             @user = undefined
             @sel_var_name = "$$saved_selection__$$SESSIONID$$"
             @__user_var_used = false
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), ($event) =>
-                @user = icswUserService.get()
-                if @user.is_authenticated()
-                    @sel_var_name = @user.expand_var(@sel_var_name)
-                    if @user.has_var(@user.USED_SEL_VAR_NAME)
-                        if not @__user_var_used
-                            @__user_var_used = true
-                            _used_sel = @user.get_var(@user.USED_SEL_VAR_NAME).value
-                            # console.log "used", _used_sel
-                            icswSavedSelectionService.load_selections().then(
-                                (done) =>
-                                    saved_sel = icswSavedSelectionService.get_selection(_used_sel)
-                                    if saved_sel
-                                        # copy from icswActiveSelectionService, fixme
-                                        @update(saved_sel.categories, saved_sel.device_groups, saved_sel.devices, saved_sel.devices)
-                                        @sync_with_db(saved_sel)
-                                        $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
-                            )
-
-                    else if @user.has_var(@sel_var_name)
-                        if not @__user_var_used
-                            @__user_var_used = true
-                            @_last_stored = @user.get_var(@sel_var_name).json_value
-                            _stored = angular.fromJson(@_last_stored)
-                            @dev_sel = _stored.dev_sel
-                            @tot_dev_sel = _stored.tot_dev_sel
-                            @sync_with_db(undefined)
-                            $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
-                    else
-                        @_last_stored = ""
-            )
+            @_tree_wait = $q.defer()
             $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event, tree) =>
                 @tree = tree
+                @_tree_wait.resolve("loaded")
                 # console.log "tree set for icswSelection", @tree
             )
 
+        close: () =>
+            # very import to reuse the structure for new logons
+            @__user_var_used = false
+            @user = undefined
+
+        open: () =>
+            @user = icswUserService.get()
+            if @user.is_authenticated()
+                @sel_var_name = @user.expand_var(@sel_var_name)
+                if @user.has_var(@user.USED_SEL_VAR_NAME)
+                    if not @__user_var_used
+                        @__user_var_used = true
+                        _used_sel = @user.get_var(@user.USED_SEL_VAR_NAME).value
+                        # console.log "used", _used_sel
+                        icswSavedSelectionService.load_selections().then(
+                            (done) =>
+                                saved_sel = icswSavedSelectionService.get_selection(_used_sel)
+                                if saved_sel
+                                    # copy from icswActiveSelectionService, fixme
+                                    @update(saved_sel.categories, saved_sel.device_groups, saved_sel.devices, saved_sel.devices)
+                                    @sync_with_db(saved_sel)
+                                    $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
+                                    $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"))
+                        )
+
+                else if @user.has_var(@sel_var_name)
+                    if not @__user_var_used
+                        @__user_var_used = true
+                        @_last_stored = @user.get_var(@sel_var_name).json_value
+                        _stored = angular.fromJson(@_last_stored)
+                        @dev_sel = _stored.dev_sel
+                        @tot_dev_sel = _stored.tot_dev_sel
+                        @sync_with_db(undefined)
+                        $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
+                else
+                    @_last_stored = ""
+
         select_all: () =>
-            @update([], [], [], (entry.idx for entry in @tree.enabled_list))
+            _ret = $q.defer()
+            @_tree_wait.promise.then(
+                () =>
+                    @update([], [], [], (entry.idx for entry in @tree.enabled_list))
+                    _ret.resolve("selected")
+            )
+            return _ret.promise
 
         update: (cat_sel, devg_sel, dev_sel, tot_dev_sel) ->
             _changed = false
@@ -357,43 +371,38 @@ angular.module(
     $q, Restangular, $rootScope, ICSW_URLS, icswSelection, ICSW_SIGNALS
 ) ->
     # used by menu.coffee (menu_base)
-    _receivers = 0
-    # @if !DEBUG
-    cur_selection = new icswSelection([], [], [], [])
-    # @endif
-    # for testing, uses gulp-preprocess
-    # @if DEBUG
-    cur_selection = new icswSelection([], [], [666, 3, 5, 16, 21], [3, 5, 16, 21, 666])
-    # @endif
-    # console.log cur_selection
-    # cur_selection = new icswSelection([], [], [3, 5], [3, 5])
-    # cur_selection = new icswSelection([], [], [3], [3])
-    # windowstest
-    # cur_selection = new icswSelection([], [], [13], [13])
-    # cur_selection = new icswSelection([], [], [16], [16]) # only firewall
-    # cur_selection = new icswSelection([], [], [], [])
+    _struct = {}
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event) ->
-        # tree loaded, re-emit selection
-        send_selection()
+    _init = () ->
+        _struct.receivers = 0
+        _struct.cur_selection = new icswSelection([], [], [], [])
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+        _struct.cur_selection.open()
     )
 
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
+        _struct.cur_selection.close()
+    )
+
+    _init()
+
     register_receiver = () ->
-        _receivers += 1
+        _struct.receivers += 1
         # console.log "registered receiver"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_REGISTERED"))
 
     unregister_receiver = () ->
-        _receivers -= 1
+        _struct.receivers -= 1
         # console.log "registered receiver"
         $rootScope.$emit(ICSW_SIGNALS("ICSW_DSR_UNREGISTERED"))
 
     sync_selection = (new_sel) ->
-        cur_selection.update(new_sel.categories, new_sel.device_groups, new_sel.devices, [])
-        cur_selection.sync_with_db(new_sel)
+        _struct.cur_selection.update(new_sel.categories, new_sel.device_groups, new_sel.devices, [])
+        _struct.cur_selection.sync_with_db(new_sel)
 
     unsync_selection = () ->
-        cur_selection.sync_with_db(undefined)
+        _struct.cur_selection.sync_with_db(undefined)
 
     send_selection = () ->
         # console.log "emit current device selection"
@@ -401,13 +410,13 @@ angular.module(
 
     return {
         num_receivers: () ->
-            return _receivers
+            return _struct.receivers
 
         current: () ->
-            return cur_selection
+            return _struct.cur_selection
 
         get_selection: () ->
-            return cur_selection
+            return _struct.cur_selection
 
         sync_selection: (new_sel) ->
             # synchronizes cur_selection with new_sel
@@ -492,6 +501,10 @@ angular.module(
             user.set_var(user.USED_SEL_VAR_NAME, sel.name, "s")
         return sel
 
+    unuse_selection = (user) ->
+        if user.is_authenticated()
+            user.delete_var(user.USED_SEL_VAR_NAME)
+
     get_selection = (name) ->
         _f_list = (entry for entry in _list when entry.name == name)
         if _f_list.length
@@ -502,6 +515,9 @@ angular.module(
     return {
         use_selection: (user, sel) ->
             return use_selection(user, sel)
+
+        unuse_selection: (user) ->
+            return unuse_selection(user)
 
         load_selections: () ->
             return load_selections()
@@ -1145,6 +1161,7 @@ angular.module(
     $scope.unselect = () ->
         # console.log "unselect"
         $scope.struct.synced = false
+        icswSavedSelectionService.unuse_selection($scope.struct.user)
         icswActiveSelectionService.unsync_selection()
         $scope.struct.selection_for_dropdown = undefined
 

@@ -664,7 +664,7 @@ angular.module(
                         )
                     else
                         # register get_selection when selection changes
-                        dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
+                        dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION_DTL"), (event) ->
                             _get_selection()
                         )
                         # very important: unregister $on
@@ -723,12 +723,16 @@ angular.module(
         ICSW_SELECTION_BOX_CLOSED: "icsw.selection.box.closed"
         # selection changed
         ICSW_SELECTION_CHANGED: "icsw.selection.changed"
+        # device tree loaded version
+        ICSW_SELECTION_CHANGED_DTL: "icsw.selection.changed.dtl"
         # selection changed in overview
         ICSW_OVERVIEW_SELECTION_CHANGED: "icsw.overview.selection.changed"
         ICSW_MON_TREE_LOADED: "icsw.mon.tree.loaded"
         ICSW_OVERVIEW_EMIT_SELECTION: "icws.overview.emit.selection"
+        ICSW_OVERVIEW_EMIT_SELECTION_DTL: "icws.overview.emit.selection.dtl"
         # sync state has changed (sync -> unsync, unsync -> sync)
         ICSW_SEL_SYNC_STATE_CHANGED: "icsw.sel.sync.state.changed"
+        ICSW_SEL_SYNC_STATE_CHANGED_DTL: "icsw.sel.sync.state.changed.dtl"
         #recalculate panel layout when changed
         ICSW_TRIGGER_PANEL_LAYOUTCHECK: "icws.tools.panel_tools.panel_check"
         #setup and recalculate container max size layout
@@ -770,11 +774,19 @@ angular.module(
         _ICSW_DELETE_CONFIG: "_icsw.delete.config"
         _ICSW_UPDATE_MON_SELECTION: "_icsw.update.mon.selection"
     }
+    _rev_dict = {}
+    for key, value of _dict
+        _rev_dict[value] = key
+
     return (name) ->
-        if name not of _dict
-            throw new Error("unknown signal '#{name}'")
-        else
+        if name == "ALL"
+            return _dict
+        else if name of _dict
             return _dict[name]
+        else if name of _rev_dict
+            return _rev_dict[name]
+        else
+            throw new Error("unknown signal '#{name}'")
 ]).factory("icswTools", [() ->
     id_seed = parseInt(Math.random() * 10000)
 

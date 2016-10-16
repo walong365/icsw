@@ -654,8 +654,6 @@ menu_module = angular.module(
         select_txt: "---"
         # breadcrumb list
         bc_list: []
-        # device tree is valid
-        tree_valid: false
         # current selection is in sync (coupled with a saved selection)
         sel_synced: false
         # negated sel_synced
@@ -682,6 +680,8 @@ menu_module = angular.module(
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
         $scope.struct.current_user = undefined
+        $scope.struct.selection_list.length = 0
+        $scope.struct.em_selection_list.length = 0
     )
 
     $scope.device_selection = ($event) ->
@@ -699,11 +699,13 @@ menu_module = angular.module(
 
     _fetch_selection_list = (l_type) ->
         # list to handle, can be selection or em_selection (for emitted)
+        _cur_sel = icswActiveSelectionService.current()
+        # console.log "FeSeLi", l_type, _cur_sel.get_devsel_list()
         d_list = $scope.struct["#{l_type}_list"]
         d_list.length = 0
-        _cur_sel = icswActiveSelectionService.current()
         for entry in _cur_sel.get_devsel_list()
-            d_list.push(entry)
+            # store as copy of sorted list
+            d_list.push((_val for _val in entry).sort())
         # also check sync state
         _update_sync_state()
 
@@ -717,25 +719,17 @@ menu_module = angular.module(
             $scope.struct.lock_info = "Not in sync with a saved selection"
         _update_selection_txt()
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event, tree) =>
-        $scope.struct.tree_valid = true
+    # wait for domain_tree_loaded save flags
+    $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED_DTL"), (event) ->
         _fetch_selection_list("selection")
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_SEL_SYNC_STATE_CHANGED_DTL"), (event) ->
+        _update_sync_state()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION_DTL"), (event) ->
         _fetch_selection_list("em_selection")
-    )
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"), (event) ->
-        if $scope.struct.tree_valid
-            _fetch_selection_list("selection")
-    )
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_SEL_SYNC_STATE_CHANGED"), (event) ->
-        if $scope.struct.tree_valid
-            _update_sync_state()
-    )
-
-    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
-        if $scope.struct.tree_valid
-            _fetch_selection_list("em_selection")
     )
 
     _get_list = (in_sel) ->
@@ -743,6 +737,7 @@ menu_module = angular.module(
             sel_groups = in_sel[3].length
             sel_devices = in_sel[1].length
         else
+            console.error "empty selection list"
             sel_groups = 0
             sel_devices = 0
         group_plural = if sel_groups == 1 then "Group" else "Groups"
@@ -757,17 +752,21 @@ menu_module = angular.module(
     _update_selection_txt = () ->
         _em_list = _get_list($scope.struct.em_selection_list)
         _list = _get_list($scope.struct.selection_list)
+        # console.log $scope.struct.em_selection_list.length, $scope.struct.selection_list.length
+        # console.log $scope.struct.em_selection_list, $scope.struct.selection_list
         $scope.struct.in_sync = _.isEqual($scope.struct.selection_list, $scope.struct.em_selection_list)
         if $scope.struct.in_sync
             $scope.struct.title_str = "Current selection, in sync"
         else
-            $scope.struct.title_str = "Current selection, not in sync}"
+            $scope.struct.title_str = "Current selection, not in sync"
         $scope.struct.any_selected = if _em_list.length > 0 then true else false
         $scope.struct.select_txt = _em_list.join(", ")
 
     $scope.select_all = ($event) ->
-        icswActiveSelectionService.current().select_all()
-        icswActiveSelectionService.send_selection(icswActiveSelectionService.current())
+        icswActiveSelectionService.current().select_all().then(
+            (done) ->
+                icswActiveSelectionService.send_selection(icswActiveSelectionService.current())
+        )
 
     $scope.activate_state = (entry) ->
         $state.go(entry.sref, null, {icswRegister: false})
