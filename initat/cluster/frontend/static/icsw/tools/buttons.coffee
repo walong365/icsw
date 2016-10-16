@@ -295,6 +295,7 @@ angular.module(
             isEnable: '&'
             isLock: '&'
             icsw_value: "=icswValue"
+            hide_text: "&icswHideText"
         link: (scope, element, attrs) ->
 
             # attrs:
@@ -309,12 +310,20 @@ angular.module(
             b_type = attrs.type
             angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(b_type))
 
+            if attrs.icswHideText?
+                scope.show_text = false
+                scope.button_value = ""
+            else
+                scope.show_text = true
+
             if attrs.icswValue?
                 scope.$watch(
                     "icsw_value"
                     (new_val) ->
-                        scope.button_value = new_val
+                        if scope.show_text
+                            scope.button_value = new_val
                 )
+
             else if attrs.value?
                 scope.button_value = attrs.value
 
@@ -361,11 +370,13 @@ angular.module(
                     scope.isLock
                     (new_val) ->
                         if new_val
-                            scope.button_value = gettextCatalog.getString("unlock")
+                            if scope.show_text
+                                scope.button_value = gettextCatalog.getString("unlock")
                             scope.css_class = "btn-warning"
                             scope.icon_class = "fa fa-unlock"
                         else
-                            scope.button_value = gettextCatalog.getString("lock")
+                            if scope.show_text
+                                scope.button_value = gettextCatalog.getString("lock")
                             scope.css_class = "btn-success"
                             scope.icon_class = "fa fa-lock"
                 )

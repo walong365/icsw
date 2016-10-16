@@ -51,7 +51,14 @@
                 </span>
             </li>
             <li class="pull-right cursorpointer">
-                <span ng-class="struct.sel_synced && 'fa fa-lock' || 'fa fa-unlock'"></span>
+                <icsw-tools-button
+                    type="lock"
+                    icsw-hide-text
+                    is-lock="struct.sel_unsynced"
+                    size="xs"
+                    title="{{ struct.lock_info }}"
+                    ng-click="device_selection_ss($event)"
+                ></icsw-tools-button>
                 <span
                     class="label"
                     ng-class="{'label-success': struct.in_sync, 'label-danger': !struct.in_sync}"

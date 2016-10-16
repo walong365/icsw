@@ -1,12 +1,12 @@
 <script type="text/ng-template" id="icsw.layout.selection.modify">
-    <icsw-selection-modal icsw-modal="modal"></icsw-selection-modal>
+    <icsw-selection-modal icsw-modal="modal" icsw-target-mode="target_mode"></icsw-selection-modal>
 </script>
 
 <script type="text/ng-template" id="icsw.selection.modal">
     <div>
         <div uib-alert class="alert-warning" ng-if="!struct.data_ready">Loading...</div>
-        <uib-tabset ng-if="struct.selection_valid && struct.data_ready">
-            <uib-tab>
+        <uib-tabset ng-if="struct.selection_valid && struct.data_ready" active="struct.active_tab_top_idx">
+            <uib-tab select="activate_tab('D')">
                 <uib-tab-heading>
                     <span ng-class="struct.synced && 'fa fa-lock' || 'fa fa-unlock'"></span>
                     Current Selection
@@ -135,8 +135,8 @@
                         </div>
                     </div>
                 </form>
-                <uib-tabset active="struct.active_tab_idx">
-                    <uib-tab select="activate_tab('d')">
+                <uib-tabset active="struct.active_tab_sub_idx">
+                    <uib-tab select="activate_tab('Dd')">
                         <uib-tab-heading>
                             Device
                             <span ng-show="struct.selection_dict['d']">
@@ -150,7 +150,7 @@
                         <!-- add attribute max-heigth to limit used height -->
                         <icsw-react-tree icsw-tree-config="tc_devices" single="true"></icsw-react-tree>
                     </uib-tab>
-                    <uib-tab select="activate_tab('g')">
+                    <uib-tab select="activate_tab('Dg')">
                         <uib-tab-heading>
                             Group
                             <span ng-show="struct.selection_dict['g']">
@@ -162,7 +162,7 @@
                         </uib-tab-heading>
                         <icsw-react-tree icsw-tree-config="tc_groups"></icsw-react-tree>
                     </uib-tab>
-                    <uib-tab select="activate_tab('c')">
+                    <uib-tab select="activate_tab('Dc')">
                         <uib-tab-heading>
                             Category
                             <span ng-show="struct.selection_dict['c']">
@@ -176,7 +176,7 @@
                     </uib-tab>
                 </uib-tabset>
             </uib-tab>
-            <uib-tab heading="Saved Selections" select="enable_saved_selections()">
+            <uib-tab heading="Saved Selections" select="activate_tab('S')">
                 <form class="form-horizontal">
                     <fieldset>
                         <h3 ng-show="!saved_selections.length" class="text-warning">No Saved Selections found</h3>

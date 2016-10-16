@@ -66,39 +66,41 @@ menu_module = angular.module(
         }
     )
     icswRouteExtensionProvider.add_route("logout")
-]).controller("icswMainCtrl", [
+]).controller("icswMainCtrl",
+[
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
-    "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS", "themeService"
+    "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS", "themeService",
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
     icswBreadcrumbs, $state, $window, Restangular, ICSW_URLS, themeService,
 ) ->
-    hotkeys.bindTo($scope).add(
-        # combo: "ctrl+h"
-        combo : "f1"
-        #description: "Show help"
-        helpVisible: false
-        allowIn: ["INPUT", "SELECT", "TEXTAREA"]
-        callback: (event) ->
-            event.preventDefault()
-            hotkeys.toggleCheatSheet()
-    ).add(
-        combo: "ctrl+s"
-        allowIn: ["INPUT", "SELECT", "TEXTAREA"]
-        description: "Show Device Selection"
-        callback: (event) ->
-            event.preventDefault()
-            icswLayoutSelectionDialogService.quick_dialog()
-    ).add(
-        combo: "f2"
-        allowIn: ["INPUT", "SELECT", "TEXTAREA"]
-        description: "Toggle Theme"
-        callback: (event) ->
-            event.preventDefault()
-            themeService.toggle()
-    )
+    _bind_keys = () ->
+        hotkeys.bindTo($scope).add(
+            # combo: "ctrl+h"
+            combo : "f1"
+            #description: "Show help"
+            helpVisible: false
+            allowIn: ["INPUT", "SELECT", "TEXTAREA"]
+            callback: (event) ->
+                event.preventDefault()
+                hotkeys.toggleCheatSheet()
+        ).add(
+            combo: "ctrl+s"
+            allowIn: ["INPUT", "SELECT", "TEXTAREA"]
+            description: "Show Device Selection"
+            callback: (event) ->
+                event.preventDefault()
+                icswLayoutSelectionDialogService.quick_dialog()
+        ).add(
+            combo: "f2"
+            allowIn: ["INPUT", "SELECT", "TEXTAREA"]
+            description: "Toggle Theme"
+            callback: (event) ->
+                event.preventDefault()
+                themeService.toggle()
+        )
     $scope.struct = {
         current_user: undefined
         route_counter: 0
@@ -108,8 +110,13 @@ menu_module = angular.module(
         $scope.struct.current_user = icswUserService.get()
     )
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
-        $scope.struct.current_user = undefined
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+        $scope.struct.current_user = icswUserService.get()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_BOX_CLOSED"), () ->
+        # rebind keys to reenable ctrl-s
+        _bind_keys()
     )
     $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params, options) ->
         if options.icswRegister?

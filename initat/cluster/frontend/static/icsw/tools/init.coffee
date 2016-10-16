@@ -719,6 +719,8 @@ angular.module(
         ICSW_CONFIG_TREE_LOADED: "icsw.config.tree.loaded"
         ICSW_DTREE_FILTER_CHANGED: "icsw.dtree.filter.changed"
         ICSW_FORCE_TREE_FILTER: "icsw.tree.force.filter"
+        # device selector closed
+        ICSW_SELECTION_BOX_CLOSED: "icsw.selection.box.closed"
         # selection changed
         ICSW_SELECTION_CHANGED: "icsw.selection.changed"
         # selection changed in overview

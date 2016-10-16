@@ -529,6 +529,7 @@ angular.module(
         template: $templateCache.get("icsw.selection.modal")
         scope:
             modal: "=icswModal"
+            target_mode: "=icswTargetMode"
         controller: "icswSelectionModalCtrl"
         link: (scope, element, attrs) ->
             scope.$watch("modal", (new_el) ->
@@ -555,21 +556,21 @@ angular.module(
         description: "Active device tab"
         allowIn: ["INPUT"]
         callback: (event) ->
-            $scope.activate_tab("d")
+            $scope.activate_tab("Dd")
             event.preventDefault()
     ).add(
         combo: "ctrl+g"
         description: "Active group tab"
         allowIn: ["INPUT"]
         callback: (event) ->
-            $scope.activate_tab("g")
+            $scope.activate_tab("Dg")
             event.preventDefault()
     ).add(
         combo: "ctrl+c"
         description: "Active category tab"
         allowIn: ["INPUT"]
         callback: (event) ->
-            $scope.activate_tab("c")
+            $scope.activate_tab("Dc")
             event.preventDefault()
     ).add(
         combo: "ctrl+l"
@@ -577,6 +578,13 @@ angular.module(
         allowIn: ["INPUT"]
         callback: (event) ->
             $scope.show_class_filter(event)
+            event.preventDefault()
+    ).add(
+        combo: "ctrl+s"
+        description: "Show SavedSelection selector"
+        allowIn: ["INPUT"]
+        callback: (event) ->
+            $scope.activate_tab("Ss")
             event.preventDefault()
     )
     $scope.saved_selections = []
@@ -610,10 +618,11 @@ angular.module(
             g: 0
             c: 0
         }
-        # active tab
-        active_tab: "d"
+        # active tab selector, top / sub level
+        active_tab: "Dd"
         # active tab index
-        active_tab_idx: 0
+        active_tab_top_idx: 0
+        active_tab_sub_idx: 0
         # for saved selections
         search_str: ""
         selection_for_dropdown: undefined
@@ -631,6 +640,10 @@ angular.module(
         # changed timeout
         changed_timeout: undefined
     }
+    if $scope.target_mode?
+        # override target mode
+        $scope.struct.active_tab = $scope.target_mode
+
     $scope.struct.current_state = $state.current
 
     for entry in $state.get()
@@ -819,7 +832,26 @@ angular.module(
 
     $scope.activate_tab = (t_type) ->
         $scope.struct.active_tab = t_type
-        $scope.struct.active_tab_idx = ["d", "g", "c"].indexOf($scope.struct.active_tab)
+        _top_sel = $scope.struct.active_tab[0]
+        if _top_sel == "D"
+            _sub_sel = $scope.struct.active_tab[1]
+            if not _sub_sel?
+                _sub_sel = "d"
+            $scope.struct.active_tab_top_idx = 0
+            $scope.struct.active_tab_sub_idx = ["d", "g", "c"].indexOf(_sub_sel)
+        else if _top_sel == "S"
+            if not $scope.saved_selections.length
+                icswSavedSelectionService.load_selections().then(
+                    (data) ->
+                        $scope.saved_selections = data
+                )
+            $scope.struct.active_tab_top_idx = 1
+            # set sub idx to null, otherwise the select() of the
+            # sub tabs on the device selection tab will trigger
+            # a switch to Dd
+            $scope.struct.active_tab_sub_idx = null
+        else
+            console.error "Unknown tab mode #{t_type}"
 
     $scope.activate_tab($scope.struct.active_tab)
 
@@ -871,7 +903,7 @@ angular.module(
             ).then(
                 (matching_device_pks) ->
                     $scope.struct.loading = false
-                    cur_tree = $scope.get_tc($scope.struct.active_tab)
+                    cur_tree = $scope.get_tc($scope.struct.active_tab[1])
                     cur_tree.toggle_tree_state(undefined, -1, false)
                     num_found = 0
                     cur_tree.iter(
@@ -896,7 +928,7 @@ angular.module(
                     _with_slash = true
             catch exc
                 cur_re = new RegExp("^$", "gi")
-            cur_tree = $scope.get_tc($scope.struct.active_tab)
+            cur_tree = $scope.get_tc($scope.struct.active_tab[1])
             cur_tree.toggle_tree_state(undefined, -1, false)
             num_found = 0
             cur_tree.iter(
@@ -940,7 +972,7 @@ angular.module(
         $scope.tc_categories.show_selected(false)
         $scope.tc_devices.show_selected(false)
         _selection_changed()
-        $scope.activate_tab("d")
+        $scope.activate_tab("Dd")
 
     $scope.show_class_filter = ($event) ->
         sub_scope = $scope.$new(true)
@@ -1081,13 +1113,6 @@ angular.module(
                 icswActiveSelectionService.send_selection($scope.struct.selection)
                 $scope.modal.close()
 
-    $scope.enable_saved_selections = () ->
-        if not $scope.saved_selections.length
-            icswSavedSelectionService.load_selections().then(
-                (data) ->
-                    $scope.saved_selections = data
-            )
-
     $scope.update_selection = () ->
         $scope.struct.selection.save_db_obj()
 
@@ -1184,26 +1209,27 @@ angular.module(
                 $scope.tc_categories.show_selected(false)
                 $scope.tc_devices.show_selected(false)
                 _selection_changed()
-                $scope.activate_tab("d")
+                $scope.activate_tab("Dd")
                 blockUI.stop()
         )
 ]).service("icswLayoutSelectionDialogService",
 [
     "$q", "$compile", "$templateCache", "$state", "icswToolsSimpleModalService",
-    "$rootScope", "icswComplexModalService",
+    "$rootScope", "icswComplexModalService", "ICSW_SIGNALS",
 (
     $q, $compile, $templateCache, $state, icswToolsSimpleModalService,
-    $rootScope, icswComplexModalService,
+    $rootScope, icswComplexModalService, ICSW_SIGNALS,
 ) ->
     # dialog_div =
     prev_left = undefined
     prev_top = undefined
     _active = false
-    quick_dialog = (position) ->
+    quick_dialog = (position, mode=null) ->
         # position? left : right
         if !_active
             _active = true
             sel_scope = $rootScope.$new(true)
+            sel_scope.target_mode = mode
             dialog_div = $compile($templateCache.get("icsw.layout.selection.modify"))(sel_scope)
             # console.log "SelectionDialog", state_name
             # signal controller
@@ -1248,10 +1274,13 @@ angular.module(
                 (fin) ->
                     sel_scope.$destroy()
                     _active = false
+                    # emit signal, is currently used by icswMainCtrl to
+                    # rebind all keycodes
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_BOX_CLOSED"))
             )
     return {
-        quick_dialog: (position) ->
-            return quick_dialog(position)
+        quick_dialog: (position, target_mode) ->
+            return quick_dialog(position, target_mode)
     }
 ]).service("icswLayoutSelectionTreeService",
 [

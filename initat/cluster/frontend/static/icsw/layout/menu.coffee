@@ -658,6 +658,8 @@ menu_module = angular.module(
         tree_valid: false
         # current selection is in sync (coupled with a saved selection)
         sel_synced: false
+        # negated sel_synced
+        sel_unsynced: true
         # selection
         selection_list: []
         # emitted selection
@@ -666,6 +668,8 @@ menu_module = angular.module(
         in_sync: false
         # selection button title
         title_str: ""
+        # info string for lock icon
+        lock_info: ""
         # menu path
         menupath: []
     }
@@ -681,7 +685,10 @@ menu_module = angular.module(
     )
 
     $scope.device_selection = ($event) ->
-        icswLayoutSelectionDialogService.quick_dialog("right")
+        icswLayoutSelectionDialogService.quick_dialog("right", "Dd")
+
+    $scope.device_selection_ss = ($event) ->
+        icswLayoutSelectionDialogService.quick_dialog("right", "Ss")
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), (event, bc_list) ->
         $scope.struct.bc_list.length = 0
@@ -703,6 +710,11 @@ menu_module = angular.module(
     _update_sync_state = () ->
         _cur_sel = icswActiveSelectionService.current()
         $scope.struct.sel_synced = if _cur_sel.db_idx then true else false
+        $scope.struct.sel_unsynced = ! $scope.struct.sel_synced
+        if $scope.struct.sel_synced
+            $scope.struct.lock_info = "In sync with saved selection '#{_cur_sel.db_obj.name}'"
+        else
+            $scope.struct.lock_info = "Not in sync with a saved selection"
         _update_selection_txt()
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event, tree) =>
