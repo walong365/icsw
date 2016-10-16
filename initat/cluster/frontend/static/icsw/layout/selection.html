@@ -121,11 +121,16 @@
                 </small>
                 <form class="form-horizontal">
                     <div class="form-group" ng-show="struct.synced">
-                        <label class="col-md-2 control-label">Selected:</label>
+                        <label class="col-md-2 control-label">
+                            Selected:
+                        </label>
                         <div class="col-md-10 form-control-static">
-                            <span class="label label-warning" ng-show="struct.selection.db_obj.$$changed">changed</span> {{ struct.selection.db_obj.info }}
+                            <span class="label label-warning" ng-show="struct.selection.db_obj.$$changed">
+                                changed
+                            </span> {{ struct.selection.db_obj.info }}
                             <span class="pull-right">
                                 <icsw-tools-button type="save" size="sm" ng-show="struct.selection.changed" ng-click="update_selection()"></icsw-tools-button>
+                                <icsw-tools-button type="delete" size="sm" value="unsync" ng-click="unselect()"></icsw-tools-button>
                             </span>
                         </div>
                     </div>

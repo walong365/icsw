@@ -148,6 +148,7 @@ angular.module(
                 # is disabled on the drop-down selection list
                 # selection has changed, dummy flag, should never be used
                 @changed = true
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_SEL_SYNC_STATE_CHANGED"))
 
         compare_with_db: () =>
             @changed = false
@@ -364,7 +365,7 @@ angular.module(
     # @if DEBUG
     cur_selection = new icswSelection([], [], [666, 3, 5, 16, 21], [3, 5, 16, 21, 666])
     # @endif
-    console.log cur_selection
+    # console.log cur_selection
     # cur_selection = new icswSelection([], [], [3, 5], [3, 5])
     # cur_selection = new icswSelection([], [], [3], [3])
     # windowstest
@@ -480,7 +481,7 @@ angular.module(
         del_id = sel.db_idx
         sel.delete_saved_selection().then(
             (done) ->
-                console.log del_id, (entry.idx for entry in _list)
+                # console.log del_id, (entry.idx for entry in _list)
                 _.remove(_list, (entry) -> return entry.idx == del_id)
                 defer.resolve(_list)
         )
@@ -1056,9 +1057,11 @@ angular.module(
             $scope.struct.synced = true
             # console.log "sync"
             $scope.struct.selection.compare_with_db()
+            $scope.struct.selection_for_dropdown = $scope.struct.selection.db_obj
         else
             # console.log "unsync"
             $scope.struct.synced = false
+            $scope.struct.selection_for_dropdown = undefined
         # resolve strings
         $scope.struct.resolved_device_groups = $scope.struct.selection.resolve_device_groups()
         $scope.struct.resolved_devices = $scope.struct.selection.resolve_devices()

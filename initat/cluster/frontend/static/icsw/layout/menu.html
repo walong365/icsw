@@ -51,6 +51,7 @@
                 </span>
             </li>
             <li class="pull-right cursorpointer">
+                <span ng-class="struct.sel_synced && 'fa fa-lock' || 'fa fa-unlock'"></span>
                 <span
                     class="label"
                     ng-class="{'label-success': struct.in_sync, 'label-danger': !struct.in_sync}"

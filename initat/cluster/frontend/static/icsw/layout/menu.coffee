@@ -656,6 +656,8 @@ menu_module = angular.module(
         bc_list: []
         # device tree is valid
         tree_valid: false
+        # current selection is in sync (coupled with a saved selection)
+        sel_synced: false
         # selection
         selection_list: []
         # emitted selection
@@ -688,33 +690,40 @@ menu_module = angular.module(
         $scope.struct.menupath = menu_path.get_path()
     )
 
-    _fetch_selection_list = () ->
-        $scope.struct.selection_list.length = 0
-        for entry in icswActiveSelectionService.current().get_devsel_list()
-            $scope.struct.selection_list.push(entry)
+    _fetch_selection_list = (l_type) ->
+        # list to handle, can be selection or em_selection (for emitted)
+        d_list = $scope.struct["#{l_type}_list"]
+        d_list.length = 0
+        _cur_sel = icswActiveSelectionService.current()
+        for entry in _cur_sel.get_devsel_list()
+            d_list.push(entry)
+        # also check sync state
+        _update_sync_state()
 
-    _fetch_em_selection_list = () ->
-        $scope.struct.em_selection_list.length = 0
-        for entry in icswActiveSelectionService.current().get_devsel_list()
-            $scope.struct.em_selection_list.push(entry)
+    _update_sync_state = () ->
+        _cur_sel = icswActiveSelectionService.current()
+        $scope.struct.sel_synced = if _cur_sel.db_idx then true else false
+        _update_selection_txt()
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), (event, tree) =>
         $scope.struct.tree_valid = true
-        _fetch_selection_list()
-        _fetch_em_selection_list()
-        _update_selection_txt()
+        _fetch_selection_list("selection")
+        _fetch_selection_list("em_selection")
     )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"), (event) ->
         if $scope.struct.tree_valid
-            _fetch_selection_list()
-            _update_selection_txt()
+            _fetch_selection_list("selection")
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_SEL_SYNC_STATE_CHANGED"), (event) ->
+        if $scope.struct.tree_valid
+            _update_sync_state()
     )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"), (event) ->
         if $scope.struct.tree_valid
-            _fetch_em_selection_list()
-            _update_selection_txt()
+            _fetch_selection_list("em_selection")
     )
 
     _get_list = (in_sel) ->
