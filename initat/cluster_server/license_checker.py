@@ -19,13 +19,9 @@
 #
 import time
 
-import django.utils.timezone
 import zmq
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.available_licenses import LicenseEnum
-from initat.cluster.backbone.models import LicenseUsage, License
-from initat.cluster.backbone.models.license import LicenseViolation
 from initat.host_monitoring import hm_classes
 from initat.md_config_server.config import global_config
 from initat.tools import threading_tools, logging_tools, process_tools, server_command
@@ -99,35 +95,3 @@ class LicenseChecker(threading_tools.process_obj):
 
         self.vector_socket.send_unicode(unicode(drop_com))
 
-    @staticmethod
-    def check(log):
-        log("starting license violation checking")
-
-        license_usages = {license: LicenseUsage.get_license_usage(license) for license in LicenseEnum}
-
-        # violation checking
-        for license, usage in license_usages.iteritems():
-            violated = False
-
-            if usage:  # only check for violation if there is actually some kind of usage
-                violated = not License.objects.has_valid_license(license, usage, ignore_violations=True)
-
-            try:
-                violation = LicenseViolation.objects.get(license=license.name)
-                if not violated:
-                    log("violation {} has ended".format(violation))
-                    violation.delete()
-                else:
-                    # still violate, check if now grace period is violated too
-                    if not violation.hard and django.utils.timezone.now() > violation.date + LicenseUsage.GRACE_PERIOD:
-                        log("violation {} is transformed into a hard violation".format(violation))
-                        violation.hard = True
-                        violation.save()
-            except LicenseViolation.DoesNotExist:
-                if violated:
-                    new_violation = LicenseViolation(license=license.name)
-                    new_violation.save()
-                    log("violation {} detected".format(new_violation))
-
-        log("finished license violation checking")
-        return license_usages

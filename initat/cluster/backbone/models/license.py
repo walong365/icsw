@@ -133,8 +133,6 @@ class _LicenseManager(models.Manager):
         :type license: LicenseEnum
         :param parameters: {LicenseParameterTypeEnum: int} of required parameters
         """
-        if not ignore_violations and LicenseViolation.objects.is_hard_violated(license):
-            return LicenseState.violated
         # TODO: new_install?
         if not self._license_readers:
             return LicenseState.none
@@ -208,7 +206,7 @@ class _LicenseManager(models.Manager):
                 *[
                     r.get_valid_licenses() for r in self._license_readers
                 ]
-            ) if not LicenseViolation.objects.is_hard_violated(lic)
+            )
         ]
 
     def get_license_packages(self):

@@ -68,7 +68,6 @@
             <tr>
                 <th st-sort="name">License</th>
                 <th st-sort="description" style="width: 300px">Description</th>
-                <th>Parameters</th>
                 <th title="Fingerprint status" class="text-center">FPStatus</th>
                 <th colspan="3" class="text-center">Time Status</th>
                 <th style="max-width: 250px"></th>
@@ -82,35 +81,6 @@
                     <strong>{{ lic.name }}</strong>
                 </td>
                 <td>{{ lic.description }}</td>
-                <td>
-                    <div ng-repeat="param_type in get_merged_key_list(lic.$$state.lic.parameters, lic.parameter_usage)">
-
-                        <div ng-show="lic.$$state.lic.parameters[param_type]">
-                            <div ng-switch on="_state(lic.id).lic.parameters[param_type] < lic.parameter_usage[param_type]">
-                                <div ng-switch-when="true">
-                                    <!-- parameter exceeded -->
-                                    <div uib-alert class="alert-danger" style="padding: 5px">
-                                        <i class="glyphicon glyphicon-exclamation-sign"></i>
-                                        <strong>{{ param_type }}</strong>:
-                                        {{ lic.$$state.lic.parameters[param_type] }}
-                                        (used: {{ lic.parameter_usage[param_type] }})
-                                    </div>
-                                </div>
-                                <div ng-switch-default>
-                                    <!-- everything ok, parameter usage within limits -->
-                                    <strong>{{ param_type }}</strong>:
-                                    {{ lic.$$state.lic.parameters[param_type] }}
-                                    (used: {{ undefined_to_zero(lic.parameter_usage[param_type]) }})
-                                </div>
-                            </div>
-                        </div>
-                        <div uib-alert class="alert-danger" ng-show="!lic.$$state.lic.parameters[param_type]" style="padding: 5px">
-                            <!-- parameter used which is not present -->
-                            <i class="glyphicon glyphicon-exclamation-sign"></i>
-                            <strong>{{ param_type }}</strong>: used: {{ lic.parameter_usage[param_type] }}
-                        </div>
-                    </div>
-                </td>
                 <td ng-class="lic.$$fp_bootstrap_class" class="text-center">
                     <i ng-class="lic.$$fp_icon_class"></i>
                 </td>
