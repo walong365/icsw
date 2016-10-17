@@ -31,9 +31,9 @@ from initat.tools import logging_tools, process_tools
 
 
 def open_socket(zmq_context):
-    send_sock = zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
-    send_sock.setsockopt_string(zmq.IDENTITY, "{}:syslog_scan".format(process_tools.get_machine_name()))  # @UndefinedVariable
-    send_sock.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+    send_sock = zmq_context.socket(zmq.DEALER)
+    send_sock.setsockopt_string(zmq.IDENTITY, str("{}:syslog_scan".format(process_tools.get_machine_name())))
+    send_sock.setsockopt(zmq.LINGER, 0) 
     send_sock.connect("tcp://localhost:8000")
     return send_sock
 
