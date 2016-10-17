@@ -27,7 +27,7 @@
                 <th st-sort="monitor_checks">Checks</th>
                 <th st-sort="mon_resolve_name">Resolve</th>
                 <th st-sort="mon_device_templ">Template</th>
-                <th st-sort="md_cache_mode">Cache mode</th>
+                <!-- <th st-sort="md_cache_mode">Cache mode</th>-->
                 <th st-sort="act_partition_table">Disk layout</th>
                 <th st-sort="mon_ext_host">Image</th>
                 <th st-sort="enable_perfdata">PerfData</th>
@@ -41,9 +41,13 @@
         <tbody>
             <tr ng-repeat="obj in entries_displayed">
                 <td>{{ obj.full_name }}</td>
-                <td>{{ obj.monitor_checks | yesno1 }}</td>
-                <td>{{ obj.mon_resolve_name | yesno2 }}</td>
-                <td>
+                <td class="text-center">
+                    <span ng-bind-html="obj.monitor_checks | yesno4"></span>
+                </td>
+                <td class="text-center">
+                    <span ng-bind-html="obj.mon_resolve_name | yesno3"></span>
+                </td>
+                <td class="text-center">
                     <span ng-show="obj.mon_device_templ">
                         {{ struct.base_tree.mon_device_templ_lut[obj.mon_device_templ].name }}
                     </span>
@@ -51,8 +55,8 @@
                         ---
                     </span>
                 </td>
-                <td>{{ md_cache_lut[obj.md_cache_mode].name }}</td>
-                <td>{{ obj.act_partition_table | yesno1 }}</td>
+                <!-- <td class="text-center">{{ md_cache_lut[obj.md_cache_mode].name }}</td> -->
+                <td class="text-center">{{ obj.act_partition_table | yesno1 }}</td>
                 <td class="text-center">
                     <span ng-show="obj.mon_ext_host">
                         <img
@@ -65,10 +69,16 @@
                         ---
                     </span>
                 </td>
-                <td>{{ obj.enable_perfdata | yesno1 }}</td>
-                <td>{{ obj.flap_detection_enabled | yesno1 }}</td>
-                <td>{{ obj.automap_root_nagvis | yesno1 }}</td>
-                <td>
+                <td class="text-center">
+                    <span ng-bind-html="obj.enable_perfdata | yesno3"></span>
+                </td>
+                <td class="text-center">
+                    <span ng-bind-html="obj.flap_detection_enabled | yesno3"></span>
+                </td>
+                <td class="text-center">
+                    <span ng-bind-html="obj.automap_root_nagvis | yesno3"></span>
+                </td>
+                <td class="text-center">
                     <span ng-show="obj.nagvis_parent">
                         {{ struct.device_tree.all_lut[obj.nagvis_parent].full_name }}
                     </span>
@@ -76,11 +86,11 @@
                         ---
                     </span>
                 </td>
-                <td>
-                    <span ng-show="obj.monitor_master">
+                <td class="text-center">
+                    <span ng-show="obj.monitor_server">
                         {{ struct.device_tree.all_lut[obj.monitor_server].full_name }}
                     </span>
-                    <span ng-show="!obj.monitor_master">
+                    <span ng-show="!obj.monitor_server">
                         Master
                     </span>
                 </td>
@@ -97,7 +107,7 @@
     <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Basic settings</legend>
-            <div class="form-group">
+            <!-- <div class="form-group">
                 <label class="control-label col-sm-3 requiredField">
                     Md cache mode<span class="asteriskField">*</span>
                 </label>
@@ -110,10 +120,10 @@
                         </ui-select-choices>
                     </ui-select>
                 </div>
-            </div>
+            </div>-->
             <div class="form-group">
                 <label class="control-label col-sm-3">
-                    Mon device templ
+                    Device template
                 </label>
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">
@@ -135,7 +145,7 @@
             </div>
             <div class="form-group">
                 <label class="control-label col-sm-3">
-                    Mon ext host
+                    Image
                 </label>
                 <div class="controls col-sm-7">
                     <div class="input-group" style="max-width:400px; min-width:240px;">

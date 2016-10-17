@@ -61,12 +61,6 @@ monitoring_device_module = angular.module(
         # monitor servers
         monitor_servers: []
     }
-    $scope.md_cache_modes = [
-        {idx: 1, name: "automatic (server)"}
-        {idx: 2, name: "never use cache"}
-        {idx: 3, name: "once (until successful)"}
-    ]
-    $scope.md_cache_lut = _.keyBy($scope.md_cache_modes, "idx")
 
     $scope.new_devsel = (devs) ->
         $scope.struct.loading = true
@@ -84,10 +78,12 @@ monitoring_device_module = angular.module(
                 # get monitoring masters and slaves
                 _mon_list = []
                 for config in config_tree.list
-                    if config.name in ["monitor_server", "monitor_slave"]
-                        for _dc in config.device_config_set
-                            if _dc.device not in _mon_list
-                                _mon_list.push(_dc.device)
+                    if config.$$cse?
+                        cse = config.$$cse
+                        if cse.enum_name in ["monitor_server", "monitor_slave"]
+                            for _dc in config.device_config_set
+                                if _dc.device not in _mon_list
+                                    _mon_list.push(_dc.device)
                 $scope.struct.monitor_servers = ($scope.struct.device_tree.all_lut[_dev] for _dev in _mon_list)
                 $scope.struct.loading = false
                 $scope.struct.devices.length = 0
@@ -102,7 +98,6 @@ monitoring_device_module = angular.module(
         sub_scope = $scope.$new(false)
         sub_scope.edit_obj = obj
         # copy references
-        sub_scope.md_cache_modes = $scope.md_cache_modes
         sub_scope.base_tree = $scope.struct.base_tree
         sub_scope.monitor_servers = $scope.struct.monitor_servers
         sub_scope.nagvis_list = (
