@@ -256,7 +256,7 @@ class SendCommand(object):
             self.identity_str = process_tools.zmq_identity_str(self.args.identity_substring)
         s_type = "DEALER" if not self.args.split else "PUSH"
         client = self.zmq_context.socket(getattr(zmq, s_type))
-        client.setsockopt(zmq.IDENTITY, self.identity_str)  # @UndefinedVariable
+        client.setsockopt_string(zmq.IDENTITY, self.identity_str)
         client.setsockopt(zmq.LINGER, self.args.timeout)  # @UndefinedVariable
         if self.args.protocoll == "ipc":
             if self.args.root:
@@ -279,7 +279,7 @@ class SendCommand(object):
                 )
             )
             recv_sock = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-            recv_sock.setsockopt(zmq.IDENTITY, self.identity_str)  # @UndefinedVariable
+            recv_sock.setsockopt_string(zmq.IDENTITY, self.identity_str)  # @UndefinedVariable
             recv_sock.setsockopt(zmq.LINGER, self.args.timeout)  # @UndefinedVariable
         else:
             recv_conn_str = None

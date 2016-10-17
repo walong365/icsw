@@ -17,6 +17,8 @@
 #
 """ SNMP process container """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import time
 
@@ -95,7 +97,7 @@ class SNMPProcessContainer(object):
 
     def create_ipc_socket(self, zmq_context, socket_addr, socket_name=DEFAULT_RETURN_NAME):
         self._socket = zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-        self._socket.setsockopt(zmq.IDENTITY, socket_name)  # @UndefinedVariable
+        self._socket.setsockopt_string(zmq.IDENTITY, socket_name)  # @UndefinedVariable
         self._socket.setsockopt(zmq.IMMEDIATE, True)  # @UndefinedVariable
         self._socket.setsockopt(zmq.ROUTER_MANDATORY, True)  # @UndefinedVariable
         self._socket.bind(socket_addr)

@@ -17,6 +17,8 @@
 #
 """ ipc communication tools, now using 0MQ as communication layer """
 
+from __future__ import unicode_literals, print_function
+
 import time
 
 import zmq
@@ -100,7 +102,6 @@ def send_and_receive_zmq(target_host, command, *args, **kwargs):
     cur_timeout = kwargs.pop("timeout", 20)
     client_send = zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
     client_recv = zmq_context.socket(zmq.SUB)  # @UndefinedVariable
-    # client_send.setsockopt(zmq.IDENTITY, identity_str)
     client_send.setsockopt(zmq.LINGER, cur_timeout * 2)  # @UndefinedVariable
     client_recv.setsockopt(zmq.SUBSCRIBE, identity_str)  # @UndefinedVariable
     # kwargs["server"] : collrelay or snmprelay
