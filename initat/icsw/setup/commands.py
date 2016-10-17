@@ -685,37 +685,41 @@ def migrate_db(opts):
     if os.path.isdir(CMIG_DIR):
         check_for_pre17(opts)
         check_for_0800(opts)
-        print("migrating current cluster database schemata")
-        for _sync_app in SYNC_APPS:
-            _app_dir = os.path.join(ICSW_ROOT, "initat", "cluster", _sync_app)
-            if os.path.isdir(_app_dir):
-                print("found app {}, disabled automatic migrations, please migrate by hand".format(_sync_app))
-                # call_manage(["makemigrations", _sync_app, "--noinput"])
-                # call_manage(["migrate", _sync_app, "--noinput"])
-        subprocess.check_output("/opt/cluster/sbin/pis/check_content_stores_server.py")
-        auth_app_name = "django.contrib.auth"
-        for _app in ["backbone", auth_app_name, "reversion", "django.contrib.admin", "django.contrib.sessions", "django.contrib.sites"]:
-            if app_has_unapplied_migrations(_app.split(".")[-1]):
-                print("migrating app {}".format(_app))
-                success = apply_migration(_app)
+        _merge_file = os.path.join(MIGRATIONS_DIR, "0801_merge.py")
+        if not os.path.exists(_merge_file):
+            alarm("merge_file not found, skipping migration")
+        else:
+            print("migrating current cluster database schemata")
+            for _sync_app in SYNC_APPS:
+                _app_dir = os.path.join(ICSW_ROOT, "initat", "cluster", _sync_app)
+                if os.path.isdir(_app_dir):
+                    print("found app {}, disabled automatic migrations, please migrate by hand".format(_sync_app))
+                    # call_manage(["makemigrations", _sync_app, "--noinput"])
+                    # call_manage(["migrate", _sync_app, "--noinput"])
+            subprocess.check_output("/opt/cluster/sbin/pis/check_content_stores_server.py")
+            auth_app_name = "django.contrib.auth"
+            for _app in ["backbone", auth_app_name, "reversion", "django.contrib.admin", "django.contrib.sessions", "django.contrib.sites"]:
+                if app_has_unapplied_migrations(_app.split(".")[-1]):
+                    print("migrating app {}".format(_app))
+                    success = apply_migration(_app)
 
-                if not success:
-                    if _app == auth_app_name:
-                        # in old installations, we used to have a custom migration due to a patch for a model in auth.
-                        # django 1.8 then added own migrations for auth, which resulted in a divergence.
-                        # we can however just fix that by merging the migrations, which we attempt here.
-                        print("attempting to fix auth migration divergence due to django-1.8")
-                        call_manage(["makemigrations", "auth", "--merge", "--noinput"])
-                        # try to migrate again (can't do anything in case of failure though)
-                        apply_migration(_app)
-                    elif _app == "backbone":
-                        print("error in migrating {}, trying to merge auth".format(_app))
-                        call_manage(["makemigrations", "auth", "--merge", "--noinput"])
-                        # try to migrate again (can't do anything in case of failure though)
-                        apply_migration(_app)
-            else:
-                print("no unapplied migrations found for app {}".format(_app))
-        print("")
+                    if not success:
+                        if _app == auth_app_name:
+                            # in old installations, we used to have a custom migration due to a patch for a model in auth.
+                            # django 1.8 then added own migrations for auth, which resulted in a divergence.
+                            # we can however just fix that by merging the migrations, which we attempt here.
+                            print("attempting to fix auth migration divergence due to django-1.8")
+                            call_manage(["makemigrations", "auth", "--merge", "--noinput"])
+                            # try to migrate again (can't do anything in case of failure though)
+                            apply_migration(_app)
+                        elif _app == "backbone":
+                            print("error in migrating {}, trying to merge auth".format(_app))
+                            call_manage(["makemigrations", "auth", "--merge", "--noinput"])
+                            # try to migrate again (can't do anything in case of failure though)
+                            apply_migration(_app)
+                else:
+                    print("no unapplied migrations found for app {}".format(_app))
+            print("")
         call_manage(["createinitialrevisions"])
         call_update_funcs(opts)
     else:
