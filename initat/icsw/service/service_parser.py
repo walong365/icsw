@@ -58,7 +58,8 @@ class Parser(object):
         _srvc.add_argument("-a", dest="almost_all", action="store_true", default=False, help="almost all of the above, except start and DB info [%(default)s]")
         _srvc.add_argument("-A", dest="all", action="store_true", default=False, help="all of the above [%(default)s]")
         _srvc.add_argument("-v", dest="version", default=False, action="store_true", help="show version info [%(default)s]")
-        _srvc.add_argument("--with-meta", dest="meta", default=False, action="store_true", help="add info from local meta-server [%(default)s]")
+        _srvc.add_argument("--without-meta", dest="meta", default=True, action="store_false", help="do not add info from local meta-server [%(default)s]")
+        _srvc.add_argument("--with-meta", dest="meta", default=True, action="store_true", help="add info from local meta-server [%(default)s]")
         self._add_iccs_sel(_srvc)
         # _srvc.add_argument("--mode", type=str, default="show", choices=["show", "stop", "start", "restart"], help="operation mode [%(default)s]")
         _srvc.add_argument("--failed", default=False, action="store_true", help="show only instances in failed state [%(default)s]")
@@ -150,7 +151,7 @@ class Parser(object):
         main(opt_ns)
 
     @staticmethod
-    def get_default_ns(meta_server=False):
+    def get_default_ns(call_meta=True):
         # meta_server is True when called from ... meta_server
         sub_parser = argparse.ArgumentParser().add_subparsers()
         def_ns = Parser()._add_status_parser(sub_parser).parse_args([])
@@ -159,5 +160,5 @@ class Parser(object):
         def_ns.config = True
         def_ns.started = True
         def_ns.process = True
-        def_ns.meta = not meta_server
+        def_ns.meta = call_meta
         return def_ns

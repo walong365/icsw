@@ -86,7 +86,7 @@ class main_process(ICSWBasePoolClient):
 
     def _init_statemachine(self):
         self.__transitions = []
-        self.def_ns = service_parser.Parser.get_default_ns(meta_server=True)
+        self.def_ns = service_parser.Parser.get_default_ns(call_meta=False)
         self.server_instance = instance.InstanceXML(self.log)
         self.service_state = ServiceState(self.log, self.server_instance)
         self.container = container.ServiceContainer(self.log)
