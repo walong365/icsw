@@ -75,7 +75,7 @@ class BaseAssetPackage(object):
             except:
                 pass
 
-        return datetime.datetime.fromtimestamp(0)
+        return None
 
     def get_as_row(self):
         _name = self.name

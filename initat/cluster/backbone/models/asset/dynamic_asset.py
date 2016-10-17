@@ -53,7 +53,7 @@ __all__ = [
     "AssetHWGPUEntry",
     "AssetHWDisplayEntry",
     "AssetHWNetworkDevice",
-    "AssetPackageVersionInstallTime",
+    "AssetPackageVersionInstallInfo",
     "AssetPackage",
     "AssetPackageVersion",
     "AssetHardwareEntry",
@@ -152,14 +152,17 @@ class AssetHWNetworkDevice(models.Model):
             )
 
 
-class AssetPackageVersionInstallTime(models.Model):
+class AssetPackageVersionInstallInfo(models.Model):
     idx = models.AutoField(primary_key=True)
     package_version = models.ForeignKey("backbone.AssetPackageVersion")
-    timestamp = models.BigIntegerField()
+    timestamp = models.BigIntegerField(null=True)
+    size = models.BigIntegerField(null=True)
 
     @property
     def install_time(self):
-        return datetime.datetime.fromtimestamp(float(self.timestamp))
+        if self.timestamp:
+            return datetime.datetime.fromtimestamp(float(self.timestamp))
+        return None
 
 
 class AssetPackage(models.Model):
@@ -172,7 +175,6 @@ class AssetPackage(models.Model):
 class AssetPackageVersion(models.Model):
     idx = models.AutoField(primary_key=True)
     asset_package = models.ForeignKey("backbone.AssetPackage")
-    size = models.IntegerField(default=0)
     # for comment and / or info
     info = models.TextField(default="")
     version = models.TextField(default="", blank=True)
@@ -182,13 +184,14 @@ class AssetPackageVersion(models.Model):
     @property
     def install_info(self):
         _dict = {}
-        for assetbatch in self.assetbatch_set.all():
-            if assetbatch.device.idx not in _dict:
-                _dict[assetbatch.device.idx] = {}
-                _dict[assetbatch.device.idx]["device_name"] = assetbatch.device.full_name
-                _dict[assetbatch.device.idx]["install_history_list"] = []
+        for apvii in self.assetpackageversioninstallinfo_set.all():
+            for assetbatch in apvii.assetbatch_set.all():
+                if assetbatch.device.idx not in _dict:
+                    _dict[assetbatch.device.idx] = {}
+                    _dict[assetbatch.device.idx]["device_name"] = assetbatch.device.full_name
+                    _dict[assetbatch.device.idx]["install_history_list"] = []
 
-            _dict[assetbatch.device.idx]["install_history_list"].append(assetbatch.run_start_time)
+                _dict[assetbatch.device.idx]["install_history_list"].append(assetbatch.run_start_time)
 
         return _dict
 
@@ -459,10 +462,6 @@ class AssetRun(models.Model):
         return [package.idx for package in self.asset_batch.packages.all()]
 
     @property
-    def packages_install_times(self):
-        return self.asset_batch.packages_install_times.all()
-
-    @property
     def device(self):
         return self.asset_batch.device.idx
 
@@ -582,75 +581,63 @@ class AssetRun(models.Model):
     def _generate_assets_package(self, assets):
         aps_needing_save = []
         apvs_needing_save = []
-        apvits_needing_save = []
+        apviis_needing_save = []
 
-        apvs = []
-        install_times = []
+        install_infos_to_add = []
 
         # lookup cache
-        lu_cache = {
-            _p.name: _p for _p in AssetPackage.objects.filter(name__in=[_x.name for _x in assets]).prefetch_related(
-                    "assetpackageversion_set"
-            )
+        ap_lu_cache = {
+            _p.name: _p for _p in AssetPackage.objects.all()
         }
 
-        apvit_lu_cache = { }
+        apv_lu_cache = {}
+        for apv in AssetPackageVersion.objects.all().prefetch_related("asset_package"):
+            h = hash((apv.version, apv.release, apv.asset_package.idx))
+            apv_lu_cache[h] = apv
 
-        for apvit in AssetPackageVersionInstallTime.objects.all().prefetch_related("package_version"):
-            if apvit.timestamp not in apvit_lu_cache:
-                apvit_lu_cache[apvit.timestamp] = {}
-
-            apvit_lu_cache[apvit.timestamp][apvit.package_version.idx] = apvit
+        apvii_lu_cache = {}
+        for apvii in AssetPackageVersionInstallInfo.objects.all().prefetch_related("package_version"):
+            h = hash((apvii.timestamp, apvii.size, apvii.package_version.idx))
+            apvii_lu_cache[h] = apvii
 
         for ba in assets:
             name = ba.name
             version = ba.version if ba.version else ""
             release = ba.release if ba.release else ""
-            size = ba.size if ba.size else 0
+            size = ba.size if ba.size else None
             package_type = ba.package_type
+            install_time = ba.get_install_time_as_datetime()
+            timestamp = time.mktime(install_time.timetuple()) if install_time else None
 
-            if name in lu_cache:
-                ap = lu_cache[ba.name]
+            if name in ap_lu_cache:
+                ap = ap_lu_cache[ba.name]
 
-                versions = ap.assetpackageversion_set.filter(version=version, release=release, size=size)
+                apv_hash = hash((version, release, ap.idx))
 
-                if versions:
-                    apv = versions[0]
+                if apv_hash in apv_lu_cache:
+                    apv = apv_lu_cache[apv_hash]
                 else:
-                    apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
+                    apv = AssetPackageVersion(asset_package=ap, version=version, release=release)
                     apvs_needing_save.append(apv)
             else:
                 ap = AssetPackage(name=name, package_type=package_type)
                 aps_needing_save.append(ap)
-                apv = AssetPackageVersion(asset_package=ap, version=version, release=release, size=size)
+                apv = AssetPackageVersion(asset_package=ap, version=version, release=release)
                 apvs_needing_save.append(apv)
 
-            apvs.append(apv)
-
-            install_time = ba.get_install_time_as_datetime()
-            timestamp = time.mktime(install_time.timetuple())
-
-            apv_install_time = None
-            if timestamp in apvit_lu_cache and apv.idx in apvit_lu_cache[timestamp]:
-                apv_install_time = apvit_lu_cache[timestamp][apv.idx]
-
-            if not apv_install_time:
-                apv_install_time = AssetPackageVersionInstallTime(
+            apvii_hash = hash((timestamp, size, apv.idx))
+            if apvii_hash in apvii_lu_cache:
+                apv_install_info = apvii_lu_cache[apvii_hash]
+            else:
+                apv_install_info = AssetPackageVersionInstallInfo(
                     package_version=apv,
-                    timestamp=timestamp
+                    timestamp=timestamp,
+                    size=size
                 )
 
-                apvits_needing_save.append(apv_install_time)
+                apviis_needing_save.append(apv_install_info)
 
-            install_times.append(apv_install_time)
-
-        self.asset_batch.packages_status = 1
-        if len(apvs) > 0:
-            self.asset_batch.packages_status = 2
-
-        self.asset_batch.packages_install_times_status = 1
-        if len(install_times) > 0:
-            self.asset_batch.packages_install_times_status = 2
+            install_infos_to_add.append(apv_install_info)
 
         AssetPackage.objects.bulk_create(aps_needing_save)
 
@@ -661,14 +648,17 @@ class AssetRun(models.Model):
 
         AssetPackageVersion.objects.bulk_create(apvs_needing_save)
 
-        for apvit in apvits_needing_save:
-            apv = apvit.package_version
-            apvit.package_version = apv
+        for apvii in apviis_needing_save:
+            apv = apvii.package_version
+            apvii.package_version = apv
 
-        AssetPackageVersionInstallTime.objects.bulk_create(apvits_needing_save)
+        AssetPackageVersionInstallInfo.objects.bulk_create(apviis_needing_save)
 
-        self.asset_batch.packages.add(*apvs)
-        self.asset_batch.packages_install_times.add(*install_times)
+        self.asset_batch.installed_packages_status = 1
+        if len(install_infos_to_add) > 0:
+            self.asset_batch.installed_packages_status = 2
+
+        self.asset_batch.installed_packages.add(*install_infos_to_add)
         self.asset_batch.save()
 
     def _generate_assets_hardware_nrpe(self, data):
@@ -982,12 +972,9 @@ class AssetBatch(models.Model):
     device = models.ForeignKey("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
-    # fields generated from raw entries
-    packages = models.ManyToManyField(AssetPackageVersion)
-    packages_status = models.IntegerField(default=0)
 
-    packages_install_times = models.ManyToManyField(AssetPackageVersionInstallTime)
-    packages_install_times_status = models.IntegerField(default=0)
+    installed_packages = models.ManyToManyField(AssetPackageVersionInstallInfo)
+    installed_packages_status = models.IntegerField(default=0)
 
     cpus = models.ManyToManyField(AssetHWCPUEntry)
     cpus_status = models.IntegerField(default=0)
