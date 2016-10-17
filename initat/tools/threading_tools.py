@@ -160,7 +160,7 @@ class debug_zmq_sock(object):
         return self._sock.getsockopt(*args)
 
     def fileno(self):
-        return self._sock.getsockopt(zmq.FD)  # @UndefinedVariable
+        return self._sock.getsockopt(zmq.FD)
 
     def poll(self, **kwargs):
         return self._sock.poll(**kwargs)
@@ -169,7 +169,15 @@ class debug_zmq_sock(object):
         self.ctx.log("close {:d}".format(self.fileno()))
         self.ctx._sockets_open.remove(self.fileno())
         if self.ctx._sockets_open:
-            self.ctx.log("    still open: {}".format(", ".join(["{:d}".format(cur_fd) for cur_fd in self.ctx._sockets_open])))
+            self.ctx.log(
+                "    still open: {}".format(
+                    ", ".join(
+                        [
+                            "{:d}".format(cur_fd) for cur_fd in self.ctx._sockets_open
+                        ]
+                    )
+                )
+            )
         return self._sock.close()
 
 
@@ -702,7 +710,7 @@ class process_obj(multiprocessing.Process, TimerBase, poller_obj, process_base, 
         # print("context of {:d} is {}".format(os.getpid(), str(self.zmq_context)))
         com_socket = self.zmq_context.socket(zmq.ROUTER)
         # cast to str, no unicode allowed
-        if type(self.name) == unicode:
+        if isinstance(self.name, unicode):
             com_socket.setsockopt_string(zmq.IDENTITY, self.name)
         else:
             com_socket.setsockopt(zmq.IDENTITY, self.name)
@@ -730,7 +738,10 @@ class process_obj(multiprocessing.Process, TimerBase, poller_obj, process_base, 
     def add_com_socket(self):
         cs_name = self.get_com_socket_name(self.name)
         zmq_socket = self.zmq_context.socket(zmq.ROUTER)
-        zmq_socket.setsockopt_string(zmq.IDENTITY, self.name)
+        if isinstance(self.name, unicode):
+            zmq_socket.setsockopt_string(zmq.IDENTITY, self.name)
+        else:
+            zmq_socket.setsockopt(zmq.IDENTITY, self.name)
         zmq_socket.setsockopt(zmq.IMMEDIATE, True)
         zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
         process_tools.bind_zmq_socket(zmq_socket, cs_name)
@@ -1098,12 +1109,12 @@ class process_pool(TimerBase, poller_obj, process_base, exception_handling_mixin
         self.__flags[fn] = state
 
     def _add_com_socket(self):
-        zmq_socket = self.zmq_context.socket(zmq.ROUTER)  # @UndefinedVariable
-        zmq_socket.setsockopt_string(zmq.IDENTITY, "main")  # @UndefinedVariable
-        zmq_socket.setsockopt(zmq.IMMEDIATE, True)  # @UndefinedVariable
-        zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)  # @UndefinedVariable
+        zmq_socket = self.zmq_context.socket(zmq.ROUTER)
+        zmq_socket.setsockopt_string(zmq.IDENTITY, "main")
+        zmq_socket.setsockopt(zmq.IMMEDIATE, True)
+        zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
         process_tools.bind_zmq_socket(zmq_socket, self.queue_name)
-        self.register_poller(zmq_socket, zmq.POLLIN, self._tp_message_received)  # @UndefinedVariable
+        self.register_poller(zmq_socket, zmq.POLLIN, self._tp_message_received)
         self.__com_socket = zmq_socket
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
