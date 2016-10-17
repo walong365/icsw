@@ -19,6 +19,8 @@
 #
 """ generates zonefiles for nsX.init.at """
 
+from __future__ import unicode_literals, print_function
+
 import commands
 import json
 import os
@@ -252,10 +254,10 @@ class Zone(object):
                     logging_tools.get_plural("A record", len(_zone.records)),
                 )
             )
-            print "\n".join(_zone.content_private)
-            print "\n".join(_zone.content_public)
-            print "\n".join(_zone.master_entry)
-            print "\n".join(_zone.slave_entry)
+            print("\n".join(_zone.content_private))
+            print("\n".join(_zone.content_public))
+            print("\n".join(_zone.master_entry))
+            print("\n".join(_zone.slave_entry))
 
     @staticmethod
     def feed_host(host, zone):

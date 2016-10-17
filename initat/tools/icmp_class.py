@@ -22,6 +22,8 @@
 
 """ A raw ICMP baseclass (icmp protocol), based on seafelt lib/icmp.py """
 
+from __future__ import unicode_literals, print_function
+
 import array
 import os
 import socket

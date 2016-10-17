@@ -19,6 +19,8 @@
 #
 """ module to parse the drbd status """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import stat
 
@@ -202,4 +204,4 @@ class drbd_config(object):
 
 if __name__ == "__main__":
     dc = drbd_config()
-    print dc.get_net_data()
+    print(dc.get_net_data())

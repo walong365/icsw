@@ -19,6 +19,8 @@
 #
 """ various tools to handle processes and stuff """
 
+from __future__ import unicode_literals, print_function
+
 import atexit
 import base64
 import bz2

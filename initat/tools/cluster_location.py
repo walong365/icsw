@@ -19,6 +19,8 @@
 #
 """ module for checking current server status and extracting routes to other server """
 
+from __future__ import unicode_literals, print_function
+
 import array
 import datetime
 import netifaces

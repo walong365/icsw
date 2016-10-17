@@ -19,6 +19,8 @@
 #
 """ sends everything to the local logging-server """
 
+from __future__ import unicode_literals, print_function
+
 import atexit
 import os
 import pickle

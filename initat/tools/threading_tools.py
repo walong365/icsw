@@ -21,6 +21,8 @@
 #
 """ classes for multiprocessing (using multiprocessing) """
 
+from __future__ import unicode_literals, print_function
+
 import inspect
 import multiprocessing
 import os

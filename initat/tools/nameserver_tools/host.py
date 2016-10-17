@@ -19,8 +19,10 @@
 #
 """ generates zonefiles for nsX.init.at """
 
-from initat.tools import ipvx_tools
+from __future__ import unicode_literals, print_function
 
+from initat.tools import ipvx_tools
+from .functions import make_unqualified
 from .network import Network
 
 

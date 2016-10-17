@@ -22,6 +22,8 @@
 
 """ monitoring views """
 
+from __future__ import unicode_literals, print_function
+
 import base64
 import datetime
 import json

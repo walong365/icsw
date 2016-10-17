@@ -21,6 +21,8 @@
 #
 """ network middleware """
 
+from __future__ import unicode_literals, print_function
+
 import argparse
 import operator
 import os
@@ -180,7 +182,7 @@ class ZMQConnection(object):
         return [self._interpret_result(com_type, self.__results[cur_fd]) for cur_fd, com_type in self.__add_list]
 
     def __show(self, sock_fd):
-        print sock_fd
+        print(sock_fd)
 
     def _close_socket(self, sock_fd):
         if self.__ext_poller:

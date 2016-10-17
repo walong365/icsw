@@ -20,12 +20,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import unicode_literals, print_function
+
 import email  # @UnusedImport
 import email.mime  # @UnusedImport
 import mimetypes
 import os
-import socket
 import smtplib
+import socket
 import sys
 
 from initat.tools import logging_tools, process_tools

@@ -19,6 +19,8 @@
 #
 """ SGE Job submission verifier """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import re
 import sys

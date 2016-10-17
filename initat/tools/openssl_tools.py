@@ -17,7 +17,8 @@
 #
 """ tools for openssl """
 
-from collections import OrderedDict
+from __future__ import unicode_literals, print_function
+
 import commands
 import datetime
 import os
@@ -25,8 +26,10 @@ import shutil
 import stat
 import tarfile
 import tempfile
+from collections import OrderedDict
 
 from OpenSSL import crypto
+
 from initat.tools import logging_tools, process_tools
 
 _KEYS = ["CN", "C", "ST", "O", "emailAddress"]

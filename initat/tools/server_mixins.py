@@ -80,41 +80,63 @@ class EggConsumeObject(object):
         else:
             return obj_def.idx
 
+    def get_result_struct(self, obj_def, value):
+        if type(obj_def) == list:
+            return [value for _entry in obj_def]
+        else:
+            return value
+
     def consume(self, action, obj_def):
         from django.db.models import Q
         from initat.cluster.backbone.models import icswEggRequest
+        if type(obj_def) == list:
+            obj_def_list = obj_def
+        else:
+            obj_def_list = [obj_def]
         if action in self.consumers:
-            _pk = self._get_pk_from_object(obj_def)
-            _allowed = self._cache.get(action, _pk)
-            if _allowed is None:
-                _con = self.consumers[action]
-                try:
-                    _cur_req = icswEggRequest.objects.get(
-                        Q(egg_consumer=_con) &
-                        Q(object_id=_pk),
-                    )
-                except icswEggRequest.DoesNotExist:
-                    _cur_req = icswEggRequest.objects.create(
-                        egg_consumer=_con,
-                        object_id=_pk,
-                    )
-                except icswEggRequest.MultipleObjectsReturned:
-                    _cur_reqs = icswEggRequest.objects.filter(
-                        Q(egg_consumer=_con) &
-                        Q(object_id=_pk),
-                    )
-                    # print len(_cur_reqs)
-                    _cur_req = _cur_reqs[0]
-                _allowed = _con.consume(_cur_req)
-                if not _allowed:
-                    self.log(
-                        "action {} on {} not allowed".format(
-                            action,
-                            unicode(obj_def),
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
-                self._cache.set(action, _pk, _allowed)
+            _con = self.consumers[action]
+            _result = []
+            # get all pks
+            pk_list = [self._get_pk_from_object(cur_obj) for cur_obj in obj_def_list]
+            # ToDo, implement code for partially updates
+            # print("*", pk_list)
+            # egg_reqs = {
+            #     entry.object_id: entry for entry in icswEggRequest.objects.filter(Q(egg_consumer=_con) & Q(object_id__in=pk_list))
+            # }
+            # print(egg_reqs)
+            for _pk, cur_obj in zip(pk_list, obj_def_list):
+                _allowed = self._cache.get(action, _pk)
+                if _allowed is None:
+                    try:
+                        _cur_req = icswEggRequest.objects.get(
+                            Q(egg_consumer=_con) &
+                            Q(object_id=_pk),
+                        )
+                    except icswEggRequest.DoesNotExist:
+                        _cur_req = icswEggRequest.objects.create(
+                            egg_consumer=_con,
+                            object_id=_pk,
+                        )
+                    except icswEggRequest.MultipleObjectsReturned:
+                        _cur_reqs = icswEggRequest.objects.filter(
+                            Q(egg_consumer=_con) &
+                            Q(object_id=_pk),
+                        )
+                        # print len(_cur_reqs)
+                        _cur_req = _cur_reqs[0]
+                    _allowed = _con.consume(_cur_req)
+                    if not _allowed:
+                        self.log(
+                            "action {} on {} not allowed".format(
+                                action,
+                                unicode(cur_obj),
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                    self._cache.set(action, _pk, _allowed)
+                _result.append(_allowed)
+            if type(obj_def) != list:
+                _result = _result[0]
         else:
             self.log(
                 "unknown consume action '{}' for {} (known actions: {})".format(
@@ -124,8 +146,8 @@ class EggConsumeObject(object):
                 ),
                 logging_tools.LOG_LEVEL_CRITICAL
             )
-            _allowed = False
-        return _allowed
+            _result = self.get_result_struct(obj_def, False)
+        return _result
 
 
 class ConfigCheckObject(object):

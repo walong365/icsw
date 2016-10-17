@@ -4,9 +4,11 @@
 # Copyright 1997, Corporation for National Research Initiatives
 # written by Jeremy Hylton, jeremy@cnri.reston.va.us
 
+from __future__ import unicode_literals, print_function
+
 import array
-import struct
 import socket
+import struct
 
 from initat.tools import inet
 

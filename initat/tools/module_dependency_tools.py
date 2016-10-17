@@ -19,6 +19,8 @@
 #
 """ handles module dependencies """
 
+from __future__ import unicode_literals, print_function
+
 import commands
 import copy
 import fnmatch
@@ -41,7 +43,7 @@ class dependency_handler(object):
         if self.log_com:
             self.log_com("[dh] {}".format(what), log_level)
         else:
-            print "[dh {:2d} {}] {}".format(log_level, logging_tools.get_log_level_str(log_level), what)
+            print("[dh {:2d} {}] {}".format(log_level, logging_tools.get_log_level_str(log_level), what))
 
     def _shorten_module_name(self, mod_name):
         return mod_name.endswith(".ko") and mod_name[:-3] or (mod_name.endswith(".o") and mod_name[:-2] or mod_name)

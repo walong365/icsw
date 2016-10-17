@@ -17,6 +17,8 @@
 #
 """ cluster-server, background inotify import script """
 
+from __future__ import unicode_literals, print_function
+
 import datetime
 
 from initat.cluster.backbone.models import background_job_run, cluster_timezone

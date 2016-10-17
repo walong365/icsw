@@ -17,6 +17,8 @@
 #
 """ various servers, background inotify import script """
 
+from __future__ import unicode_literals, print_function
+
 import datetime
 import time
 

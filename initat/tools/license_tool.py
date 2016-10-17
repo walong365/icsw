@@ -22,6 +22,8 @@
 #
 """ ask license server and return an XML-represenation of license situation """
 
+from __future__ import unicode_literals, print_function
+
 import argparse
 import sys
 

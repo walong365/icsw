@@ -19,6 +19,9 @@
 """ handles ipv4 addresses """
 
 
+from __future__ import unicode_literals, print_function
+
+
 class ipv4(object):
     def __init__(self, in_value):
         if isinstance(in_value, ipv4):

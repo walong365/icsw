@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ simple database for the most common CPUs  """
+
+from __future__ import unicode_literals, print_function
 
 import base64
 import bz2

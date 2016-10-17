@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2007,2011-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007,2011-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,11 +21,13 @@
 #
 """ inotify tools """
 
+from __future__ import unicode_literals, print_function
+
 import logging
 
-from initat.tools import logging_tools
 import pyinotify
 
+from initat.tools import logging_tools
 
 pyinotify.log.setLevel(logging.CRITICAL)
 
@@ -160,19 +162,19 @@ class InotifyWatcher(pyinotify.Notifier):
 
 
 def show_ev(*args):
-    print args
+    print(args)
 
 
 def test():
     my_w = InotifyWatcher()  # thread_safe=True)
-    print "add watch to /tmp"
+    print("add watch to /tmp")
     my_w.add_watcher("test", "/tmp", process_events=show_ev)
     # my_w.remove_watcher("test", "/tmp")
     # my_w.add_watcher("test", "/tmp/x")
     while True:
-        print "-" * 20
+        print("-" * 20)
         my_w.check(1000)
-    print my_w
+    print(my_w)
 
 
 if __name__ == "__main__":

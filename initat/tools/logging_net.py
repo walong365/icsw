@@ -21,6 +21,8 @@
 #
 """ logging tools, network related """
 
+from __future__ import unicode_literals, print_function
+
 import inspect
 import logging
 import logging.handlers

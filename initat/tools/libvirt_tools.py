@@ -16,6 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import unicode_literals, print_function
+
 import os
 import time
 

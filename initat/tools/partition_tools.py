@@ -17,6 +17,8 @@
 #
 """ tools for handling partition tables (LVM and UUID / label stuff) """
 
+from __future__ import unicode_literals, print_function
+
 import commands
 import os
 import re
@@ -194,7 +196,7 @@ class lvm_struct(object):
         elif self.__source == "xml":
             self._parse_xml(kwargs["xml"])
         else:
-            print "unknown source '{}' for lvm_struct.__init__".format(source)
+            print("unknown source '{}' for lvm_struct.__init__".format(source))
 
     def _check_binary_paths(self):
         lvm_path = ["/sbin", "/usr/sbin", "/usr/local/sbin"]
@@ -280,7 +282,7 @@ class lvm_struct(object):
                 try:
                     new_lv_obj = lvm_object(name, stuff)
                 except:
-                    print process_tools.get_except_info()
+                    print(process_tools.get_except_info())
                 else:
                     self.lv_dict.setdefault(name, {})[new_lv_obj["name"]] = new_lv_obj
 
@@ -429,4 +431,4 @@ class disk_lut(object):
 
 def test_it():
     my_lut = disk_lut()
-    print my_lut[("id", "/dev/sda8")]
+    print(my_lut[("id", "/dev/sda8")])

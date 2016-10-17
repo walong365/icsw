@@ -18,6 +18,8 @@
 #
 """ handle service reload / restarts """
 
+from __future__ import unicode_literals, print_function
+
 import re
 
 from initat.tools import logging_tools, process_tools
@@ -148,7 +150,13 @@ class ServiceHelper(object):
     def service_command(self, name, cmd):
         _ALLOWED_CMDS = ["restart", "reload", "start", "stop"]
         if cmd not in _ALLOWED_CMDS:
-            self.log("unknown command '{}' (must be one of {})".format(_cmd, ", ".join(_ALLOWED_CMDS)), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "unknown command '{}' (must be one of {})".format(
+                    cmd,
+                    ", ".join(_ALLOWED_CMDS)
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             return None
         else:
             real_name = self._get_real_service_name(name)

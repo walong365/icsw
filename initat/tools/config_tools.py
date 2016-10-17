@@ -24,6 +24,8 @@ module to operate with config and ip relationsships in the database. This
 module gets included from configfile
 """
 
+from __future__ import unicode_literals, print_function
+
 if __name__ == "__main__":
     # for testing
     import os
@@ -1082,10 +1084,10 @@ def close_db_connection():
 
 
 def _log_com(what, log_level=logging_tools.LOG_LEVEL_OK):
-    print "[{:2d}] {}".format(log_level, what)
+    print("[{:2d}] {}".format(log_level, what))
 
 
 if __name__ == "__main__":
     ro = RouterObject(_log_com)
     # pprint.pprint(ro.get_clusters())
-    print len(ro.get_clusters())
+    print(len(ro.get_clusters()))

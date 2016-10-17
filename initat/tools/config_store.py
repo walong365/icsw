@@ -24,17 +24,18 @@ for password-types we need to add some encryption / message digest code via {alg
 
 """
 
-import os
+from __future__ import unicode_literals, print_function
+
 import grp
+import os
 import stat
 
 from enum import Enum
-
 from lxml import etree
 from lxml.builder import E
 
-from initat.tools import process_tools, logging_tools
 from initat.constants import CLUSTER_DIR
+from initat.tools import process_tools, logging_tools
 
 __all__ = [
     "ConfigVar",
@@ -205,7 +206,7 @@ class ConfigStore(object):
                     log_level
                 )
             else:
-                print "{} {}".format(logging_tools.get_log_level_str(log_level), what)
+                print("{} {}".format(logging_tools.get_log_level_str(log_level), what))
 
     @staticmethod
     def exists(name):
@@ -535,6 +536,6 @@ if __name__ == "__main__":
         "c": True,
     }
     cs["x"] = "la"
-    print cs.show()
-    print cs["awqe"]
-    print cs.keys()
+    print(cs.show())
+    print(cs["awqe"])
+    print(cs.keys())

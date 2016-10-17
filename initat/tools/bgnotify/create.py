@@ -17,6 +17,8 @@
 #
 """ various servers, create background jobs """
 
+from __future__ import unicode_literals, print_function
+
 import datetime
 
 from django.db.models import Q

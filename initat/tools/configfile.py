@@ -19,6 +19,8 @@
 #
 """ module for handling config files, now implemented using MemCache """
 
+from __future__ import unicode_literals, print_function
+
 import argparse
 import datetime
 import json
@@ -64,10 +66,12 @@ class _conf_var(object):
             "help_string", "short_options", "choices", "nargs", "database",
         }
         if kw_keys:
-            print "*** {} for _conf_var('{}') left: {} ***".format(
-                logging_tools.get_plural("keyword argument", len(kw_keys)),
-                str(self.value),
-                ", ".join(sorted(kw_keys)),
+            print(
+                "*** {} for _conf_var('{}') left: {} ***".format(
+                    logging_tools.get_plural("keyword argument", len(kw_keys)),
+                    str(self.value),
+                    ", ".join(sorted(kw_keys)),
+                )
             )
 
     def serialize(self):

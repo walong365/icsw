@@ -18,6 +18,8 @@
 #
 """ classes for building rpm-packages """
 
+from __future__ import unicode_literals, print_function
+
 import argparse
 import commands
 import os
@@ -150,9 +152,11 @@ class package_parser(argparse.ArgumentParser):
                 try:
                     setattr(opts, _scr_name, file(getattr(opts, _scr_name), "r").read())
                 except:
-                    print "error handling {} : {}".format(
-                        _scr_name,
-                        process_tools.get_except_info()
+                    print(
+                        "error handling {} : {}".format(
+                            _scr_name,
+                            process_tools.get_except_info()
+                        )
                     )
                     sys.exit(1)
         return opts
@@ -249,7 +253,7 @@ class build_package(object):
         )
 
     def write_specfile(self, content):
-        print "Generating specfile ..."
+        print("Generating specfile ...")
         spec_contents = [
             "%define debug_package %{nil}",
             "%%define VERSION %s" % (self["version"]),
@@ -281,9 +285,14 @@ class build_package(object):
         inst_bin = "%s %s" % (self["inst_binary"],
                               self["inst_options"])
         for _src_dir, dest_dir in content.get_types("d"):
-            spec_contents.extend(["%s -d \"${RPM_BUILD_ROOT}%s\"" % (
-                inst_bin,
-                self._str_rep(dest_dir))])
+            spec_contents.extend(
+                [
+                    "%s -d \"${RPM_BUILD_ROOT}%s\"" % (
+                        inst_bin,
+                        self._str_rep(dest_dir)
+                    )
+                ]
+            )
             # dest_files.append(dest_dir)
         dirs_created = set()
         for src_file, dest_file in content.get_types("f"):
@@ -364,7 +373,7 @@ class build_package(object):
 
     def create_tgz_file(self, content):
         tgz_files = content.get_tgz_files()
-        print "Generating tgz-file (%s) ..." % (logging_tools.get_plural("entry", len(tgz_files)))
+        print("Generating tgz-file (%s) ..." % (logging_tools.get_plural("entry", len(tgz_files))))
         num_sim = 200
         first_call = True
         while tgz_files:
@@ -380,16 +389,19 @@ class build_package(object):
             )
             c_stat, c_out = commands.getstatusoutput(tar_com)
             if c_stat:
-                print " *** Error for creating tar-file (%d): %s" % (
-                    c_stat,
-                    c_out or "no output")
+                print(
+                    " *** Error for creating tar-file (%d): %s" % (
+                        c_stat,
+                        c_out or "no output"
+                    )
+                )
             else:
-                print ".",
+                print(".")
             tgz_files = tgz_files[num_sim:]
         print
 
     def build_package(self):
-        print "Building package..."
+        print("Building package...")
         stat, out = commands.getstatusoutput(
             "%s --target %s-init.at\\\\\ Informationstechnologie\\\\\ GmbH-Linux -ba %s" % (
                 self.rpm_build_com,

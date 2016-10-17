@@ -21,6 +21,8 @@
 #
 """ logging tools, base code """
 
+from __future__ import unicode_literals, print_function
+
 import bz2
 import datetime
 import gzip

@@ -18,6 +18,8 @@
 #
 """ HardwareFingerPrintTools """
 
+from __future__ import unicode_literals, print_function
+
 import netifaces
 
 from django.db.models import Q
