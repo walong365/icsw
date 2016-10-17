@@ -97,7 +97,10 @@ class SNMPProcessContainer(object):
 
     def create_ipc_socket(self, zmq_context, socket_addr, socket_name=DEFAULT_RETURN_NAME):
         self._socket = zmq_context.socket(zmq.ROUTER)
-        self._socket.setsockopt_string(zmq.IDENTITY, socket_name)
+        if type(socket_name) is unicode:
+            self._socket.setsockopt_string(zmq.IDENTITY, socket_name)
+        else:
+            self._socket.setsockopt(zmq.IDENTITY, socket_name)
         self._socket.setsockopt(zmq.IMMEDIATE, True)
         self._socket.setsockopt(zmq.ROUTER_MANDATORY, True)
         self._socket.bind(socket_addr)
