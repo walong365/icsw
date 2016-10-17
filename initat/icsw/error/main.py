@@ -22,14 +22,16 @@
 #
 """ shows error recorded in the error file """
 
+from __future__ import print_function, unicode_literals
+
 import commands
 import datetime
 import os
 import sys
 import time
 
-from initat.tools import logging_tools, process_tools
 from initat.constants import LOG_ROOT
+from initat.tools import logging_tools, process_tools
 
 
 class ErrorRecord(object):
@@ -217,14 +219,14 @@ def main(options):
                 if err_line.strip() or not options.noempty:
                     act_err.add_line(line_date, line_state, err_line)
             except:
-                print "Error parsing line '%s': %s" % (line, process_tools.get_except_info())
+                print("Error parsing line '%s': %s" % (line, process_tools.get_except_info()))
     print("Found {}".format(logging_tools.get_plural("error record", len(errs_found))))
     if options.overview:
         if errs_found:
             out_list = logging_tools.new_form_list()
             for err in errs_found:
                 out_list.append(err.get_form_parts())
-            print str(out_list)
+            print(unicode(out_list))
     elif options.stat:
         uid_dict = {}
         for err in errs_found:
@@ -248,7 +250,7 @@ def main(options):
                     logging_tools.form_entry(", ".join(diff_sources), header="sources"),
                 )
             )
-        print unicode(out_list)
+        print(unicode(out_list))
     elif options.num:
         idx_l = idx_dict.keys()
         idx_l.sort()
@@ -262,8 +264,8 @@ def main(options):
         for idx in options.index:
             if idx in idx_dict:
                 act_err = idx_dict[idx]
-                print act_err.get_header()
-                print act_err.show_lines()
+                print(act_err.get_header())
+                print(act_err.show_lines())
             else:
                 print(
                     "Index {:d} not in index_list {}".format(
@@ -271,4 +273,3 @@ def main(options):
                         logging_tools.compress_num_list(idx_dict.keys())
                     )
                 )
-

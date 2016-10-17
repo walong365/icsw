@@ -22,14 +22,12 @@
 #
 """ job subcommands """
 
-import commands
-import datetime
+from __future__ import print_function, unicode_literals
+
 import os
 import sys
-import time
-import argparse
 
-from initat.tools import logging_tools, process_tools, net_tools, server_command
+from initat.tools import logging_tools, net_tools, server_command
 
 
 def _parse_environ(opts):

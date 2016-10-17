@@ -21,6 +21,8 @@
 #
 """ create image """
 
+from __future__ import print_function, unicode_literals
+
 import os
 import shutil
 import stat
@@ -131,7 +133,7 @@ class BuildProcess(threading_tools.process_obj):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_template.log(log_level, what)
         if self.__verbose:
-            print "[{:4s}.{:<10s}] {}".format(logging_tools.get_log_level_str(log_level), self.name, what)
+            print("[{:4s}.{:<10s}] {}".format(logging_tools.get_log_level_str(log_level), self.name, what))
 
     def loop_post(self):
         self.__log_template.close()
@@ -260,7 +262,7 @@ class ServerProcess(threading_tools.process_pool):
         else:
             self.__log_cache.append((lev, what))
         if self.__verbose:
-            print "[{:4s}.{:<10s}] {}".format(logging_tools.get_log_level_str(lev), self.name, what)
+            print("[{:4s}.{:<10s}] {}".format(logging_tools.get_log_level_str(lev), self.name, what))
 
     def _log_config(self):
         self.log("Config info:")
@@ -470,8 +472,8 @@ class ServerProcess(threading_tools.process_pool):
         for clean_dir in [
             "/var/lib/meta-server",
             "/etc/zypp/repos.d",
-            "/var/log/cluster/logging-server", # old location
-            "/var/log/icsw/logging-server", # new location
+            "/var/log/cluster/logging-server",
+            "/var/log/icsw/logging-server",
             "/tmp",
         ]:
             t_dir = os.path.join(self.__system_dir, clean_dir[1:])
@@ -488,11 +490,13 @@ class ServerProcess(threading_tools.process_pool):
         """ check size of target directory """
         target_free_size = os.statvfs(self.__image_dir)[statvfs.F_BFREE] * os.statvfs(self.__image_dir)[statvfs.F_BSIZE]
         orig_size = int(self._call(cur_img, "du -sb {}".format(cur_img.source)).split()[0])
-        self.log("size of image is {}, free space is {} (at {})".format(
-            logging_tools.get_size_str(orig_size),
-            logging_tools.get_size_str(target_free_size),
-            self.__image_dir,
-        ))
+        self.log(
+            "size of image is {}, free space is {} (at {})".format(
+                logging_tools.get_size_str(orig_size),
+                logging_tools.get_size_str(target_free_size),
+                self.__image_dir,
+            )
+        )
         cur_img.size = orig_size
         # size_string is automatically set in pre_save handler
         cur_img.save()

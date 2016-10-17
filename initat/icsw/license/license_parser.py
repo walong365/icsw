@@ -19,6 +19,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+
+from __future__ import print_function, unicode_literals
+
 import os
 
 
@@ -81,9 +85,5 @@ class Parser(object):
 
         import django
         django.setup()
-        if opt_ns.subcom in ["lock_entity", "unlock_entity", "show_locked_entities"]:
-            from .license_lock import main
-            main(opt_ns)
-        else:
-            from .main import main
-            main(opt_ns)
+        from .main import main
+        main(opt_ns)

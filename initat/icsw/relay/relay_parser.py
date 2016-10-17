@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #
@@ -21,6 +21,7 @@
 parser for relay info / modifying
 """
 
+from __future__ import print_function, unicode_literals
 
 from initat.host_monitoring.discovery import CS_NAME
 from initat.tools.config_store import ConfigStore

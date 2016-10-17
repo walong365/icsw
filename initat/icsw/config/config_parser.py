@@ -22,6 +22,9 @@
 """ config information and modify """
 
 
+from __future__ import print_function, unicode_literals
+
+
 class Parser(object):
     def link(self, sub_parser, **kwargs):
         self.__server_mode = kwargs["server_mode"]

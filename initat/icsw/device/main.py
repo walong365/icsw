@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2006,2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2006,2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,16 +19,19 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import re
-import os
+from __future__ import print_function, unicode_literals
+
 import datetime
+import os
+import re
 
 from django.db.models import Q
+
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import device, device_group
 from initat.cluster.backbone.models.functions import to_system_tz
-from initat.tools import logging_tools, net_tools, server_command, process_tools
 from initat.icsw.service.instance import InstanceXML
+from initat.tools import logging_tools, net_tools, server_command, process_tools
 
 
 class JoinedLogs(object):
@@ -179,7 +182,7 @@ def device_syslog(opt_ns, cur_dev, j_logs):
                 )
             else:
                 print("no rate info found")
-                print _rates
+                print(_rates)
             _out_lines = logging_tools.new_form_list()
             for _entry in process_tools.decompress_struct(_lines.text):
                 _out_lines.append(
@@ -199,7 +202,7 @@ def device_syslog(opt_ns, cur_dev, j_logs):
                         logging_tools.form_entry(_entry["text"], header="text"),
                     ]
                 )
-            print unicode(_out_lines)
+            print(unicode(_out_lines))
         else:
             print("got no result from {} ({})".format(_conn_str, _ST))
     else:

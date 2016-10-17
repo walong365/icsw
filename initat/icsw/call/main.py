@@ -22,9 +22,11 @@
 #
 """ call commands for given subsystems """
 
+from __future__ import print_function, unicode_literals
 
 import sys
 import time
+
 from initat.tools import logging_tools
 
 
@@ -41,14 +43,14 @@ def main(options):
             options.subsys
         )
     )
-    print
+    print()
     s_time = time.time()
     ret_code = {
         # "host-monitoring": call_hm_help,
         "cluster-server": call_cs,
     }[options.subsys](_cmd, options)
     e_time = time.time()
-    print
+    print()
     print(
         "Call took {}, returned {}".format(
             logging_tools.get_diff_time_str(e_time - s_time),
@@ -56,4 +58,3 @@ def main(options):
         )
     )
     sys.exit(ret_code)
-

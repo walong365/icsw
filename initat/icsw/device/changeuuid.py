@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2006,2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2006,2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,6 +19,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import print_function, unicode_literals
+
 import sys
 import time
 
@@ -26,7 +28,7 @@ from initat.tools import logging_tools, uuid_tools
 
 
 def log_com(a, b):
-    print "[{:>6s}] {}".format(logging_tools.get_log_level_str(b), a)
+    print("[{:>6s}] {}".format(logging_tools.get_log_level_str(b), a))
 
 
 def restart_services():

@@ -21,12 +21,14 @@
 #
 """ show and follow cluster logs """
 
+from __future__ import print_function, unicode_literals
+
 import argparse
 import os
 import re
 
-from initat.tools import process_tools
 from initat.constants import LOG_ROOT
+from initat.tools import process_tools
 
 LOGSERVER_ROOT = os.path.join(LOG_ROOT, "logging-server")
 

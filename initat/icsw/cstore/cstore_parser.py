@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #
@@ -20,6 +20,7 @@
 """
 parser for config store
 """
+from __future__ import print_function, unicode_literals
 
 
 class Parser(object):

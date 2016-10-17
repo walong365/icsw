@@ -21,12 +21,14 @@
 
 """ show config script for simple use in CSW """
 
-import datetime
+from __future__ import print_function, unicode_literals
+
 import base64
+import bz2
+import datetime
 import os
 import stat
 import sys
-import bz2
 
 from initat.tools import logging_tools, process_tools
 
@@ -68,7 +70,7 @@ def enum_show_command(options):
                 logging_tools.form_entry(_egg_action, header="Egg actions"),
             ]
         )
-    print unicode(_list)
+    print(unicode(_list))
     if options.sync:
         _change_list = []
         # compat dict
@@ -202,7 +204,7 @@ def show_command(options):
                     stat.S_IMODE(f_stat[stat.ST_MODE])
                 )
             )
-            print "\n".join(out_lines)
+            print("\n".join(out_lines))
 
 
 def main(opt_ns):

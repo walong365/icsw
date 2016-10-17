@@ -19,6 +19,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import print_function, unicode_literals
+
 import os
 import sys
 
@@ -88,7 +90,7 @@ def list_images(opt_ns):
                 logging_tools.form_entry("yes" if _image.build_lock else "--", header="locked"),
             ]
         )
-    print unicode(_list)
+    print(unicode(_list))
 
 
 def main(opt_ns):

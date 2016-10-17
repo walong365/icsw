@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,8 +21,7 @@
 #
 """ image information and modify """
 
-import os
-import sys
+from __future__ import print_function, unicode_literals
 
 
 class Parser(object):

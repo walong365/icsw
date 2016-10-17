@@ -21,10 +21,11 @@
 #
 """ show and follow cluster logs """
 
+from __future__ import print_function, unicode_literals
+
 import time
 
 from initat.tools import logging_tools
-
 from .objects import LogCache, LogWatcher
 
 

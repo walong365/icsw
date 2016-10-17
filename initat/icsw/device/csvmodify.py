@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2006,2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2006,2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,6 +19,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import print_function, unicode_literals
+
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
@@ -27,11 +29,7 @@ import django
 django.setup()
 
 from django.db.models import Q
-from initat.cluster.backbone.models import device, device_group
-from initat.cluster.backbone.models.functions import to_system_tz
-from initat.tools import logging_tools
-import re
-import datetime
+from initat.cluster.backbone.models import device
 import csv
 
 """

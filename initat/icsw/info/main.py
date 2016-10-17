@@ -22,6 +22,7 @@
 #
 """ shows command help """
 
+from __future__ import print_function, unicode_literals
 
 from initat.tools import logging_tools
 

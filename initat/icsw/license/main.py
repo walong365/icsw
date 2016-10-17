@@ -19,6 +19,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from __future__ import print_function, unicode_literals
+
 import os
 import sys
 import traceback
@@ -29,10 +31,10 @@ from lxml import etree
 
 from initat.cluster.backbone import license_file_reader
 from initat.cluster.backbone.models import License, device_variable, icswEggCradle, icswEggBasket, \
-    icswEggEvaluationDef, icswEggConsumer
+    icswEggEvaluationDef
 from initat.constants import VERSION_CS_NAME
-from initat.tools import process_tools, hfp_tools, config_store, logging_tools
 from initat.icsw.icsw_tools import ICSW_DEBUG_MODE
+from initat.tools import process_tools, hfp_tools, config_store, logging_tools
 
 __all__ = [
     "main",
@@ -53,7 +55,7 @@ def ova_show(opts):
     _out_list = logging_tools.new_form_list()
     for _cons in _sys_c.icsweggconsumer_set.all():
         _out_list.append(_cons.get_info_line())
-    print unicode(_out_list)
+    print(unicode(_out_list))
 
 
 def ova_init(opts):
@@ -100,7 +102,6 @@ def show_license_info(opts):
                 len_info("Cluster", _cl_info),
             )
         )
-        import pprint
         for _cl_name in _cl_info:
             _cl_struct = _info.get("lic_info", {})[_cl_name]
             _sets = {"lics": set(), "paras": set()}
@@ -208,7 +209,7 @@ def show_cluster_id(opts):
             print("")
             print("Current Server Fingerprint:")
             print("")
-            print hfp_tools.get_server_fp(serialize=True)
+            print(hfp_tools.get_server_fp(serialize=True))
 
 
 def main(opts):

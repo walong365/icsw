@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #
@@ -21,14 +21,15 @@
 functions for relay cstore handling
 """
 
-import pprint
-import sys
-import re
+from __future__ import print_function, unicode_literals
 
-from initat.tools.config_store import ConfigStore
+import re
+import sys
+import time
+
 from initat.host_monitoring.discovery import CS_NAME
 from initat.tools import logging_tools
-
+from initat.tools.config_store import ConfigStore
 
 ADDR_RE = re.compile("^(?P<proto>\S+)@(?P<addr>[^:]+):(?P<port>\d+)$")
 
@@ -121,7 +122,7 @@ def port_info(in_tuple):
 
 
 def log_com(a, b):
-    print "[{:>6s}] {}".format(logging_tools.get_log_level_str(b), a)
+    print("[{:>6s}] {}".format(logging_tools.get_log_level_str(b), a))
 
 
 def reload_relay():

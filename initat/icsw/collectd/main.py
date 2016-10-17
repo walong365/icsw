@@ -18,6 +18,8 @@
 #
 """ connect to a given collectd-server and fetch some data """
 
+from __future__ import print_function, unicode_literals
+
 import json
 import re
 import sys
@@ -79,7 +81,7 @@ class BaseCom(object):
 
         client.send_unicode(unicode(self.srv_com))
         if self.options.verbose:
-            print self.srv_com.pretty_print()
+            print(self.srv_com.pretty_print())
         r_client = client
         if r_client.poll(self.options.timeout * 1000):
             recv_str = r_client.recv()
@@ -91,18 +93,22 @@ class BaseCom(object):
             self.receive_tuple = (recv_id, recv_str)
             timeout = False
         else:
-            print "error timeout ({:.2f} > {:d})".format(time.time() - s_time, self.options.timeout)
+            print("error timeout ({:.2f} > {:d})".format(time.time() - s_time, self.options.timeout))
             timeout = True
         e_time = time.time()
         if self.options.verbose:
             if timeout:
-                print "communication took {}".format(
-                    logging_tools.get_diff_time_str(e_time - s_time),
+                print(
+                    "communication took {}".format(
+                        logging_tools.get_diff_time_str(e_time - s_time),
+                    )
                 )
             else:
-                print "communication took {}, received {:d} bytes".format(
-                    logging_tools.get_diff_time_str(e_time - s_time),
-                    len(recv_str),
+                print(
+                    "communication took {}, received {:d} bytes".format(
+                        logging_tools.get_diff_time_str(e_time - s_time),
+                        len(recv_str),
+                    )
                 )
         return True if not timeout else False
 
@@ -127,10 +133,10 @@ class BaseCom(object):
                     self.ret_state = 0
                     self._interpret(srv_reply)
                 else:
-                    print srv_reply["result"].attrib["reply"]
+                    print(srv_reply["result"].attrib["reply"])
                     self.ret_state = int(srv_reply["result"].attrib["state"])
             else:
-                print "no result tag found in reply"
+                print("no result tag found in reply")
                 self.ret_state = 2
 
 
@@ -154,7 +160,7 @@ class HostListCom(BaseCom):
         for _h_name in _h_names:
             key = _h_uuid_dict[_h_name]
             value = v_dict[key]
-            print "{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0]))
+            print("{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0])))
         # print v_list
 
     def _interpret(self, srv_com):
@@ -191,7 +197,7 @@ class HostListCom(BaseCom):
                     )
                 )
         else:
-            print "No host_list found in result"
+            print("No host_list found in result")
             self.ret_state = 1
 
 
@@ -219,7 +225,7 @@ class KeyListCom(BaseCom):
         _sorted_uuids = sorted(v_dict, cmp=lambda x, y: cmp(v_dict[x][1], v_dict[y][1]))
         for key in _sorted_uuids:
             value = v_dict[key]
-            print "{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0]))
+            print("{:30s} ({}) : last updated {}".format(value[1], key, time.ctime(value[0])))
         out_f = logging_tools.new_form_list()
         # pprint.pprint(k_dict)
         max_num_keys = 0
@@ -252,7 +258,7 @@ class KeyListCom(BaseCom):
                     logging_tools.form_entry(v_dict[h_uuid][1], header="device")
                 ] + entry.get_form_entry(num_key, max_num_keys)
             )
-        print unicode(out_f)
+        print(unicode(out_f))
         # print v_list
 
     def _interpret(self, srv_com):
@@ -260,15 +266,17 @@ class KeyListCom(BaseCom):
         if len(h_list):
             h_list = h_list[0]
             out_f = logging_tools.new_form_list()
-            print "got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"])))
+            print("got result for {}:".format(logging_tools.get_plural("host", int(h_list.attrib["entries"]))))
             max_num_keys = 0
             _list = []
             for host in h_list:
-                print "{:<30s} ({:<40s}) : {:4d} keys, last update {}".format(
-                    host.attrib["name"],
-                    host.attrib["uuid"],
-                    int(host.attrib["keys"]),
-                    time.ctime(int(host.attrib["last_update"]))
+                print(
+                    "{:<30s} ({:<40s}) : {:4d} keys, last update {}".format(
+                        host.attrib["name"],
+                        host.attrib["uuid"],
+                        int(host.attrib["keys"]),
+                        time.ctime(int(host.attrib["last_update"]))
+                    )
                 )
                 for num_key, key_el in enumerate(host):
                     cur_mv = mvect_entry(key_el.attrib.pop("name"), info="", **key_el.attrib)
@@ -280,9 +288,9 @@ class KeyListCom(BaseCom):
                         logging_tools.form_entry(h_name, header="device")
                     ] + entry.get_form_entry(k_num, max_num_keys)
                 )
-            print unicode(out_f)
+            print(unicode(out_f))
         else:
-            print "No host_list found in result"
+            print("No host_list found in result")
             self.ret_state = 1
 
 
@@ -294,7 +302,7 @@ def main(args):
     try:
         cur_com = globals()["{}Com".format(cc_name)](args, *other_args)
     except:
-        print "error init '{}': {}".format(args.command, process_tools.get_except_info())
+        print("error init '{}': {}".format(args.command, process_tools.get_except_info()))
         sys.exit(ret_state)
     if args.mode == "tcp":
         zmq_context = zmq.Context(1)

@@ -20,10 +20,12 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ show and follow cluster logs """
-import codecs
 
-import os
+from __future__ import print_function, unicode_literals
+
+import codecs
 import datetime
+import os
 import stat
 
 from initat.tools import process_tools

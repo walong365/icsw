@@ -21,10 +21,12 @@
 functions for config store
 """
 
+from __future__ import print_function, unicode_literals
+
 import sys
 
-from initat.tools.config_store import ConfigStore
 from initat.tools import logging_tools, process_tools
+from initat.tools.config_store import ConfigStore
 
 
 def quiet_log(_a, _b):

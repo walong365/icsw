@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2004,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2004,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 # 
@@ -19,8 +19,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-import sys
+from __future__ import print_function, unicode_literals
+
 import os
+import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -93,30 +95,33 @@ def main(opts):
         print("{} found:".format(logging_tools.get_plural("Log entry", all_logs.count())))
         new_entry = logging_tools.new_form_list()
         for cur_dl in all_logs:
-            new_entry.append([
-                logging_tools.form_entry(unicode(cur_dl.date), header="date"),
-                logging_tools.form_entry(unicode(cur_dl.device), header="device"),
-                logging_tools.form_entry(unicode(cur_dl.source), header="source"),
-                logging_tools.form_entry(unicode(cur_dl.source.device or "---"), header="sdevice"),
-                logging_tools.form_entry(unicode(cur_dl.level), header="level"),
-                logging_tools.form_entry(unicode(cur_dl.user or "---"), header="user"),
-                logging_tools.form_entry(unicode(cur_dl.text), header="text"),
-            ])
+            new_entry.append(
+                [
+                    logging_tools.form_entry(unicode(cur_dl.date), header="date"),
+                    logging_tools.form_entry(unicode(cur_dl.device), header="device"),
+                    logging_tools.form_entry(unicode(cur_dl.source), header="source"),
+                    logging_tools.form_entry(unicode(cur_dl.source.device or "---"), header="sdevice"),
+                    logging_tools.form_entry(unicode(cur_dl.level), header="level"),
+                    logging_tools.form_entry(unicode(cur_dl.user or "---"), header="user"),
+                    logging_tools.form_entry(unicode(cur_dl.text), header="text"),
+                ]
+            )
         print(unicode(new_entry))
         ret_code = 0
     elif opts.mode == "create":
         if not opts.text:
-            print "no text entered"
+            print("no text entered")
         else:
             log_dev = device.objects.get(Q(name=opts.device))
             new_log_entry = DeviceLogEntry.new(
                 device=log_dev,
-                source=def_source,
+                # todo, fixme
+                # source=def_source,
                 level=LogLevel.objects.get(Q(identifier=opts.level)),
                 text=" ".join(opts.text),
             )
             ret_code = 0
             print("created '{}'".format(unicode(new_log_entry)))
     else:
-        print "Uknown mode '{}'".format(opts.mode)
+        print("Uknown mode '{}'".format(opts.mode))
     sys.exit(ret_code)
