@@ -474,7 +474,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 wait_iter += 1
             cur_socket = self.zmq_context.socket(sock_type)
             if zmq_id:
-                cur_socket.setsockopt(zmq.IDENTITY, zmq_id)  # @UndefinedVariable
+                cur_socket.setsockopt_string(zmq.IDENTITY, zmq_id)  # @UndefinedVariable
             try:
                 process_tools.bind_zmq_socket(cur_socket, sock_name)
                 # client.bind("tcp://*:8888")

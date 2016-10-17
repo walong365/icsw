@@ -702,7 +702,10 @@ class process_obj(multiprocessing.Process, TimerBase, poller_obj, process_base, 
         # print("context of {:d} is {}".format(os.getpid(), str(self.zmq_context)))
         com_socket = self.zmq_context.socket(zmq.ROUTER)
         # cast to str, no unicode allowed
-        com_socket.setsockopt_string(zmq.IDENTITY, self.name)
+        if type(self.name) == unicode:
+            com_socket.setsockopt_string(zmq.IDENTITY, self.name)
+        else:
+            com_socket.setsockopt(zmq.IDENTITY, self.name)
         com_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
         com_socket.setsockopt(zmq.IMMEDIATE, True)
         self.register_poller(com_socket, zmq.POLLIN, self._handle_message)

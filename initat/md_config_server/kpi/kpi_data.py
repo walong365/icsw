@@ -25,16 +25,14 @@ import time
 import memcache
 from django.db.models import Q
 
-from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models import device, mon_check_command, Kpi, KpiDataSourceTuple,\
     category
 from initat.cluster.backbone.models.kpi import DataSourceTuple
-from initat.cluster.backbone.models.license import LicenseUsage
-from initat.md_sync_server.common import LiveSocket
 from initat.md_config_server.icinga_log_reader.log_aggregation import icinga_log_aggregator
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
 from initat.md_config_server.kpi.kpi_language import KpiObject, KpiResult, KpiRRDObject, \
     KpiServiceObject, KpiSet
+from initat.md_sync_server.common import LiveSocket
 from initat.tools import logging_tools
 
 
@@ -135,8 +133,8 @@ class KpiData(object):
                     )
                 )
 
-        LicenseUsage.log_usage(LicenseEnum.kpi, LicenseParameterTypeEnum.device, dev_services_used.iterkeys())
-        LicenseUsage.log_usage(LicenseEnum.kpi, LicenseParameterTypeEnum.service, dev_services_used)
+        # LicenseUsage.log_usage(LicenseEnum.kpi, LicenseParameterTypeEnum.device, dev_services_used.iterkeys())
+        # LicenseUsage.log_usage(LicenseEnum.kpi, LicenseParameterTypeEnum.service, dev_services_used)
 
         # now timespan_hosts and timespan_services_qs contain historical data, which is currently not present anymore
         for missing_dev_pk in timespan_hosts:
