@@ -21,6 +21,8 @@
 #
 """ external commands (dhcp, ipmi, SNMP) parts of mother """
 
+from __future__ import unicode_literals, print_function
+
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools

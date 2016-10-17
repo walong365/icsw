@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012,2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012,2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,9 +21,10 @@
 #
 """ classes for handling external command """
 
-# import commands
-import time
+from __future__ import unicode_literals, print_function
+
 import subprocess
+import time
 
 from initat.tools import logging_tools
 

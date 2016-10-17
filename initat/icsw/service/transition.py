@@ -21,6 +21,8 @@
 
 """ transition for service containers """
 
+from __future__ import unicode_literals, print_function
+
 import time
 
 from initat.tools import logging_tools

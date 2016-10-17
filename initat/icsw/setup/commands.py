@@ -21,6 +21,8 @@
 #
 """ database setup for NOCTUA / CORVUS / NESTOR """
 
+from __future__ import unicode_literals, print_function
+
 import fnmatch
 import grp
 import pwd
@@ -149,7 +151,7 @@ def call_ext_programm(args, **kwargs):
             )
         )
         if _show_output:
-            print c_out
+            print(c_out)
         if _output:
             return True, c_out
         else:

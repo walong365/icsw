@@ -21,13 +21,15 @@
 
 """ loggers for commandline usage """
 
+from __future__ import unicode_literals, print_function
+
 import datetime
-import time
 import os
 import sys
+import time
 
-from initat.tools import logging_tools
 from initat.constants import LOG_ROOT
+from initat.tools import logging_tools
 
 __all__ = [
     "get_logger",

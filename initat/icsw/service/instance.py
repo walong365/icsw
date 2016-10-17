@@ -21,8 +21,10 @@
 
 """ instance definition for services """
 
-import os
+from __future__ import unicode_literals, print_function
+
 import hashlib
+import os
 
 from lxml import etree
 from lxml.builder import E

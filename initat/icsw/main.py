@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Ot
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #
@@ -21,6 +21,8 @@
 #
 
 """ entry point for the icsw command for NOCTUA, CORVUS and NESTOR """
+
+from __future__ import unicode_literals, print_function
 
 import os
 import sys

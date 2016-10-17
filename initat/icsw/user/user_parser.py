@@ -29,8 +29,10 @@ Attention: the 'icsw user --mode mail' command is also used by the md-config-ser
 
 """
 
-import pwd
+from __future__ import unicode_literals, print_function
+
 import os
+import pwd
 
 
 class Parser(object):

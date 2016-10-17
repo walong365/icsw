@@ -21,6 +21,8 @@
 
 """ checks installed servers on system """
 
+from __future__ import unicode_literals, print_function
+
 import time
 
 from prompt_toolkit.application import Application

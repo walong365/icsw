@@ -22,6 +22,8 @@
 
 """ utility functions for database setup and migration """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import random
 import shutil

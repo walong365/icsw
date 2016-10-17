@@ -21,19 +21,21 @@
 
 """ checks installed servers on system """
 
+from __future__ import unicode_literals, print_function
+
 import datetime
 import os
 import sys
 import time
 
+from initat.icsw.icsw_tools import ICSW_DEBUG_MODE
 from initat.tools import logging_tools
 from . import container
 from . import instance
-from .. import icsw_logging
 from . import transition
 from .constants import STATE_DICT, LIC_STATE_DICT, CONF_STATE_DICT
 from .tools import query_local_meta_server
-from initat.icsw.icsw_tools import ICSW_DEBUG_MODE
+from .. import icsw_logging
 
 
 def show_form_list(form_list):

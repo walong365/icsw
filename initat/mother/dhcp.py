@@ -21,14 +21,16 @@
 #
 """ DHCP support code """
 
+from __future__ import unicode_literals, print_function
+
 import re
-import pprint
 
 from django.db.models import Q
+
+from initat.cluster.backbone.models import device
 from initat.tools import logging_tools
 from .command_tools import simple_command
 from .config import global_config
-from initat.cluster.backbone.models import device
 
 
 class DHCPCommand(object):

@@ -21,15 +21,11 @@
 #
 """ pinger support code """
 
-import re
-import pprint
+from __future__ import unicode_literals, print_function
+
 import time
 
-from django.db.models import Q
 from initat.tools import logging_tools, process_tools
-from .command_tools import simple_command
-from .config import global_config
-from initat.cluster.backbone.models import device
 
 
 class ResultStream(object):

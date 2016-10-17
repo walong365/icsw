@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2009,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,13 +21,13 @@
 #
 """ mother daemon """
 
+from __future__ import unicode_literals, print_function
+
 import os
 
-import psutil
 import zmq
 from django.db.models import Q
 
-from initat.cluster.backbone.server_enums import icswServiceEnum
 import initat.mother
 import initat.mother.command
 import initat.mother.control
@@ -35,6 +35,8 @@ import initat.mother.kernel
 import initat.tools.server_mixins
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import network, status, LogSource
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.constants import CLUSTER_DIR
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.process import SNMPProcess
 from initat.tools import server_mixins, server_command, \
@@ -43,11 +45,10 @@ from initat.tools import server_mixins, server_command, \
 from initat.tools.server_mixins import RemoteCall, RemoteCallProcess, RemoteCallMixin
 from .config import global_config
 from .dhcp_config import DHCPConfigMixin
-from initat.constants import CLUSTER_DIR
 
 
 @RemoteCallProcess
-class server_process(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin):
+class ServerProcess(server_mixins.ICSWBasePool, RemoteCallMixin, DHCPConfigMixin):
     def __init__(self):
         _long_host_name, mach_name = process_tools.get_fqdn()
         threading_tools.process_pool.__init__(self, "main", zmq=True)

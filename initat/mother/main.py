@@ -21,6 +21,8 @@
 #
 """ mother daemon, main part """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import sys
 
@@ -45,5 +47,5 @@ def main():
     )
     settings.DEBUG = global_config["DATABASE_DEBUG"]
     settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
-    initat.mother.server.server_process().loop()
+    initat.mother.server.ServerProcess().loop()
     sys.exit(0)
