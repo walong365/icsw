@@ -520,9 +520,9 @@ class SGEInfo(object):
             if self.__persistent_socket:
                 if not self.__0mq_context:
                     self.__0mq_context = zmq.Context(1)
-                    client = self.__0mq_context.socket(zmq.DEALER)  # @UndefinedVariable
-                    client.setsockopt_string(zmq.IDENTITY, str("sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time()))))
-                    client.setsockopt(zmq.LINGER, 100)  # @UndefinedVariable
+                    client = self.__0mq_context.socket(zmq.DEALER)
+                    client.setsockopt_string(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))
+                    client.setsockopt(zmq.LINGER, 100)
                     _conn_str = "tcp://{}:{:d}".format(srv_name, self.__server_port)
                     try:
                         client.connect(_conn_str)
@@ -536,9 +536,9 @@ class SGEInfo(object):
                 client = self.__0mq_socket
             else:
                 zmq_context = zmq.Context(1)
-                client = zmq_context.socket(zmq.DEALER)  # @UndefinedVariable
-                client.setsockopt_string(zmq.IDENTITY, str("sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time()))))
-                client.setsockopt(zmq.LINGER, 100)  # @UndefinedVariable
+                client = zmq_context.socket(zmq.DEALER)
+                client.setsockopt_string(zmq.IDENTITY, "sge_tools:{:d}:{:d}".format(os.getpid(), int(time.time())))
+                client.setsockopt(zmq.LINGER, 100)
                 client.connect("tcp://{}:{:d}".format(srv_name, self.__server_port))
             if client is not None:
                 srv_com = server_command.srv_command(command="get_config")

@@ -335,7 +335,7 @@ class srv_command(object):
     def _element(self, value, cur_element=None):
         if cur_element is None:
             cur_element = self.builder("value")
-        if type(value) in [type(""), type(u"")]:
+        if isinstance(value, basestring):
             cur_element.text = value
             cur_element.attrib["type"] = "str"
         elif type(value) in [int, long]:

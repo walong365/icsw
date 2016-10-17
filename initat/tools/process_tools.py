@@ -212,7 +212,7 @@ def get_socket(context, r_type, **kwargs):
     _sock = context.socket(getattr(zmq, r_type))
     # DEALER from grapher/server.py
     if r_type in ["ROUTER", "DEALER"]:
-        _sock.setsockopt_string(zmq.IDENTITY, str(kwargs["identity"]))
+        _sock.setsockopt_string(zmq.IDENTITY, kwargs["identity"])
     if r_type in ["ROUTER"]:
         _sock.setsockopt(zmq.ROUTER_MANDATORY, 1)
     for _opt, _value in [
