@@ -131,7 +131,7 @@ def main(opt_ns):
         opt_ns.memory = False
     inst_xml = instance.InstanceXML(log_com)
     cur_c = container.ServiceContainer(log_com)
-
+    META_COMS = ["disable", "enable", "ignore", "monitor", "overview"]
     if opt_ns.childcom == "version":
         version_command(opt_ns)
     elif opt_ns.childcom == "status":
@@ -181,18 +181,18 @@ def main(opt_ns):
                 time.sleep(1)
             else:
                 break
-    elif opt_ns.childcom in ["state"]:
+    elif opt_ns.childcom in META_COMS:
         # contact meta-server at localhost
-        _result = query_local_meta_server(inst_xml, opt_ns.statecom, services=opt_ns.service)
+        _result = query_local_meta_server(inst_xml, opt_ns.childcom, services=opt_ns.service)
         if _result is None:
             log_com("Got no result from meta-server")
             sys.exit(1)
         if _result.get_log_tuple()[1] > logging_tools.LOG_LEVEL_WARN:
             log_com(*_result.get_log_tuple())
             sys.exit(1)
-        if opt_ns.statecom == "overview":
+        if opt_ns.childcom == "overview":
             _state_overview(opt_ns, _result)
-        elif opt_ns.statecom in ["disable", "enable", "ignore", "monitor"]:
+        elif opt_ns.childcom in ["disable", "enable", "ignore", "monitor"]:
             log_com(*_result.get_log_tuple())
     else:
         log_com(
