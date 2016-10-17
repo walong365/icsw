@@ -1,8 +1,8 @@
-# Copyright (C) 2015-2016 Bernhard Mallinger, init.at
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-server
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License Version 3 as
@@ -17,14 +17,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-import time
 
 import zmq
 
 from initat.cluster.backbone import db_tools
-from initat.host_monitoring import hm_classes
 from initat.md_config_server.config import global_config
-from initat.tools import threading_tools, logging_tools, process_tools, server_command
+from initat.tools import threading_tools, logging_tools, process_tools
 
 
 class LicenseChecker(threading_tools.process_obj):
@@ -44,7 +42,6 @@ class LicenseChecker(threading_tools.process_obj):
 
         # and is run periodically
         self._update_interval = 30 * 60
-        self.register_timer(self.periodic_update, self._update_interval, instant=True)
 
         self._init_network()
 
@@ -60,38 +57,3 @@ class LicenseChecker(threading_tools.process_obj):
 
     def loop_post(self):
         self.__log_template.close()
-
-    def periodic_update(self):
-        # actual check
-        license_usages = self.check(self.log)
-
-        # also report usage value as rrd
-        self.report_usage_values(license_usages)
-
-    def report_usage_values(self, license_usages):
-        drop_com = server_command.srv_command(command="set_vector")
-        _bldr = drop_com.builder()
-        license_usage_vector = _bldr("values")
-        valid_until = int(time.time()) + self._update_interval
-        for license, usage in license_usages.iteritems():
-            for param_name, value in usage.iteritems():
-                license_usage_vector.append(
-                    hm_classes.mvect_entry(
-                        "license_usage.{}.{}".format(license.name, param_name.name),
-                        info="Usage of {} for {}".format(
-                            logging_tools.get_plural(param_name.name, num=2, show_int=False),
-                            license.name,
-                        ),
-                        unit="1",
-                        base="1",
-                        v_type="i",
-                        factor="1",
-                        value=unicode(value),
-                        valid_until=valid_until,
-                    ).build_xml(_bldr)
-                )
-        drop_com['license_usage_vector'] = license_usage_vector
-        drop_com['license_usage_vector'].attrib['type'] = 'vector'
-
-        self.vector_socket.send_unicode(unicode(drop_com))
-
