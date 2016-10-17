@@ -1,57 +1,3 @@
-<!--<style> .timeline {
-    white-space:nowrap;
-    overflow-x: scroll;
-    padding:0px 0 0px 0;
-    position:relative;
-}
-
-.timeline-entry {
-    display:inline-block;
-    vertical-align:top;
-    background:#13519C;
-    color:#fff;
-    padding:0px;
-    font-size:12px;
-    text-align:center;
-    position:relative;
-    border-top:4px solid #06182E;
-    border-radius:3px;
-    min-width:200px;
-    max-width:500px;
-}
-
-.timeline-entry img {
-    display:block;
-    max-width:100%;
-    height:auto;
-    margin-bottom:10px;
-}
-
-.timeline-entry h1 {
-    color:#fff;
-    font-size:18px;
-    font-family:Georgia, serif;
-    font-weight:bold;
-    margin-bottom:10px;
-}
-
-.timeline-entry h2 {
-    letter-spacing:.2em;
-    margin-bottom:10px;
-    font-size:14px;
-}
-
-.timeline-bar {
-    height:4px;
-    background:#eee;
-    width:100%;
-    position:relative;
-    top:13px;
-    left:0;
-}
-</style>
--->
-
 <script type="text/ng-template" id="icsw/device/asset/overview">
     <icsw-device-asset-overview icsw-sel-man="0"></icsw-device-asset-overview>
 </script>
@@ -89,6 +35,11 @@
                                         icsw-schedule-items="struct.schedule_items">
                                 </icsw-asset-scheduled-runs-table>
                             </div>
+                        </uib-tab>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                <span>Scan Devices</span>
+                            </uib-tab-heading>
                         </uib-tab>
                         <uib-tab ng-click="load_package_tree()">
                             <uib-tab-heading>
@@ -199,7 +150,7 @@
                 <td class="text-center">{{ assetbatch.idx }}</td>
                 <td class="text-center">{{ assetbatch.$$run_start_time }}</td>
                 <td class="text-center">{{ assetbatch.$$run_time }}</td>
-                <td class="text-center"><div ng-class="assetbatch.$$packages_availability_class"><strong>{{ assetbatch.$$packages_availability_text }}</strong></div></td>
+                <td class="text-center"><div ng-class="assetbatch.$$installed_packages_availability_class"><strong>{{ assetbatch.$$installed_packages_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$pending_updates_availability_class"><strong>{{ assetbatch.$$pending_updates_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$installed_updates_availability_class"><strong>{{ assetbatch.$$installed_updates_availability_text }}</strong></div></td>
                 <td class="text-center"><div ng-class="assetbatch.$$memory_modules_availability_class"><strong>{{ assetbatch.$$memory_modules_availability_text }}</strong></div></td>
@@ -339,13 +290,11 @@
                         <tr>
                             <th>Version</th>
                             <th>Release</th>
-                            <th>Size</th>
                             <th class="text-right">Action</th>
                         </tr>
                         <tr ng-repeat-start="version in package.$$versions_shown">
                             <td>{{ version.version }}</td>
                             <td>{{ version.$$release }}</td>
-                            <td>{{ version.$$size }}</td>
                             <td class="text-right">
                                 <icsw-tools-button size="xs" type="show" is-show="!obj.$$expanded" ng-click="expand($event, version)"></icsw-tools-button>
                             </td>
@@ -394,7 +343,7 @@
     </h3>
     <table
         class="table table-condensed table-striped simple-border"
-        st-safe-src="tab.asset_batch.packages_install_times"
+        st-safe-src="tab.asset_batch.installed_packages"
         st-table="packages_shown"
         st-set-filter="packageFilter"
     >
@@ -429,7 +378,7 @@
                 <td>{{ obj.package_version.asset_package.name }}</td>
                 <td class="text-right">{{ obj.package_version.$$version }}</td>
                 <td>{{ obj.package_version.$$release }}</td>
-                <td class="text-right">{{ obj.package_version.$$size }}</td>
+                <td class="text-right">{{ obj.$$size }}</td>
                 <td>{{ obj.$$install_time }}</td>
                 <td class="text-right">{{ obj.package_version.asset_package.$$package_type }}</td>
             </tr>

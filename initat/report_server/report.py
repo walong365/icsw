@@ -2819,10 +2819,11 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
 
         row_writer_func(base_header)
 
-        for package_install_time in ar.asset_batch.packages_install_times.select_related("package_version",
+        for package_install_info in ar.asset_batch.installed_packages.select_related(
+                "package_version",
                 "package_version__asset_package").all():
 
-            package_version = package_install_time.package_version
+            package_version = package_install_info.package_version
             asset_package = package_version.asset_package
 
             row = []
@@ -2830,7 +2831,7 @@ def generate_csv_entry_for_assetrun(ar, row_writer_func):
             row.append(package_version.version)
             row.append(package_version.release)
             row.append(package_version.size)
-            row.append(package_install_time.install_time)
+            row.append(package_install_info.install_time)
             row.append(PackageTypeEnum(package_version.asset_package.package_type).name)
 
             row_writer_func(row)

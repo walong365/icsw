@@ -28,7 +28,7 @@ from initat.cluster.backbone.models import AssetRun, AssetPackage, \
     StaticAssetTemplate, StaticAssetTemplateField, AssetLicenseEntry, AssetUpdateEntry, \
     AssetPCIEntry, AssetDMIHead, AssetDMIHandle, AssetDMIValue, AssetHWMemoryEntry, AssetHWCPUEntry, AssetHWGPUEntry, \
     AssetHWDisplayEntry, StaticAsset, StaticAssetFieldValue, \
-    AssetPackageVersionInstallTime, AssetHWNetworkDevice
+    AssetPackageVersionInstallInfo, AssetHWNetworkDevice
 
 from initat.cluster.backbone.models.partition import partition_table, partition_disc, partition, LogicalDisc
 
@@ -38,7 +38,7 @@ __all__ = [
     "AssetRunDetailSerializer",
     "AssetBatchSerializer",
     "AssetPackageSerializer",
-    "AssetPackageVersionInstallTime",
+    "AssetPackageVersionInstallInfo",
     "AssetPackageVersionSerializer",
     "ShallowPastAssetRunSerializer",
     "ShallowPastAssetBatchSerializer",
@@ -82,15 +82,15 @@ class AssetHardwareEntrySerializer(serializers.ModelSerializer):
         model = AssetHardwareEntry
 
 
-class AssetPackageVersionInstallTimeSerializer(serializers.ModelSerializer):
+class AssetPackageVersionInstallInfoSerializer(serializers.ModelSerializer):
     class Meta:
-        model = AssetPackageVersionInstallTime
+        model = AssetPackageVersionInstallInfo
         fields = ("idx", "package_version", "install_time")
 
 class AssetPackageVersionSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetPackageVersion
-        fields = ("idx", "size", "version", "release", "info", "created", "install_info")
+        fields = ("idx", "version", "release", "info", "created", "install_info")
 
 
 class AssetPackageSerializer(serializers.ModelSerializer):
@@ -256,7 +256,7 @@ class AssetRunDetailSerializer(serializers.ModelSerializer):
     gpus = AssetHWGPUEntrySerializer(many=True)
     hdds = AssetHWHDDEntrySerializer(many=True)
     displays = AssetHWDisplayEntrySerializer(many=True)
-    packages_install_times = AssetPackageVersionInstallTimeSerializer(many=True)
+    packages_install_times = AssetPackageVersionInstallInfoSerializer(many=True)
 
     class Meta:
         model = AssetRun
@@ -341,19 +341,19 @@ class SimpleAssetPackageVersionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = AssetPackageVersion
-        fields = ("idx", "size", "version", "release", "asset_package")
+        fields = ("idx", "version", "release", "asset_package")
 
 
-class SimpleAssetPackageVersionInstallTimeSerializer(serializers.ModelSerializer):
+class SimpleAssetPackageVersionInstallInfoSerializer(serializers.ModelSerializer):
     package_version = SimpleAssetPackageVersionSerializer()
 
     class Meta:
-        model = AssetPackageVersionInstallTime
-        fields = ("idx", "package_version", "install_time", "timestamp")
+        model = AssetPackageVersionInstallInfo
+        fields = ("idx", "package_version", "install_time", "timestamp", "size")
 
 
 class AssetBatchSerializer(serializers.ModelSerializer):
-    packages_install_times = SimpleAssetPackageVersionInstallTimeSerializer(many=True)
+    installed_packages = SimpleAssetPackageVersionInstallInfoSerializer(many=True)
     installed_updates = AssetUpdateEntrySerializer(many=True)
     pending_updates = AssetUpdateEntrySerializer(many=True)
     memory_modules = AssetHWMemoryEntrySerializer(many=True)
@@ -366,7 +366,7 @@ class AssetBatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetBatch
         fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device",
-                  "packages_install_times", "pending_updates", "installed_updates", "cpus", "memory_modules", "gpus",
+                  "installed_packages", "pending_updates", "installed_updates", "cpus", "memory_modules", "gpus",
                   "is_finished_processing", "network_devices", "partition_table",
                   "displays")
 
@@ -374,7 +374,7 @@ class AssetBatchSerializer(serializers.ModelSerializer):
 class SimpleAssetBatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetBatch
-        fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "packages_status",
-                  "packages_install_times_status", "pending_updates_status", "installed_updates_status", "cpus_status",
+        fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "installed_packages_status",
+                  "pending_updates_status", "installed_updates_status", "cpus_status",
                   "memory_modules_status", "gpus_status", "network_devices_status", "is_finished_processing",
                   "partition_table_status", "displays_status")

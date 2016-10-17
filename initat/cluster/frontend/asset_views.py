@@ -65,9 +65,9 @@ class AssetBatchViewSet(viewsets.ViewSet):
             prefetch_list = []
         else:
             prefetch_list = [
-                "packages_install_times",
-                "packages_install_times__package_version",
-                "packages_install_times__package_version__asset_package",
+                "installed_packages",
+                "installed_packages__package_version",
+                "installed_packages__package_version__asset_package",
                 "installed_updates",
                 "pending_updates",
                 "memory_modules",
@@ -142,10 +142,12 @@ class ScheduledRunViewSet(viewsets.ViewSet):
 class AssetPackageViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def get_all(self, request):
+
         queryset = AssetPackage.objects.all().prefetch_related(
             "assetpackageversion_set",
-            "assetpackageversion_set__assetbatch_set",
-            "assetpackageversion_set__assetbatch_set__device"
+            "assetpackageversion_set__assetpackageversioninstallinfo_set",
+            "assetpackageversion_set__assetpackageversioninstallinfo_set__assetbatch_set",
+            "assetpackageversion_set__assetpackageversioninstallinfo_set__assetbatch_set__device"
         ).order_by(
             "name",
             "package_type",

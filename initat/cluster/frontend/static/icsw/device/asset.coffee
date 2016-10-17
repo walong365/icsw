@@ -183,6 +183,7 @@ device_asset_module = angular.module(
             ]
         ).then(
             (data) ->
+                console.log(data[0])
                 $scope.struct.package_tree = data[0]
                 blockUI.stop()
         )
@@ -274,7 +275,7 @@ device_asset_module = angular.module(
         info_available_text = "Available"
 
         info_list_names = [
-            "packages",
+            "installed_packages",
             "pending_updates",
             "installed_updates",
             "memory_modules",
@@ -334,27 +335,6 @@ device_asset_module = angular.module(
                 moreFilteredARItems.push(asset_run)
 
         return moreFilteredARItems
-
-    $scope.filterPackageArrayForCsvExport = (filteredPackageItems) ->
-        moreFilteredPackageItems = []
-        for obj in filteredPackageItems
-
-            if obj.versions.length > 0
-                for version in obj.versions
-                    _pack = {}
-                    _pack.name = obj.name
-                    _pack.package_type = icswAssetHelperFunctions.resolve("package_type", obj.package_type)
-                    _pack.version = version[1]
-                    _pack.release = version[2]
-                    _pack.size = version[3]
-                    moreFilteredPackageItems.push(_pack)
-            else
-                _pack = {}
-                _pack.name = obj.name
-                _pack.package_type = icswAssetHelperFunctions.resolve("package_type", obj.package_type)
-                moreFilteredPackageItems.push(_pack)
-
-        return moreFilteredPackageItems
 
     $scope.scan_device = (_device) ->
         _device.$$scan_device_button_disabled = true
@@ -483,6 +463,7 @@ device_asset_module = angular.module(
          return moment(string).format("YYYY-MM-DD HH:mm:ss")
 
     $scope.get_history_timeline = (obj, from) ->
+        console.log(obj.install_history_list)
         moment_list = []
         for timestring in obj.install_history_list
             moment_obj = moment(timestring)
@@ -505,26 +486,6 @@ device_asset_module = angular.module(
                 history_string = moment_list[0].format("YYYY-MM-DD HH:mm:ss")
 
         return history_string
-
-    $scope.downloadCsv = ->
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.ASSET_EXPORT_PACKAGES_TO_CSV
-                dataType: 'json'
-            }
-        ).then(
-            (result) ->
-                    uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result.csv)
-                    downloadLink = document.createElement("a")
-                    downloadLink.href = uri
-                    downloadLink.download = "packages.csv"
-
-                    document.body.appendChild(downloadLink)
-                    downloadLink.click()
-                    document.body.removeChild(downloadLink)
-            (not_ok) ->
-                console.log not_ok
-        )
 
 ]).directive("icswAssetRunDetails",
 [
@@ -591,132 +552,6 @@ device_asset_module = angular.module(
         package_tree: undefined
     }
 
-
-
-    $scope.downloadPdf = ->
-        if $scope.struct.selected_assetrun != undefined
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_PDF
-                data:
-                    pk: $scope.struct.selected_assetrun.asset_batch
-                dataType: 'json'
-            }
-            ).then(
-                (result) ->
-                    uri = 'data:application/pdf;base64,' + result.pdf
-                    downloadLink = document.createElement("a")
-                    downloadLink.href = uri
-                    downloadLink.download = "assetbatch" + $scope.struct.selected_assetrun.asset_batch + ".pdf"
-
-                    document.body.appendChild(downloadLink)
-                    downloadLink.click()
-                    document.body.removeChild(downloadLink)
-                (not_ok) ->
-                    console.log not_ok
-            )
-
-    $scope.downloadXlsx = ->
-        if $scope.struct.selected_assetrun != undefined
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_EXPORT_ASSETBATCH_TO_XLSX
-                data:
-                    pk: $scope.struct.selected_assetrun.asset_batch
-                dataType: 'json'
-            }
-            ).then(
-                (result) ->
-                    uri = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + result.xlsx
-                    downloadLink = document.createElement("a")
-                    downloadLink.href = uri
-                    downloadLink.download = "assetbatch" + $scope.struct.selected_assetrun.asset_batch + ".xlsx"
-
-                    document.body.appendChild(downloadLink)
-                    downloadLink.click()
-                    document.body.removeChild(downloadLink)
-                (not_ok) ->
-                    console.log not_ok
-            )
-
-    $scope.downloadCsv = ->
-        if $scope.struct.selected_assetrun != undefined
-            icswSimpleAjaxCall({
-                url: ICSW_URLS.ASSET_EXPORT_ASSETRUNS_TO_CSV
-                data:
-                    pk: $scope.struct.selected_assetrun.idx
-                dataType: 'json'
-            }
-            ).then(
-                (result) ->
-                    uri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(result.csv)
-                    downloadLink = document.createElement("a")
-                    downloadLink.href = uri
-                    downloadLink.download = "assetrun" + $scope.struct.selected_assetrun.idx + ".csv"
-
-                    document.body.appendChild(downloadLink)
-                    downloadLink.click()
-                    document.body.removeChild(downloadLink)
-                (not_ok) ->
-                    console.log not_ok
-            )
-
-    $scope.select_assetrun = ($event, assetrun) ->
-        assetrun.$$selected = !assetrun.$$selected
-        if assetrun.$$selected
-            $scope.struct.selected_assetrun = assetrun
-            # ensure only assetrun with same type are selected
-            _type = assetrun.run_type
-            for _run in $scope.asset_run_list
-                if _run.run_type !=_type and _run.$$selected
-                    _run.$$selected = false
-
-    # resolve functions
-    resolve_package_assets = (tree, vers_list, package_install_times) ->
-        _res = _.orderBy(
-            (tree.version_lut[idx] for idx in vers_list)
-            ["$$package.name"]
-            ["asc"]
-        )
-
-        result_new = []
-
-        # do some more salting of package objectss
-        for vers in _res
-            new_obj = {}
-
-            if vers.release == ""
-                new_obj.release = "N/A"
-            else
-                new_obj.release = vers.release
-
-            new_obj.$$install_time = "N/A"
-            new_obj.$$package = vers.$$package
-            new_obj.version = vers.version
-            new_obj.size = vers.size
-
-            if vers.$$package.$$package_type == "Windows"
-                if vers.size > 0
-                    new_obj.$$size = Number((vers.size / 1024).toFixed(2)) + " MByte"
-                else
-                    new_obj.$$size = "N/A"
-
-            if vers.$$package.$$package_type == "Linux"
-                if vers.size > 0
-                    if vers.size < (1024 * 1024)
-                        new_obj.$$size = Number((vers.size / 1024).toFixed(2)) + " KByte"
-                    else
-                        new_obj.$$size = Number((vers.size / (1024 * 1024)).toFixed(2)) + " MByte"
-                else
-                    new_obj.$$size = "N/A"
-
-            for package_install_time in package_install_times
-                if vers.idx == package_install_time.package_version
-                    new_obj.$$install_time = moment(package_install_time.install_time).format("YYYY-MM-DD HH:mm:ss")
-                    break
-
-            result_new.push(new_obj)
-
-        return result_new
-
     $scope.expand_assetbatch = ($event, assetbatch) ->
         assetbatch.$$expanded = !assetbatch.$$expanded
 
@@ -761,12 +596,12 @@ device_asset_module = angular.module(
                         if display.ypixels
                                 display.$$ypixels = display.ypixels
 
-                for install_time_obj in tab.asset_batch.packages_install_times
-                    install_time_obj.$$install_time = "N/A"
-                    if install_time_obj.timestamp > 1
-                        install_time_obj.$$install_time = moment.unix(install_time_obj.timestamp).format("YYYY-MM-DD HH:mm:ss")
+                for install_info in tab.asset_batch.installed_packages
+                    install_info.$$install_time = "N/A"
+                    if install_info.timestamp > 1
+                        install_info.$$install_time = moment.unix(install_info.timestamp).format("YYYY-MM-DD HH:mm:ss")
 
-                    package_version = install_time_obj.package_version
+                    package_version = install_info.package_version
                     asset_package = package_version.asset_package
 
                     package_version.$$release = "N/A"
@@ -779,18 +614,18 @@ device_asset_module = angular.module(
 
                     asset_package.$$package_type = icswAssetHelperFunctions.resolve("package_type", asset_package.package_type)
 
-                    package_version.$$size = "N/A"
+                    install_info.$$size = "N/A"
 
                     if asset_package.$$package_type == "Windows"
-                        if package_version.size > 0
-                            package_version.$$size = Number((package_version.size / 1024).toFixed(2)) + " MByte"
+                        if install_info.size > 0
+                            install_info.$$size = Number((install_info.size / 1024).toFixed(2)) + " MByte"
 
                     if asset_package.$$package_type == "Linux"
-                        if package_version.size > 0
-                            if package_version.size < (1024 * 1024)
-                                package_version.$$size = Number((package_version.size / 1024).toFixed(2)) + " KByte"
+                        if install_info.size > 0
+                            if install_info.size < (1024 * 1024)
+                                install_info.$$size = Number((install_info.size / 1024).toFixed(2)) + " KByte"
                             else
-                                package_version.$$size = Number((package_version.size / (1024 * 1024)).toFixed(2)) + " MByte"
+                                install_info.$$size = Number((install_info.size / (1024 * 1024)).toFixed(2)) + " MByte"
 
 
                 tab.asset_batch.hdds = []
