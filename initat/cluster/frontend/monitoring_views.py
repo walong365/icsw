@@ -281,7 +281,7 @@ class get_node_status(View):
                             any_locked = True
             if any_locked:
                 request.xml_response.info(
-                    "Some entries are on the license lock list and therefore not displayed."
+                    "Some entries got no ova and are therefore not displayed."
                 )
 
             # import pprint

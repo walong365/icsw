@@ -552,29 +552,43 @@ class icswEggConsumer(models.Model):
         ).count()
 
     def consume(self, request):
-        # if request.valid is False, try to consume it
-        # if request.valid is True, check the target weight
-        _target_weight = self.multiplier
-        if not request.valid:
-            _to_consume = _target_weight
-        else:
-            _to_consume = _target_weight - request.weight
-        _avail = self.egg_cradle.available
-        if _avail > _to_consume:
-            self.egg_cradle.available -= _to_consume
-            self.consumed += _to_consume
-            self.save(update_fields=["consumed"])
-            self.egg_cradle.save(update_fields=["available"])
-            if self.timeframe_secs:
-                request.valid_until = cluster_timezone.localize(
-                    datetime.datetime.now() + datetime.timedelta(seconds=self.timeframe_secs)
-                )
-            else:
-                request.valid_until = None
-            request.valid = True
-        else:
+        if request.is_lock:
+            # is a lock, we dont consume anything
+            request.weight = 0
             request.valid = False
-        request.weight = _target_weight
+        else:
+            # consum from egg_consumer
+            # if request.valid is False, try to consume it
+            # if request.valid is True, check the target weight
+            _target_weight = self.multiplier
+            if not request.valid:
+                _to_consume = _target_weight
+            else:
+                _to_consume = _target_weight - request.weight
+            if _to_consume:
+                # something to consume, resolve egg_cradle
+                _avail = self.egg_cradle.available
+            else:
+                _avail = 1
+            if _avail > _to_consume:
+                if _to_consume:
+                    # nothing to consume (request was already fullfilled)
+                    self.egg_cradle.available -= _to_consume
+                    self.consumed += _to_consume
+                    self.save(update_fields=["consumed"])
+                    self.egg_cradle.save(update_fields=["available"])
+                if self.timeframe_secs:
+                    request.valid_until = cluster_timezone.localize(
+                        datetime.datetime.now() + datetime.timedelta(seconds=self.timeframe_secs)
+                    )
+                else:
+                    request.valid_until = None
+                request.valid = True
+            else:
+                request.valid = False
+            request.weight = _target_weight
+        request.save(update_fields=["weight", "valid", "valid_until"])
+        return request.valid
 
     def get_info_line(self):
         return [
@@ -635,15 +649,7 @@ class icswEggRequest(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def consume(self):
-        if self.is_lock:
-            # is a lock, we dont consume anything
-            self.weight = 0
-            self.valid = False
-        else:
-            # consum from egg_consumer
-            self.egg_consumer.consume(self)
-        self.save(update_fields=["weight", "valid", "valid_until"])
-        return self.valid
+        return self.egg_consumer.consume(self)
 
     class Meta:
         abstract = False

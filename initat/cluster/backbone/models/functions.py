@@ -463,6 +463,7 @@ _memoize_cache = collections.defaultdict(lambda: {})
 
 def memoize_with_expiry(expiry_time=0, _cache=None, num_args=None):
     def _memoize_with_expiry(func, *args, **kw):
+        cur_time = time.time()
         # NOTE: if _cache is explicitly specified, it is not cleared by clear_memoize_cache()
         cache = _cache or _memoize_cache[func]
 
@@ -475,11 +476,11 @@ def memoize_with_expiry(expiry_time=0, _cache=None, num_args=None):
         if key in cache:
             result, timestamp = cache[key]
             # Check the age.
-            age = time.time() - timestamp
+            age = cur_time - timestamp
             if not expiry_time or age < expiry_time:
                 return result
         result = func(*args, **kw)
-        cache[key] = (result, time.time())
+        cache[key] = (result, cur_time)
         return result
     return decorator.decorator(_memoize_with_expiry)
 

@@ -19,6 +19,8 @@
 #
 """ usefull server mixins """
 
+from __future__ import unicode_literals, print_function
+
 import re
 import sys
 import time
@@ -33,13 +35,36 @@ from initat.tools import logging_tools, process_tools, threading_tools, server_c
 MAX_RESEND_COUNTER = 5
 
 
+# simple EggConsume Cache
+class EggConsumeCache(object):
+    def __init__(self, cache_time=60):
+        self._cache_time = cache_time
+        self._dict = {}
+
+    def add_consumers(self, con_list):
+        for _con in con_list:
+            self._dict[_con] = {}
+
+    def get(self, action, key):
+        cur_time = time.time()
+        if key in self._dict[action]:
+            _ce = self._dict[action][key]
+            if abs(_ce[0] - cur_time) < self._cache_time:
+                return _ce[1]
+        return None
+
+    def set(self, action, key, result):
+        self._dict[action][key] = (time.time(), result)
+
+
 class EggConsumeObject(object):
     def __init__(self, parent):
         # process or any instance with a log facility attached
         self.__parent = parent
+        self._cache = EggConsumeCache()
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__parent.log(u"[EC] {}".format(what), log_level)
+        self.__parent.log("[EC] {}".format(what), log_level)
 
     def init(self, global_config):
         from django.db.models import Q
@@ -47,6 +72,7 @@ class EggConsumeObject(object):
         self.__global_config = global_config
         _my_consumers = icswEggConsumer.objects.filter(Q(config_service_enum__enum_name=self.__global_config["SERVICE_ENUM_NAME"]))
         self.consumers = {_ec.action: _ec for _ec in _my_consumers}
+        self._cache.add_consumers(self.consumers.keys())
 
     def _get_pk_from_object(self, obj_def):
         if type(obj_def) in [int, long]:
@@ -58,35 +84,37 @@ class EggConsumeObject(object):
         from django.db.models import Q
         from initat.cluster.backbone.models import icswEggRequest
         if action in self.consumers:
-            _con = self.consumers[action]
             _pk = self._get_pk_from_object(obj_def)
-            try:
-                _cur_req = icswEggRequest.objects.get(
-                    Q(egg_consumer=_con) &
-                    Q(object_id=_pk),
-                )
-            except icswEggRequest.DoesNotExist:
-                _cur_req = icswEggRequest.objects.create(
-                    egg_consumer=_con,
-                    object_id=_pk,
-                )
-            except icswEggRequest.MultipleObjectsReturned:
-                _cur_reqs = icswEggRequest.objects.filter(
-                    Q(egg_consumer=_con) &
-                    Q(object_id=_pk),
-                )
-                print len(_cur_reqs)
-                _cur_req = _cur_reqs[0]
-            _cur_req.consume()
-            _allowed = _cur_req.valid
-            if not _allowed:
-                self.log(
-                    "action {} on {} not allowed".format(
-                        action,
-                        unicode(obj_def),
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
+            _allowed = self._cache.get(action, _pk)
+            if _allowed is None:
+                _con = self.consumers[action]
+                try:
+                    _cur_req = icswEggRequest.objects.get(
+                        Q(egg_consumer=_con) &
+                        Q(object_id=_pk),
+                    )
+                except icswEggRequest.DoesNotExist:
+                    _cur_req = icswEggRequest.objects.create(
+                        egg_consumer=_con,
+                        object_id=_pk,
+                    )
+                except icswEggRequest.MultipleObjectsReturned:
+                    _cur_reqs = icswEggRequest.objects.filter(
+                        Q(egg_consumer=_con) &
+                        Q(object_id=_pk),
+                    )
+                    # print len(_cur_reqs)
+                    _cur_req = _cur_reqs[0]
+                _allowed = _con.consume(_cur_req)
+                if not _allowed:
+                    self.log(
+                        "action {} on {} not allowed".format(
+                            action,
+                            unicode(obj_def),
+                        ),
+                        logging_tools.LOG_LEVEL_ERROR
+                    )
+                self._cache.set(action, _pk, _allowed)
         else:
             self.log(
                 "unknown consume action '{}' for {} (known actions: {})".format(
@@ -106,7 +134,7 @@ class ConfigCheckObject(object):
         # self.log = self.__process.log
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__process.log(u"[CC] {}".format(what), log_level)
+        self.__process.log("[CC] {}".format(what), log_level)
 
     def init(self, srv_type_enum, global_config, add_config_store=True, init_logging=True, native_logging=False, init_msi_block=True, log_name_postfix=None):
         if srv_type_enum is None:
@@ -765,7 +793,7 @@ class RemoteCallMixin(object):
                         )
                     else:
                         if msg_type == RemoteCallMessageType.flat:
-                            _reply = u"unknown command '{}'".format(com_name)
+                            _reply = "unknown command '{}'".format(com_name)
                         else:
                             srv_com.set_result(
                                 "unknown command '{}'".format(com_name),
