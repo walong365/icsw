@@ -19,13 +19,14 @@
 #
 """ special config for MegaRaid SAS modules """
 
+from __future__ import unicode_literals, print_function
+
 from argparse import Namespace
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.host_monitoring.modules.raidcontrollers.all import AllRAIDCtrl
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_config_server.special_commands.base import SpecialBase
-
 
 SHORT_OUTPUT_NAME = "MEGARAID_SAS_SHORT_OUTPUT"
 IGNORE_BBU_NAME = "MEGARAID_SAS_IGNORE_MISSING_BBU"

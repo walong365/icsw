@@ -26,6 +26,8 @@ software and performance
 
 """
 
+from __future__ import unicode_literals, print_function
+
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools, routing
@@ -34,7 +36,6 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.md_config_server.config import global_config, SyncConfig
 from initat.md_sync_server.base_config import RemoteServer
 from initat.tools import config_tools, logging_tools, server_command, threading_tools
-
 
 __all__ = [
     "RemoteServer",

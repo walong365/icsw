@@ -19,14 +19,16 @@
 #
 """ mixins providing various functions for build process / md-config-server """
 
-import base64
-import sqlite3
-import binascii
+from __future__ import unicode_literals, print_function
+
 import ConfigParser
+import base64
+import binascii
 import codecs
 import commands
 import operator
 import os
+import sqlite3
 
 import networkx
 from django.db.models import Q

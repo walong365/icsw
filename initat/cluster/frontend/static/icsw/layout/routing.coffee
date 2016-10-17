@@ -121,6 +121,8 @@ menu_module = angular.module(
         _bind_keys()
     )
 
+    _bind_keys()
+
     _wait_dict = {}
     $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_TREE_LOADED"), () ->
         $scope.struct.device_tree_valid = true

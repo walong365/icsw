@@ -108,7 +108,9 @@
 
 <script type="text/ng-template" id="icsw.device.info.form">
     <fieldset>
-        <legend>Device Information for: '{{ edit_obj.$$full_device_name }}'<img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16" style="margin-left:5px;"></img></legend>
+        <legend>Device Information for: '{{ edit_obj.$$full_device_name }}'
+            <img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16" style="margin-left:5px;"></img>
+        </legend>
         <div class="form-group row">
             <div class="col-md-6 col-xs-12">
                 <div class="row">
@@ -305,8 +307,10 @@
 <script type="text/ng-template" id="icsw.device.info.edit.form">
     <form class="form-horizontal" name="form_data">
         <fieldset>
-            <legend>Basic Settings for '{{ edit_obj.$$full_device_name }}'
-            <img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16"></img></legend>
+            <legend>
+                Basic Settings for '{{ edit_obj.$$full_device_name }}'
+                <img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16"></img>
+            </legend>
             <div class="form-group row">
                 <div class="col-md-6 col-xs-12">
                     <div class="form-group row">

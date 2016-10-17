@@ -19,6 +19,8 @@
 #
 """ special tasks for md-config-server, should be split into submodules, FIXME """
 
+from __future__ import unicode_literals, print_function
+
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import logging_tools

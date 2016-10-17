@@ -19,5 +19,8 @@
 #
 """ special tasks for md-config-server, load from submodule instances """
 
+from __future__ import unicode_literals, print_function
+
 from initat.md_config_server.special_commands.base import SpecialBase, ArgTemplate
+# from initat.md_config_server.special_commands.instances import SPECIAL_DICT, IMPORT_ERRORS
 from initat.md_config_server.special_commands.instances import *

@@ -22,6 +22,8 @@
 
 """ DB definitions for background jobs """
 
+from __future__ import unicode_literals, print_function
+
 import logging
 
 from django.db import models

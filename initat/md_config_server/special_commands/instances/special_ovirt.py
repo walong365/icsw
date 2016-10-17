@@ -19,12 +19,14 @@
 #
 """ special ovirt call """
 
+from __future__ import unicode_literals, print_function
+
 from lxml import etree
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
+from initat.host_monitoring.modules import ovirt_mod
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_config_server.special_commands.base import SpecialBase
-from initat.host_monitoring.modules import ovirt_mod
 from initat.tools import process_tools
 
 OVIRT_USER_NAME = "OVIRT_USER_NAME"

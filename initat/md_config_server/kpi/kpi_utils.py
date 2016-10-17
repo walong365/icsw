@@ -17,13 +17,15 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from __future__ import unicode_literals, print_function
+
 import ast
 
 
 def print_tree(t, i=0):
-    print " " * i, t, t.origin.type
+    print("    " * i, t, t.origin.type)
     for p in t.origin.operands:
-        print_tree(p, i + 8)
+        print_tree(p, i + 1)
 
 
 def astdump(node, annotate_fields=True, include_attributes=False, indent='  '):

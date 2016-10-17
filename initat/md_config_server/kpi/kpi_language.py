@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import unicode_literals, print_function
+
 import datetime
 import re
 from collections import defaultdict
@@ -917,11 +919,11 @@ class KpiSet(object):
 
     def dump(self, msg=None):
         """Debug function: Log set contents and return itself"""
-        print "\nDUMP {}:".format("" if msg is None else msg), self.objects
+        print("\nDUMP {}:".format("" if msg is None else msg), self.objects)
         for obj in self.objects:
-            print obj.full_repr()
+            print(obj.full_repr())
             # if 'time_line' in obj.__dict__: print "TL:", obj.time_line
-        print "DUMP END"
+        print("DUMP END")
 
         return self
 

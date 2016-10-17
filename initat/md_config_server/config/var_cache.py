@@ -19,9 +19,11 @@
 #
 """ config part of md-config-server """
 
-from django.db.models import Q
-from initat.cluster.backbone.models import device_variable
+from __future__ import unicode_literals, print_function
 
+from django.db.models import Q
+
+from initat.cluster.backbone.models import device_variable
 
 __all__ = [
     "MonVarCache",

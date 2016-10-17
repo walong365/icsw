@@ -19,6 +19,8 @@
 #
 """ build process for md-config-server """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import time
 
@@ -27,21 +29,21 @@ from django.db.models import Q
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device, device_variable, mon_contactgroup, netdevice, network_type, user, config, config_catalog, \
-    mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
+from initat.cluster.backbone.models import device, device_variable, mon_contactgroup, netdevice, network_type, user, \
+    config, config_catalog, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special, mon_check_command
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MainConfig, MonAllCommands, \
-    MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, MonDeviceTemplates, MonServiceTemplates, \
-    MonAllHostDependencies, build_safe_name, SimpleCounter, MonFileContainer, StructuredMonBaseConfig
+    MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
+    MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, SimpleCounter, MonFileContainer, \
+    StructuredMonBaseConfig
 from initat.md_config_server.constants import CACHE_MODES, DEFAULT_CACHE_MODE
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
-from initat.tools import config_tools, logging_tools, process_tools, \
-    server_mixins, server_command
-from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
+from initat.tools import config_tools, logging_tools, process_tools, server_mixins, server_command
 from ..config.build_cache import BuildCache
 from ..constants import BuildModes
+from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
 
 
 class BuildProcess(

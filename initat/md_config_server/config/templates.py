@@ -19,9 +19,10 @@
 #
 """ config part of md-config-server """
 
+from __future__ import unicode_literals, print_function
+
 from initat.cluster.backbone.models import mon_device_templ, mon_service_templ
 from initat.tools import logging_tools
-
 
 __all__ = [
     "MonDeviceTemplates",

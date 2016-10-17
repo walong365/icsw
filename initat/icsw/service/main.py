@@ -146,9 +146,13 @@ def main(opt_ns):
             cur_c.check_system(opt_ns, inst_xml)
             if ICSW_DEBUG_MODE:
                 from django.db import connection
-                import pprint
-                pprint.pprint(connection.queries)
-                print("performed {:d} queries".format(len(connection.queries)))
+                _time = 0.0
+                for line in connection.queries:
+                    print("{} : {}".format(line["time"], line["sql"]))
+                    _time += float(line["time"])
+                print()
+                print("performed {:d} queries in {:.3f}".format(len(connection.queries), _time))
+                print()
             form_list = cur_c.instance_to_form_list(opt_ns, inst_xml.tree)
             show_form_list(form_list)
             _res = inst_xml.tree.findall(".//result")

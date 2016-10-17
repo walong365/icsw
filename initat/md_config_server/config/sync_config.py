@@ -19,6 +19,8 @@
 #
 """ syncer definition for md-config-server """
 
+from __future__ import unicode_literals, print_function
+
 import datetime
 import os
 import time

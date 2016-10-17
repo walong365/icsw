@@ -20,6 +20,8 @@
 
 """ config part of md-config-server """
 
+from __future__ import unicode_literals, print_function
+
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device, device_group, mon_check_command, mon_period, \
@@ -31,7 +33,6 @@ from initat.md_config_server.config.mon_base_config import StructuredMonBaseConf
 from initat.md_config_server.config.mon_config_containers import MonFileContainer
 from initat.tools import cluster_location, logging_tools
 from .global_config import global_config
-
 
 __all__ = [
     "MonAllHostDependencies",

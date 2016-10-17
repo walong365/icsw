@@ -19,6 +19,8 @@
 #
 """ config part of md-config-server """
 
+from __future__ import unicode_literals, print_function
+
 from initat.cluster.backbone.models import TOP_MONITORING_CATEGORY, parse_commandline
 from initat.md_config_server.config.mon_base_config import StructuredMonBaseConfig
 from initat.tools import logging_tools

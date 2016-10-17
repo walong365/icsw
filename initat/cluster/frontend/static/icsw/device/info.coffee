@@ -485,7 +485,8 @@ angular.module(
             {
                 message: $compile($templateCache.get(template_name))(sub_scope)
                 title: title
-                css_class: "modal-wide modal-form"
+                # removed modal-form due to horrible display
+                css_class: "modal-wide"
                 ok_label: "Modify"
                 closable: true
                 ok_callback: (modal) ->

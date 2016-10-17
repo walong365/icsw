@@ -19,6 +19,8 @@
 #
 """ special for network monitoring """
 
+from __future__ import unicode_literals, print_function
+
 import re
 
 from django.db.models import Q

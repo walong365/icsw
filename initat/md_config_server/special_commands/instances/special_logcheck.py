@@ -19,6 +19,8 @@
 #
 """ special calls for logcheck-server related commands """
 
+from __future__ import unicode_literals, print_function
+
 from initat.cluster.backbone.models import SpecialGroupsEnum, SyslogCheck
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_config_server.special_commands.base import SpecialBase

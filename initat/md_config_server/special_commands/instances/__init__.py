@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,11 +17,22 @@
 #
 """ importer for special modules """
 
-import os
-import inspect
+from __future__ import unicode_literals, print_function
 
-from initat.tools import process_tools
+import inspect
+import os
+
 from initat.md_config_server.special_commands.base import SpecialBase
+from initat.tools import process_tools
+
+__all__ = [
+    b"IMPORT_ERRORS",
+    b"SPECIAL_DICT",
+]
+
+IMPORT_ERRORS = []
+SPECIAL_DICT = {}
+
 
 _inst_list = [
     cur_entry for cur_entry in [
@@ -33,19 +44,11 @@ _inst_list = [
     ] if cur_entry and not cur_entry.startswith("_")
 ]
 
-__all__ = [
-    "IMPORT_ERRORS",
-    "SPECIAL_DICT",
-]
-
-IMPORT_ERRORS = []
-SPECIAL_DICT = {}
-
 for mod_name in _inst_list:
-    __all__.append(mod_name)
+    __all__.append(str(mod_name))
     try:
         full_name = "initat.md_config_server.special_commands.instances.{}".format(mod_name)
-        new_mod = __import__(full_name, globals(), locals(), [mod_name], -1)
+        new_mod = __import__(full_name, globals(), locals(), [str(mod_name)], -1)
         for _key in dir(new_mod):
             _obj = getattr(new_mod, _key)
             if inspect.isclass(_obj) and not _obj == SpecialBase and issubclass(_obj, SpecialBase):
@@ -54,3 +57,4 @@ for mod_name in _inst_list:
         exc_info = process_tools.exception_info()
         for log_line in exc_info.log_lines:
             IMPORT_ERRORS.append((mod_name, "import", log_line))
+

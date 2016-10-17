@@ -25,6 +25,8 @@ dynamically creates config entries for devices (for devices queried via IPMI or 
 
 """
 
+from __future__ import unicode_literals, print_function
+
 import time
 
 from django.db.models import Q

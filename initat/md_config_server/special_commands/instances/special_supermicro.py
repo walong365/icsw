@@ -19,6 +19,8 @@
 #
 """ supermicro special """
 
+from __future__ import unicode_literals, print_function
+
 from argparse import Namespace
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum

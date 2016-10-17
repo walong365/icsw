@@ -19,6 +19,8 @@
 #
 """ cache of various settings and luts for md-config-server """
 
+from __future__ import unicode_literals, print_function
+
 import json
 import time
 
@@ -28,10 +30,10 @@ from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
     mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency
 from initat.icsw.service.instance import InstanceXML
-from .var_cache import MonVarCache
 from initat.snmp.sink import SNMPSink
 from initat.tools import logging_tools, process_tools
 from .global_config import global_config
+from .var_cache import MonVarCache
 
 __all__ = [
     "BuildCache",

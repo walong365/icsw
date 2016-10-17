@@ -19,6 +19,8 @@
 #
 """ snmp check """
 
+from __future__ import unicode_literals, print_function
+
 from django.db.models import Q
 
 from initat.md_config_server.special_commands.base import SpecialBase

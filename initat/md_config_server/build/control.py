@@ -19,15 +19,17 @@
 #
 """ build control structure for md-config-server """
 
+from __future__ import unicode_literals, print_function
+
 import time
 
 from django.db.models import Q
 
-from .process import BuildProcess
 from initat.cluster.backbone.models import device
 from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server.config import MainConfigContainer, global_config
 from initat.tools import logging_tools, server_command
+from .process import BuildProcess
 from ..constants import BuildModes
 
 
@@ -114,7 +116,7 @@ class BuildControl(object):
 
     def _sync_http_users(self, *args, **kwargs):
         self.log("syncing http-users")
-        print "not handled correctly right now, triggering error"
+        print("not handled correctly right now, triggering error")
         self.__gen_config._create_access_entries()
 
     def build_host_config(self, srv_com):

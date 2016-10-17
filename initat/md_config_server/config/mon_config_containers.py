@@ -25,6 +25,8 @@ MonFileContainer: holds one or more BaseConfigs (for a device for example)
 MonDirContainer: holds a directory of MonFileContainers
 """
 
+from __future__ import unicode_literals, print_function
+
 import codecs
 import hashlib
 import os

@@ -19,6 +19,8 @@
 #
 """ special call for disc monitoring """
 
+from __future__ import unicode_literals, print_function
+
 from django.db.models import Q
 
 from initat.cluster.backbone.models import partition, lvm_lv, SpecialGroupsEnum

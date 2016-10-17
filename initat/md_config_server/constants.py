@@ -19,6 +19,8 @@
 #
 """ icinga and md-sync-/md-config-server constants """
 
+from __future__ import unicode_literals, print_function
+
 from enum import Enum
 
 
