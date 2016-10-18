@@ -71,15 +71,18 @@ describe('ICSW Basic Interface Tests:', function() {
       browser.wait(EC.presenceOf(modal_backdrop), 10 * 1000).then(function() {
         var yes_button = element(by.className("btn-success"));
         browser.wait(EC.and(EC.elementToBeClickable(yes_button), EC.invisibilityOf(overlay_element))).then(function() {
+          //console.log("clicking yes button");
           yes_button.click();
           browser.wait(EC.and(EC.titleIs('Dashboard'), EC.invisibilityOf(overlay_element))).then(function() {
             expect(browser.getTitle()).toEqual('Dashboard');
+            //console.log("logged in");
             deferred.fulfill("ok")
           });
         });
       }, function() {
         if (ensure_logged_in_status == true) {
           expect(browser.getTitle()).toEqual('Dashboard');
+          //console.log("logged in");
         }
 
         deferred.fulfill("ok")
@@ -157,7 +160,7 @@ describe('ICSW Basic Interface Tests:', function() {
     });
   });
 
-  it ('Creating a new device should work', function() {
+  it ('Creating a new device should work (in "Add new Device")', function() {
     browser.restart();
     browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
@@ -361,7 +364,7 @@ describe('ICSW Basic Interface Tests:', function() {
   });
 
   // check if creating a device works
-  it ('Creating a new device should work', function() {
+  it ('Creating a new device should work (in "Device Tree")', function() {
     browser.restart();
     browser.driver.manage().window().maximize();
     browser.ignoreSynchronization = true;
@@ -395,9 +398,6 @@ describe('ICSW Basic Interface Tests:', function() {
               description_field.sendKeys(description);
 
               create_button.click();
-
-              var cancel_button = element(by.buttonText("Cancel"));
-              cancel_button.click();
 
               var modal_backdrop = element(by.xpath("/html/body/div[5]"));
               browser.wait(EC.and(EC.stalenessOf(modal_backdrop), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
@@ -505,11 +505,14 @@ describe('ICSW Basic Interface Tests:', function() {
     icsw_homepage.ensure_valid_login().then(function() {
       // get into network page
       browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.devices_menu_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
+        //console.log("clicking devices_menu_button");
         icsw_homepage.devices_menu_button.click();
         browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.network_menu_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
+          //console.log("clicking network_menu_button");
           icsw_homepage.network_menu_button.click();
           var select_devices_button = element(by.xpath("/html/body/icsw-layout-sub-menubar/nav/ul/li[2]/span[2]"));
           browser.wait(EC.and(EC.elementToBeClickable(select_devices_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
+            //console.log("clicking select_devices_button");
             select_devices_button.click();
 
             var use_in_network_button = element(by.partialButtonText("Use in Network"));
