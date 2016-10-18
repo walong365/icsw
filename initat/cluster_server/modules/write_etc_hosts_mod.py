@@ -16,6 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import unicode_literals, print_function
+
 import codecs
 import os
 
@@ -24,8 +26,8 @@ from django.db.models import Q
 
 import cs_base_class
 from initat.cluster.backbone.models import netdevice, device, device_variable, domain_tree_node
-from initat.tools import ipvx_tools, logging_tools, process_tools, cluster_location
 from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.tools import ipvx_tools, logging_tools, process_tools, cluster_location
 from initat.tools.config_tools import RouterObject
 
 SSH_KNOWN_HOSTS_FILENAME = "/etc/ssh/ssh_known_hosts"
@@ -42,7 +44,7 @@ class write_etc_hosts(cs_base_class.server_com):
         server_idxs = [self.server_idx]
         # get additional idx if host is virtual server
 
-        print "*** IS_SERVER FIXME TODO"
+        print("*** IS_SERVER FIXME TODO")
         is_server, serv_idx, _server_type, _server_str, _config_idx, _real_server_name = cluster_location.is_server("server", True, False)
         if is_server and serv_idx != self.server_idx:
             server_idxs.append(serv_idx)

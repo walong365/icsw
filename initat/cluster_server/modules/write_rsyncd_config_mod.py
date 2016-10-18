@@ -19,6 +19,8 @@
 """ create rsync config """
 # Deprecated, please rewrite or remove
 
+from __future__ import unicode_literals, print_function
+
 import os
 import re
 

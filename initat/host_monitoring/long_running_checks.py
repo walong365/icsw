@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright (C) 2001-2008,2010-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2010-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,6 +22,8 @@
 """
 long running check implementation by sieghart, to be improved ...
 """
+
+from __future__ import unicode_literals, print_function
 
 from multiprocessing import Process
 

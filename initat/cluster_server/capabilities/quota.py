@@ -19,6 +19,8 @@
 #
 """ cluster-server, quota handling """
 
+from __future__ import unicode_literals, print_function
+
 import commands
 import grp
 import pwd

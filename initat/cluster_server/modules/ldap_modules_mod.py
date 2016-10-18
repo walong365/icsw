@@ -17,6 +17,8 @@
 #
 """ tools for modifying LDAP servers """
 
+from __future__ import unicode_literals, print_function
+
 import commands
 import os
 import re
@@ -382,9 +384,9 @@ class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
                         "",
                     ]
                     file("/tmp/x", "w").write("\n".join(c_list))
-                    print "\n".join(c_list)
-                    print par_dict
-                    print root_hash, cmd_stat
+                    print("\n".join(c_list))
+                    print(par_dict)
+                    print(root_hash, cmd_stat)
 
 
 class command_mixin(object):

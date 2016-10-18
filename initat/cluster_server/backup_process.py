@@ -17,6 +17,8 @@
 #
 """ cluster-server, backup process """
 
+from __future__ import unicode_literals, print_function
+
 import bz2
 import datetime
 import os

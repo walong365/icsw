@@ -17,6 +17,8 @@
 #
 """contains command for deleting objects in background (we are the background)"""
 
+from __future__ import unicode_literals, print_function
+
 import json
 import time
 

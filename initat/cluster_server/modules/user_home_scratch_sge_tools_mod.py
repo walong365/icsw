@@ -18,6 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import unicode_literals, print_function
+
 import commands
 import os
 import shutil
@@ -27,8 +29,8 @@ from django.db.models import Q
 
 import cs_base_class
 import cs_tools
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import user, config_str
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster_server.config import global_config
 from initat.tools import process_tools, server_command
 

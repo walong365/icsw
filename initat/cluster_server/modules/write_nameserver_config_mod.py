@@ -16,6 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import unicode_literals, print_function
+
 import codecs
 import commands
 import grp
@@ -315,7 +317,7 @@ class write_nameserver_config(cs_base_class.server_com):
         nets = network.objects.all()
         # nets = call_params.dc.fetchall()
         for net in nets:
-            print "**", net
+            print("**", net)
             nw_ip = ipvx_tools.ipv4(net.network)
             nw_mask = ipvx_tools.ipv4(net.netmask)
             nw_ip_parts, nw_mask_parts = (

@@ -17,6 +17,8 @@
 #
 """ cluster-server """
 
+from __future__ import unicode_literals, print_function
+
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")

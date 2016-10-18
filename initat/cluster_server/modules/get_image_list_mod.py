@@ -18,6 +18,8 @@
 
 """ checks image directories for valid images """
 
+from __future__ import unicode_literals, print_function
+
 import os
 
 from initat.cluster_server.config import global_config

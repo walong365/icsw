@@ -17,6 +17,8 @@
 #
 """ cluster-server, user_scan capability """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import stat
 import time

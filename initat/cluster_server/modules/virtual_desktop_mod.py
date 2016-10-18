@@ -17,10 +17,13 @@
 #
 """contains command for reloading/restarting the virtual desktop"""
 
+from __future__ import unicode_literals, print_function
+
+from django.db.models.query_utils import Q
+
 from initat.cluster.backbone.models.user import virtual_desktop_user_setting
 from initat.cluster_server.capabilities.virtual_desktop import virtual_desktop_server
 from initat.cluster_server.modules import cs_base_class
-from django.db.models.query_utils import Q
 
 
 class reload_virtual_desktop(cs_base_class.server_com):

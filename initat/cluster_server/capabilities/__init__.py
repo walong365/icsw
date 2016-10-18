@@ -17,6 +17,8 @@
 #
 """ cluster-server, capability process """
 
+from __future__ import unicode_literals, print_function
+
 import importlib
 import inspect
 import os
@@ -29,10 +31,10 @@ from lxml import etree
 from initat.cluster.backbone import db_tools, factories
 from initat.cluster.backbone.models import config_catalog, icswEggConsumer
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.icsw.service.instance import InstanceXML
 from initat.cluster_server.capabilities import base
 from initat.cluster_server.config import global_config
 from initat.host_monitoring import hm_classes
+from initat.icsw.service.instance import InstanceXML
 from initat.tools import config_tools, logging_tools, process_tools, server_command, threading_tools
 
 

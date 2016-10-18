@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,6 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import unicode_literals, print_function
+
 import os
 
 from initat.cluster_server.modules import cs_base_class
@@ -24,7 +26,7 @@ from initat.tools import process_tools
 imp_dir = os.path.dirname(__file__)
 
 __all__ = [
-    cur_entry for cur_entry in [
+    str(cur_entry) for cur_entry in [
         entry.split(".")[0] for entry in os.listdir(imp_dir) if entry.endswith("_mod.py")
     ] if cur_entry and not cur_entry.startswith("_")
 ]

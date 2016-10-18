@@ -18,6 +18,8 @@
 
 """ base classes for cluster-server modules """
 
+from __future__ import unicode_literals, print_function
+
 import time
 
 from django.db import connection

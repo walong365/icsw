@@ -17,8 +17,9 @@
 #
 """ cluster-server, server process """
 
+from __future__ import unicode_literals, print_function
+
 import datetime
-import os
 import time
 
 import zmq
@@ -27,11 +28,11 @@ from django.db.models import Q
 import initat.cluster_server.modules
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.routing import get_server_uuid
+from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.server_version import VERSION_STRING
 from initat.tools import cluster_location, logging_tools, process_tools, server_command, \
     server_mixins, threading_tools, uuid_tools, configfile
-from initat.server_version import VERSION_STRING
 from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
 from .backup_process import backup_process
 from .capabilities import CapabilityProcess
@@ -267,9 +268,9 @@ class ServerProcess(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
         self["return_value"] = int(cur_com["result"].attrib["state"])
         self["exit_requested"] = True
         # show result
-        print cur_com["result"].attrib["reply"]
+        print(cur_com["result"].attrib["reply"])
         if global_config["SHOW_RESULT"]:
-            print cur_com.pretty_print()
+            print(cur_com.pretty_print())
 
     def _execute_command(self, srv_com):
         com_name = srv_com["command"].text

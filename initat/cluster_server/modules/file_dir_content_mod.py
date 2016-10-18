@@ -17,6 +17,8 @@
 #
 """ fetches informations from files or directories """
 
+from __future__ import unicode_literals, print_function
+
 import cs_base_class
 from initat.host_monitoring import filesys_tools
 

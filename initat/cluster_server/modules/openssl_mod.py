@@ -19,6 +19,8 @@
 #
 """ wrapper for openssl_tools """
 
+from __future__ import unicode_literals, print_function
+
 from initat.cluster_server.config import global_config
 from initat.cluster.backbone.models import device
 from django.db.models import Q

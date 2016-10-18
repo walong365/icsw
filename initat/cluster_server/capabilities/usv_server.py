@@ -17,6 +17,8 @@
 #
 """ cluster-server, USV handling """
 
+from __future__ import unicode_literals, print_function
+
 import commands
 
 from initat.cluster_server.capabilities.base import BackgroundBase

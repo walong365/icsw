@@ -1,4 +1,4 @@
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,6 +17,8 @@
 #
 """ load all defined commands """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import inspect
 
@@ -24,8 +26,10 @@ from initat.tools import process_tools
 from initat.host_monitoring.hm_classes import hm_command
 
 __all__ = [
-    cur_entry for cur_entry in [
-        entry.split(".")[0] for entry in os.listdir(os.path.dirname(__file__)) if entry.endswith(".py")
+    str(cur_entry) for cur_entry in [
+        entry.split(".")[0] for entry in os.listdir(
+            os.path.dirname(__file__)
+        ) if entry.endswith(".py")
     ] if cur_entry and not cur_entry.startswith("_")
 ]
 

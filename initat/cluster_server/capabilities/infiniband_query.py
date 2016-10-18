@@ -17,6 +17,8 @@
 #
 """ cluster-server, Infiniband query """
 
+from __future__ import unicode_literals, print_function
+
 import commands
 import time
 
@@ -129,11 +131,11 @@ class IBDataStoreDevice(object):
 
     def show(self):
         _out = ["{} ({})".format(self.name, self.guid)]
-        print " ".join(_out)
+        print(" ".join(_out))
         for _port in sorted(self.__ports.keys()):
             _res = self.__ports[_port].show()
             if _res:
-                print "   port {}: {}".format(_port, _res)
+                print("   port {}: {}".format(_port, _res))
 
     def build_vector(self, dev_lu):
         cur_time = int(time.time())
@@ -181,7 +183,7 @@ class IBDataStore(object):
             _line = _line.rstrip()
             if _line and _line[0] != "#":
                 if _line.startswith("ibwarn"):
-                    print "WARN: {}".format(_line)
+                    print("WARN: {}".format(_line))
                 elif _line[0] != " ":
                     self._parse_src(_line)
                 else:
