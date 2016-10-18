@@ -21,14 +21,14 @@
 
 from __future__ import unicode_literals, print_function
 
-import json
 import time
 
 from django.db.models import Q
 
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
-    mon_host_cluster, mon_service_cluster, MonHostTrace, mon_host_dependency, mon_service_dependency
+    mon_host_cluster, mon_service_cluster, MonHostTrace, mon_host_dependency, mon_service_dependency, \
+    MonHostTraceGeneration
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.sink import SNMPSink
 from initat.tools import logging_tools, process_tools
@@ -41,15 +41,15 @@ __all__ = [
 
 
 class BuildCache(object):
-    def __init__(self, log_com, cdg, full_build, unreachable_pks=[]):
+    def __init__(self, log_com, full_build, routing_fingerprint):
         self.log_com = log_com
         self.router = routing.SrvTypeRouting(log_com=self.log_com)
         self.instance_xml = InstanceXML(log_com=self.log, quiet=True)
         # build cache to speed up config generation
         # stores various cached objects
         # global luts
-        # lookup table for host_check_commands
-        self.unreachable_pks = set(unreachable_pks or [])
+        # routing fingerprint
+        self.routing_fingerprint = routing_fingerprint
         s_time = time.time()
         self.mcc_lut_3 = {_check.pk: _check for _check in mon_check_command.objects.all()}
         # add dummy entries
@@ -70,7 +70,7 @@ class BuildCache(object):
         self.cache_mode = "???"
         self.single_build = False
         self.debug = False
-        self.__var_cache = MonVarCache(cdg, prefill=full_build)
+        self.__var_cache = MonVarCache(device.objects.get(Q(device_group__cluster_device_group=True)), prefill=full_build)
         self.join_char = "_" if global_config["SAFE_NAMES"] else " "
         # device_group user access
         self.dg_user_access = {}
@@ -90,13 +90,23 @@ class BuildCache(object):
                 "monhosttrace_set"
             )
         }
-        # set reachable flag
-        for key, value in self.all_hosts_dict.iteritems():
-            value.reachable = value.pk not in self.unreachable_pks
-        # traces
-        self.__host_traces = {
-            host.pk: list(host.monhosttrace_set.all()) for host in self.all_hosts_dict.itervalues()
-        }
+        # get generation
+        try:
+            self.__trace_gen = MonHostTraceGeneration.objects.get(Q(fingerprint=self.routing_fingerprint))
+        except MonHostTraceGeneration.DoesNotExist:
+            self.log("creating new tracegeneration")
+            self.__trace_gen = MonHostTraceGeneration.objects.create(fingerprint=self.routing_fingerprint)
+        # delete old ones
+        _res = MonHostTrace.objects.exclude(Q(generation=self.__trace_gen)).delete()
+        # print(_res)
+        # traces in database
+        self.log("traces found in database: {:d}".format(MonHostTrace.objects.all().count()))
+        # read traces
+        self.__host_traces = {}
+        for _trace in MonHostTrace.objects.filter(Q(generation=self.__trace_gen)):
+            self.__host_traces.setdefault(_trace.device_id, []).append(_trace)
+        # import pprint
+        # pprint.pprint(self.__host_traces)
         # host / service clusters
         clusters = {}
         for _obj, _name in [(mon_host_cluster, "hc"), (mon_service_cluster, "sc")]:
@@ -170,6 +180,11 @@ class BuildCache(object):
             )
         )
 
+    def feed_unreachable_pks(self, unreachable_pks):
+        # set reachable flag
+        for key, value in self.all_hosts_dict.iteritems():
+            value.reachable = value.pk not in unreachable_pks
+
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[bc] {}".format(what), log_level)
 
@@ -226,20 +241,21 @@ class BuildCache(object):
         ]
         if _match_traces:
             _match_trace = _match_traces[0]
-            if json.loads(_match_trace.traces) != traces:
+            if not _match_trace.match(traces):
                 _match_trace.set_trace(traces)
                 try:
                     _match_trace.save()
                 except:
                     self.log(
-                        "error saving trace {}: {}".format(
+                        "error saving trace {} for {}: {}".format(
                             str(traces),
+                            unicode(_match_trace),
                             process_tools.get_except_info(),
                         ),
                         logging_tools.LOG_LEVEL_ERROR
                     )
         else:
-            _new_trace = MonHostTrace.create_trace(host, _dev_fp, _srv_fp, json.dumps(traces))
+            _new_trace = MonHostTrace.create_trace(self.__trace_gen, host, _dev_fp, _srv_fp, traces)
             self.__host_traces.setdefault(host.pk, []).append(_new_trace)
 
     def set_host_list(self, host_pks):

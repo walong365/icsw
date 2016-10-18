@@ -37,6 +37,9 @@ import array
 import netifaces
 import sys
 import time
+import hashlib
+
+# print(hashlib.algorithms)
 
 import networkx
 from django.db.models import Q, Count
@@ -58,15 +61,29 @@ class RouterObject(object):
         self.__log_com = log_com
         self.__cur_gen = 0
         self.nx = None
+        self.fp = None
         self._update()
+
+    def init_fingerprint(self):
+        if self.nx:
+            self.previous_fp = self.fp.hexdigest()
+            del self.nx
+            del self.fp
+        else:
+            self.previous_fp = "N/A"
+        self.nx = networkx.Graph()
+        self.fp = hashlib.new("sha256")
 
     def add_nodes(self):
         self.nx.add_nodes_from(self.nd_dict.keys())
+        for _key in sorted(self.nd_dict.keys()):
+            self.fp.update("n{:d}".format(_key))
 
     def add_edges(self):
         for node_pair, penalty in self.simple_peer_dict.iteritems():
             src_node, dst_node = node_pair
             self.nx.add_edge(src_node, dst_node, weight=penalty)
+            self.fp.update("e{:d},{:d},{:d}".format(src_node, dst_node, penalty))
 
     @property
     def latest_update(self):
@@ -133,23 +150,37 @@ class RouterObject(object):
                             self.peer_dict[(s_pk, d_pk)] = int_penalty
                             self.peer_dict[(d_pk, s_pk)] = int_penalty
                             self.simple_peer_dict[(s_pk, d_pk)] = int_penalty
-            if self.nx:
-                del self.nx
-            self.nx = networkx.Graph()
+            self.init_fingerprint()
             self.add_nodes()
             self.add_edges()
             if self.__cur_gen:
-                self.log("update generation from {:d} to {:d} in {}".format(
-                    self.__cur_gen,
-                    latest_gen,
-                    logging_tools.get_diff_time_str(time.time() - s_time),
-                ))
+                self.log(
+                    "update generation from {:d} ({}) to {:d} ({}) in {}".format(
+                        self.__cur_gen,
+                        self.previous_fp,
+                        latest_gen,
+                        self.fingerprint if self.fingerprint != self.previous_fp else "same",
+                        logging_tools.get_diff_time_str(time.time() - s_time),
+                    ),
+                    logging_tools.LOG_LEVEL_WARN if self.fingerprint_changed else logging_tools.LOG_LEVEL_OK
+                )
             else:
-                self.log("init with generation {:d} in {}".format(
-                    latest_gen,
-                    logging_tools.get_diff_time_str(time.time() - s_time),
-                ))
+                self.log(
+                    "init with generation {:d} ({}) in {}".format(
+                        latest_gen,
+                        self.fingerprint,
+                        logging_tools.get_diff_time_str(time.time() - s_time),
+                    )
+                )
             self.__cur_gen = latest_gen
+
+    @property
+    def fingerprint_changed(self):
+        return self.fingerprint != self.previous_fp
+
+    @property
+    def fingerprint(self):
+        return self.fp.hexdigest()
 
     def check_for_update(self):
         self._update()

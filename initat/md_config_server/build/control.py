@@ -119,6 +119,20 @@ class BuildControl(object):
         print("not handled correctly right now, triggering error")
         self.__gen_config._create_access_entries()
 
+    def build_step(self, *args, **kwargs):
+        _action = args[2]
+        if _action == "routing_ok":
+            _fp = args[3]
+            self.log("master setup routing with fp {}".format(_fp))
+            for _p_name in self._build_slave_names:
+                self.__process.send_to_process(
+                    _p_name,
+                    "routing_fingerprint",
+                    _fp
+                )
+        else:
+            self.log("Unknown build_step action '{}'".format(_action), logging_tools.LOG_LEVEL_ERROR)
+
     def build_host_config(self, srv_com):
         # all builds are handled via this call
         dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
@@ -159,6 +173,7 @@ class BuildControl(object):
                 [_slave.serialize() for _slave in self.__slave_configs.itervalues()]
             )
 
+        self._build_slave_names = []
         for _build_id, _ser_info in enumerate(_b_list, 1):
             _p_name = "build{:d}".format(_build_id)
             self.__process.add_process(BuildProcess(_p_name), start=True)
@@ -171,6 +186,8 @@ class BuildControl(object):
                 unicode(srv_com),
                 *args
             )
+            if _mode in [BuildModes.some_slave, BuildModes.all_slave]:
+                self._build_slave_names.append(_p_name)
             # advance mode
             _mode = {
                 BuildModes.some_master: BuildModes.some_slave,

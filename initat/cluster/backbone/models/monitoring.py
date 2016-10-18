@@ -57,6 +57,7 @@ __all__ = [
     "mon_check_command_special",
     # trace
     "MonHostTrace",  # monitoring trace for speedup
+    "MonHostTraceGeneration",   # monitoring trace generation
     # unreachable info
     "mon_build_unreachable",  # track unreachable devices
     "parse_commandline",  # commandline parsing
@@ -75,8 +76,16 @@ class SpecialGroupsEnum(enum.Enum):
     system_net = "System / Network"
 
 
+class MonHostTraceGeneration(models.Model):
+    idx = models.AutoField(primary_key=True)
+    fingerprint = models.CharField(max_length=255, default="")
+    date = models.DateTimeField(auto_now_add=True)
+
+
 class MonHostTrace(models.Model):
     idx = models.AutoField(primary_key=True)
+    # generation
+    generation = models.ForeignKey("backbone.MonHostTraceGeneration", null=True)
     device = models.ForeignKey("backbone.device")
     # fingerprint of device netdevices
     dev_netdevice_fp = models.CharField(max_length=128, default="", db_index=True)
@@ -94,20 +103,36 @@ class MonHostTrace(models.Model):
         )
 
     @staticmethod
-    def create_trace(dev, dev_fp, srv_fp, traces):
-        new_tr = MonHostTrace.objects.create(
+    def create_trace(gen, dev, dev_fp, srv_fp, traces):
+        new_tr = MonHostTrace(
+            generation=gen,
             device=dev,
             dev_netdevice_fp=dev_fp,
             srv_netdevice_fp=srv_fp,
-            traces=traces,
         )
+        new_tr.set_trace(traces)
+        new_tr.save()
         return new_tr
 
+    @staticmethod
+    def dump_trace(traces):
+        return json.dumps(traces)
+
+    @staticmethod
+    def load_trace(traces):
+        return json.loads(traces)
+
     def set_trace(self, traces):
-        self.traces = json.dumps(traces)
+        self.traces = MonHostTrace.dump_trace(traces)
 
     def get_trace(self):
-        return json.loads(self.traces)
+        return MonHostTrace.load_trace(self.traces)
+
+    def match(self, traces):
+        return self.traces == MonHostTrace.dump_trace(traces)
+
+    def __unicode__(self):
+        return "MHT for {}".format(unicode(self.device))
 
 
 class mon_dist_base(models.Model):
