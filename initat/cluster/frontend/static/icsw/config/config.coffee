@@ -128,6 +128,9 @@ config_module = angular.module(
                     () ->
                         blockUI.stop()
                         console.log "cc deleted"
+                    () ->
+                        # error
+                        blockUI.stop()
                 )
         )
 ]).directive("icswConfigConfigTable", ["$templateCache", ($templateCache) ->
@@ -1003,6 +1006,8 @@ config_module = angular.module(
                         () ->
                             blockUI.stop()
                             console.log "mon deleted"
+                        () ->
+                            blockUI.stop()
                     )
             )
 

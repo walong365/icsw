@@ -19,6 +19,8 @@
 #
 """ set the result of a passive checkcommand """
 
+from __future__ import print_function, unicode_literals
+
 import argparse
 import os
 import sys

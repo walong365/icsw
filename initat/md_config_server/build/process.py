@@ -1417,8 +1417,9 @@ class BuildProcess(
                 act_serv["servicegroups"] = s_check.servicegroup_names
                 cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             # command_name may be altered when using a special-command
+            print(kwargs.get("command_name", s_check["command_name"]), s_check.correct_argument_list(arg_temp, host.dev_variables))
             _com_parts = [
-                kwargs.get("command_name", s_check["command_name"])
+                             kwargs.get("command_name", s_check["command_name"])
             ] + s_check.correct_argument_list(arg_temp, host.dev_variables)
             if any([_part is None for _part in _com_parts]) and self.gc["DEBUG"]:
                 self.log("none found: {}".format(str(_com_parts)), logging_tools.LOG_LEVEL_CRITICAL)
@@ -1427,12 +1428,6 @@ class BuildProcess(
             # add addon vars
             for key, value in arg_temp.addon_dict.iteritems():
                 act_serv[key] = value
-            # if act_host["check_command"] == "check-host-alive-2" and s_check["command_name"].startswith("check_ping"):
-            #    self.mach_log(
-            #        "   removing command %s because of %s" % (
-            #            s_check["command_name"],
-            #            act_host["check_command"]))
-            # else:
             ret_field.append(act_serv)
         return ret_field
 

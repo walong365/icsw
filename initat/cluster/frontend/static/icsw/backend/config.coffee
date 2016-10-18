@@ -411,7 +411,7 @@ config_module = angular.module(
             return defer.promise
 
         _fetch_config_catalog: (pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_CONFIG_CATALOG_LIST.slice(1)).get({"idx": pk}).then(
+            Restangular.one(ICSW_URLS.REST_CONFIG_CATALOG_LIST.slice(1)).get({idx: pk}).then(
                 (new_cc) =>
                     new_cc = new_cc[0]
                     @catalog_list.push(new_cc)
@@ -460,7 +460,7 @@ config_module = angular.module(
             return defer.promise
 
         _fetch_config: (pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_CONFIG_LIST.slice(1)).get({"idx": pk}).then(
+            Restangular.one(ICSW_URLS.REST_CONFIG_LIST.slice(1)).get({idx: pk}).then(
                 (new_conf) =>
                     new_conf = new_conf[0]
                     @list.push(new_conf)
@@ -494,7 +494,7 @@ config_module = angular.module(
             return defer.promise
 
         _fetch_mon_check_command: (config, pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1)).get({"idx": pk}).then(
+            Restangular.one(ICSW_URLS.REST_MON_CHECK_COMMAND_LIST.slice(1)).get({idx: pk}).then(
                 (new_mcc) =>
                     new_mcc = new_mcc[0]
                     config.mon_check_command_set.push(new_mcc)
@@ -533,7 +533,7 @@ config_module = angular.module(
             return defer.promise
 
         _fetch_config_var: (config, url, var_type, pk, defer, msg) =>
-            Restangular.one(url.slice(1)).get({"idx": pk}).then(
+            Restangular.one(url.slice(1)).get({idx: pk}).then(
                 (new_var) =>
                     new_var = new_var[0]
                     config["config_#{var_type}_set"].push(new_var)
@@ -558,7 +558,7 @@ config_module = angular.module(
             defer = $q.defer()
             del_script.remove().then(
                 (ok) =>
-                    _.remove(config.config_script_set, (entry) -> return entry.idx == del_mcc.idx)
+                    _.remove(config.config_script_set, (entry) -> return entry.idx == del_script.idx)
                     @build_luts()
                     defer.resolve("deleted")
                 (error) ->
@@ -567,7 +567,7 @@ config_module = angular.module(
             return defer.promise
 
         _fetch_config_script: (config, pk, defer, msg) =>
-            Restangular.one(ICSW_URLS.REST_CONFIG_SCRIPT_LIST.slice(1)).get({"idx": pk}).then(
+            Restangular.one(ICSW_URLS.REST_CONFIG_SCRIPT_LIST.slice(1)).get({idx: pk}).then(
                 (new_script) =>
                     new_script = new_script[0]
                     config.config_script_set.push(new_script)

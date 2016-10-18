@@ -840,13 +840,13 @@
                         </div>
                     </div>
                 </fieldset>
-                <fieldset ng-show="!edit_obj.mon_check_command_special">
+                <fieldset ng-show="!edit_obj.mon_check_command_special && !edit_obj.is_event_handler">
                     <legend>Active / passive settings</legend>
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-9">
                                 <label>
-                                    <input checked="checked" class="checkboxinput checkbox" name="is_active" ng-model="edit_obj.is_active" type="checkbox"/>
+                                    <icsw-tools-yes-no-small flag="edit_obj.is_active"></icsw-tools-yes-no-small>
                                     Is Active
                                 </label>
                             </div>
@@ -868,7 +868,7 @@
                                 <div class="checkbox">
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
-                                            <input class="checkboxinput checkbox" name="volatile" ng-model="edit_obj.volatile" type="checkbox"/>
+                                            <icsw-tools-yes-no-small flag="edit_obj.volatile"></icsw-tools-yes-no-small>
                                             Volatile
                                         </label>
                                     </div>
@@ -878,7 +878,7 @@
                                 <div class="checkbox">
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
-                                            <input class="checkboxinput checkbox" name="enable_perfdata" ng-model="edit_obj.enable_perfdata" type="checkbox"/>
+                                            <icsw-tools-yes-no-small flag="edit_obj.enable_perfdata"></icsw-tools-yes-no-small>
                                             Enable Perfdata
                                         </label>
                                     </div>
@@ -890,7 +890,7 @@
                                 <div class="checkbox">
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
-                                            <input checked="checked" class="checkboxinput checkbox" name="event_handler_enabled" ng-model="edit_obj.event_handler_enabled" type="checkbox"/>
+                                            <icsw-tools-yes-no-small flag="edit_obj.event_handler_enabled"></icsw-tools-yes-no-small>
                                             Event Handler Enabled
                                         </label>
                                     </div>
@@ -900,7 +900,7 @@
                                 <div class="checkbox" ng_show="edit_obj.event_handler == undefined">
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
-                                            <input class="checkboxinput checkbox" name="is_event_handler" ng-model="edit_obj.is_event_handler" type="checkbox"/>
+                                            <icsw-tools-yes-no-small flag="edit_obj.is_event_handler"></icsw-tools-yes-no-small>
                                             Is Event Handler
                                         </label>
                                     </div>
