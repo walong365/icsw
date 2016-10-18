@@ -34,8 +34,8 @@ from .global_config import global_config
 from ..mixins import NagVisMixin
 
 __all__ = [
-    "MainConfig",
-    "MainConfigContainer",
+    b"MainConfig",
+    b"MainConfigContainer",
 ]
 
 

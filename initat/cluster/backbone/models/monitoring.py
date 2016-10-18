@@ -56,7 +56,7 @@ __all__ = [
     "monitoring_hint",
     "mon_check_command_special",
     # trace
-    "mon_trace",  # monitoring trace for speedup
+    "MonHostTrace",  # monitoring trace for speedup
     # unreachable info
     "mon_build_unreachable",  # track unreachable devices
     "parse_commandline",  # commandline parsing
@@ -75,7 +75,7 @@ class SpecialGroupsEnum(enum.Enum):
     system_net = "System / Network"
 
 
-class mon_trace(models.Model):
+class MonHostTrace(models.Model):
     idx = models.AutoField(primary_key=True)
     device = models.ForeignKey("backbone.device")
     # fingerprint of device netdevices
@@ -86,12 +86,16 @@ class mon_trace(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     @staticmethod
-    def get_fp(net_idxs):
-        return ":".join(["{:d}".format(_idx) for _idx in net_idxs])
+    def get_fingerprint(net_idxs):
+        return ":".join(
+            [
+                "{:d}".format(_idx) for _idx in net_idxs
+            ]
+        )
 
     @staticmethod
     def create_trace(dev, dev_fp, srv_fp, traces):
-        new_tr = mon_trace.objects.create(
+        new_tr = MonHostTrace.objects.create(
             device=dev,
             dev_netdevice_fp=dev_fp,
             srv_netdevice_fp=srv_fp,

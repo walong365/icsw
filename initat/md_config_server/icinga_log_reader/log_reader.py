@@ -387,7 +387,12 @@ class IcingaLogReader(threading_tools.process_obj):
             except self.malformed_icinga_log_entry as e:
                 self._handle_warning(e, logfilepath, cur_line.line_no if cur_line else None)
 
-        self.log(u"created from {}: {} ".format(logfilepath if logfilepath else "cur icinga log file", stats.items()))
+        self.log(
+            u"created from {}: {} ".format(
+                logfilepath if logfilepath else "cur icinga log file",
+                stats.items()
+            )
+        )
 
         # there can be really many host and service entries (up to 1000000),
         # so we save them in several stages

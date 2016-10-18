@@ -1415,7 +1415,7 @@ class BuildProcess(
     def _get_target_ip_info(self, _bc, srv_net_idxs, net_devices, host):
         if _bc.cache_mode in ["ALWAYS"]:
             # use stored traces in mode ALWAYS
-            traces = _bc.get_mon_trace(host, net_devices, srv_net_idxs)
+            traces = _bc.get_mon_host_trace(host, net_devices, srv_net_idxs)
         else:
             traces = []
         if not traces:
@@ -1427,7 +1427,7 @@ class BuildProcess(
                     dev_path.reverse()
                     traces.append((penalty, cur_path[-1], dev_path))
             traces = sorted(traces)
-            _bc.set_mon_trace(host, net_devices, srv_net_idxs, traces)
+            _bc.set_mon_host_trace(host, net_devices, srv_net_idxs, traces)
         if not traces:
             self.mach_log(
                 "Cannot reach device {} (check peer_information)".format(

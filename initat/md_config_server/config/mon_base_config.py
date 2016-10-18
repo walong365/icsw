@@ -19,6 +19,8 @@
 #
 """ config part of md-config-server """
 
+from __future__ import unicode_literals, print_function
+
 import time
 
 from lxml.builder import E
@@ -26,14 +28,14 @@ from lxml.builder import E
 from initat.tools import logging_tools
 
 __all__ = [
-    "MonBaseConfig",
-    "build_safe_name",
-    "SimpleCounter",
-    "MonUniqueList",
-    "StructuredMonBaseConfig",
-    "FlatMonBaseConfig",
-    "CfgEmitStats",
-    "LogBufferMixin",
+    b"MonBaseConfig",
+    b"build_safe_name",
+    b"SimpleCounter",
+    b"MonUniqueList",
+    b"StructuredMonBaseConfig",
+    b"FlatMonBaseConfig",
+    b"CfgEmitStats",
+    b"LogBufferMixin",
 ]
 
 

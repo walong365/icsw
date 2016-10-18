@@ -39,8 +39,8 @@ from .global_config import global_config
 from .mon_base_config import LogBufferMixin
 
 __all__ = [
-    "MonFileContainer",
-    "MonDirContainer",
+    b"MonFileContainer",
+    b"MonDirContainer",
 ]
 
 

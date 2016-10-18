@@ -27,7 +27,7 @@ from initat.tools import logging_tools
 from .global_config import global_config
 
 __all__ = [
-    "CheckCommand",
+    b"CheckCommand",
 ]
 
 

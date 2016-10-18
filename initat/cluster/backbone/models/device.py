@@ -444,7 +444,7 @@ class device(models.Model):
             ("dispatch_settings", "Changed dispatch settings", True),
         )
         fk_ignore_list = [
-            "mon_trace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "DeviceLogEntry",
+            "monhosttrace", "netdevice", "device_variable", "device_config", "quota_capable_blockdevice", "DeviceSNMPInfo", "DeviceLogEntry",
             "KernelDeviceHistory", "ImageDeviceHistory", "DeviceBootHistory",
             "mon_icinga_log_raw_host_alert_data", "mon_icinga_log_aggregated_host_data",
             "mon_icinga_log_raw_service_alert_data", "mon_icinga_log_aggregated_service_data",

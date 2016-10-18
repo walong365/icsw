@@ -28,7 +28,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone import routing
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
-    mon_host_cluster, mon_service_cluster, mon_trace, mon_host_dependency, mon_service_dependency
+    mon_host_cluster, mon_service_cluster, MonHostTrace, mon_host_dependency, mon_service_dependency
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.sink import SNMPSink
 from initat.tools import logging_tools, process_tools
@@ -36,7 +36,7 @@ from .global_config import global_config
 from .var_cache import MonVarCache
 
 __all__ = [
-    "BuildCache",
+    b"BuildCache",
 ]
 
 
@@ -87,7 +87,7 @@ class BuildCache(object):
                 "domain_tree_node",
                 "device_group"
             ).prefetch_related(
-                "mon_trace_set"
+                "monhosttrace_set"
             )
         }
         # set reachable flag
@@ -95,7 +95,7 @@ class BuildCache(object):
             value.reachable = value.pk not in self.unreachable_pks
         # traces
         self.__host_traces = {
-            host.pk: list(host.mon_trace_set.all()) for host in self.all_hosts_dict.itervalues()
+            host.pk: list(host.monhosttrace_set.all()) for host in self.all_hosts_dict.itervalues()
         }
         # host / service clusters
         clusters = {}
@@ -164,7 +164,11 @@ class BuildCache(object):
         # init snmp sink
         self.snmp_sink = SNMPSink(log_com)
         e_time = time.time()
-        self.log("init build_cache in {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+        self.log(
+            "init build_cache in {}".format(
+                logging_tools.get_diff_time_str(e_time - s_time)
+            )
+        )
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_com("[bc] {}".format(what), log_level)
@@ -196,12 +200,12 @@ class BuildCache(object):
         else:
             return []
 
-    def get_mon_trace(self, host, dev_net_idxs, srv_net_idxs):
+    def get_mon_host_trace(self, host, dev_net_idxs, srv_net_idxs):
         _traces = self.__host_traces.get(host.pk, [])
         if _traces:
             _dev_fp, _srv_fp = (
-                mon_trace.get_fp(dev_net_idxs),
-                mon_trace.get_fp(srv_net_idxs),
+                MonHostTrace.get_fingerprint(dev_net_idxs),
+                MonHostTrace.get_fingerprint(srv_net_idxs),
             )
             _traces = [_tr for _tr in _traces if _tr.dev_netdevice_fp == _dev_fp and _tr.srv_netdevice_fp == _srv_fp]
             if _traces:
@@ -211,13 +215,15 @@ class BuildCache(object):
         else:
             return []
 
-    def set_mon_trace(self, host, dev_net_idxs, srv_net_idxs, traces):
+    def set_mon_host_trace(self, host, dev_net_idxs, srv_net_idxs, traces):
         _dev_fp, _srv_fp = (
-            mon_trace.get_fp(dev_net_idxs),
-            mon_trace.get_fp(srv_net_idxs),
+            MonHostTrace.get_fingerprint(dev_net_idxs),
+            MonHostTrace.get_fingerprint(srv_net_idxs),
         )
         # check for update
-        _match_traces = [_tr for _tr in self.__host_traces.get(host.pk, []) if _tr.dev_netdevice_fp == _dev_fp and _tr.srv_netdevice_fp == _srv_fp]
+        _match_traces = [
+            _tr for _tr in self.__host_traces.get(host.pk, []) if _tr.dev_netdevice_fp == _dev_fp and _tr.srv_netdevice_fp == _srv_fp
+        ]
         if _match_traces:
             _match_trace = _match_traces[0]
             if json.loads(_match_trace.traces) != traces:
@@ -233,7 +239,7 @@ class BuildCache(object):
                         logging_tools.LOG_LEVEL_ERROR
                     )
         else:
-            _new_trace = mon_trace.create_trace(host, _dev_fp, _srv_fp, json.dumps(traces))
+            _new_trace = MonHostTrace.create_trace(host, _dev_fp, _srv_fp, json.dumps(traces))
             self.__host_traces.setdefault(host.pk, []).append(_new_trace)
 
     def set_host_list(self, host_pks):

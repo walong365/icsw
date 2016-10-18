@@ -35,7 +35,7 @@ from initat.tools import config_tools, logging_tools, process_tools, server_comm
 from .global_config import global_config
 
 __all__ = [
-    "SyncConfig",
+    b"SyncConfig",
 ]
 
 

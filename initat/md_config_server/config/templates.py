@@ -25,8 +25,8 @@ from initat.cluster.backbone.models import mon_device_templ, mon_service_templ
 from initat.tools import logging_tools
 
 __all__ = [
-    "MonDeviceTemplates",
-    "MonServiceTemplates",
+    b"MonDeviceTemplates",
+    b"MonServiceTemplates",
 ]
 
 

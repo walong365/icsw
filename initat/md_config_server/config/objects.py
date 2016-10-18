@@ -35,13 +35,13 @@ from initat.tools import cluster_location, logging_tools
 from .global_config import global_config
 
 __all__ = [
-    "MonAllHostDependencies",
-    "MonAllTimePeriods",
-    "MonAllServiceGroups",
-    "MonAllCommands",
-    "MonAllContacts",
-    "MonAllContactGroups",
-    "MonAllHostGroups",
+    b"MonAllHostDependencies",
+    b"MonAllTimePeriods",
+    b"MonAllServiceGroups",
+    b"MonAllCommands",
+    b"MonAllContacts",
+    b"MonAllContactGroups",
+    b"MonAllHostGroups",
 ]
 
 
