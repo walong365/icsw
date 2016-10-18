@@ -1417,7 +1417,6 @@ class BuildProcess(
                 act_serv["servicegroups"] = s_check.servicegroup_names
                 cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             # command_name may be altered when using a special-command
-            print(kwargs.get("command_name", s_check["command_name"]), s_check.correct_argument_list(arg_temp, host.dev_variables))
             _com_parts = [
                              kwargs.get("command_name", s_check["command_name"])
             ] + s_check.correct_argument_list(arg_temp, host.dev_variables)
