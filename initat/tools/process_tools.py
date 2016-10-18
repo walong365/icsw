@@ -53,7 +53,7 @@ except (NotImplementedError, ImportError, IOError):
     # handle chrooted calls
     print("cannot import psutil, running chrooted ? setting psutil to None")
     psutil = None
-from lxml.builder import E  # @UnresolvedImports
+from lxml.builder import E
 
 RUN_DIR = "/var/run"
 
@@ -1334,7 +1334,9 @@ def get_char_block_device_dict():
     # parses /proc/devices and returns two dicts
     char_dict, block_dict = ({}, {})
     try:
-        lines = [line.strip().lower() for line in open("/proc/devices", "r").read().split("\n") if line.strip()]
+        lines = [
+            line.strip().lower() for line in open("/proc/devices", "r").read().split("\n") if line.strip()
+        ]
     except:
         pass
     else:
@@ -1529,7 +1531,11 @@ def find_file(file_name, s_path=None, exception_on_error=False):
 
 
 def create_password(**kwargs):
-    def_chars = "".join([chr(asc) for asc in range(ord("a"), ord("z") + 1)])
+    def_chars = "".join(
+        [
+            chr(asc) for asc in range(ord("a"), ord("z") + 1)
+        ]
+    )
     chars = kwargs.get(
         "chars", "{}{}{}".format(
             def_chars,
@@ -1544,7 +1550,13 @@ def create_password(**kwargs):
     if kwargs.get("special_characters", False):
         chars = "{}!§$%&/()[]#+*~".format(chars)
     length = kwargs.get("length", 8)
-    return "".join([chars[random.randrange(len(chars))] for idx in xrange(length)])
+    return "".join(
+        [
+            chars[
+                random.randrange(len(chars))
+            ] for _idx in xrange(length)
+        ]
+    )
 
 
 def get_sys_bits():

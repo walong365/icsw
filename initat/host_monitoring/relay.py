@@ -22,6 +22,8 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
+from __future__ import unicode_literals, print_function
+
 import StringIO
 import os
 import resource

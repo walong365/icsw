@@ -21,7 +21,10 @@
 #
 """ init all enums and create the IcswAppEnum object """
 
+from __future__ import unicode_literals, print_function
+
 from enum import Enum
+
 from initat.host_monitoring.service_enum_base import icswServiceEnumBaseClient
 
 __all__ = [

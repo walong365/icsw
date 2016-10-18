@@ -22,6 +22,8 @@
 
 """ host-monitoring for 0MQ >=  4.x.y, direct socket part """
 
+from __future__ import unicode_literals, print_function
+
 import re
 import select
 import socket

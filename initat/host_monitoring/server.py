@@ -22,6 +22,8 @@
 
 """ host-monitoring, with 0MQ and direct socket support, server code """
 
+from __future__ import unicode_literals, print_function
+
 import StringIO
 import argparse
 import difflib
@@ -35,11 +37,11 @@ from multiprocessing import Queue
 import zmq
 from lxml import etree
 
+from initat.client_version import VERSION_STRING
 from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.host_monitoring.hm_mixins import HMHRMixin
 from initat.tools import logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, config_store
-from initat.client_version import VERSION_STRING
 from initat.tools.server_mixins import ICSWBasePool
 from .config import global_config
 from .constants import TIME_FORMAT, ZMQ_ID_MAP_STORE

@@ -22,6 +22,9 @@
 
 """ host-monitoring, inotify process """
 
+
+from __future__ import unicode_literals, print_function
+
 import fnmatch
 import os
 import stat
@@ -436,7 +439,7 @@ class HMInotifyProcess(threading_tools.process_obj):
         self.log(" got sigint '{}'".format(err_cause), logging_tools.LOG_LEVEL_ERROR)
 
     def _trigger(self, event):
-        print event, "*", dir(event)
+        print(event, "*", dir(event))
 
     def _inotify_check(self, *args, **kwargs):
         try:

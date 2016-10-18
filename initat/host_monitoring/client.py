@@ -22,6 +22,8 @@
 
 """ host-monitoring client """
 
+from __future__ import unicode_literals, print_function
+
 import os
 
 from initat.host_monitoring import limits
@@ -33,9 +35,9 @@ from initat.tools import net_tools, server_command
 def ClientCode(global_config):
     from initat.host_monitoring import modules
     if global_config["VERBOSE"] > 1:
-        print "{:d} import errors:".format(len(modules.IMPORT_ERRORS))
+        print("{:d} import errors:".format(len(modules.IMPORT_ERRORS)))
         for mod, com, _str in modules.IMPORT_ERRORS:
-            print "{:<30s} {:<20s} {}".format(com, mod.split(".")[-1], _str)
+            print("{:<30s} {:<20s} {}".format(com, mod.split(".")[-1], _str))
     conn_str = "tcp://{}:{:d}".format(
         global_config["HOST"],
         global_config["COMMAND_PORT"]
@@ -110,5 +112,5 @@ def ClientCode(global_config):
         )
     if ret.ascii_chunk:
         print("Ignoring ascii_chunk with {:d} bytes".format(len(ret.ascii_chunk)))
-    print ret.ret_str
+    print(ret.ret_str)
     return ret.ret_state

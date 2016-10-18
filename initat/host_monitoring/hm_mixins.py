@@ -22,8 +22,9 @@
 
 """ host-monitoring / relay mixin """
 
-from initat.tools import logging_tools, process_tools
+from __future__ import unicode_literals, print_function
 
+from initat.tools import logging_tools, process_tools
 from .config import global_config
 
 

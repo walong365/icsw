@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2013-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2013-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,8 +22,9 @@
 
 """ host-monitoring, main part """
 
-import sys
+from __future__ import unicode_literals, print_function
 
+import sys
 
 if __name__ == "__main__":
     # modify path if testing
@@ -95,7 +96,6 @@ def main():
 
 
 if __name__ == "__main__":
-    print sys.argv[0]
     if sys.argv[0] == "main.py":
         COLLCLIENT = True
     sys.exit(main())

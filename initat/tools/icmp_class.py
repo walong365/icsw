@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -87,7 +87,7 @@ class ip_packet(object):
         if len(self.options) > 0:
             raise NotImplementedError("Options packing is not implemented")
         data = struct.pack(
-            "!BBHHHBBH4s4s",
+            b"!BBHHHBBH4s4s",
             self.ihlversion,
             self.tos,
             self.tot_len,
@@ -97,7 +97,8 @@ class ip_packet(object):
             self.protocol,
             self.checksum,
             self.src_addr,
-            self.dst_addr)
+            self.dst_addr
+        )
         data += self.payload
         return data
 
@@ -124,7 +125,7 @@ def _parse_ip_packet(data):
         ident, flags_fragment, ttl,
         protocol, checksum,
         src_addr, dst_addr
-    ) = struct.unpack("!BBHHHBBH4s4s", data[:20])
+    ) = struct.unpack(b"!BBHHHBBH4s4s", data[:20])
     src_addr = socket.inet_ntoa(src_addr)
     dst_addr = socket.inet_ntoa(dst_addr)
     version = ihlversion & 0xF0
@@ -166,7 +167,7 @@ class icmp_datagram(object):
         if not data:
             self.checksum = 0
             data = struct.pack(
-                "!BBH{:d}s".format(
+                b"!BBH{:d}s".format(
                     len(self.data)
                 ),
                 self.packet_type,
@@ -181,7 +182,7 @@ class icmp_datagram(object):
     def packed(self):
         self.calc_checksum()
         return struct.pack(
-            "!BBH{:d}s".format(
+            b"!BBH{:d}s".format(
                 len(self.data)
             ),
             self.packet_type,
@@ -212,17 +213,17 @@ class icmp_echo(icmp_datagram):
             icmp_datagram.__init__(self, code, checksum, data, unpack)
         else:
             payload = struct.pack(
-                "!hh{:d}s".format(
+                b"!hh{:d}s".format(
                     len(data)
                 ),
                 self.ident,
                 self.seqno,
-                data
+                str(data)
             )
             icmp_datagram.__init__(self, code, checksum, payload, unpack)
 
     def unpack(self):
-        ident, seqno = struct.unpack("!hh", self.data[:4])
+        ident, seqno = struct.unpack(b"!hh", self.data[:4])
         self.ident = ident
         self.seqno = seqno
         self.data = self.data[:8]
@@ -233,7 +234,7 @@ class icmp_echo_reply(icmp_datagram):
     packet_type = 0
 
     def unpack(self):
-        self.ident, self.seqno = struct.unpack("!hh", self.data[:4])
+        self.ident, self.seqno = struct.unpack(b"!hh", self.data[:4])
         self.data = self.data[:8]
 
 
@@ -301,8 +302,8 @@ class icmp_protocol(object):  # protocol.AbstractDatagramProtocol):
         packet = _parse_ip_packet(datagram)
         header = packet.payload[:4]
         data = packet.payload[4:]
-        packet_type, code, checksum = struct.unpack("!BBH", header)
-        chkdata = struct.pack("!BBH{:d}s".format(len(data)), packet_type, code, 0, data)
+        packet_type, code, checksum = struct.unpack(b"!BBH", header)
+        chkdata = struct.pack(b"!BBH{:d}s".format(len(data)), packet_type, code, 0, data)
         chk = socket.htons(_checksum(chkdata))
         # init dgram
         if checksum != chk:

@@ -22,6 +22,8 @@
 
 """ host-monitoring, with 0MQ and direct socket support, relay part """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import re
 import time
@@ -69,7 +71,7 @@ class ZMQDiscovery(object):
                 process_tools.get_machine_name(),
                 self.src_id
             )
-            new_sock.setsockopt(zmq.IDENTITY, id_str)  # @UndefinedVariable
+            new_sock.setsockopt_string(zmq.IDENTITY, id_str)  # @UndefinedVariable
             new_sock.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
             new_sock.setsockopt(zmq.SNDHWM, ZMQDiscovery.backlog_size)  # @UndefinedVariable
             new_sock.setsockopt(zmq.RCVHWM, ZMQDiscovery.backlog_size)  # @UndefinedVariable

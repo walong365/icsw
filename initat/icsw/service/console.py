@@ -60,26 +60,29 @@ class SrvController(object):
         manager = KeyBindingManager()  # Start with the `KeyBindingManager`.
 
         self.srv_text = ServiceOutput(opt_ns, srv_c, inst_xml)
-        layout = HSplit([
-            # One window that holds the BufferControl with the default buffer on the
-            # left.
-            Window(
-                height=D.exact(1),
-                content=TokenListControl(
-                    self.get_title_line, default_char=Char(" ", token=Token.String.ICSW.Header)
-                )
-            ),
-            Window(
-                height=D.exact(1),
-                content=FillControl('-', token=Token.Line)
-            ),
-            # Display the text 'Hello world' on the right.
-            Window(
-                content=TokenListControl(
-                    self.get_icsw_output,
-                )
-            ),
-        ])
+        layout = HSplit(
+            [
+                # One window that holds the BufferControl with the default buffer on the
+                # left.
+                Window(
+                    height=D.exact(1),
+                    content=TokenListControl(
+                        self.get_title_line,
+                        default_char=Char(" ", token=Token.String.ICSW.Header)
+                    )
+                ),
+                Window(
+                    height=D.exact(1),
+                    content=FillControl('-', token=Token.Line)
+                ),
+                # Display the text 'Hello world' on the right.
+                Window(
+                    content=TokenListControl(
+                        self.get_icsw_output,
+                    )
+                ),
+            ]
+        )
 
         self._updating = False
 

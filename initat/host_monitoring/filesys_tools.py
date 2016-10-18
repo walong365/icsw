@@ -18,13 +18,16 @@
 #
 """ filesystem tools, also used by cluster-server """
 
-import codecs
+from __future__ import unicode_literals, print_function
+
 import base64
+import codecs
 import os
 import shutil
 import stat
 
 from lxml.builder import E
+
 from initat.tools import logging_tools, process_tools, server_command
 
 

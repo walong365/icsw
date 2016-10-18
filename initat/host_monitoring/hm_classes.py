@@ -17,6 +17,8 @@
 #
 """ base class for host-monitoring modules """
 
+from __future__ import unicode_literals, print_function
+
 import argparse
 import cPickle
 import marshal

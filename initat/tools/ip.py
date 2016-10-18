@@ -123,7 +123,7 @@ class Packet:
         self.__parse_addrs()
         # create the packet
         header = struct.pack(
-            'cchhhcc',
+            b'cchhhcc',
             chr(
                 (self.v & 0x0f) << 4 | (self.hl & 0x0f)
             ),  # 4bits each
@@ -163,9 +163,9 @@ class Packet:
                 raise ValueError("invalid source address")
 
     def __unparse_addrs(self):
-        src = struct.unpack('cccc', self.src)
+        src = struct.unpack(b'cccc', self.src)
         self.src = string.joinfields(map(lambda x: str(ord(x)), src), '.')
-        dst = struct.unpack('cccc', self.dst)
+        dst = struct.unpack(b'cccc', self.dst)
         self.dst = string.joinfields(map(lambda x: str(ord(x)), dst), '.')
 
     def __disassemble(self, raw_packet, cksum=0):
@@ -179,14 +179,14 @@ class Packet:
         hl = self.hl * 4
 
         # verify the checksum
-        self.sum = struct.unpack('h', packet[10:12])[0] & 0xffff
+        self.sum = struct.unpack(b'h', packet[10:12])[0] & 0xffff
         if cksum:
             our_cksum = inet.cksum(packet[:20])
             if our_cksum != 0:
                 raise ValueError(packet)
 
         # unpack the fields
-        elts = struct.unpack('cchhhcc', packet[:hl - 10])
+        elts = struct.unpack(b'cchhhcc', packet[:hl - 10])
         # struct didn't do !<> when this was written
         self.tos = ord(elts[1])
         self.len = elts[2] & 0xffff
