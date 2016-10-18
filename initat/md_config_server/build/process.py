@@ -235,7 +235,6 @@ class BuildProcess(
             else:
                 self.log("no mon_host_dependencies found", logging_tools.LOG_LEVEL_ERROR)
                 hdep_from_topo = False
-        cache_mode = DEFAULT_CACHE_MODE
         self.log(
             "rebuild_config called, version is {:d}, mode is {}, hdep_from_topo is {}".format(
                 self.version,
@@ -299,7 +298,17 @@ class BuildProcess(
                 build_dv.init_as_gauge(total_hosts)
             if self.build_mode in [BuildModes.all_master, BuildModes.all_slave]:
                 # build distance map
-                cur_dmap, unreachable_pks = self.DM_build_distance_map(self.__gen_config.monitor_server, self.router_obj, show_unroutable=not self.single_build)
+                cur_dmap, unreachable_pks, unreachable_names = self.DM_build_distance_map(
+                    self.__gen_config.monitor_server,
+                    self.router_obj
+                )
+                if unreachable_pks and not self.single_bild:
+                    self.log(
+                        u"{}: {}".format(
+                            logging_tools.get_plural("unroutable node", len(nodes_names)),
+                            u", ".join(sorted(unreachable_names)),
+                        )
+                    )
                 self.send_pool_message("build_info", "unreachable_devices", len(unreachable_pks), target="syncer")
                 if unreachable_pks:
                     for _urd in device.objects.filter(Q(pk__in=unreachable_pks)).select_related("domain_tree_node"):
@@ -308,13 +317,11 @@ class BuildProcess(
             else:
                 cur_dmap = {}
             cur_gc = self.__gen_config
-            cur_gc.cache_mode = cache_mode
             if self.build_mode == BuildModes.all_master:
                 # recreate access files
                 cur_gc._create_access_entries()
 
             _bc = self.build_cache
-            _bc.cache_mode = cache_mode
             _bc.build_dv = build_dv
             _bc.host_list = self.host_list
             _bc.dev_templates = dev_templates
@@ -975,7 +982,6 @@ class BuildProcess(
                         host=host,
                         global_config=self.gc,
                         build_cache=_bc,
-                        cache_mode=cur_gc.cache_mode,
                     )
                 except:
                     self.log(

@@ -94,7 +94,6 @@ class create_config(View):
     def post(self, request):
         srv_com = server_command.srv_command(
             command="build_host_config",
-            cache_mode=request.POST.get("cache_mode", "DYNAMIC")
         )
         result = contact_server(request, icswServiceEnum.monitor_server, srv_com, connection_id="wf_mdrc")
         if result:

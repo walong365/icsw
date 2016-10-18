@@ -67,7 +67,6 @@ class BuildCache(object):
         self.host_list = []
         self.dev_templates = None
         self.serv_templates = None
-        self.cache_mode = "???"
         self.single_build = False
         self.debug = False
         self.__var_cache = MonVarCache(device.objects.get(Q(device_group__cluster_device_group=True)), prefill=full_build)

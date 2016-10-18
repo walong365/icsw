@@ -339,7 +339,6 @@ class ServerProcess(
         self.log("got sighup", logging_tools.LOG_LEVEL_WARN)
         srv_com = server_command.srv_command(
             command="build_host_config",
-            cache_mode="CACHED"
         )
         self.BC.handle_command(srv_com)
 

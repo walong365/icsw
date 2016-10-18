@@ -86,7 +86,6 @@ class BuildControl(object):
             if global_config["BUILD_CONFIG_ON_STARTUP"] or global_config["INITIAL_CONFIG_RUN"]:
                 srv_com = server_command.srv_command(
                     command="build_host_config",
-                    cache_mode=global_config["INITIAL_CONFIG_CACHE_MODE"],
                 )
                 self.handle_command(srv_com)
         if self.__pending_commands:
@@ -136,14 +135,11 @@ class BuildControl(object):
     def build_host_config(self, srv_com):
         # all builds are handled via this call
         dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
-        dev_cache_modes = list(set(srv_com.xpath(".//device_list/device/@mode", smart_strings=False)))
-        if dev_cache_modes:
-            dev_cache_mode = dev_cache_modes[0]
+        if dev_pks:
             dev_names = [cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=dev_pks)).select_related("domain_tree_node")]
             self.log(
-                "starting single build with {}, cache mode is {}: {}".format(
+                "starting single build with {}: {}".format(
                     logging_tools.get_plural("device", len(dev_names)),
-                    dev_cache_mode,
                     ", ".join(sorted(dev_names))
                 )
             )
@@ -153,12 +149,11 @@ class BuildControl(object):
                 ),
                 server_command.SRV_REPLY_STATE_OK
             )
-            self._rebuild_config(srv_com, *dev_names, cache_mode=dev_cache_mode)
+            self._rebuild_config(srv_com, *dev_names)
         else:
-            cache_mode = srv_com["*cache_mode"]
-            self.log("rebuild config for all hosts with cache_mode '{}'".format(cache_mode))
+            self.log("rebuild config for all hosts")
             srv_com.set_result("rebuild config for all hosts")
-            self._rebuild_config(srv_com, cache_mode=cache_mode)
+            self._rebuild_config(srv_com)
 
     def _rebuild_config(self, srv_com, *args, **kwargs):
         # how many processes to add

@@ -70,7 +70,6 @@ class SpecialBase(object):
         self.Meta.name = self.__class__.__name__.split("_", 1)[1]
         self.ds_name = self.Meta.name
         # print "ds_name=", self.ds_name
-        self.cache_mode = kwargs.get("cache_mode", DEFAULT_CACHE_MODE)
         self.build_process = build_proc
         self.s_check = s_check
         self.parent_check = parent_check
@@ -306,10 +305,9 @@ class SpecialBase(object):
     def __call__(self, **kwargs):
         s_name = self.__class__.__name__.split("_", 1)[1]
         self.log(
-            "starting {} for {}, cache_mode is {}".format(
+            "starting {} for {}".format(
                 s_name,
                 self.host.name,
-                self.cache_mode
             )
         )
         s_time = time.time()
@@ -321,12 +319,7 @@ class SpecialBase(object):
             # show information
             self._show_cache_info()
             # use cache flag, dependent on the cache mode
-            if self.cache_mode == "ALWAYS":
-                self.__use_cache = True
-            elif self.cache_mode == "DYNAMIC":
-                self.__use_cache = self.__cache_valid
-            elif self.cache_mode == "REFRESH":
-                self.__use_cache = False
+            self.__use_cache = True
             # anything got from a direct all
             self.__server_contact_ok, self.__server_contacts = (True, 0)
             # init result list and number of server calls

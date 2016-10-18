@@ -36,15 +36,7 @@ class BuildModes(Enum):
     # build some and redistribute, slave process
     some_slave = "some_slave"
 
-"""
-cache_modes, how to handle to cache for special commands
-in case of connection problems always use the cache (if set, of course)
-ALWAYS   : always use value from cache, even if empty
-DYNAMIC  : use cache only when set and not too old, otherwise try to connect to device
-REFRESH  : always try to contact device
-"""
 
-CACHE_MODES = ["ALWAYS", "DYNAMIC", "REFRESH"]
 DEFAULT_CACHE_MODE = "ALWAYS"
 
 # icinga constants

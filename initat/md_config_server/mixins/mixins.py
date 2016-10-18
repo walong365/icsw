@@ -29,6 +29,7 @@ import commands
 import operator
 import os
 import sqlite3
+import time
 
 import networkx
 from django.db.models import Q
@@ -127,7 +128,8 @@ class ImageMapMixin(object):
 
 
 class DistanceMapMixin(object):
-    def DM_build_distance_map(self, root_node, router_obj, show_unroutable=True):
+    def DM_build_distance_map(self, root_node, router_obj):
+        s_time = time.time()
         self.log("building distance map, root node is '{}'".format(root_node))
         # exclude all without attached netdevices
         dm_dict = {
@@ -204,16 +206,15 @@ class DistanceMapMixin(object):
                     )
             if not run_again:
                 break
-        self.log("max distance level: {:d}".format(max_level))
+        e_time = time.time()
+        self.log(
+            "time spent: {}, max distance level: {:d}".format(
+                logging_tools.get_diff_time_str(e_time - s_time),
+                max_level,
+            )
+        )
         nodes_ur = [unicode(value) for value in dm_dict.itervalues() if value.md_dist_level < 0]
         ur_pks = [_entry.pk for _entry in dm_dict.itervalues() if _entry.md_dist_level < 0]
-        if nodes_ur and show_unroutable:
-            self.log(
-                u"{}: {}".format(
-                    logging_tools.get_plural("unroutable node", len(nodes_ur)),
-                    u", ".join(sorted(nodes_ur)),
-                )
-            )
         for level in xrange(max_level + 1):
             self.log(
                 "nodes in level {:d}: {}".format(
@@ -223,7 +224,7 @@ class DistanceMapMixin(object):
             )
         return {
             key: value.md_dist_level for key, value in dm_dict.iteritems()
-        }, ur_pks
+        }, ur_pks, nodes_ur
 
 
 class NagVisMixin(object):
