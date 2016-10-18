@@ -1479,20 +1479,22 @@ class virtual_desktop_user_setting(models.Model):
 
 @receiver(signals.pre_save, sender=virtual_desktop_user_setting)
 def virtual_desktop_user_setting_pre_save(sender, instance, raw, **kwargs):
-    if not raw:
-        if LicenseLockListUser.objects.is_user_locked(LicenseEnum.virtual_desktop, instance.user):
-            raise ValidationError(u"User {} is locked from accessing virtual desktops".format(unicode(instance.user)))
+    pass
+    # if not raw:
+    #     if LicenseLockListUser.objects.is_user_locked(LicenseEnum.virtual_desktop, instance.user):
+    #        raise ValidationError(u"User {} is locked from accessing virtual desktops".format(unicode(instance.user)))
 
 
 @receiver(signals.post_save, sender=virtual_desktop_user_setting)
 def virtual_desktop_user_setting_post_save(sender, **kwargs):
-    if not kwargs["raw"] and "instance" in kwargs:
-        _cur_inst = kwargs["instance"]
-        if _cur_inst._send_signals:
-            VirtualDesktopUserSettingChanged.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_save")
+    pass
+    # if not kwargs["raw"] and "instance" in kwargs:
+    #    _cur_inst = kwargs["instance"]
+    #    if _cur_inst._send_signals:
+    #        VirtualDesktopUserSettingChanged.send(sender=_cur_inst, vdus=_cur_inst, cause="vdus_save")
 
-        # if _cur_inst.is_running and not _cur_inst.to_delete:
-        #    LicenseUsage.log_usage(LicenseEnum.virtual_desktop, LicenseParameterTypeEnum.user, _cur_inst.user)
+    #    # if _cur_inst.is_running and not _cur_inst.to_delete:
+    #    #    LicenseUsage.log_usage(LicenseEnum.virtual_desktop, LicenseParameterTypeEnum.user, _cur_inst.user)
 
 
 class virtual_desktop_protocol(models.Model):
