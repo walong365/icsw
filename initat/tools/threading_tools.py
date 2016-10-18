@@ -52,7 +52,7 @@ def _debug(what):
 
 
 # base class
-class exception_handling_base(object):
+class ExceptionHandlingBase(object):
     pass
 
 
@@ -316,7 +316,7 @@ class TimerBase(object):
                         cur_to.increase_timer()
                     if _bumped:
                         self.log(
-                            "bumped timer with id {:d} {}".format(
+                            "bumped timer with id {:d} ({})".format(
                                 cur_to.timer_id,
                                 logging_tools.get_plural("time", _bumped)
                             ),
@@ -352,7 +352,7 @@ class TimerBase(object):
         return self.__loop_timer
 
 
-class poller_obj(object):
+class PollerBase(object):
     def __init__(self):
         # poller
         self.poller = zmq.Poller()
@@ -511,15 +511,15 @@ class ICSWAutoInit(object):
                 _cl.__init__(self)
 
 
-class exception_handling_mixin(object):
+class ExceptionHandlingMixin(object):
     def __init__(self):
         self.__exception_table = {}
         for _cl in inspect.getmro(self.__class__):
             # handle if
-            # ... is subclass of exception_handling_base
-            # ... is not exception_handling_base
-            # ... is no subclass of exception_handling_mixin
-            if issubclass(_cl, exception_handling_base) and _cl != exception_handling_base and not issubclass(_cl, exception_handling_mixin):
+            # ... is subclass of ExceptionHandlingBase
+            # ... is not ExceptionHandlingBase
+            # ... is no subclass of ExceptionHandlingMixin
+            if issubclass(_cl, ExceptionHandlingBase) and _cl != ExceptionHandlingBase and not issubclass(_cl, ExceptionHandlingMixin):
                 _cl.__init__(self)
 
     def register_exception(self, exc_type, call):
@@ -592,16 +592,16 @@ class exception_handling_mixin(object):
         return _handled
 
 
-class process_obj(multiprocessing.Process, TimerBase, poller_obj, process_base, exception_handling_mixin, ICSWAutoInit):
+class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, ExceptionHandlingMixin, ICSWAutoInit):
     def __init__(self, name, **kwargs):
         # early init of name
         self._name = name
         multiprocessing.Process.__init__(self, target=self._code, name=name)
         ICSWAutoInit.__init__(self)
         TimerBase.__init__(self, loop_timer=kwargs.get("loop_timer", 0))
-        poller_obj.__init__(self)
+        PollerBase.__init__(self)
         self.kill_myself = kwargs.get("kill_myself", False)
-        exception_handling_mixin.__init__(self)
+        ExceptionHandlingMixin.__init__(self)
         self.__stack_size = kwargs.get("stack_size", DEFAULT_STACK_SIZE)
         # self.__set_stack_size = kwargs
         # received signals
@@ -969,7 +969,7 @@ class process_obj(multiprocessing.Process, TimerBase, poller_obj, process_base, 
                     raise
 
 
-class process_pool(TimerBase, poller_obj, process_base, exception_handling_mixin, ICSWAutoInit):
+class process_pool(TimerBase, PollerBase, process_base, ExceptionHandlingMixin, ICSWAutoInit):
     def __init__(self, name, **kwargs):
         threading.currentThread().setName(kwargs.get("name", "main"))
         self.name = name
@@ -977,8 +977,8 @@ class process_pool(TimerBase, poller_obj, process_base, exception_handling_mixin
         self.debug_zmq = "ICSW_ZMQ_DEBUG" in os.environ
         ICSWAutoInit.__init__(self)
         TimerBase.__init__(self)
-        poller_obj.__init__(self)
-        exception_handling_mixin.__init__(self)
+        PollerBase.__init__(self)
+        ExceptionHandlingMixin.__init__(self)
         self.pid = os.getpid()
         self.__socket_buffer = {}
         if self.debug_zmq:
