@@ -177,9 +177,19 @@ class BuildProcess(
             )
 
     def _routing_fingerprint(self, *args, **kwargs):
+        # called when process is a slave after the main process has determined the current routing generation
         self.router_obj = config_tools.RouterObject(self.log)
         self.routing_fingerprint = args[0]
-        self.log("routing_fingerprint is {} (router: {})".format(self.routing_fingerprint, self.router_obj.fingerprint))
+        if self.routing_fingerprint == self.router_obj.fingerprint:
+            self.log("routing_fingerprint is {}".format(self.routing_fingerprint))
+        else:
+            self.log(
+                "routing_fingerprint {} doesn not match local fingerprint {}".format(
+                    self.routing_fingerprint,
+                    self.router_obj.fingerprint
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         self.build_cache = BuildCache(
             self.log,
             full_build=not self.single_build,
@@ -204,17 +214,17 @@ class BuildProcess(
                 full_build=not self.single_build,
                 routing_fingerprint=self.routing_fingerprint
             )
+            if self.build_mode == BuildModes.all_master:
+                # from mixin
+                # todo, remove, move to syncer
+                self.VCM_check_md_version()
+                self._cleanup_db()
+                # check for SNMP container config
+                self._check_for_snmp_container()
             self.fingerprint_set()
 
     def fingerprint_set(self):
         # fingerprint valid (either called directly or via routing_fingerprint command from control)
-        if self.build_mode == BuildModes.all_master:
-            # from mixin
-            # todo, remove, move to syncer
-            self.VCM_check_md_version()
-            self._cleanup_db()
-            # check for SNMP container config
-            self._check_for_snmp_container()
         # copy global_config
         self.gc = global_config
         hdep_from_topo = self.gc["USE_HOST_DEPENDENCIES"] and self.gc["HOST_DEPENDENCIES_FROM_TOPOLOGY"]
@@ -225,15 +235,11 @@ class BuildProcess(
             else:
                 self.log("no mon_host_dependencies found", logging_tools.LOG_LEVEL_ERROR)
                 hdep_from_topo = False
-        cache_mode = "???"
-        if cache_mode not in CACHE_MODES:
-            # take first cache mode
-            cache_mode = DEFAULT_CACHE_MODE
+        cache_mode = DEFAULT_CACHE_MODE
         self.log(
-            "rebuild_config called, version is {:d}, mode is {}, cache_mode is {}, hdep_from_topo is {}".format(
+            "rebuild_config called, version is {:d}, mode is {}, hdep_from_topo is {}".format(
                 self.version,
                 self.build_mode,
-                cache_mode,
                 str(hdep_from_topo),
             )
         )
@@ -262,6 +268,7 @@ class BuildProcess(
             self.send_pool_message("build_info", "start_build", self.version, self.build_mode == BuildModes.all_master, target="syncer")
         else:
             build_dv = None
+
         # fetch SNMP-stuff from cluster and initialise var cache
         self._create_general_config(self.build_mode, write_entries=self.build_mode not in [BuildModes.some_check])
         bc_valid = self.__gen_config.is_valid
@@ -285,8 +292,8 @@ class BuildProcess(
                     if key in self.__gen_config:
                         self.__gen_config[key].refresh(self.__gen_config)
             self.router_obj.check_for_update()
-            # todo, fixme
-            total_hosts = 10  # sum([self._get_number_of_hosts(cur_gc, h_list) for cur_gc in [self.__gen_config] + self.__slave_configs.values()])
+            # hosts to build
+            total_hosts = self._get_number_of_hosts()
             if build_dv:
                 self.log("init gauge with max={:d}".format(total_hosts))
                 build_dv.init_as_gauge(total_hosts)
@@ -300,33 +307,33 @@ class BuildProcess(
                     self.build_cache.feed_unreachable_pks(unreachable_pks)
             else:
                 cur_dmap = {}
-            for cur_gc in [self.__gen_config]:
-                cur_gc.cache_mode = cache_mode
-                if self.build_mode == BuildModes.all_master:
-                    # recreate access files
-                    cur_gc._create_access_entries()
+            cur_gc = self.__gen_config
+            cur_gc.cache_mode = cache_mode
+            if self.build_mode == BuildModes.all_master:
+                # recreate access files
+                cur_gc._create_access_entries()
 
-                _bc = self.build_cache
-                _bc.cache_mode = cache_mode
-                _bc.build_dv = build_dv
-                _bc.host_list = self.host_list
-                _bc.dev_templates = dev_templates
-                _bc.serv_templates = serv_templates
-                _bc.single_build = self.single_build
-                _bc.debug = self.gc["DEBUG"]
-                self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
-                self._create_host_config_files(_bc, cur_gc, cur_dmap, hdep_from_topo)
-                self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
-                if self.build_mode in [BuildModes.all_master, BuildModes.all_slave, BuildModes.some_master, BuildModes.some_slave]:
-                    # refresh implies _write_entries
-                    cur_gc.refresh()
-                    # write config to disk
-                    cur_gc.write_entries()
-                    # start syncing
-                    self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
-                del _bc
-            if build_dv:
-                build_dv.delete()
+            _bc = self.build_cache
+            _bc.cache_mode = cache_mode
+            _bc.build_dv = build_dv
+            _bc.host_list = self.host_list
+            _bc.dev_templates = dev_templates
+            _bc.serv_templates = serv_templates
+            _bc.single_build = self.single_build
+            _bc.debug = self.gc["DEBUG"]
+            self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
+            self._create_host_config_files(_bc, cur_gc, cur_dmap, hdep_from_topo)
+            self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
+            if self.build_mode in [BuildModes.all_master, BuildModes.all_slave, BuildModes.some_master, BuildModes.some_slave]:
+                # refresh implies _write_entries
+                cur_gc.refresh()
+                # write config to disk
+                cur_gc.write_entries()
+                # start syncing
+                self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
+            del _bc
+        if build_dv:
+            build_dv.delete()
         if self.build_mode == BuildModes.all_master:
             self.send_pool_message("build_info", "end_build", self.version, target="syncer")
         if self.build_mode in [BuildModes.some_check, BuildModes.some_master]:
@@ -690,8 +697,6 @@ class BuildProcess(
                                                 s_check,
                                                 self._get_cc_name("{}{}{}".format(s_check.get_description(), _bc.join_char, mhc_check.description)),
                                                 arg1=mhc_check.description,
-                                                # arg2="@{:d}:".format(mhc_check.warn_value),
-                                                # arg3="@{:d}:".format(mhc_check.error_value),
                                                 arg2=mhc_check.warn_value,
                                                 arg3=mhc_check.error_value,
                                                 arg4=",".join(["$HOSTSTATEID:{}$".format(_dev_name) for _dev_name in dev_names]),
@@ -1055,21 +1060,14 @@ class BuildProcess(
             )
             return False
 
-    def _get_number_of_hosts(self, cur_gc, hosts):
-        if hosts:
-            h_filter = Q(name__in=hosts)
-        else:
-            h_filter = Q()
+    def _get_number_of_hosts(self):
+        _q = device.objects.exclude(Q(is_meta_device=True)).filter(Q(enabled=True) & Q(device_group__enabled=True))
+        if self.host_list:
+            _q = _q.filter(Q(name__in=self.host_list))
         # add master/slave related filters
-        if cur_gc.master:
-            pass
-            # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
-        else:
-            h_filter &= Q(monitor_server=cur_gc.monitor_server)
-        h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
-        return device.objects.exclude(
-            Q(is_meta_device=True)
-        ).filter(h_filter).count()
+        if not self.__gen_config.master:
+            _q = _q.filter(Q(monitor_server=self.__gen_config.monitor_server))
+        return _q.count()
 
     def _create_host_config_files(self, _bc, cur_gc, d_map, hdep_from_topo):
         """

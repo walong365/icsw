@@ -143,6 +143,9 @@ for src_key, dst_key, _add_to_cache_key in [
             _c_key.update(src_key)
             _c_key.update(_ps[src_key])
         DATABASES["default"][dst_key] = _ps[src_key]
+    if DATABASES["default"].get("ENGINE", "???").count("sqlite"):
+        # set default timeout very high
+        DATABASES["default"][b"OPTIONS"] = {b"timeout": 30}
 
 ICSW_CACHE_KEY_LONG = _c_key.hexdigest()
 # short to ICSW_CACHE_KEY

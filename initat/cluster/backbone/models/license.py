@@ -440,6 +440,7 @@ class icswEggEvaluationDef(models.Model):
         from initat.cluster.backbone.models import ConfigServiceEnum
         if not self.active:
             raise StandardError("Cannot create consumers from inactive EggEvaluationDef")
+        icswEggConsumer.objects.filter(Q(content_type=None)).delete()
         # create or update all consumers
         # build list of required consumers
         _c_list = []
