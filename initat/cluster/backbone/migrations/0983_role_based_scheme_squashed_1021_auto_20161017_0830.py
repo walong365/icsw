@@ -242,23 +242,8 @@ class Migration(migrations.Migration):
         ),
         migrations.AddField(
             model_name='assetbatch',
-            name='hdds',
-            field=models.ManyToManyField(to=b'backbone.AssetHWHDDEntry'),
-        ),
-        migrations.AddField(
-            model_name='assetbatch',
             name='memory_modules',
             field=models.ManyToManyField(to=b'backbone.AssetHWMemoryEntry'),
-        ),
-        migrations.AddField(
-            model_name='assetbatch',
-            name='packages',
-            field=models.ManyToManyField(to=b'backbone.AssetPackageVersion'),
-        ),
-        migrations.AddField(
-            model_name='assetbatch',
-            name='partitions',
-            field=models.ManyToManyField(to=b'backbone.AssetHWLogicalEntry'),
         ),
         migrations.AlterField(
             model_name='assetrun',
@@ -287,14 +272,6 @@ class Migration(migrations.Migration):
             field=models.ManyToManyField(to=b'backbone.AssetHWNetworkDevice'),
         ),
         migrations.CreateModel(
-            name='AssetPackageVersionInstallTime',
-            fields=[
-                ('idx', models.AutoField(primary_key=True, serialize=False)),
-                ('package_version', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, to='backbone.AssetPackageVersion')),
-                ('timestamp', models.BigIntegerField(default=0)),
-            ],
-        ),
-        migrations.CreateModel(
             name='ReportHistory',
             fields=[
                 ('idx', models.AutoField(primary_key=True, serialize=False)),
@@ -309,11 +286,6 @@ class Migration(migrations.Migration):
                 ('progress', models.IntegerField(default=0)),
             ],
         ),
-        migrations.AddField(
-            model_name='assetbatch',
-            name='packages_install_times',
-            field=models.ManyToManyField(to=b'backbone.AssetPackageVersionInstallTime'),
-        ),
         migrations.AlterField(
             model_name='partition',
             name='size',
@@ -322,10 +294,6 @@ class Migration(migrations.Migration):
         migrations.RunPython(
             code=functools.partial(convert_size, *(), **{b'factor': 1048576}),
             reverse_code=functools.partial(convert_size, *(), **{b'factor': 9.5367431640625e-07}),
-        ),
-        migrations.RemoveField(
-            model_name='assetbatch',
-            name='hdds',
         ),
         migrations.AddField(
             model_name='assetbatch',
@@ -455,10 +423,6 @@ class Migration(migrations.Migration):
         migrations.RemoveField(
             model_name='assetbatch',
             name='num_runs_ok',
-        ),
-        migrations.RemoveField(
-            model_name='assetbatch',
-            name='partitions',
         ),
         migrations.RemoveField(
             model_name='assetbatch',
@@ -783,18 +747,6 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.RemoveField(
-            model_name='assetpackageversioninstalltime',
-            name='package_version',
-        ),
-        migrations.RemoveField(
-            model_name='assetbatch',
-            name='packages',
-        ),
-        migrations.RemoveField(
-            model_name='assetbatch',
-            name='packages_install_times',
-        ),
-        migrations.RemoveField(
             model_name='assetpackageversion',
             name='size',
         ),
@@ -802,9 +754,6 @@ class Migration(migrations.Migration):
             model_name='assetbatch',
             name='installed_packages_status',
             field=models.IntegerField(default=0),
-        ),
-        migrations.DeleteModel(
-            name='AssetPackageVersionInstallTime',
         ),
         migrations.AddField(
             model_name='assetpackageversioninstallinfo',

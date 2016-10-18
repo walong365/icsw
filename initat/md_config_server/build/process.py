@@ -62,8 +62,8 @@ class BuildProcess(
         self.__num_mach_logs = {}
         # self.version = int(time.time())
         # self.log("initial config_version is {:d}".format(self.version))
-        self.router_obj = config_tools.RouterObject(self.log)
         self.register_func("start_build", self._start_build)
+        self.register_func("routing_fingerprint", self._routing_fingerprint)
 
     def loop_post(self):
         self.log("build {} process exiting".format(self.name))
@@ -176,14 +176,39 @@ class BuildProcess(
                 command_line="/bin/true",
             )
 
+    def _routing_fingerprint(self, *args, **kwargs):
+        self.router_obj = config_tools.RouterObject(self.log)
+        self.routing_fingerprint = args[0]
+        self.log("routing_fingerprint is {} (router: {})".format(self.routing_fingerprint, self.router_obj.fingerprint))
+        self.build_cache = BuildCache(
+            self.log,
+            full_build=not self.single_build,
+            routing_fingerprint=self.routing_fingerprint
+        )
+        self.fingerprint_set()
+
     def _start_build(self, *args, **kwargs):
         args = list(args)
-        _mode = args.pop(0)
+        self.build_mode = args.pop(0)
         self.__gen_config = MainConfig(self, args.pop(0))
         self.version = args.pop(0)
-        srv_com = server_command.srv_command(source=args.pop(0))
-        single_build = True if len(args) > 0 else False
-        if _mode == BuildModes.all_master:
+        self.srv_com = server_command.srv_command(source=args.pop(0))
+        self.single_build = True if len(args) > 0 else False
+        self.host_list = list(args)
+        if self.__gen_config.master:
+            self.router_obj = config_tools.RouterObject(self.log)
+            self.send_pool_message("build_step", "routing_ok", self.router_obj.fingerprint)
+            self.routing_fingerprint = self.router_obj.fingerprint
+            self.build_cache = BuildCache(
+                self.log,
+                full_build=not self.single_build,
+                routing_fingerprint=self.routing_fingerprint
+            )
+            self.fingerprint_set()
+
+    def fingerprint_set(self):
+        # fingerprint valid (either called directly or via routing_fingerprint command from control)
+        if self.build_mode == BuildModes.all_master:
             # from mixin
             # todo, remove, move to syncer
             self.VCM_check_md_version()
@@ -200,15 +225,14 @@ class BuildProcess(
             else:
                 self.log("no mon_host_dependencies found", logging_tools.LOG_LEVEL_ERROR)
                 hdep_from_topo = False
-        h_list = list(args)
-        cache_mode = kwargs.get("cache_mode", "???")
+        cache_mode = "???"
         if cache_mode not in CACHE_MODES:
             # take first cache mode
             cache_mode = DEFAULT_CACHE_MODE
         self.log(
             "rebuild_config called, version is {:d}, mode is {}, cache_mode is {}, hdep_from_topo is {}".format(
                 self.version,
-                _mode,
+                self.build_mode,
                 cache_mode,
                 str(hdep_from_topo),
             )
@@ -216,7 +240,7 @@ class BuildProcess(
         if self.gc["DEBUG"]:
             cur_query_count = len(connection.queries)
         cdg = device.objects.get(Q(device_group__cluster_device_group=True))
-        if _mode in [BuildModes.all_master, BuildModes.some_master]:
+        if self.build_mode in [BuildModes.all_master, BuildModes.some_master]:
             # delete old gauge variables
             device_variable.objects.filter(Q(name="_SYS_GAUGE_") & Q(is_public=False) & Q(device=cdg)).delete()
             # init build variable
@@ -235,11 +259,11 @@ class BuildProcess(
             else:
                 self.version += 1
             self.log("config_version for full build is {:d}".format(self.version))
-            self.send_pool_message("build_info", "start_build", self.version, _mode == BuildModes.all_master, target="syncer")
+            self.send_pool_message("build_info", "start_build", self.version, self.build_mode == BuildModes.all_master, target="syncer")
         else:
             build_dv = None
         # fetch SNMP-stuff from cluster and initialise var cache
-        self._create_general_config(_mode, write_entries=_mode not in [BuildModes.some_check])
+        self._create_general_config(self.build_mode, write_entries=self.build_mode not in [BuildModes.some_check])
         bc_valid = self.__gen_config.is_valid
         if bc_valid:
             # get device templates
@@ -255,7 +279,7 @@ class BuildProcess(
                     self.log("service templates are not valid", logging_tools.LOG_LEVEL_ERROR)
                 bc_valid = False
         if bc_valid:
-            if _mode == BuildModes.some_check:
+            if self.build_mode == BuildModes.some_check:
                 # clean device and service entries
                 for key in constants.SINGLE_BUILD_MAPS:
                     if key in self.__gen_config:
@@ -266,34 +290,34 @@ class BuildProcess(
             if build_dv:
                 self.log("init gauge with max={:d}".format(total_hosts))
                 build_dv.init_as_gauge(total_hosts)
-            if _mode in [BuildModes.all_master, BuildModes.all_slave]:
+            if self.build_mode in [BuildModes.all_master, BuildModes.all_slave]:
                 # build distance map
-                cur_dmap, unreachable_pks = self.DM_build_distance_map(self.__gen_config.monitor_server, self.router_obj, show_unroutable=not single_build)
+                cur_dmap, unreachable_pks = self.DM_build_distance_map(self.__gen_config.monitor_server, self.router_obj, show_unroutable=not self.single_build)
                 self.send_pool_message("build_info", "unreachable_devices", len(unreachable_pks), target="syncer")
                 if unreachable_pks:
                     for _urd in device.objects.filter(Q(pk__in=unreachable_pks)).select_related("domain_tree_node"):
                         self.send_pool_message("build_info", "unreachable_device", _urd.pk, unicode(_urd), unicode(_urd.device_group), target="syncer")
+                    self.build_cache.feed_unreachable_pks(unreachable_pks)
             else:
                 cur_dmap = {}
-                unreachable_pks = []
             for cur_gc in [self.__gen_config]:
                 cur_gc.cache_mode = cache_mode
-                if _mode == BuildModes.all_master:
+                if self.build_mode == BuildModes.all_master:
                     # recreate access files
                     cur_gc._create_access_entries()
 
-                _bc = BuildCache(self.log, cdg, full_build=not single_build, unreachable_pks=unreachable_pks)
+                _bc = self.build_cache
                 _bc.cache_mode = cache_mode
                 _bc.build_dv = build_dv
-                _bc.host_list = h_list
+                _bc.host_list = self.host_list
                 _bc.dev_templates = dev_templates
                 _bc.serv_templates = serv_templates
-                _bc.single_build = single_build
+                _bc.single_build = self.single_build
                 _bc.debug = self.gc["DEBUG"]
                 self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
                 self._create_host_config_files(_bc, cur_gc, cur_dmap, hdep_from_topo)
                 self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
-                if _mode in [BuildModes.all_master, BuildModes.all_slave, BuildModes.some_master, BuildModes.some_slave]:
+                if self.build_mode in [BuildModes.all_master, BuildModes.all_slave, BuildModes.some_master, BuildModes.some_slave]:
                     # refresh implies _write_entries
                     cur_gc.refresh()
                     # write config to disk
@@ -303,9 +327,9 @@ class BuildProcess(
                 del _bc
             if build_dv:
                 build_dv.delete()
-        if _mode == BuildModes.all_master:
+        if self.build_mode == BuildModes.all_master:
             self.send_pool_message("build_info", "end_build", self.version, target="syncer")
-        if _mode in [BuildModes.some_check, BuildModes.some_master]:
+        if self.build_mode in [BuildModes.some_check, BuildModes.some_master]:
             cur_gc = self.__gen_config
             res_node = E.config(
                 *sum(
@@ -315,8 +339,8 @@ class BuildProcess(
                     []
                 )
             )
-            srv_com["result"] = res_node
-            self.send_pool_message("remote_call_async_result", unicode(srv_com))
+            self.srv_com["result"] = res_node
+            self.send_pool_message("remote_call_async_result", unicode(self.srv_com))
         if self.gc["DEBUG"]:
             tot_query_count = len(connection.queries) - cur_query_count
             self.log("queries issued: {:d}".format(tot_query_count))
@@ -1413,11 +1437,7 @@ class BuildProcess(
         return ret_field
 
     def _get_target_ip_info(self, _bc, srv_net_idxs, net_devices, host):
-        if _bc.cache_mode in ["ALWAYS"]:
-            # use stored traces in mode ALWAYS
-            traces = _bc.get_mon_host_trace(host, net_devices, srv_net_idxs)
-        else:
-            traces = []
+        traces = _bc.get_mon_host_trace(host, net_devices, srv_net_idxs)
         if not traces:
             pathes = self.router_obj.get_ndl_ndl_pathes(srv_net_idxs, net_devices.keys(), add_penalty=True)
             traces = []

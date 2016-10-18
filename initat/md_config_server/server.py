@@ -124,6 +124,7 @@ class ServerProcess(
             self.register_func("ocsp_results", self._ocsp_results)
             self.register_func("set_sync_master_uuid", self._set_sync_master_uuid)
             self.register_func("distribution_info", self._distribution_info)
+            self.register_func("build_step", self.BC.build_step)
 
             self.add_process(SyncerProcess("syncer"), start=True)
             self.add_process(DynConfigProcess("dynconfig"), start=True)
