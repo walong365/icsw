@@ -92,15 +92,48 @@
             <dir value="/opt/cluster/system/rrd" user="idrrd" group="idg" create="1"/>
         </access-rights>
     </instance>
-    <instance name="nginx" check_type="simple" pid_file_name="nginx.pid" any_threads_ok="1" runs_on="system">
+    <instance
+        name="nginx"
+        check_type="simple"
+        pid_file_name="nginx.pid"
+        any_threads_ok="1"
+        runs_on="system"
+    >
     </instance>
-    <instance name="icinga-init" check_type="pid_file" pid_file_name="/opt/cluster/icinga/var/icinga.lock" any_threads_ok="1" startstop="0" runs_on="system">
+    <instance
+        name="icinga-init"
+        check_type="pid_file"
+        pid_file_name="/opt/cluster/icinga/var/icinga.lock"
+        any_threads_ok="1"
+        startstop="0"
+        runs_on="system"
+        init_script_name="/opt/cluster/etc/mon_info"
+    >
     </instance>
-    <instance name="uwsgi-init" check_type="simple" pid_file_name="uwsgi-init.pid" any_threads_ok="1" runs_on="system">
+    <instance
+        name="uwsgi-init"
+        check_type="simple"
+        pid_file_name="uwsgi-init.pid"
+        any_threads_ok="1"
+        runs_on="system"
+    >
     </instance>
-    <instance name="rrdcached" check_type="pid_file" any_threads_ok="1" runs_on="system" pid_file_name="rrdcached/rrdcached.pid" startstop="0">
+    <instance
+        name="rrdcached"
+        check_type="pid_file"
+        any_threads_ok="1"
+        runs_on="system"
+        pid_file_name="rrdcached/rrdcached.pid"
+        startstop="0"
+    >
     </instance>
-    <instance check_type="meta" name="rrd-grapher" alias="grapher" pid_file_name="rrd-grapher/rrd-grapher.pid" uuid-postfix="grapher">
+    <instance
+        check_type="meta"
+        name="rrd-grapher"
+        alias="grapher"
+        pid_file_name="rrd-grapher/rrd-grapher.pid"
+        uuid-postfix="grapher"
+    >
         <config-enums>
             <config-enum>grapher_server</config-enum>
         </config-enums>
