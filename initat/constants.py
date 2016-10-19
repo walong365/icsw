@@ -30,25 +30,56 @@ import os
 import sys
 
 __all__ = [
-    "GEN_CS_NAME",
-    "DB_ACCESS_CS_NAME",
-    "VERSION_CS_NAME",
-    "CLUSTER_DIR",
-    "USER_EXTENSION_ROOT",
-    "LOG_ROOT",
-    "PY_LIBDIR_SHORT",
-    "SITE_PACKAGES_BASE",
-    "INITAT_BASE",
-    "INITAT_BASE_DEBUG",
-    "MON_DAEMON_INFO_FILE",
+    b"GEN_CS_NAME",
+    b"DB_ACCESS_CS_NAME",
+    b"VERSION_CS_NAME",
+    b"CLUSTER_DIR",
+    b"CONFIG_STORE_ROOT",
+    b"USER_EXTENSION_ROOT",
+    b"LOG_ROOT",
+    b"MON_DAEMON_INFO_FILE",
+    b"PY_LIBDIR_SHORT",
+    b"ICSW_ROOT",
+    b"SITE_PACKAGES_BASE",
+    b"INITAT_BASE",
+    b"INITAT_BASE_DEBUG",
 ]
 
 GEN_CS_NAME = "icsw.general"
 DB_ACCESS_CS_NAME = "icsw.db.access"
 VERSION_CS_NAME = "icsw.sysversion"
 
+# python version
+_PY_VERSION = "{:d}.{:d}".format(
+    sys.version_info.major,
+    sys.version_info.minor
+)
+PY_LIBDIR_SHORT = "python{}".format(_PY_VERSION)
+
 # cluster dir
-CLUSTER_DIR = "/opt/cluster"
+_cluster_dir = os.path.join("/", "opt", "cluster")
+_icsw_root = os.path.join("/", "opt", "python-init", "lib", PY_LIBDIR_SHORT, "site-packages")
+
+_os_vars = {"ICSW_CLUSTER_DIR", "ICSW_ROOT"}
+
+if any([_var in os.environ for _var in _os_vars]) and not all([_var in os.environ for _var in _os_vars]):
+    print(
+        "not all environment vars for debugging are set: {}".format(
+            ", ".join(
+                [
+                    "{} ({})".format(
+                        _var,
+                        "present" if _var in os.environ else "not present",
+                    ) for _var in sorted(_os_vars)
+                ]
+            )
+        )
+    )
+    raise SystemExit
+
+CLUSTER_DIR = os.environ.get("ICSW_CLUSTER_DIR", _cluster_dir)
+ICSW_ROOT = os.environ.get("ICSW_ROOT", _icsw_root)
+
 # user extension dir
 USER_EXTENSION_ROOT = os.path.join(CLUSTER_DIR, "share", "user_extensions.d")
 # changed from cluster to icsw due to clash with corosync packages
@@ -56,12 +87,10 @@ LOG_ROOT = "/var/log/icsw"
 # monitoring daemon info
 MON_DAEMON_INFO_FILE = os.path.join(CLUSTER_DIR, "etc", "mon_info")
 
-_PY_VERSION = "{:d}.{:d}".format(
-    sys.version_info.major,
-    sys.version_info.minor
-)
-PY_LIBDIR_SHORT = "python{}".format(_PY_VERSION)
-SITE_PACKAGES_BASE = os.path.join("/opt/python-init", "lib", PY_LIBDIR_SHORT, "site-packages")
+SITE_PACKAGES_BASE = ICSW_ROOT
+CONFIG_STORE_ROOT = os.path.join(CLUSTER_DIR, "etc", "cstores.d")
+
+BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone")
 
 # system base
 INITAT_BASE = os.path.join(SITE_PACKAGES_BASE, "initat")

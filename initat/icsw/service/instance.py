@@ -115,7 +115,7 @@ class InstanceXML(object):
 
     def read(self):
         relax_dir = os.path.dirname(__file__)
-        if __file__.startswith("/opt"):
+        if __file__.startswith("/opt") or "ICSW_CLUSTER_DIR" in os.environ:
             _dir = SERVERS_DIR
         else:
             # not beautiful but working

@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,12 +19,13 @@
 #
 """ data_store structure for rrd-grapher """
 
-from lxml import etree
-import re
 import os
+import re
 
-from lxml.builder import E
 from django.db.models import Q
+from lxml import etree
+from lxml.builder import E
+
 from initat.cluster.backbone.models import MachineVector, MVStructEntry
 from initat.rrd_grapher.config import global_config
 from initat.tools import logging_tools, process_tools

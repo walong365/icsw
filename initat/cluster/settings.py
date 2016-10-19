@@ -41,12 +41,12 @@ from initat.tools import logging_tools, config_store, process_tools
 # set unified name
 logging_tools.UNIFIED_NAME = "cluster.http"
 
-ugettext = lambda s: s  # @IgnorePep8
+ugettext = lambda s: s
 
 # monkey-patch threading for python 2.7.x
 if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
     import threading
-    threading._DummyThread._Thread__stop = lambda x: 42  # @IgnorePep8
+    threading._DummyThread._Thread__stop = lambda x: 42
 
 DEBUG = "DEBUG_WEBFRONTEND" in os.environ
 
@@ -451,7 +451,7 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         "initat": {
-            "()": "initat.tools.logging_net.initat_formatter",
+            "()": "initat.tools.logging_net.icswInitFormatter",
         },
         'verbose': {
             'format': '%(levelname)s %(asctime)s %(message)s'
@@ -468,17 +468,17 @@ LOGGING = {
         },
         "init_unified": {
             "level": "INFO" if DEBUG else "WARN",
-            "class": "initat.tools.logging_net.init_handler_unified",
+            "class": "initat.tools.logging_net.icswInitHandlerUnified",
             "formatter": "initat",
         },
         "init": {
             "level": 'INFO' if DEBUG else "WARN",
-            "class": "initat.tools.logging_net.init_handler",
+            "class": "initat.tools.logging_net.icswInitHandler",
             "formatter": "initat",
         },
         "init_mail": {
             "level": "ERROR",
-            "class": "initat.tools.logging_net.init_email_handler",
+            "class": "initat.tools.logging_net.icswInitEmailHandler",
             "formatter": "initat",
         },
     },

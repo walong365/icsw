@@ -211,7 +211,7 @@ class BuildProcess(
             self.build_cache = BuildCache(
                 self.log,
                 full_build=not self.single_build,
-                routing_fingerprint=self.routing_fingerprint
+                router_obj=self.router_obj,
             )
             if self.build_mode == BuildModes.all_master:
                 # from mixin
@@ -289,7 +289,6 @@ class BuildProcess(
                 for key in constants.SINGLE_BUILD_MAPS:
                     if key in self.__gen_config:
                         self.__gen_config[key].refresh(self.__gen_config)
-            self.router_obj.check_for_update()
             # hosts to build
             total_hosts = self._get_number_of_hosts()
             if build_dv:
@@ -338,8 +337,8 @@ class BuildProcess(
                 # start syncing
                 self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
             del _bc
-        if build_dv:
-            build_dv.delete()
+            if build_dv:
+                build_dv.delete()
         if self.build_mode == BuildModes.all_master:
             self.send_pool_message("build_info", "end_build", self.version, target="syncer")
         if self.build_mode in [BuildModes.some_check, BuildModes.some_master]:
@@ -423,16 +422,6 @@ class BuildProcess(
         start_time = time.time()
         # set some vars
         host_nc = cur_gc["device"]
-        # we always check for passive checks
-        # if cur_gc.master:
-        #    check_for_passive_checks = True
-        # else:
-        #    check_for_passive_checks = False
-        # checks_are_active = True
-        # if check_for_passive_checks:
-        #    if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
-        #        checks_are_active = False
-        # check if host is actively checked via current server
         if cur_gc.master:
             if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
                 host_is_actively_checked = False

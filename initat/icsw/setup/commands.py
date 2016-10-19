@@ -26,17 +26,21 @@ from __future__ import unicode_literals, print_function
 import fnmatch
 import grp
 import pwd
+import os
 import shutil
 import stat
 import subprocess
 import sys
 import time
 
-from initat.constants import GEN_CS_NAME
-from initat.tools import logging_tools, process_tools
+from initat.constants import GEN_CS_NAME, ICSW_ROOT, BACKBONE_DIR, DB_ACCESS_CS_NAME
+from initat.tools import logging_tools, process_tools, config_store
 from .connection_tests import test_psql, test_mysql, test_sqlite
 from .constants import *
-from .utils import generate_password, DirSave, get_icsw_root, remove_pyco, DummyFile
+from .utils import generate_password, DirSave, remove_pyco, DummyFile
+
+
+DB_CS_FILENAME = config_store.ConfigStore.build_path(DB_ACCESS_CS_NAME)
 
 
 class SetupLogger(object):
@@ -247,7 +251,7 @@ def init_webfrontend(opts):
     if False:
         for _what, _command, _target in [
             ("collecting static", "collectstatic --noinput -c", None),
-            ("building url_list", "show_icsw_urls", os.path.join(get_icsw_root(), "initat", "cluster", "frontend", "templates", "all_urls.html")),
+            ("building url_list", "show_icsw_urls", os.path.join(ICSW_ROOT, "initat", "cluster", "frontend", "templates", "all_urls.html")),
         ]:
             print(_what)
             _success, _output = call_manage(_command.split(), output=True)

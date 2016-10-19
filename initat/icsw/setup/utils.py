@@ -34,14 +34,12 @@ from initat.constants import SITE_PACKAGES_BASE
 from initat.tools import logging_tools, process_tools
 
 
-def get_icsw_root():
-    return os.environ.get(
-        "ICSW_ROOT", SITE_PACKAGES_BASE
-    )
-
-
 def generate_password(size=10):
-    return "".join([random.choice(string.ascii_letters) for _ in range(size)])
+    return "".join(
+        [
+            random.choice(string.ascii_letters) for _ in range(size)
+        ]
+    )
 
 
 class DummyFile(object):

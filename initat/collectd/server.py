@@ -32,6 +32,7 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
+from initat.cluster.backbone.var_cache import VarCache
 from initat.cluster.backbone.models import device, snmp_scheme
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.cluster.backbone.server_enums import icswServiceEnum
@@ -40,7 +41,7 @@ from initat.tools import config_tools, configfile, logging_tools, process_tools,
     server_command, server_mixins, threading_tools, uuid_tools
 from .aggregate import aggregate_process
 from .background import SNMPJob, BackgroundJob, IPMIBuilder
-from .collectd_struct import CollectdHostInfo, var_cache, ext_com, HostMatcher, FileCreator
+from .collectd_struct import CollectdHostInfo, ext_com, HostMatcher, FileCreator
 from .config import global_config, IPC_SOCK_SNMP
 from .dbsync import SyncProcess
 from .resize import resize_process
@@ -57,7 +58,6 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.collectd_server, global_config)
         self.CC.check_config()
-        self.__pid_name = global_config["PID_NAME"]
         # override default
         self.STRS_SOCKET_NAME = "com_socket"
         global_config.add_config_entries(
@@ -406,11 +406,8 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
             else:
                 return {"2c": 2}.get(_vers, 1)
         # var cache
-        _vc = var_cache(
-            device.all_enabled.get(
-                Q(device_group__cluster_device_group=True)
-            ),
-            {
+        _vc = VarCache(
+            def_dict={
                 "SNMP_VERSION": 1,
                 "SNMP_READ_COMMUNITY": "public",
                 "SNMP_READ_TIMEOUT": 10,
@@ -453,11 +450,8 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
 
     def _get_ipmi_hosts(self, _router):
         # var cache
-        _vc = var_cache(
-            device.all_enabled.get(
-                Q(device_group__cluster_device_group=True)
-            ),
-            {"IPMI_USERNAME": "notset", "IPMI_PASSWORD": "notset", "IPMI_INTERFACE": ""}
+        _vc = VarCache(
+            def_dict={"IPMI_USERNAME": "notset", "IPMI_PASSWORD": "notset", "IPMI_INTERFACE": ""}
         )
         ipmi_hosts = device.all_enabled.filter(Q(enable_perfdata=True) & Q(com_capability_list__matchcode="ipmi"))
         _reachable = self._check_reachability(ipmi_hosts, _vc, _router, "IPMI")

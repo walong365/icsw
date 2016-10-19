@@ -26,6 +26,7 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone import routing
+from initat.cluster.backbone.var_cache import VarCache
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
     mon_host_cluster, mon_service_cluster, MonHostTrace, mon_host_dependency, mon_service_dependency, \
     MonHostTraceGeneration
@@ -33,7 +34,6 @@ from initat.icsw.service.instance import InstanceXML
 from initat.snmp.sink import SNMPSink
 from initat.tools import logging_tools, process_tools
 from .global_config import global_config
-from .var_cache import MonVarCache
 
 __all__ = [
     b"BuildCache",
@@ -41,16 +41,31 @@ __all__ = [
 
 
 class BuildCache(object):
-    def __init__(self, log_com, full_build, routing_fingerprint):
+    def __init__(self, log_com, full_build, routing_fingerprint=None, router_obj=None):
+        s_time = time.time()
         self.log_com = log_com
         self.router = routing.SrvTypeRouting(log_com=self.log_com)
         self.instance_xml = InstanceXML(log_com=self.log, quiet=True)
         # build cache to speed up config generation
         # stores various cached objects
+        # routing handling
+        if router_obj is None:
+            # slave
+            self.routing_fingerprint = routing_fingerprint
+            # must exist
+            self.__trace_gen = MonHostTraceGeneration.objects.get(Q(fingerprint=self.routing_fingerprint))
+        else:
+            self.routing_fingerprint = router_obj.fingerprint
+            # get generation
+            try:
+                self.__trace_gen = MonHostTraceGeneration.objects.get(Q(fingerprint=self.routing_fingerprint))
+            except MonHostTraceGeneration.DoesNotExist:
+                self.log("creating new tracegeneration")
+                self.__trace_gen = router_obj.create_trace_generation()
+            # delete old ones
+            _res = MonHostTrace.objects.exclude(Q(generation=self.__trace_gen)).delete()
+
         # global luts
-        # routing fingerprint
-        self.routing_fingerprint = routing_fingerprint
-        s_time = time.time()
         self.mcc_lut_3 = {_check.pk: _check for _check in mon_check_command.objects.all()}
         # add dummy entries
         for _value in self.mcc_lut_3.itervalues():
@@ -69,7 +84,14 @@ class BuildCache(object):
         self.serv_templates = None
         self.single_build = False
         self.debug = False
-        self.__var_cache = MonVarCache(device.objects.get(Q(device_group__cluster_device_group=True)), prefill=full_build)
+        self.__var_cache = VarCache(
+            prefill=full_build,
+            def_dict={
+                "SNMP_VERSION": 2,
+                "SNMP_READ_COMMUNITY": "public",
+                "SNMP_WRITE_COMMUNITY": "private",
+            }
+        )
         self.join_char = "_" if global_config["SAFE_NAMES"] else " "
         # device_group user access
         self.dg_user_access = {}
@@ -89,14 +111,8 @@ class BuildCache(object):
                 "monhosttrace_set"
             )
         }
-        # get generation
-        try:
-            self.__trace_gen = MonHostTraceGeneration.objects.get(Q(fingerprint=self.routing_fingerprint))
-        except MonHostTraceGeneration.DoesNotExist:
-            self.log("creating new tracegeneration")
-            self.__trace_gen = MonHostTraceGeneration.objects.create(fingerprint=self.routing_fingerprint)
-        # delete old ones
-        _res = MonHostTrace.objects.exclude(Q(generation=self.__trace_gen)).delete()
+        for _host in self.all_hosts_dict.itervalues():
+            _host.reachable = True
         # print(_res)
         # traces in database
         self.log("traces found in database: {:d}".format(MonHostTrace.objects.all().count()))

@@ -82,15 +82,15 @@ def get_logger(name, destination, **kwargs):
             else:
                 cur_context = kwargs["context"]
             ZMQHandler(act_logger, zmq_context=cur_context, destination=rewrite_log_destination(act_dest))
-    if log_adapter:
+    if icswLogAdapter:
         # by using the log_adapter we also add thread-safety to the logger
-        act_adapter = log_adapter(act_logger, {})
+        act_adapter = icswLogAdapter(act_logger, {})
     else:
         act_adapter = act_logger
     return act_adapter
 
 
-class log_adapter(logging.LoggerAdapter):
+class icswLogAdapter(logging.LoggerAdapter):
     """ small adapater which adds host information to logRecords """
     def __init__(self, logger, extra):
         self.__lock = threading.RLock()
@@ -266,7 +266,7 @@ class ZMQHandler(logging.Handler):
             self.unregister()
 
 
-class initat_formatter(object):
+class icswInitFormatter(object):
     # in fact a dummy formatter
     def format(self, record):
         record.message = record.getMessage()
@@ -309,7 +309,7 @@ class initat_formatter(object):
                             "  {:3d} {}: {}".format(
                                 s_num + 1,
                                 s_key,
-                                v_dict[s_key]
+v_dict[s_key]
                             )
                         )
             # print frame_info, var_list
@@ -318,7 +318,7 @@ class initat_formatter(object):
             delattr(record, "request")
 
 
-class init_email_handler(ZMQHandler):
+class icswInitEmailHandler(ZMQHandler):
     def __init__(self, filename=None, *args, **kwargs):
         ZMQHandler.__init__(
             self,
@@ -341,7 +341,7 @@ class init_email_handler(ZMQHandler):
         ZMQHandler.emit(self, record)
 
 
-class init_handler(ZMQHandler):
+class icswInitHandler(ZMQHandler):
     def __init__(self, filename=None):
         ZMQHandler.__init__(
             self,
@@ -358,7 +358,7 @@ class init_handler(ZMQHandler):
         ZMQHandler.emit(self, record)
 
 
-class init_handler_unified(ZMQHandler):
+class icswInitHandlerUnified(ZMQHandler):
     def __init__(self, filename=None, *args, **kwargs):
         ZMQHandler.__init__(
             self,
@@ -380,18 +380,5 @@ class init_handler_unified(ZMQHandler):
         # restore record.name
         record.name = _rec_name
 
-
-class queue_handler(logging.Handler):
-    """ sends log requests to other queues """
-    def __init__(self, t_queue, **kwargs):
-        self.__target_queue = t_queue
-        self.__pre_tuple = kwargs.get("pre_tuple", "int_log")
-        logging.Handler.__init__(self)
-
-    def emit(self, record):
-        try:
-            self.__target_queue.put((self.__pre_tuple, record))
-        except:
-            self.handleError(record)
 
 ZMQHandler.setup()
