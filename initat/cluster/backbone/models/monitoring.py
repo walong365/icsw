@@ -79,6 +79,10 @@ class SpecialGroupsEnum(enum.Enum):
 class MonHostTraceGeneration(models.Model):
     idx = models.AutoField(primary_key=True)
     fingerprint = models.CharField(max_length=255, default="")
+    # number of edges
+    edges = models.IntegerField(default=0)
+    # number of nodes
+    nodes = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
 
 

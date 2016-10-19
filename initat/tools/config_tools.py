@@ -45,7 +45,8 @@ import networkx
 from django.db.models import Q, Count
 
 from initat.cluster.backbone.models import config, device, net_ip, device_config, \
-    netdevice, peer_information, config_int, config_blob, config_str, config_bool
+    netdevice, peer_information, config_int, config_blob, config_str, config_bool, \
+    MonHostTraceGeneration
 from initat.constants import VERSION_CS_NAME
 from initat.tools import configfile, logging_tools, process_tools, config_store
 
@@ -79,6 +80,14 @@ class RouterObject(object):
         for _key in sorted(self.nd_dict.keys()):
             self.fp.update("n{:d}".format(_key))
 
+    def create_trace_generation(self):
+        # create new MonHostTrace Generation
+        return MonHostTraceGeneration.objects.create(
+            nodes=len(self.nd_dict),
+            edges=len(self.simple_peer_dict),
+            fingerprint=self.fingerprint
+        )
+
     def add_edges(self):
         for node_pair, penalty in self.simple_peer_dict.iteritems():
             src_node, dst_node = node_pair
@@ -88,6 +97,17 @@ class RouterObject(object):
     @property
     def latest_update(self):
         return self.__latest_update
+
+    @property
+    def fingerprint_changed(self):
+        return self.fingerprint != self.previous_fp
+
+    @property
+    def fingerprint(self):
+        return self.fp.hexdigest()
+
+    def check_for_update(self):
+        self._update()
 
     def _update(self):
         self.__latest_update = time.time()
@@ -173,17 +193,6 @@ class RouterObject(object):
                     )
                 )
             self.__cur_gen = latest_gen
-
-    @property
-    def fingerprint_changed(self):
-        return self.fingerprint != self.previous_fp
-
-    @property
-    def fingerprint(self):
-        return self.fp.hexdigest()
-
-    def check_for_update(self):
-        self._update()
 
     def get_penalty(self, in_path):
         return sum([self.peer_dict[(in_path[idx], in_path[idx + 1])] for idx in xrange(len(in_path) - 1)]) + \
