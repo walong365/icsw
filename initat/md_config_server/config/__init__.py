@@ -19,7 +19,7 @@
 #
 """ config part of md-config-server """
 
-# do NOT import the imports
+# do NOT optimize the imports
 
 from .global_config import global_config
 

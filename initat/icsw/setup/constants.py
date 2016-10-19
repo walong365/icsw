@@ -26,12 +26,29 @@ from __future__ import unicode_literals, print_function
 import importlib
 import os
 
-from initat.constants import DB_ACCESS_CS_NAME
-from initat.tools import config_store
-from .utils import get_icsw_root
+from initat.constants import LOG_ROOT, BACKBONE_DIR
 
-ICSW_ROOT = get_icsw_root()
-BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone")
+__all__ = [
+    b"CMIG_DIR",
+    b"MIGRATION_DIRS",
+    b"MIGRATIONS_DIR",
+    b"NEEDED_DIRS",
+    b"PRE_MODELS_DIR",
+    b"MODELS_DIR",
+    b"MODELS_DIR_SAVE",
+    b"Z800_MODELS_DIR",
+    b"DB_PRESENT",
+    b"DB_CS_FILENAME",
+    b"DEFAULT_DATABASE",
+    b"DEFAULT_ENGINE",
+    b"AVAILABLE_DATABASES",
+    b"SYNC_APPS",
+]
+
+#
+# directories
+#
+
 CMIG_DIR = os.path.join(BACKBONE_DIR, "migrations")
 MIGRATION_DIRS = [
     "reversion",
@@ -41,12 +58,14 @@ MIGRATION_DIRS = [
     "initat/cluster/liebherr",
 ]
 
+#
 # which apps needs syncing
+#
+
 SYNC_APPS = ["liebherr", "licadmin"]
 
-NEEDED_DIRS = ["/var/log/icsw"]
+NEEDED_DIRS = [LOG_ROOT]
 
-BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat/cluster/backbone")
 PRE_MODELS_DIR = os.path.join(BACKBONE_DIR, "models16")
 MODELS_DIR = os.path.join(BACKBONE_DIR, "models")
 MIGRATIONS_DIR = os.path.join(BACKBONE_DIR, "migrations")
@@ -82,5 +101,3 @@ else:
         DEFAULT_ENGINE = AVAILABLE_DATABASES[0]
     except IndexError:
         DEFAULT_ENGINE = ""
-
-DB_CS_FILENAME = config_store.ConfigStore.build_path(DB_ACCESS_CS_NAME)

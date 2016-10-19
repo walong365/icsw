@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,6 +19,8 @@
 #
 
 """ frontend to ICSW command """
+
+from __future__ import unicode_literals, print_function
 
 from .icsw_parser import ICSWParser
 

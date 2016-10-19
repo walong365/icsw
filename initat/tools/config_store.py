@@ -34,14 +34,13 @@ from enum import Enum
 from lxml import etree
 from lxml.builder import E
 
-from initat.constants import CLUSTER_DIR
+from initat.constants import CONFIG_STORE_ROOT
 from initat.tools import process_tools, logging_tools
 
 __all__ = [
-    "ConfigVar",
-    "ConfigStore",
-    "AccessModeEnum",
-    "CONFIG_STORE_ROOT",
+    b"ConfigVar",
+    b"ConfigStore",
+    b"AccessModeEnum",
 ]
 
 CS_NG = """
@@ -92,8 +91,6 @@ CS_NG = """
     </zeroOrMore>
 </element>
 """
-
-CONFIG_STORE_ROOT = os.path.join(CLUSTER_DIR, "etc", "cstores.d")
 
 
 class AccessModeEnum(Enum):

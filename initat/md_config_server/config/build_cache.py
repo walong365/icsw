@@ -111,6 +111,8 @@ class BuildCache(object):
                 "monhosttrace_set"
             )
         }
+        for _host in self.all_hosts_dict.itervalues():
+            _host.reachable = True
         # print(_res)
         # traces in database
         self.log("traces found in database: {:d}".format(MonHostTrace.objects.all().count()))
