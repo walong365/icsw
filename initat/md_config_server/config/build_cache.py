@@ -26,6 +26,7 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone import routing
+from initat.cluster.backbone.var_cache import VarCache
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
     mon_host_cluster, mon_service_cluster, MonHostTrace, mon_host_dependency, mon_service_dependency, \
     MonHostTraceGeneration
@@ -33,7 +34,6 @@ from initat.icsw.service.instance import InstanceXML
 from initat.snmp.sink import SNMPSink
 from initat.tools import logging_tools, process_tools
 from .global_config import global_config
-from .var_cache import MonVarCache
 
 __all__ = [
     b"BuildCache",
@@ -84,7 +84,14 @@ class BuildCache(object):
         self.serv_templates = None
         self.single_build = False
         self.debug = False
-        self.__var_cache = MonVarCache(device.objects.get(Q(device_group__cluster_device_group=True)), prefill=full_build)
+        self.__var_cache = VarCache(
+            prefill=full_build,
+            def_dict={
+                "SNMP_VERSION": 2,
+                "SNMP_READ_COMMUNITY": "public",
+                "SNMP_WRITE_COMMUNITY": "private",
+            }
+        )
         self.join_char = "_" if global_config["SAFE_NAMES"] else " "
         # device_group user access
         self.dg_user_access = {}

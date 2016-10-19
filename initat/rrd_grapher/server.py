@@ -1,4 +1,4 @@
-# Copyright (C) 2007-2009,2013-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2007-2009,2013-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -31,7 +31,7 @@ from initat.rrd_grapher.graph import GraphProcess
 from initat.rrd_grapher.rrd_grapher_struct import DataStore
 from initat.rrd_grapher.stale import GraphStaleProcess
 from initat.tools import configfile, logging_tools, \
-    process_tools, server_mixins, threading_tools
+    server_mixins, threading_tools
 
 
 @server_mixins.RemoteCallProcess
@@ -43,8 +43,6 @@ class server_process(
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.grapher_server, global_config)
         self.CC.check_config()
-        self.__pid_name = global_config["PID_NAME"]
-        self.__verbose = global_config["VERBOSE"]
         # close connection (daemonizing)
         db_tools.close_connection()
         self.CC.read_config_from_db(
@@ -83,22 +81,12 @@ class server_process(
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
-        self._log_config()
         self.add_process(GraphProcess("graph"), start=True)
         self.add_process(GraphStaleProcess("stale"), start=True)
         db_tools.close_connection()
         self._init_network_sockets()
         DataStore.setup(self)
         # self.test("x")
-
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [{:d}] {}".format(log_level, line))
-        conf_info = global_config.get_config_info()
-        self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
 
     def _int_error(self, err_cause):
         if self["exit_requested"]:

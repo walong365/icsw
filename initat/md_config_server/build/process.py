@@ -422,16 +422,6 @@ class BuildProcess(
         start_time = time.time()
         # set some vars
         host_nc = cur_gc["device"]
-        # we always check for passive checks
-        # if cur_gc.master:
-        #    check_for_passive_checks = True
-        # else:
-        #    check_for_passive_checks = False
-        # checks_are_active = True
-        # if check_for_passive_checks:
-        #    if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
-        #        checks_are_active = False
-        # check if host is actively checked via current server
         if cur_gc.master:
             if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
                 host_is_actively_checked = False
