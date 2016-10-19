@@ -17,7 +17,7 @@ describe('ICSW Basic Interface Tests:', function() {
 
 
   var icswHomepage = function() {
-    var icsw_homepage_url = "http://192.168.1.245/";
+    var icsw_homepage_url = browser.params.url;
     var login_username_field = element(by.model('login_data.username'));
     var login_password_field = element(by.model('login_data.password'));
    
@@ -30,7 +30,7 @@ describe('ICSW Basic Interface Tests:', function() {
 
     this.overlay_element = overlay_element;
 
-    this.select_all_devices_button = element(by.xpath("/html/body/icsw-layout-sub-menubar/nav/ul/li[2]/icsw-tools-button/button"));
+    this.select_all_devices_button = element(by.xpath("/html/body/icsw-layout-sub-menubar/nav/ul/li[2]/icsw-tools-button[2]/button"));
 
     this.devices_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]'));
     this.device_information_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[3]/a'));
