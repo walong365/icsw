@@ -301,10 +301,10 @@ class BuildProcess(
                     self.__gen_config.monitor_server,
                     self.router_obj
                 )
-                if unreachable_pks and not self.single_bild:
+                if unreachable_pks and not self.single_build:
                     self.log(
                         u"{}: {}".format(
-                            logging_tools.get_plural("unroutable node", len(nodes_names)),
+                            logging_tools.get_plural("unroutable node", len(unreachable_names)),
                             u", ".join(sorted(unreachable_names)),
                         )
                     )
