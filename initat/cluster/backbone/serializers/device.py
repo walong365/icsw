@@ -101,7 +101,7 @@ class device_serializer(serializers.ModelSerializer):
         fields = (
             "idx", "name", "device_group", "is_meta_device",
             "alias", "comment", "full_name", "domain_tree_node", "enabled",
-            "monitor_checks", "mon_device_templ", "mon_device_esc_templ", "md_cache_mode",
+            "monitor_checks", "mon_device_templ", "mon_device_esc_templ",
             "enable_perfdata", "flap_detection_enabled",
             "automap_root_nagvis", "nagvis_parent", "monitor_server", "mon_ext_host",
             "is_meta_device", "device_group_name", "bootserver",

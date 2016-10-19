@@ -29,7 +29,6 @@ from django.db.models import Q
 from initat.cluster.backbone.models import monitoring_hint, cluster_timezone
 from initat.host_monitoring import ipc_comtools
 from initat.icsw.service.instance import InstanceXML
-from initat.md_config_server.constants import DEFAULT_CACHE_MODE
 from initat.tools import logging_tools, process_tools
 
 __all__ = [

@@ -27,7 +27,6 @@
                 <th st-sort="monitor_checks">Checks</th>
                 <th st-sort="mon_resolve_name">Resolve</th>
                 <th st-sort="mon_device_templ">Template</th>
-                <!-- <th st-sort="md_cache_mode">Cache mode</th>-->
                 <th st-sort="act_partition_table">Disk layout</th>
                 <th st-sort="mon_ext_host">Image</th>
                 <th st-sort="enable_perfdata">PerfData</th>
@@ -55,7 +54,6 @@
                         ---
                     </span>
                 </td>
-                <!-- <td class="text-center">{{ md_cache_lut[obj.md_cache_mode].name }}</td> -->
                 <td class="text-center">{{ obj.act_partition_table | yesno1 }}</td>
                 <td class="text-center">
                     <span ng-show="obj.mon_ext_host">
@@ -107,20 +105,6 @@
     <form class="form-horizontal" name="form_data">
         <fieldset>
             <legend>Basic settings</legend>
-            <!-- <div class="form-group">
-                <label class="control-label col-sm-3 requiredField">
-                    Md cache mode<span class="asteriskField">*</span>
-                </label>
-                <div class="controls col-sm-7">
-                    <ui-select ng-model="edit_obj.md_cache_mode" style="max-width:400px; min-width:240px;">
-                        <ui-select-match class="ui-select-match" placeholder="please select a cache mode">
-                            {{ $select.selected.name }}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in md_cache_modes| props_filter:{name:$select.search}">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
-                        </ui-select-choices>
-                    </ui-select>
-                </div>
-            </div>-->
             <div class="form-group">
                 <label class="control-label col-sm-3">
                     Device template

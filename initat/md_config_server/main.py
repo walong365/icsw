@@ -30,7 +30,6 @@ import django
 django.setup()
 
 from django.conf import settings
-from initat.md_config_server.constants import CACHE_MODES
 from initat.tools import configfile
 from initat.md_config_server.config import global_config
 
@@ -46,14 +45,6 @@ def main():
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
             ("VERBOSE", configfile.int_c_var(0, help_string="set verbose level [%(default)d]", short_options="v", only_commandline=True)),
             ("INITIAL_CONFIG_RUN", configfile.bool_c_var(False, help_string="make a config build run on startup [%(default)s]", only_commandline=True)),
-            (
-                "INITIAL_CONFIG_CACHE_MODE", configfile.str_c_var(
-                    "DYNAMIC",
-                    help_string="cache mode for initial config run [%(default)s]",
-                    only_commandline=True,
-                    choices=CACHE_MODES
-                )
-            ),
             ("MEMCACHE_ADDRESS", configfile.str_c_var("127.0.0.1", help_string="memcache address")),
         ]
     )

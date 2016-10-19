@@ -229,15 +229,6 @@ class device(models.Model):
     nagvis_parent = models.ForeignKey("device", null=True, related_name="nagvis_childs", blank=True)
     # enabled ?
     enabled = models.BooleanField(default=True)
-    # try to read relevant data from device via md-config-server
-    md_cache_mode = models.IntegerField(
-        choices=[
-            (1, "automatic (server)"),
-            (2, "never use cache"),
-            (3, "once (until successfull)"),
-        ],
-        default=1,
-    )
     # system name
     domain_tree_node = models.ForeignKey("backbone.domain_tree_node", null=True, default=None)
     # resolve name for monitoring (i.e. use IP for monitoring)
@@ -500,9 +491,6 @@ def device_pre_save(sender, **kwargs):
                 raise ValidationError("illegal characters in name '{}'".format(cur_inst.name))
             else:
                 cur_inst.name = cur_inst.name.replace(" ", "_")
-        if int(cur_inst.md_cache_mode) == 0:
-            cur_inst.md_cache_mode = 1
-        check_integer(cur_inst, "md_cache_mode", min_val=1, max_val=3)
         if not cur_inst.uuid:
             cur_inst.uuid = str(uuid.uuid4())
         if not cur_inst.device_class:

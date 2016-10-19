@@ -37,8 +37,6 @@ class BuildModes(Enum):
     some_slave = "some_slave"
 
 
-DEFAULT_CACHE_MODE = "ALWAYS"
-
 # icinga constants
 MON_HOST_UNKNOWN = -1
 MON_HOST_UP = 0
