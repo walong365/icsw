@@ -19,6 +19,8 @@
 #
 """ creates fixtures for noctua """
 
+from __future__ import unicode_literals, print_function
+
 import netifaces
 import os
 import socket
@@ -43,7 +45,7 @@ def get_local_ip_address(target):
         ipaddr = s.getsockname()[0]
         s.close()
     except:
-        print "Unexpected error:", sys.exc_info()[0]
+        print("Unexpected error:", sys.exc_info()[0])
         raise
 
     return ipaddr
@@ -79,7 +81,7 @@ def get_broadcast_by_interface(interface):
 
 
 def create_noctua_fixtures():
-    print "creating Noctua fixtures..."
+    print("creating Noctua fixtures...")
     if False:
         device_group.objects.filter(Q(pk__gt=1)).delete()
         group.objects.all().delete()
@@ -222,7 +224,7 @@ def create_noctua_fixtures():
             snperiod=initial_mon_period,
             hnperiod=initial_mon_period,
         )
-        _admin = user.objects.create_superuser(# @UndefinedVariable
+        _admin = user.objects.create_superuser(
             "admin",
             "noctua@init.at",
             "admin",
@@ -258,7 +260,7 @@ def create_noctua_fixtures():
         out = p.stdout.read().strip().split("\n")[0]
         if_gateway = out
     else:
-        print "Not installed on UCS, /usr/sbin/ucr not found. Using python-netifaces."
+        print("Not installed on UCS, /usr/sbin/ucr not found. Using python-netifaces.")
 
         if_address = get_local_ip_address("62.99.204.238")
         if_name = get_interface_by_ip(if_address)

@@ -115,6 +115,13 @@
                     </rights>
                 </icswData>
             </route>
+            <route name="main.devicepropertiesoverview">
+                <stateData type="dict" url_str="/device/overview"
+                           template_str="&lt;icsw-device-properties-overview&gt;&lt;/icsw-device-properties-overview&gt;"/>
+                <icswData type="dict" pageTitle_str="Device Overview">
+                    <menuEntry type="dict" icon_str="fa-cubes" name_str="Overview"/>
+                </icswData>
+            </route>
         </routeSubGroup>
     </routeGroup>
 

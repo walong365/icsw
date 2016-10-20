@@ -1,0 +1,56 @@
+<script type="text/ng-template" id="icsw.device.properties.overview">
+    <style>
+        .table > tbody > tr > td {
+            vertical-align: middle !important;
+        }
+        .table > tbody > tr > td > .progress {
+            margin-bottom: 0px !important;
+        }
+    </style>
+    <div class="container-fluid">
+        <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching data from server ...</div>
+        <div ng-if="struct.data_loaded">
+            <h2>
+                Device Overview
+            </h2>
+            <table
+                st-table="entries_displayed"
+                st-safe-src="struct.devices"
+                class="table table-condensed table-striped table-hover simple-border"
+            >
+
+                <thead>
+                    <tr>
+                        <th st-sort="name">Name</th>
+                        <th st-sort="device_group_name">Group</th>
+                        <th st-sort="$$monitoring_checks_availability_class" class="text-center">Monitoring Checks</th>
+                        <th st-sort="$$location_data_availability_class" class="text-center">Location Data</th>
+                        <th st-sort="$$asset_data_availability_class" class="text-center">Asset Data</th>
+                        <th st-sort="$$graphing_data_availability_class" class="text-center">Graphing Data</th>
+                        <th st-sort="$$overview_completion_percentage" class="text-center">% complete</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    <tr ng-repeat="obj in entries_displayed">
+                        <td>{{ obj.name }}</td>
+                        <td>{{ obj.device_group_name }}</td>
+                        <td class="text-center"><div ng-class="obj.$$monitoring_checks_availability_class"><strong>{{ obj.$$monitoring_checks_availability_text }}</strong></div></td>
+                        <td class="text-center"><div ng-class="obj.$$location_data_availability_class"><strong>{{ obj.$$location_data_availability_text }}</strong></div></td>
+                        <td class="text-center"><div ng-class="obj.$$asset_data_availability_class"><strong>{{ obj.$$asset_data_availability_text }}</strong></div></td>
+                        <td class="text-center"><div ng-class="obj.$$graphing_data_availability_class"><strong>{{ obj.$$graphing_data_availability_text }}</strong></div></td>
+                        <td>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"
+                                    aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( obj.$$overview_completion_percentage + '%' ) }">
+                                    <span>{{ obj.$$overview_completion_percentage }}</span>
+                                </div>
+                            </div>
+                        </td>
+                    </div>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</script>

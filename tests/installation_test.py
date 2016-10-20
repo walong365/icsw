@@ -132,7 +132,10 @@ def basic_availability_test(host, machine_name):
 
     args = ["curl", "-s", "http://{}/icsw/api/v2/user/GetInitProduct".format(host)]
 
-    output = subprocess.check_output(args)
+    try:
+        output = subprocess.check_output(args)
+    except subprocess.CalledProcessError as e:
+        output = "*** Error connecting to {}".format(host)
 
     with open("{}.log".format(machine_name), "a", 0) as log_file:
         log_file.write("*** Command executed: {}\n".format("".join(args)))
