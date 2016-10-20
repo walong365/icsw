@@ -22,6 +22,8 @@
 
 """ device views """
 
+from __future__ import unicode_literals, print_function
+
 import datetime
 import json
 import logging
@@ -633,6 +635,7 @@ class create_device(permission_required_mixin, View):
                     logger=logger
                 )
                 cur_dg = None
+        _create_ok = True
         if cur_dg is not None:
             if device_data["full_name"].count("."):
                 short_name, domain_name = device_data["full_name"].split(".", 1)
@@ -671,7 +674,6 @@ class create_device(permission_required_mixin, View):
                     )
                     cur_dev = None
                 else:
-                    request.xml_response.info(u"created new device '{}'".format(unicode(cur_dev)), logger=logger)
                     request.xml_response["device_pk"] = cur_dev.idx
             else:
                 request.xml_response.warn(u"device {} already exists".format(unicode(cur_dev)), logger=logger)
@@ -681,19 +683,23 @@ class create_device(permission_required_mixin, View):
                 try:
                     cur_nd = netdevice.objects.get(Q(device=cur_dev) & Q(devname='eth0'))
                 except netdevice.DoesNotExist:
-                    cur_nd = netdevice.objects.create(
-                        devname="eth0",
-                        device=cur_dev,
-                        routing=device_data["routing_capable"],
-                    )
-                    if device_data["peer"]:
-                        peer_information.objects.create(
-                            s_netdevice=cur_nd,
-                            d_netdevice=netdevice.objects.get(Q(pk=device_data["peer"])),
-                            penalty=1,
+                    try:
+                        cur_nd = netdevice.objects.create(
+                            devname="eth0",
+                            device=cur_dev,
+                            routing=device_data["routing_capable"],
                         )
+                        if device_data["peer"]:
+                            peer_information.objects.create(
+                                s_netdevice=cur_nd,
+                                d_netdevice=netdevice.objects.get(Q(pk=device_data["peer"])),
+                                penalty=1,
+                            )
+                    except:
+                        request.xml_response.error("cannot create netdevice")
+                        _create_ok = False
                 try:
-                    cur_ip = net_ip.objects.get(Q(netdevice=cur_nd) & Q(ip=device_data["ip"]))
+                    net_ip.objects.get(Q(netdevice=cur_nd) & Q(ip=device_data["ip"]))
                 except net_ip.DoesNotExist:
                     cur_ip = net_ip(
                         netdevice=cur_nd,
@@ -704,7 +710,13 @@ class create_device(permission_required_mixin, View):
                         cur_ip.save()
                     except:
                         request.xml_response.error(u"cannot create IP: {}".format(process_tools.get_except_info()), logger=logger)
-                        cur_ip = None
+                        _create_ok = False
+        if cur_dev is not None:
+            if _create_ok:
+                request.xml_response.info(u"created new device '{}'".format(unicode(cur_dev)), logger=logger)
+            else:
+                # creation not ok, deleting device
+                cur_dev.delete()
 
 
 class DeviceVariableViewSet(viewsets.ViewSet):

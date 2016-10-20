@@ -25,41 +25,20 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.deviceinfo")
-]).service("DeviceOverviewSelection",
-[
-    "$rootScope", "ICSW_SIGNALS",
-(
-    $rootScope, ICSW_SIGNALS,
-) ->
-    _selection = []
-    set_selection = (sel) ->
-        _selection = sel
-        $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERVIEW_SELECTION_CHANGED"), _selection)
-
-    get_selection = (sel) ->
-        return _selection
-
-    return {
-        set_selection: (sel) ->
-            set_selection(sel)
-        get_selection: (sel) ->
-            return get_selection()
-    }
 ]).service("DeviceOverviewService",
 [
     "Restangular", "$rootScope", "$templateCache", "$compile", "$uibModal", "$q",
-    "icswComplexModalService", "DeviceOverviewSelection", "DeviceOverviewSettings",
+    "icswComplexModalService", "DeviceOverviewSettings",
 (
     Restangular, $rootScope, $templateCache, $compile, $uibModal, $q,
-    icswComplexModalService, DeviceOverviewSelection, DeviceOverviewSettings
+    icswComplexModalService, DeviceOverviewSettings,
 ) ->
-    return (event) ->
+    return (event, device_list) ->
         # create new modal for device
         # device object with access_levels
         _defer = $q.defer()
         sub_scope = $rootScope.$new(true)
-        # console.log "devlist", devicelist
-        sub_scope.devicelist = DeviceOverviewSelection.get_selection()
+        sub_scope.devicelist = device_list
         icswComplexModalService(
             {
                 message: $compile("<icsw-device-overview icsw-popup-mode='1' icsw-device-list='devicelist'></icsw-device-overview>")(sub_scope)

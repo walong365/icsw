@@ -163,10 +163,11 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, 
             self.log("found no valid syslog service", logging_tools.LOG_LEVEL_ERROR)
 
     def _disable_syslog_config(self):
-        if self.__syslog_type.count("rsys"):
-            self._disable_rsyslog()
-        elif self.__syslog_type.count("-ng"):
-            self._disable_syslog_ng()
+        if self.__syslog_type:
+            if self.__syslog_type.count("rsys"):
+                self._disable_rsyslog()
+            elif self.__syslog_type.count("-ng"):
+                self._disable_syslog_ng()
 
     def _enable_syslog_ng(self):
         self.log("not implemented", logging_tools.LOG_LEVEL_CRITICAL)

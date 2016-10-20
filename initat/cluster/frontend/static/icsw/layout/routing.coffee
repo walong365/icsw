@@ -70,11 +70,11 @@ menu_module = angular.module(
 [
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
-    "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS", "themeService",
+    "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS", "icswThemeService",
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
-    icswBreadcrumbs, $state, $window, Restangular, ICSW_URLS, themeService,
+    icswBreadcrumbs, $state, $window, Restangular, ICSW_URLS, icswThemeService,
 ) ->
     _bind_keys = () ->
         hotkeys.bindTo($scope).add(
@@ -99,7 +99,7 @@ menu_module = angular.module(
             description: "Toggle Theme"
             callback: (event) ->
                 event.preventDefault()
-                themeService.toggle()
+                icswThemeService.toggle()
         )
     $scope.struct = {
         current_user: undefined
@@ -242,10 +242,4 @@ menu_module = angular.module(
                 )
             $rootScope.$on("$stateChangeSuccess", listener)
     }
-]).run(["$window", ($window) ->
-      window = angular.element($window)
-      window.on("beforeunload", (event) ->
-           # not working ...
-           # event.preventDefault()
-      )
 ])

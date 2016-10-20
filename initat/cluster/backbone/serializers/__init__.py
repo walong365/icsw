@@ -28,6 +28,7 @@ from initat.cluster.backbone.models import LogSource, LogLevel, mac_ignore, \
 from initat.cluster.backbone.serializers.asset import *
 from initat.cluster.backbone.serializers.variable import *
 from initat.cluster.backbone.serializers.background import *
+from initat.cluster.backbone.serializers.license import *
 from initat.cluster.backbone.serializers.capability import *
 from initat.cluster.backbone.serializers.config import *
 from initat.cluster.backbone.serializers.device import *

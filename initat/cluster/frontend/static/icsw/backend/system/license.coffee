@@ -23,7 +23,55 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "angularFileUpload", "gettext",
     ]
-).service("icswSystemLicenseDataTree",
+).service("icswSystemOvaCounter",
+[
+    "Restangular", "ICSW_URLS",
+(
+    Restangular, ICSW_URLS,
+) ->
+    class icswSystemOvaCounter
+        constructor: (c_list) ->
+            @counter = 0
+            @system_cradle = null
+            @basket_list = []
+            @update(c_list)
+
+        update: (c_list) ->
+            @counter++
+            _c = c_list.plain()[0]
+            @system_cradle = _c
+            @build_info_str()
+
+        build_info_str: () ->
+            _in = @system_cradle.installed
+            _av = @system_cradle.available
+            _used = _in - _av
+            _perc = parseInt(100 * _used / _av)
+            @info_str = "#{_used} / #{_in}"
+            if _perc > 90
+                _class = "danger"
+            else if _perc > 80
+                _class = "warning"
+            else
+                _class = "success"
+            @info_class = "label label-#{_class}"
+
+]).service("icswSystemOvaCounterService",
+[
+    "ICSW_URLS", "icswTreeBase", "icswSystemOvaCounter",
+(
+    ICSW_URLS, icswTreeBase, icswSystemOvaCounter,
+) ->
+    rest_map = [
+        ICSW_URLS.ICSW_LIC_GET_OVA_COUNTER
+    ]
+    return new icswTreeBase(
+        "SysOvaCounter"
+        icswSystemOvaCounter
+        rest_map
+        ""
+    )
+]).service("icswSystemLicenseDataTree",
 [
     "Restangular", "ICSW_URLS", "icswSimpleAjaxCall", "$q",
     "icswSystemLicenseFunctions",

@@ -1,5 +1,3 @@
-# Django settings for ICSW
-#
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2010-2016 Andreas Lang-Nevyjel
@@ -19,6 +17,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+"""
+Django settings for ICSW
+"""
 
 from __future__ import unicode_literals, print_function
 
@@ -82,11 +84,13 @@ DATABASE_ROUTERS = [
 ]
 
 # config stores
+
 # database config
 _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True, access_mode=config_store.AccessModeEnum.GLOBAL)
 if config_store.ConfigStore.exists(DB_ACCESS_CS_NAME):
     _ps = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True, access_mode=config_store.AccessModeEnum.LOCAL)
 else:
+    # this only happens when check_content_stores_server was NOT called
     raise ImproperlyConfigured("DB-Access not configured (store not found or not readable)")
 
 # version config
@@ -432,6 +436,8 @@ rest_renderers = (
     "rest_framework_xml.renderers.XMLRenderer",
 ]
 
+DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+
 REST_FRAMEWORK = {
     'DEFAULT_RENDERER_CLASSES': tuple(rest_renderers),
     "DEFAULT_PARSER_CLASSES": (
@@ -446,59 +452,61 @@ REST_FRAMEWORK = {
     "ID_FIELD_NAME": "idx",
 }
 
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        "initat": {
-            "()": "initat.tools.logging_net.icswInitFormatter",
+try:
+    LOGGING = {
+        'version': 1,
+        'disable_existing_loggers': False,
+        'formatters': {
+            "initat": {
+                "()": "initat.tools.logging_net.icswInitFormatter",
+            },
+            'verbose': {
+                'format': '%(levelname)s %(asctime)s %(message)s'
+            },
+            'simple': {
+                'format': '%(levelname)s %(message)s'
+            },
         },
-        'verbose': {
-            'format': '%(levelname)s %(asctime)s %(message)s'
+        'handlers': {
+            "console": {
+                "level": "INFO" if DEBUG else "WARN",
+                "class": "logging.StreamHandler",
+                "formatter": "verbose",
+            },
+            "init_unified": {
+                "level": "INFO" if DEBUG else "WARN",
+                "class": "initat.tools.logging_net.icswInitHandlerUnified",
+                "formatter": "initat",
+            },
+            "init": {
+                "level": 'INFO' if DEBUG else "WARN",
+                "class": "initat.tools.logging_net.icswInitHandler",
+                "formatter": "initat",
+            },
+            "init_mail": {
+                "level": "ERROR",
+                "class": "initat.tools.logging_net.icswInitEmailHandler",
+                "formatter": "initat",
+            },
         },
-        'simple': {
-            'format': '%(levelname)s %(message)s'
-        },
-    },
-    'handlers': {
-        "console": {
-            "level": "INFO" if DEBUG else "WARN",
-            "class": "logging.StreamHandler",
-            "formatter": "verbose",
-        },
-        "init_unified": {
-            "level": "INFO" if DEBUG else "WARN",
-            "class": "initat.tools.logging_net.icswInitHandlerUnified",
-            "formatter": "initat",
-        },
-        "init": {
-            "level": 'INFO' if DEBUG else "WARN",
-            "class": "initat.tools.logging_net.icswInitHandler",
-            "formatter": "initat",
-        },
-        "init_mail": {
-            "level": "ERROR",
-            "class": "initat.tools.logging_net.icswInitEmailHandler",
-            "formatter": "initat",
-        },
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['init_unified', "init_mail", "console"],
-            'propagate': True,
-            'level': 'INFO',
-        },
-        'initat': {
-            'handlers': ['init_unified', "init_mail"],
-            'propagate': True,
-            'level': 'WARN',
-        },
-        'cluster': {
-            'handlers': ["init_unified", "init", "init_mail"],
-            'propagate': True,
-            'level': 'INFO' if DEBUG else "WARN",
-        },
+        'loggers': {
+            'django': {
+                'handlers': ['init_unified', "init_mail", "console"],
+                'propagate': True,
+                'level': 'INFO',
+            },
+            'initat': {
+                'handlers': ['init_unified', "init_mail"],
+                'propagate': True,
+                'level': 'WARN',
+            },
+            'cluster': {
+                'handlers': ["init_unified", "init", "init_mail"],
+                'propagate': True,
+                'level': 'INFO' if DEBUG else "WARN",
+            },
+        }
     }
-}
-
-DATA_UPLOAD_MAX_NUMBER_FIELDS = None
+except ValueError:
+    # may happen during update
+    pass

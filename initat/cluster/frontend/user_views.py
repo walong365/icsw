@@ -306,19 +306,4 @@ class UserVariableViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class set_theme(RetrieveAPIView):
-    @method_decorator(login_required_rest(lambda: {"__authenticated": False}))
-    @rest_logging
-    def get(self, request):
-        _get = request.GET
-        act_user = request.user
-        theme = _get.get("theme", settings.THEME_DEFAULT)
-        act_user.ui_theme_selection = theme
-        act_user.save(update_fields=["ui_theme_selection"])
-        return Response(
-            {
-                'name': theme,
-            }
-        )
-
 local_router.register("user_variable_new", UserVariableViewSet)

@@ -26,7 +26,8 @@ from __future__ import unicode_literals, print_function
 
 import os
 
-from .constants import AVAILABLE_DATABASES, DB_CS_FILENAME
+from .commands import DB_CS_FILENAME
+from .constants import AVAILABLE_DATABASES
 from .utils import generate_password
 from ..icsw_logging import install_global_logger
 

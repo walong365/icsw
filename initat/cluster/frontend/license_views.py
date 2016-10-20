@@ -22,22 +22,26 @@
 
 """ license views """
 
+from __future__ import unicode_literals, print_function
+
 import logging
 
 from django.contrib.auth.decorators import login_required
 from django.utils.decorators import method_decorator
 from django.views.generic import View
+from django.db.models import Q
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
+from rest_framework import viewsets
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, get_available_licenses
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
-from initat.cluster.backbone.models import License, device_variable
+from initat.cluster.backbone.models import License, device_variable, icswEggCradle
 from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.cluster.backbone.serializers import icswEggCradleSerializer
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools import server_command
-
 
 logger = logging.getLogger("cluster.license")
 
@@ -55,10 +59,10 @@ def login_required_rest(default_value_generator=lambda: []):
     return dec
 
 
-class get_all_licenses(ListAPIView):
+class LicenseViewSet(viewsets.ViewSet):
     # @method_decorator(login_required_rest(lambda: []))
     @rest_logging
-    def list(self, request, *args, **kwargs):
+    def get_all_licenses(self, request, *args, **kwargs):
         # pseudo-serialize named dict
         return Response(
             [
@@ -73,6 +77,14 @@ class get_all_licenses(ListAPIView):
             ]
         )
 
+    @rest_logging
+    def get_ova_counter(self, request):
+        _sys_cradle = icswEggCradle.objects.get(Q(system_cradle=True))
+        return Response(
+            [
+                icswEggCradleSerializer(_sys_cradle).data
+            ]
+        )
 
 class get_license_packages(ListAPIView):
     # no login required for this since we want to show it in the login page

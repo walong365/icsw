@@ -161,10 +161,10 @@ angular.module(
     }
 ]).controller("icswLivestatusDeviceMonTableCtrl",
 [
-    "$scope", "DeviceOverviewSelection", "DeviceOverviewService", "$q", "icswSimpleAjaxCall", "ICSW_URLS",
+    "$scope", "DeviceOverviewService", "$q", "icswSimpleAjaxCall", "ICSW_URLS",
     "ICSW_SIGNALS", "icswComplexModalService", "$templateCache", "$compile", "blockUI",
 (
-    $scope, DeviceOverviewSelection, DeviceOverviewService, $q, icswSimpleAjaxCall, ICSW_URLS,
+    $scope, DeviceOverviewService, $q, icswSimpleAjaxCall, ICSW_URLS,
     ICSW_SIGNALS, icswComplexModalService, $templateCache, $compile, $blockUI,
 ) ->
     $scope.struct = {
@@ -203,8 +203,7 @@ angular.module(
         )
 
     $scope.show_device = ($event, dev_check) ->
-        DeviceOverviewSelection.set_selection([dev_check.$$icswDevice])
-        DeviceOverviewService($event)
+        DeviceOverviewService($event, [dev_check.$$icswDevice])
 
     $scope.pagination_changed = (pag) ->
         if not pag?

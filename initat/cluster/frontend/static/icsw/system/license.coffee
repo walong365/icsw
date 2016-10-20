@@ -30,29 +30,37 @@ angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$uibModal",
     "ICSW_URLS", 'FileUploader', "icswCSRFService", "blockUI", "icswParseXMLResponseService",
-    "icswSystemLicenseDataService", "icswAcessLevelService",
+    "icswSystemLicenseDataService", "icswAcessLevelService", "icswSystemOvaCounterService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $uibModal,
     ICSW_URLS, FileUploader, icswCSRFService, blockUI, icswParseXMLResponseService,
-    icswSystemLicenseDataService, icswAcessLevelService,
+    icswSystemLicenseDataService, icswAcessLevelService, icswSystemOvaCounterService,
 ) ->
     $scope.struct = {
         # data valid
         data_valid: false
         # license tree
         license_tree: undefined
+        # license tab open
+        your_licenses_open: false
+        # lic_packs open
+        lic_packs_open: false
+        # lic_upload open
+        lic_upload_open: true
     }
 
     load = () ->
         $q.all(
             [
                 icswSystemLicenseDataService.load($scope.$id)
+                icswSystemOvaCounterService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 $scope.struct.license_tree = data[0]
                 $scope.struct.data_valid = true
         )
+
     load()
     
     $scope.uploader = new FileUploader(
@@ -94,23 +102,6 @@ angular.module(
         restrict : "EA"
         controller: 'icswSystemLicenseCtrl'
         templateUrl : "icsw.system.license.overview"
-        link: (scope, el, attrs) ->
-            scope.your_licenses_open = false
-            scope.lic_packs_open = false
-            scope.lic_upload_open = true
-            if false
-                scope.$watch(
-                    () -> icswSystemLicenseDataService.license_packages.length
-                    (new_val, old_val) ->
-                        scope.license_views_disabled = new_val == 0
-                        # only change accordion states on actual change
-                        if old_val == 0 and new_val > 0
-                            scope.your_licenses_open = true
-                            scope.lic_packs_open = true
-                        if old_val > 1 and new_val == 0
-                            scope.your_licenses_open = false
-                            scope.lic_packs_open = false
-                )
     }
 ]).directive("icswSystemLicenseLocalLicenses",
 [
@@ -178,4 +169,46 @@ angular.module(
                 else
                     return "Cluster #{cluster_id}"
     }
+]).directive("icswSystemOvaDisplay",
+[
+    "$templateCache", "$q",
+(
+    $templateCache, $q,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.system.ova.display")
+        controller: "icswOvaDisplayCtrl"
+        replace: true
+    }
+]).controller("icswOvaDisplayCtrl",
+[
+    "$scope", "$q", "icswSystemOvaCounterService", "$timeout",
+(
+    $scope, $q, icswSystemOvaCounterService, $timeout,
+) ->
+    $scope.struct = {
+        # data present
+        data_ok: false
+        # ova counter service
+        ocs: null
+    }
+
+    load = () ->
+        if $scope.struct.data_ok
+            _w_list = [icswSystemOvaCounterService.reload($scope.$id)]
+        else
+            _w_list = [icswSystemOvaCounterService.load($scope.$id)]
+        $q.all(_w_list).then(
+            (data) ->
+                $scope.struct.ocs = data[0]
+                $scope.struct.data_ok = true
+        )
+        $timeout(
+            () ->
+                load()
+            10000
+        )
+
+    load()
 ])

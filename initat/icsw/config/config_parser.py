@@ -28,24 +28,29 @@ from __future__ import print_function, unicode_literals
 class Parser(object):
     def link(self, sub_parser, **kwargs):
         self.__server_mode = kwargs["server_mode"]
-        return self._add_config_parser(sub_parser)
+        self._add_config_parser(sub_parser)
 
     def _add_config_parser(self, sub_parser):
         parser = sub_parser.add_parser("config", help="config handling (update, create, compare)")
         parser.set_defaults(subcom="config", execute=self._execute)
         child_parser = parser.add_subparsers(help="config subcommands")
+        self._add_enum_parser(child_parser)
         self._add_show_parser(child_parser)
+        self._add_role_parser(child_parser)
+        return parser
 
-    def _add_show_parser(self, child_parser):
+    def _add_enum_parser(self, child_parser):
         if self.__server_mode:
-            en_parser = child_parser.add_parser("enum", help="show enumerated server configs")
-            en_parser.set_defaults(childcom="enum_show")
-            en_parser.add_argument(
+            parser = child_parser.add_parser("enum", help="show enumerated server configs")
+            parser.set_defaults(childcom="enum_show")
+            parser.add_argument(
                 "--sync",
                 default=False,
                 action="store_true",
                 help="sync found Enum with database [%(default)s] and create dummy configs"
             )
+
+    def _add_show_parser(self, child_parser):
         parser = child_parser.add_parser("show", help="show config file(s) for NOCTUA / CORVUS")
         parser.set_defaults(childcom="show")
         parser.add_argument(
@@ -61,7 +66,15 @@ class Parser(object):
             help="use short path for file objects [%(default)s]"
         )
         parser.add_argument("files", nargs="+", help="files to operate on")
-        return parser
+
+    def _add_role_parser(self, child_parser):
+        parser = child_parser.add_parser(
+                "role",
+                help="do an automatic configuration based on the intended "
+                     "usage of the server"
+                )
+        parser.set_defaults(childcom="role")
+        parser.add_argument('role', choices=['noctua'])
 
     def _execute(self, opt_ns):
         from .main import main
