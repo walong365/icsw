@@ -38,7 +38,6 @@ __all__ = [
     b"MODELS_DIR_SAVE",
     b"Z800_MODELS_DIR",
     b"DB_PRESENT",
-    b"DB_CS_FILENAME",
     b"DEFAULT_DATABASE",
     b"DEFAULT_ENGINE",
     b"AVAILABLE_DATABASES",

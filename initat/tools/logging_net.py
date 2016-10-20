@@ -382,3 +382,7 @@ class icswInitHandlerUnified(ZMQHandler):
 
 
 ZMQHandler.setup()
+
+# compat functions
+init_handler_unified = icswInitHandlerUnified
+init_handler = icswInitHandler
