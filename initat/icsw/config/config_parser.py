@@ -36,7 +36,7 @@ class Parser(object):
         child_parser = parser.add_subparsers(help="config subcommands")
         self._add_enum_parser(child_parser)
         self._add_show_parser(child_parser)
-        self._add_roll_parser(child_parser)
+        self._add_role_parser(child_parser)
         return parser
 
     def _add_enum_parser(self, child_parser):
@@ -67,14 +67,14 @@ class Parser(object):
         )
         parser.add_argument("files", nargs="+", help="files to operate on")
 
-    def _add_roll_parser(self, child_parser):
+    def _add_role_parser(self, child_parser):
         parser = child_parser.add_parser(
-                "roll",
+                "role",
                 help="do an automatic configuration based on the intended "
                      "usage of the server"
                 )
-        parser.set_defaults(childcom="roll")
-        parser.add_argument('roll', choices=['noctua'])
+        parser.set_defaults(childcom="role")
+        parser.add_argument('role', choices=['noctua'])
 
     def _execute(self, opt_ns):
         from .main import main
