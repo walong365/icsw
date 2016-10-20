@@ -79,7 +79,7 @@ def get_broadcast_by_interface(interface):
 
 
 def create_noctua_fixtures():
-    print "creating noctua fixtures..."
+    print "creating Noctua fixtures..."
     if False:
         device_group.objects.filter(Q(pk__gt=1)).delete()
         group.objects.all().delete()

@@ -31,7 +31,7 @@ import stat
 import sys
 
 from initat.tools import logging_tools, process_tools
-from initat.icsw.config.create_roll_fixtures import create_noctua_fixtures
+from initat.icsw.config.create_role_fixtures import create_noctua_fixtures
 
 
 def enum_show_command(options):
@@ -213,5 +213,5 @@ def main(opt_ns):
         show_command(opt_ns)
     elif opt_ns.childcom == "enum_show":
         enum_show_command(opt_ns)
-    elif opt_ns.childcom == "roll":
+    elif opt_ns.childcom == "role":
         create_noctua_fixtures()
