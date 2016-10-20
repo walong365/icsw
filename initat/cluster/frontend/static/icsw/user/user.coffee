@@ -237,10 +237,10 @@ user_module = angular.module(
 ]).service("icswUserService",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope", "ICSW_SIGNALS",
-    "Restangular", "icswUser", "icswTreeBase", "themeService",
+    "Restangular", "icswUser", "icswTreeBase", "icswThemeService",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, $rootScope, ICSW_SIGNALS,
-    Restangular, icswUser, icswTreeBase, themeService
+    Restangular, icswUser, icswTreeBase, icswThemeService
 ) ->
     class icswUserService extends icswTreeBase
         get: () =>
@@ -277,7 +277,7 @@ user_module = angular.module(
 
         update: () =>
             result = @get_result()
-            themeService.setcurrent(result.user.ui_theme_selection)
+            icswThemeService.setcurrent(result.user.ui_theme_selection)
             return result.update_user()
 
     return new icswUserService(
@@ -1257,12 +1257,12 @@ user_module = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswUserService",
     "icswUserGroupRoleSettingsTreeService", "icswUserGroupRolePermissionTreeService",
-    "icswUserGetPassword", "blockUI", "themes",
+    "icswUserGetPassword", "blockUI", "icswThemes",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $timeout, $uibModal, ICSW_URLS, icswUserService,
     icswUserGroupRoleSettingsTreeService, icswUserGroupRolePermissionTreeService,
-    icswUserGetPassword, blockUI, themes
+    icswUserGetPassword, blockUI, icswThemes
 ) ->
     $scope.struct = {
         data_valid: false
@@ -1288,7 +1288,7 @@ user_module = angular.module(
             (data) ->
                 $scope.struct.data_valid = true
                 $scope.struct.user = data[0].user
-                $scope.themes = themes
+                $scope.themes = icswThemes
                 $scope.struct.settings_tree = data[1]
                 $scope.perm_tree = data[2]
                 # hack, to be improved, FIXME, ToDo

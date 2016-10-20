@@ -40,11 +40,11 @@ angular.module(
 [
     "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswParseXMLResponseService", "blockUI",
     "initProduct", "icswSystemLicenseDataService", "$q", "$state", "icswCSRFService", "icswUserService",
-    "icswToolsSimpleModalService", "themeService", "icswOverallStyle",
+    "icswToolsSimpleModalService", "icswThemeService", "icswOverallStyle",
 (
     $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswParseXMLResponseService, blockUI,
     initProduct, icswSystemLicenseDataService, $q, $state, icswCSRFService, icswUserService,
-    icswToolsSimpleModalService, themeService, icswOverallStyle,
+    icswToolsSimpleModalService, icswThemeService, icswOverallStyle,
 ) ->
     $scope.all_loaded = false;
     $scope.initProduct = initProduct
@@ -82,7 +82,7 @@ angular.module(
         ).then(
             (data) ->
                 xml = data[0]
-                themeService.setdefault($(xml).find("value[name='theme_default']").text())
+                icswThemeService.setdefault($(xml).find("value[name='theme_default']").text())
                 $scope.login_hints = angular.fromJson($(xml).find("value[name='login_hints']").text())
                 $scope.django_version = $(xml).find("value[name='django_version']").text()
                 $scope.struct.disabled = false
@@ -154,7 +154,7 @@ angular.module(
                                 (data) ->
                                     csrf_token = data[0]
                                     _user = data[1].user
-                                    themeService.setcurrent(_user.ui_theme_selection)
+                                    icswThemeService.setcurrent(_user.ui_theme_selection)
                                     blockUI.stop()
                                     $state.go(_val)
                             )
