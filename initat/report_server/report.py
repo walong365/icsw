@@ -67,6 +67,10 @@ from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREAT
 from initat.cluster.backbone.models import device, AssetType, PackageTypeEnum, RunStatus, RunResult
 from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 
+try:
+    from unidecode import unidecode
+except ImportError:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -2226,7 +2230,13 @@ class PDFReportGenerator(ReportGenerator):
 
         for _report in queue:
             bookmark_name = "{} {}".format(_report.get_section_number(), _report.name)
-            _report.bookmark = output_pdf.addBookmark(bookmark_name.encode("ascii", "replace"),
+
+            try:
+                bookmark_name = unidecode(bookmark_name)
+            except:
+                bookmark_name = bookmark_name.encode("ascii", "replace")
+
+            _report.bookmark = output_pdf.addBookmark(bookmark_name,
                                                       current_page_number,
                                                       parent=_report.root_report.bookmark if _report.root_report
                                                       else None)
