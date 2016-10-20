@@ -1144,6 +1144,12 @@ class BuildProcess(
                     break
             all_configs[cur_dev.full_name] = loc_config
         # get config variables
+        if not cur_gc["contactgroup"].keys():
+            self.log(
+                "no contact group defined",
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            return
         first_contactgroup_name = cur_gc["contactgroup"][cur_gc["contactgroup"].keys()[0]].name
         contact_group_dict = {}
         # get contact groups
