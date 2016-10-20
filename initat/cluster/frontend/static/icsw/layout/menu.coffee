@@ -243,17 +243,19 @@ menu_module = angular.module(
     @backg_timer = null
     return {
         restrict: "EA"
-        template: '<button type="button" ng-click="redirect_to_bgj_info()" title="Number of Background Jobs" style="margin-top:27px;margin-left:15px;"></button>'
+        template: $templateCache.get("icsw.menu.background.job.info")
         replace: true
         link: (scope, el, attrs) ->
+            scope.button_class = ""
             scope.background_jobs = 0
-            el.hide()
+            scope.button_text = ""
+            scope.show = false
             scope.redirect_to_bgj_info = () ->
                 if scope.has_menu_permission('background_job.show_background')
                     $state.go("main.backgroundinfo")
                 return false
-            el.removeClass()
-            el.addClass("btn btn-xs btn-warning")
+
+            scope.button_class = "btn btn-xs btn-warning"
             get_background_job_class = () ->
                 if scope.background_jobs < 4
                     return "btn btn-xs btn-warning pull-right"
@@ -269,12 +271,11 @@ menu_module = angular.module(
                     (data) ->
                         scope.background_jobs = data["background_jobs"]
                         if scope.background_jobs
-                            el.show()
-                            el.removeClass()
-                            el.addClass(get_background_job_class())
-                            el.text(scope.background_jobs)
+                            scope.show = true
+                            scope.button_class = get_background_job_class()
+                            scope.button_text = scope.background_jobs
                         else
-                            el.hide()
+                            scope.show = false
                 )
                 # reload every 30 seconds
                 @backg_timer = $timeout(reload, 30000)

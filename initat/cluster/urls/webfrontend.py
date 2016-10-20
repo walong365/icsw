@@ -237,7 +237,8 @@ device_patterns = [
 
 
 icsw_lic_patterns = [
-    url("^get_all_licenses$", license_views.get_all_licenses.as_view(), name="get_all_licenses"),
+    url("^get_all_licenses$", license_views.LicenseViewSet.as_view({"get": "get_all_licenses"}), name="get_all_licenses"),
+    url("^get_ova_counter", license_views.LicenseViewSet.as_view({"get": "get_ova_counter"}), name="get_ova_counter"),
     url("^get_license_packages$", license_views.get_license_packages.as_view(), name="get_license_packages"),
     url("^GetLicenseViolations$", license_views.GetLicenseViolations.as_view(), name="GetLicenseViolations"),
     url("^GetValidLicenses$", license_views.GetValidLicenses.as_view(), name="GetValidLicenses"),
@@ -348,7 +349,7 @@ auth_patterns = [
 
 rpl = []
 for src_mod, obj_name in rest_views.REST_LIST:
-    is_camelcase = obj_name[0].lower() != obj_name[0]
+    is_camelcase = obj_name[0].lower() != obj_name[0] or (obj_name.startswith("icsw") and obj_name.lower() != obj_name)
 
     list_postfix = "List" if is_camelcase else "_list"
     detail_postfix = "Detail" if is_camelcase else "_detail"

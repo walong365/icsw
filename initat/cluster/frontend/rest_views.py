@@ -757,7 +757,7 @@ class device_com_capabilities(APIView):
 # print len(REST_LIST)
 
 for src_mod, obj_name in REST_LIST:
-    is_camelcase = obj_name[0].lower() != obj_name[0]
+    is_camelcase = obj_name[0].lower() != obj_name[0] or (obj_name.startswith("icsw") and obj_name.lower() != obj_name)
     if is_camelcase:
         ser_name = "{}Serializer".format(obj_name)
         modes = [

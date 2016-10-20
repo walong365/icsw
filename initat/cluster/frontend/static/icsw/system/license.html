@@ -8,12 +8,12 @@
         <h3 ng-show="struct.data_valid">License Overview (ServerID is {{ struct.license_tree.cluster_info.CLUSTER_ID }})</h3>
         <uib-accordion close-others="false" ng-if="struct.data_valid">
 
-            <div uib-accordion-group class="panel-default" is-open="your_licenses_open" is-disabled="license_views_disabled">
+            <div uib-accordion-group class="panel-default" is-open="struct.your_licenses_open" is-disabled="license_views_disabled">
                 <uib-accordion-heading>
                     Your Licenses for this Server
                     <i
                         class="pull-right glyphicon"
-                        ng-class="{'glyphicon-chevron-down': your_licenses_open, 'glyphicon-chevron-right': !your_licenses_open}"
+                        ng-class="{'glyphicon-chevron-down': struct.your_licenses_open, 'glyphicon-chevron-right': !struct.your_licenses_open}"
                     ></i>
                 </uib-accordion-heading>
 
@@ -21,24 +21,24 @@
             </div>
 
 
-            <div uib-accordion-group class="panel-default" is-open="lic_packs_open" is-disabled="license_views_disabled">
+            <div uib-accordion-group class="panel-default" is-open="struct.lic_packs_open" is-disabled="license_views_disabled">
                 <uib-accordion-heading>
                     License Packages
                     <i
                         class="pull-right glyphicon"
-                        ng-class="{'glyphicon-chevron-down': lic_packs_open, 'glyphicon-chevron-right': !lic_packs_open}"
+                        ng-class="{'glyphicon-chevron-down': struct.lic_packs_open, 'glyphicon-chevron-right': !struct.lic_packs_open}"
                     ></i>
                 </uib-accordion-heading>
 
                 <icsw-system-license-packages></icsw-system-license-packages>
             </div>
 
-            <div uib-accordion-group class="panel-default" is-open="lic_upload_open">
+            <div uib-accordion-group class="panel-default" is-open="struct.lic_upload_open">
                 <uib-accordion-heading>
                     Upload License Lile
                     <i
                         class="pull-right glyphicon"
-                        ng-class="{'glyphicon-chevron-down': lic_upload_open, 'glyphicon-chevron-right': !lic_upload_open}"
+                        ng-class="{'glyphicon-chevron-down': struct.lic_upload_open, 'glyphicon-chevron-right': !struct.lic_upload_open}"
                     ></i>
                 </uib-accordion-heading>
 
@@ -179,4 +179,26 @@
             </uib-accordion>
         </uib-tab>
     </uib-tabset>
+</script>
+<script type="text/ng-template" id="icsw.menu.background.job.info">
+    <ul class="nav navbar-nav navbar-right" ng-show="show">
+        <button
+            type="button"
+            ng-class="button_class"
+            ng-click="redirect_to_bgj_info()"
+            title="Number of Background Jobs"
+            style="margin-top:27px;margin-left:15px;"
+        >{{ button_text }}
+        </button>
+    </ul>
+</script>
+
+<script type="text/ng-template" id="icsw.system.ova.display">
+    <ul class="nav navbar-nav navbar-right">
+        <div ng-if="struct.data_ok" style="margin-top: 14px;">
+            <span ng-class="struct.ocs.info_class" title="Ova usage counter">
+                {{ struct.ocs.info_str }}
+            </span>
+        </div>
+    </ul>
 </script>
