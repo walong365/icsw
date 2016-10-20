@@ -558,13 +558,13 @@ angular.module(
     "$scope", "icswLayoutSelectionTreeService", "$timeout", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswSelection", "icswActiveSelectionService", "$q", "icswSavedSelectionService", "icswToolsSimpleModalService",
     "DeviceOverviewService", "ICSW_URLS", 'icswSimpleAjaxCall', "blockUI", "$rootScope", "icswUserService",
-    "DeviceOverviewSelection", "hotkeys", "icswComplexModalService", "$templateCache", "$compile",
+    "hotkeys", "icswComplexModalService", "$templateCache", "$compile",
     "$state",
 (
     $scope, icswLayoutSelectionTreeService, $timeout, icswDeviceTreeService, ICSW_SIGNALS,
     icswSelection, icswActiveSelectionService, $q, icswSavedSelectionService, icswToolsSimpleModalService,
     DeviceOverviewService, ICSW_URLS, icswSimpleAjaxCall, blockUI, $rootScope, icswUserService,
-    DeviceOverviewSelection, hotkeys, icswComplexModalService, $templateCache, $compile,
+    hotkeys, icswComplexModalService, $templateCache, $compile,
     $state,
 ) ->
     hotkeys.bindTo($scope).add(
@@ -1209,7 +1209,6 @@ angular.module(
     $scope.show_current_selection_in_overlay = () ->
         devsel_list = $scope.struct.selection.get_devsel_list()
         selected_devices = ($scope.struct.device_tree.all_lut[_pk] for _pk in devsel_list[0])
-        DeviceOverviewSelection.set_selection(selected_devices)
         DeviceOverviewService(event, selected_devices)
         console.log "show_current_selection"
 
@@ -1302,10 +1301,8 @@ angular.module(
 ]).service("icswLayoutSelectionTreeService",
 [
     "DeviceOverviewService", "icswReactTreeConfig", "icswDeviceTreeService",
-    "DeviceOverviewSelection",
 (
     DeviceOverviewService, icswReactTreeConfig, icswDeviceTreeService,
-    DeviceOverviewSelection
 ) ->
     {span} = React.DOM
     class icswLayoutSelectionTree extends icswReactTreeConfig
@@ -1322,8 +1319,7 @@ angular.module(
             @ensure_current()
             if entry._node_type == "d"
                 dev = @current.all_lut[entry.obj]
-                DeviceOverviewSelection.set_selection([dev])
-                DeviceOverviewService(event)
+                DeviceOverviewService(event, [dev])
                 @notifier.notify("go")
             else
                 entry.set_selected(not entry.selected)

@@ -1365,15 +1365,12 @@ rms_module = angular.module(
     }
 ]).controller("icswRmsJobDoneCtrl",
 [
-    "$scope", "icswRMSIOStruct", "ICSW_SIGNALS",
-    "DeviceOverviewSelection", "DeviceOverviewService",
+    "$scope", "icswRMSIOStruct", "ICSW_SIGNALS", "DeviceOverviewService",
 (
-    $scope, icswRMSIOStruct, ICSW_SIGNALS,
-    DeviceOverviewSelection, DeviceOverviewService,
+    $scope, icswRMSIOStruct, ICSW_SIGNALS, DeviceOverviewService,
 ) ->
     $scope.click_node = ($event, device) ->
-        DeviceOverviewSelection.set_selection([device])
-        DeviceOverviewService($event)
+        DeviceOverviewService($event, [device])
 
 ]).directive("icswRmsQueueTable",
 [
@@ -1391,15 +1388,12 @@ rms_module = angular.module(
     }
 ]).controller("icswRmsQueueTableCtrl",
 [
-    "$scope", "icswRMSIOStruct", "ICSW_SIGNALS",
-    "DeviceOverviewSelection", "DeviceOverviewService",
+    "$scope", "icswRMSIOStruct", "ICSW_SIGNALS", "DeviceOverviewService",
 (
-    $scope, icswRMSIOStruct, ICSW_SIGNALS,
-    DeviceOverviewSelection, DeviceOverviewService,
+    $scope, icswRMSIOStruct, ICSW_SIGNALS, DeviceOverviewService,
 ) ->
     $scope.click_node = ($event, device) ->
-        DeviceOverviewSelection.set_selection([device])
-        DeviceOverviewService($event)
+        DeviceOverviewService($event, [device])
 
 ]).directive("icswRmsIoStruct",
 [

@@ -12,9 +12,9 @@
 <script type="text/ng-template" id="icsw.device.create.mask">
     <div class="container-fluid">
         <h3>Create a new Device</h3>
-        <form class="form-horizontal" name="form_data" novalidate ng-if="data_ready">
+        <form class="form-horizontal" name="form_data" novalidate ng-if="struct.data_ready">
             <uib-accordion ng-cloak close-others="false">
-                <div uib-accordion-group class="panel-default" heading="Base Data" is-open="base_open">
+                <div uib-accordion-group class="panel-default" heading="Base Data" is-open="struct.base_open">
                     <!-- {{ form_data || json }} {{form_data.$valid}} -->
                     <div class="form-group">
                         <label class="control-label col-md-3 icsw-formlabel">
@@ -35,7 +35,7 @@
                                 name="device_group"
                                 class="form-control maxwidth500"
                                 ng-model="device_data.device_group" required ng-pattern="/^[a-zA-Z][a-zA-Z0-9\-_]*$/"
-                                uib-typeahead="value.name for value in device_tree.group_list | filter:$viewValue"
+                                uib-typeahead="value.name for value in struct.device_tree.group_list | filter:$viewValue"
                             />
                             <span ng-show="form_data.device_group.$invalid" class="text-danger">
                                 Please enter a valid device group name (no spaces or dots allowed)
@@ -89,14 +89,14 @@
                             </div>
                         </div>
                     </div>
-                    <div class="form-group" ng-if="peer_tree.peer_list.length">
+                    <div class="form-group" ng-if="struct.peer_tree.peer_list.length">
                         <label class="control-label col-md-3 icsw-formlabel">Connect to</label>
                         <div class="controls col-md-6">
                             <ui-select ng-model="device_data.peer" class="maxwidth500" style="min-width:240px;">
                                 <ui-select-match class="ui-select-match" placeholder="Please select a valid peer">
                                     {{ $select.selected.full_name }}
                                 </ui-select-match>
-                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in peer_tree.peer_list | props_filter:{full_name:$select.search}">
+                                <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.peer_tree.peer_list | props_filter:{full_name:$select.search}">
                                     <div ng-bind-html="value.full_name | highlight: $select.search"></div>
                                 </ui-select-choices>
                             </ui-select>
@@ -110,7 +110,8 @@
                     </div>
                     <div class="form-group">
                         <div class="controls icsw-buttoncol" ng-class="form_data.comment.$invalid && 'has-error'">
-                            <icsw-tools-button type="create" ng-show="form_data.$valid" value="create Device" ng-click="create_device()"/>
+                            <icsw-tools-button type="create" ng-show="form_data.$valid" value="create Device" ng-click="create_device($event)"/>
+                            <icsw-tools-button type="create" ng-show="form_data.$valid" value="create Device and edit" ng-click="create_device_and_edit($event)"/>
                             <span ng-show="!form_data.$valid" class="text-danger">Formular data is not valid (some fields missing... ?)</span>
                         </div>
                     </div>

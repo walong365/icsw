@@ -22,6 +22,8 @@
 Checks related to pgpool-II >= 3.0 via SQL interface.
 """
 
+from __future__ import unicode_literals, print_function
+
 import cPickle
 import os
 import subprocess
@@ -88,7 +90,6 @@ class PGPoolUsage(object):
                 ]
             )
             _res.setdefault(_ke, []).append((event["Connected"], event["Counter"]))
-        _res_2 = {}
         _mv_list = []
         for _key, _value in _res.iteritems():
             _key = "pgpool.worker.{}".format(_key)
@@ -262,11 +263,10 @@ class PgPoolCommand(hm_command):
         try:
             result = self.query()
         except (psycopg2.DatabaseError, psycopg2.InterfaceError):
-            error_info = {
-                "reply": "Error executing '%s'" % self.sql,
-                "state": str(server_command.SRV_REPLY_STATE_ERROR)
-            }
-            srv_com["result"].attrib.update(error_info)
+            srv_com.set_result(
+                "Error executing '{}".format(self.sql),
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
         else:
             srv_com[self.key] = self.pack(result)
 

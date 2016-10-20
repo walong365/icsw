@@ -1,5 +1,3 @@
-# Django settings for ICSW
-#
 # -*- coding: utf-8 -*-
 #
 # Copyright (C) 2010-2016 Andreas Lang-Nevyjel
@@ -19,6 +17,10 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
+"""
+Django settings for ICSW
+"""
 
 from __future__ import unicode_literals, print_function
 
@@ -82,11 +84,13 @@ DATABASE_ROUTERS = [
 ]
 
 # config stores
+
 # database config
 _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True, access_mode=config_store.AccessModeEnum.GLOBAL)
 if config_store.ConfigStore.exists(DB_ACCESS_CS_NAME):
     _ps = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True, access_mode=config_store.AccessModeEnum.LOCAL)
 else:
+    # this only happens when check_content_stores_server was NOT called
     raise ImproperlyConfigured("DB-Access not configured (store not found or not readable)")
 
 # version config
