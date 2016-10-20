@@ -7,7 +7,7 @@ import re
 PACKAGE_NAME_PATTERN = re.compile(r".*>(.*)<.*")
 ICSW_SERVER_PATTERN = re.compile(r"icsw-server.3.0.(\d*).*")
 
-def main():
+def check_for_new_packages():
     repos = [
         ("suse_42_1", "http://www.initat.org/cluster/RPMs/suse_42.1/icsw-devel/"),
         ("debian_jessie", "http://www.initat.org/cluster/debs/debian_jessie/icsw-devel/"),
@@ -24,6 +24,8 @@ def main():
 
     current_release_dict = {}
 
+    new_packages = {}
+
     for distro_name, repo_uri in repos:
         data = urllib2.urlopen(repo_uri).read()
 
@@ -39,12 +41,14 @@ def main():
                     current_release_dict[distro_name] = max(release_number, current_release_dict[distro_name])
 
         if current_release_dict[distro_name] > checked_release_dict[distro_name]:
-            print "new release number found: {} for {}".format(current_release_dict[distro_name], distro_name)
             checked_release_dict[distro_name] = current_release_dict[distro_name]
+            new_packages[distro_name] = current_release_dict[distro_name]
 
     with open("release.db", "wb") as f:
         pickle.dump(checked_release_dict, f)
 
+    return new_packages
+
 
 if __name__ == "__main__":
-    main()
+    print(check_for_new_packages())

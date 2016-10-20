@@ -838,3 +838,62 @@ class DeviceClassViewSet(viewsets.ViewSet):
                 many=True,
             ).data
         )
+
+from initat.cluster.backbone.models import AssetBatch
+from initat.cluster.backbone.models import MachineVector
+from initat.cluster.backbone.models import mon_check_command
+
+class device_completion(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[0][]")]
+
+        devices = device.objects.prefetch_related("assetbatch_set").filter(idx__in=device_pks)
+
+        # build monitoring check information
+        device_checks_count = {}
+        for check in mon_check_command.objects.all():
+            for device_idx in check.get_configured_device_pks():
+                if device_idx not in device_checks_count:
+                    device_checks_count[device_idx] = 0
+                device_checks_count[device_idx] += 1
+
+        # build graphing information
+        device_graph_count = {}
+        machine_vectors = MachineVector.objects.prefetch_related("device").filter(device__idx__in = device_pks)
+        for machine_vector in machine_vectors:
+            if machine_vector.device.idx not in device_graph_count:
+                device_graph_count[machine_vector.device.idx] = 0
+            device_graph_count[machine_vector.device.idx] += 1
+
+        # build location information map
+        device_location_count = {}
+        location_categories = category.objects.prefetch_related("device_set").filter(full_name__startswith="/location/")
+        for location_category in location_categories:
+            for _device in location_category.device_set.all():
+                if _device.idx not in device_location_count:
+                    device_location_count[_device.idx] = 0
+                device_location_count[_device.idx] += 1
+
+        info_dict = {}
+
+        for _device in devices:
+            info_dict[_device.idx] = {}
+
+            info_dict[_device.idx]["graphing_data"] = 0
+            if _device.idx in device_graph_count:
+                info_dict[_device.idx]["graphing_data"] = device_graph_count[_device.idx]
+
+            info_dict[_device.idx]["monitoring_checks"] = 0
+            if _device.idx in device_checks_count:
+                info_dict[_device.idx]["monitoring_checks"] = device_checks_count[_device.idx]
+
+            info_dict[_device.idx]["location_data"] = 0
+            if _device.idx in device_location_count:
+                info_dict[_device.idx]["location_data"] = device_location_count[_device.idx]
+
+            info_dict[_device.idx]["asset_data"] = _device.assetbatch_set.count()
+
+        return HttpResponse(
+            json.dumps(info_dict)
+        )
