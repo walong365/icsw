@@ -20,51 +20,51 @@
 
 angular.module(
     "icsw.layout.theme",
-    ["restangular"]
-).value("themes",
-    "default" : "Default",
-    "cora" : "Cora",
-    "sirocco" : "Sirocco"
+    [
+        "restangular"
+    ]
+).value("icswThemes",
     # FIXME get values from settings.py
-).service('themeService',
+    "default": "Default",
+    "cora": "Cora",
+    "sirocco": "Sirocco"
+).service('icswThemeService',
 [
-    "$http", "ICSW_URLS", "themes", "$window", "Restangular", "themeSetup",
+    "$http", "ICSW_URLS", "icswThemes", "$window", "Restangular", "icswThemeSetup",
 (
-    $http, ICSW_URLS, themes, $window, Restangular, themeSetup,
+    $http, ICSW_URLS, icswThemes, $window, Restangular, icswThemeSetup,
 ) ->
-    setdefault : (default_theme) =>
+    setdefault: (default_theme) =>
         $window.sessionStorage.setItem('default_theme', default_theme)
         current_theme = $window.sessionStorage.getItem('current_theme')
         theme = current_theme ? default_theme
-        themeSetup(theme)
-    setcurrent : (current_theme) =>
+        icswThemeSetup(theme)
+
+    setcurrent: (current_theme) =>
         $window.sessionStorage.setItem('current_theme', current_theme)
         default_theme = $window.sessionStorage.getItem('default_theme')
         theme = current_theme ? default_theme
-        themeSetup(theme)
-    toggle : () =>
+        icswThemeSetup(theme)
+
+    toggle: () =>
         current_theme = $window.sessionStorage.getItem('current_theme')
-        theme_arr = Object.keys(themes)
+        theme_arr = Object.keys(icswThemes)
         current_index = theme_arr.indexOf(current_theme)
         current_index += 1
         current_index = if current_index >= theme_arr.length then 0 else current_index
         $window.sessionStorage.setItem('current_theme', theme_arr[current_index])
-        themeSetup(theme_arr[current_index])
-    save : (theme) =>
-        Restangular.all(ICSW_URLS.USER_SET_THEME.slice(1)).customGET("", {"theme":theme}).then(
-            (theme_data) ->
-                $window.sessionStorage.setItem('current_theme', theme)
-        )
-]).service('themeSetup',
+        icswThemeSetup(theme_arr[current_index])
+
+]).service('icswThemeSetup',
 [
-    "$http", "ICSW_URLS", "themes", "$window",
+    "$http", "ICSW_URLS", "icswThemes", "$window",
 (
-    $http, ICSW_URLS, themes, $window,
+    $http, ICSW_URLS, icswThemes, $window,
 ) ->
     setup = (theme) ->
         default_theme = $window.sessionStorage.getItem('default_theme')
         if theme == "init" then theme = "cora"
-        if not themes[theme]?
+        if not icswThemes[theme]?
             theme = default_theme
             console.log("theme does not exist setting default theme:", theme)
         maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
@@ -77,13 +77,13 @@ angular.module(
             )
 ]).directive('icswLayoutMainTheme',
 [
-    "$window", "themeSetup",
+    "$window", "icswThemeSetup",
 (
-    $window, themeSetup,
+    $window, icswThemeSetup,
 ) ->
     link: (scope, element, attributes) ->
         default_theme = $window.sessionStorage.getItem('default_theme')
         current_theme = $window.sessionStorage.getItem('current_theme')
         theme = current_theme ? default_theme
-        if theme then themeSetup(theme)
+        if theme then icswThemeSetup(theme)
 ])
