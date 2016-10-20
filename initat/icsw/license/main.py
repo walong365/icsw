@@ -90,6 +90,8 @@ def show_license_info(opts):
     _infos = License.objects.get_license_info()
     print("License info, {}:".format(logging_tools.get_plural("entry", len(_infos))))
     for _info in _infos:
+        # import pprint
+        # pprint.pprint(_info)
         _cl_info = sorted(list(set(_info["lic_info"].keys())))
         # print("")
         # print("-" * 40)
@@ -144,11 +146,14 @@ def _install_license(content):
         if len(lic_file_node):
             lic_file_content = lic_file_node[0].text
             # validate
-            if License.objects.license_exists(lic_file_content):
+            if License.objects.license_exists(lic_file_content):  #  and False:
                 print("License file already added.")
             else:
                 license_file_reader.LicenseFileReader(lic_file_content)
-                new_lic = License(file_name="uploaded_via_command_line", license_file=lic_file_content)
+                new_lic = License(
+                    file_name="uploaded_via_command_line",
+                    license_file=lic_file_content
+                )
                 new_lic.save()
                 print("Successfully added license file: {}".format(unicode(new_lic)))
     else:

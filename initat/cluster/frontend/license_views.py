@@ -149,7 +149,10 @@ class upload_license_file(View):
                     )
                     request.xml_response.error(msg)
                 else:
-                    new_lic = License(file_name=lic_file.name, license_file=lic_file_content)
+                    new_lic = License(
+                        file_name=lic_file.name,
+                        license_file=lic_file_content
+                    )
                     new_lic.save()
                     request.xml_response.info("Successfully uploaded license file: {}".format(unicode(new_lic)))
 

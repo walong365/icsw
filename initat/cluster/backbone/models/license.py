@@ -23,6 +23,8 @@
 
 """ database definitions for license / ova management """
 
+from __future__ import print_function, unicode_literals
+
 import collections
 import datetime
 import logging
@@ -42,20 +44,20 @@ from initat.tools import logging_tools
 from .license_xml import ICSW_XML_NS, ICSW_XML_NS_NAME, ICSW_XML_NS_MAP, LIC_FILE_RELAX_NG_DEFINITION
 
 __all__ = [
-    "LicenseState",
-    "License",
-    "LicenseEnum",
-    "LicenseParameterTypeEnum",
-    "ICSW_XML_NS",
-    "ICSW_XML_NS_MAP",
-    "ICSW_XML_NS_NAME",
-    "LIC_FILE_RELAX_NG_DEFINITION",
-    "icswEggCradle",
-    "icswEggEvaluationDef",
-    "icswEggBasket",
-    "icswEggConsumer",
-    "icswEggRequest",
-    "LICENSE_USAGE_GRACE_PERIOD",
+    b"LicenseState",
+    b"License",
+    b"LicenseEnum",
+    b"LicenseParameterTypeEnum",
+    b"ICSW_XML_NS",
+    b"ICSW_XML_NS_MAP",
+    b"ICSW_XML_NS_NAME",
+    b"LIC_FILE_RELAX_NG_DEFINITION",
+    b"icswEggCradle",
+    b"icswEggEvaluationDef",
+    b"icswEggBasket",
+    b"icswEggConsumer",
+    b"icswEggRequest",
+    b"LICENSE_USAGE_GRACE_PERIOD",
 ]
 
 logger = logging.getLogger("cluster.icsw_license")
@@ -175,12 +177,16 @@ class _LicenseManager(models.Manager):
 
     def get_init_product(self):
         valid_lics = set(self.get_valid_licenses())
+        # print(valid_lics)
         product_licenses = set()
+        # all available licenses
         for available_lic in get_available_licenses():
             if available_lic.enum_value in valid_lics:
                 if available_lic.product is not None:
+                    # print("   ", available_lic.product)
                     product_licenses.add(available_lic.product)
 
+        # print("+", product_licenses)
         # this does currently not happen:
         if InitProduct.CORVUS in product_licenses:
             return InitProduct.CORVUS
@@ -200,7 +206,13 @@ class _LicenseManager(models.Manager):
         return sum([_reader.license_info(raw=True) for _reader in self._license_readers], [])
 
     def get_valid_licenses(self):
-        """Returns all licenses which are active (and should be displayed to the user)"""
+        """
+        Returns all licenses which are active (and should be displayed to the user)
+        Problem: if you upload multiple license files (== license-packs) with the
+        same name / UUID the system will return the any valid licenses and not the one
+        from the latest files
+        Quick fix: delete previous license files
+        """
         return [
             lic for lic in set().union(
                 *[
@@ -228,7 +240,12 @@ class _LicenseManager(models.Manager):
         for file_content, file_name in self.values_list('license_file', 'file_name'):
             try:
                 readers.append(
-                    LicenseFileReader(file_content, file_name, cluster_id=cluster_id, current_fingerprint=cur_fp)
+                    LicenseFileReader(
+                        file_content,
+                        file_name,
+                        cluster_id=cluster_id,
+                        current_fingerprint=cur_fp
+                    )
                 )
             except LicenseFileReader.InvalidLicenseFile as e:
                 logger.error(
@@ -270,6 +287,13 @@ class License(models.Model):
 @receiver(signals.post_delete, sender=License)
 def license_save(sender, **kwargs):
     _LicenseManager._license_readers_cache.clear()
+
+
+@receiver(signals.post_save, sender=License)
+def license_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        print(cur_inst)
 
 
 ########################################

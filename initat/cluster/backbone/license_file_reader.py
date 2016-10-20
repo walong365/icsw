@@ -19,20 +19,23 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+""" license file reader """
+
+from __future__ import print_function, unicode_literals
 
 import base64
 import datetime
 import glob
 import logging
-import dateutil.parser
 
 import M2Crypto
+import dateutil.parser
 import pytz
 from lxml import etree
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, LicenseParameterTypeEnum
-from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, ICSW_XML_NS_MAP, \
-    LICENSE_USAGE_GRACE_PERIOD
+from initat.cluster.backbone.models.license import LicenseState, LIC_FILE_RELAX_NG_DEFINITION, \
+    ICSW_XML_NS_MAP, LICENSE_USAGE_GRACE_PERIOD
 from initat.cluster.settings import TIME_ZONE
 from initat.tools import process_tools, server_command, logging_tools
 
@@ -52,9 +55,9 @@ class LicenseFileReader(object):
     def __init__(self, file_content, file_name=None, cluster_id=None, current_fingerprint=None):
         from initat.cluster.backbone.models import device_variable
 
+        self.file_name = file_name
         # contains the license-file tag, i.e. information relevant for program without signature
         self.content_xml = self._read(file_content)
-        self.file_name = file_name
         if cluster_id is None:
             self.cluster_id = device_variable.objects.get_cluster_id()
         else:
@@ -91,6 +94,10 @@ class LicenseFileReader(object):
         return self.__fingerprint_valid
 
     def _read(self, file_content):
+        # read content, raise an error if
+        # - wrong format (decompression problem)
+        # - XML not valid
+        # - invalid signature
         try:
             signed_content_str = server_command.decompress(file_content)
         except:
@@ -116,6 +123,14 @@ class LicenseFileReader(object):
         if not signature_ok:
             raise LicenseFileReader.InvalidLicenseFile("Invalid signature")
 
+        # notes about the XML:
+        # - one or more packages
+        # - packages may have the same UUID
+        # - only the packags with the highest date (when having the same UUID) is valid
+        # print(etree.tostring(content_xml))
+        # print(ICSW_XML_NS_MAP)
+        # print(content_xml.xpath(".//icsw:package-name/text()", namespaces=ICSW_XML_NS_MAP))
+        # print(content_xml.xpath(".//icsw:package-uuid/text()", namespaces=ICSW_XML_NS_MAP))
         return content_xml
 
     @staticmethod
@@ -203,11 +218,17 @@ class LicenseFileReader(object):
         return state
 
     def get_valid_licenses(self):
-        """Returns licenses which are currently valid as license id string list. Does not consider license violations!"""
+        """
+        Returns licenses which are currently valid as license id string list. Does not consider license violations!
+        """
         ret = []
         for lic_id in set(
-            lic_xml.find("icsw:id", namespaces=ICSW_XML_NS_MAP).text for lic_xml in self.content_xml.xpath(
-                "//icsw:license", namespaces=ICSW_XML_NS_MAP
+            lic_xml.find(
+                "icsw:id",
+                namespaces=ICSW_XML_NS_MAP
+            ).text for lic_xml in self.content_xml.xpath(
+                "//icsw:license",
+                namespaces=ICSW_XML_NS_MAP
             ) if self._get_state_from_license_xml(lic_xml).is_valid()
         ):
             try:
@@ -357,7 +378,6 @@ class LicenseFileReader(object):
     @staticmethod
     def verify_signature(lic_file_xml, signature_xml):
         """
-
         :return: True if signature is fine
         :rtype : bool
         """
@@ -424,13 +444,16 @@ class LicenseFileReader(object):
         # not unique
         _num = {"lics": 0, "paras": 0}
         for _list in [_lic_info]:
-            for _entry in _list:
-                for _skey, _dkey in [("cluster_licenses", "lics"), ("parameters", "paras")]:
-                    if _skey in _entry:
-                        _cluster_ids |= set(_entry[_skey].keys())
-                        for _cl in _entry[_skey].itervalues():
-                            _num[_dkey] += len(_cl)
-        return "Found {} and {} in {} for {}".format(
+            for _lic_entry in _list:
+                _cl_info = _lic_entry["lic_info"].keys()
+                for _cl_name in _cl_info:
+                    _cluster_ids.add(_cl_name)
+                    _cl_struct = _lic_entry["lic_info"][_cl_name]
+                    for _skey, _dkey in [("licenses", "lics"), ("parameters", "paras")]:
+                        for _entry in _cl_struct.get(_skey, []):
+                            # print _entry
+                            _num[_dkey] += 1
+        return "{} and {} in {} for {}".format(
             logging_tools.get_plural("license", _num["lics"]),
             logging_tools.get_plural("global parameter", _num["paras"]),
             logging_tools.get_plural("package", _num_packs),
