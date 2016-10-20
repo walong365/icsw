@@ -2225,7 +2225,8 @@ class PDFReportGenerator(ReportGenerator):
         current_page_number = number_of_pre_content_sites
 
         for _report in queue:
-            _report.bookmark = output_pdf.addBookmark("{} {}".format(_report.get_section_number(), _report.name),
+            bookmark_name = "{} {}".format(_report.get_section_number(), _report.name)
+            _report.bookmark = output_pdf.addBookmark(bookmark_name.encode("ascii", "replace"),
                                                       current_page_number,
                                                       parent=_report.root_report.bookmark if _report.root_report
                                                       else None)

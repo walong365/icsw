@@ -3,7 +3,7 @@ exports.config = {
     defaultTimeoutInterval: 90000
   },
   framework: 'jasmine',
-  seleniumAddress: 'http://localhost:4444/wd/hub',
+  seleniumAddress: 'http://192.168.1.246:4444/wd/hub',
   specs: ['spec.js'],
   plugins: [{
     package: 'jasmine2-protractor-utils',
