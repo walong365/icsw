@@ -53,21 +53,25 @@ __all__ = [
 
 class mon_host_cluster_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_host_cluster
 
 
 class mon_service_cluster_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_service_cluster
 
 
 class host_check_command_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = host_check_command
 
 
 class mon_check_command_special_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_check_command_special
 
 
@@ -75,6 +79,7 @@ class mon_check_command_serializer(serializers.ModelSerializer):
     object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = mon_check_command
 
 
@@ -82,11 +87,13 @@ class mon_check_command_nat_serializer(serializers.ModelSerializer):
     config = serializers.SlugRelatedField(slug_field="name", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = mon_check_command
 
 
 class mon_notification_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_notification
 
 
@@ -94,6 +101,7 @@ class mon_contact_serializer(serializers.ModelSerializer):
     user_name = serializers.CharField(source="get_user_name", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = mon_contact
 
 
@@ -105,31 +113,37 @@ class mon_contactgroup_serializer(serializers.ModelSerializer):
 
 class mon_device_templ_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_device_templ
 
 
 class mon_device_esc_templ_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_device_esc_templ
 
 
 class mon_host_dependency_templ_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_host_dependency_templ
 
 
 class mon_host_dependency_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_host_dependency
 
 
 class mon_service_dependency_templ_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_service_dependency_templ
 
 
 class mon_service_dependency_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_service_dependency
 
 
@@ -137,6 +151,7 @@ class mon_ext_host_serializer(serializers.ModelSerializer):
     data_image = serializers.URLField(source="data_image_field", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = mon_ext_host
 
 
@@ -153,11 +168,13 @@ class mon_period_serializer(serializers.ModelSerializer):
 
 class mon_service_templ_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_service_templ
 
 
 class mon_service_esc_templ_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_service_esc_templ
 
 

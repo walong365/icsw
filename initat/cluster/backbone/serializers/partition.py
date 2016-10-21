@@ -43,6 +43,7 @@ __all__ = [
 
 class partition_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = partition
 
 
@@ -50,21 +51,25 @@ class partition_fs_serializer(serializers.ModelSerializer):
     need_mountpoint = serializers.ReadOnlyField()
 
     class Meta:
+        fields = "__all__"
         model = partition_fs
 
 
 class sys_partition_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = sys_partition
 
 
 class lvm_lv_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = lvm_lv
 
 
 class lvm_vg_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = lvm_vg
 
 
@@ -77,14 +82,15 @@ class partition_disc_serializer_save(serializers.ModelSerializer):
 class partition_disc_serializer_create(serializers.ModelSerializer):
     # partition_set = partition_serializer(many=True)
     class Meta:
+        fields = "__all__"
         model = partition_disc
-        # fields = ("disc", "partition_table")
 
 
 class partition_disc_serializer(serializers.ModelSerializer):
     partition_set = partition_serializer(many=True)
 
     class Meta:
+        fields = "__all__"
         model = partition_disc
 
 

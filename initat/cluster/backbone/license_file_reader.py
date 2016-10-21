@@ -466,10 +466,13 @@ class LicenseFileReader(object):
     def __repr__(self):
         return "LicenseFileReader(file_name={})".format(self.file_name)
 
-    def license_info(self, raw=False):
-        _lic_info = LicenseFileReader.get_license_packages([self])
-        if raw:
-            return _lic_info
+    @property
+    def raw_license_info(self):
+        return LicenseFileReader.get_license_packages([self])
+
+    @property
+    def license_info(self):
+        _lic_info = self.raw_license_info
         _num_packs = len(_lic_info)
         _cluster_ids = set()
         # not unique

@@ -33,6 +33,7 @@ __all__ = [
 
 class architecture_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = architecture
 
 

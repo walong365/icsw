@@ -76,9 +76,11 @@ class ShallowPastAssetBatchSerializer(serializers.ModelSerializer):
             "idx", "device", "run_start_time", "run_time"
         )
 
+
 class AssetHardwareEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = AssetHardwareEntry
 
 
@@ -86,6 +88,7 @@ class AssetPackageVersionInstallInfoSerializer(serializers.ModelSerializer):
     class Meta:
         model = AssetPackageVersionInstallInfo
         fields = ("idx", "package_version", "install_time")
+
 
 class AssetPackageVersionSerializer(serializers.ModelSerializer):
     class Meta:
@@ -140,30 +143,35 @@ class AssetRunOverviewSerializer(serializers.ModelSerializer):
 class AssetProcessEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = AssetProcessEntry
 
 
 class AssetLicenseEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = AssetLicenseEntry
 
 
 class AssetUpdateEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = AssetUpdateEntry
 
 
 class AssetPCIEntrySerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = AssetPCIEntry
 
 
 class AssetDMIValueSerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = AssetDMIValue
 
 
@@ -171,6 +179,7 @@ class AssetDMIHandleSerializer(serializers.ModelSerializer):
     assetdmivalue_set = AssetDMIValueSerializer(many=True)
 
     class Meta:
+        fields = "__all__"
         model = AssetDMIHandle
 
 
@@ -178,6 +187,7 @@ class AssetDMIHeadSerializer(serializers.ModelSerializer):
     assetdmihandle_set = AssetDMIHandleSerializer(many=True)
 
     class Meta:
+        fields = "__all__"
         model = AssetDMIHead
 
 
@@ -274,6 +284,7 @@ class StaticAssetTemplateFieldSerializer(serializers.ModelSerializer):
     default_value_date = serializers.DateField(input_formats=["%d.%m.%Y"])
 
     class Meta:
+        fields = "__all__"
         model = StaticAssetTemplateField
 
 
@@ -281,11 +292,13 @@ class StaticAssetTemplateSerializer(serializers.ModelSerializer):
     staticassettemplatefield_set = StaticAssetTemplateFieldSerializer(many=True, read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = StaticAssetTemplate
 
 
 class StaticAssetFieldValueSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = StaticAssetFieldValue
 
 
@@ -293,6 +306,7 @@ class StaticAssetSerializer(serializers.ModelSerializer):
     staticassetfieldvalue_set = StaticAssetFieldValueSerializer(many=True, read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = StaticAsset
 
 

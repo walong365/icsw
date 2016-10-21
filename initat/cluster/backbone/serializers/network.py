@@ -47,11 +47,13 @@ class network_device_type_serializer(serializers.ModelSerializer):
     info_string = serializers.CharField(read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = network_device_type
 
 
 class network_type_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = network_type
 
 
@@ -62,6 +64,7 @@ class network_serializer(serializers.ModelSerializer):
     num_ip = serializers.IntegerField(read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = network
 
 
@@ -71,6 +74,7 @@ class network_with_ip_serializer(serializers.ModelSerializer):
     num_ip = serializers.IntegerField(read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = network
 
 
@@ -82,6 +86,7 @@ class net_ip_serializer(serializers.ModelSerializer):
         return True
 
     class Meta:
+        fields = "__all__"
         model = net_ip
 
 
@@ -92,6 +97,7 @@ class netdevice_serializer(serializers.ModelSerializer):
     ethtool_speed = serializers.IntegerField()
 
     class Meta:
+        fields = "__all__"
         model = netdevice
 
 
@@ -99,6 +105,7 @@ class netdevice_speed_serializer(serializers.ModelSerializer):
     info_string = serializers.CharField()
 
     class Meta:
+        fields = "__all__"
         model = netdevice_speed
 
 
@@ -107,9 +114,11 @@ class peer_information_serializer(serializers.ModelSerializer):
     d_device = serializers.IntegerField(source="get_d_device", read_only=True)
     
     class Meta:
+        fields = "__all__"
         model = peer_information
 
 
 class snmp_network_type_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = snmp_network_type

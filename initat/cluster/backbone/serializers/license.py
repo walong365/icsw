@@ -40,6 +40,7 @@ __all__ = [
 
 class icswEggBasketSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = icswEggBasket
 
 
@@ -47,4 +48,5 @@ class icswEggCradleSerializer(serializers.ModelSerializer):
     icsweggbaset_set = icswEggBasketSerializer(read_only=True, many=True)
 
     class Meta:
+        fields = "__all__"
         model = icswEggCradle

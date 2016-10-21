@@ -40,6 +40,7 @@ __all__ = [
 
 class SensorActionSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = SensorAction
 
 
@@ -53,26 +54,31 @@ class SensorThresholdSerializer(serializers.ModelSerializer):
             return 0
 
     class Meta:
+        fields = "__all__"
         model = SensorThreshold
 
 
 class SensorThresholdActionSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = SensorThresholdAction
 
 
 class GraphSettingSizeSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = GraphSettingSize
 
 
 class GraphSettingTimeshiftSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = GraphSettingTimeshift
 
 
 class GraphSettingForecastSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = GraphSettingForecast
 
 
@@ -107,14 +113,17 @@ class GraphSettingSerializerCustom(serializers.ModelSerializer):
         return _gs
 
     class Meta:
+        fields = "__all__"
         model = GraphSetting
 
 
 class GraphSettingSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = GraphSetting
 
 
 class GraphTimeFrameSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = GraphTimeFrame

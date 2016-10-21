@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -36,12 +36,14 @@ class domain_tree_node_serializer(serializers.ModelSerializer):
     tree_info = serializers.CharField(source="__unicode__", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = domain_tree_node
 
 
 class category_serializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = category
 
 
@@ -50,6 +52,7 @@ class location_gfx_serializer(serializers.ModelSerializer):
     image_url = serializers.URLField(source="get_image_url", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = location_gfx
 
 
@@ -57,4 +60,5 @@ class device_mon_location_serializer(serializers.ModelSerializer):
     # device_name = serializers.CharField(source="get_device_name")
 
     class Meta:
+        fields = "__all__"
         model = device_mon_location

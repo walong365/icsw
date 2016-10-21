@@ -38,6 +38,7 @@ __all__ = [
 
 class background_job_run_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = background_job_run
 
 
@@ -47,4 +48,5 @@ class background_job_serializer(serializers.ModelSerializer):
     background_job_run_set = background_job_run_serializer(many=True, read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = background_job

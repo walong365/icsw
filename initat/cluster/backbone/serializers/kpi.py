@@ -35,6 +35,7 @@ __all__ = [
 
 class KpiDataSourceTupleSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = KpiDataSourceTuple
 
 
@@ -62,4 +63,5 @@ class KpiSerializer(serializers.ModelSerializer):
                 }
 
     class Meta:
+        fields = "__all__"
         model = Kpi

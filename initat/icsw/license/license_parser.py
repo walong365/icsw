@@ -51,6 +51,7 @@ class Parser(object):
 
         show_license_parser = lic_sub_parser.add_parser("show_license_info", help="Show License info")
         show_license_parser.set_defaults(subcom="show_license_info", execute=self._execute)
+        show_license_parser.add_argument("--raw", default=False, action="store_true", help="show raw info [%(default)s]")
         reg_cluster_parser = lic_sub_parser.add_parser(
             "register_cluster",
             help="register your cluster at init.at and obtain a license file"

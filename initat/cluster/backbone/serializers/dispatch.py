@@ -36,28 +36,33 @@ __all__ = [
 class DispatchSettingSerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = DispatchSetting
 
 
 class DispatcherSettingSerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = DispatcherSetting
 
 
 class DispatcherSettingScheduleSerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = DispatcherSettingSchedule
 
 
 class DeviceDispatcherLinkSerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = DeviceDispatcherLink
 
 
 class ScheduleItemSerializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = ScheduleItem

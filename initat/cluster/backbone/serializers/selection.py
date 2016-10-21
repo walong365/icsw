@@ -31,4 +31,5 @@ __all__ = [
 
 class DeviceSelectionSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = DeviceSelection

@@ -202,9 +202,6 @@ class _LicenseManager(models.Manager):
             # can only contain one
             return next(iter(product_licenses))
 
-    def get_license_info(self):
-        return sum([_reader.license_info(raw=True) for _reader in self._license_readers], [])
-
     def get_valid_licenses(self):
         """
         Returns all licenses which are active (and should be displayed to the user)
@@ -231,6 +228,11 @@ class _LicenseManager(models.Manager):
         """Returns license packages in custom format for the client."""
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
         return LicenseFileReader.get_license_packages(self._license_readers)
+
+    @property
+    def raw_license_info(self):
+        # just for info
+        return sum([_reader.raw_license_info for _reader in self._license_readers], [])
 
     _license_readers_cache = {}
 
@@ -281,8 +283,7 @@ class License(models.Model):
 
     def __unicode__(self):
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
-        _reader = LicenseFileReader(self.license_file, self.file_name)
-        return _reader.license_info()
+        return LicenseFileReader(self.license_file, self.file_name).license_info
 
     class Meta:
         app_label = "backbone"

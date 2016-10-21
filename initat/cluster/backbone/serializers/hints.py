@@ -1,4 +1,4 @@
-# Copyright (C) 2014 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -33,11 +33,13 @@ __all__ = [
 
 class config_var_hint_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = config_var_hint
 
 
 class config_script_hint_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = config_script_hint
 
 
@@ -46,4 +48,5 @@ class config_hint_serializer(serializers.ModelSerializer):
     config_script_hint_set = config_script_hint_serializer(many=True)
 
     class Meta:
+        fields = "__all__"
         model = config_hint

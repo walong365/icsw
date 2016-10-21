@@ -44,6 +44,7 @@ __all__ = [
 
 class config_catalog_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = config_catalog
 
 
@@ -51,6 +52,7 @@ class config_str_serializer(serializers.ModelSerializer):
     object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = config_str
 
 
@@ -58,6 +60,7 @@ class config_int_serializer(serializers.ModelSerializer):
     object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = config_int
 
 
@@ -65,6 +68,7 @@ class config_blob_serializer(serializers.ModelSerializer):
     object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = config_blob
 
 
@@ -72,6 +76,7 @@ class config_bool_serializer(serializers.ModelSerializer):
     object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = config_bool
 
 
@@ -79,17 +84,20 @@ class config_script_serializer(serializers.ModelSerializer):
     object_type = serializers.CharField(source="get_object_type", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = config_script
 
 
 # should reside in __init__.py (device related)
 class device_config_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = device_config
 
 
 class ConfigServiceEnumSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ConfigServiceEnum
 
 
@@ -104,6 +112,7 @@ class config_serializer(serializers.ModelSerializer):
     # categories only as flat list, no nesting
 
     class Meta:
+        fields = "__all__"
         model = config
 
 

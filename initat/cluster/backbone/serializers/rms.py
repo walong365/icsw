@@ -70,11 +70,13 @@ class RMSJobVariableSerializer(serializers.ModelSerializer):
 
 class RMSJobVariableActionSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = RMSJobVariableAction
 
 
 class RMSJobVariableActionRunSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = RMSJobVariableActionRun
 
 
@@ -113,6 +115,7 @@ class rms_job_serializer(serializers.ModelSerializer):
 
 class rms_pe_info_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = rms_pe_info
 
 
@@ -142,51 +145,61 @@ class rms_job_run_serializer(serializers.ModelSerializer):
 
 class ext_license_site_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ext_license_site
 
 
 class ext_license_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ext_license
 
 
 class ext_license_version_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ext_license_version
 
 
 class ext_license_vendor_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ext_license_vendor
 
 
 class ext_license_user_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ext_license_user
 
 
 class ext_license_client_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ext_license_client
 
 
 class ext_license_check_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ext_license_check
 
 
 class ext_license_state_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ext_license_state
 
 
 class ext_license_version_state_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ext_license_version_state
 
 
 class ext_license_usage_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ext_license_usage
 
 
@@ -195,6 +208,7 @@ class ext_license_state_coarse_serializer(serializers.ModelSerializer):
     full_start_date = serializers.Field(source="ext_license_check_coarse.start_date")
 
     class Meta:
+        fields = "__all__"
         model = ext_license_state_coarse
 
 
@@ -205,4 +219,5 @@ class ext_license_version_state_coarse_serializer(serializers.ModelSerializer):
     vendor_name = serializers.Field(source="vendor.name")
 
     class Meta:
+        fields = "__all__"
         model = ext_license_version_state_coarse

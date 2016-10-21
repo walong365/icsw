@@ -39,6 +39,7 @@ __all__ = [
 
 class package_service_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = package_service
 
 
@@ -46,21 +47,25 @@ class package_repo_serializer(serializers.ModelSerializer):
     service_name = serializers.CharField(source="get_service_name", read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = package_repo
 
 
 class package_search_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = package_search
 
 
 class package_search_result_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = package_search_result
 
 
 class package_device_connection_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = package_device_connection
 
 
@@ -68,6 +73,7 @@ class package_serializer(serializers.ModelSerializer):
     target_repo_name = serializers.CharField(read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = package
 
 
@@ -75,4 +81,5 @@ class package_device_connection_wp_serializer(serializers.ModelSerializer):
     package = package_serializer()
 
     class Meta:
+        fields = "__all__"
         model = package_device_connection

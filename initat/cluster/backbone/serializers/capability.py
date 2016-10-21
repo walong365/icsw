@@ -34,11 +34,13 @@ __all__ = [
 
 class snmp_scheme_tl_oid_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = snmp_scheme_tl_oid
 
 
 class snmp_scheme_vendor_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = snmp_scheme_vendor
 
 
@@ -55,6 +57,7 @@ class snmp_scheme_serializer(serializers.ModelSerializer):
             return 0
 
     class Meta:
+        fields = "__all__"
         model = snmp_scheme
 
 
@@ -68,4 +71,5 @@ class ComCapabilitySerializer(serializers.ModelSerializer):
             return 0
 
     class Meta:
+        fields = "__all__"
         model = ComCapability

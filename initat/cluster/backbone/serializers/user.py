@@ -57,6 +57,7 @@ __all__ = [
 
 class content_type_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = ContentType
 
 
@@ -64,16 +65,19 @@ class csw_permission_serializer(serializers.ModelSerializer):
     content_type = content_type_serializer()
 
     class Meta:
+        fields = "__all__"
         model = csw_permission
 
 
 class csw_object_permission_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = csw_object_permission
 
 
 class RolePermissionSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = RolePermission
 
 
@@ -87,21 +91,25 @@ class RoleObjectPermissionSerializer(serializers.ModelSerializer):
         return _new_role
 
     class Meta:
+        fields = "__all__"
         model = RoleObjectPermission
 
 
 class user_quota_setting_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = user_quota_setting
 
 
 class group_quota_setting_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = group_quota_setting
 
 
 class user_scan_result_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = user_scan_result
 
 
@@ -109,12 +117,14 @@ class user_scan_run_serializer(serializers.ModelSerializer):
     user_scan_result_set = user_scan_result_serializer(many=True, read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = user_scan_run
 
 
 class user_variable_serializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = user_variable
 
 
@@ -167,11 +177,13 @@ class user_serializer(serializers.ModelSerializer):
 class user_flat_serializer(serializers.ModelSerializer):
 
     class Meta:
+        fields = "__all__"
         model = user
 
 
 class group_flat_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = group
 
 
@@ -217,19 +229,23 @@ class virtual_desktop_user_setting_serializer(serializers.ModelSerializer):
     state_description = serializers.ReadOnlyField(source="get_state_description")
 
     class Meta:
+        fields = "__all__"
         model = virtual_desktop_user_setting
 
 
 class virtual_desktop_protocol_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = virtual_desktop_protocol
 
 
 class window_manager_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = window_manager
 
 
 class UserLogEntrySerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = UserLogEntry

@@ -87,29 +87,23 @@ def show_license_info(opts):
         else:
             return "no {}".format(type_str)
 
-    # print(License.objects.get_valid_licenses())
-    # sys.exit(0)
-    _infos = License.objects.get_license_info()
-    print("License info, {}:".format(logging_tools.get_plural("license file", len(_infos))))
-    for _info in _infos:
-        # import pprint
-        # pprint.pprint(_info)
-        _cl_info = sorted(list(set(_info["lic_info"].keys())))
+    def _show_pack_info(info):
+        _cl_info = sorted(list(set(info["lic_info"].keys())))
         # print("")
         # print("-" * 40)
         print("")
         print(
             "Customer: {}, name: {}, type: {}, UUID={} (Version {}), {}".format(
-                _info["customer"],
-                _info["name"],
-                _info["type_name"],
-                _info["uuid"],
-                _info["version"],
+                info["customer"],
+                info["name"],
+                info["type_name"],
+                info["uuid"],
+                info["version"],
                 len_info("Cluster", _cl_info),
             )
         )
         for _cl_name in _cl_info:
-            _cl_struct = _info.get("lic_info", {})[_cl_name]
+            _cl_struct = info.get("lic_info", {})[_cl_name]
             _sets = {"lics": set(), "paras": set()}
             for _skey, _dkey in [("licenses", "lics"), ("parameters", "paras")]:
                 # import pprint
@@ -127,6 +121,22 @@ def show_license_info(opts):
                     len_info("Parameter", _sets["paras"]),
                 )
             )
+
+    # print(License.objects.get_valid_licenses())
+    # sys.exit(0)
+    if opts.raw:
+        _raw_infos = License.objects.raw_license_info
+        print("Raw License info, {}:".format(logging_tools.get_plural("license file", len(_raw_infos))))
+        for _info in _raw_infos:
+            _show_pack_info(_info)
+            # import pprint
+            # pprint.pprint(_info)
+    print("")
+    print("")
+    valid_packs = License.objects.get_license_packages()
+    print("Valid License packages: {:d}".format(len(valid_packs)))
+    for _valid_pack in valid_packs:
+        _show_pack_info(_valid_pack)
 
 
 def _install_license(content):

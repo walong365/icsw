@@ -43,6 +43,7 @@ __all__ = [
 
 class DeviceScanLockSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = DeviceScanLock
 
 
@@ -75,11 +76,13 @@ class device_group_serializer(serializers.ModelSerializer):
     # full_name = serializers.CharField(read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = device_group
 
 
 class DeviceSNMPInfoSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = DeviceSNMPInfo
 
 
@@ -123,6 +126,7 @@ class device_serializer(serializers.ModelSerializer):
 
 class cd_connection_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = cd_connection
 
 
@@ -131,6 +135,7 @@ class cd_connection_serializer_boot(serializers.ModelSerializer):
     child = device_serializer()
 
     class Meta:
+        fields = "__all__"
         model = cd_connection
 
 
@@ -244,4 +249,5 @@ class device_serializer_boot(device_serializer):
 
 class DeviceClassSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = DeviceClass
