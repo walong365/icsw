@@ -237,12 +237,13 @@ class _LicenseManager(models.Manager):
         cluster_id = device_variable.objects.get_cluster_id()
         cur_fp = hfp_tools.get_server_fp(serialize=True)
         readers = []
-        for file_content, file_name in self.values_list('license_file', 'file_name'):
+        for file_content, file_name, idx in self.values_list("license_file", "file_name", "idx"):
             try:
                 readers.append(
                     LicenseFileReader(
                         file_content,
                         file_name,
+                        idx=idx,
                         cluster_id=cluster_id,
                         current_fingerprint=cur_fp
                     )

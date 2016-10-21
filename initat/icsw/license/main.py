@@ -87,8 +87,10 @@ def show_license_info(opts):
         else:
             return "no {}".format(type_str)
 
+    # print(License.objects.get_valid_licenses())
+    # sys.exit(0)
     _infos = License.objects.get_license_info()
-    print("License info, {}:".format(logging_tools.get_plural("entry", len(_infos))))
+    print("License info, {}:".format(logging_tools.get_plural("license file", len(_infos))))
     for _info in _infos:
         # import pprint
         # pprint.pprint(_info)
@@ -97,10 +99,12 @@ def show_license_info(opts):
         # print("-" * 40)
         print("")
         print(
-            "Customer: {}, name: {}, type: {}, {}".format(
+            "Customer: {}, name: {}, type: {}, UUID={} (Version {}), {}".format(
                 _info["customer"],
                 _info["name"],
                 _info["type_name"],
+                _info["uuid"],
+                _info["version"],
                 len_info("Cluster", _cl_info),
             )
         )
@@ -146,7 +150,7 @@ def _install_license(content):
         if len(lic_file_node):
             lic_file_content = lic_file_node[0].text
             # validate
-            if License.objects.license_exists(lic_file_content):  #  and False:
+            if License.objects.license_exists(lic_file_content):  # and False:
                 print("License file already added.")
             else:
                 license_file_reader.LicenseFileReader(lic_file_content)

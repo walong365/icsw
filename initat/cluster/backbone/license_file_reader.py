@@ -52,12 +52,12 @@ class LicenseFileReader(object):
                 msg if msg is not None else "Invalid license file format"
             )
 
-    def __init__(self, file_content, file_name=None, cluster_id=None, current_fingerprint=None):
+    def __init__(self, file_content, file_name=None, idx=0, cluster_id=None, current_fingerprint=None):
         from initat.cluster.backbone.models import device_variable
 
         self.file_name = file_name
         # contains the license-file tag, i.e. information relevant for program without signature
-        self.content_xml = self._read(file_content)
+        self._read_and_parse(file_content, idx)
         if cluster_id is None:
             self.cluster_id = device_variable.objects.get_cluster_id()
         else:
@@ -93,8 +93,8 @@ class LicenseFileReader(object):
     def fingerprint_ok(self):
         return self.__fingerprint_valid
 
-    def _read(self, file_content):
-        # read content, raise an error if
+    def _read_and_parse(self, file_content, idx):
+        # read content and parse some basic maps, raise an error if
         # - wrong format (decompression problem)
         # - XML not valid
         # - invalid signature
@@ -111,7 +111,7 @@ class LicenseFileReader(object):
         signed_content_xml = etree.fromstring(signed_content_str)
 
         # noinspection PyUnresolvedReferences
-        ng = etree.RelaxNG(etree.fromstring(LIC_FILE_RELAX_NG_DEFINITION))
+        ng = etree.RelaxNG(LIC_FILE_RELAX_NG_DEFINITION)
         if not ng.validate(signed_content_xml):
             raise LicenseFileReader.InvalidLicenseFile("Invalid license file structure")
 
@@ -131,6 +131,51 @@ class LicenseFileReader(object):
         # print(ICSW_XML_NS_MAP)
         # print(content_xml.xpath(".//icsw:package-name/text()", namespaces=ICSW_XML_NS_MAP))
         # print(content_xml.xpath(".//icsw:package-uuid/text()", namespaces=ICSW_XML_NS_MAP))
+
+        # create mapping values
+        self.content_xml = content_xml
+
+        # uuid -> struct
+        package_uuid_map = {}
+        for pack_xml in self.license_packages_xml:
+            _uuid = pack_xml.findtext("icsw:package-meta/icsw:package-uuid", namespaces=ICSW_XML_NS_MAP)
+            _version = int(
+                pack_xml.findtext(
+                    "icsw:package-meta/icsw:package-version",
+                    namespaces=ICSW_XML_NS_MAP,
+                )
+            )
+            _date = dateutil.parser.parse(
+                pack_xml.findtext(
+                    "icsw:package-meta/icsw:package-date",
+                    namespaces=ICSW_XML_NS_MAP,
+                )
+            )
+            if _uuid in package_uuid_map:
+                # print(new_version, map_version, map_date, new_date)
+                if _version > package_uuid_map[_uuid]["version"]:
+                    _replace = True
+                elif _version == package_uuid_map[_uuid]["version"] and _date > package_uuid_map[_uuid]["date"]:
+                    _replace = True
+                else:
+                    _replace = False
+                if _replace:
+                    package_uuid_map[_uuid]["xml"] = pack_xml
+                    package_uuid_map[_uuid]["version"] = _version
+                    package_uuid_map[_uuid]["date"] = _date
+            else:
+                package_uuid_map[_uuid] = {
+                    "pack_xml": pack_xml,
+                    "version": _version,
+                    "date": _date,
+                    "idx": idx,
+                    "customer_xml": self.customer_xml,
+                }
+        # build hashes
+        for _uuid, _struct in package_uuid_map.iteritems():
+            # compare hash
+            _struct["hash"] = (_struct["version"], _struct["date"], _struct["idx"])
+        self.package_uuid_map = package_uuid_map
         return content_xml
 
     @staticmethod
@@ -237,48 +282,37 @@ class LicenseFileReader(object):
                 logger.debug("Invalid license in license file: {}".format(lic_id))
         return ret
 
-    def get_license_packages_xml(self):
+    @property
+    def license_packages_xml(self):
         return self.content_xml.xpath("//icsw:package-list/icsw:package", namespaces=ICSW_XML_NS_MAP)
 
-    def get_customer_xml(self):
+    @property
+    def customer_xml(self):
         return self.content_xml.find("icsw:customer", namespaces=ICSW_XML_NS_MAP)
 
     @classmethod
-    def _get_maps(cls, license_readers):
-        package_uuid_map = {}
-        package_customer_map = {}
-        for reader in license_readers:
-            packages_xml = reader.get_license_packages_xml()
-            customer_xml = reader.get_customer_xml()
-            # packages might be contained in multiple package files; we need to take each exactly once in the highest id
-            for pack_xml in packages_xml:
-                uuid = pack_xml.findtext("icsw:package-meta/icsw:package-uuid", namespaces=ICSW_XML_NS_MAP)
-                if uuid in package_uuid_map:
-                    map_version = int(
-                        package_uuid_map[uuid].findtext(
-                            "icsw:package-meta/icsw:package-version",
-                            namespaces=ICSW_XML_NS_MAP
-                        )
-                    )
-                    new_version = int(
-                        pack_xml.findtext(
-                            "icsw:package-meta/icsw:package-version",
-                            namespaces=ICSW_XML_NS_MAP
-                        )
-                    )
-                    if new_version > map_version:
-                        package_uuid_map[uuid] = pack_xml
+    def _merge_maps(cls, license_readers):
+        # merge all maps for the given license readers
+        _res_map = {}
+        for _reader in license_readers:
+            for _uuid, _struct in _reader.package_uuid_map.iteritems():
+                if _uuid not in _res_map:
+                    _add = True
+                elif _struct["hash"] > _res_map[_uuid]["hash"]:
+                    _add = True
                 else:
-                    package_uuid_map[uuid] = pack_xml
-                package_customer_map[pack_xml] = customer_xml
-        return package_uuid_map, package_customer_map
+                    _add = False
+                if _add:
+                    _res_map[_uuid] = _struct
+        return _res_map
 
     @classmethod
     def get_license_packages(cls, license_readers):
         from initat.tools import hfp_tools
         # this has to be called on all license readers to work out (packages can be contained in multiple files and some
         # might contain deprecated versions)
-        package_uuid_map, package_customer_map = cls._get_maps(license_readers)
+        package_uuid_map = cls._merge_maps(license_readers)
+        # print("*", package_uuid_map)
 
         def extract_parameter_data(cluster_xml):
             # print etree.tostring(cluster_xml)
@@ -299,11 +333,13 @@ class LicenseFileReader(object):
                     _r_list.append(_add_dict)
             return _r_list
 
-        def extract_package_data(pack_xml):
+        def extract_package_data(pack_xml, customer_xml):
             return {
                 'name': pack_xml.findtext("icsw:package-meta/icsw:package-name", namespaces=ICSW_XML_NS_MAP),
                 'date': pack_xml.findtext("icsw:package-meta/icsw:package-date", namespaces=ICSW_XML_NS_MAP),
-                'customer': package_customer_map[pack_xml].findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
+                "version": pack_xml.findtext("icsw:package-meta/icsw:package-version", namespaces=ICSW_XML_NS_MAP),
+                "uuid": pack_xml.findtext("icsw:package-meta/icsw:package-uuid", namespaces=ICSW_XML_NS_MAP),
+                'customer': customer_xml.findtext("icsw:name", namespaces=ICSW_XML_NS_MAP),
                 'type_name': pack_xml.findtext("icsw:package-meta/icsw:package-type-name", namespaces=ICSW_XML_NS_MAP),
                 # attention: the following structure is also used in webfrontend / license.coffee:67ff
                 "lic_info": {
@@ -373,7 +409,7 @@ class LicenseFileReader(object):
                 } for lic_xml in cluster_xml.xpath("icsw:license", namespaces=ICSW_XML_NS_MAP)
             ]
             return _r_list
-        return [extract_package_data(pack_xml) for pack_xml in package_uuid_map.itervalues()]
+        return [extract_package_data(_struct["pack_xml"], _struct["customer_xml"]) for _struct in package_uuid_map.itervalues()]
 
     @staticmethod
     def verify_signature(lic_file_xml, signature_xml):

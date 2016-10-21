@@ -23,11 +23,22 @@
 
 """ XML constants for database definitions for license management """
 
+from __future__ import print_function, unicode_literals
+
 import logging
+
+from lxml import etree
 
 from initat.tools.server_command import XML_NS
 
 logger = logging.getLogger("cluster.icsw_license_xml")
+
+__all__ = [
+    b"ICSW_XML_NS",
+    b"ICSW_XLM_NS_NAME",
+    b"ICSW_XML_NS_MAP",
+    b"LIC_FILE_RELAX_NG_DEFINITION",
+]
 
 ICSW_XML_NS = XML_NS
 ICSW_XML_NS_NAME = "icsw"
@@ -37,8 +48,8 @@ ICSW_XML_NS_MAP = {
 }
 
 
-LIC_FILE_RELAX_NG_DEFINITION = """
-<element name="signed-license-file" ns=""" + "\"" + ICSW_XML_NS + "\"" + """ xmlns="http://relaxng.org/ns/structure/1.0">
+LIC_FILE_RELAX_NG_DEFINITION = etree.fromstring("""
+<element name="signed-license-file" ns="{}" xmlns="http://relaxng.org/ns/structure/1.0">
 
     <element name="license-file">
 
@@ -163,4 +174,4 @@ LIC_FILE_RELAX_NG_DEFINITION = """
     </element>
 
 </element>
-"""
+""".format(XML_NS))
