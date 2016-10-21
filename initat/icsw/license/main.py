@@ -150,7 +150,7 @@ def _install_license(content):
         if len(lic_file_node):
             lic_file_content = lic_file_node[0].text
             # validate
-            if License.objects.license_exists(lic_file_content):  # and False:
+            if License.objects.license_exists(lic_file_content): # and False:
                 print("License file already added.")
             else:
                 license_file_reader.LicenseFileReader(lic_file_content)

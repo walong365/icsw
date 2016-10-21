@@ -213,10 +213,16 @@ class _LicenseManager(models.Manager):
         from the latest files
         Quick fix: delete previous license files
         """
+        from initat.cluster.backbone.license_file_reader import LicenseFileReader
+        # fix for above problem: build a map dict where only the latest license files
+        # are referenced
+        merged_maps = LicenseFileReader._merge_maps(self._license_readers)
+        # import pprint
+        # pprint.pprint(merged_maps)
         return [
             lic for lic in set().union(
                 *[
-                    r.get_valid_licenses() for r in self._license_readers
+                    _struct["reader"].get_valid_licenses() for _struct in merged_maps.itervalues()
                 ]
             )
         ]

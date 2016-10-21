@@ -57,7 +57,7 @@ class LicenseFileReader(object):
 
         self.file_name = file_name
         # contains the license-file tag, i.e. information relevant for program without signature
-        self._read_and_parse(file_content, idx)
+        self.content_xml = self._read_and_parse(file_content, idx)
         if cluster_id is None:
             self.cluster_id = device_variable.objects.get_cluster_id()
         else:
@@ -133,11 +133,12 @@ class LicenseFileReader(object):
         # print(content_xml.xpath(".//icsw:package-uuid/text()", namespaces=ICSW_XML_NS_MAP))
 
         # create mapping values
-        self.content_xml = content_xml
 
         # uuid -> struct
         package_uuid_map = {}
-        for pack_xml in self.license_packages_xml:
+        customer_xml = content_xml.find("icsw:customer", namespaces=ICSW_XML_NS_MAP)
+
+        for pack_xml in content_xml.xpath("//icsw:package-list/icsw:package", namespaces=ICSW_XML_NS_MAP):
             _uuid = pack_xml.findtext("icsw:package-meta/icsw:package-uuid", namespaces=ICSW_XML_NS_MAP)
             _version = int(
                 pack_xml.findtext(
@@ -169,7 +170,8 @@ class LicenseFileReader(object):
                     "version": _version,
                     "date": _date,
                     "idx": idx,
-                    "customer_xml": self.customer_xml,
+                    "customer_xml": customer_xml,
+                    "reader": self,
                 }
         # build hashes
         for _uuid, _struct in package_uuid_map.iteritems():
@@ -282,14 +284,6 @@ class LicenseFileReader(object):
                 logger.debug("Invalid license in license file: {}".format(lic_id))
         return ret
 
-    @property
-    def license_packages_xml(self):
-        return self.content_xml.xpath("//icsw:package-list/icsw:package", namespaces=ICSW_XML_NS_MAP)
-
-    @property
-    def customer_xml(self):
-        return self.content_xml.find("icsw:customer", namespaces=ICSW_XML_NS_MAP)
-
     @classmethod
     def _merge_maps(cls, license_readers):
         # merge all maps for the given license readers
@@ -311,6 +305,7 @@ class LicenseFileReader(object):
         from initat.tools import hfp_tools
         # this has to be called on all license readers to work out (packages can be contained in multiple files and some
         # might contain deprecated versions)
+        # map with only the latest valid readers
         package_uuid_map = cls._merge_maps(license_readers)
         # print("*", package_uuid_map)
 
