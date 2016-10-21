@@ -1,8 +1,16 @@
+const fs = require('fs');
+
 describe('ICSW Basic Interface Tests:', function() {
   var EC = protractor.ExpectedConditions;
 
   var valid_device_name = undefined;
   var valid_group_name = undefined;
+
+  function writeScreenShot(data, filename) {
+      var stream = fs.createWriteStream(filename);
+      stream.write(new Buffer(data, 'base64'));
+      stream.end();
+  }
 
   function makeid()
   {
@@ -15,12 +23,23 @@ describe('ICSW Basic Interface Tests:', function() {
     return text;
   }
 
+  function screenshotify(element, element_name)
+  {
+    element.getLocation().then(function(location) {
+      foo.getSize().then(function (size) {
+        browser.takeScreenshot().then(function (png) {
+          writeScreenShot(png, element_name + '__' + location.x + '_' + location.y + '_' + size.width + '_' + size.height + '.png');
+        });
+      });
+    });
+  }
+
 
   var icswHomepage = function() {
     var icsw_homepage_url = browser.params.url;
     var login_username_field = element(by.model('login_data.username'));
     var login_password_field = element(by.model('login_data.password'));
-   
+
     var login_button = element(by.xpath("//button[@type=\"submit\"]"));
     var login_button_is_clickable = EC.elementToBeClickable(login_button);
 
@@ -154,6 +173,10 @@ describe('ICSW Basic Interface Tests:', function() {
           var create_device_button = element(by.buttonText("create Device"));
           browser.wait(EC.and(EC.elementToBeClickable(create_device_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
             expect(browser.getTitle()).toEqual("Add new Device");
+
+            // screenshot code
+            foo = element(by.xpath("/html/body/div[3]/div/icsw-device-create-mask/div/form/uib-accordion/div/div[1]"));
+            screenshotify(foo, "create_new_device");
           });
         });
       });
@@ -183,9 +206,9 @@ describe('ICSW Basic Interface Tests:', function() {
             var devicegroup_field = element(by.model('device_data.device_group'));
             var comment_field = element(by.model('device_data.comment'));
 
-            var fqdn = makeid();
-            var devicegroup = makeid();
-            var comment = makeid();
+            var fqdn = "testdevice";
+            var devicegroup = "testgroup";
+            var comment = "testcomment";
 
             fqdn_field.clear();
             fqdn_field.sendKeys(fqdn);
@@ -233,9 +256,9 @@ describe('ICSW Basic Interface Tests:', function() {
             var devicegroup_field = element(by.model('device_data.device_group'));
             var comment_field = element(by.model('device_data.comment'));
 
-            var fqdn = makeid();
-            var devicegroup = makeid();
-            var comment = makeid();
+            var fqdn = "testdevice";
+            var devicegroup = "testgroup";
+            var comment = "testcomment";
 
             fqdn_field.clear();
             fqdn_field.sendKeys(fqdn);
@@ -249,24 +272,8 @@ describe('ICSW Basic Interface Tests:', function() {
             create_device_button.click();
 
             var toast_container = element(by.xpath('//*[@id="toast-container"]'));
-            var expected_text = "created new device '" + fqdn + " (" + comment + ")'";
-            browser.wait(EC.textToBePresentInElement(toast_container, expected_text)).then(function() {
-              browser.wait(EC.and(EC.elementToBeClickable(create_device_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
-                fqdn_field.clear();
-                fqdn_field.sendKeys(fqdn);
-
-                devicegroup_field.clear();
-                devicegroup_field.sendKeys(devicegroup);
-
-                comment_field.clear();
-                comment_field.sendKeys(comment);
-
-                create_device_button.click();
-
-                var expected_text = "device " + fqdn + " (" + comment + ") already exists";
-                browser.wait(EC.textToBePresentInElement(toast_container, expected_text));
-              });
-            });
+            var expected_text = "device " + fqdn + " (" + comment + ") already exists";
+            browser.wait(EC.textToBePresentInElement(toast_container, expected_text));
           });
         });
       });
@@ -336,8 +343,8 @@ describe('ICSW Basic Interface Tests:', function() {
               var group_name_field = element(by.model('edit_obj.name'));
               var group_description_field = element(by.model('edit_obj.description'));
 
-              var group_name = makeid();
-              var group_description = makeid();
+              var group_name = "devicetreetestgroup";
+              var group_description = "devicetreetestgroupcomment";
 
               group_name_field.clear();
               group_name_field.sendKeys(group_name);
@@ -388,8 +395,8 @@ describe('ICSW Basic Interface Tests:', function() {
               var name_field = element(by.model('edit_obj.name'));
               var description_field = element(by.model('edit_obj.comment'));
 
-              var name = makeid();
-              var description = makeid();
+              var name = "devicetreetestdevice";
+              var description = "devicetreetestdevicecomment";
 
               name_field.clear();
               name_field.sendKeys(name);
@@ -474,12 +481,17 @@ describe('ICSW Basic Interface Tests:', function() {
                 browser.wait(EC.and(EC.elementToBeClickable(config_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
                   config_button.click();
 
+
+
                   browser.wait(EC.textToBePresentInElement(toast_container, "added config auto-etc-hosts")).then(function() {
                     config_button = element(by.className("glyphicon-ok"));
                     browser.wait(EC.and(EC.elementToBeClickable(config_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
                       config_button.click();
 
-                      browser.wait(EC.textToBePresentInElement(toast_container, "removed config auto-etc-hosts"));
+                      browser.wait(EC.and(EC.textToBePresentInElement(toast_container, "removed config auto-etc-hosts"), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
+                        foo = element(by.xpath("/html/body/div[3]/div/div/icsw-device-configuration-overview/div[2]/uib-accordion/div/div/div[2]"));
+                        screenshotify(foo, "assign_config");
+                      });
                     });
                   });
                 });
@@ -537,7 +549,7 @@ describe('ICSW Basic Interface Tests:', function() {
                     // wait for modal dialog to popup, enter a random name and create netdevice
                     create_button = element(by.partialButtonText("Create"));
                     browser.wait(EC.and(EC.elementToBeClickable(create_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
-                      var netdevicename = makeid();
+                      var netdevicename = "networknetdevicename";
 
                       input_field = element(by.model("edit_obj.devname"));
                       input_field.clear();
