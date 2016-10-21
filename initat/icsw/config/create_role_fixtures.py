@@ -81,43 +81,79 @@ def get_broadcast_by_interface(interface):
 
 
 def create_noctua_fixtures():
-    print("creating Noctua fixtures...")
-    if False:
-        device_group.objects.filter(Q(pk__gt=1)).delete()
-        group.objects.all().delete()
-        config.objects.all().delete()  # @UndefinedVariable
-        mon_period.objects.all().delete()
-        mon_contact.objects.all().delete()
-        network.objects.all().delete()  # @UndefinedVariable
+    print("Creating Noctua fixtures...")
     # first config catalog
     first_cc = config_catalog.objects.all()[0]
+
     # category tree
     ct = category_tree()
     cat_serv = ct.add_category("/mon/services")
     cat_web = ct.add_category("/mon/services/web")
     cat_mail = ct.add_category("/mon/services/mail")
-    # domain name tree
-    dnt = domain_name_tree()
-    _top_level_dtn = dnt.get_domain_tree_node("")
+
     # config
-    ping_config = factories.Config(name="check_ping", config_catalog=first_cc)
-    snmp_config = factories.Config(name="check_snmp_info", config_catalog=first_cc)
-    ssh_config = factories.Config(name="check_ssh", config_catalog=first_cc)
-    http_config = factories.Config(name="check_http", config_catalog=first_cc)
-    https_config = factories.Config(name="check_https", config_catalog=first_cc)
-    ldap_config = factories.Config(name="check_ldap", config_catalog=first_cc)
-    imap_config = factories.Config(name="check_imap", config_catalog=first_cc)
-    imaps_config = factories.Config(name="check_imaps", config_catalog=first_cc)
-    pop3s_config = factories.Config(name="check_pop3s", config_catalog=first_cc)
-    smtps_config = factories.Config(name="check_smtps", config_catalog=first_cc)
+    print("Creeating configurations.")
+    ping_config = factories.Config(
+        name="check_ping",
+        config_catalog=first_cc,
+    )
+    snmp_config = factories.Config(
+        name="check_snmp_info",
+        config_catalog=first_cc,
+    )
+    ssh_config = factories.Config(
+        name="check_ssh",
+        config_catalog=first_cc,
+    )
+    http_config = factories.Config(
+        name="check_http",
+        config_catalog=first_cc,
+    )
+    https_config = factories.Config(
+        name="check_https",
+        config_catalog=first_cc,
+    )
+    ldap_config = factories.Config(
+        name="check_ldap",
+        config_catalog=first_cc,
+    )
+    imap_config = factories.Config(
+        name="check_imap",
+        config_catalog=first_cc,
+    )
+    imaps_config = factories.Config(
+        name="check_imaps",
+        config_catalog=first_cc,
+    )
+    pop3s_config = factories.Config(
+        name="check_pop3s",
+        config_catalog=first_cc,
+    )
+    smtps_config = factories.Config(
+        name="check_smtps",
+        config_catalog=first_cc,
+    )
+    print("Creating monitoring checks.")
     factories.MonCheckCommand(
         name="snmp_info",
         command_line="$USER3$ -m $HOSTADDRESS$ -C $ARG1$ -V $ARG2$ snmp_info",
         config=snmp_config
     ).categories.add(cat_serv)
-    factories.MonCheckCommand(name="check_ping", command_line="$USER2$ -m localhost ping $HOSTADDRESS$ 5 5.0", config=ping_config).categories.add(cat_serv)
-    factories.MonCheckCommand(name="check_ssh", command_line="$USER1$/check_ssh $HOSTADDRESS$", config=ssh_config).categories.add(cat_serv)
-    factories.MonCheckCommand(name="check_http", command_line="$USER1$/check_http -H $HOSTADDRESS$", config=http_config).categories.add(cat_web)
+    factories.MonCheckCommand(
+        name="check_ping",
+        command_line="$USER2$ -m localhost ping $HOSTADDRESS$ 5 5.0",
+        config=ping_config
+    ).categories.add(cat_serv)
+    factories.MonCheckCommand(
+        name="check_ssh",
+        command_line="$USER1$/check_ssh $HOSTADDRESS$",
+        config=ssh_config
+    ).categories.add(cat_serv)
+    factories.MonCheckCommand(
+        name="check_http",
+        command_line="$USER1$/check_http -H $HOSTADDRESS$",
+        config=http_config
+    ).categories.add(cat_web)
     factories.MonCheckCommand(
         name="check_imaps",
         command_line="$USER1$/check_imap -H $HOSTADDRESS$ -p 993 -S",
@@ -128,8 +164,16 @@ def create_noctua_fixtures():
         command_line="$USER1$/check_ldap -H $HOSTADDRESS$ -b dc=init,dc=at -3",
         config=ldap_config
     ).categories.add(cat_serv)
-    factories.MonCheckCommand(name="check_https", command_line="$USER1$/check_http -S -H $HOSTADDRESS$ -C 30", config=https_config).categories.add(cat_web)
-    factories.MonCheckCommand(name="check_imap", command_line="$USER1$/check_imap -H $HOSTADDRESS$ -p 143", config=imap_config).categories.add(cat_mail)
+    factories.MonCheckCommand(
+        name="check_https",
+        command_line="$USER1$/check_http -S -H $HOSTADDRESS$ -C 30",
+        config=https_config
+    ).categories.add(cat_web)
+    factories.MonCheckCommand(
+        name="check_imap",
+        command_line="$USER1$/check_imap -H $HOSTADDRESS$ -p 143",
+        config=imap_config
+    ).categories.add(cat_mail)
     factories.MonCheckCommand(
         name="check_pop3s",
         command_line="$USER1$/check_pop3 -H $HOSTADDRESS$ -p 995 -S",
@@ -140,37 +184,61 @@ def create_noctua_fixtures():
         command_line="$USER1$/check_smtps -H $HOSTADDRESS$ -p 465 -S",
         config=smtps_config
     ).categories.add(cat_mail)
+
+    # domain name tree
+    dnt = domain_name_tree()
+    _top_level_dtn = dnt.get_domain_tree_node("")
     # device_group
+    print("Creating device and device group.")
     first_devg = factories.DeviceGroup(name="server_group")
     first_dev = factories.Device(
         name=process_tools.get_machine_name(),
         device_group=first_devg,
         domain_tree_node=_top_level_dtn,
     )
+
+    print("Creating device configurations.")
     factories.DeviceConfig(
         device=first_dev,
-        config=factories.Config(name="monitor_server", config_catalog=first_cc),
+        config=factories.Config(
+            name="monitor_server",
+            config_catalog=first_cc
+        ),
     )
     factories.DeviceConfig(
         device=first_dev,
-        config=factories.Config(name="rrd_server", config_catalog=first_cc),
+        config=factories.Config(
+            name="rrd_server",
+            config_catalog=first_cc
+        ),
     )
     factories.DeviceConfig(
         device=first_dev,
-        config=factories.Config(name="server", config_catalog=first_cc),
+        config=factories.Config(
+            name="server",
+            config_catalog=first_cc
+        ),
     )
     factories.DeviceConfig(
         device=first_dev,
-        config=factories.Config(name="rrd_collector", config_catalog=first_cc),
+        config=factories.Config(
+            name="rrd_collector",
+            config_catalog=first_cc
+        ),
     )
     factories.DeviceConfig(
         device=first_dev,
-        config=factories.Config(name="discovery_server", config_catalog=first_cc),
+        config=factories.Config(
+            name="discovery_server",
+            config_catalog=first_cc
+        ),
     )
     factories.DeviceConfig(
         device=first_dev,
         config=ssh_config,
     )
+
+    print("Creating monitoring periods.")
     initial_mon_period = factories.MonPeriod(
         name="always",
         sun_range="00:00-24:00",
@@ -200,8 +268,10 @@ def create_noctua_fixtures():
     # then we want an admin and a user user
     users = user.objects.all()
     empty_install = users.count() == 0
-    new_install = users.count() == 1 and users[0].login == 'admin' and users[0].login_count == 0
+    new_install = (users.count() == 1 and users[0].login == 'admin' and
+                   users[0].login_count == 0)
     if empty_install or (is_ucs and new_install):
+        print('Creating user and groups.')
         user.objects.all().delete()
         group.objects.all().delete()
 
@@ -269,6 +339,7 @@ def create_noctua_fixtures():
         if_network = str(ipvx_tools.ipv4(if_netmask) & ipvx_tools.ipv4(if_broadcast))
         if_gateway = get_default_gateway_linux()
 
+    print('Creating network objects.')
     _network = factories.Network(
         identifier="lan",
         network_type=network_type.objects.get(Q(identifier="o")),
