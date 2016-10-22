@@ -38,15 +38,31 @@ angular.module(
         constructor: (@device_tree, @config_tree) ->
             console.log "ch init", @
             @active_configs = []
+            # list of all groups
+            @groups = []
+            # list of all devices
             @devices = []
 
         set_devices: (dev_list) =>
             # create a copy of the device list, otherwise
             # the list could be changed from icsw-sel-man without
             # the necessary helper objects ($local_selected)
+            _group_lut = {}
+            @groups = []
             @devices.length = 0
             for dev in dev_list
+                dg_idx = dev.device_group
+                if dg_idx not of _group_lut
+                    _new_struct = {
+                        "group": dev.$$group
+                        "meta": dev.$$meta_device
+                        "devices": []
+                    }
+                    _group_lut[dg_idx] = _new_struct
+                    @groups.push(_new_struct)
+                _group_lut[dg_idx]["devices"].push(dev)
                 @devices.push(dev)
+            console.log _group_lut, @groups
             @link()
 
         link: () =>

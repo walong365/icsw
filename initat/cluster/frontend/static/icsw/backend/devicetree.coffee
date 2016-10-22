@@ -669,13 +669,17 @@ angular.module(
             for group in @group_list
                 # reference to all devices
                 group.devices = []
+                group.$$meta_device = @all_lut[group.device]
             for entry in @all_list
                 # add enrichment info
                 if not entry.$$_enrichment_info?
                     entry.$$_enrichment_info = new icswEnrichmentInfo(entry)
                 # do not set group here to prevent circular dependencies in serializer
                 # entry.group_object = @group_lut[entry.device_group]
-                @group_lut[entry.device_group].devices.push(entry.idx)
+                _group = @group_lut[entry.device_group]
+                _group.devices.push(entry.idx)
+                entry.$$group = _group
+                entry.$$meta_device = _group.$$meta_device
             for group in @group_list
                 # num of all devices (enabled and disabled, also with md)
                 group.num_devices_with_meta = group.devices.length

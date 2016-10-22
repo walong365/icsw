@@ -78,6 +78,8 @@ angular.module(
         activate(theme)
 
     toggle = () =>
+        if _theme_list.length == 1
+            return
         current_theme = $window.sessionStorage.getItem('current_theme')
         _idx = _theme_lut[current_theme].idx + 1
         if _idx == _theme_list.length

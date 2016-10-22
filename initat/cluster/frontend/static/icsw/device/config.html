@@ -56,8 +56,13 @@
                             </th>
                         </tr>
                     </thead>
-                    <tbody>
-                        <tr ng-repeat="dev in helper.devices">
+                    <tbody ng-repeat="group_struct in helper.groups">
+                        <tr class="info">
+                            <th colspan="999" style="padding-top: 6px; padding-bottom: 6px;">
+                                DeviceGroup {{ get_name(group_struct.meta) }}
+                            </th>
+                        </tr>
+                        <tr ng-repeat="dev in group_struct.devices">
                             <th ng-class="get_th_class(dev)">{{ get_name(dev) }}</th>
                             <td class="text-center">{{ dev.$local_selected.length }}</td>
                             <td class="text-center">

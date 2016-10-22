@@ -243,15 +243,21 @@ class ThemeViewSet(viewsets.ViewSet):
                 "short": "default",
                 "name": "Default",
             },
-            {
-                "short": "cora",
-                "name": "Cora",
-            },
-            {
-                "short": "sirocco",
-                "name": "Sirocco",
-            },
         ]
+        if settings.ICSW_OVERALL_STYLE != "condensed":
+            # shitty styles only for non-condensed mode
+            _t_list.extend(
+                [
+                    {
+                        "short": "cora",
+                        "name": "Cora",
+                    },
+                    {
+                        "short": "sirocco",
+                        "name": "Sirocco",
+                    },
+                ]
+            )
         # very stupid format
         return Response(_t_list)
 
