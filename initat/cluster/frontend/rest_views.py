@@ -22,6 +22,8 @@
 
 """ REST views """
 
+from __future__ import print_function, unicode_literals
+
 from django.apps import apps
 from django.conf import settings
 from django.contrib.contenttypes.models import ContentType
@@ -774,7 +776,7 @@ for src_mod, obj_name in REST_LIST:
     for mode_name, mode_impl in modes:
         class_name = "{}{}".format(obj_name, mode_name)
         globals()[class_name] = type(
-            class_name,
+            str(class_name),
             (mode_impl, ),
             {
                 "authentication_classes": (SessionAuthentication,),

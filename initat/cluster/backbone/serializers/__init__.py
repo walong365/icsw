@@ -49,16 +49,19 @@ from initat.cluster.backbone.serializers.user import *
 
 class LogSourceSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = LogSource
 
 
 class LogLevelSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = LogLevel
 
 
 class mac_ignore_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mac_ignore
 
 
@@ -67,6 +70,7 @@ class macbootlog_serializer(serializers.ModelSerializer):
     device_name = serializers.CharField(read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = macbootlog
 
 
@@ -74,16 +78,19 @@ class status_serializer(serializers.ModelSerializer):
     info_string = serializers.CharField(read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = status
 
 
 class WrittenConfigFileSerializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = WrittenConfigFile
 
 
 class mon_dist_slave_serializer(serializers.ModelSerializer):
     class Meta:
+        fields = "__all__"
         model = mon_dist_slave
 
 
@@ -91,6 +98,7 @@ class mon_dist_master_serializer(serializers.ModelSerializer):
     mon_dist_slave_set = mon_dist_slave_serializer(many=True)
 
     class Meta:
+        fields = "__all__"
         model = mon_dist_master
 
 
@@ -98,4 +106,5 @@ class quota_capable_blockdevice_serializer(serializers.ModelSerializer):
     device = device_serializer(read_only=True)
 
     class Meta:
+        fields = "__all__"
         model = quota_capable_blockdevice

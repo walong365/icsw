@@ -22,6 +22,8 @@
 
 """ basic session views """
 
+from __future__ import print_function, unicode_literals
+
 import base64
 import datetime
 import json
@@ -218,7 +220,7 @@ class login_addons(View):
         # django version
         _vers = []
         for _v in django.VERSION:
-            if type(_v) == int:
+            if isinstance(_v, int):
                 _vers.append("{:d}".format(_v))
             else:
                 break
@@ -231,6 +233,18 @@ class login_addons(View):
         request.xml_response["next_url"] = _next_url or ""
         request.xml_response["theme_default"] = settings.THEME_DEFAULT
         request.xml_response["password_character_count"] = "{:d}".format(_cs["password.character.count"])
+
+
+class ThemeViewSet(viewsets.ViewSet):
+    @csrf_exempt
+    def get_all_themes(self, request):
+        _t_dict = {
+            "default": "Default",
+            "cora": "Cora",
+            "sirocco": "Sirocco",
+        }
+        # very stupid format
+        return Response([{key: value} for key, value in _t_dict.iteritems()])
 
 
 class session_expel(View):

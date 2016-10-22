@@ -22,6 +22,8 @@
 
 """ config views """
 
+from __future__ import print_function, unicode_literals
+
 import StringIO
 import copy
 import datetime
@@ -187,7 +189,7 @@ class alter_config_cb(View):
                 else:
                     delete_object(request, meta_dc, xml_log=False)
                     for set_dev in meta_obj.device_group.device_group.all().exclude(Q(pk__in=[meta_obj.pk, device_obj.pk])):
-                        print "***", set_dev
+                        print("***", set_dev)
                         device_config(
                             device=set_dev,
                             config=config_obj,
@@ -543,14 +545,14 @@ class handle_cached_config(View):
         taken = False
         if _take:
             if _ent.is_valid():
-                print dir(_ent)
-                print "*", dummy_name
+                print(dir(_ent))
+                print("*", dummy_name)
                 _ent.create_default_entries = False
                 try:
                     # store config with config catalog
-                    print "a"
+                    print("a")
                     _ent.save(name=dummy_name, config_catalog=ccat)
-                    print "b"
+                    print("b")
                     # pass
                 except:
                     for entry in process_tools.exception_info().log_lines:

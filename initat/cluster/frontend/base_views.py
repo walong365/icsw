@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+#
 # Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
@@ -20,6 +21,8 @@
 #
 
 """ base views """
+
+from __future__ import print_function, unicode_literals
 
 import datetime
 import json

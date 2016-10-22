@@ -1257,12 +1257,12 @@ user_module = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswUserService",
     "icswUserGroupRoleSettingsTreeService", "icswUserGroupRolePermissionTreeService",
-    "icswUserGetPassword", "blockUI", "icswThemes",
+    "icswUserGetPassword", "blockUI", "icswThemeService",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $timeout, $uibModal, ICSW_URLS, icswUserService,
     icswUserGroupRoleSettingsTreeService, icswUserGroupRolePermissionTreeService,
-    icswUserGetPassword, blockUI, icswThemes
+    icswUserGetPassword, blockUI, icswThemeService,
 ) ->
     $scope.struct = {
         data_valid: false
@@ -1288,7 +1288,7 @@ user_module = angular.module(
             (data) ->
                 $scope.struct.data_valid = true
                 $scope.struct.user = data[0].user
-                $scope.themes = icswThemes
+                $scope.themes = icswThemeService.get_dict()
                 $scope.struct.settings_tree = data[1]
                 $scope.perm_tree = data[2]
                 # hack, to be improved, FIXME, ToDo

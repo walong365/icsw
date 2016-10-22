@@ -22,11 +22,12 @@
 
 """ user views """
 
+from __future__ import print_function, unicode_literals
+
 import json
 import logging
 
 from django.apps import apps
-from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.db.models import Q
 from django.http.response import HttpResponse
@@ -297,10 +298,10 @@ class UserVariableViewSet(viewsets.ModelViewSet):
     serializer_class = user_variable_serializer
 
     def post(self, request):
-        print "-" * 20
+        print("-" * 20)
         cur_var = self.get_object()
-        print "**", cur_var
-        print "*", request.data
+        print("**", cur_var)
+        print("*", request.data)
         _var = user_variable.objects.get(pk=1)
         serializer = user_variable_serializer(_var)
         return Response(serializer.data)

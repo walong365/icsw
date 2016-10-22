@@ -19,6 +19,8 @@
 #
 # -*- coding: utf-8 -*-
 #
+from __future__ import print_function, unicode_literals
+
 import collections
 import json
 
@@ -303,7 +305,7 @@ class GetEventLog(View):
                 query_obj.setdefault('line_datetime', {})['$gte'] = GetEventLog._parse_datetime(self.from_date)
             if self.to_date is not None:
                 query_obj.setdefault('line_datetime', {})['$lte'] = GetEventLog._parse_datetime(self.to_date)
-            print "Q=", query_obj
+            print("Q=", query_obj)
             return query_obj
 
         def _regular_query(self):

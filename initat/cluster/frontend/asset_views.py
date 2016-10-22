@@ -20,35 +20,36 @@
 
 """ asset views """
 
+from __future__ import print_function, unicode_literals
+
+import base64
 import csv
 import datetime
 import json
 import logging
 import tempfile
-import base64
 
-import pytz
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
-from initat.cluster.backbone.models.functions import can_delete_obj, get_change_reset_list
-from django.db.models import Q, Count, Case, When, IntegerField, Sum
+from django.db.models import Q
 from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import View
 from rest_framework import viewsets, status
 from rest_framework.response import Response
-from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 
-from initat.report_server.report import PDFReportGenerator, generate_csv_entry_for_assetrun
 from initat.cluster.backbone.models import device, AssetPackage, AssetRun, \
-    AssetPackageVersion, AssetType, StaticAssetTemplate, user, BatchStatus, RunResult, PackageTypeEnum, \
+    AssetPackageVersion, AssetType, StaticAssetTemplate, user, PackageTypeEnum, \
     AssetBatch, StaticAssetTemplateField, StaticAsset, StaticAssetFieldValue, StaticAssetTemplateFieldType
 from initat.cluster.backbone.models.dispatch import ScheduleItem
-from initat.cluster.backbone.serializers import AssetRunDetailSerializer, ScheduleItemSerializer, \
-    AssetPackageSerializer, AssetRunOverviewSerializer, StaticAssetTemplateSerializer, \
+from initat.cluster.backbone.models.functions import can_delete_obj, get_change_reset_list
+from initat.cluster.backbone.serializers import ScheduleItemSerializer, \
+    AssetPackageSerializer, StaticAssetTemplateSerializer, \
     StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer, \
     AssetBatchSerializer, SimpleAssetBatchSerializer
+from initat.cluster.frontend.helper_functions import xml_wrapper
+from initat.report_server.report import PDFReportGenerator, generate_csv_entry_for_assetrun
 
 try:
     from openpyxl import Workbook
@@ -58,6 +59,7 @@ except ImportError:
 
 
 logger = logging.getLogger(__name__)
+
 
 class AssetBatchViewSet(viewsets.ViewSet):
     def list(self, request):
@@ -401,6 +403,7 @@ class export_assetbatch_to_xlsx(View):
                 }
             )
         )
+
 
 class export_assetbatch_to_pdf(View):
     @method_decorator(login_required)

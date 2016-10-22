@@ -22,6 +22,8 @@
 
 """ RRD views """
 
+from __future__ import print_function, unicode_literals
+
 import datetime
 import os
 import json
@@ -100,7 +102,6 @@ class graph_rrds(View):
         else:
             start_time = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(4 * 3600)
             end_time = datetime.datetime.now(dateutil.tz.tzutc())
-        print settings.DEBUG
         srv_com["parameters"] = E.parameters(
             E.debug_mode("1" if settings.DEBUG else "0"),
             # graph_setting is jsonified dict

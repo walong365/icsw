@@ -22,6 +22,8 @@
 
 """ License views """
 
+from __future__ import print_function, unicode_literals
+
 import collections
 import json
 import logging

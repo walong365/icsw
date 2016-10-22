@@ -19,6 +19,8 @@
 #
 # -*- coding: utf-8 -*-
 #
+from __future__ import print_function, unicode_literals
+
 import itertools
 import json
 import logging
@@ -130,7 +132,7 @@ class get_historical_data(ListAPIView):
         _eco = server_mixins.EggConsumeObject(DummyLogger())
         _eco.init({"SERVICE_ENUM_NAME": icswServiceEnum.monitor_server.name})
         if model == device:
-            print "FILTER"
+            print("FILTER")
             allowed_by_lic = (
                 elem for elem in formatted if _eco.consume("history", elem["meta"]["object_id"])
             )

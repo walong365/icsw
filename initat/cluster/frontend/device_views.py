@@ -19,7 +19,6 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-
 """ device views """
 
 from __future__ import unicode_literals, print_function
@@ -855,6 +854,7 @@ from initat.cluster.backbone.models import AssetBatch
 from initat.cluster.backbone.models import MachineVector
 from initat.cluster.backbone.models import mon_check_command
 
+
 class device_completion(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -872,7 +872,7 @@ class device_completion(View):
 
         # build graphing information
         device_graph_count = {}
-        machine_vectors = MachineVector.objects.prefetch_related("device").filter(device__idx__in = device_pks)
+        machine_vectors = MachineVector.objects.prefetch_related("device").filter(device__idx__in=device_pks)
         for machine_vector in machine_vectors:
             if machine_vector.device.idx not in device_graph_count:
                 device_graph_count[machine_vector.device.idx] = 0

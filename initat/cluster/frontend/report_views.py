@@ -19,11 +19,11 @@
 #
 """ report views """
 
-import Queue
+from __future__ import print_function, unicode_literals
+
 import base64
 import json
 import os
-from threading import Thread
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required

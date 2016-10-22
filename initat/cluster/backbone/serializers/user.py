@@ -25,9 +25,8 @@ from django.contrib.contenttypes.models import ContentType
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import group, user, csw_permission, csw_object_permission, \
-    user_quota_setting, \
-    group_quota_setting, user_scan_result, user_scan_run, virtual_desktop_protocol, virtual_desktop_user_setting, \
-    window_manager, UserLogEntry, user_variable, Role, RolePermission, RoleObjectPermission
+    user_quota_setting, group_quota_setting, user_scan_result, user_scan_run, virtual_desktop_protocol, \
+    virtual_desktop_user_setting, window_manager, UserLogEntry, user_variable, Role, RolePermission, RoleObjectPermission
 
 __all__ = [
     "csw_permission_serializer",

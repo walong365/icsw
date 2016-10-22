@@ -22,6 +22,8 @@
 
 """ helper functions for the init.at clustersoftware """
 
+from __future__ import print_function, unicode_literals
+
 from django.http import HttpResponse
 from lxml import etree
 from lxml.builder import E

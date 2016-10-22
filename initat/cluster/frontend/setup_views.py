@@ -22,6 +22,8 @@
 
 """ setup views """
 
+from __future__ import print_function, unicode_literals
+
 import logging
 
 from django.contrib.auth.decorators import login_required
