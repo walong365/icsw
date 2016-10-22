@@ -238,13 +238,22 @@ class login_addons(View):
 class ThemeViewSet(viewsets.ViewSet):
     @csrf_exempt
     def get_all_themes(self, request):
-        _t_dict = {
-            "default": "Default",
-            "cora": "Cora",
-            "sirocco": "Sirocco",
-        }
+        _t_list = [
+            {
+                "short": "default",
+                "name": "Default",
+            },
+            {
+                "short": "cora",
+                "name": "Cora",
+            },
+            {
+                "short": "sirocco",
+                "name": "Sirocco",
+            },
+        ]
         # very stupid format
-        return Response([{key: value} for key, value in _t_dict.iteritems()])
+        return Response(_t_list)
 
 
 class session_expel(View):

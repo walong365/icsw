@@ -1288,7 +1288,7 @@ user_module = angular.module(
             (data) ->
                 $scope.struct.data_valid = true
                 $scope.struct.user = data[0].user
-                $scope.themes = icswThemeService.get_dict()
+                $scope.themes = icswThemeService.get_theme_list()
                 $scope.struct.settings_tree = data[1]
                 $scope.perm_tree = data[2]
                 # hack, to be improved, FIXME, ToDo

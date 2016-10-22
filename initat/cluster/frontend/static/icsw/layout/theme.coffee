@@ -29,16 +29,23 @@ angular.module(
 (
     $http, ICSW_URLS, $window, Restangular,
 ) ->
-    _theme_dict = {}
+    _theme_list = []
+    _theme_lut = {}
     Restangular.all(ICSW_URLS.SESSION_GET_THEME_SETUP.slice(1)).getList().then(
         (data) ->
             _t_setup = data.plain()
+            _theme_list.length = 0
+            _idx = 0
             for entry in _t_setup
-                for key, value of entry
-                    _theme_dict[key] = value
+                # salt with idx
+                entry.idx = _idx
+                _idx++
+                _theme_list.push(entry)
+            _theme_lut = _.keyBy(_theme_list, (entry) -> return entry.short)
     )
     activate = (theme) ->
         default_theme = $window.sessionStorage.getItem('default_theme')
+        # normalize value
         theme = _.get(
             {
                 "init": "cora"
@@ -46,7 +53,7 @@ angular.module(
             theme
             theme
         )
-        if not _theme_dict[theme]?
+        if not _theme_lut[theme]
             theme = default_theme
             console.log("theme does not exist setting default theme:", theme)
         maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
@@ -72,16 +79,16 @@ angular.module(
 
     toggle = () =>
         current_theme = $window.sessionStorage.getItem('current_theme')
-        theme_arr = Object.keys(_theme_dict)
-        current_index = theme_arr.indexOf(current_theme)
-        current_index += 1
-        current_index = if current_index >= theme_arr.length then 0 else current_index
-        $window.sessionStorage.setItem('current_theme', theme_arr[current_index])
-        activate(theme_arr[current_index])
+        _idx = _theme_lut[current_theme].idx + 1
+        if _idx == _theme_list.length
+            _idx = 0
+        new_theme = _theme_list[_idx].short
+        $window.sessionStorage.setItem('current_theme', new_theme)
+        activate(new_theme)
 
     return {
-        get_dict: () ->
-            return _theme_dict
+        get_theme_list: () ->
+            return _theme_list
 
         setdefault: setdefault
 
