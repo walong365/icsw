@@ -741,7 +741,6 @@ angular.module(
         ICSW_DEVICE_SCAN_CHANGED: "icsw.device.scan.changed"
         ICSW_MENU_PROGRESS_BAR_CHANGED: "icsw.menu.progress.bar.changed"
         ICSW_CONFIG_UPLOADED: "icsw.config.uploaded"
-        ICSW_DEVICE_CONFIG_CHANGED: "icsw.device.config.changed"
         ICSW_DOMAIN_NAME_TREE_CHANGED: "icsw.domain.name.tree.changed"
         ICSW_CATEGORY_TREE_CHANGED: "icsw.category.tree.changed"
         # settings changed
@@ -766,6 +765,7 @@ angular.module(
 
         # local signals (for local $emit / $on)
 
+        _ICSW_DEVICE_CONFIG_CHANGED: "_icsw.device.config.changed"
         _ICSW_CLOSE_USER_GROUP: "_icsw.close.user.group"
         _ICSW_RMS_UPDATE_DATA: "_icsw.rms.update.data"
         _ICSW_RRD_CROPRANGE_SET: "_icsw.rrd.croprange.set"

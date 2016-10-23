@@ -62,7 +62,6 @@ angular.module(
                     @groups.push(_new_struct)
                 _group_lut[dg_idx]["devices"].push(dev)
                 @devices.push(dev)
-            console.log _group_lut, @groups
             @link()
 
         link: () =>
@@ -108,43 +107,33 @@ angular.module(
                         if dc.device == dev.idx
                             dev.$local_selected.push(conf.idx)
                 dev.$num_meta_selected = @md_lut[dev.idx].$local_selected.length
-            $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_CONFIG_CHANGED"))
+            $rootScope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"))
 
-        show_config: (dev, conf) ->
-            if conf?
-                if dev.is_meta_device and conf.server_config
-                    return false
-                else
-                    return true
-            else
+        click_allowed: (dev, conf) =>
+            if dev.is_meta_device and conf.server_config
                 return false
-
-        get_td_class: (dev, conf, single_line) =>
-            _cls = ""
-            is_meta_dev = dev.is_meta_device
-            meta_dev = @md_lut[dev.idx]
-            if single_line and not @show_config(dev, conf)
-                _cls = "danger"
-            if conf?
-                if conf.idx in dev.$local_selected
-                    _cls = "success"
-                else if conf in meta_dev.$local_selected and not is_meta_dev
-                    _cls = "warn"
-            return _cls
-
-        get_config_class_icon: (dev, conf, single_line) =>
-            if single_line
-                _cls = "glyphicon glyphicon-minus"
             else
-                _cls = "glyphicon"
-            if conf?
-                is_meta_dev = dev.is_meta_device
-                meta_dev = @md_lut[dev.idx]
-                if conf.idx in dev.$local_selected
-                    _cls = "glyphicon glyphicon-ok"
-                if conf.idx in meta_dev.$local_selected and not is_meta_dev
-                    _cls = "glyphicon glyphicon-ok-circle"
-            return _cls
+                return true
+
+        get_td_class_and_icon: (dev, conf) =>
+            if dev.is_meta_device and conf.server_config
+                # check if config is a server config and therefore not selectable for
+                # a meta device (== group)
+                _cls = "danger"
+                _icon = "glyphicon glyphicon-remove-sign"
+            else if conf.idx in dev.$local_selected
+                # config is locally selected
+                _cls = "success"
+                _icon = "glyphicon glyphicon-ok"
+            else if conf.idx in @md_lut[dev.idx].$local_selected and not dev.is_meta_device
+                # config is selected via meta-device (== group)
+                _cls = "warn"
+                _icon = "glyphicon glyphicon-ok-circle"
+            else
+                # config is not selected
+                _cls = ""
+                _icon = "glyphicon glyphicon-minus"
+            return [_cls, _icon]
 
         update_active_configs: (name_re, only_selected, with_server, with_service) =>
             @active_configs.length = 0
@@ -174,7 +163,7 @@ angular.module(
                     entry.$selected = false
                 if entry.$selected
                     @active_configs.push(entry)
-            $rootScope.$emit(ICSW_SIGNALS("ICSW_DEVICE_CONFIG_CHANGED"))
+            $rootScope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"))
 
         mouse_enter: (config) =>
             config.$$mouse = true
@@ -317,7 +306,7 @@ angular.module(
 
     $scope.get_name = (obj) ->
         if obj.is_meta_device
-            return obj.full_name.slice(8) + " [Group]"
+            return "Group"
         else
             return obj.full_name
 
@@ -358,19 +347,19 @@ angular.module(
             _update_td_el = (conf, _td_el) ->
                 _td_el.children().remove()
                 _td_el.removeClass()
-                _td_el.addClass("text-center " + scope.helper.get_td_class(scope.device, conf, true))
-                if scope.helper.show_config(scope.device, conf)
-                    _td_el.append(angular.element("<span class='" + scope.helper.get_config_class_icon(scope.device, conf, true) + "'></span>"))
-                else
-                    _td_el.append(angular.element("<span class='glyphicon glyphicon-remove-sign'></span>"))
+                [_class, _icon] = scope.helper.get_td_class_and_icon(scope.device, conf)
+                _td_el.addClass("text-center #{_class}")
+                _td_el.append(angular.element("<span class='#{_icon}'></span>"))
 
             _handle_click = (conf, _td_el) ->
-                blockUI.start()
-                scope.helper.click(scope.device, conf).then(
-                    (ok) ->
-                        blockUI.stop()
-                        _update_td_el(conf, _td_el)
-                )
+                if scope.helper.click_allowed(scope.device, conf)
+                    blockUI.start()
+                    scope.helper.click(scope.device, conf).then(
+                        (ok) ->
+                            blockUI.stop()
+                            _update_td_el(conf, _td_el)
+                    )
+
             _create_td_el = (entry) ->
                 _td_el = angular.element("<td></td>")
                 _td_el.bind("click", (event) =>
@@ -394,7 +383,7 @@ angular.module(
             # scope.$watch("device._scc", (new_val) ->
             #     _redraw_line(scope.configs)
             # )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_DEVICE_CONFIG_CHANGED"), (event, helper) ->
+            $rootScope.$on(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"), (event, helper) ->
                 _redraw_line()
             )
             _redraw_line()

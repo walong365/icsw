@@ -7,7 +7,8 @@
 # as root:
 #
 # npm uninstall -g gulp
-# npm install -g "gulpjs/gulp-cli#4.0"
+# /opt/cluster/bin/npm install -g "gulpjs/gulp-cli#4.0"
+# /opt/cluster/bin/npm install -g typescript
 
 # as user:
 # /opt/cluster/bin/npm uninstall gulp --save-dev
@@ -19,4 +20,4 @@
     gulp-webserver connect-modrewrite http-proxy-middleware gulp-run \
     gulp-changed gulp-remember gulp-cache gulp-bg gulp-rename gulp-clean-dest del \
     gulp-wait gulp-strip-debug gulp-cached gulp-remember gulp-memory-cache \
-    gulp-plumber gulp-connect gulp-preprocess gulp-cjsx
+    gulp-plumber gulp-connect gulp-preprocess gulp-cjsx gulp-typescript
