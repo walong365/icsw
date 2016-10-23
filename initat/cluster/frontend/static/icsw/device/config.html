@@ -35,43 +35,8 @@
                     <i class="glyphicon" ng-class="{'glyphicon-chevron-down': matrix, 'glyphicon-chevron-right': !matrix}"></i>
                     Configuration Matrix
                 </uib-accordion-heading>
-                <table ng-show="helper.devices.length" class="table rotateheaders table-condensed table-hover colhover" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <th colspan="3">&nbsp;</th>
-                            <th class="icsw-config-rotate" ng-repeat="conf in helper.active_configs">
-                                 <div ng-mouseenter="mouse_enter($event, conf)" ng-mouseleave="mouse_leave($event, conf)">
-                                     <!-- <span ng-show="conf.$$cse" class="label label-success" title="{{ conf.$$cse.name }}">Srv</span> -->
-                                     <span>{{ conf.$$info_str }}</span>
-                                     <span ng-show="conf.$$mouse" ng-class="conf.$$header_class">selected</span>
-                                 </div>
-                            </th>
-                        </tr>
-                        <tr>
-                            <th>Type</th>
-                            <td>Local</td>
-                            <td>Meta</td>
-                            <th ng-repeat="conf in helper.active_configs" class="text-center">
-                                 <span ng-class="conf.$$header_class">{{ conf.$$config_type_str }}</span>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody ng-repeat="group_struct in helper.groups">
-                        <tr class="info">
-                            <th colspan="999" style="padding-top: 6px; padding-bottom: 6px;">
-                                DeviceGroup {{ get_name(group_struct.meta) }}
-                            </th>
-                        </tr>
-                        <tr ng-repeat="dev in group_struct.devices">
-                            <th ng-class="get_th_class(dev)">{{ get_name(dev) }}</th>
-                            <td class="text-center">{{ dev.$local_selected.length }}</td>
-                            <td class="text-center">
-                                <span ng-show="!dev.is_meta_device">{{ dev.$num_meta_selected }}</span>
-                            </td>
-                            <td icsw-device-configuration-row-data device="dev" helper="helper"></td>
-                        </tr>
-                    </tbody>
-                </table>
+                <icsw-device-configuration-react icsw-config-helper="helper">
+                </icsw-device-configuration-react>
             </div>
         </uib-accordion>
     </div>

@@ -296,33 +296,6 @@ angular.module(
                 blockUI.stop()
         )
 
-    # simple utility helper functions
-
-    $scope.get_tr_class = (obj) ->
-        if obj.is_meta_device
-            return "success"
-        else
-            return ""
-
-    $scope.get_name = (obj) ->
-        if obj.is_meta_device
-            return "Group"
-        else
-            return obj.full_name
-
-    $scope.get_th_class = (dev) ->
-        if dev.is_meta_device
-            return "warning"
-        else
-            return ""
-
-    # mouse enter / levae
-    $scope.mouse_enter = ($event, config) ->
-        $scope.helper.mouse_enter(config)
-
-    $scope.mouse_leave = ($event, config) ->
-        $scope.helper.mouse_leave(config)
-
 ]).directive("icswDeviceConfigurationOverview", ["$templateCache", ($templateCache) ->
     return {
         scope: true
@@ -330,62 +303,251 @@ angular.module(
         template : $templateCache.get("icsw.device.configuration.overview")
         controller: "icswDeviceConfigurationCtrl"
     }
-]).directive("icswDeviceConfigurationRowData",
+]).factory("icswDeviceConfigTableReact",
+[
+    "$q", "blockUI",
+(
+    $q, blockUI,
+)->
+    {table, thead, div, tr, span, th, td, tbody} = React.DOM
+    rot_header = React.createFactory(
+        React.createClass(
+            propTypes: {
+                config: React.PropTypes.object
+            }
+            getInitialState: () ->
+                return {
+                    mouse: false
+                }
+            render: () ->
+                conf = @props.config
+                return th(
+                    {
+                        className: "icsw-config-rotate"
+                    }
+                    div(
+                        {
+                            onMouseEnter: (event) =>
+                                @setState({mouse: true})
+                            onMouseLeave: (event) =>
+                                @setState({mouse: false})
+                        }
+                        span(
+                            {
+                                key: "text1"
+                            }
+                            conf.$$info_str
+                        )
+                        if @state.mouse then span(
+                            {
+                                key: "text2"
+                                className: "label label-primary"
+                            }
+                            "selected"
+                        ) else null
+                    )
+                )
+        )
+    )
+    head_factory = React.createFactory(
+        React.createClass(
+            propTypes: {
+                configHelper: React.PropTypes.object
+            }
+            render: () ->
+                _conf_headers = [
+                    rot_header(
+                        {
+                            key: "conf#{conf.idx}"
+                            config: conf
+                        }
+                    ) for conf in @props.configHelper.active_configs
+                ]
+                _conf_infos = []
+                for conf in @props.configHelper.active_configs
+                    _conf_infos.push(
+                        th(
+                            {
+                                key: "info-#{conf.idx}"
+                                className: "text-center"
+                            }
+                            span(
+                                {
+                                    key: "span"
+                                    className: conf.$$header_class
+                                }
+                                conf.$$config_type_str
+                            )
+                        )
+                    )
+                return thead(
+                    {key: "head"}
+                    tr(
+                        {key: "head"}
+                        th(
+                            {
+                                key: "head"
+                                colSpan: 3
+                            }
+                        )
+                        _conf_headers
+                    )
+                    tr(
+                        {key: "info"}
+                        th({key: "t0"}, "Type")
+                        td({key: "t1"}, "Local")
+                        td({key: "t2"}, "Meta")
+                        _conf_infos
+                    )
+                )
+        )
+    )
+    td_factory = React.createFactory(
+        React.createClass(
+            propTypes: {
+                configHelper: React.PropTypes.object
+                device: React.PropTypes.object
+                config: React.PropTypes.object
+            }
+            render: () ->
+                [_class, _icon] = @props.configHelper.get_td_class_and_icon(@props.device, @props.config)
+                return td(
+                    {
+                        className: "text-center #{_class}"
+                        onClick: (event) =>
+                            if @props.configHelper.click_allowed(@props.device, @props.config)
+                                blockUI.start()
+                                @props.configHelper.click(@props.device, @props.config).then(
+                                    (ok) ->
+                                        blockUI.stop()
+                                )
+                    }
+                    span(
+                        {className: _icon}
+                    )
+                )
+        )
+    )
+    row_factory = React.createFactory(
+        React.createClass(
+            propTypes: {
+                configHelper: React.PropTypes.object
+                device: React.PropTypes.object
+            }
+            render: () ->
+                dev = @props.device
+                if dev.is_meta_device
+                    [_name, _class] = ["Group", "warning"]
+                else
+                    [_name, _class] = [dev.full_name, ""]
+                return tr(
+                    {}
+                    th(
+                        {key: "head", className: _class}
+                        _name
+                    )
+                    td(
+                        {key: "local", className: "text-center"}
+                        dev.$local_selected.length
+                    )
+                    td(
+                        {key: "meta", className: "text-center"}
+                        if dev.is_meta_device then "" else dev.$num_meta_selected
+                    )
+                    [
+                        td_factory(
+                            {
+                                configHelper: @props.configHelper
+                                config: config
+                                device: dev
+                            }
+                        ) for config in @props.configHelper.active_configs
+                    ]
+
+                )
+        )
+    )
+    tbody_factory = React.createFactory(
+        React.createClass(
+            propTypes: {
+                configHelper: React.PropTypes.object
+                groupStruct: React.PropTypes.object
+            }
+            render: () ->
+                return tbody(
+                    {}
+                    tr(
+                        {key: "info", className: "info"}
+                        th(
+                            {colSpan: 999, style: {paddingTop: "6px", paddingBottom: "6px"}}
+                            "DeviceGroup #{@props.groupStruct.group.name}"
+                        )
+                    )
+                    [
+                        row_factory(
+                            {
+                                configHelper: @props.configHelper
+                                device: dev
+                            }
+                        ) for dev in @props.groupStruct.devices
+                    ]
+                )
+        )
+    )
+    return React.createClass(
+        propTypes: {
+            configHelper: React.PropTypes.object
+        }
+        render: () ->
+            if not @props.configHelper.devices.length
+                return null
+            table(
+                {
+                    key: "top"
+                    className: "table rotateheaders table-condensed table-hover colhover"
+                    style: {width: "auto"}
+                }
+                head_factory(
+                    {
+                        configHelper: @props.configHelper
+                    }
+                )
+                [
+                    tbody_factory(
+                        {
+                            configHelper: @props.configHelper
+                            groupStruct: group
+                        }
+                    ) for group in @props.configHelper.groups
+                ]
+            )
+    )
+]).directive("icswDeviceConfigurationReact",
 [
     "$templateCache", "$compile", "$rootScope", "ICSW_SIGNALS", "blockUI",
+    "icswDeviceConfigTableReact",
 (
     $templateCache, $compile, $rootScope, ICSW_SIGNALS, blockUI,
+    icswDeviceConfigTableReact,
 ) ->
     return {
-        restrict : "EA"
+        restrict: "EA"
         scope: {
-            helper: "="
-            device: "="
+            helper: "=icswConfigHelper"
         }
-        link: (scope, el, attrs) ->
-
-            _update_td_el = (conf, _td_el) ->
-                _td_el.children().remove()
-                _td_el.removeClass()
-                [_class, _icon] = scope.helper.get_td_class_and_icon(scope.device, conf)
-                _td_el.addClass("text-center #{_class}")
-                _td_el.append(angular.element("<span class='#{_icon}'></span>"))
-
-            _handle_click = (conf, _td_el) ->
-                if scope.helper.click_allowed(scope.device, conf)
-                    blockUI.start()
-                    scope.helper.click(scope.device, conf).then(
-                        (ok) ->
-                            blockUI.stop()
-                            _update_td_el(conf, _td_el)
-                    )
-
-            _create_td_el = (entry) ->
-                _td_el = angular.element("<td></td>")
-                _td_el.bind("click", (event) =>
-                    _handle_click(entry, _td_el)
+        link: (scope, element, attrs) ->
+            _element = ReactDOM.render(
+                React.createElement(
+                    icswDeviceConfigTableReact
+                    {
+                        configHelper: scope.helper
+                        configGeneration: scope.helper.generation
+                    }
                 )
-                _update_td_el(entry, _td_el)
-                return _td_el
-
-            _redraw_line = () ->
-                for _entry in _display
-                    _entry.remove()
-                for entry in scope.helper.active_configs
-                    _td_el = _create_td_el(entry)
-                    _display.push(_td_el)
-                    _parent.append(_td_el)
-
-            _parent = el.parent()
-            el.remove()
-            _display = []
-
-            # scope.$watch("device._scc", (new_val) ->
-            #     _redraw_line(scope.configs)
-            # )
-            $rootScope.$on(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"), (event, helper) ->
-                _redraw_line()
+                element[0]
             )
-            _redraw_line()
+            $rootScope.$on(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"), (event, helper) ->
+                _element.forceUpdate()
+            )
     }
 ])

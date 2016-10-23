@@ -207,7 +207,7 @@ angular.module(
         $timeout(
             () ->
                 load()
-            10000
+            20000
         )
 
     load()
