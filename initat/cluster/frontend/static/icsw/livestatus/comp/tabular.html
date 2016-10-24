@@ -12,7 +12,18 @@
                 <td colspan="99" style="vertical-align:middle;">
                     <h3 class="pull-left" style="margin: 3px 10px 0 0;">Services</h3>
                     <span class="pull-left" style="height:25px; width:25px;">
-                        <icsw-livestatus-service-circle-info icsw-monitoring-data="struct.monitoring_data"></icsw-livestatus-service-circle-info>
+                        <icsw-livestatus-circle-info
+                            icsw-monitoring-data="struct.monitoring_data"
+                            icsw-display-type="service"
+                            icsw-notifier="struct.external_notifier"
+                        ></icsw-livestatus-circle-info>
+                    </span>
+                    <span class="pull-left" style="height:25px;">
+                        <icsw-livestatus-text-info
+                            icsw-monitoring-data="struct.monitoring_data"
+                            icsw-display-type="service"
+                            icsw-notifier="struct.external_notifier"
+                        ></icsw-livestatus-text-info>
                     </span>
                 </td>
             </tr>
@@ -117,7 +128,18 @@
                 <td colspan="99" style="vertical-align:middle;">
                     <h3 class="pull-left" style="margin: 3px 10px 0 0;">Devices</h3>
                     <span class="pull-left" style="height:25px; width:25px;">
-                        <icsw-livestatus-device-circle-info icsw-monitoring-data="struct.monitoring_data"></icsw-livestatus-device-circle-info>
+                        <icsw-livestatus-circle-info
+                            icsw-monitoring-data="struct.monitoring_data"
+                            icsw-display-type="device"
+                            icsw-notifier="struct.external_notifier"
+                        ></icsw-livestatus-circle-info>
+                    </span>
+                    <span class="pull-left" style="height:25px;">
+                        <icsw-livestatus-text-info
+                            icsw-monitoring-data="struct.monitoring_data"
+                            icsw-display-type="device"
+                            icsw-notifier="struct.external_notifier"
+                        ></icsw-livestatus-text-info>
                     </span>
                 </td>
             </tr>

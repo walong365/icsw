@@ -230,7 +230,7 @@ angular.module(
                 )
             )
     )
-]).directive("icswLivestatusServiceCircleInfo",
+]).directive("icswLivestatusCircleInfo",
 [
     "$templateCache", "icswLivestatusCircleInfoReact",
 (
@@ -240,6 +240,8 @@ angular.module(
         restrict: "EA"
         scope:
             mon_data: "=icswMonitoringData"
+            notifier: "=icswNotifier"
+            type: "@icswDisplayType"
         link: (scope, element, attrs) ->
             _render = () ->
                 scope.mon_data.build_luts()
@@ -247,51 +249,47 @@ angular.module(
                     React.createElement(
                         icswLivestatusCircleInfoReact
                         {
-                            # size: 26
-                            data: scope.mon_data.service_circle_data
-                            # title: "Services"
-                            # titleSize: 5
+                            data: scope.mon_data["#{scope.type}_circle_data"]
                             showInfo: false
                         }
                     )
                     element[0]
                 )
             _render()
-            scope.mon_data.result_notifier.promise.then(
+            scope.notifier.promise.then(
                 (resolved) ->
                 (reject) ->
                 (info) ->
                     _render()
             )
     }
-]).directive("icswLivestatusDeviceCircleInfo",
+]).directive("icswLivestatusTextInfo",
 [
-    "$templateCache", "icswLivestatusCircleInfoReact",
+    "$templateCache",
 (
-    $templateCache, icswLivestatusCircleInfoReact,
+    $templateCache,
 ) ->
     return {
         restrict: "EA"
         scope:
             mon_data: "=icswMonitoringData"
+            notifier: "=icswNotifier"
+            type: "@icswDisplayType"
+        template: $templateCache.get("icsw.livestatus.text.info")
         link: (scope, element, attrs) ->
+
             _render = () ->
                 scope.mon_data.build_luts()
-                ReactDOM.render(
-                    React.createElement(
-                        icswLivestatusCircleInfoReact
-                        {
-                            # size: 26
-                            data: scope.mon_data.device_circle_data
-                            # title: "Devices"
-                            # titleSize: 5
-                            showInfo: false
-                        }
-                    )
-                    element[0]
-                )
-            _render()
-            scope.mon_data.result_notifier.promise.then(
+                _data = scope.mon_data["#{scope.type}_circle_data"]
+                if _data.length
+                    _info_str = (
+                        "#{entry.value} #{entry.data.info}" for entry in _data
+                    ).join(", ")
+                else
+                    _info_str = "N/A"
+                scope.$$info_str = _info_str
+            scope.$$info_str = "N/A"
+            scope.notifier.promise.then(
                 (resolved) ->
                 (reject) ->
                 (info) ->

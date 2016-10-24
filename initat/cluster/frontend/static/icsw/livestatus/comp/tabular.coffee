@@ -183,6 +183,8 @@ angular.module(
         d_type: undefined
         # value for modify button
         modify_value: "N/A"
+        # external notifier
+        external_notifier: $q.defer()
     }
     $scope.link = (con_element, notifier, d_type) ->
         $scope.struct.d_type = d_type
@@ -199,8 +201,13 @@ angular.module(
             (rejected) ->
             (data) ->
                 $scope.struct.monitoring_data = data
+                $scope.struct.external_notifier.notify("new")
                 _update_selected()
         )
+
+    $scope.$on("$destroy", () ->
+        $scope.struct.external_notifier.reject()
+    )
 
     $scope.show_device = ($event, dev_check) ->
         DeviceOverviewService($event, [dev_check.$$icswDevice])

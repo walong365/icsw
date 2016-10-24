@@ -58,8 +58,7 @@ angular.module(
     $q, icswLivestatusCircleInfoReact,
 ) ->
     # display of livestatus filter
-    react_dom = ReactDOM
-    {div, h4, select, option, p, input, span, table, tr, td, tbody} = React.DOM
+    {div} = React.DOM
 
     return React.createClass(
         propTypes: {

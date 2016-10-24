@@ -303,7 +303,7 @@ angular.module(
         template : $templateCache.get("icsw.device.configuration.overview")
         controller: "icswDeviceConfigurationCtrl"
     }
-]).factory("icswDeviceConfigTableReact",
+]).service("icswDeviceConfigTableReact",
 [
     "$q", "blockUI",
 (
