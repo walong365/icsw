@@ -795,7 +795,7 @@ describe('ICSW Basic Interface Tests:', function() {
   }
 
   if (browser.params.screenshotrun) {
-    it('update_network_base && base_scan && central_topology_node', function () {
+    it('update_network_base && base_scan && central_topology_node && add_peering_1 && add_peering_2', function () {
       browser.restart();
       browser.driver.manage().window().maximize();
       browser.ignoreSynchronization = true;
@@ -825,7 +825,7 @@ describe('ICSW Basic Interface Tests:', function() {
                   browser.sleep(2500).then(function(){
                     var screenshot_element = element(by.xpath("/html/body/div[6]/div/div"));
                     screenshotify(screenshot_element, "base_scan", false, true).then(function() {
-                      var cancel_button = element.all(by.buttonText("Cancel"));
+                      var cancel_button = element(by.buttonText("Cancel"));
                       cancel_button.click();
                       browser.sleep(2500).then(function() {
                         var modify_button = element.all(by.buttonText("modify")).first();
@@ -833,7 +833,28 @@ describe('ICSW Basic Interface Tests:', function() {
 
                         browser.sleep(2500).then(function() {
                           var screenshot_element = element(by.xpath("/html/body/div[6]/div/div"));
-                          screenshotify(screenshot_element, "central_topology_node", false, true)
+                          screenshotify(screenshot_element, "central_topology_node", false, true).then(function() {
+                            var cancel_button = element(by.buttonText("Cancel"));
+                            cancel_button.click();
+                            browser.sleep(2500).then(function() {
+                              var create_button = element(by.xpath("/html/body/div[3]/div/icsw-device-network-total/div/div/div/div[1]/icsw-device-network-overview/uib-accordion/div/div[2]/div[2]/div/table/tbody/tr/td[19]/div/button"))
+                              create_button.click();
+                              browser.sleep(2500).then(function() {
+                                var network_topology_connection = element(by.xpath("/html/body/div[3]/div/icsw-device-network-total/div/div/div/div[1]/icsw-device-network-overview/uib-accordion/div/div[2]/div[2]/div/table/tbody/tr/td[19]/div/ul/li[2]"))
+                                //browser.actions().mouseMove(network_topology_connection).perform();
+                                browser.sleep(2500).then(function() {
+                                  var screenshot_element = element(by.xpath("/html/body/div[3]/div/icsw-device-network-total/div/div/div/div[1]/icsw-device-network-overview/uib-accordion/div/div[2]"))
+                                  screenshotify(screenshot_element, "add_peering_1", false, true).then(function() {
+                                    network_topology_connection.click();
+                                    browser.sleep(2500).then(function() {
+                                      var screenshot_element = element(by.xpath("/html/body/div[6]/div/div"));
+                                      screenshotify(screenshot_element, "add_peering_2", false, true)
+                                    })
+                                  })
+                                })
+                              })
+                            })
+                          })
                         })
                       })
                     })
