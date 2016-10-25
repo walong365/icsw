@@ -47,6 +47,8 @@ angular.module(
         lic_packs_open: false
         # lic_upload open
         lic_upload_open: true
+        # ova graph open
+        ova_graph_open: false
     }
 
     load = () ->
@@ -183,9 +185,9 @@ angular.module(
     }
 ]).controller("icswOvaDisplayCtrl",
 [
-    "$scope", "$q", "icswSystemOvaCounterService", "$timeout",
+    "$scope", "$q", "icswSystemOvaCounterService", "$timeout", "$state",
 (
-    $scope, $q, icswSystemOvaCounterService, $timeout,
+    $scope, $q, icswSystemOvaCounterService, $timeout, $state,
 ) ->
     $scope.struct = {
         # data present
@@ -211,4 +213,82 @@ angular.module(
         )
 
     load()
+
+    $scope.go_to_license = ($event) ->
+        $state.go("main.syslicenseoverview")
+]).directive("icswOvaDisplayGraph",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        controller: "icswOvaDisplayGraphCtrl"
+        template: $templateCache.get("icsw.system.ova.graph")
+        scope: true
+    }
+]).controller("icswOvaDisplayGraphCtrl",
+[
+    "$scope", "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting", "$q", "icswAcessLevelService"
+    "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS",
+(
+    $scope, icswRRDGraphUserSettingService, icswRRDGraphBasicSetting, $q, icswAcessLevelService,
+    icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
+) ->
+    # ???
+    moment().utc()
+    $scope.struct = {
+        # base data set
+        base_data_set: false
+        # base settings
+        base_setting: undefined
+        # graph setting
+        local_setting: undefined
+        # from and to date
+        from_date: undefined
+        to_date: undefined
+        # devices
+        devices: []
+        # load_called
+        load_called: false
+    }
+    _load = () ->
+        $scope.struct.load_called = true
+        $q.all(
+            [
+                icswRRDGraphUserSettingService.load($scope.$id)
+                icswDeviceTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                _user_setting = data[0]
+                local_setting = _user_setting.get_default()
+                _user_setting.set_custom_size(local_setting, 1024, 400)
+                _dt = data[1]
+                base_setting = new icswRRDGraphBasicSetting()
+                base_setting.draw_on_init = true
+                base_setting.show_tree = false
+                base_setting.show_settings = false
+                base_setting.display_tree_switch = false
+                base_setting.auto_select_keys = [
+                    "icsw.ova"
+                ]
+                $scope.struct.local_setting = local_setting
+                $scope.struct.base_setting = base_setting
+                $scope.struct.base_data_set = true
+                _routes = icswAcessLevelService.get_routing_info().routing
+                $scope.struct.to_date = moment()
+                $scope.struct.from_date = moment().subtract(moment.duration(4, "week"))
+                if "rms_server" of _routes
+                    _server = _routes["rms_server"][0]
+                    _device = _dt.all_lut[_server[2]]
+                    if _device?
+                        $scope.struct.devices.push(_device)
+        )
+    _load()
+    # $rootScope.$on(ICSW_SIGNALS("ICSW_RMS_FAIR_SHARE_TREE_SELECTED"), () ->
+    #     if not $scope.struct.load_called
+    #       _load()
+    # )
 ])
