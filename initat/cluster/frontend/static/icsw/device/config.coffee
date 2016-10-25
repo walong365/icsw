@@ -43,6 +43,8 @@ angular.module(
             @groups = []
             # list of all devices
             @devices = []
+            # total elements in row
+            @num_rows = 0
 
         set_devices: (dev_list) =>
             # create a copy of the device list, otherwise
@@ -144,35 +146,44 @@ angular.module(
 
         update_active_rows: (name_re, only_selected, with_server, with_service) =>
             @active_rows.length = 0
+            @num_rows = 0
 
             for entry in @config_tree.list
-                entry.$selected = if (entry.enabled and entry.$$_dc_name.match(name_re)) then true else false
-                if only_selected and entry.$selected
-                    entry.$selected = false
-                    for cur_dev in @devices
-                        if entry.idx in cur_dev.$local_selected
-                            entry.$selected = true
-                            break
-                    # check for selected meta-devices
-                    if not entry.$selected
-                        for cur_md in @md_list
-                            if entry.idx in cur_md.$local_selected
+                if entry.enabled
+                    entry.$selected = entry.$$_dc_name.match(name_re)
+                    if only_selected and entry.$selected
+                        entry.$selected = false
+                        for cur_dev in @devices
+                            if entry.idx in cur_dev.$local_selected
                                 entry.$selected = true
                                 break
-                if with_server == 1 and not entry.server_config
-                    entry.$selected = false
-                else if with_server == -1 and entry.server_config
-                    entry.$selected = false
-                if with_service == 1 and not entry.$$cse
-                    entry.$selected = false
-                else if with_service == -1 and entry.$$cse
-                    entry.$selected = false
-                if entry.$selected
+                        # check for selected meta-devices
+                        if not entry.$selected
+                            for cur_md in @md_list
+                                if entry.idx in cur_md.$local_selected
+                                    entry.$selected = true
+                                    break
                     if @mode == "gen"
-                        @active_rows.push(entry)
+                        # only apply filter when handling general configs
+                        if with_server == 1 and not entry.server_config
+                            entry.$selected = false
+                        else if with_server == -1 and entry.server_config
+                            entry.$selected = false
+                        if with_service == 1 and not entry.$$cse
+                            entry.$selected = false
+                        else if with_service == -1 and entry.$$cse
+                            entry.$selected = false
+                    if entry.$selected
+                        if @mode == "gen"
+                            @active_rows.push(entry)
+                        else
+                            for _mc in entry.mon_check_command_set
+                                @active_rows.push(_mc)
+                    # count rows
+                    if @mode == "gen"
+                        @num_rows++
                     else
-                        for _mc in entry.mon_check_command_set
-                            @active_rows.push(_mc)
+                        @num_rows += entry.mon_check_command_set.length
             $rootScope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"))
 
         click: (device, config) =>

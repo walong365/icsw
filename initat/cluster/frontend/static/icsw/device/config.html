@@ -15,7 +15,8 @@
     <div ng-if="struct.helper">
         <h3>
             Device Configuration ({{ struct.helper.devices.length }} Devices),
-            {{ configs.length }} {{ struct.info_str }} ({{ struct.helper.active_rows.length }} shown)
+            {{ configs.length }} {{ struct.info_str }}
+            ({{ struct.helper.active_rows.length }} of {{ struct.helper.num_rows }} shown)
         </h3>
         <div class="form-inline" style="margin-bottom:10px;">
             <input
