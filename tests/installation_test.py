@@ -39,7 +39,7 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
     elif package_manager == "apt-get":
         setup_command = "apt-get update && apt-get -y --force-yes install icsw-server icsw-client nginx-init"
     elif package_manager == "yum":
-        setup_command = "yum check-update && yum -y --nogpgcheck install icsw-server icsw-client nginx-init"
+        setup_command = "yum check-update & yum -y --nogpgcheck install icsw-server icsw-client nginx-init"
     else:
         setup_command = ""
 

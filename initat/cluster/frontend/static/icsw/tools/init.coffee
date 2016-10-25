@@ -656,12 +656,23 @@ angular.module(
 
                     if _active_selection
                         # popup mode, watch for changes (i.e. tab activation)
-                        scope.$watch(
-                            attrs["icswDeviceList"]
-                            (new_val) ->
-                                if new_val?
-                                    _new_sel(new_val)
-                        )
+                        if attrs["icswSelectDevice"] != undefined
+                            _tree = icswDeviceTreeService.current()
+                            _device = _tree.all_lut[attrs["icswSelectDevice"]]
+
+                            scope.new_devsel([_device])
+
+                            scope.struct.with_server = -1
+                            scope.struct.with_service = -1
+
+
+                        else
+                            scope.$watch(
+                                attrs["icswDeviceList"]
+                                (new_val) ->
+                                    if new_val?
+                                        _new_sel(new_val)
+                            )
                     else
                         # register get_selection when selection changes
                         dereg = $rootScope.$on(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION_DTL"), (event) ->

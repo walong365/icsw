@@ -11,6 +11,13 @@
                     </rights>
                 </icswData>
             </route>
+            <route name="main.devicepropertiesoverview">
+                <stateData type="dict" url_str="/device/overview"
+                           template_str="&lt;icsw-device-properties-overview&gt;&lt;/icsw-device-properties-overview&gt;"/>
+                <icswData type="dict" pageTitle_str="Setup Help">
+                    <menuEntry type="dict" icon_str="fa-cubes" name_str="Setup Help"/>
+                </icswData>
+            </route>
             <route name="main.deviceinfo">
                 <stateData type="dict" url_str="/deviceinfo" template_str="&lt;icsw-simple-device-info icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-simple-device-info&gt;"/>
                 <icswData type="dict" pageTitle_str="Device Information">
@@ -113,13 +120,6 @@
                     <rights type="list">
                         <value>backbone.device.dispatch_settings</value>
                     </rights>
-                </icswData>
-            </route>
-            <route name="main.devicepropertiesoverview">
-                <stateData type="dict" url_str="/device/overview"
-                           template_str="&lt;icsw-device-properties-overview&gt;&lt;/icsw-device-properties-overview&gt;"/>
-                <icswData type="dict" pageTitle_str="Device Overview">
-                    <menuEntry type="dict" icon_str="fa-cubes" name_str="Overview"/>
                 </icswData>
             </route>
         </routeSubGroup>
