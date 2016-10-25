@@ -1843,4 +1843,17 @@ angular.module(
     return (input, all) ->
         if (!!input)
             return input.replace(/([^\W_]+[^\s-]*) */g, (txt) -> return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase())
+]).directive("icswToolsAccordionChevron",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.tools.accordion.chevron")
+        scope: {
+            flag: "=icswFlag"
+        }
+    }
 ])

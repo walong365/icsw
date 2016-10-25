@@ -11,35 +11,50 @@
             <div uib-accordion-group class="panel-default" is-open="struct.your_licenses_open" is-disabled="license_views_disabled">
                 <uib-accordion-heading>
                     Your Licenses for this Server
-                    <i
-                        class="pull-right glyphicon"
-                        ng-class="{'glyphicon-chevron-down': struct.your_licenses_open, 'glyphicon-chevron-right': !struct.your_licenses_open}"
-                    ></i>
+                    <icsw-tools-accordion-chevron icsw-flag="struct.your_licenses_open">
+                    </icsw-tools-accordion-chevron>
                 </uib-accordion-heading>
 
                 <icsw-system-license-local-licenses icsw-license-tree="struct.license_tree"></icsw-system-license-local-licenses>
             </div>
 
 
-            <div uib-accordion-group class="panel-default" is-open="struct.lic_packs_open" is-disabled="license_views_disabled">
+            <div
+                uib-accordion-group
+                class="panel-default"
+                is-open="struct.lic_packs_open"
+                is-disabled="license_views_disabled"
+            >
                 <uib-accordion-heading>
                     License Packages
-                    <i
-                        class="pull-right glyphicon"
-                        ng-class="{'glyphicon-chevron-down': struct.lic_packs_open, 'glyphicon-chevron-right': !struct.lic_packs_open}"
-                    ></i>
+                    <icsw-tools-accordion-chevron icsw-flag="struct.lic_packs_open">
+                    </icsw-tools-accordion-chevron>
                 </uib-accordion-heading>
 
                 <icsw-system-license-packages></icsw-system-license-packages>
             </div>
 
-            <div uib-accordion-group class="panel-default" is-open="struct.lic_upload_open">
+            <div
+                uib-accordion-group
+                class="panel-default"
+                is-open="struct.ova_graph_open"
+            >
+                <uib-accordion-heading>
+                    Ova graph
+                    <icsw-tools-accordion-chevron icsw-flag="struct.ova_graph_open">
+                    </icsw-tools-accordion-chevron>
+                </uib-accordion-heading>
+                <icsw-ova-display-graph></icsw-ova-display-graph>
+            </div>
+            <div
+                uib-accordion-group
+                class="panel-default"
+                is-open="struct.lic_upload_open"
+            >
                 <uib-accordion-heading>
                     Upload License File
-                    <i
-                        class="pull-right glyphicon"
-                        ng-class="{'glyphicon-chevron-down': struct.lic_upload_open, 'glyphicon-chevron-right': !struct.lic_upload_open}"
-                    ></i>
+                    <icsw-tools-accordion-chevron icsw-flag="struct.lic_upload_open">
+                    </icsw-tools-accordion-chevron>
                 </uib-accordion-heading>
 
                 <div style="width: 300px; float: left; margin-right: 10px;">
@@ -196,9 +211,25 @@
 <script type="text/ng-template" id="icsw.system.ova.display">
     <ul class="nav navbar-nav navbar-right">
         <div ng-if="struct.data_ok" style="margin-top: 14px;">
-            <span ng-class="struct.ocs.info_class" title="Ova usage counter">
+            <span
+                class="cursorpointer"
+                ng-class="struct.ocs.info_class"
+                title="Ova usage counter"
+                ng-click="go_to_license($event)"
+            >
                 {{ struct.ocs.info_str }}
             </span>
         </div>
     </ul>
+</script>
+
+<script type="text/ng-template" id="icsw.system.ova.graph">
+    <icsw-rrd-graph-remote
+        ng-if="struct.base_data_set"
+        icsw-device-list="struct.devices"
+        icsw-graph-setting="struct.local_setting"
+        icsw-base-setting="struct.base_setting"
+        icsw-from-date="struct.from_date"
+        icsw-to-date="struct.to_date"
+    ></icsw-rrd-graph-remote>
 </script>
