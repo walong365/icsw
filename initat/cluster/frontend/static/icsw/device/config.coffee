@@ -25,6 +25,7 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.deviceconfig")
+    icswRouteExtensionProvider.add_route("main.devicemonconfig")
 ]).service("icswDeviceConfigHelper",
 [
     "$q", "$rootScope", "ICSW_SIGNALS", "icswSimpleAjaxCall", "ICSW_URLS",
@@ -35,9 +36,9 @@ angular.module(
     # helper service for config changes
 
     class icswDeviceConfigHelper
-        constructor: (@device_tree, @config_tree) ->
-            console.log "ch init", @
-            @active_configs = []
+        constructor: (@mode, @device_tree, @config_tree) ->
+            # list of active configs or check commands or server commands
+            @active_rows = []
             # list of all groups
             @groups = []
             # list of all devices
@@ -95,6 +96,12 @@ angular.module(
 
             for dev in @md_list
                 for conf in @config_tree.list
+                    # build name value to match against
+                    if @mode == "gen"
+                        conf.$$_dc_name = conf.name
+                    else
+                        conf.$$_dc_num_mcs = conf.mon_check_command_set.length
+                        conf.$$_dc_name = ("#{_v.name} #{_v.description}" for _v in conf.mon_check_command_set).join(" ")
                     for dc in conf.device_config_set
                         if dc.device == dev.idx
                             dev.$local_selected.push(conf.idx)
@@ -135,12 +142,11 @@ angular.module(
                 _icon = "glyphicon glyphicon-minus"
             return [_cls, _icon]
 
-        update_active_configs: (name_re, only_selected, with_server, with_service) =>
-            @active_configs.length = 0
+        update_active_rows: (name_re, only_selected, with_server, with_service) =>
+            @active_rows.length = 0
 
             for entry in @config_tree.list
-                entry.$selected = if (entry.enabled and entry.name.match(name_re)) then true else false
-                @mouse_leave(entry)
+                entry.$selected = if (entry.enabled and entry.$$_dc_name.match(name_re)) then true else false
                 if only_selected and entry.$selected
                     entry.$selected = false
                     for cur_dev in @devices
@@ -162,16 +168,12 @@ angular.module(
                 else if with_service == -1 and entry.$$cse
                     entry.$selected = false
                 if entry.$selected
-                    @active_configs.push(entry)
+                    if @mode == "gen"
+                        @active_rows.push(entry)
+                    else
+                        for _mc in entry.mon_check_command_set
+                            @active_rows.push(_mc)
             $rootScope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"))
-
-        mouse_enter: (config) =>
-            config.$$mouse = true
-            config.$$header_class = "label label-primary"
-
-        mouse_leave: (config) =>
-            config.$$mouse = false
-            config.$$header_class = "label label-default"
 
         click: (device, config) =>
 
@@ -204,7 +206,37 @@ angular.module(
             )
             return defer.promise
 
-]).controller("icswDeviceConfigurationCtrl",
+]).directive("icswDeviceConfigOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    # assign general configs
+    return {
+        scope: true
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.config.overview")
+        controller: "icswDeviceConfigCtrl"
+        link: (scope, element, attrs) ->
+            scope.set_mode("gen")
+    }
+]).directive("icswDeviceMonConfigOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    # assign general configs
+    return {
+        scope: true
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.config.overview")
+        controller: "icswDeviceConfigCtrl"
+        link: (scope, element, attrs) ->
+            scope.set_mode("mon")
+    }
+]).controller("icswDeviceConfigCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService",
     "icswTools", "ICSW_URLS", "$timeout", "icswDeviceTreeService", "blockUI",
@@ -215,16 +247,11 @@ angular.module(
     icswConfigTreeService, icswDeviceConfigHelper,
 ) ->
     icswAcessLevelService.install($scope)
-    $scope.device_tree = undefined
-    $scope.config_tree = undefined
-
-    # icswDeviceConfigHelper
-
-    $scope.helper = undefined
-
-    $scope.new_config_name = ""
-    $scope.matrix = true
     $scope.struct = {
+        # matrix view open
+        matrix: true
+        # icswDeviceConfigHelper
+        helper: undefined
         # name filter
         name_filter: ""
         # only selected configs
@@ -233,28 +260,52 @@ angular.module(
         with_server: 0
         # show service configs
         with_service: 0
+        # overall mode
+        mode: ""
+        # device tree
+        device_tree: undefined
+        # config tree
+        config_tree: undefined
+        # new config name
+        new_config_name: ""
     }
+
+    _mode_wait = $q.defer()
+    $scope.set_mode = (mode) ->
+        _mode_wait.resolve(mode)
+
     $scope.new_devsel = (_dev_sel) ->
         local_defer = $q.defer()
-        if not $scope.device_tree
-            $q.all(
-                [
-                    icswDeviceTreeService.load($scope.$id)
-                    icswConfigTreeService.load($scope.$id)
-                ]
-            ).then(
-                (data) ->
-                    $scope.device_tree = data[0]
-                    $scope.config_tree = data[1]
-                    $scope.helper = new icswDeviceConfigHelper($scope.device_tree, $scope.config_tree)
-                    local_defer.resolve("init done")
+        if not $scope.struct.device_tree
+            _mode_wait.promise.then(
+                (mode) ->
+                    $scope.struct.mode = mode
+                    $scope.struct.info_str = {
+                        "gen": "Configurations",
+                        "mon": "Check commands",
+                    }[$scope.struct.mode]
+                    $q.all(
+                        [
+                            icswDeviceTreeService.load($scope.$id)
+                            icswConfigTreeService.load($scope.$id)
+                        ]
+                    ).then(
+                        (data) ->
+                            $scope.struct.device_tree = data[0]
+                            $scope.struct.config_tree = data[1]
+                            $scope.struct.helper = new icswDeviceConfigHelper(
+                                $scope.struct.mode
+                                $scope.struct.device_tree
+                                $scope.struct.config_tree
+                            )
+                            local_defer.resolve("init done")
+                    )
             )
         else
             local_defer.resolve("already init")
         local_defer.promise.then(
             (init_msg) ->
-                $scope.helper.set_devices(_dev_sel)
-
+                $scope.struct.helper.set_devices(_dev_sel)
                 $scope.new_filter_set()
         )
 
@@ -270,25 +321,25 @@ angular.module(
         catch exc
             cur_re = new RegExp("^$", "gi")
 
-        $scope.helper.update_active_configs(cur_re, $scope.struct.only_selected, $scope.struct.with_server, $scope.struct.with_service)
+        $scope.struct.helper.update_active_rows(cur_re, $scope.struct.only_selected, $scope.struct.with_server, $scope.struct.with_service)
 
     $scope.toggle_only_selected = () ->
         $scope.struct.only_selected = !$scope.struct.only_selected
         $scope.new_filter_set($scope.struct.name_filter, true)
 
     $scope.settings_changed = () ->
-        if $scope.helper?
+        if $scope.struct.helper?
             $scope.new_filter_set($scope.struct.name_filter, true)
 
     $scope.create_config = (cur_cat) ->
         blockUI.start()
         new_obj = {
-            name: $scope.new_config_name
+            name: $scope.struct.new_config_name
             config_catalog: cur_cat.idx
             description: "QuickConfig"
             priority: 0
         }
-        $scope.helper.config_tree.create_config(new_obj).then(
+        $scope.struct.helper.config_tree.create_config(new_obj).then(
             (new_conf) ->
                 blockUI.stop()
                 $scope.new_filter_set()
@@ -296,13 +347,6 @@ angular.module(
                 blockUI.stop()
         )
 
-]).directive("icswDeviceConfigurationOverview", ["$templateCache", ($templateCache) ->
-    return {
-        scope: true
-        restrict : "EA"
-        template : $templateCache.get("icsw.device.configuration.overview")
-        controller: "icswDeviceConfigurationCtrl"
-    }
 ]).service("icswDeviceConfigTableReact",
 [
     "$q", "blockUI",
@@ -313,14 +357,21 @@ angular.module(
     rot_header = React.createFactory(
         React.createClass(
             propTypes: {
-                config: React.PropTypes.object
+                rowElement: React.PropTypes.object
+                configHelper: React.PropTypes.object
             }
             getInitialState: () ->
                 return {
                     mouse: false
                 }
             render: () ->
-                conf = @props.config
+                re = @props.rowElement
+                if @props.configHelper.mode == "gen"
+                    _info_str = re.$$info_str
+                    _title_str = re.$$long_info_str
+                else
+                    _title_str = "#{re.description} (#{re.name})"
+                    _info_str = _title_str.substr(0, 24)
                 return th(
                     {
                         className: "icsw-config-rotate"
@@ -331,12 +382,13 @@ angular.module(
                                 @setState({mouse: true})
                             onMouseLeave: (event) =>
                                 @setState({mouse: false})
+                            title: _title_str
                         }
                         span(
                             {
                                 key: "text1"
                             }
-                            conf.$$info_str
+                            _info_str
                         )
                         if @state.mouse then span(
                             {
@@ -358,25 +410,30 @@ angular.module(
                 _conf_headers = [
                     rot_header(
                         {
-                            key: "conf#{conf.idx}"
-                            config: conf
+                            key: "conf#{row_el.idx}"
+                            rowElement: row_el
+                            configHelper: @props.configHelper
                         }
-                    ) for conf in @props.configHelper.active_configs
+                    ) for row_el in @props.configHelper.active_rows
                 ]
                 _conf_infos = []
-                for conf in @props.configHelper.active_configs
+                for row_el in @props.configHelper.active_rows
+                    if @props.configHelper.mode == "gen"
+                        _conf = row_el
+                    else
+                        _conf = row_el.$$config
                     _conf_infos.push(
                         th(
                             {
-                                key: "info-#{conf.idx}"
+                                key: "info-#{row_el.idx}"
                                 className: "text-center"
                             }
                             span(
                                 {
                                     key: "span"
-                                    className: conf.$$header_class
+                                    className: "label label-primary"
                                 }
-                                conf.$$config_type_str
+                                _conf.$$config_type_str
                             )
                         )
                     )
@@ -407,17 +464,22 @@ angular.module(
             propTypes: {
                 configHelper: React.PropTypes.object
                 device: React.PropTypes.object
-                config: React.PropTypes.object
+                rowElement: React.PropTypes.object
             }
             render: () ->
-                [_class, _icon] = @props.configHelper.get_td_class_and_icon(@props.device, @props.config)
+                _el = @props.rowElement
+                if @props.configHelper.mode == "gen"
+                    _conf = _el
+                else
+                    _conf = _el.$$config
+                [_class, _icon] = @props.configHelper.get_td_class_and_icon(@props.device, _conf)
                 return td(
                     {
                         className: "text-center #{_class}"
                         onClick: (event) =>
-                            if @props.configHelper.click_allowed(@props.device, @props.config)
+                            if @props.configHelper.click_allowed(@props.device, _conf)
                                 blockUI.start()
-                                @props.configHelper.click(@props.device, @props.config).then(
+                                @props.configHelper.click(@props.device, _conf).then(
                                     (ok) ->
                                         blockUI.stop()
                                 )
@@ -458,10 +520,10 @@ angular.module(
                         td_factory(
                             {
                                 configHelper: @props.configHelper
-                                config: config
+                                rowElement: row_el
                                 device: dev
                             }
-                        ) for config in @props.configHelper.active_configs
+                        ) for row_el in @props.configHelper.active_rows
                     ]
 
                 )
@@ -522,7 +584,7 @@ angular.module(
                 ]
             )
     )
-]).directive("icswDeviceConfigurationReact",
+]).directive("icswDeviceConfigReact",
 [
     "$templateCache", "$compile", "$rootScope", "ICSW_SIGNALS", "blockUI",
     "icswDeviceConfigTableReact",

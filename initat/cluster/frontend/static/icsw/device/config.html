@@ -1,42 +1,65 @@
 <script type="text/ng-template" id="icsw/main/device/config.html">
     <div class="container-fluid">
-        <icsw-device-configuration-overview icsw-sel-man="0"></icsw-device-configuration-overview>
+        <icsw-device-config-overview icsw-sel-man="0"></icsw-device-config-overview>
 
         <icsw-config-generate-config icsw-sel-man="0"></icsw-config-generate-config>
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw.device.configuration.overview">
-    <div uib-alert class="alert-warning" ng-show="!helper">Fetching data from server</div>
-    <div ng-if="helper">
+<script type="text/ng-template" id="icsw/main/device/mon/config.html">
+    <icsw-device-mon-config-overview icsw-sel-man="0"></icsw-device-mon-config-overview>
+</script>
+
+<script type="text/ng-template" id="icsw.device.config.overview">
+    <div uib-alert class="alert-warning" ng-show="!struct.helper">Fetching data from server</div>
+    <div ng-if="struct.helper">
         <h3>
-            Device Configuration ({{ helper.devices.length }} Devices), {{ configs.length }} Configurations ({{ helper.active_configs.length }} shown)
+            Device Configuration ({{ struct.helper.devices.length }} Devices),
+            {{ configs.length }} {{ struct.info_str }} ({{ struct.helper.active_rows.length }} shown)
         </h3>
         <div class="form-inline" style="margin-bottom:10px;">
-            <input class="form-control" ng-model="struct.name_filter" placeholder="filter" ng-model-options="{debounce: {default: 250}}" ng-change="settings_changed()"/>
-            Service: <icsw-tools-tri-button icsw-state="struct.with_service" icsw-callback="settings_changed"></icsw-tools-tri-button>
-            Server: <icsw-tools-tri-button icsw-state="struct.with_server" icsw-callback="settings_changed"></icsw-tools-tri-button>
-            <icsw-tools-button type="show" is-show="struct.only_selected" show-value="only selected" hide-value="all" ng-click="toggle_only_selected()"></icsw-tools-button>
-            <div class="form-group" ng-show="acl_create(null, 'backbone.config.modify_config') && helper.config_tree.catalog_list.length > 0">
-                <input placeholder="new config" ng-model="new_config_name" class="form-control"/>
-                <div class="btn-group" ng-show="new_config_name">
+            <input
+                class="form-control"
+                ng-model="struct.name_filter"
+                placeholder="filter"
+                ng-model-options="{debounce: {default: 250}}"
+                ng-change="settings_changed()"
+            />
+            <span ng-show="struct.mode == 'gen'">
+                Service: <icsw-tools-tri-button icsw-state="struct.with_service" icsw-callback="settings_changed"></icsw-tools-tri-button>
+                Server: <icsw-tools-tri-button icsw-state="struct.with_server" icsw-callback="settings_changed"></icsw-tools-tri-button>
+            </span>
+            <icsw-tools-button
+                type="show"
+                is-show="struct.only_selected"
+                show-value="only selected"
+                hide-value="all"
+                ng-click="toggle_only_selected()"
+            ></icsw-tools-button>
+            <div
+                ng-if="struct.mode == 'gen'"
+                class="form-group"
+                ng-show="acl_create(null, 'backbone.config.modify_config') && struct.helper.config_tree.catalog_list.length > 0"
+            >
+                <input placeholder="new config" ng-model="struct.new_config_name" class="form-control"/>
+                <div class="btn-group" ng-show="struct.new_config_name">
                     <button type="button" class="btn btn-sm btn-success dropdown-toggle" data-toggle="dropdown">
                         Create in Catalog <span class="caret"></span>
                     </button>
                     <ul class="dropdown-menu">
-                        <li ng-repeat="entry in helper.config_tree.catalog_list" ng-click="create_config(entry)"><a>{{ entry.name }}</a></li>
+                        <li ng-repeat="entry in struct.helper.config_tree.catalog_list" ng-click="create_config(entry)"><a>{{ entry.name }}</a></li>
                     </ul>
                 </div>
             </div>
         </div>
-        <uib-accordion ng-show="helper.devices.length" close-others="false">
-            <div uib-accordion-group class="panel-default" is-open="matrix">
+        <uib-accordion ng-show="struct.helper.devices.length" close-others="false">
+            <div uib-accordion-group class="panel-default" is-open="struct.matrix">
                 <uib-accordion-heading>
-                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': matrix, 'glyphicon-chevron-right': !matrix}"></i>
                     Configuration Matrix
+                    <icsw-tools-accordion-chevron icsw-flag="sruct.matrix"></icsw-tools-accordion-chevron>
                 </uib-accordion-heading>
-                <icsw-device-configuration-react icsw-config-helper="helper">
-                </icsw-device-configuration-react>
+                <icsw-device-config-react icsw-config-helper="struct.helper">
+                </icsw-device-config-react>
             </div>
         </uib-accordion>
     </div>

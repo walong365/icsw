@@ -55,7 +55,7 @@
 
                         <tbody>
                             <tr ng-repeat="obj in entries_displayed">
-                                <td>{{ obj.name }}</td>
+                                <td>{{ obj.full_name }}</td>
                                 <td>{{ obj.device_group_name }}</td>
                                 <td>{{ obj.$$date_created }}</td>
                                 <td class="text-center"><div ng-class="obj.$$monitoring_checks_availability_class"><strong><a href="" ng-click='open_in_new_tab(obj, 0)'>{{ obj.$$monitoring_checks_availability_text }}</a></strong></div></td>
@@ -79,7 +79,7 @@
                         <span>{{ tab.heading }}</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="close_tab(tab)"></icsw-tools-button>
                     </uib-tab-heading>
-                    <icsw-device-configuration-overview ng-if="tab.type == 0" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"/>
+                    <icsw-device-config-overview ng-if="tab.type == 0" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"/>
                     <icsw-device-location-overview ng-if="tab.type == 1" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"/>
                 </uib-tab>
             </uib-tabset>

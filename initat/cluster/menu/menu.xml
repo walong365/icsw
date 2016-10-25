@@ -47,6 +47,15 @@
                     </rights>
                 </icswData>
             </route>
+            <route name="main.devicemonconfig">
+                <stateData type="dict" url_str="/devicemonconfig" templateUrl_str="icsw/main/device/mon/config.html"/>
+                <icswData type="dict" pageTitle_str="Assign Monitoring Checks" hasDevselFunc_bool="yes">
+                    <menuEntry type="dict" icon_str="fa-check-square" name_str="Assign Monitoring checks"/>
+                    <rights type="list">
+                        <value>backbone.device.change_config</value>
+                    </rights>
+                </icswData>
+            </route>
             <route name="main.devicenetwork">
                 <stateData type="dict" url_str="/network" template_str="&lt;icsw-device-network-total&gt;&lt;/icsw-device-network-total&gt;"/>
                 <icswData type="dict" pageTitle_str="Network" hasDevselFunc_bool="yes">
