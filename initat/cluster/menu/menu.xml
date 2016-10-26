@@ -13,13 +13,13 @@
             </route>
             <route name="main.devicepropertiesoverview">
                 <stateData type="dict" url_str="/device/overview"
-                           template_str="&lt;icsw-device-properties-overview&gt;&lt;/icsw-device-properties-overview&gt;"/>
+                           templateUrl_str="icsw/device/properties/overview"/>
                 <icswData type="dict" pageTitle_str="Setup Help">
                     <menuEntry type="dict" icon_str="fa-cubes" name_str="Setup Help"/>
                 </icswData>
             </route>
             <route name="main.deviceinfo">
-                <stateData type="dict" url_str="/deviceinfo" template_str="&lt;icsw-simple-device-info icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-simple-device-info&gt;"/>
+                <stateData type="dict" url_str="/deviceinfo" templateUrl_str="icsw/simple/device/info"/>
                 <icswData type="dict" pageTitle_str="Device Information">
                     <menuEntry type="dict" icon_str="fa-bars" postSpacer_bool="yes"/>
                     <dashboardEntry type="dict" sizeX_int="4" sizeY_int="3" allowState_bool="yes"/>
@@ -66,7 +66,7 @@
                 </icswData>
             </route>
             <route name="main.devicenetwork">
-                <stateData type="dict" url_str="/network" template_str="&lt;icsw-device-network-total&gt;&lt;/icsw-device-network-total&gt;"/>
+                <stateData type="dict" url_str="/network" templateUrl_str="icsw/device/network/total"/>
                 <icswData type="dict" pageTitle_str="Network" hasDevselFunc_bool="yes">
                     <menuEntry type="dict" icon_str="fa-sitemap"/>
                     <rights type="list">
@@ -150,7 +150,7 @@
         <routeSubGroup name_str="Status">
             <route name="main.livestatus">
                 <stateData type="dict" url_str="/livestatus/all"
-                           template_str="&lt;icsw-device-livestatus icsw-livestatus-view=&quot;'test'&quot;&gt;&lt;/icsw-device-livestatus&gt;"/>
+                           templateUrl_str="icsw/device/livestatus"/>
                 <icswData type="dict" pageTitle_str="Liveview Dashboard">
                     <licenses type="list">
                         <value>monitoring_dashboard</value>
@@ -164,7 +164,7 @@
             </route>
             <route name="main.monitorov">
                 <stateData type="dict" url_str="/monitorov"
-                           template_str="&lt;icsw-monitoring-list-overview icsw-sel-man='0'&gt;&lt;/icsw-monitoring-list-overview&gt;"/>
+                           templateUrl_str="icsw/monitoring/list/overview"/>
                 <icswData type="dict" pageTitle_str="Overview">
                     <menuEntry type="dict" icon_str="fa-list" name_str="Monitoring Overview"/>
                     <rights type="list">
@@ -187,7 +187,7 @@
             </route>
             <route name="main.monitordisk">
                 <stateData type="dict" url_str="/monitordisk"
-                           template_str="&lt;icsw-device-partition-overview icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-device-partition-overview&gt;"/>
+                           templateUrl_str="icsw/device/partition/overview"/>
                 <icswData type="dict" pageTitle_str="Disk Information">
                     <menuEntry type="dict" icon_str="fa-hdd-o"/>
                     <rights type="list">
@@ -209,7 +209,7 @@
                 </icswData>
             </route>
             <route name="main.eventlog">
-                <stateData type="dict" url_str="/eventlog" template_str="&lt;icsw-discovery-event-log icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-discovery-event-log&gt;"/>
+                <stateData type="dict" url_str="/eventlog" templateUrl_str="icsw/discovery/event/log"/>
                 <icswData type="dict" pageTitle_str="Syslog, WMI- and IPMI-Event Logs">
                     <licenses type="list">
                         <value>discovery_server</value>
@@ -221,7 +221,7 @@
                 </icswData>
             </route>
             <route name="main.monitorbuildinfo">
-                <stateData type="dict" url_str="/monitorbuildinfo" template_str="&lt;icsw-monitoring-build-info&gt;&lt;/icsw-monitoring-build-info&gt;"/>
+                <stateData type="dict" url_str="/monitorbuildinfo" templateUrl_str="icsw/monitoring/build/info"/>
                 <icswData type="dict" pageTitle_str="Monitoring Control and Buildinfo">
                     <menuEntry type="dict" icon_str="fa-info-circle" name_str="Control and Info"/>
                     <rights type="list">
@@ -231,13 +231,13 @@
             </route>
             <route name="main.locationtest">
                 <stateData type="dict" url_str="/devlocationtest"
-                           template_str="&lt;icsw-device-location-overview icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-device-location-overview&gt;"/>
+                           templateUrl_str="icsw/device/location/overview"/>
                 <icswData type="dict" pageTitle_str="Location Service">
                     <menuEntry type="dict" icon_str="fa-map-marker" name_str="Location Service"/>
                 </icswData>
             </route>
             <route name="main.kpievaluation">
-                <stateData type="dict" url_str="/kpi/evaluation" template_str="&lt;icsw-config-kpi-evaluation-table&gt;&lt;/icsw-config-kpi-evaluation-table&gt;"/>
+                <stateData type="dict" url_str="/kpi/evaluation" templateUrl_str="icsw/config/kpi/evaluation/table"/>
                 <icswData type="dict" pageTitle_str="KPIs">
                     <licenses type="list">
                         <value>kpi</value>
@@ -251,7 +251,7 @@
         </routeSubGroup>
         <routeSubGroup name_str="Settings">
             <route name="main.kpisettings">
-                <stateData type="dict" url_str="/kpi/config" template_str="&lt;icsw-config-kpi&gt;&lt;/icsw-config-kpi&gt;"/>
+                <stateData type="dict" url_str="/kpi/config" templateUrl_str="icsw/config/kpi"/>
                 <icswData type="dict" pageTitle_str="Key Performance Indicator Setup">
                     <licenses type="list">
                         <value>kpi</value>
@@ -272,7 +272,7 @@
                 </icswData>
             </route>
             <route name="main.monitorhint">
-                <stateData type="dict" url_str="/monitorhint" template_str="&lt;icsw-device-mon-config icsw-sel-man=&quot;0&quot;&gt;&lt;/icsw-device-mon-config&gt;"/>
+                <stateData type="dict" url_str="/monitorhint" templateUrl_str="icsw/device/mon/config"/>
                 <icswData type="dict" pageTitle_str="Monitoring Hints">
                     <menuEntry type="dict" icon_str="fa-info"/>
                     <rights type="list">
@@ -281,7 +281,7 @@
                 </icswData>
             </route>
             <route name="main.monitordevice">
-                <stateData type="dict" url_str="/monitordevice" template_str="&lt;icsw-monitoring-device icsw-sel-man='0'&gt;&lt;/icsw-monitoring-device&gt;"/>
+                <stateData type="dict" url_str="/monitordevice" templateUrl_str="icsw/monitoring/device"/>
                 <icswData type="dict" pageTitle_str="Monitoring Device Settings">
                     <menuEntry type="dict" icon_str="fa-laptop" name_str="Device Settings"/>
                     <rights type="list">
@@ -306,7 +306,7 @@
                 </icswData>
             </route>
             <route name="main.schedoverviewasset">
-                <stateData type="dict" url_str="/sched/overview" template_str="&lt;icsw-schedule-overview&gt;&lt;/icsw-schedule-overview&gt;"/>
+                <stateData type="dict" url_str="/sched/overview" templateUrl_str="icsw/device/schedule/overview"/>
                 <icswData type="dict" pageTitle_str="Schedule settings">
                     <menuEntry type="dict" icon_str="fa-gears" name_str="Schedule Settings"/>
                     <rights type="list">
@@ -315,7 +315,7 @@
                 </icswData>
             </route>
             <route name="main.schedasset">
-                <stateData type="dict" url_str="/sched/asset" template_str="&lt;icsw-schedule-device icsw-sel-man='0'&gt;&lt;/icsw-schedule-device&gt;"/>
+                <stateData type="dict" url_str="/sched/asset" templateUrl_str="icsw/schedule/device"/>
                 <icswData type="dict" pageTitle_str="Schedule Asset Run">
                     <menuEntry type="dict" icon_str="fa-clock-o" name_str="Schedule Asset Run"/>
                     <rights type="list">
@@ -335,7 +335,7 @@
             </route>
             <route name="main.statictemplates">
                 <stateData type="dict" url_str="/sched/stattemp"
-                           template_str="&lt;icsw-static-asset-template-overview&gt;&lt;/icsw-static-asset-template-overview&gt;"/>
+                           templateUrl_str="icsw/static/asset/template/overview"/>
                 <icswData type="dict" pageTitle_str="Static Asset Templates">
                     <menuEntry type="dict" icon_str="fa-reorder" name_str="Static Asset Templates"/>
                     <rights type="list">
@@ -345,7 +345,7 @@
             </route>
             <route name="main.inventorystaticoverview">
                 <stateData type="dict" url_str="/inventory/overview"
-                           template_str="&lt;icsw-device-inventory-static-overview&gt;&lt;/icsw-device-inventory-static-overview&gt;"/>
+                           templateUrl_str="icsw/device/inventory/static/overview"/>
                 <icswData type="dict" pageTitle_str="Static Asset Overview">
                     <menuEntry type="dict" icon_str="fa-reorder" name_str="Static Asset Overview"/>
                     <rights type="list">
@@ -402,7 +402,7 @@
                 </icswData>
             </route>
             <route name="main.packageinstall">
-                <stateData type="dict" url_str="/packageinstall" template_str="&lt;icsw-package-install-overview ng-cloak/&gt;"/>
+                <stateData type="dict" url_str="/packageinstall" templateUrl_str="icsw/package/install/overview"/>
                 <icswData type="dict" pageTitle_str="Package install" hasDevselFunc_bool="yes">
                     <licenses type="list">
                         <value>package_install</value>
@@ -512,7 +512,7 @@
                 </icswData>
             </route>
             <route name="main.history">
-                <stateData type="dict" url_str="/history" template_str="&lt;icsw-history-overview&gt;&lt;/icsw-history-overview&gt;"/>
+                <stateData type="dict" url_str="/history" templateUrl_str="icsw/history/overview"/>
                 <icswData type="dict" pageTitle_str="Database History">
                     <menuEntry type="dict" icon_str="fa-history" name_str="Database History"/>
                     <rights type="list">
@@ -532,7 +532,7 @@
                 </icswData>
             </route>
             <route name="main.statelist">
-                <stateData type="dict" url_str="/statelist" template_str="&lt;icsw-internal-state-list&gt;&lt;/icsw-internal-state-list&gt;"/>
+                <stateData type="dict" url_str="/statelist" templateUrl_str="icsw/internal/state/list"/>
                 <icswData type="dict" pageTitle_str="Internal State list">
                     <menuEntry type="dict" preSpacer_bool="yes" icon_str="fa-bars"/>
                     <rights type="list">
@@ -559,7 +559,7 @@
                 </icswData>
             </route>
             <route name="main.schedoverview">
-                <stateData type="dict" url_str="/sched/overview" template_str="&lt;icsw-schedule-overview&gt;&lt;/icsw-schedule-overview&gt;"/>
+                <stateData type="dict" url_str="/sched/overview" templateUrl_str="icsw/device/schedule/overview"/>
                 <icswData type="dict" pageTitle_str="Schedule Settings">
                     <menuEntry type="dict" icon_str="fa-clock-o" name_str="Schedule Settings"/>
                     <rights type="list">

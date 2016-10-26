@@ -183,8 +183,6 @@ class FileModify(object):
                         if menu_head_el is None:
                             raise ValueError("No menu_head_el defined")
                         _data = route.find(".//icswData")
-                        # no longer needed
-                        # _me.attrib["menukey_str"] = key_str
                         _me.attrib["groupkey_str"] = key_str
                         _me.attrib["subgroupkey_str"] = subgroup_str
                         _me.attrib["ordering_int"] = "{:d}".format((route_idx + 1) * 10)
@@ -233,8 +231,9 @@ class FileModify(object):
         _my_relax.validate(_xml)
         _xml = self.transform(_xml)
         # move to json
+
         import pprint
-        pprint.pprint(self.route_xml_to_json(_xml))
+        # pprint.pprint(self.route_xml_to_json(_xml))
         return self.route_xml_to_json(_xml)
 
     def inject(self, options):

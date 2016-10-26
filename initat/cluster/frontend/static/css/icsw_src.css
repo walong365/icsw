@@ -70,19 +70,7 @@ th.icsw-config-rotate > div > span {
   border-bottom: 1px solid #ccc;
   padding: 5px 10px;
 }
-/* not used
-circle.fixed {
-    fill : #ffaaaa ;
-    stroke : #5555ff ;
-}
-.connect_line {
-    stroke : #9999ff ;
-    stroke-width : 4;
-    pointer-events : none;
-}
-.connect_line_hidden {
-    stroke-width : 0 ;
-} */
+
 .angular-google-map-container {
     height: 480px;
 }
@@ -403,12 +391,12 @@ img.normal {
     /* space between links */
     padding: 2px 0px;
 }
-.navbar-right li:last-of-type > a {
+.navbar-right.normal li:last-of-type > a {
     /* usermenu (username below) */
     padding-bottom: 3px;
     text-align: right;
 }
-.navbar-right li:last-of-type > a > div {
+.navbar-right.normal li:last-of-type > a > div {
     /* usermenu (username below) */
     text-align: center;
     font-size: 12px;

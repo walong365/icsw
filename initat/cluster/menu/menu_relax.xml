@@ -50,9 +50,6 @@
                                     <attribute name="url_str"/>
                                 </optional>
                                 <optional>
-                                    <attribute name="template_str"/>
-                                </optional>
-                                <optional>
                                     <attribute name="templateUrl_str"/>
                                 </optional>
                                 <optional>
