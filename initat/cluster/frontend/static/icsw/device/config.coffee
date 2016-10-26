@@ -26,6 +26,7 @@ angular.module(
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.deviceconfig")
     icswRouteExtensionProvider.add_route("main.devicemonconfig")
+    icswRouteExtensionProvider.add_route("main.devicesrvconfig")
 ]).service("icswDeviceConfigHelper",
 [
     "$q", "$rootScope", "ICSW_SIGNALS", "icswSimpleAjaxCall", "ICSW_URLS",
@@ -47,12 +48,9 @@ angular.module(
             @num_rows = 0
 
         set_devices: (dev_list) =>
-            # create a copy of the device list, otherwise
-            # the list could be changed from icsw-sel-man without
-            # the necessary helper objects ($local_selected)
+            # create a group dict
             _group_lut = {}
             @groups = []
-            @devices.length = 0
             for dev in dev_list
                 dg_idx = dev.device_group
                 if dg_idx not of _group_lut
@@ -60,11 +58,30 @@ angular.module(
                         "group": dev.$$group
                         "meta": dev.$$meta_device
                         "devices": []
+                        # number of non-meta devices
+                        "nmd_count": 0
                     }
                     _group_lut[dg_idx] = _new_struct
                     @groups.push(_new_struct)
-                _group_lut[dg_idx]["devices"].push(dev)
-                @devices.push(dev)
+                if @mode == "srv" and dev.is_meta_device
+                    # do not add meta-devices to srv-mode view
+                    true
+                else
+                    _group_lut[dg_idx]["devices"].push(dev)
+                if not dev.is_meta_device
+                    _group_lut[dg_idx]["nmd_count"]++
+
+            if @mode == "srv"
+                # depending on mode filter out all groups where only the meta-device is selected
+                @groups = (entry for entry in @groups when entry.nmd_count > 0)
+            _group_ids = (entry.group.idx for entry in @groups)
+            # create a copy of the device list, otherwise
+            # the list could be changed from icsw-sel-man without
+            # the necessary helper objects ($local_selected)
+            @devices.length = 0
+            for dev in dev_list
+                if dev.device_group in _group_ids
+                    @devices.push(dev)
             @link()
 
         link: () =>
@@ -99,7 +116,7 @@ angular.module(
             for dev in @md_list
                 for conf in @config_tree.list
                     # build name value to match against
-                    if @mode == "gen"
+                    if @mode in ["gen", "srv"]
                         conf.$$_dc_name = conf.name
                     else
                         conf.$$_dc_num_mcs = conf.mon_check_command_set.length
@@ -150,6 +167,9 @@ angular.module(
 
             for entry in @config_tree.list
                 if entry.enabled
+                    if @mode == "srv"
+                        if not entry.$$cse or not entry.server_config
+                            continue
                     entry.$selected = entry.$$_dc_name.match(name_re)
                     if only_selected and entry.$selected
                         entry.$selected = false
@@ -174,13 +194,13 @@ angular.module(
                         else if with_service == -1 and entry.$$cse
                             entry.$selected = false
                     if entry.$selected
-                        if @mode == "gen"
+                        if @mode in ["gen", "srv"]
                             @active_rows.push(entry)
                         else
                             for _mc in entry.mon_check_command_set
                                 @active_rows.push(_mc)
                     # count rows
-                    if @mode == "gen"
+                    if @mode in ["gen", "srv"]
                         @num_rows++
                     else
                         @num_rows += entry.mon_check_command_set.length
@@ -247,6 +267,21 @@ angular.module(
         link: (scope, element, attrs) ->
             scope.set_mode("mon")
     }
+]).directive("icswDeviceSrvConfigOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    # assign general configs
+    return {
+        scope: true
+        restrict : "EA"
+        template : $templateCache.get("icsw.device.config.overview")
+        controller: "icswDeviceConfigCtrl"
+        link: (scope, element, attrs) ->
+            scope.set_mode("srv")
+    }
 ]).controller("icswDeviceConfigCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService",
@@ -294,6 +329,7 @@ angular.module(
                     $scope.struct.info_str = {
                         "gen": "Configurations",
                         "mon": "Check commands",
+                        "srv": "System services ",
                     }[$scope.struct.mode]
                     $q.all(
                         [
@@ -377,12 +413,12 @@ angular.module(
                 }
             render: () ->
                 re = @props.rowElement
-                if @props.configHelper.mode == "gen"
+                if @props.configHelper.mode in ["gen", "srv"]
                     _info_str = re.$$info_str
                     _title_str = re.$$long_info_str
                 else
                     _title_str = "#{re.description} (#{re.name})"
-                    _info_str = _title_str.substr(0, 24)
+                    _info_str = _title_str
                 return th(
                     {
                         className: "icsw-config-rotate"
@@ -429,7 +465,7 @@ angular.module(
                 ]
                 _conf_infos = []
                 for row_el in @props.configHelper.active_rows
-                    if @props.configHelper.mode == "gen"
+                    if @props.configHelper.mode in ["gen", "srv"]
                         _conf = row_el
                     else
                         _conf = row_el.$$config
@@ -479,7 +515,7 @@ angular.module(
             }
             render: () ->
                 _el = @props.rowElement
-                if @props.configHelper.mode == "gen"
+                if @props.configHelper.mode in ["gen", "srv"]
                     _conf = _el
                 else
                     _conf = _el.$$config
@@ -578,7 +614,7 @@ angular.module(
                 {
                     key: "top"
                     className: "table rotateheaders table-condensed table-hover colhover"
-                    style: {width: "auto"}
+                    style: {width: "auto", overflowX: "auto", display: "block"}
                 }
                 head_factory(
                     {
