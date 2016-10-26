@@ -242,7 +242,6 @@
                     <th class="text-center">Quicklink</th>
                     <th class="text-center">Dashboard</th>
                     <th>PageTitle</th>
-                    <th>Menu Header Info</th>
                     <th>Menu Entry Info</th>
                     <th class="text-center">Dashboard Info</th>
                     <th>Rights</th>
@@ -254,25 +253,30 @@
             <tbody>
                 <tr ng-repeat="obj in entries_displayed">
                     <td>{{ obj.name }}</td>
-                    <td class="text-center">{{ obj.icswData.$$allowed | yesno1 }}</td>
-                    <td class="text-center">{{ obj.icswData.$$menuHeader | yesno1 }}</td>
-                    <td class="text-center">{{ obj.icswData.$$menuEntry | yesno1 }}</td>
-                    <td class="text-center">{{ obj.icswData.validForQuicklink | yesno1 }}</td>
-                    <td class="text-center">{{ obj.icswData.$$dashboardEntry | yesno1 }}</td>
+                    <td class="text-center">
+                        <span ng-bind-html="obj.icswData.$$allowed | yesno3"></span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-bind-html="obj.icswData.$$menuHeader | yesno3"></span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-bind-html="obj.icswData.$$menuEntry | yesno3"></span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-bind-html="obj.icswData.validForQuicklink | yesno3"></span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-bind-html="obj.icswData.$$dashboardEntry | yesno3"></span>
+                    </td>
                     <td>{{ obj.icswData.pageTitle }}</td>
                     <td>
-                        <span ng-show="obj.icswData.$$menuHeader">
-                            {{ obj.icswData.menuHeader.key }} <span ng-class="get_header_class(obj)"></span> ({{ obj.icswData.menuHeader.ordering }})
-                        </span>
-                    </td>
-                    <td>
                         <span ng-show="obj.icswData.$$menuEntry">
-                            [{{ obj.icswData.menuEntry.menukey }}] {{ obj.icswData.menuEntry.name }} <span ng-class="get_entry_class(obj)"></span> ({{ obj.icswData.menuEntry.ordering }})
+                            {{ obj.icswData.menuEntry.name }} <span ng-class="get_entry_class(obj)"></span>
                         </span>
                     </td>
                     <td class="text-center">
                         <span ng-show="obj.icswData.$$dashboardEntry">
-                            ({{ obj.icswData.dashboardEntry.size_x }} x {{ obj.icswData.dashboardEntry.size_y }})
+                            ({{ obj.icswData.dashboardEntry.sizeX }} x {{ obj.icswData.dashboardEntry.sizeY }})
                             <span ng-show="obj.icswData.dashboardEntry.default_enabled">
                                 , default
                             </span>

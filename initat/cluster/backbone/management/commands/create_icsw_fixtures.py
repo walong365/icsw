@@ -19,6 +19,8 @@
 #
 """ creates the cluster fixtures """
 
+from __future__ import unicode_literals, print_function
+
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 
@@ -306,7 +308,7 @@ SNMP_NET_TYPES = [
 
 def _add_snmp_fixtures():
     def dummy_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        print "[{:d}] {}".format(log_level, what)
+        print("[{:d}] {}".format(log_level, what))
 
     # SNMP Network types
     for _if_type, _if_label in SNMP_NET_TYPES:

@@ -21,6 +21,8 @@
 #
 """ shows and updates the current cluster routing table """
 
+from __future__ import unicode_literals, print_function
+
 from django.core.management.base import BaseCommand
 
 from initat.cluster.backbone import routing

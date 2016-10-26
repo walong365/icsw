@@ -422,10 +422,10 @@ img.normal {
     content: "» ";
     vertical-align: 1px;
 }
-.sub-breadcrumb .menupath a{
+.sub-breadcrumb .menupath a {
     color: #555555;
 }
-.sub-breadcrumb .menupath a:not([ui-sref]):hover{
+.sub-breadcrumb .menupath a:not([ui-sref]):hover {
     text-decoration: none;
 }
 /* SUBMENU END */

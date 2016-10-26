@@ -21,6 +21,8 @@
 #
 """ migrate to configuration catalogs """
 
+from __future__ import unicode_literals, print_function
+
 from django.core.management.base import BaseCommand
 
 from initat.cluster.backbone.models import config, config_catalog

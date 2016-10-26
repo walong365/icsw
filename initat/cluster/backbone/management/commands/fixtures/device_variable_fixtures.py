@@ -19,6 +19,7 @@
 #
 """ creates fixtures for device variables """
 
+from __future__ import unicode_literals, print_function
 
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import device_variable_scope, dvs_allowed_name
@@ -77,7 +78,7 @@ def add_fixtures(**kwargs):
     if False or process_tools.get_machine_name() in ["eddie"]:
         # debug output
         for _e in device_variable_scope.objects.all():
-            print unicode(_e)
+            print(unicode(_e))
 
         for _e in dvs_allowed_name.objects.all():
-            print unicode(_e)
+            print(unicode(_e))

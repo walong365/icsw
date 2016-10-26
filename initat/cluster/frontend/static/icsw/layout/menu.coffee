@@ -374,13 +374,13 @@ menu_module = angular.module(
                 else
                     _hidden = false
                 if not _hidden
-                    if overall_style == "condensed"
+                    if overall_style != "condensed"
                         items_per_column[col_idx].push(
                             li(
                                 {
                                     key: "#{sg_data.key}_li"
                                 }
-                                h3({key: "h3"}, sg_data.name)
+                                p({key: "p"}, strong({key: "strong"}, sg_data.name))
                             )
                         )
                     else
@@ -389,7 +389,7 @@ menu_module = angular.module(
                                 {
                                     key: "#{sg_data.key}_li"
                                 }
-                                p({key: "p"}, strong({key: "strong"}, sg_data.name))
+                                h3({key: "h3"}, sg_data.name)
                             )
                         )
 
@@ -640,12 +640,12 @@ menu_module = angular.module(
     "$scope", "icswLayoutSelectionDialogService", "$rootScope", "icswBreadcrumbs",
     "icswUserService", "$state", "$q", "icswDeviceTreeService", "ICSW_SIGNALS",
     "icswDispatcherSettingTreeService", "icswAssetPackageTreeService",
-    "icswActiveSelectionService", "icswMenuPath",
+    "icswActiveSelectionService", "icswMenuPath", "icswOverallStyle",
 (
     $scope, icswLayoutSelectionDialogService, $rootScope, icswBreadcrumbs,
     icswUserService, $state, $q, icswDeviceTreeService, ICSW_SIGNALS
     icswDispatcherSettingTreeService, icswAssetPackageTreeService,
-    icswActiveSelectionService, icswMenuPath
+    icswActiveSelectionService, icswMenuPath, icswOverallStyle,
 ) ->
     $scope.struct = {
         current_user: undefined
@@ -671,9 +671,15 @@ menu_module = angular.module(
         lock_info: ""
         # menu path
         menupath: []
+        # overall style
+        overall_style: icswOverallStyle.get()
     }
     menu_path = icswMenuPath
     menu_path.setup_lut()
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
+        $scope.struct.overall_style = icswOverallStyle.get()
+    )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
         $scope.struct.current_user = icswUserService.get().user

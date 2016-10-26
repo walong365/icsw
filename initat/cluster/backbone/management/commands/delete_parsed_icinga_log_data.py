@@ -21,7 +21,10 @@
 #
 """ migrate to configuration catalogs """
 
+from __future__ import unicode_literals, print_function
+
 from django.core.management.base import BaseCommand
+
 from initat.cluster.backbone.models import mon_icinga_log_last_read,\
     mon_icinga_log_raw_host_alert_data, mon_icinga_log_raw_service_alert_data,\
     mon_icinga_log_raw_host_flapping_data,\
@@ -54,4 +57,4 @@ class Command(BaseCommand):
         mon_icinga_log_aggregated_timespan.objects.all().delete()
         mon_icinga_log_aggregated_host_data.objects.all().delete()
         mon_icinga_log_aggregated_service_data.objects.all().delete()
-        print "Removed all parsed icinga log data"
+        print("Removed all parsed icinga log data")

@@ -21,8 +21,10 @@
 #
 """ simple db-router """
 
+from __future__ import unicode_literals, print_function
 
-class db_router(object):
+
+class icswDBRouter(object):
     def db_for_read(self, model, **hints):
         return None
 

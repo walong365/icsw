@@ -195,12 +195,10 @@ angular.module(
                 $scope
                 {
                     show_selection_buttons: true
-                    show_icons: false
                     expand_on_selection: true
                     show_select: true
                     show_descendants: true
                     show_total_descendants: false
-                    show_childs: false
                     extra_args: ["build_info"]
                 }
             )

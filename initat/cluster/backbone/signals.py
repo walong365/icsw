@@ -21,15 +21,17 @@
 #
 """ signals for ICSW """
 
+from __future__ import unicode_literals, print_function
+
 import django.dispatch
 
 __all__ = [
-    "UserChanged",
-    "GroupChanged",
-    "BootsettingsChanged",
-    "VirtualDesktopUserSettingChanged",
-    "SensorThresholdChanged",
-    "RoleChanged",
+    b"UserChanged",
+    b"GroupChanged",
+    b"BootsettingsChanged",
+    b"VirtualDesktopUserSettingChanged",
+    b"SensorThresholdChanged",
+    b"RoleChanged",
 ]
 
 UserChanged = django.dispatch.Signal(providing_args=["user", "cause"])

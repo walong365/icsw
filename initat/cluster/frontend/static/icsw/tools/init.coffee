@@ -72,7 +72,7 @@ angular.module(
 (
     $scope, icswOverallStyle, $rootScope, ICSW_SIGNALS,
 ) ->
-    icswOverallStyle.set("normal");
+    icswOverallStyle.set("condensed");
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
         $scope.overall_style = icswOverallStyle.get()
     )
@@ -497,7 +497,7 @@ angular.module(
                 if data.$$routeSubGroup
                     _cur_sg = new MenuSubGroup(data.routeSubGroup)
                     _subgroup_lut[_cur_sg.data.subgroupkey] = _cur_sg
-                    _menu_lut[_cur_sg.data.menukey].add_entry(_cur_sg)
+                    _menu_lut[_cur_sg.data.groupkey].add_entry(_cur_sg)
 
             for state in _struct.icsw_states
                 data = state.icswData

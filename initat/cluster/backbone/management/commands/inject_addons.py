@@ -19,10 +19,13 @@
 #
 """ inject addons in already compiled main.html """
 
+from __future__ import unicode_literals, print_function
+
 import json
 import os
 import re
 import sys
+import codecs
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -83,7 +86,7 @@ class FileModify(object):
             print(str)
 
     def read(self):
-        self._content = file(self.name, "r").read()
+        self._content = codecs.open(self.name, "r", "utf-8").read()
         self.debug(
             "read {} from {}".format(
                 logging_tools.get_size_str(len(self._content)),
@@ -171,7 +174,7 @@ class FileModify(object):
             for sub_idx, sub_group_el in enumerate(group.xpath(".//routeSubGroup")):
                 subgroup_str = "{}_{}".format(key_str, sub_group_el.attrib["name_str"].lower())
                 sub_group_el.attrib["ordering_int"] = "{:d}".format((sub_idx + 1) * 10)
-                sub_group_el.attrib["menukey_str"] = key_str
+                sub_group_el.attrib["groupkey_str"] = key_str
                 sub_group_el.attrib["subgroupkey_str"] = subgroup_str
                 _sub_group_added = False
                 for route_idx, route in enumerate(sub_group_el.findall(".//route")):
@@ -182,6 +185,7 @@ class FileModify(object):
                         _data = route.find(".//icswData")
                         # no longer needed
                         # _me.attrib["menukey_str"] = key_str
+                        _me.attrib["groupkey_str"] = key_str
                         _me.attrib["subgroupkey_str"] = subgroup_str
                         _me.attrib["ordering_int"] = "{:d}".format((route_idx + 1) * 10)
                         if not _sub_group_added:
@@ -306,7 +310,7 @@ class FileModify(object):
             )
         )
         if self.modify:
-            file(dest, "w").write(self._content)
+            codecs.open(dest, "w", "utf-8").write(self._content)
 
 
 class Command(BaseCommand):

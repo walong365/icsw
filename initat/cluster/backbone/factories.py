@@ -21,8 +21,10 @@
 #
 """ factories for ICSW models """
 
+from __future__ import unicode_literals, print_function
+
 import factory
-from django.db.models import Q
+
 from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     partition_fs, status, network_device_type, \
     network_type, host_check_command, config, mon_check_command, device_group, \

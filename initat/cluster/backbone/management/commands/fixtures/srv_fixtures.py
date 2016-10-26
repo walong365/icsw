@@ -19,9 +19,12 @@
 #
 """ creates fixtures for cluster-server """
 
+from __future__ import unicode_literals, print_function
+
+from django.db.models import Q
+
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import config_catalog
-from django.db.models import Q
 
 
 def add_fixtures(**kwargs):

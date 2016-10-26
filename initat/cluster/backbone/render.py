@@ -21,6 +21,7 @@
 #
 """ permission decorated for views """
 
+from __future__ import unicode_literals, print_function
 
 import logging
 
@@ -81,7 +82,7 @@ class permission_required_mixin(object):
             except:
                 return redirect(settings.LOGIN_URL)
             else:
-                print reverse
+                print(reverse)
                 return redirect(perm_url)
         return super(permission_required_mixin, self).dispatch(
             request,

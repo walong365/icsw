@@ -660,8 +660,8 @@ class SendMonCommand(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         data = json.loads(request.POST["json"])
-        import pprint
-        pprint.pprint(data)
+        # import pprint
+        # pprint.pprint(data)
         _action = data["action"]["short"]
         if _action != "none":
             srv_com = server_command.srv_command(

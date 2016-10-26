@@ -80,7 +80,7 @@ DATABASES = {
 }
 
 DATABASE_ROUTERS = [
-    "initat.cluster.backbone.routers.db_router"
+    "initat.cluster.backbone.routers.icswDBRouter"
 ]
 
 # config stores

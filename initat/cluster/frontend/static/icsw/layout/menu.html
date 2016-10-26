@@ -44,7 +44,7 @@
 
 <script type="text/ng-template" id="icsw.layout.submenubar">
     <nav class="navbar navbar-default submenu-bar" ng-if="struct.current_user" style="position:fixed; width:100%; z-index:1029; margin-top:-30px;">
-        <ul class="sub-breadcrumb pull-left">
+        <ul class="sub-breadcrumb">
             <li class="menupath pull-left">
                 <span ng-repeat="obj in struct.menupath track by $index">
                     <a ng-if="obj.statename" ui-sref="{{ obj.statename }}">{{ obj.name }}</a>

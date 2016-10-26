@@ -19,6 +19,8 @@
 #
 """ create the cluster device supergroup """
 
+from __future__ import unicode_literals, print_function
+
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 
@@ -44,8 +46,13 @@ class Command(BaseCommand):
             cur_cdg = device_group.objects.get(Q(cluster_device_group=True))
         except device_group.DoesNotExist:
             cur_cdg = device_group(name=options["name"], description=options["description"], cluster_device_group=True)
-            print "Created cluster device group '{}'".format(unicode(cur_cdg))
+            print("Created cluster device group '{}'".format(unicode(cur_cdg)))
         else:
-            print "Cluster device group '{}' already exists".format(unicode(cur_cdg))
+            print("Cluster device group '{}' already exists".format(unicode(cur_cdg)))
         cur_cdg.save()
-        factories.DeviceVariable(name="CLUSTER_NAME", device=cur_cdg.device_group.all()[0], local_copy_ok=False, value="new cluster")
+        factories.DeviceVariable(
+            name="CLUSTER_NAME",
+            device=cur_cdg.device_group.all()[0],
+            local_copy_ok=False,
+            value="new cluster"
+        )

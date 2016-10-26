@@ -4,18 +4,18 @@
  only use for the initial migration
 """
 
-from django.db import models
-from django.contrib.auth.models import User, Group, Permission
 import datetime
+import re
+
+from django.contrib.auth.models import User, Group
+from django.core.exceptions import ValidationError
+from django.db import models
 from django.db.models import Q, signals
 from django.dispatch import receiver
-from django.core.exceptions import ValidationError
-from lxml import etree  # @UnresolvedImports
-from lxml.builder import E  # @UnresolvedImports
-import re
+from lxml.builder import E
+
 from initat.tools import ipvx_tools
 from initat.tools import logging_tools
-import pprint
 
 
 def only_wf_perms(in_list):

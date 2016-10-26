@@ -22,6 +22,8 @@
 
 """ scan all apps in backbone for new ICSW rights """
 
+from __future__ import unicode_literals, print_function
+
 import pprint
 import time
 
@@ -83,7 +85,7 @@ class Command(BaseCommand):
                 logging_tools.get_plural("Permission", len(out_list)),
             )
         )
-        print unicode(out_list)
+        print(unicode(out_list))
 
     def modify(self, **options):
         verbosity = int(options.get("verbosity"))

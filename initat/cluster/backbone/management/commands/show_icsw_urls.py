@@ -21,6 +21,8 @@
 #
 """ shows all URLS """
 
+from __future__ import unicode_literals, print_function
+
 import re
 
 from django.conf import settings
@@ -98,7 +100,7 @@ class Command(BaseCommand):
 
         for settings_mod in settings_modules:
             try:
-                urlconf = __import__(settings_mod.ROOT_URLCONF, {}, {}, [''])
+                urlconf = __import__(settings_mod.ROOT_URLCONF, {}, {}, [b''])
             except Exception as e:
                 if options.get('traceback', None):
                     import traceback

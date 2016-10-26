@@ -19,12 +19,14 @@
 #
 """ creates fixtures for device classes """
 
+from __future__ import unicode_literals, print_function
+
+from django.conf import settings
+from django.db.models import Q
 
 from initat.cluster.backbone import factories
-from django.db.models import Q
 from initat.cluster.backbone.models import DeviceClass, device
-from initat.tools import process_tools, logging_tools
-from django.conf import settings
+from initat.tools import logging_tools
 
 
 def add_fixtures(**kwargs):
@@ -42,7 +44,7 @@ def add_fixtures(**kwargs):
     if settings.ICSW_DEBUG:
         # debug output
         for _c in DeviceClass.objects.all():
-            print unicode(_c)
+            print(unicode(_c))
 
     _no_class = device.objects.filter(Q(device_class=None))
     if _no_class.count():

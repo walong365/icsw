@@ -21,6 +21,8 @@
 #
 """ migrates from network-based names to domain-base names """
 
+from __future__ import unicode_literals, print_function
+
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 
@@ -89,9 +91,9 @@ class Command(BaseCommand):
 def main():
     cur_dns = domain_tree_node.objects.all()
     if len(cur_dns):
-        print "domain tree already in use, skipping init..."
+        print("domain tree already in use, skipping init...")
     else:
-        print "Migrating to domain_tree_node system"
+        print("Migrating to domain_tree_node system")
         net_tree = DTNode()
         for cur_net in network.objects.all():  # @UndefinedVariable
             _dns_node = net_tree.feed_name(cur_net.name, cur_net)
@@ -104,7 +106,11 @@ def main():
             im_state = False
         else:
             im_state = True if (
-                net_ip.objects.filter(Q(domain_tree_node=cur_node)).count() + device.objects.filter(Q(domain_tree_node=cur_node)).count() == 0
+                net_ip.objects.filter(
+                    Q(domain_tree_node=cur_node)
+                ).count() + device.objects.filter(
+                    Q(domain_tree_node=cur_node)
+                ).count() == 0
             ) else False
         if cur_node.intermediate != im_state:
             cur_node.intermediate = im_state
@@ -119,7 +125,7 @@ def main():
             # not found, use top-level node
             nw_obj.dns_node = domain_tree_node.objects.get(Q(depth=0))
     # modify net_ip
-    print "migrating {}".format(logging_tools.get_plural("netip", net_ip.objects.filter(Q(domain_tree_node=None)).count()))
+    print("migrating {}".format(logging_tools.get_plural("netip", net_ip.objects.filter(Q(domain_tree_node=None)).count())))
     for cur_ip in net_ip.objects.filter(Q(domain_tree_node=None)):
         cur_ip.domain_tree_node = net_dict[cur_ip.network_id].dns_node
         cur_ip.save()
@@ -160,4 +166,4 @@ def main():
                 dom_id = new_dom.pk
             cur_dev.domain_tree_node = cur_dnt[dom_id]
             cur_dev.save()
-    print "done."
+    print("done.")

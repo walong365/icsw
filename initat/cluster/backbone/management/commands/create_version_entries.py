@@ -21,6 +21,8 @@
 #
 """ create version entries after DB migration run """
 
+from __future__ import unicode_literals, print_function
+
 from django.core.management.base import BaseCommand
 from django.db.models import Q
 
@@ -56,7 +58,7 @@ def main(options):
         print("Renewing version info in ConfigStore")
         _vers["database"] = get_database_version()
         _vers["models"] = get_models_version()
-        print _vers.file_name
+        print(_vers.file_name)
         _vers.write()
     print(
         "Creating {:d} version entries with idx {:d} ...".format(

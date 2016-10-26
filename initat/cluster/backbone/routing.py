@@ -22,6 +22,8 @@
 
 """ helper functions for cluster routing """
 
+from __future__ import unicode_literals, print_function
+
 import json
 import logging
 
@@ -31,10 +33,10 @@ from django.db.models import Q
 from lxml import etree
 
 from initat.cluster.backbone.models import device
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import uuid_tools, logging_tools, server_command
 from initat.tools.config_tools import server_check, device_with_config, RouterObject
-from initat.cluster.backbone.server_enums import icswServiceEnum
 
 logger = logging.getLogger("cluster.routing")
 
