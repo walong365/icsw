@@ -116,6 +116,55 @@
     </div>
 </script>
 
+<script type="text/ng-template" id="icsw.device.asset.overview.reduced">
+    <uib-tabset ng-repeat="dev in struct.devices">
+        </br>
+        <uib-tab>
+            <uib-tab-heading>
+                Scan History
+            </uib-tab-heading>
+            <h3>
+                <span ng-show="dev.asset_batch_list.length">
+                    Scans for device '{{ dev.full_name }}' (group {{ dev.device_group_name }})
+                </span>
+                <span ng-show="!dev.asset_batch_list.length">
+                    No scan for this device yet.
+                </span>
+            </h3>
+            <div>
+                <button type="button" class="btn btn-xs btn-warning" ng-disabled="dev.$$scan_device_button_disabled" ng-click="scan_device(dev)">{{ dev.$$scan_device_button_disabled ? "Please wait..." : "Scan this device now" }}</button>
+            </div>
+            <br/>
+            <icsw-asset-asset-batch-table
+                icsw-asset-batch-list="dev.asset_batch_list"
+            ></icsw-asset-asset-batch-table>
+        </uib-tab>
+        <uib-tab>
+            <uib-tab-heading>
+                Planned Scans
+            </uib-tab-heading>
+            <h3>
+                <span>
+                    Planned Scans for device '{{ dev.full_name }}' (group {{ dev.device_group_name }})
+                </span>
+            </h3>
+            <br/>
+            <icsw-asset-scheduled-runs-table
+                    icsw-schedule-items="dev.schedule_items">
+            </icsw-asset-scheduled-runs-table>
+        </uib-tab>
+        <uib-tab ng-repeat="tab in dev.info_tabs">
+            <uib-tab-heading>
+                {{ tab.tab_heading_text }}
+                <icsw-tools-button size="xs" type="close" value="" ng-click="close_tab(tab, dev)"></icsw-tools-button>
+            </uib-tab-heading>
+            <icsw-asset-batch-details
+                icsw-tab="tab"
+            </icsw-asset-batch-details>
+        </uib-tab>
+    </uib-tabset>
+</script>
+
 
 <script type="text/ng-template" id="icsw.asset.asset.batch.table">
     <table

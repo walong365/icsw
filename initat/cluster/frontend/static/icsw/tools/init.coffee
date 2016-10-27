@@ -655,17 +655,12 @@ angular.module(
                                 )
 
                     if _active_selection
-                        # popup mode, watch for changes (i.e. tab activation)
                         if attrs["icswSelectDevice"] != undefined
                             _tree = icswDeviceTreeService.current()
                             _device = _tree.all_lut[attrs["icswSelectDevice"]]
 
                             scope.new_devsel([_device])
-
-                            scope.struct.with_server = -1
-                            scope.struct.with_service = -1
-
-
+                        # popup mode, watch for changes (i.e. tab activation)
                         else
                             scope.$watch(
                                 attrs["icswDeviceList"]
