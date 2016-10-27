@@ -83,8 +83,19 @@ class _general(hm_classes.hm_module):
         return server_command.compress(_lshw_result)
 
     def _lsblk_int(self):
+        # Versions of util-linux prior to 2.25 don't support the "-O" argument,
+        # so manually provide the list of columns. Additionally it seems that
+        # version 2.23.2 has a maximum length of command line arguments, so
+        # only pass some selected columns to "lsblk".
+        columns = [
+            'KNAME', 'FSTYPE', 'LABEL', 'UUID', 'PARTLABEL', 'PARTUUID', 'RA',
+            'RO', 'MODEL', 'SERIAL', 'SIZE', 'STATE', 'OWNER', 'GROUP', 'MODE',
+            'ROTA', 'SCHED', 'WSAME', 'WWN', 'RAND', 'PKNAME', 'HCTL', 'TRAN',
+            'VENDOR',
+        ]
+        options = '-arbp -o +{}'.format(','.join(columns))
         (_lsblk_stat, _lsblk_result) = commands.getstatusoutput(
-            "{} -aOrbp".format(self.lsblk_bin))
+            "{} {}".format(self.lsblk_bin, options))
         return server_command.compress(_lsblk_result)
 
     def _xrandr_int(self):

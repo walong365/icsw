@@ -173,13 +173,16 @@ def parse_size(size_str):
 
 
 def _parse_lsblk(dump):
-    escape_re = re.compile('\\\\x(\d\d)')
-
     def to_bool(s):
         return bool(int(s))
 
     def to_int(s):
         return int(s) if s else None
+
+    def unescape(match):
+        return chr(int(match.groups()[0], base=16))
+
+    escape_re = re.compile('\\\\x(\d\d)')
     mappers = {
         'RA': int,
         'RO': to_bool,
@@ -200,9 +203,6 @@ def _parse_lsblk(dump):
         'RAND': to_bool,
     }
 
-    def unescape(match):
-        return chr(int(match.groups()[0], base=16))
-
     lines = dump.split('\n')
     header = lines[0].split()
     rows = []
@@ -213,8 +213,11 @@ def _parse_lsblk(dump):
         data = line.split(' ')
         data = [escape_re.sub(unescape, d).strip() for d in data]
         data = OrderedDict([(k, v) for (k, v) in zip(header, data)])
-        for (field_name, func) in mappers.items():
-            data[field_name] = func(data[field_name])
+        # if available, apply the mapping function
+        for (key, value) in data.items():
+            func = mappers.get(key)
+            if func:
+                data[key] = func(value)
         rows.append(data)
 
     return rows
