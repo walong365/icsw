@@ -1100,6 +1100,8 @@ class AssetBatch(models.Model):
                                 'ns0:{}'.format(arg_name),
                                 namespaces=tree.nsmap
                             )[0].text
+                            if not blob:
+                                continue
                             blob = bz2.decompress(base64.b64decode(blob))
                             if run.run_type == AssetType.LSHW:
                                 arg_value = etree.fromstring(blob)

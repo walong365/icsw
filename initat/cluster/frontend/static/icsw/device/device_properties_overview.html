@@ -20,7 +20,7 @@
         <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching data from server ...</div>
         <div ng-if="struct.data_loaded">
             <uib-tabset>
-                <uib-tab ng-click="test()">
+                <uib-tab ng-click="perform_lazy_refresh()">
                     <uib-tab-heading>
                         <span>Device Overview</span>
                     </uib-tab-heading>
@@ -32,6 +32,17 @@
                     >
 
                         <thead>
+                            <tr>
+                                <td colspan="99">
+                                    <span
+                                        icsw-tools-pagination
+                                        st-items-by-page="20"
+                                        st-displayed-pages="11"
+                                        possible-items-by-page="10,20,50,100"
+                                        class="pull-xs-left"
+                                    ></span>
+                                </td>
+                            </tr>
                             <tr>
                                 <th st-sort="name">Name</th>
                                 <th st-sort="device_group_name">Group</th>
@@ -79,13 +90,14 @@
                         </tbody>
                     </table>
                 </uib-tab>
-                <uib-tab ng-repeat="tab in struct.tabs">
+                <uib-tab ng-repeat="tab in struct.tabs" ng-click="mark_unfresh(tab)">
                     <uib-tab-heading>
                         <span>{{ tab.heading }}</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="close_tab(tab)"></icsw-tools-button>
                     </uib-tab-heading>
-                    <icsw-device-config-overview ng-if="tab.type == 0" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"/>
-                    <icsw-device-location-overview ng-if="tab.type == 1" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"/>
+                    <icsw-device-mon-config-overview ng-if="tab.type == 0" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"/></icsw-device-mon-config-overview>
+                    <icsw-device-location-overview ng-if="tab.type == 1" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-location-overview>
+                    <icsw-device-asset-overview-reduced ng-if="tab.type == 2" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-asset-overview-reduced>
                 </uib-tab>
             </uib-tabset>
         </div>
