@@ -858,7 +858,7 @@ from initat.cluster.backbone.models import mon_check_command
 class device_completion(View):
     @method_decorator(login_required)
     def post(self, request):
-        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[0][]")]
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
 
         devices = device.objects.prefetch_related("assetbatch_set").filter(idx__in=device_pks)
 

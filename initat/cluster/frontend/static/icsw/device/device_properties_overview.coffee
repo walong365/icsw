@@ -54,13 +54,14 @@ device_properties_overview = angular.module(
         data_loaded: false
 
         devices: []
+        device_ids_needing_refresh: []
 
         tabs: []
     }
 
 
 
-    perform_refresh = () ->
+    perform_refresh = (partial_refresh) ->
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -71,29 +72,38 @@ device_properties_overview = angular.module(
                 $scope.struct.devices.length = 0
 
                 for device in $scope.struct.device_tree.all_list
-                    console.log(device)
                     if !device.is_meta_device
                         $scope.struct.devices.push(device)
 
+
+                if partial_refresh
+                    device_id_list = $scope.struct.device_ids_needing_refresh
+                else
+                    device_id_list = (device.idx for device in $scope.struct.devices)
+
+                console.log(device_id_list)
 
                 icswSimpleAjaxCall(
                   {
                     url: ICSW_URLS.DEVICE_DEVICE_COMPLETION
                     data:
-                        device_pks: [device.idx for device in $scope.struct.devices]
+                        device_pks: device_id_list
                     dataType: "json"
                 }).then(
                     (data) ->
-                        for device in $scope.struct.devices
+                        for device_id in device_id_list
+                            console.log(device_id)
+                            device = $scope.struct.device_tree.all_lut[device_id]
+                            console.log(device)
+
                             salt_device(device, data[device.idx])
 
                         $scope.struct.data_loaded = true
-
+                        $scope.struct.device_ids_needing_refresh.length = 0
                 )
-
         )
 
-    perform_refresh()
+    perform_refresh(false)
 
     salt_device = (device, device_hints) ->
         device.$$date_created = moment(device.date).format("YYYY-MM-DD HH:mm:ss")
@@ -130,6 +140,8 @@ device_properties_overview = angular.module(
             heading = "Monitoring Checks"
         else if setup_type == 1
             heading = "Location Data"
+        else if setup_type == 2
+            heading = "Asset Data"
 
         o = {
             type: setup_type
@@ -156,10 +168,14 @@ device_properties_overview = angular.module(
                     $scope.struct.tabs.push(tab)
 
                 if tabs_tmp.length == 0
-                    perform_refresh()
+                    $scope.perform_lazy_refresh()
             0
         )
 
-    $scope.test = () ->
-        perform_refresh()
+    $scope.perform_lazy_refresh = () ->
+        perform_refresh(true)
+
+    $scope.mark_unfresh = (tab) ->
+        $scope.struct.device_ids_needing_refresh.push(tab.device_id)
+
 ])

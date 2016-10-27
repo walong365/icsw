@@ -41,6 +41,18 @@ device_asset_module = angular.module(
         controller: "icswDeviceAssetCtrl"
         scope: true
     }
+]).directive("icswDeviceAssetOverviewReduced",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.asset.overview.reduced")
+        controller: "icswDeviceAssetCtrl"
+        scope: true
+    }
 ]).controller("icswDeviceAssetCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
