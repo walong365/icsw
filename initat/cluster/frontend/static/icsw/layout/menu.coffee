@@ -300,7 +300,7 @@ menu_module = angular.module(
     icswUserService, icswOverallStyle,
 ) ->
     # console.log icswAcessLevelService
-    {ul, li, a, span, h4, div, p, strong, h3, i} = React.DOM
+    {ul, li, a, span, h4, div, p, strong, h3, i, hr} = React.DOM
     menu_line = React.createClass(
         displayName: "menuline"
         render: () ->
@@ -320,78 +320,67 @@ menu_module = angular.module(
             if data.menuEntry.title?
                 a_attrs.title = data.menuEntry.title
             if data.menuEntry.labelClass
-                return li(
-                    {key: "li"}
-                    [
-                        a(
-                            a_attrs
-                            [
-                                span(
-                                    {className: "label #{data.menuEntry.labelClass}", key: "spanl"}
-                                    [
-                                        span(
-                                            {className: "fa #{data.menuEntry.icon} fa_icsw", key: "span"}
-                                        )
-                                    ]
-                                )
-                                " #{data.menuEntry.name}"
-                            ]
-                        )
-                    ]
+                _label = span(
+                    {className: "label #{data.menuEntry.labelClass}", key: "spanl"}
+                    span(
+                        {className: "fa #{data.menuEntry.icon} fa_icsw", key: "span"}
+                    )
                 )
             else
-                return li(
-                    {key: "li"}
-                    [
-                        a(
-                            a_attrs
-                            [
-                                span(
-                                    {className: "fa #{data.menuEntry.icon} fa_icsw", key: "span"}
-                                )
-                                " #{data.menuEntry.name}"
-                            ]
-                        )
-                    ]
+                _label = span(
+                    {className: "fa #{data.menuEntry.icon} fa_icsw", key: "span", style: {width: "1.5em", fontSize: "1.5em"}}
                 )
+            return li(
+                {key: "li"}
+                a(
+                    a_attrs
+                    _label
+                    " #{data.menuEntry.name}"
+                )
+                p(
+                    {key: "d", style: {"textIndent": "12px"}}
+                    "Example text for this entry wwwwww wwww qweqw pqow oiudf oijrl woe oiu qw qw f et ze wol qwoeiuqwoieu ln vldeou9z oqaweeh r"
+                )
+            )
     )
     menu_header = React.createClass(
         displayName: "menuheader"
         getDefaultProps: () ->
         render: () ->
             overall_style = icswOverallStyle.get()
-            items_added = 0
-            items_per_column = {}
+            # items_per_column = {}
 
-            col_idx = -1
+            # col_idx = -1
+            # items_per_column[0] = []
+            # console.log "e=", @props.entries
+            items_added = 0
+            _items = []
             for sg_state in @props.entries
-                col_idx++
+                # col_idx = 0  # ++
                 sg_data = sg_state.data
                 # console.log "d=", data
-                items_per_column[col_idx] = []
+                # items_per_column[col_idx] = []
                 if sg_state.data.hidden?
                     _hidden = sg_state.data.hidden
                 else
                     _hidden = false
                 if not _hidden
                     if overall_style != "condensed"
-                        items_per_column[col_idx].push(
-                            li(
-                                {
-                                    key: "#{sg_data.key}_li"
-                                }
-                                p({key: "p"}, strong({key: "strong"}, sg_data.name))
-                            )
+                        _head = li(
+                            {
+                                key: "#{sg_data.subgroupkey}_li"
+                            }
+                            p({key: "p"}, strong({key: "strong"}, sg_data.name))
                         )
                     else
-                        items_per_column[col_idx].push(
-                            li(
-                                {
-                                    key: "#{sg_data.key}_li"
-                                }
-                                h3({key: "h3"}, sg_data.name)
-                            )
+                        _head = li(
+                            {
+                                key: "#{sg_data.subgroupkey}_li"
+                            }
+                            h3({key: "h3"}, sg_data.name)
                         )
+                    _items.push(_head)
+
 
                 for state in sg_data.entries
                     data = state.icswData
@@ -400,14 +389,16 @@ menu_module = angular.module(
                         continue
                     if data.$$allowed
                         items_added += 1
-                        if angular.isFunction(state.name)
-                            items_per_column[col_idx].push(
-                                React.createElement(state.name, {key: _key})
-                            )
-                        else
-                            items_per_column[col_idx].push(
-                                React.createElement(menu_line, {key: _key, state: state})
-                            )
+                        # no longer needed, removed
+                        # if angular.isFunction(state.name)
+                        #    console.log "FUNC", col_idx, state
+                        #    items_per_column[col_idx].push(
+                        #        React.createElement(state.name, {key: _key})
+                        #    )
+                        # else
+                        _items.push(
+                            React.createElement(menu_line, {key: _key, state: state})
+                        )
 
             if items_added > 0
                 state = @props
@@ -433,21 +424,56 @@ menu_module = angular.module(
                 # header = state.icswData.menuHeader
                 key= "mh_#{state.menu_key}"
 
+                _num_items = _items.length
+                # get number of rows
+                if _num_items > 12
+                    _num_cols = 3
+                else if _num_items > 6
+                    _num_cols = 2
+                else
+                    _num_cols = 1
+                # entries per col
+                _max_per_col = parseInt(_num_items / _num_cols) + 1
+                # console.log _num_items, _num_cols, _max_per_col
+                # balance items
+
                 ul_items = []
 
-                columns = @props.entries.length
+                add_stream = (stream) ->
+                    if stream.length
+                        ul_items.push(
+                            ul(
+                                {
+                                    key: "#{key}_c#{ul_items.length}_ul"
+                                    className: "col-sm-" + 12 / _num_cols + " list-unstyled"
+                                }
+                                stream
+                            )
+                        )
 
-                for column, items of items_per_column
+                _count = 0
+                _item_stream = []
+                for item in _items
+                    if _count == 0
+                        add_stream(_item_stream)
+                        _item_stream = []
+                    if item.type == "li"
+                        # element is a header
+                        if _count + 1 == _max_per_col
+                            # cannot be last in stream
+                            add_stream(_item_stream)
+                            _item_stream = []
+                            _count = 0
+                        else if _count
+                            # if not first in stream add spacer
+                            _item_stream.push(hr({key: "sp#{_count}"}))
+                    _item_stream.push(item)
+                    _count++
+                    if _count == _max_per_col
+                        _count = 0
+                if _item_stream.length
+                    add_stream(_item_stream)
 
-                    ul_item = ul(
-                        {
-                            key: key + column + "_ul"
-                            className: "col-sm-" + 12 / columns + " list-unstyled"
-                        }
-                        items
-                    )
-
-                    ul_items.push(ul_item)
                 _m_item = []
                 if state.icon? and state.icon != "" and (overall_style == "condensed" or _force_icon)
                     _m_item.push span(
@@ -490,47 +516,40 @@ menu_module = angular.module(
                         className: "dropdown"
                         key: "menu_#{key}"
                     }
-                    [
-                        a(
+                    a(
+                        {
+                            className: "cursorpointer dropdown-toggle"
+                            # dataToggle is not working
+                            "data-toggle": "dropdown"
+                            key: "head"
+                            title: menu_title
+                        }
+                        _m_item
+                    )
+                    ul(
+                        {
+                            key: "dropdown"
+                            className: "dropdown-menu"
+                        }
+                        li(
                             {
-                                className: "cursorpointer dropdown-toggle"
-                                # dataToggle is not working
-                                "data-toggle": "dropdown"
-                                key: "head"
-                                title: menu_title
+                                key: "li"
                             }
-                            _m_item
-                        )
-                        ul(
-                            {
-                                key: "dropdown"
-                                className: "dropdown-menu"
-                            }
-                            li(
+                            div(
                                 {
-                                    key: "li"
+                                    key: "yamm-content-div"
+                                    className: "yamm-content container-fluid"
                                 }
-                                [
-
-                                    div(
-                                        {
-                                            key: "yamm-content-div"
-                                            className: "yamm-content container-fluid"
-                                        }
-                                        [
-                                            div(
-                                                {
-                                                    key:"row_div"
-                                                    className: "row"
-                                                }
-                                                ul_items
-                                            )
-                                        ]
-                                    )
-                                ]
+                                div(
+                                    {
+                                        key:"row_div"
+                                        className: "row"
+                                    }
+                                    ul_items
+                                )
                             )
                         )
-                    ]
+                    )
                 )
             else
                 _res = null
@@ -573,17 +592,15 @@ menu_module = angular.module(
                     {
                         className: "yamm"
                     }
-                    [
-                        ul(
-                            {
-                                key: "topmenu"
-                                className: "nav navbar-nav navbar-#{@props.side} #{icswOverallStyle.get()}"
-                            }
-                            (
-                                menu.get_react(menu_header) for menu in menus
-                            )
+                    ul(
+                        {
+                            key: "topmenu"
+                            className: "nav navbar-nav navbar-#{@props.side} #{icswOverallStyle.get()}"
+                        }
+                        (
+                            menu.get_react(menu_header) for menu in menus
                         )
-                    ]
+                    )
                 )
             else
                 _res = null

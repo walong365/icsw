@@ -41,7 +41,7 @@ span.fancytree-node > div.btn-group > input {
     margin: 1px 1px 1px 2px!important;
 }
 span.fancytree-expander {
-    margin-top:0px;
+    margin-top: 0px;
     }
 /**** Fancytree end ****/
 /**** Toaster start ****/
@@ -157,7 +157,7 @@ table.rotateheaders th {
     background-color: #292929;
     margin-bottom: 17px;
     min-height: 25px;
-    vertical-align: 10;
+    vertical-align: 10px;
     border: none;
     border-bottom: 1px solid #222222;
 }

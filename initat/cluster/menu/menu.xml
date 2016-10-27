@@ -21,7 +21,7 @@
             <route name="main.deviceinfo">
                 <stateData type="dict" url_str="/deviceinfo" templateUrl_str="icsw/simple/device/info"/>
                 <icswData type="dict" pageTitle_str="Device Information">
-                    <menuEntry type="dict" icon_str="fa-bars" postSpacer_bool="yes"/>
+                    <menuEntry type="dict" icon_str="fa-bars"/>
                     <dashboardEntry type="dict" sizeX_int="4" sizeY_int="3" allowState_bool="yes"/>
                     <rights type="list">
                         <value>backbone.user.modify_tree</value>
@@ -31,7 +31,7 @@
             <route name="main.devtree">
                 <stateData type="dict" url_str="/devtree" templateUrl_str="icsw/main/device/tree.html"/>
                 <icswData type="dict" pageTitle_str="Device Tree">
-                    <menuEntry type="dict" postSpacer_bool="yes" icon_str="fa-tree" name_str="Device Tree"/>
+                    <menuEntry type="dict" icon_str="fa-tree" name_str="Device Tree"/>
                     <dashboardEntry type="dict" sizeX_int="2" sizeY_int="5"/>
                     <rights type="list">
                         <value>backbone.user.modify_tree</value>
@@ -89,7 +89,7 @@
             <route name="main.configoverview">
                 <stateData type="dict" url_str="/configoverview" templateUrl_str="icsw/main/config/overview.html"/>
                 <icswData type="dict" pageTitle_str="Assignable Configuration Setup">
-                    <menuEntry type="dict" preSpacer_bool="yes" icon_str="fa-check-square-o" name_str="Assignable Configuration Setup"/>
+                    <menuEntry type="dict" icon_str="fa-check-square-o" name_str="Assignable Configuration Setup"/>
                     <rights type="list">
                         <value>backbone.device.change_config</value>
                     </rights>
@@ -202,7 +202,7 @@
                         <value>reporting</value>
                     </licenses>
                     <dashboardEntry type="dict" sizeX_int="4" sizeY_int="4"/>
-                    <menuEntry type="dict" icon_str="fa-pie-chart" postSpacer_bool="yes"/>
+                    <menuEntry type="dict" icon_str="fa-pie-chart"/>
                     <rights type="list">
                         <value>backbone.device.show_status_history</value>
                     </rights>
@@ -467,7 +467,7 @@
             <route name="main.monitorb0">
                 <stateData type="dict" url_str="/monitorb0" resolve_bool="yes"/>
                 <icswData type="dict" redirectToFromOnError_bool="yes">
-                    <menuEntry type="dict" preSpacer_bool="yes" name_str="rebuild config cached" labelClass_str="label-success"
+                    <menuEntry type="dict" name_str="rebuild config cached" labelClass_str="label-success"
                                icon_str="fa-share-alt"/>
                     <rights type="list">
                         <value>backbone.mon_check_command.create_config</value>
@@ -487,7 +487,7 @@
             <route name="main.monitorb2">
                 <stateData type="dict" url_str="/monitorb2" resolve_bool="yes"/>
                 <icswData type="dict" redirectToFromOnError_bool="yes">
-                    <menuEntry type="dict" name_str="rebuild config refresh" labelClass_str="label-danger" postSpacer_bool="yes"
+                    <menuEntry type="dict" name_str="rebuild config refresh" labelClass_str="label-danger"
                                icon_str="fa-share-alt"/>
                     <rights type="list">
                         <value>backbone.mon_check_command.create_config</value>
@@ -534,7 +534,7 @@
             <route name="main.statelist">
                 <stateData type="dict" url_str="/statelist" templateUrl_str="icsw/internal/state/list"/>
                 <icswData type="dict" pageTitle_str="Internal State list">
-                    <menuEntry type="dict" preSpacer_bool="yes" icon_str="fa-bars"/>
+                    <menuEntry type="dict" icon_str="fa-bars"/>
                     <rights type="list">
                         <value>$$CHECK_FOR_SUPERUSER</value>
                     </rights>

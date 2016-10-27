@@ -1,6 +1,6 @@
 .btn {
     padding: 5.8px 12px;
-    /*normalize buttons which may include fa-class*/
+    /* normalize buttons which may include fa-class */
     line-height: 1.42857;
 }
 .btn-xs, .btn-group-xs > .btn {
@@ -12,10 +12,11 @@
 .glyphicon {
     font-size: 87%;
 }
-.fa { /* chrome fix */
+.fa {
+    /* chrome fix */
     font-family: FontAwesome,Arial,Helvetica,sans-serif;
     font-size: 11px;
-   line-height: 1.42857;
+    line-height: 1.42857;
 }
 icsw-tools-button{
     line-height: 1;
@@ -29,11 +30,11 @@ icsw-tools-button{
     vertical-align: -15%;
 }
 .table-pager-block {
-    margin-right:10px;
+    margin-right: 10px;
 }
 .table-pager {
-    height:29px;
-    margin-top:2px;
+    height: 29px;
+    margin-top: 2px;
 }
 .table-pager .pagination {
     margin: 0;
@@ -44,11 +45,11 @@ icsw-tools-button{
     background-color:#f0f0f0;
     margin-bottom: 17px;
     min-height: 30px;
-    vertical-align: 10;
+    vertical-align: 10px;
 }
 .submenu-bar .sub-breadcrumb {
-    font-size:11px;
-    color:#555555;
+    font-size: 11px;
+    color: #555555;
     list-style: outside none none;
     margin-top: 7px;
     padding-left: 0;
@@ -58,7 +59,7 @@ icsw-tools-button{
 .submenu-bar .sub-breadcrumb > li {
     display: block;
     position: relative;
-    float:left;
+    float: left;
     padding-right: 10px;
 }
 
