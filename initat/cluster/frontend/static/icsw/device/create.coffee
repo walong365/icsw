@@ -138,6 +138,28 @@ angular.module(
                     defer.promise.then(
                         (creat_msg) ->
                             console.log _dev_pk, $scope.struct.device_tree.all_lut[_dev_pk]
+
+                            scan_settings = {
+                                manual_address: d_dict.ip
+                                strict_mode: true
+                                modify_peering: false
+                                scan_mode: "base"
+                                device: _dev_pk
+                            }
+
+                            $scope.struct.device_tree.register_device_scan($scope.struct.device_tree.all_lut[_dev_pk], scan_settings)
+
+                            $timeout(
+                                () ->
+                                    defer = $q.defer()
+                                    $scope.struct.device_tree._fetch_device(
+                                        _dev_pk
+                                        defer
+                                        "new device"
+                                    )
+                                5000
+                            )
+
                             if edit_after
                                 DeviceOverviewService($event, [$scope.struct.device_tree.all_lut[_dev_pk]]).then(
                                     (show) ->
