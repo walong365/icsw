@@ -36,48 +36,7 @@ monitoring_basic_module = angular.module(
         controller: "icswMonitoringBasicCtrl"
     }
 ]).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
-    resolve_map = (mode) ->
-        return {
-            redirect: ["icswSimpleAjaxCall", "ICSW_URLS", "$q", "blockUI", (icswSimpleAjaxCall, ICSW_URLS, $q, blockUI) ->
-                console.log "mode=", mode
-                _defer = $q.defer()
-                blockUI.start()
-                icswSimpleAjaxCall(
-                    url: ICSW_URLS.MON_CREATE_CONFIG
-                    data:
-                        cache_mode: mode
-                    title: "create config"
-                ).then(
-                    (xml) ->
-                        blockUI.stop()
-                        _defer.reject("nono")
-                    (xml) ->
-                        blockUI.stop()
-                        _defer.reject("nono")
-                )
-                return _defer.promise
-            ]
-        }
-    redirect_map = {
-        redirect: ["$window", "icswSimpleAjaxCall", "ICSW_URLS", "$q", ($window, icswSimpleAjaxCall, ICSW_URLS, $q) ->
-            _defer = $q.defer()
-            icswSimpleAjaxCall(
-                url: ICSW_URLS.MON_CALL_ICINGA
-                dataType: "json"
-            ).then(
-                (json) ->
-                    url = json["url"]
-                    $window.open(url, "_blank")
-                    _defer.reject("nono")
-            )
-            return _defer.promise
-        ]
-    }
     icswRouteExtensionProvider.add_route("main.monitorbasics")
-    icswRouteExtensionProvider.add_route("main.monitorredirect", redirect_map)
-    icswRouteExtensionProvider.add_route("main.monitorb0", resolve_map("CACHED"))
-    icswRouteExtensionProvider.add_route("main.monitorb1", resolve_map("DYNAMIC"))
-    icswRouteExtensionProvider.add_route("main.monitorb2", resolve_map("ALWAYS"))
 ]).directive("icswMonitoringSetup",
 [
     "$q", "$templateCache",

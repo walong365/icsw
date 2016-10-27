@@ -212,14 +212,7 @@ menu_module = angular.module(
 
     $scope.$on("$stateChangeError", (event, to_state, to_params, from_state, from_params, error) ->
         console.error "error moving to state #{to_state.name} (#{to_state}), error is #{error}"
-        _to_login = true
-        if to_state.icswData?
-            if to_state.icswData.redirectToFromOnError
-                _to_login = false
-        if _to_login
-            $state.go("login")
-        else
-            $state.go(from_state, from_params)
+        $state.go("login")
     )
 ]).directive('icswUpdateTitle',
 [

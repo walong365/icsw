@@ -380,7 +380,7 @@ angular.module(
                         if _log
                             console.error "missing attribute #{_name} in dashboardEntry for", @
 
-    _add_route = (name, resolve_map) ->
+    _add_route = (name) ->
         # reads from ICSW_MENU_JSON and adds to $stateProvider
         if name not of ICSW_MENU_JSON
             throw new Error("stateName '#{name}' not found in ICSW_MENU_JSON")
@@ -390,11 +390,6 @@ angular.module(
         _ext = new icswRouteExtension(_data.icswData)
         _struct.entries.push(_ext)
         _state_data = angular.copy(_data.stateData)
-        if _data.stateData.resolve? and _data.stateData.resolve
-            # copy resolve map
-            if not resolve_map?
-                throw new Error("resolve request for '#{name}' but resolve_map is not defined")
-            _state_data.resolve = resolve_map
         _state_data.icswData = _ext
         $stateProvider.state(name, _state_data)
         return _ext

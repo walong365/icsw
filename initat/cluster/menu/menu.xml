@@ -450,53 +450,6 @@
         </routeSubGroup>
     </routeGroup>
 
-    <!-- misc -->
-
-    <routeGroup name="todo">
-        <menuHeader type="dict" name_str="Obsolete" icon_str="fa-ellipsis-h" side_str="left"/>
-        <routeSubGroup name_str="Obsolete Links">
-            <route name="main.monitorredirect">
-                <stateData type="dict" url_str="/monitorredirect" resolve_bool="yes"/>
-                <icswData type="dict" redirectToFromOnError_bool="yes">
-                    <menuEntry type="dict" icon_str="fa-share-alt" name_str="Icinga"/>
-                    <rights type="list">
-                        <value>backbone.mon_check_command.redirect_to_icinga</value>
-                    </rights>
-                </icswData>
-            </route>
-            <route name="main.monitorb0">
-                <stateData type="dict" url_str="/monitorb0" resolve_bool="yes"/>
-                <icswData type="dict" redirectToFromOnError_bool="yes">
-                    <menuEntry type="dict" name_str="rebuild config cached" labelClass_str="label-success"
-                               icon_str="fa-share-alt"/>
-                    <rights type="list">
-                        <value>backbone.mon_check_command.create_config</value>
-                    </rights>
-                </icswData>
-            </route>
-            <route name="main.monitorb1">
-                <stateData type="dict" url_str="/monitorb1" resolve_bool="yes"/>
-                <icswData type="dict" redirectToFromOnError_bool="yes">
-                    <menuEntry type="dict" labelClass_str="label-warning" icon_str="fa-share-alt"
-                               name_str="rebuild config dynamic"/>
-                    <rights type="list">
-                        <value>backbone.mon_check_command.create_config</value>
-                    </rights>
-                </icswData>
-            </route>
-            <route name="main.monitorb2">
-                <stateData type="dict" url_str="/monitorb2" resolve_bool="yes"/>
-                <icswData type="dict" redirectToFromOnError_bool="yes">
-                    <menuEntry type="dict" name_str="rebuild config refresh" labelClass_str="label-danger"
-                               icon_str="fa-share-alt"/>
-                    <rights type="list">
-                        <value>backbone.mon_check_command.create_config</value>
-                    </rights>
-                </icswData>
-            </route>
-        </routeSubGroup>
-    </routeGroup>
-
     <!-- admin / user menu-->
 
     <routeGroup name="rightmenu">
