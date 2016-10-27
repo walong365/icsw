@@ -96,6 +96,6 @@ def main():
 
 
 if __name__ == "__main__":
-    if sys.argv[0] == "main.py":
-        COLLCLIENT = True
+    #if sys.argv[0] == "main.py":
+    COLLCLIENT = True
     sys.exit(main())

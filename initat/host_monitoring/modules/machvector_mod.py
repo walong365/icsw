@@ -33,6 +33,7 @@ from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, process_tools, server_command, config_store
 from ..constants import MACHVECTOR_CS_NAME
 
+RELOAD_MACHVECTOR = False
 
 class _general(hm_classes.hm_module):
     class Meta:
@@ -112,6 +113,56 @@ class get_mvector_command(hm_classes.hm_command):
             return limits.mon_STATE_OK, "\n".join(ret_array)
 
 
+class graph_setup_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=True)
+        self.parser.add_argument("--send_name", dest="send_name", type=str)
+        self.parser.add_argument("--target_ip", dest="target_ip", type=str)
+
+    def __call__(self, srv_com, cur_ns):
+        print cur_ns.send_name
+        print cur_ns.target_ip
+        print "call called"
+
+        global RELOAD_MACHVECTOR
+        RELOAD_MACHVECTOR = True
+
+        cs = config_store.ConfigStore(
+            MACHVECTOR_CS_NAME,
+            log_com=self.log,
+            prefix="mv",
+            access_mode=config_store.AccessModeEnum.LOCAL,
+            fix_access_mode=True,
+        )
+        print cs.keys()
+
+        next_free_id = 0
+        for send_id in cs.keys():
+            _struct = cs[send_id]
+            if isinstance(_struct, dict):
+                next_free_id = max(int(send_id), next_free_id)
+
+        next_free_id += 1
+
+        _dict = {
+            "target": cur_ns.target_ip,
+            "send_every": 30,
+            "enabled": True,
+            "immediate": False,
+            "send_name": cur_ns.send_name,
+            "full_info_every": 10,
+            "port": 8002,
+            "format": "xml"
+        }
+
+        cs["{:d}".format(next_free_id)] = _dict
+        cs.write()
+
+    def interpret(self, srv_com, cur_ns):
+        print srv_com
+        return limits.mon_STATE_OK, "lol"
+
+
 class machine_vector(object):
     def __init__(self, module):
         self.module = module
@@ -162,7 +213,10 @@ class machine_vector(object):
         self.cs.write()
         self._remove_old_dirs()
 
+        self.send_vector_functions = []
+
     def read_config(self):
+        print "read_config called"
         # close sockets
         for _send_id, sock in self.__socket_dict.iteritems():
             self.log("closing socket with id {}".format(_send_id))
@@ -245,6 +299,7 @@ class machine_vector(object):
             if isinstance(_struct, dict):
                 if _struct["enabled"]:
                     _struct["sent"] = 0
+                    p_pool.unregister_timer(self._send_vector)
                     p_pool.register_timer(
                         self._send_vector,
                         _struct.get("send_every", 30),
@@ -305,6 +360,7 @@ class machine_vector(object):
     def _send_vector(self, *args, **kwargs):
         send_id = args[0]
         _struct = self.cs[send_id]
+        print _struct
         _p_until = _struct.get("pause_until", 0)
         cur_time = int(time.time())
         # print "_", _p_until, cur_time
@@ -338,6 +394,8 @@ class machine_vector(object):
             _struct.get("target", "127.0.0.1"),
             _struct.get("port", 8002),
         )
+        print cur_time
+        print t_host
         try:
             if send_format == "xml":
                 self.__socket_dict[send_id].send_unicode(unicode(etree.tostring(send_vector)))  # @UndefinedVariable
@@ -370,6 +428,10 @@ class machine_vector(object):
                 )
                 _struct["pause_until"] = _w_time
         self.cs[send_id] = _struct
+        global RELOAD_MACHVECTOR
+        if RELOAD_MACHVECTOR:
+            RELOAD_MACHVECTOR = False
+            self.reload()
 
     def close(self):
         for _s_id, t_sock in self.__socket_dict.iteritems():

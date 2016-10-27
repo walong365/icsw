@@ -336,7 +336,10 @@ class srv_command(object):
         if cur_element is None:
             cur_element = self.builder("value")
         if isinstance(value, basestring):
-            cur_element.text = value
+            try:
+                cur_element.text = value
+            except ValueError:
+                cur_element.text = value.decode("utf8")
             cur_element.attrib["type"] = "str"
         elif type(value) in [int, long]:
             cur_element.text = "{:d}".format(value)
