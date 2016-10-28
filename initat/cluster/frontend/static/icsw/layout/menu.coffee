@@ -302,40 +302,31 @@ menu_module = angular.module(
     # console.log icswAcessLevelService
     {ul, li, a, span, h4, div, p, strong, h3, i, hr} = React.DOM
     menu_line = React.createClass(
-        displayName: "menuline"
+        displayName: "icswMenuEntry"
+
         render: () ->
             state = @props.state
             data = state.icswData
-            #console.log "D=", data
             a_attrs = {
                 key: "a"
                 className: "icswMenuColor"
             }
-            if data.menuEntry.href?
-                a_attrs.href = data.menuEntry.href
+            if data.$$menuEntry.href?
+                a_attrs.href = data.$$menuEntry.href
             else
-                a_attrs.href = data.menuEntry.sref
-            if data.menuEntry.entryClass?
-                a_attrs.className = "#{a_attrs.className} #{data.menuEntry.entryClass}"
-            if data.menuEntry.title?
-                a_attrs.title = data.menuEntry.title
-            if data.menuEntry.labelClass
-                _label = span(
-                    {className: "label #{data.menuEntry.labelClass}", key: "spanl"}
-                    span(
-                        {className: "fa #{data.menuEntry.icon} fa_icsw", key: "span"}
-                    )
-                )
-            else
-                _label = span(
-                    {className: "fa #{data.menuEntry.icon} fa_icsw", key: "span", style: {width: "1.5em", fontSize: "1.5em"}}
-                )
+                a_attrs.href = data.$$menuEntry.sref
+            if data.$$menuEntry.entryClass?
+                a_attrs.className = "#{a_attrs.className} #{data.$$menuEntry.entryClass}"
+            if data.$$menuEntry.title?
+                a_attrs.title = data.$$menuEntry.title
             return li(
                 {key: "li"}
                 a(
                     a_attrs
-                    _label
-                    " #{data.menuEntry.name}"
+                    span(
+                        {className: "fa #{data.$$menuEntry.icon} fa_icsw", key: "span", style: {width: "1.5em", fontSize: "1.5em"}}
+                    )
+                    " #{data.$$menuEntry.name}"
                 )
                 p(
                     {key: "d", style: {"textIndent": "12px"}}
@@ -344,22 +335,17 @@ menu_module = angular.module(
             )
     )
     menu_header = React.createClass(
-        displayName: "menuheader"
-        getDefaultProps: () ->
+        propTypes:
+            menu: React.PropTypes.object
+
+        displayName: "icswMenuHeader"
+
         render: () ->
             overall_style = icswOverallStyle.get()
-            # items_per_column = {}
-
-            # col_idx = -1
-            # items_per_column[0] = []
-            # console.log "e=", @props.entries
             items_added = 0
             _items = []
-            for sg_state in @props.entries
-                # col_idx = 0  # ++
+            for sg_state in @props.menu.entries
                 sg_data = sg_state.data
-                # console.log "d=", data
-                # items_per_column[col_idx] = []
                 if sg_state.data.hidden?
                     _hidden = sg_state.data.hidden
                 else
@@ -368,40 +354,34 @@ menu_module = angular.module(
                     if overall_style != "condensed"
                         _head = li(
                             {
-                                key: "#{sg_data.subgroupkey}_li"
+                                key: "#{sg_state.$$menu_key}_li"
                             }
                             p({key: "p"}, strong({key: "strong"}, sg_data.name))
                         )
                     else
                         _head = li(
                             {
-                                key: "#{sg_data.subgroupkey}_li"
+                                key: "#{sg_state.$$menu_key}_li"
                             }
                             h3({key: "h3"}, sg_data.name)
                         )
                     _items.push(_head)
 
 
-                for state in sg_data.entries
+                for menu_entry in sg_state.entries
+                    state = menu_entry.data
                     data = state.icswData
-                    _key = data.key
-                    if data.menuEntry.isHidden? and data.menuEntry.isHidden
+                    _key = menu_entry.$$menu_key
+                    if data.$$menuEntry.isHidden? and data.$$menuEntry.isHidden
                         continue
                     if data.$$allowed
                         items_added += 1
-                        # no longer needed, removed
-                        # if angular.isFunction(state.name)
-                        #    console.log "FUNC", col_idx, state
-                        #    items_per_column[col_idx].push(
-                        #        React.createElement(state.name, {key: _key})
-                        #    )
-                        # else
                         _items.push(
                             React.createElement(menu_line, {key: _key, state: state})
                         )
 
             if items_added > 0
-                state = @props
+                state = @props.menu.data
                 menu_name = state.name
                 menu_title = ""
                 _force_icon = false
@@ -422,7 +402,7 @@ menu_module = angular.module(
                         else
                             menu_name = "---"
                 # header = state.icswData.menuHeader
-                key= "mh_#{state.menu_key}"
+                key= @props.menu.$$menu_key
 
                 _num_items = _items.length
                 # get number of rows
@@ -434,7 +414,7 @@ menu_module = angular.module(
                     _num_cols = 1
                 # entries per col
                 _max_per_col = parseInt(_num_items / _num_cols) + 1
-                # console.log _num_items, _num_cols, _max_per_col
+
                 # balance items
 
                 ul_items = []
@@ -559,15 +539,9 @@ menu_module = angular.module(
     menu_comp = React.createClass(
         propTypes:
             side: React.PropTypes.string
-        displayName: "menubar"
 
-        update_dimensions: () ->
-            @setState(
-                {
-                    width: $(window).width()
-                    height: $(window).height()
-                }
-            )
+        displayName: "icswMenuBar"
+
         getInitialState: () ->
             return {
                 counter: 0
@@ -576,17 +550,10 @@ menu_module = angular.module(
         force_redraw: () ->
             @setState({counter: @state.counter + 1})
 
-        componentWillMount: () ->
-            # register eventhandler
-            $(window).on("resize", @update_dimensions)
-    
-        componentWillUnmount: () ->
-            # remove eventhandler
-            $(window).off("resize", @update_dimensions)
-    
         render: () ->
             _menu_struct = icswRouteHelper.get_struct()
-            menus = (entry for entry in _menu_struct.menu_header_states when entry.data.side == @props.side)
+            menus = (entry for entry in _menu_struct.menu_node.entries when entry.data.side == @props.side)
+            console.log "render", menus.length
             if menus.length
                 _res = div(
                     {
@@ -598,7 +565,12 @@ menu_module = angular.module(
                             className: "nav navbar-nav navbar-#{@props.side} #{icswOverallStyle.get()}"
                         }
                         (
-                            menu.get_react(menu_header) for menu in menus
+                            React.createElement(
+                                menu_header
+                                {
+                                    menu: menu
+                                }
+                            ) for menu in menus
                         )
                     )
                 )
@@ -691,8 +663,6 @@ menu_module = angular.module(
         # overall style
         overall_style: icswOverallStyle.get()
     }
-    menu_path = icswMenuPath
-    menu_path.setup_lut()
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
         $scope.struct.overall_style = icswOverallStyle.get()
@@ -718,7 +688,7 @@ menu_module = angular.module(
         $scope.struct.bc_list.length = 0
         for entry in bc_list
             $scope.struct.bc_list.push(entry)
-        $scope.struct.menupath = menu_path.get_path()
+        $scope.struct.menupath = icswMenuPath.generate_path()
     )
 
     _fetch_selection_list = (l_type) ->
@@ -843,49 +813,74 @@ menu_module = angular.module(
 (
     $state, icswRouteHelper
 ) ->
-    header_lut = {}
-    home_link = {name : "Home", statename : "main.dashboard" }
+    home_link = {
+        name: "Home"
+        statename: "main.dashboard"
+    }
 
+    # no longer needed, just kept for reference
     setup_lut = () ->
-        menu_headers = icswRouteHelper.get_struct().menu_header_states
+        menu_headers = (entry for entry in icswRouteHelper.get_struct().menu_node.entries)
         for header in menu_headers
             icswheader = header.data
-            for icswheadersub in icswheader.entries
+            for headersub in header.entries
+                icswheadersub = headersub.data
                 entryname = if icswheader.name == "$$USER_INFO" then "Usermenu" else icswheader.name
-                header_lut[icswheadersub.data.subgroupkey] = [
+                header_lut[headersub.$$menu_key] = [
                     {
                         icon: icswheader.icon
                         name: entryname
                     }
                 ]
-                if icswheadersub.data.hidden? and icswheadersub.data.hidden
+                if icswheadersub.hidden? and icswheadersub.hidden
                     true
                 else
-                    header_lut[icswheadersub.data.subgroupkey].push(
+                    header_lut[headersub.$$menu_key].push(
                         {
                             icon: ""
-                            name: icswheadersub.data.name
+                            name: icswheadersub.name
                         }
                     )
         return  # keep return
 
-    generatePath = (state) ->
-        _curr = state.$current.icswData.menuEntry
-        curr_entry = {
-            name: _curr.name
-            icon: _curr.icon
-        }
-        ret_path = [home_link]
-        if header_lut[_curr.subgroupkey]?
-            ret_path = ret_path.concat header_lut[_curr.subgroupkey]
-        if curr_entry.name?
-            ret_path.push curr_entry
-        ret_path
+    generate_path = () ->
+        # generate path
+        _start = $state.$current.$$simpleTreeNode
+        if _start?
+            _path = []
+            while true
+                # walk upwards
+                _path.push(_start)
+                if _start.level == 0
+                    break
+                _start = _start.parent
+            _.reverse(_path)
+        else
+            # dummy path for dashboard
+            _path = [{level: 0}]
+        ret_path = []
+        for entry in _path
+            if entry.level == 0
+                # root
+                ret_path.push(home_link)
+            else if entry.level == 1
+                # menu
+                ret_path.push({name: entry.data.name, icon: ""})
+            else if entry.level == 2
+                # subgroup
+                ret_path.push({name: entry.data.name, icon: ""})
+            else
+                # menu entry
+                _curr = entry.data.icswData.$$menuEntry
+                curr_entry = {
+                    name: _curr.name
+                    icon: _curr.icon
+                }
+                ret_path.push(curr_entry)
+        return ret_path
 
     return {
-        get_path: () ->
-            generatePath($state)
-        setup_lut: () ->
-            setup_lut()
+        generate_path: () ->
+            generate_path()
     }
 ])

@@ -563,7 +563,6 @@
             </routeSubGroup>
             <routeSubGroup name="My Settings">
                 <menuEntry icon="fa-info" name="Account Info" routeName="main.useraccount"/>
-                <menuEntry icon="fa-exclamation" name="Placeholder" entryClass="disabled" routeName="main.empty"/>
                 <menuEntry icon="fa-sign-out" name="Logout" title="Logout and remember selection" routeName="logout"/>
             </routeSubGroup>
         </menuHeader>

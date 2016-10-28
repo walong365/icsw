@@ -241,7 +241,6 @@
                 <tr>
                     <th st-sort="name" st-sort-default="true">Name</th>
                     <th st-sort="icswData.$$allowed" class="text-center">Allowed</th>
-                    <th st-sort="icswData.$$menuHeader" class="text-center">Header</th>
                     <th st-sort="icswData.$$menuEntry" class="text-center">Entry</th>
                     <th class="text-center">Quicklink</th>
                     <th class="text-center">Dashboard</th>
@@ -261,9 +260,6 @@
                         <span ng-bind-html="obj.icswData.$$allowed | yesno3"></span>
                     </td>
                     <td class="text-center">
-                        <span ng-bind-html="obj.icswData.$$menuHeader | yesno3"></span>
-                    </td>
-                    <td class="text-center">
                         <span ng-bind-html="obj.icswData.$$menuEntry | yesno3"></span>
                     </td>
                     <td class="text-center">
@@ -274,8 +270,8 @@
                     </td>
                     <td>{{ obj.icswData.pageTitle }}</td>
                     <td>
-                        <span ng-show="obj.icswData.$$menuEntry">
-                            {{ obj.icswData.menuEntry.name }} <span ng-class="get_entry_class(obj)"></span>
+                        <span ng-if="obj.icswData.$$menuEntry">
+                            {{ obj.icswData.$$menuEntry.name }} <span class="fa" ng-class="obj.icswData.$$menuEntry.icon"></span>
                         </span>
                     </td>
                     <td class="text-center">

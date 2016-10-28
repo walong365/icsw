@@ -300,9 +300,9 @@ angular.module(
         return success
 ]).provider("icswRouteExtension",
 [
-    "$stateProvider", "ICSW_MENU_JSON",
+    "$stateProvider", "ICSW_CONFIG_JSON",
 (
-    $stateProvider, ICSW_MENU_JSON,
+    $stateProvider, ICSW_CONFIG_JSON,
 ) ->
     _key_idx = 0
     class icswRouteExtension
@@ -319,15 +319,13 @@ angular.module(
             # pageTitle:
             @pageTitle = ""
             # menuHeader
-            @menuHeader = {}
+            # @menuHeader = {}
             # routeSubGroup
-            @routeSubGroup = {}
+            # @routeSubGroup = {}
             # menuEntry
-            @menuEntry = {}
+            # @menuEntry = {}
             # dashboardEntry
             @dashboardEntry = {}
-            # redirect to originating when error
-            @redirectToFromOnError = false
             # flag: valid for quicklink
             @validForQuicklink = false
             # has deviceselection function
@@ -337,14 +335,13 @@ angular.module(
                     console.error "unknown icswRouteExtension #{key}=#{value}", @
                 else
                     @[key] = value
-            for _check in ["menuEntry", "menuHeader", "routeSubGroup", "dashboardEntry"]
+            # for _check in ["menuEntry", "menuHeader", "routeSubGroup", "dashboardEntry"]
+            for _check in ["dashboardEntry"]
                 _attr = "$$#{_check}"
                 if args and _check of args
                     @[_attr] = true
                 else
                     @[_attr] = false
-            # if "routeSubGroup" of args
-            #    console.log @$$routeSubGroup, args.routeSubGroup
             # feed states
             for _attr_name in ["rights", "licenses", "serviceTypes"]
                 _src = @[_attr_name]
@@ -360,11 +357,6 @@ angular.module(
             @$$allowed = false
             # unique key
             @key = "ire_#{_key_idx}"
-            # fix menuEntry name
-            if @$$menuEntry
-                # set defaults for menuEntry
-                if not @menuEntry.name?
-                    @menuEntry.name = @pageTitle
             if @$$dashboardEntry
                 # set defaults for dashboard
                 for [_name, _default, _log] in [
@@ -381,10 +373,11 @@ angular.module(
                             console.error "missing attribute #{_name} in dashboardEntry for", @
 
     _add_route = (name) ->
-        # reads from ICSW_MENU_JSON and adds to $stateProvider
-        if name not of ICSW_MENU_JSON
-            throw new Error("stateName '#{name}' not found in ICSW_MENU_JSON")
-        _data = ICSW_MENU_JSON[name]
+        # console.log ICSW_CONFIG_JSON
+        # reads from ICSW_CONFIG_JSON and adds to $stateProvider
+        if name not of ICSW_CONFIG_JSON.routes
+            throw new Error("stateName '#{name}' not found in ICSW_CONFIG_JSON")
+        _data = ICSW_CONFIG_JSON.routes[name]
         if not _data.icswData? or not _data.stateData?
             throw new Error("icswData or stateData not found for stateName '#{name}'")
         _ext = new icswRouteExtension(_data.icswData)
@@ -403,6 +396,7 @@ angular.module(
         $get: () ->
             # needed for access from services / factories
             return _struct
+
         create: (args) ->
             _ext = new icswRouteExtension(args)
             _struct.entries.push(_ext)
@@ -414,57 +408,61 @@ angular.module(
 ]).service("icswRouteHelper",
 [
     "icswRouteExtension", "$state", "$rootScope", "ICSW_SIGNALS", "icswAcessLevelService",
-    "icswTools",
+    "icswTools", "ICSW_CONFIG_JSON",
 (
     icswRouteExtension, $state, $rootScope, ICSW_SIGNALS, icswAcessLevelService,
-    icswTools,
+    icswTools, ICSW_CONFIG_JSON,
 ) ->
     _init = false
     _user = undefined
     _acls = undefined
     _acls_valid = false
+
+    class SimpleTreeNode
+        constructor: (in_data) ->
+            @data = in_data
+            @root = @
+            @parent = null
+            @level = 0
+            @num_childs = 0
+            @num_elements = 0
+            @entries = []
+
+        link: (parent, root) ->
+            @root = root
+            @parent = parent
+            @level = parent.level + 1
+            # create link in data
+            @data.$$simpleTreeNode = @
+            # create menu_key
+            @$$menu_key = "l#{@level}c#{@parent.num_childs}e#{@root.num_elements}"
+
+        add_node: (data) =>
+            @root.num_elements++
+            @num_childs++
+            _sub_node = new SimpleTreeNode(data)
+            # link and increase level
+            _sub_node.link(@, @root)
+            @entries.push(_sub_node)
+            return _sub_node
+
     _struct = {
+        # is valid
         valid: false
+        # list of all states
         icsw_states: []
         allowed_states: []
         quicklink_states: [] 
         dashboard_states: []
         menu_states: []
-        menu_header_states: []
+        menu_node: null
     }
-
-    class MenuHeader
-        constructor: (in_data) ->
-            @data = in_data
-            @data.entries = []
-
-        add_entry: (entry) =>
-            @data.entries.push(entry)
-            # reorder
-            icswTools.order_in_place(@data.entries, ["data.ordering"], ["asc"])
-
-        get_react: (menu_header) =>
-            # order entries
-            return React.createElement(
-                menu_header
-                @data
-            )
-
-    class MenuSubGroup
-        constructor: (in_data) ->
-            @data = in_data
-            @data.entries = []
-
-        add_entry: (entry) =>
-            @data.entries.push(entry)
-            # reorder
-            icswTools.order_in_place(@data.entries, ["icswData.menuEntry.ordering"], ["asc"])
 
     _check_rights = () ->
         # states for menus entries
         _struct.menu_states.length = 0
         # states for menu_headers
-        _struct.menu_header_states.length = 0
+        _struct.menu_node = new SimpleTreeNode(null)
         # allowed states
         _struct.allowed_states.length = 0
         # states for quicklknk
@@ -477,65 +475,62 @@ angular.module(
             #    console.log _acls.global_permissions
 
             # create menu
-            _menu_lut = {}
-            for state in _struct.icsw_states
-                data = state.icswData
-                if data.$$menuHeader
-                    _cur_menu = new MenuHeader(data.menuHeader)
-                    _struct.menu_header_states.push(_cur_menu)
-                    _menu_lut[_cur_menu.data.key] = _cur_menu
-            icswTools.order_in_place(_struct.menu_header_states, ["data.ordering"], ["asc"])
-            # create subgroup
-            _subgroup_lut = {}
-            for state in _struct.icsw_states
-                data = state.icswData
-                if data.$$routeSubGroup
-                    _cur_sg = new MenuSubGroup(data.routeSubGroup)
-                    _subgroup_lut[_cur_sg.data.subgroupkey] = _cur_sg
-                    _menu_lut[_cur_sg.data.groupkey].add_entry(_cur_sg)
 
-            for state in _struct.icsw_states
-                data = state.icswData
-                _add = true
-                if data.rights?
-                    if _user and _acls_valid
-                        if data.rights[0] == "$$CHECK_FOR_SUPERUSER"
-                            if _user?
-                                if _user.user.is_superuser
-                                    _add = true
+            for menuHeader in ICSW_CONFIG_JSON.menu.menuHeader
+                _cur_menu = _struct.menu_node.add_node(menuHeader)
+
+                # add subgroup(s)
+
+                for routeSubGroup in menuHeader.routeSubGroup
+                    _cur_sg = _cur_menu.add_node(routeSubGroup)
+
+                    # add menu entries
+
+                    for menuEntry in routeSubGroup.menuEntry
+                        state = $state.get(menuEntry.routeName)
+                        data = state.icswData
+                        data.$$menuEntry = menuEntry
+                        menuEntry.sref = $state.href(state)
+                        _add = true
+                        if data.rights?
+                            if _user and _acls_valid
+                                if data.rights[0] == "$$CHECK_FOR_SUPERUSER"
+                                    if _user?
+                                        if _user.user.is_superuser
+                                            _add = true
+                                        else
+                                            _add = false
+                                    else
+                                        _add = false
                                 else
-                                    _add = false
+                                    # console.log data.rights
+                                    _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
+                                    # if not _add
+                                    #    console.log "NOT", data.rights
+                                if data.licenses? and _add
+                                    _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
+                                    if not _add
+                                        console.warn "license(s) #{data.licenses} missing"
+                                if data.serviceTypes? and _add
+                                    _add = icswAcessLevelService.has_all_service_types(data.serviceTypes)
+                                    if not _add
+                                        console.warn "service_type(s) #{data.serviceTypes} missing"
                             else
                                 _add = false
-                        else
-                            # console.log data.rights
-                            _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
-                            # if not _add
-                            #    console.log "NOT", data.rights
-                        if data.licenses? and _add
-                            _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
-                            if not _add
-                                console.warn "license(s) #{data.licenses} missing"
-                        if data.serviceTypes? and _add
-                            _add = icswAcessLevelService.has_all_service_types(data.serviceTypes)
-                            if not _add
-                                console.warn "service_type(s) #{data.serviceTypes} missing"
-                    else
-                        _add = false
-                data.$$allowed = _add
-                if data.$$menuEntry
-                    _subgroup_lut[data.menuEntry.subgroupkey].add_entry(state)
-                if data.$$allowed
-                    _struct.allowed_states.push(state)
-                    if data.$$menuEntry
-                        _struct.menu_states.push(state)
-                    if data.validForQuicklink
-                        _struct.quicklink_states.push(state)
-                    if data.$$dashboardEntry
-                        _struct.dashboard_states.push(state)
+                        data.$$allowed = _add
+                        _cur_sg.add_node(state)
+                        if data.$$allowed
+                            _struct.allowed_states.push(state)
+                            if data.$$menuEntry
+                                _struct.menu_states.push(state)
+                            if data.validForQuicklink
+                                _struct.quicklink_states.push(state)
+                            if data.$$dashboardEntry
+                                _struct.dashboard_states.push(state)
                 # if data.$$routeSubGroup
                 #    _struct.route_sub_groups.push(state)
             # signal: we have changed the rights
+
         if _init and _user? and _acls_valid
             _struct.valid = true
             # signal: we have changed the rights with valid user and acls
@@ -543,6 +538,7 @@ angular.module(
         else
             _struct.valid = false
             $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_INVALID"))
+
         # console.log "RR", _init, _struct.valid, _user, _acls, _struct.icsw_states.length
         # emit this signal at last so that struct.valid is already set
         $rootScope.$emit(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"))
@@ -550,18 +546,7 @@ angular.module(
 
     init_struct = () ->
         # all states (regardles of license and rights)
-        icsw_states = []
-        for state in $state.get()
-            if state.icswData?
-                _data = state.icswData
-                if not _data._extension
-                    console.error "old menu entry, please fix", _data
-                else
-                    icsw_states.push(state)
-                    if _data.menuEntry?
-                        # set sref for menu
-                        _data.menuEntry.sref = $state.href(state)
-        _struct.icsw_states = icsw_states
+        _struct.icsw_states = (state for state in $state.get() when state.icswData?)
         _init = true
         # console.log "init states, count:", _struct.icsw_states.length
         _check_rights()

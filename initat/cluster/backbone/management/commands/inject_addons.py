@@ -129,6 +129,7 @@ class FileModify(object):
     def config_xml_to_json(self, xml):
         LIST_TEXT_TAGS = {"rights", "licenses", "serviceTypes"}
         LIST_TAGS = {"menuHeader", "routeSubGroup", "menuEntry", "route"}
+        NAME_DICT_TAGS = {"route"}
         TEXT_TAGS = {"value"}
 
         def _iter_dict(parent_el, el):
@@ -154,6 +155,9 @@ class FileModify(object):
                 # special form of list of text values
                 r_v = []
                 parent_el.setdefault(el.tag, r_v)
+            elif el.tag in NAME_DICT_TAGS:
+                # use name of r_v as dict key
+                parent_el[r_v["name"]] = r_v
             elif el.tag in LIST_TAGS:
                 parent_el.setdefault(el.tag, []).append(r_v)
             elif el.tag in TEXT_TAGS:

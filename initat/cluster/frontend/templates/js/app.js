@@ -46,7 +46,7 @@
 angular.module(
     "icsw.menu", []
 ).constant(
-    "ICSW_MENU_JSON", {
+    "ICSW_CONFIG_JSON", {
     // <!-- ICSWAPPS:MENU:START -->
     // <!-- ICSWAPPS:MENU:END -->
     }

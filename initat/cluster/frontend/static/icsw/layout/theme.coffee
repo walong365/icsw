@@ -55,7 +55,7 @@ angular.module(
         )
         if not _theme_lut[theme]
             theme = default_theme
-            console.log("theme does not exist setting default theme:", theme)
+            console.log("theme does not exist, setting default theme:", theme)
         maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
         maintheme_tag.setAttribute("href", "static/theme_#{theme}.css")
         $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then(
