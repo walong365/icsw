@@ -4,26 +4,16 @@
             <element name="route">
                 <attribute name="name"/>
                 <element name="stateData">
-                    <attribute name="type">
-                        <choice>
-                            <value>dict</value>
-                        </choice>
-                    </attribute>
                     <optional>
-                        <attribute name="url_str"/>
+                        <attribute name="url"/>
                     </optional>
                     <optional>
-                        <attribute name="templateUrl_str"/>
+                        <attribute name="templateUrl"/>
                     </optional>
                 </element>
                 <element name="icswData">
-                    <attribute name="type">
-                        <choice>
-                            <value>dict</value>
-                        </choice>
-                    </attribute>
                     <optional>
-                        <attribute name="pageTitle_str"></attribute>
+                        <attribute name="pageTitle"></attribute>
                     </optional>
                     <optional>
                         <attribute name="validForQuicklink_bool">
@@ -44,11 +34,6 @@
                     <interleave>
                         <optional>
                             <element name="licenses">
-                                <attribute name="type">
-                                    <choice>
-                                        <value>list</value>
-                                    </choice>
-                                </attribute>
                                 <oneOrMore>
                                     <element name="value">
                                         <text/>
@@ -58,11 +43,6 @@
                         </optional>
                         <optional>
                             <element name="serviceTypes">
-                                <attribute name="type">
-                                    <choice>
-                                        <value>list</value>
-                                    </choice>
-                                </attribute>
                                 <oneOrMore>
                                     <element name="value">
                                         <choice><value>SERVICETYPESLIST</value></choice>
@@ -72,11 +52,6 @@
                         </optional>
                         <optional>
                             <element name="rights">
-                                <attribute name="type">
-                                    <choice>
-                                        <value>list</value>
-                                    </choice>
-                                </attribute>
                                 <oneOrMore>
                                     <element name="value">
                                         <choice><value>RIGHTSLIST</value></choice>
@@ -86,11 +61,6 @@
                         </optional>
                         <optional>
                             <element name="dashboardEntry">
-                                <attribute name="type">
-                                    <choice>
-                                        <value>dict</value>
-                                    </choice>
-                                </attribute>
                                 <attribute name="sizeX_int"></attribute>
                                 <attribute name="sizeY_int"></attribute>
                                 <optional>
@@ -119,52 +89,29 @@
     <element name="menu">
         <oneOrMore>
             <element name="menuHeader">
-                <attribute name="side_str">
+                <attribute name="side">
                     <choice>
                         <value>left</value>
                         <value>right</value>
                     </choice>
                 </attribute>
-                <attribute name="type">
-                    <choice>
-                        <value>dict</value>
-                    </choice>
-                </attribute>
+                <attribute name="name"></attribute>
                 <optional>
-                    <attribute name="name_str"></attribute>
-                </optional>
-                <optional>
-                    <attribute name="key_str"></attribute>
-                </optional>
-                <optional>
-                    <attribute name="icon_str"></attribute>
+                    <attribute name="icon"></attribute>
                 </optional>
                 <oneOrMore>
                     <element name="routeSubGroup">
-                        <attribute name="name_str"/>
+                        <attribute name="name"/>
                         <oneOrMore>
                             <element name="menuEntry">
-                                <attribute name="type">
-                                    <choice>
-                                        <value>dict</value>
-                                    </choice>
-                                </attribute>
-                                <attribute name="icon_str"></attribute>
-                                <attribute name="route_name_str"></attribute>
+                                <attribute name="icon"></attribute>
+                                <attribute name="routeName"></attribute>
+                                <attribute name="name"></attribute>
                                 <optional>
-                                    <attribute name="name_str"></attribute>
+                                    <attribute name="title"></attribute>
                                 </optional>
                                 <optional>
-                                    <attribute name="title_str"></attribute>
-                                </optional>
-                                <optional>
-                                    <attribute name="labelClass_str"></attribute>
-                                </optional>
-                                <optional>
-                                    <attribute name="column_int"></attribute>
-                                </optional>
-                                <optional>
-                                    <attribute name="entryClass_str"></attribute>
+                                    <attribute name="entryClass"></attribute>
                                 </optional>
                             </element>
                         </oneOrMore>
