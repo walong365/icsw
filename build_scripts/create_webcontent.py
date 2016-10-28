@@ -22,6 +22,8 @@
 
 """ create content for webfrontend on full rebuild """
 
+from __future__ import print_function, unicode_literals
+
 import os
 import shutil
 import subprocess
@@ -66,6 +68,7 @@ def main():
             ]
             if _prod:
                 _args.append("--production")
+            # print("***", " ".join(_args))
             subprocess.check_call(_args)
             _pf = "" if _prod else "-debug"
             tar_file_name = os.path.join(binary_dir, "webcontent{}.tar.gz".format(_pf))

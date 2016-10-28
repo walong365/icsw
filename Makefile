@@ -156,9 +156,9 @@ install: install_webcontent
 	# Create to ICSW_SBIN
 	${LN} -s ${ICSW_SBIN}/tls_verify.py ${DESTDIR}/${LOCALSBIN}/tls_verify.py
 	${LN} -s ${PYTHON_SITE}/initat/cluster/manage.py ${DESTDIR}/${ICSW_SBIN}/clustermanage.py
- 	# menu.xml
-	${INSTALL} ${INSTALL_OPTS} initat/cluster/menu/menu.xml ${DESTDIR}/${PYTHON_SITE}/initat/cluster/menu/menu.xml
-	${INSTALL} ${INSTALL_OPTS} initat/cluster/menu/menu_relax.xml ${DESTDIR}/${PYTHON_SITE}/initat/cluster/menu/menu_relax.xml
+ 	# config.xml
+	${INSTALL} ${INSTALL_OPTS} initat/cluster/config/config.xml ${DESTDIR}/${PYTHON_SITE}/initat/cluster/config/config.xml
+	${INSTALL} ${INSTALL_OPTS} initat/cluster/config/config_relax.xml ${DESTDIR}/${PYTHON_SITE}/initat/cluster/config/config_relax.xml
 	# ICSW_BIN
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_BIN}
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${INIT}
