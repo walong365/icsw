@@ -122,7 +122,7 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} ha-addons/ibmbcs ${DESTDIR}/${STONITH_DIR}
 	# Copy the main source code
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/
-	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/menu
+	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/config
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${PYTHON_SITE}/initat/cluster/graphs
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/etc/
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${ICSW_ETC}/servers.d
