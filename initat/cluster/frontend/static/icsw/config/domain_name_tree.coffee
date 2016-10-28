@@ -80,10 +80,8 @@ angular.module(
             $scope
             {
                 show_selection_buttons: false
-                show_icons: false
                 show_select: false
                 show_descendants: true
-                show_childs: false
             }
         )
         icswDomainTreeService.load($scope.$id).then(

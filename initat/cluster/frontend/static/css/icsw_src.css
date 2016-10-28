@@ -234,9 +234,11 @@ ul.fancytree-container {
 .table-paging-tools .form-group {
     margin:0px;
 }
+
 div[class*="col-"] > ul {
     padding: 0px 0px 0px 15px;
 }
+
 .tab-pane icsw-simple-device-info > .container-fluid {
     padding: 5px 0px;
 }
@@ -248,8 +250,8 @@ icsw-connect-element-display .panel[layout_unlocked="true"] h4 {
 }
 icsw-connect-element-display .panel[layout_unlocked="false"] h4 {
     display: block;
-    font-size:14px;
-    font-weight:600;
+    font-size: 14px;
+    font-weight: 600;
     margin: 0 0 3px 0;
 }
 /* FORM STYLES START */
@@ -336,6 +338,9 @@ img.normal {
     min-width: 250px;
     padding: 5px 0 8px 15px;
 }
+div.yamm hr {
+
+}
 /* YAMM END */
 
 /* MENU START */
@@ -375,11 +380,19 @@ img.normal {
     padding-right: 3px;
 }
 
-.navbar p {
-    /* column heading */
+.navbar.normal p {
+    /* column heading for normal style */
     margin: 0 0 0px;
     font-size: 15px;
 }
+
+.navbar.condensed p {
+    /* column heading for condensed style */
+    margin: 0 0 0px;
+    max-width: 200px;
+    text-align: justify;
+}
+
 .navbar .dropdown-menu a {
     /* sub menu font size */
     font-size: 14px;

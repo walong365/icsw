@@ -173,11 +173,11 @@ monitoring_build_info_module = angular.module(
     )
 ]).controller("icswMonitoringBuildInfoCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$window",
     "$q", "$uibModal", "icswAcessLevelService", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceTreeService",
     "icswMonitoringSysInfoTreeService", "blockUI", "icswSimpleAjaxCall",
 (
-    $scope, $compile, $filter, $templateCache, Restangular,
+    $scope, $compile, $filter, $templateCache, Restangular, $window,
     $q, $uibModal, icswAcessLevelService, $timeout, icswTools, ICSW_URLS, icswDeviceTreeService,
     icswMonitoringSysInfoTreeService, blockUI, icswSimpleAjaxCall,
 ) ->
@@ -192,6 +192,10 @@ monitoring_build_info_module = angular.module(
         device_tree: undefined
         # reload timer
         reload_to: undefined
+        # system accordion open
+        sys_open: true
+        # overview open
+        overview_open: false
     }
 
     $scope.load = (initial) ->
@@ -234,6 +238,16 @@ monitoring_build_info_module = angular.module(
     )
     $scope.load(true)
 
+    $scope.go_to_icinga = ($event) ->
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.MON_CALL_ICINGA
+            dataType: "json"
+        ).then(
+            (json) ->
+                url = json["url"]
+                $window.open(url, "_blank")
+        )
+
     $scope.create_config = ($event) ->
         blockUI.start()
         icswSimpleAjaxCall(
@@ -268,14 +282,16 @@ monitoring_build_info_module = angular.module(
     }
 ]).controller("icswMonitoringSysInfoNodeCtrl",
 [
-    "$scope", "icswSimpleAjaxCall", "ICSW_URLS", "blockUI",
+    "$scope", "icswSimpleAjaxCall", "ICSW_URLS", "blockUI", "icswAcessLevelService",
 (
-    $scope, icswSimpleAjaxCall, ICSW_URLS, blockUI,
+    $scope, icswSimpleAjaxCall, ICSW_URLS, blockUI, icswAcessLevelService,
 ) ->
+    icswAcessLevelService.install($scope)
     $scope.struct = {
         # list of all nodes
         nodes: []
     }
+
     $scope.$watch("master", (new_val) ->
         if new_val
             $scope.struct.nodes.length = 0

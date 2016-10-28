@@ -52,14 +52,6 @@
                                 <optional>
                                     <attribute name="templateUrl_str"/>
                                 </optional>
-                                <optional>
-                                    <attribute name="resolve_bool">
-                                        <choice>
-                                            <value>yes</value>
-                                            <value>no</value>
-                                        </choice>
-                                    </attribute>
-                                </optional>
                             </element>
                             <element name="icswData">
                                 <attribute name="type">
@@ -72,14 +64,6 @@
                                 </optional>
                                 <optional>
                                     <attribute name="validForQuicklink_bool">
-                                        <choice>
-                                            <value>yes</value>
-                                            <value>no</value>
-                                        </choice>
-                                    </attribute>
-                                </optional>
-                                <optional>
-                                    <attribute name="redirectToFromOnError_bool">
                                         <choice>
                                             <value>yes</value>
                                             <value>no</value>
@@ -159,22 +143,6 @@
                                             </optional>
                                             <optional>
                                                 <attribute name="entryClass_str"></attribute>
-                                            </optional>
-                                            <optional>
-                                                <attribute name="preSpacer_bool">
-                                                    <choice>
-                                                        <value>yes</value>
-                                                        <value>no</value>
-                                                    </choice>
-                                                </attribute>
-                                            </optional>
-                                            <optional>
-                                                <attribute name="postSpacer_bool">
-                                                    <choice>
-                                                        <value>yes</value>
-                                                        <value>no</value>
-                                                    </choice>
-                                                </attribute>
                                             </optional>
                                         </element>
                                     </optional>

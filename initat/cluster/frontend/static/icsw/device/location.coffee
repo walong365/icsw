@@ -184,10 +184,8 @@ angular.module(
             {
                 name: "DeviceLocationTree"
                 show_selection_buttons: false
-                show_icons: false
                 show_select: false
                 show_descendants: false
-                show_childs: false
             }
         )
         # useable locations
