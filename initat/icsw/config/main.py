@@ -32,6 +32,9 @@ import sys
 
 from initat.tools import logging_tools, process_tools
 from initat.icsw.config.create_role_fixtures import create_noctua_fixtures
+from initat.icsw import icsw_logging
+from initat.icsw.service import instance
+from initat.icsw.service.tools import query_local_meta_server
 
 
 def enum_show_command(options):
@@ -208,10 +211,28 @@ def show_command(options):
             print("\n".join(out_lines))
 
 
+def role_command(options):
+    basic_services = ['logging-server', 'meta-server']
+    log_com = icsw_logging.get_logger("config", options)
+    inst_xml = instance.InstanceXML(log_com)
+    if options.role == "noctua":
+        create_noctua_fixtures()
+        services = basic_services + [
+            "md-sync-server", "md-config-server", "icinga-init", "nginx",
+            "uwsgi-init",
+        ]
+    print("starting necessary services...")
+    _result = query_local_meta_server(
+        inst_xml,
+        "enable",
+        services=services
+    )
+
+
 def main(opt_ns):
     if opt_ns.childcom == "show":
         show_command(opt_ns)
     elif opt_ns.childcom == "enum_show":
         enum_show_command(opt_ns)
     elif opt_ns.childcom == "role":
-        create_noctua_fixtures()
+        role_command(opt_ns)
