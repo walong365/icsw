@@ -553,21 +553,21 @@ menu_module = angular.module(
         render: () ->
             _menu_struct = icswRouteHelper.get_struct()
             menus = (entry for entry in _menu_struct.menu_node.entries when entry.data.side == @props.side)
-            console.log "render", menus.length
             if menus.length
+                menus = [menus[0]]
                 _res = div(
                     {
                         className: "yamm"
                     }
                     ul(
                         {
-                            key: "topmenu"
                             className: "nav navbar-nav navbar-#{@props.side} #{icswOverallStyle.get()}"
                         }
                         (
                             React.createElement(
                                 menu_header
                                 {
+                                    key: "menu"
                                     menu: menu
                                 }
                             ) for menu in menus
