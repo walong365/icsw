@@ -542,6 +542,9 @@
             </route>
         </routeSubGroup>
     </routeGroup>
+
+    <!-- routes not used in any menu -->
+
     <routeGroup name="dummy">
         <routeSubGroup name_str="Dummyg">
             <route name="main.dashboard">

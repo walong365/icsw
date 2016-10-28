@@ -21,11 +21,12 @@
 
 from __future__ import unicode_literals, print_function
 
+import codecs
+import copy
 import json
 import os
 import re
 import sys
-import codecs
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -37,13 +38,13 @@ from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools
 
 
-class MenuRelax(object):
+class ConfigRelax(object):
     def __init__(self):
         _inst = InstanceXML(quiet=True)
         all_instances = sum([_inst.xpath(".//config-enums/config-enum/text()") for _inst in _inst.get_all_instances()], [])
         all_perms = [_perm.perm_name for _perm in csw_permission.objects.all()] + ["$$CHECK_FOR_SUPERUSER"]
         _content = file(
-            "{}/menu_relax.xml".format(os.path.join(settings.FILE_ROOT, "menu")),
+            "{}/config_relax.xml".format(os.path.join(settings.FILE_ROOT, "menu")),
             "r",
         ).read()
         _content = _content.replace(
@@ -159,25 +160,50 @@ class FileModify(object):
                     )
                 )
                 raise
-        return ["    {}".format(_line) for _line in json.dumps(_res, indent=4).split("\n")[1:-1]]
+        return [
+            "    {}".format(_line) for _line in json.dumps(_res, indent=4).split("\n")[1:-1]
+        ]
 
     def transform(self, in_xml):
         # should be a XSLT transformation
-        new_xml = E.routes()
-        for menu_idx, group in enumerate(in_xml.findall(".//routeGroup")):
+        if False:
+            routes_xml = E.routes()
+            menu_xml = E.menu()
+            for _state in in_xml.findall(".//route"):
+                _cp = copy.deepcopy(_state)
+                _me = _cp.find(".//menuEntry")
+                if _me is not None:
+                    _me.getparent().remove(_me)
+                routes_xml.append(_cp)
+
+            for menu_head_el in in_xml.findall(".//menuHeader"):
+                for sub_group_el in menu_head_el.getparent().findall(".//routeSubGroup"):
+                    _sg_el = E.routeSubGroup(name_str=sub_group_el.attrib["name_str"])
+                    menu_head_el.append(_sg_el)
+                    for _re in sub_group_el.xpath(".//route[./icswData/menuEntry]"):
+                        _me = _re.find(".//menuEntry")
+                        _me.attrib["route_name_str"] = _re.attrib["name"]
+                        _sg_el.append(_me)
+                menu_xml.append(menu_head_el)
+            config_xml = E.config(
+                routes_xml,
+                menu_xml,
+            )
+            print(etree.tostring(config_xml, pretty_print=True))
+            sys.exit(0)
+        for group in in_xml.findall(".//routeGroup"):
             key_str = group.attrib["name"]
             menu_head_el = group.find(".//menuHeader")
             if menu_head_el is not None:
-                menu_head_el.attrib["ordering_int"] = "{:d}".format((menu_idx + 1) * 10)
                 menu_head_el.attrib["key_str"] = key_str
             _header_added = False
-            for sub_idx, sub_group_el in enumerate(group.xpath(".//routeSubGroup")):
+            for sub_group_el in group.xpath(".//routeSubGroup"):
                 subgroup_str = "{}_{}".format(key_str, sub_group_el.attrib["name_str"].lower())
-                sub_group_el.attrib["ordering_int"] = "{:d}".format((sub_idx + 1) * 10)
                 sub_group_el.attrib["groupkey_str"] = key_str
                 sub_group_el.attrib["subgroupkey_str"] = subgroup_str
                 _sub_group_added = False
-                for route_idx, route in enumerate(sub_group_el.findall(".//route")):
+                for route in sub_group_el.findall(".//route"):
+                    menu_xml.append(copy.deepcopy(route))
                     _me = route.find(".//icswData/menuEntry")
                     if _me is not None:
                         if menu_head_el is None:
@@ -185,7 +211,6 @@ class FileModify(object):
                         _data = route.find(".//icswData")
                         _me.attrib["groupkey_str"] = key_str
                         _me.attrib["subgroupkey_str"] = subgroup_str
-                        _me.attrib["ordering_int"] = "{:d}".format((route_idx + 1) * 10)
                         if not _sub_group_added:
                             _sub_group_added = True
                             _data.append(
@@ -201,13 +226,15 @@ class FileModify(object):
                                     **{_key: _value for _key, _value in menu_head_el.attrib.iteritems()}
                                 )
                             )
-                    new_xml.append(route)
+                    routes_xml.append(route)
+        print(etree.tostring(routes_xml, pretty_print=True))
+        print(etree.tostring(menu_xml, pretty_print=True))
 
         return new_xml
 
     def read_menus(self, mp_list):
         # relax instance
-        _my_relax = MenuRelax()
+        _my_relax = ConfigRelax()
         _xml = E.routes()
         for _file in mp_list:
             # simple merger, to be improved
@@ -232,7 +259,7 @@ class FileModify(object):
         _xml = self.transform(_xml)
         # move to json
 
-        import pprint
+        # import pprint
         # pprint.pprint(self.route_xml_to_json(_xml))
         return self.route_xml_to_json(_xml)
 
@@ -287,7 +314,7 @@ class FileModify(object):
                             _injected += 1
                             new_content.append(file(_html, "r").read())
                     elif marker_type == "MENU":
-                        menu_paths = [os.path.join("menu", "menu.xml")] + _v_dict["ICSW_ADDITIONAL_MENU"]
+                        menu_paths = [os.path.join("menu", "config.xml")] + _v_dict["ICSW_ADDITIONAL_MENU"]
                         menu_json_lines = self.read_menus(menu_paths)
                         for _line in menu_json_lines:
                             _injected += 1

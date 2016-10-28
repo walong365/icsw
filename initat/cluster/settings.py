@@ -343,7 +343,7 @@ for sub_dir in os.listdir(dir_name):
                         raise
                     else:
                         ICSW_ADDON_APPS.append(sub_dir)
-                        ICSW_ADDITIONAL_MENU.append(os.path.join(sub_dir, "menu", "menu.xml"))
+                        ICSW_ADDITIONAL_MENU.append(os.path.join(sub_dir, "menu", "config.xml"))
                         ADDITIONAL_ANGULAR_APPS.extend(
                             [_el.attrib["name"] for _el in _tree.findall(".//app")]
                         )
