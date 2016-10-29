@@ -183,39 +183,89 @@ angular.module(
         controller: "icswOvaDisplayCtrl"
         replace: true
     }
-]).controller("icswOvaDisplayCtrl",
+]).service("icswReactOvaDisplayFactory",
 [
-    "$scope", "$q", "icswSystemOvaCounterService", "$timeout", "$state",
+    "$q", "$timeout", "icswSystemOvaCounterService", "$state",
 (
-    $scope, $q, icswSystemOvaCounterService, $timeout, $state,
+    $q, $timeout, icswSystemOvaCounterService, $state,
 ) ->
-    $scope.struct = {
-        # data present
-        data_ok: false
-        # ova counter service
-        ocs: null
-    }
+    {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
+    return React.createClass(
+        displayName: "icswOvaDisplay"
 
-    load = () ->
-        if $scope.struct.data_ok
-            _w_list = [icswSystemOvaCounterService.reload($scope.$id)]
-        else
-            _w_list = [icswSystemOvaCounterService.load($scope.$id)]
-        $q.all(_w_list).then(
-            (data) ->
-                $scope.struct.ocs = data[0]
-                $scope.struct.data_ok = true
-        )
-        $timeout(
-            () ->
-                load()
-            20000
-        )
+        getInitialState: () ->
+            return {
+                counter: 0
+            }
 
-    load()
+        force_redraw: () ->
+            @setState({counter: @state.counter + 1})
 
-    $scope.go_to_license = ($event) ->
-        $state.go("main.syslicenseoverview")
+        componentWillMount: () ->
+            @struct = {
+                # data present
+                data_ok: false
+                # ova counter service
+                ocs: null
+                # timeout
+                timeout: null
+                # load id
+                load_id: "ova_react"
+            }
+            load = () =>
+                if @struct.data_ok
+                    _w_list = [icswSystemOvaCounterService.reload(@struct.load_id)]
+                else
+                    _w_list = [icswSystemOvaCounterService.load(@struct.load_id)]
+                $q.all(_w_list).then(
+                    (data) =>
+                        @struct.ocs = data[0]
+                        @struct.data_ok = true
+                        @force_redraw()
+                )
+                @struct.timeout = $timeout(
+                    () =>
+                        load()
+                    20000
+                )
+
+            load()
+
+        componentWillUnmount: () ->
+            if @struct.timeout
+                $timeout.cancel(@struct.timeout)
+            console.log "stop ovadisplay"
+
+        render: () ->
+            if @struct.data_ok
+                return li(
+                    {}
+                    a(
+                        {}
+                        span(
+                            {
+                                className: "cursorpointer #{@struct.ocs.info_class}"
+                                title: "Ova usage counter"
+                                onClick: (event) ->
+                                    $state.go("main.syslicenseoverview")
+                            }
+                            @struct.ocs.info_str
+                        )
+                    )
+                )
+            else
+                return li(
+                    {}
+                    a(
+                        {}
+                        span(
+                            {}
+                            "N/A"
+                        )
+                    )
+                )
+    )
+
 ]).directive("icswOvaDisplayGraph",
 [
     "$q", "$templateCache",

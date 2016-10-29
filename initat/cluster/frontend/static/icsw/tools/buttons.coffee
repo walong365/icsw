@@ -157,6 +157,14 @@ angular.module(
             ret_obj.css_class = "btn-success"
             ret_obj.button_value = "build image"
             ret_obj.icon_class = "glyphicon glyphicon-hdd"
+        else if type == "backward"
+            ret_obj.css_class = "btn-default"
+            ret_obj.button_value = ""
+            ret_obj.icon_class = "glyphicon glyphicon-triangle-left"
+        else if type == "forward"
+            ret_obj.css_class = "btn-default"
+            ret_obj.button_value = ""
+            ret_obj.icon_class = "glyphicon glyphicon-triangle-right"
         else
             console.error "Invalid button type: #{type}"
         return ret_obj

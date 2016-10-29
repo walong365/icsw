@@ -289,6 +289,58 @@ menu_module = angular.module(
                     $timeout.cancel(@backg_timer)
             )
     }
+]).factory("icswReactMenuBarFactory",
+[
+    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
+    "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
+    "icswUserService", "icswOverallStyle", "icswReactMenuFactory",
+(
+    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
+    icswMenuProgressService, $state, icswRouteHelper, icswTools,
+    icswUserService, icswOverallStyle, icswReactMenuFactory,
+) ->
+    # console.log icswAcessLevelService
+    {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
+    return React.createClass(
+        displayName: "icswMenuBar"
+        propTypes:
+            side: React.PropTypes.string
+
+        getInitialState: () ->
+            return {
+                counter: 0
+            }
+
+        force_redraw: () ->
+            @setState({counter: @state.counter + 1})
+
+        render: () ->
+            _menu_struct = icswRouteHelper.get_struct()
+            menus = (entry for entry in _menu_struct.menu_node.entries when entry.data.side == @props.side)
+            if menus.length
+                _res = div(
+                    {
+                        className: "yamm"
+                    }
+                    ul(
+                        {
+                            className: "nav navbar-nav navbar-#{@props.side} #{icswOverallStyle.get()}"
+                        }
+                        (
+                            React.createElement(
+                                icswReactMenuFactory
+                                {
+                                    key: menu.$$menu_key
+                                    menu: menu
+                                }
+                            ) for menu in menus
+                        )
+                    )
+                )
+            else
+                _res = null
+            return _res
+    )
 ]).factory("icswReactMenuFactory",
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
@@ -300,7 +352,7 @@ menu_module = angular.module(
     icswUserService, icswOverallStyle,
 ) ->
     # console.log icswAcessLevelService
-    {ul, li, a, span, h4, div, p, strong, h3, i, hr} = React.DOM
+    {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
     menu_line = React.createClass(
         displayName: "icswMenuEntry"
 
@@ -334,7 +386,7 @@ menu_module = angular.module(
                 )
             )
     )
-    menu_header = React.createClass(
+    return React.createClass(
         propTypes:
             menu: React.PropTypes.object
 
@@ -535,56 +587,12 @@ menu_module = angular.module(
                 _res = null
             return _res
     )
-    
-    menu_comp = React.createClass(
-        propTypes:
-            side: React.PropTypes.string
-
-        displayName: "icswMenuBar"
-
-        getInitialState: () ->
-            return {
-                counter: 0
-            }
-
-        force_redraw: () ->
-            @setState({counter: @state.counter + 1})
-
-        render: () ->
-            _menu_struct = icswRouteHelper.get_struct()
-            menus = (entry for entry in _menu_struct.menu_node.entries when entry.data.side == @props.side)
-            if menus.length
-                menus = [menus[0]]
-                _res = div(
-                    {
-                        className: "yamm"
-                    }
-                    ul(
-                        {
-                            className: "nav navbar-nav navbar-#{@props.side} #{icswOverallStyle.get()}"
-                        }
-                        (
-                            React.createElement(
-                                menu_header
-                                {
-                                    key: "menu"
-                                    menu: menu
-                                }
-                            ) for menu in menus
-                        )
-                    )
-                )
-            else
-                _res = null
-            return _res
-    )
-    return menu_comp
 ]).directive("icswMenu",
 [
-    "icswReactMenuFactory", "icswAcessLevelService", "icswMenuProgressService",
+    "icswReactMenuBarFactory", "icswAcessLevelService", "icswMenuProgressService",
     "$rootScope", "ICSW_SIGNALS",
 (
-    icswReactMenuFactory, icswAcessLevelService, icswMenuProgressService,
+    icswReactMenuBarFactory, icswAcessLevelService, icswMenuProgressService,
     $rootScope, ICSW_SIGNALS
 ) ->
     return {
@@ -595,9 +603,87 @@ menu_module = angular.module(
         link: (scope, el, attrs) ->
             _element = ReactDOM.render(
                 React.createElement(
-                    icswReactMenuFactory
+                    icswReactMenuBarFactory
                     {
                         side: scope.side
+                    }
+                )
+                el[0]
+            )
+            $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"), (event) ->
+                _element.force_redraw()
+            )
+            $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
+                console.log "mps", settings
+                # _render()
+            )
+    }
+]).service("icswReactRightMenuFactory",
+[
+    "$q", "icswReactMenuFactory", "icswRouteHelper", "icswProcessOverviewReact",
+    "icswReactOvaDisplayFactory",
+(
+    $q, icswReactMenuFactory, icswRouteHelper, icswProcessOverviewReact,
+    icswReactOvaDisplayFactory,
+) ->
+    {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
+    return React.createClass(
+        displayName: "icswRighMenuBar"
+        getInitialState: () ->
+            return {
+                counter: 0
+            }
+
+        force_redraw: () ->
+            @setState({counter: @state.counter + 1})
+
+        render: () ->
+            _menu_struct = icswRouteHelper.get_struct()
+            menus = (entry for entry in _menu_struct.menu_node.entries when entry.data.side == "right")
+            return ul(
+                {
+                    className: "nav navbar-nav navbar-right"
+                }
+                React.createElement(
+                    icswProcessOverviewReact
+                    {
+                        key: "process"
+                    }
+                )
+
+                React.createElement(
+                    icswReactOvaDisplayFactory
+                    {
+                        key: "ova"
+                    }
+                )
+                (
+                    React.createElement(
+                        icswReactMenuFactory
+                        {
+                            key: menu.$$menu_key
+                            menu: menu
+                        }
+                    ) for menu in menus
+                )
+            )
+    )
+]).directive("icswRightMenu",
+[
+    "icswReactRightMenuFactory", "icswAcessLevelService", "icswMenuProgressService",
+    "$rootScope", "ICSW_SIGNALS",
+(
+    icswReactRightMenuFactory, icswAcessLevelService, icswMenuProgressService,
+    $rootScope, ICSW_SIGNALS
+) ->
+    return {
+        restrict: "EA"
+        replace: true
+        link: (scope, el, attrs) ->
+            _element = ReactDOM.render(
+                React.createElement(
+                    icswReactRightMenuFactory
+                    {
                     }
                 )
                 el[0]
@@ -731,7 +817,7 @@ menu_module = angular.module(
             sel_groups = in_sel[3].length
             sel_devices = in_sel[1].length
         else
-            console.error "empty selection list"
+            console.warn "empty selection list"
             sel_groups = 0
             sel_devices = 0
         group_plural = if sel_groups == 1 then "Group" else "Groups"
