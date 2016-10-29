@@ -23,11 +23,24 @@ menu_module = angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection", "icsw.user",
     ]
-).factory("icswProcessOverviewReact",
+).service("icswProcessService",
 [
-    "icswUserService", "icswOverallStyle",
+    "$q",
 (
-    icswUserService, icswOverallStyle,
+    $q,
+) ->
+    struct = {
+        active_process: null
+    }
+    return {
+        get_struct: () ->
+            return struct
+    }
+]).factory("icswProcessOverviewReact",
+[
+    "icswUserService", "icswOverallStyle", "icswProcessService",
+(
+    icswUserService, icswOverallStyle, icswProcessService,
 ) ->
     {ul, li, a, span, h4, div, p, strong, h3, i, hr, button} = React.DOM
     return React.createClass(
@@ -39,20 +52,31 @@ menu_module = angular.module(
         getInitialState: () ->
             return {
                 counter: 0
+                struct: null
             }
+
+        componentWillMount: () ->
+            @setState({struct: icswProcessService.get_struct()})
+
+        state_from_struct: () ->
+            @setState(
+                {
+
+                }
+            )
+            console.log "sfs"
 
         force_redraw: () ->
             @setState({counter: @state.counter + 1})
 
         render: () ->
+            console.log "RR", @state
             # _menu_struct = icswRouteHelper.get_struct()
             # menus = (entry for entry in _menu_struct.menu_node.entries when entry.data.side == @props.side)
-            _res = li(
-                {}
-                a(
-                    {
-                        style: {padding: "12px"}
-                    }
+            _el_list = []
+            _proc_active = if @state.struct.active_process then true else false
+            if _proc_active
+                _el_list.push(
                     button(
                         {
                             key: "bwb"
@@ -65,13 +89,9 @@ menu_module = angular.module(
                             }
                         )
                     )
-                    span(
-                        {
-                            key: "info"
-                            className: "label label-primary"
-                        }
-                        "1 / 5"
-                    )
+                )
+                _el_list.push("Process")
+                _el_list.push(
                     button(
                         {
                             key: "bwf"
@@ -84,6 +104,29 @@ menu_module = angular.module(
                             }
                         )
                     )
+                )
+                _a_style = {padding: "12px"}
+            else
+                _el_list.push(
+                    span(
+                        {
+                            key: "np"
+                            className: "label label-default cursorpointer"
+                            title: "No process active"
+                            onClick: (event) ->
+                                console.log "cl"
+                        }
+                        "NPA"
+                    )
+                )
+                _a_style = {}
+            _res = li(
+                {}
+                a(
+                    {
+                        style: _a_style
+                    }
+                    _el_list
                 )
             )
             return _res
