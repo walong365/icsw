@@ -72,7 +72,7 @@ icsw_app = angular.module(
         "icsw.tools.reacttree",
         "icsw.layout.theme",
         "icsw.layout.menu",
-        "icsw.layout.process",
+        "icsw.layout.task",
         "icsw.tools",
         "icsw.login",
         "icsw.layout.routing",

@@ -1,5 +1,18 @@
 <config>
     <routes>
+        <route name="login">
+            <stateData url="/login" templateUrl="icsw/login.html"/>
+            <icswData pageTitle="ICSW Login"></icswData>
+        </route>
+        <route name="main">
+            <stateData
+                url="/main"
+                templateUrl="icsw/main.html"
+                abstract_bool="yes"
+                controller="icswMainCtrl"
+            />
+            <icswData pageTitle="ICSW Main page"></icswData>
+        </route>
         <route name="main.devicecreate">
             <stateData url="/devicecreate" templateUrl="icsw/main/device/create.html"/>
             <icswData pageTitle="Add new Device" validForQuicklink_bool="yes">
@@ -567,4 +580,18 @@
             </routeSubGroup>
         </menuHeader>
     </menu>
+    <tasks>
+        <task name="Add device">
+            <infoText>Add a new device and configure it</infoText>
+            <taskStep routeName="main.schedasset"></taskStep>
+            <taskStep routeName="main.deployboot"></taskStep>
+            <taskStep routeName="main.useraccount"></taskStep>
+        </task>
+        <task name="Boot Node">
+            <infoText>Define a device as HPC node and boot it via CORVUS</infoText>
+            <taskStep routeName="main.schedasset"></taskStep>
+            <taskStep routeName="main.deployboot"></taskStep>
+            <taskStep routeName="main.useraccount"></taskStep>
+        </task>
+    </tasks>
 </config>

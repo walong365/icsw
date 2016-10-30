@@ -31,15 +31,11 @@ menu_module = angular.module(
     $stateProvider, $urlRouterProvider, icswRouteExtensionProvider,
 ) ->
     $urlRouterProvider.otherwise("/login")
+    icswRouteExtensionProvider.add_route("login")
+    icswRouteExtensionProvider.add_route("main")
+    icswRouteExtensionProvider.add_route("logout")
+    return
     $stateProvider.state(
-        "login"
-        {
-            url: "/login",
-            templateUrl: "icsw/login.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "ICSW Login"
-        }
-    ).state(
         "main",
         {
             url: "/main"
@@ -54,6 +50,7 @@ menu_module = angular.module(
                         (user) ->
                             if user.user.idx
                                 # check rights, acls might still be missing, TODO, Fixme ...
+                                console.log "CR", user, icswRouteHelper.check_rights(user)
                                 icswRouteHelper.check_rights(user)
                                 _defer.resolve(user)
                             else
@@ -65,7 +62,6 @@ menu_module = angular.module(
             controller: "icswMainCtrl"
         }
     )
-    icswRouteExtensionProvider.add_route("logout")
 ]).controller("icswMainCtrl",
 [
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",

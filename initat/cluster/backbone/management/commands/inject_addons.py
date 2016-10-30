@@ -128,9 +128,10 @@ class FileModify(object):
 
     def config_xml_to_json(self, xml):
         LIST_TEXT_TAGS = {"rights", "licenses", "serviceTypes"}
-        LIST_TAGS = {"menuHeader", "routeSubGroup", "menuEntry", "route"}
+        LIST_TAGS = {"menuHeader", "routeSubGroup", "menuEntry", "route", "task", "taskStep"}
         NAME_DICT_TAGS = {"route"}
-        TEXT_TAGS = {"value"}
+        APPEND_TEXT_TAGS = {"value"}
+        SIMPLE_TEXT_TAGS = {"infoText"}
 
         def _iter_dict(parent_el, el):
             if el.tag is etree.Comment:
@@ -160,9 +161,11 @@ class FileModify(object):
                 parent_el[r_v["name"]] = r_v
             elif el.tag in LIST_TAGS:
                 parent_el.setdefault(el.tag, []).append(r_v)
-            elif el.tag in TEXT_TAGS:
+            elif el.tag in APPEND_TEXT_TAGS:
                 # child of LIST_TEXT_TAG
                 parent_el.append(el.text)
+            elif el.tag in SIMPLE_TEXT_TAGS:
+                parent_el[el.tag] = el.text
             else:
                 parent_el[el.tag] = r_v
             for sub_el in el:
@@ -185,13 +188,16 @@ class FileModify(object):
         ]
 
     def read_configs(self, mp_list):
+        # mp_list is a list of tuples (app, config.path)
         # relax instance
         _my_relax = ConfigRelax()
+        ROOT_ELEMENTS = ["routes", "menu", "tasks"]
         _total_xml = E.config(
-            E.routes(),
-            E.menu(),
+            *[
+                getattr(E, _root_el_name)() for _root_el_name in ROOT_ELEMENTS
+            ]
         )
-        for _file in mp_list:
+        for _app_name, _file in mp_list:
             # simple merger, to be improved
             _full_path = os.path.join(settings.FILE_ROOT, _file)
             _src_xml = etree.fromstring(
@@ -201,17 +207,20 @@ class FileModify(object):
                 _my_relax.validate(_src_xml)
             except:
                 sys.stderr.write(
-                    "*** Error validating {}: {}\n".format(
+                    "*** Error validating {} for app {}: {}\n".format(
                         _full_path,
+                        _app_name,
                         process_tools.get_except_info(),
                     )
                 )
             else:
-                for _el_name in ["routes", "menu"]:
+                for _el_name in ROOT_ELEMENTS:
                     _src_el = _src_xml.find(_el_name)
-                    _dst_el = _total_xml.find(_el_name)
-                    for _el in _src_el:
-                        _dst_el.append(_el)
+                    if _src_el is not None:
+                        _dst_el = _total_xml.find(_el_name)
+                        for _el in _src_el:
+                            _el.attrib["app"] = _app_name
+                            _dst_el.append(_el)
         # sys.exit(0)
         # check for validity
         try:
@@ -233,17 +242,17 @@ class FileModify(object):
 
     def inject(self, options):
         _v_dict = {}
-        for _attr_name in [
-            "ADDITIONAL_ANGULAR_APPS",
-            "ICSW_ADDITIONAL_JS",
-            "ICSW_ADDITIONAL_HTML",
-            "ICSW_ADDITIONAL_CONFIG",
+        for _attr_name, _default in [
+            ("ADDITIONAL_ANGULAR_APPS", []),
+            ("ICSW_ADDITIONAL_JS", []),
+            ("ICSW_ADDITIONAL_HTML", []),
+            ("ICSW_ADDITIONAL_APPS", {}),
         ]:
             self.debug("attribute '{}'".format(_attr_name))
             if options["with_addons"]:
                 _val = getattr(settings, _attr_name)
             else:
-                _val = []
+                _val = _default
             self.debug("  ->  {}".format(str(_val)))
             _v_dict[_attr_name] = _val
         marker_re = re.compile("^.*<!-- ICSWAPPS:(?P<type>[A-Z]+):(?P<mode>[A-Z]+) -->.*$")
@@ -282,7 +291,11 @@ class FileModify(object):
                             _injected += 1
                             new_content.append(file(_html, "r").read())
                     elif marker_type == "MENU":
-                        menu_paths = [os.path.join("config", "config.xml")] + _v_dict["ICSW_ADDITIONAL_CONFIG"]
+                        menu_paths = [
+                             ("frontend", os.path.join("config", "config.xml"))
+                         ] + [
+                            (_key, _value["config"]) for _key, _value in _v_dict["ICSW_ADDITIONAL_APPS"].iteritems()
+                        ]
                         menu_json_lines = self.read_configs(menu_paths)
                         for _line in menu_json_lines:
                             _injected += 1

@@ -3,12 +3,22 @@
         <oneOrMore>
             <element name="route">
                 <attribute name="name"/>
+                <optional>
+                    <!-- set after merge -->
+                    <attribute name="app"/>
+                </optional>
                 <element name="stateData">
                     <optional>
                         <attribute name="url"/>
                     </optional>
                     <optional>
                         <attribute name="templateUrl"/>
+                    </optional>
+                    <optional>
+                        <attribute name="controller"/>
+                    </optional>
+                    <optional>
+                        <attribute name="abstract_bool"/>
                     </optional>
                 </element>
                 <element name="icswData">
@@ -89,13 +99,17 @@
     <element name="menu">
         <oneOrMore>
             <element name="menuHeader">
+                <attribute name="name"/>
+                <optional>
+                    <!-- set after merge -->
+                    <attribute name="app"/>
+                </optional>
                 <attribute name="side">
                     <choice>
                         <value>left</value>
                         <value>right</value>
                     </choice>
                 </attribute>
-                <attribute name="name"></attribute>
                 <optional>
                     <attribute name="icon"></attribute>
                 </optional>
@@ -120,4 +134,25 @@
             </element>
         </oneOrMore>
     </element>
+    <optional>
+        <element name="tasks">
+            <oneOrMore>
+                <element name="task">
+                    <attribute name="name"/>
+                    <optional>
+                        <!-- set after merge -->
+                        <attribute name="app"/>
+                    </optional>
+                    <element name="infoText">
+                        <text/>
+                    </element>
+                    <oneOrMore>
+                        <element name="taskStep">
+                            <attribute name="routeName"></attribute>
+                        </element>
+                    </oneOrMore>
+                </element>
+            </oneOrMore>
+        </element>
+    </optional>
 </element>

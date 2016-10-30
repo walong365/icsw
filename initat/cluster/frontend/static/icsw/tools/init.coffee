@@ -397,13 +397,15 @@ angular.module(
             # needed for access from services / factories
             return _struct
 
-        create: (args) ->
-            _ext = new icswRouteExtension(args)
-            _struct.entries.push(_ext)
-            return _ext
+        # no longer needed, see routing.coffee
+        # create: (args) ->
+        #    _ext = new icswRouteExtension(args)
+        #    _struct.entries.push(_ext)
+        #    return _ext
 
-        add_route: (name, resolve_map) ->
-            return _add_route(name, resolve_map)
+        add_route: (name) ->
+            # could be omitted be adding all states found
+            return _add_route(name)
     }
 ]).service("icswRouteHelper",
 [
@@ -748,6 +750,8 @@ angular.module(
         ICSW_RMS_FAIR_SHARE_TREE_SELECTED: "icsw.rms.fair.share.tree.selected"
         # overall style changed
         ICSW_OVERALL_STYLE_CHANGED: "icsw.overall.style.changed"
+        # process settings changed
+        ICSW_PROCESS_SETTINGS_CHANGED: "icsw.process.settings.changed"
 
         # local signals (for local $emit / $on)
 
