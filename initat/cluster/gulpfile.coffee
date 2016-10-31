@@ -164,6 +164,7 @@ sources = {
             "frontend/static/js/hamster.js",
             "frontend/static/js/toaster.js",
             "frontend/static/js/angular-gettext.min.js",
+            "frontend/static/js/angular-translate.js",
             "frontend/static/js/webfrontend_translation.js",
             "frontend/static/js/angular-gridster.js",
             "frontend/static/js/angular-promise-extras.js",

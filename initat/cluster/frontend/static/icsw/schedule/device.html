@@ -313,6 +313,7 @@
                     <th>Enabled</th>
                     <th>#Refs</th>
                     <th>#Fields</th>
+                    <th>Multi</th>
                     <th>Created</th>
                     <th>Actions</th>
                 </tr>
@@ -344,6 +345,8 @@
                     </td>
                     <td class="text-center">
                         {{ obj.$$num_fields }}
+                    </td>
+                    <td class="text-center" ng-bind-html="obj.multi | yesno3">
                     </td>
                     <td class="text-center">
                         {{ obj.$$created }}
@@ -387,8 +390,16 @@
                     <input class="form-control maxwidth500" uib-typeahead="value for value in edit_obj.types" ng-model="edit_obj.type"/>
                 </div>
             </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Allow multiple instances
+                </label>
+                <div class="controls col-xs-7">
+                    <icsw-tools-yes-no flag="edit_obj.multi"></icsw-tools-yes-no>
+                </div>
+            </div>
         </fieldset>
-        <divng-if="!edit_obj.num_refs">
+        <div ng-if="!edit_obj.num_refs">
             <div class="form-group">
                 <label class="col-sm-3 control-label icsw-formlabel" title="Template is enabled">
                     Enabled

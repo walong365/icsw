@@ -27,10 +27,12 @@ angular.module(
     icswRouteExtensionProvider.add_route("main.devicecreate")
 ]).controller("icswDeviceCreateCtrl",
 [
-    "$scope", "$timeout", "$window", "$templateCache", "$q", "blockUI", "ICSW_URLS", "icswSimpleAjaxCall",
+    "$scope", "$timeout", "$window", "$templateCache", "$q", "blockUI", "ICSW_URLS",
+    "icswSimpleAjaxCall", "Restangular",
     "icswDeviceTreeService", "icswPeerInformationService", "DeviceOverviewService",
 (
-    $scope, $timeout, $window, $templateCache, $q, blockUI, ICSW_URLS, icswSimpleAjaxCall,
+    $scope, $timeout, $window, $templateCache, $q, blockUI, ICSW_URLS,
+    icswSimpleAjaxCall, Restangular,
     icswDeviceTreeService, icswPeerInformationService, DeviceOverviewService,
 ) ->
     $scope.struct = {
@@ -44,6 +46,8 @@ angular.module(
         resolve_pending: false
         # base is open
         base_open: true
+        # image lut
+        img_lut: {}
     }
     $scope.device_data = {
         # localhost would be plane stupid
@@ -63,11 +67,13 @@ angular.module(
             [
                 icswDeviceTreeService.load($scope.$id)
                 icswPeerInformationService.load($scope.$id, [])
+                Restangular.all(ICSW_URLS.REST_MON_EXT_HOST_LIST.slice(1)).getList()
             ]
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.peer_tree = data[1]
+                $scope.struct.mon_ext_host = data[2]
                 # present non-system device group
                 ns_dg = (entry for entry in $scope.struct.device_tree.group_list when $scope.struct.device_tree.ignore_cdg(entry))
                 if ns_dg.length
@@ -75,6 +81,8 @@ angular.module(
                 if $scope.struct.peer_tree.peer_list.length
                     $scope.device_data.peer = $scope.struct.peer_tree.peer_list[0].idx
 
+                for entry in $scope.struct.mon_ext_host
+                    $scope.struct.img_lut[entry.name] = entry
                 # to speed up testing
 
                 $scope.resolve_name()
@@ -85,9 +93,9 @@ angular.module(
 
     $scope.get_image_src = () ->
         img_url = ""
-        if $scope.img_lut?
-            if $scope.device_data.icon_name of $scope.img_lut
-                img_url = $scope.img_lut[$scope.device_data.icon_name]
+        if $scope.struct.img_lut?
+            if $scope.device_data.icon_name of $scope.struct.img_lut
+                img_url = $scope.struct.img_lut[$scope.device_data.icon_name].data_image
         return img_url
 
     $scope.device_name_changed = () ->

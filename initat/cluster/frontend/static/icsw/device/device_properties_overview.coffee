@@ -43,14 +43,15 @@ device_properties_overview = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
-    "icswDeviceTreeService", "$timeout"
+    "icswDeviceTreeService", "$timeout", "DeviceOverviewService", "icswUserGroupRoleTreeService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
-    icswDeviceTreeService, $timeout
+    icswDeviceTreeService, $timeout, DeviceOverviewService, icswUserGroupRoleTreeService,
 ) ->
     $scope.struct = {
         device_tree: undefined
+        ugr_tree: undefined
         data_loaded: false
 
         devices: []
@@ -65,10 +66,12 @@ device_properties_overview = angular.module(
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
+                icswUserGroupRoleTreeService.load($scope.$id)
             ]
         ).then(
             (data) ->
                 $scope.struct.device_tree = data[0]
+                $scope.struct.ugr_tree = data[1]
                 $scope.struct.devices.length = 0
 
                 for device in $scope.struct.device_tree.all_list
@@ -81,15 +84,16 @@ device_properties_overview = angular.module(
                 else
                     device_id_list = (device.idx for device in $scope.struct.devices)
 
-                console.log(device_id_list)
+                # console.log(device_id_list)
 
                 icswSimpleAjaxCall(
-                  {
-                    url: ICSW_URLS.DEVICE_DEVICE_COMPLETION
-                    data:
-                        device_pks: device_id_list
-                    dataType: "json"
-                }).then(
+                    {
+                        url: ICSW_URLS.DEVICE_DEVICE_COMPLETION
+                        data:
+                            device_pks: device_id_list
+                        dataType: "json"
+                    }
+                ).then(
                     (data) ->
                         for device_id in device_id_list
                             console.log(device_id)
@@ -107,6 +111,10 @@ device_properties_overview = angular.module(
 
     salt_device = (device, device_hints) ->
         device.$$date_created = moment(device.date).format("YYYY-MM-DD HH:mm:ss")
+        if device.creator
+            device.$$creator = $scope.struct.ugr_tree.user_lut[device.creator].$$long_name
+        else
+            device.$$creator = "N/A"
 
         info_not_available_class = "alert-danger"
         info_not_available_text = "Not Available"
@@ -177,5 +185,8 @@ device_properties_overview = angular.module(
 
     $scope.mark_unfresh = (tab) ->
         $scope.struct.device_ids_needing_refresh.push(tab.device_id)
+
+    $scope.show_device = ($event, dev) ->
+        DeviceOverviewService($event, [dev])
 
 ])

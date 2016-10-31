@@ -24,21 +24,18 @@
             <div class="form-group">
                 <label class="control-label col-sm-4 icsw-formlabel">Description</label>
                 <div class="controls col-sm-8">
-                    {{ active_task.json.infoText }}
+                    {{ active_task.json.description.en.text }}
                 </div>
             </div>
-            <div class="form-group">
-                <label class="control-label col-sm-4 icsw-formlabel">
-                    Steps ({{ active_task.json.taskStep.length }})
-                </label>
-                <div class="controls col-sm-8">
-                    <ul class="list-group">
-                        <li class="list-group-item" ng-repeat="step in active_task.json.taskStep">
-                            {{ step.routeName }}
-                        </li>
-                    </ul>
-                </div>
-            </div>
+        </fieldset>
+        <fieldset>
+            <legen>{{ active_task.json.taskStep.length }} Steps defined</legen>
+            <ul class="list-group">
+                <li class="list-group-item" ng-repeat="step in active_task.json.taskStep">
+                    <h4>Step {{ step.$$idx }} of {{ active_task.json.taskStep.length }}:</h4>
+                    {{ step.$$info_str }}
+                </li>
+            </ul>
         </fieldset>
     </form>
 </script>

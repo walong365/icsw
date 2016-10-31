@@ -930,6 +930,7 @@ monitoring_device_module = angular.module(
                 staticassettemplatefield_set: []
                 type: ""
                 types: []
+                multi: false
             }
 
             for static_asset_type in $scope.struct.template_tree.static_asset_type_keys

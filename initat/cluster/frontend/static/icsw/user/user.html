@@ -1,7 +1,7 @@
 <script type="text/ng-template" id="icsw/main/user/account.html">
     <div ng-controller="icswUserAccountCtrl">
         <icsw-user-account-detail></icsw-user-account-detail>
-        <div class="container-fluid">
+        <div class="container-fluid" ng-if="struct.user">
             <div class="row">
                 <div class="col-md-6 maxwidth800">
                     <fieldset>

@@ -18,12 +18,13 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from __future__ import unicode_literals, print_function
+
 import datetime
 import logging
 
 from django.db import models
-from django.db.models import Q
-from django.db.models import signals
+from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils import timezone
 from enum import IntEnum
@@ -38,10 +39,12 @@ __all__ = [
     "StaticAssetFieldValue",
 ]
 
+
 class StaticAssetTemplateFieldType(IntEnum):
     INTEGER = 1
     # oneline
     STRING = 2
+    # date
     DATE = 3
     # textarea
     TEXT = 4
@@ -65,6 +68,8 @@ class StaticAssetTemplate(models.Model):
     user = models.ForeignKey("backbone.user", null=True)
     # enabled
     enabled = models.BooleanField(default=True)
+    # allow multiple instances
+    multi = models.BooleanField(default=False)
     # created
     date = models.DateTimeField(auto_now_add=True)
 

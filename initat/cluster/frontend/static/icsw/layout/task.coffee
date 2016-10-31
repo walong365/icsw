@@ -23,14 +23,19 @@ angular.module(
     [
         "ngSanitize", "ui.bootstrap", "icsw.layout.selection", "icsw.user",
     ]
-).service("icswProcessService",
+).service("icswTaskService",
 [
     "$q", "$rootScope", "ICSW_SIGNALS", "icswComplexModalService", "blockUI",
-    "$compile", "$templateCache", "ICSW_CONFIG_JSON", "$state",
+    "$compile", "$templateCache", "ICSW_CONFIG_JSON", "$state", "icswLanguageTool",
+    "hotkeys",
 (
     $q, $rootScope, ICSW_SIGNALS, icswComplexModalService, blockUI,
-    $compile, $templateCache, ICSW_CONFIG_JSON, $state,
+    $compile, $templateCache, ICSW_CONFIG_JSON, $state, icswLanguageTool,
+    hotkeys,
 ) ->
+    # default language
+    def_lang = icswLanguageTool.get_lang()
+
     class icswContainer
         constructor: (@id_path) ->
             @idx = 0
@@ -48,8 +53,25 @@ angular.module(
     class icswTaskDef
         # taskdefinition, container for Defined Tasks
         constructor: (@json) ->
+            # simple settings
             @name = @json.name
             @info = "#{@json.name} (#{@json.app})"
+            @link()
+
+        link: () =>
+            _idx = 0
+            for step in @json.taskStep
+                _idx++
+                _state = $state.get(step.routeName)
+                # default value
+                step.$$info_str = "#{step.routeName} N/A"
+                step.$$idx = _idx
+                if _state.icswData?
+                    _data = _state.icswData
+                    if _data.description.en?
+                        step.$$info_str = "#{_data.description[def_lang].text}"
+                    else if _data.$$menuEntry
+                        step.$$info_str = _data.$$menuEntry.name
 
     class icswTask
         # actual task, adds state control
@@ -82,12 +104,57 @@ angular.module(
             @$$info_str = " #{@_step_idx + 1} / #{@task_def.json.taskStep.length} "
             _signal()
 
-
     struct = {
         # contains an icswTask definition or null
         active_task: null
+        # task container
         task_container: new icswContainer("json[name]")
+        # keyboard shortcuts defined
+        keys_defined: false
     }
+
+    # key helper functions
+    update_keys = () ->
+        _remove_keys()
+        _add_keys()
+
+    _add_keys = () ->
+        if not struct.keys_defined
+            struct.keys_defined = true
+            hotkeys.add(
+                combo: "f3"
+                description: "Select task"
+                allowIn: ["INPUT"]
+                callback: (event) ->
+                    _choose_task()
+                    event.preventDefault()
+            )
+            if struct.active_task
+                hotkeys.add(
+                    combo: "f4"
+                    description: "One step forward"
+                    allowIn: ["INPUT"]
+                    callback: (event) ->
+                        if struct.active_task
+                            struct.active_task.step_forward()
+                        event.preventDefault()
+                )
+                hotkeys.add(
+                    combo: "f6"
+                    description: "One step backward"
+                    allowIn: ["INPUT"]
+                    callback: (event) ->
+                        if struct.active_task
+                            struct.active_task.step_backward()
+                        event.preventDefault()
+                )
+
+    _remove_keys = () ->
+        if struct.keys_defined
+            struct.keys_defined = false
+            hotkeys.del("f3")
+            hotkeys.del("f4")
+            hotkeys.del("f6")
 
     _signal = () ->
         $rootScope.$emit(ICSW_SIGNALS("ICSW_PROCESS_SETTINGS_CHANGED"))
@@ -125,12 +192,14 @@ angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     struct.active_task = new icswTask(edit_scope.active_task)
+                    update_keys()
                     _signal()
                     d.resolve("done")
                     return d.promise
                 cancel_callback: (modal) ->
                     d = $q.defer()
                     struct.active_task = null
+                    update_keys()
                     _signal()
                     d.resolve("done")
                     return d.promise
@@ -143,6 +212,8 @@ angular.module(
         )
     # init tasks
     _init_tasks()
+    # update keys
+    update_keys()
     # signal after init
     _signal()
 
@@ -159,12 +230,12 @@ angular.module(
             return _choose_task()
 
     }
-]).factory("icswProcessOverviewReact",
+]).factory("icswTaskOverviewReact",
 [
-    "icswUserService", "icswOverallStyle", "icswProcessService", "$rootScope",
+    "icswUserService", "icswOverallStyle", "icswTaskService", "$rootScope",
     "ICSW_SIGNALS",
 (
-    icswUserService, icswOverallStyle, icswProcessService, $rootScope,
+    icswUserService, icswOverallStyle, icswTaskService, $rootScope,
     ICSW_SIGNALS,
 ) ->
     {ul, li, a, span, h4, div, p, strong, h3, i, hr, button} = React.DOM
@@ -181,7 +252,7 @@ angular.module(
             }
 
         componentWillMount: () ->
-            @setState({struct: icswProcessService.get_struct()})
+            @setState({struct: icswTaskService.get_struct()})
             @_dereg_handler = $rootScope.$on(ICSW_SIGNALS("ICSW_PROCESS_SETTINGS_CHANGED"), () =>
                 console.log "ipc"
                 @force_redraw()
@@ -226,7 +297,7 @@ angular.module(
                             className: "cursorpointer"
                             title: _task.info
                             onClick: (event) ->
-                                icswProcessService.choose_task()
+                                icswTaskService.choose_task()
                         }
                         _cs
                     )
@@ -254,15 +325,16 @@ angular.module(
                     span(
                         {
                             key: "np"
-                            className: "label label-default cursorpointer"
+                            className: "label label-primary cursorpointer"
                             title: "No task active"
+                            style: {fontSize: "24px"}
                             onClick: (event) ->
-                                icswProcessService.choose_task()
+                                icswTaskService.choose_task()
                         }
-                        "NTA"
+                        "?"
                     )
                 )
-                _a_style = {}
+                _a_style = {padding: "12px"}
             _res = li(
                 {}
                 a(

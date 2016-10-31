@@ -40,6 +40,7 @@
     "gulp-wait": "0.0.2",
     "gulp-webserver": "^0.9.1",
     "http-proxy-middleware": "^0.17.2",
-    "run-sequence": "^1.1.5"
+    "run-sequence": "^1.1.5",
+    "typescript": "^2.0.6"
   }
 }

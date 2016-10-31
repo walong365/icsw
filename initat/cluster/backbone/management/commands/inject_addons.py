@@ -129,9 +129,12 @@ class FileModify(object):
     def config_xml_to_json(self, xml):
         LIST_TEXT_TAGS = {"rights", "licenses", "serviceTypes"}
         LIST_TAGS = {"menuHeader", "routeSubGroup", "menuEntry", "route", "task", "taskStep"}
-        NAME_DICT_TAGS = {"route"}
+        # use attributes instead of ElementTag as key for parent dict
+        NAME_DICT_TAGS = {
+            "route": "name",
+            "infoText": "language",
+        }
         APPEND_TEXT_TAGS = {"value"}
-        SIMPLE_TEXT_TAGS = {"infoText"}
 
         def _iter_dict(parent_el, el):
             if el.tag is etree.Comment:
@@ -152,20 +155,20 @@ class FileModify(object):
                     r_v[_name] = int(el.attrib[_attr_name])
                 else:
                     r_v[_name] = el.attrib[_attr_name]
+            if el.text and el.text.strip():
+                r_v["text"] = el.text.strip()
             if el.tag in LIST_TEXT_TAGS:
                 # special form of list of text values
                 r_v = []
                 parent_el.setdefault(el.tag, r_v)
             elif el.tag in NAME_DICT_TAGS:
                 # use name of r_v as dict key
-                parent_el[r_v["name"]] = r_v
+                parent_el[r_v[NAME_DICT_TAGS[el.tag]]] = r_v
             elif el.tag in LIST_TAGS:
                 parent_el.setdefault(el.tag, []).append(r_v)
             elif el.tag in APPEND_TEXT_TAGS:
                 # child of LIST_TEXT_TAG
                 parent_el.append(el.text)
-            elif el.tag in SIMPLE_TEXT_TAGS:
-                parent_el[el.tag] = el.text
             else:
                 parent_el[el.tag] = r_v
             for sub_el in el:
@@ -234,9 +237,7 @@ class FileModify(object):
             raise
         # transform XML
         # _total_xml = self.transform(_total_xml)
-        # move to json
-
-        # import pprint
+        # transform to json
         # print("\n".join(self.config_xml_to_json(_total_xml)))
         return self.config_xml_to_json(_total_xml)
 

@@ -19,12 +19,16 @@
                 <rights>
                     <value>backbone.user.modify_tree</value>
                 </rights>
+                <description>
+                    <infoText language="en">Create new devices</infoText>
+                    <infoText language="de">Erzeuge neue Geräte</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.devicepropertiesoverview">
             <stateData url="/device/overview" templateUrl="icsw/device/properties/overview"/>
             <icswData pageTitle="Setup Status">
-                    </icswData>
+            </icswData>
         </route>
         <route name="main.deviceinfo">
             <stateData url="/deviceinfo" templateUrl="icsw/simple/device/info"/>
@@ -582,16 +586,21 @@
     </menu>
     <tasks>
         <task name="Add device">
-            <infoText>Add a new device and configure it</infoText>
-            <taskStep routeName="main.schedasset"></taskStep>
+            <description>
+                <infoText language="en">Add a new device and configure it</infoText>
+            </description>
+            <taskStep routeName="main.devicecreate"></taskStep>
             <taskStep routeName="main.deployboot"></taskStep>
             <taskStep routeName="main.useraccount"></taskStep>
         </task>
         <task name="Boot Node">
-            <infoText>Define a device as HPC node and boot it via CORVUS</infoText>
-            <taskStep routeName="main.schedasset"></taskStep>
+            <description>
+                <infoText language="en">Define a device as HPC node and boot it via CORVUS</infoText>
+            </description>
+            <taskStep routeName="main.partition"></taskStep>
+            <taskStep routeName="main.imagekernel"></taskStep>
+            <taskStep routeName="main.packageinstall"></taskStep>
             <taskStep routeName="main.deployboot"></taskStep>
-            <taskStep routeName="main.useraccount"></taskStep>
         </task>
     </tasks>
 </config>

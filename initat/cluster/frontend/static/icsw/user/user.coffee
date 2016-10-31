@@ -1272,7 +1272,7 @@ user_module = angular.module(
     # for permission view, FIXME, ToDo
     $scope.perm_tree = undefined
 
-    $scope.update = () ->
+    _update = () ->
         $scope.struct.data_valid = false
         $scope.struct.user = undefined
         $scope.struct.settings_tree = undefined
@@ -1315,7 +1315,8 @@ user_module = angular.module(
         )
 
     $scope.get_vdus = (idx) ->
-    $scope.update()
+    # start
+    _update()
 ]).directive("icswRoleEdit",
 [
     "$templateCache",
@@ -1935,6 +1936,7 @@ user_module = angular.module(
                     if $scope.object.idx? and $scope.object.idx
                         _role_idxs.push($scope.object.idx)
                 else
+                    console.log "*", $scope
                     for role in $scope.object.roles
                         _role_idxs.push(role)
                 for _role_idx in _role_idxs

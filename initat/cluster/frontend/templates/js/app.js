@@ -59,6 +59,7 @@ icsw_app = angular.module(
         "ngResource",
         "ngCookies",
         "ngSanitize",
+        "pascalprecht.translate",
         "ngPromiseExtras",
         "ui.bootstrap",
         "ui.router",

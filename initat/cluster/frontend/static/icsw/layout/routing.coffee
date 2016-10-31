@@ -204,6 +204,7 @@ menu_module = angular.module(
                 true
             else
                 icswBreadcrumbs.add_state(to_state)
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_STATE_CHANGED"))
     )
 
     $scope.$on("$stateChangeError", (event, to_state, to_params, from_state, from_params, error) ->

@@ -330,6 +330,8 @@ angular.module(
             @validForQuicklink = false
             # has deviceselection function
             @hasDevselFunc = false
+            # description field
+            @description = {}
             for key, value of args
                 if not @[key]?
                     console.error "unknown icswRouteExtension #{key}=#{value}", @
@@ -701,6 +703,8 @@ angular.module(
         ICSW_DSR_UNREGISTERED: "icsw.dsr.unregistered"
         # breadcrumbs changed
         ICSW_BREADCRUMBS_CHANGED: "icsw.breadcrumbs.changed"
+        # new state reached
+        ICSW_STATE_CHANGED: "icsw.state.changed"
         ICSW_DEVICE_TREE_LOADED: "icsw.device.tree.loaded"
         ICSW_CATEGORY_TREE_LOADED: "icsw.category.tree.loaded"
         ICSW_NETWORK_TREE_LOADED: "icsw.network.tree.loaded"
@@ -1834,5 +1838,19 @@ angular.module(
         scope: {
             flag: "=icswFlag"
         }
+    }
+]).service("icswLanguageTool",
+[
+    "$translate",
+(
+    $translate,
+) ->
+    def_lang = $translate.use().split("-")[0]
+    if def_lang not in ["en", "de"]
+        def_lang = "en"
+
+    return {
+        get_lang: () ->
+            return def_lang
     }
 ])

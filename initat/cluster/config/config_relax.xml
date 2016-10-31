@@ -91,6 +91,21 @@
                                 </optional>
                             </element>
                         </optional>
+                        <optional>
+                            <element name="description">
+                                <oneOrMore>
+                                    <element name="infoText">
+                                        <attribute name="language">
+                                            <choice>
+                                                <value>en</value>
+                                                <value>de</value>
+                                            </choice>
+                                        </attribute>
+                                        <text/>
+                                    </element>
+                                </oneOrMore>
+                            </element>
+                        </optional>
                     </interleave>
                 </element>
             </element>
@@ -143,8 +158,18 @@
                         <!-- set after merge -->
                         <attribute name="app"/>
                     </optional>
-                    <element name="infoText">
-                        <text/>
+                    <element name="description">
+                        <oneOrMore>
+                            <element name="infoText">
+                                <attribute name="language">
+                                    <choice>
+                                        <value>en</value>
+                                        <value>de</value>
+                                    </choice>
+                                </attribute>
+                                <text/>
+                            </element>
+                        </oneOrMore>
                     </element>
                     <oneOrMore>
                         <element name="taskStep">

@@ -703,51 +703,32 @@
             </div>
         </fieldset>
         <fieldset>
-            <legend>Flags</legend>
-            <div class="row">
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.enabled" type="checkbox"/>
-                                    Enabled
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-8">
-                                <label>
-                                    <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.enable_perfdata" type="checkbox"/>
-                                    Enable perfdata, check IPMI and SNMP
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+            <legend>Device Flags</legend>
+            <div class="row container-fluid">
+                <div class="form-group controls col-sm-6">
+                    <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
+                    Enabled
                 </div>
-                <div class="col-md-6">
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.store_rrd_data" type="checkbox"/>
-                                    Store RRD Data
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <div class="checkbox">
-                            <div class="controls col-lg-offset-0 col-sm-7">
-                                <label>
-                                    <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.flap_detection_enabled" type="checkbox"/>
-                                    Flap Detection Enabled
-                                </label>
-                            </div>
-                        </div>
-                    </div>
+                <div class="form-group controls col-sm-6">
+                    <icsw-tools-yes-no flag="edit_obj.enable_perfdata"></icsw-tools-yes-no>
+                    Enable perfdata, check IPMI and SNMP
+                </div>
+                <div class="form-group controls col-sm-6">
+                    <icsw-tools-yes-no flag="edit_obj.store_rrd_data"></icsw-tools-yes-no>
+                    Store RRD Data
+                </div>
+                <div class="form-group controls col-sm-6">
+                    <icsw-tools-yes-no flag="edit_obj.flap_detection_enabled"></icsw-tools-yes-no>
+                    Flap Detection Enabled
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Edit Flags</legend>
+            <div class="row container-fluid">
+                <div class="form-group controls col-sm-6">
+                    <icsw-tools-yes-no flag="edit_flags.multi"></icsw-tools-yes-no>
+                    Create many devices
                 </div>
             </div>
         </fieldset>

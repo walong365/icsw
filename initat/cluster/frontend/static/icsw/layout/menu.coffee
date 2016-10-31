@@ -332,17 +332,23 @@ menu_module = angular.module(
                 _res = null
             return _res
     )
+]).config(["$translateProvider", ($translateProvider) ->
+    console.log $translateProvider.uniformLanguageTag('bcp47').determinePreferredLanguage()
 ]).factory("icswReactMenuFactory",
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
     "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
-    "icswUserService", "icswOverallStyle",
+    "icswUserService", "icswOverallStyle", "icswLanguageTool",
 (
     icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
-    icswUserService, icswOverallStyle,
+    icswUserService, icswOverallStyle, icswLanguageTool,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
+
+    # default language
+    def_lang = icswLanguageTool.get_lang()
+
     menu_line = React.createClass(
         displayName: "icswMenuEntry"
 
@@ -361,6 +367,10 @@ menu_module = angular.module(
                 a_attrs.className = "#{a_attrs.className} #{data.$$menuEntry.entryClass}"
             if data.$$menuEntry.title?
                 a_attrs.title = data.$$menuEntry.title
+            if data.description[def_lang]?
+                _info_text = data.description[def_lang].text
+            else
+                _info_text = "Example text for this entry wwwwww wwww qweqw pqow oiudf oijrl woe oiu qw qw f et ze wol qwoeiuqwoieu ln vldeou9z oqaweeh r"
             return li(
                 {key: "li"}
                 a(
@@ -372,7 +382,7 @@ menu_module = angular.module(
                 )
                 p(
                     {key: "d", style: {"textIndent": "12px"}}
-                    "Example text for this entry wwwwww wwww qweqw pqow oiudf oijrl woe oiu qw qw f et ze wol qwoeiuqwoieu ln vldeou9z oqaweeh r"
+                    _info_text
                 )
             )
     )
@@ -610,10 +620,10 @@ menu_module = angular.module(
     }
 ]).service("icswReactRightMenuFactory",
 [
-    "$q", "icswReactMenuFactory", "icswRouteHelper", "icswProcessOverviewReact",
+    "$q", "icswReactMenuFactory", "icswRouteHelper", "icswTaskOverviewReact",
     "icswReactOvaDisplayFactory", "icswOverallStyle",
 (
-    $q, icswReactMenuFactory, icswRouteHelper, icswProcessOverviewReact,
+    $q, icswReactMenuFactory, icswRouteHelper, icswTaskOverviewReact,
     icswReactOvaDisplayFactory, icswOverallStyle,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
@@ -639,7 +649,7 @@ menu_module = angular.module(
                         className: "nav navbar-nav navbar-right #{icswOverallStyle.get()}"
                     }
                     React.createElement(
-                        icswProcessOverviewReact
+                        icswTaskOverviewReact
                         {
                             key: "process"
                         }
@@ -769,6 +779,8 @@ menu_module = angular.module(
         $scope.struct.bc_list.length = 0
         for entry in bc_list
             $scope.struct.bc_list.push(entry)
+    )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_STATE_CHANGED"), () ->
         $scope.struct.menupath = icswMenuPath.generate_path()
     )
 
@@ -881,8 +893,6 @@ menu_module = angular.module(
                 if bc_list.length > 6
                     bc_list = bc_list.slice(1)
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), bc_list)
-
-            # console.log bc_list.length, (entry.name for entry in bc_list)
 
     return {
         add_state: (state) ->
