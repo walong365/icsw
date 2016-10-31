@@ -26,10 +26,10 @@ angular.module(
 ).service("icswProcessService",
 [
     "$q", "$rootScope", "ICSW_SIGNALS", "icswComplexModalService", "blockUI",
-    "$compile", "$templateCache", "ICSW_CONFIG_JSON",
+    "$compile", "$templateCache", "ICSW_CONFIG_JSON", "$state",
 (
     $q, $rootScope, ICSW_SIGNALS, icswComplexModalService, blockUI,
-    $compile, $templateCache, ICSW_CONFIG_JSON,
+    $compile, $templateCache, ICSW_CONFIG_JSON, $state,
 ) ->
     class icswContainer
         constructor: (@id_path) ->
@@ -46,12 +46,45 @@ angular.module(
             console.log @lut, @list
 
     class icswTaskDef
+        # taskdefinition, container for Defined Tasks
         constructor: (@json) ->
             @name = @json.name
             @info = "#{@json.name} (#{@json.app})"
 
-    console.log ICSW_CONFIG_JSON
+    class icswTask
+        # actual task, adds state control
+        constructor: (tdef) ->
+            @task_def = tdef
+            @start()
+
+        start: () =>
+            # start task
+            @_step_idx = 0
+            @link()
+
+        step_forward: () =>
+            _max_step = @task_def.json.taskStep.length
+            if @_step_idx < _max_step - 1
+                @_step_idx++
+                @link()
+
+        step_backward: () =>
+            if @_step_idx
+                @_step_idx--
+                @link()
+
+        link: () =>
+            @$$forward_ok = @_step_idx < @task_def.json.taskStep.length - 1
+            @$$backward_ok = @_step_idx > 0
+            @active_step = @task_def.json.taskStep[@_step_idx]
+            console.log @active_step
+            $state.go(@active_step.routeName)
+            @$$info_str = " #{@_step_idx + 1} / #{@task_def.json.taskStep.length} "
+            _signal()
+
+
     struct = {
+        # contains an icswTask definition or null
         active_task: null
         task_container: new icswContainer("json[name]")
     }
@@ -69,9 +102,13 @@ angular.module(
         edit_scope.task_container = struct.task_container
         # need object for ui-select to work properly
         if struct.active_task
-            edit_scope.edit_obj = {task: struct.active_task.idx}
+            edit_scope.edit_obj = {task: struct.active_task.task_def.idx}
+            edit_scope.running_task = struct.active_task
+            cancel_label = "Cancel task"
         else
             edit_scope.edit_obj = {task: 0}
+            edit_scope.running_task = null
+            cancel_label = "Cancel"
 
         edit_scope.task_changed = () ->
             edit_scope.active_task = edit_scope.task_container.list[edit_scope.edit_obj.task]
@@ -84,10 +121,10 @@ angular.module(
                 title: "Choose task"
                 closable: true
                 ok_label: "Select"
-                cancel_label: "Cancel task"
+                cancel_label: cancel_label
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    struct.active_task = edit_scope.active_task
+                    struct.active_task = new icswTask(edit_scope.active_task)
                     _signal()
                     d.resolve("done")
                     return d.promise
@@ -109,12 +146,18 @@ angular.module(
     # signal after init
     _signal()
 
+    # task control
+    step_forward = (task) ->
+        task.step_forward()
+        _signal()
+
     return {
         get_struct: () ->
             return struct
 
         choose_task: () ->
             return _choose_task()
+
     }
 ]).factory("icswProcessOverviewReact",
 [
@@ -164,7 +207,9 @@ angular.module(
                             key: "bwb"
                             type: "button"
                             className: "btn btn-xs btn-default"
-                            disabled: true
+                            disabled: not _task.$$backward_ok
+                            onClick: (event) ->
+                                _task.step_backward()
                         }
                         span(
                             {
@@ -173,7 +218,7 @@ angular.module(
                         )
                     )
                 )
-                _cs = "1 / #{_task.json.taskStep.length}"
+                _cs = _task.$$info_str
                 _el_list.push(
                     span(
                         {
@@ -192,6 +237,9 @@ angular.module(
                             key: "bwf"
                             type: "button"
                             className: "btn btn-xs btn-default"
+                            disabled: not _task.$$forward_ok
+                            onClick: (event) ->
+                                _task.step_forward()
                         }
                         span(
                             {

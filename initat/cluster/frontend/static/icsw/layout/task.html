@@ -1,5 +1,6 @@
 <script type="text/ng-template" id="icsw.task.choose.task">
     <form class="form-horizontal" name="form_data">
+        <h3 ng-show="running_task">Currently active task: {{ running_task.task_def.name }}</h3>
         <fieldset>
             <legend>Select a task</legend>
             <div class="form-group">
@@ -32,7 +33,7 @@
                 </label>
                 <div class="controls col-sm-8">
                     <ul class="list-group">
-                        <li class="list-item" ng-repeat="step in active_task.json.taskStep">
+                        <li class="list-group-item" ng-repeat="step in active_task.json.taskStep">
                             {{ step.routeName }}
                         </li>
                     </ul>

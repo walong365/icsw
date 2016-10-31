@@ -125,14 +125,6 @@ menu_module = angular.module(
         true
     )
 
-    # not needed, now handled in menubar-component
-    # $scope.$watch(
-    #    "size",
-    #    (new_val) ->
-    #        console.log "size=", new_val
-    #        $rootScope.$emit(ICSW_SIGNALS("ICSW_RENDER_MENUBAR"))
-    # )
-
     # load license tree
     icswSystemLicenseDataService.load($scope.$id).then(
         (data) ->
@@ -299,7 +291,6 @@ menu_module = angular.module(
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
     icswUserService, icswOverallStyle, icswReactMenuFactory,
 ) ->
-    # console.log icswAcessLevelService
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
     return React.createClass(
         displayName: "icswMenuBar"
@@ -351,7 +342,6 @@ menu_module = angular.module(
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
     icswUserService, icswOverallStyle,
 ) ->
-    # console.log icswAcessLevelService
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
     menu_line = React.createClass(
         displayName: "icswMenuEntry"
@@ -621,10 +611,10 @@ menu_module = angular.module(
 ]).service("icswReactRightMenuFactory",
 [
     "$q", "icswReactMenuFactory", "icswRouteHelper", "icswProcessOverviewReact",
-    "icswReactOvaDisplayFactory",
+    "icswReactOvaDisplayFactory", "icswOverallStyle",
 (
     $q, icswReactMenuFactory, icswRouteHelper, icswProcessOverviewReact,
-    icswReactOvaDisplayFactory,
+    icswReactOvaDisplayFactory, icswOverallStyle,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
     return React.createClass(
@@ -640,31 +630,36 @@ menu_module = angular.module(
         render: () ->
             _menu_struct = icswRouteHelper.get_struct()
             menus = (entry for entry in _menu_struct.menu_node.entries when entry.data.side == "right")
-            return ul(
+            return div(
                 {
-                    className: "nav navbar-nav navbar-right"
+                    className: "yamm"
                 }
-                React.createElement(
-                    icswProcessOverviewReact
+                ul(
                     {
-                        key: "process"
+                        className: "nav navbar-nav navbar-right #{icswOverallStyle.get()}"
                     }
-                )
-
-                React.createElement(
-                    icswReactOvaDisplayFactory
-                    {
-                        key: "ova"
-                    }
-                )
-                (
                     React.createElement(
-                        icswReactMenuFactory
+                        icswProcessOverviewReact
                         {
-                            key: menu.$$menu_key
-                            menu: menu
+                            key: "process"
                         }
-                    ) for menu in menus
+                    )
+
+                    React.createElement(
+                        icswReactOvaDisplayFactory
+                        {
+                            key: "ova"
+                        }
+                    )
+                    (
+                        React.createElement(
+                            icswReactMenuFactory
+                            {
+                                key: menu.$$menu_key
+                                menu: menu
+                            }
+                        ) for menu in menus
+                    )
                 )
             )
     )
