@@ -46,6 +46,16 @@ angular.module(
             @devices = []
             # total elements in row
             @num_rows = 0
+            # render counter
+            @render_count = 0
+            # pending changes
+            @pending = {
+                clicked: []
+            }
+            # config stream (for changes)
+            @pc_stream = {}
+
+            @check_pending()
 
         set_devices: (dev_list) =>
             # create a group dict
@@ -113,26 +123,74 @@ angular.module(
 
             # step 2: set configs for all meta-devices
 
-            for dev in @md_list
-                for conf in @config_tree.list
+            for conf in @config_tree.list
+                for dev in @md_list
                     # build name value to match against
                     if @mode in ["gen", "srv"]
                         conf.$$_dc_name = conf.name
                     else
                         conf.$$_dc_num_mcs = conf.mon_check_command_set.length
                         conf.$$_dc_name = ("#{_v.name} #{_v.description}" for _v in conf.mon_check_command_set).join(" ")
+                    _id = "#{dev.idx}::#{conf.idx}"
+                    for dc in conf.device_config_set
+                        if dc.device == dev.idx
+                            dev.$local_selected.push(conf.idx)
+                    # if _id in @pending.added
+                    #    dev.$local_selected.push(conf.idx)
+
+                # step 3: set configs for all non-meta-devices
+
+                for dev in @non_md_list
+                    _id = "#{dev.idx}::#{conf.idx}"
                     for dc in conf.device_config_set
                         if dc.device == dev.idx
                             dev.$local_selected.push(conf.idx)
 
-            # step 3: set configs for all non-meta-devices
+                # step 4: apply changes
+
+                if conf.idx of @pc_stream
+                    _pcs = @pc_stream[conf.idx]
+                    _meta = @md_lut
+                    for _token in _pcs
+                        if _token < 0
+                            # click on meta device
+                            md = @md_lut[-_token]
+                            if conf.idx in md.$local_selected
+                                # deselect
+                                _.remove(md.$local_selected, (entry) -> return entry == conf.idx)
+                            else
+                                # select
+                                md.$local_selected.push(conf.idx)
+                                # deselect all local selections
+                                for dev_idx in md.$$group.devices
+                                    if dev_idx != md.idx
+                                        dev = @device_tree.all_lut[dev_idx]
+                                        if dev.$local_selected?
+                                            _.remove(dev.$local_selected, (entry) -> return entry == conf.idx)
+                        else
+                            dev = @device_tree.all_lut[_token]
+                            md = @md_lut[_token]
+                            if conf.idx in md.$local_selected
+                                # handle meta device
+                                # deselect from meta device
+                                _.remove(md.$local_selected, (entry) -> return entry == conf.idx)
+                                # select all other devices
+                                for dev_idx in md.$$group.devices
+                                    if dev_idx != md.idx and dev_idx != dev.idx
+                                        @device_tree.all_lut[dev_idx].$local_selected.push(conf.idx)
+                            else
+                                if conf.idx in dev.$local_selected
+                                    # deselect local
+                                    _.remove(dev.$local_selected, (entry) -> return entry == conf.idx)
+                                else
+                                    # select local
+                                    dev.$local_selected.push(conf.idx)
+
+            # count selected
 
             for dev in @non_md_list
-                for conf in @config_tree.list
-                    for dc in conf.device_config_set
-                        if dc.device == dev.idx
-                            dev.$local_selected.push(conf.idx)
                 dev.$num_meta_selected = @md_lut[dev.idx].$local_selected.length
+            @render_count++
             $rootScope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"))
 
         click_allowed: (dev, conf) =>
@@ -207,31 +265,82 @@ angular.module(
             $rootScope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"))
 
         click: (device, config) =>
+            defer = $q.defer()
+            [_dev_idx, _conf_idx, _meta_idx] = [device.idx, config.idx, @md_lut[device.idx].idx]
+            _id = "#{_dev_idx}::#{_conf_idx}::#{_meta_idx}"
+            @pending.clicked.push(_id)
+            # interpret
+            # build config streams, key is config idx
+            conf_stream = {}
+            for _id in @pending.clicked
+                _parts = _id.split("::")
+                _dev_idx = parseInt(_parts[0])
+                _conf_idx = parseInt(_parts[1])
+                _meta_idx = parseInt(_parts[2])
+                if _conf_idx not of conf_stream
+                    conf_stream[_conf_idx] = []
+                _cs = conf_stream[_conf_idx]
+                if _dev_idx == _meta_idx
+                    _token = -_meta_idx
+                else
+                    _token = _dev_idx
+                _cs.push(_token)
 
+            @pc_stream = conf_stream
+            # console.log @pc_stream
+            @check_pending()
+            @link()
+            defer.resolve("done")
+            return defer.promise
+
+        check_pending: () =>
+            if @pending.clicked.length
+                @any_pending = true
+            else
+                @any_pending = false
+
+        remove_pending: () =>
+            @pending.clicked.length = 0
+            @pc_stream = {}
+            @check_pending()
+            @link()
+
+        commit_changes: () =>
             defer = $q.defer()
             icswSimpleAjaxCall(
                 {
                     url: ICSW_URLS.CONFIG_ALTER_CONFIG_CB
                     data: {
-                        meta_pk: @md_lut[device.idx].idx
-                        dev_pk: device.idx
-                        conf_pk: config.idx
+                        stream_data: angular.toJson(
+                            (
+                                {
+                                    meta_pk: parseInt(_id.split("::")[2])
+                                    dev_pk: parseInt(_id.split("::")[0])
+                                    conf_pk: parseInt(_id.split("::")[1])
+                                }
+                            ) for _id in @pending.clicked
+                        )
                     }
                 }
             ).then(
                 (xml) =>
-                    # clear config
-                    config.device_config_set.length = 0
-                    $(xml).find("config > device").each (idx, cur_dev) =>
-                        cur_dev = $(cur_dev)
-                        config.device_config_set.push(
-                            {
-                                device: parseInt(cur_dev.attr("device"))
-                                config: parseInt(cur_dev.attr("config"))
-                                idx: parseInt(cur_dev.attr("pk"))
-                            }
-                        )
-                    @link()
+                    # console.log "xml=", xml
+                    $(xml).find("changeset > config").each (idx, config_entry) =>
+                        _idx = parseInt($(config_entry).attr("pk"))
+                        config = @config_tree.lut[_idx]
+                        config.device_config_set.length = 0
+                        $(config_entry).find("entry").each (idx, add_entry) =>
+                            # add new entries
+                            add_entry = $(add_entry)
+                            config.device_config_set.push(
+                                {
+                                    device: parseInt(add_entry.attr("device"))
+                                    config: parseInt(add_entry.attr("config"))
+                                    idx: parseInt(add_entry.attr("pk"))
+                                }
+                            )
+                            console.log config.device_config_set.length
+                    @remove_pending()
                     defer.resolve("changed")
 
             )
@@ -400,12 +509,13 @@ angular.module(
 (
     $q, blockUI,
 )->
-    {table, thead, div, tr, span, th, td, tbody} = React.DOM
+    {table, thead, div, tr, span, th, td, tbody, button} = React.DOM
     rot_header = React.createFactory(
         React.createClass(
             propTypes: {
                 rowElement: React.PropTypes.object
                 configHelper: React.PropTypes.object
+                focus: React.PropTypes.bool
             }
             getInitialState: () ->
                 return {
@@ -419,6 +529,7 @@ angular.module(
                 else
                     _title_str = "#{re.description} (#{re.name})"
                     _info_str = _title_str
+                _focus = @state.mouse or @props.focus
                 return th(
                     {
                         className: "icsw-config-rotate"
@@ -434,16 +545,17 @@ angular.module(
                         span(
                             {
                                 key: "text1"
+                                className: if _focus then "bg-danger" else ""
                             }
                             _info_str
                         )
-                        if @state.mouse then span(
-                            {
-                                key: "text2"
-                                className: "label label-primary"
-                            }
-                            "selected"
-                        ) else null
+                        # if _focus then span(
+                        #    {
+                        #        key: "text2"
+                        #        className: "label label-danger"
+                        #    }
+                        #    "*"
+                        # ) else null
                     )
                 )
         )
@@ -451,24 +563,31 @@ angular.module(
     head_factory = React.createFactory(
         React.createClass(
             propTypes: {
-                configHelper: React.PropTypes.object
+                configHelper: React.PropTypes.object.isRequired
+                focusElement: React.PropTypes.number
             }
             render: () ->
-                _conf_headers = [
-                    rot_header(
-                        {
-                            key: "conf#{row_el.idx}"
-                            rowElement: row_el
-                            configHelper: @props.configHelper
-                        }
-                    ) for row_el in @props.configHelper.active_rows
-                ]
+                _conf_headers = []
                 _conf_infos = []
                 for row_el in @props.configHelper.active_rows
                     if @props.configHelper.mode in ["gen", "srv"]
                         _conf = row_el
                     else
                         _conf = row_el.$$config
+                    if @props.focusElement
+                        _focus = _conf.idx == @props.focusElement
+                    else
+                        _focus = false
+                    _conf_headers.push(
+                        rot_header(
+                            {
+                                key: "conf#{row_el.idx}"
+                                rowElement: row_el
+                                configHelper: @props.configHelper
+                                focus: _focus
+                            }
+                        )
+                    )
                     _conf_infos.push(
                         th(
                             {
@@ -484,6 +603,35 @@ angular.module(
                             )
                         )
                     )
+                if @props.configHelper.any_pending
+                    modify_button = button(
+                        {
+                            key: "modify"
+                            type: "button"
+                            className: "btn btn-sm btn-primary"
+                            onClick: (event) =>
+                                blockUI.start()
+                                @props.configHelper.commit_changes().then(
+                                    (done) =>
+                                        blockUI.stop()
+                                )
+
+                        }
+                        "Modify"
+                    )
+                    cancel_button = button(
+                        {
+                            key: "cancel"
+                            type: "button"
+                            className: "btn btn-sm btn-warning"
+                            onClick: (event) =>
+                                @props.configHelper.remove_pending()
+                        }
+                        "Cancel"
+                    )
+                else
+                    modify_button = null
+                    cancel_button = null
                 return thead(
                     {key: "head"}
                     tr(
@@ -493,6 +641,8 @@ angular.module(
                                 key: "head"
                                 colSpan: 3
                             }
+                            modify_button
+                            cancel_button
                         )
                         _conf_headers
                     )
@@ -512,14 +662,22 @@ angular.module(
                 configHelper: React.PropTypes.object
                 device: React.PropTypes.object
                 rowElement: React.PropTypes.object
+                focusCallback: React.PropTypes.func.isRequired
             }
+
+            getInitialState: () ->
+                return {focus: false}
             render: () ->
                 _el = @props.rowElement
                 if @props.configHelper.mode in ["gen", "srv"]
                     _conf = _el
+                    _info_str = _el.$$info_str
                 else
                     _conf = _el.$$config
+                    _info_str = "#{_el.description} (#{_el.name})"
                 [_class, _icon] = @props.configHelper.get_td_class_and_icon(@props.device, _conf)
+                if @state.focus
+                    _class = "#{_class} bg-primary"
                 return td(
                     {
                         className: "text-center #{_class}"
@@ -530,6 +688,13 @@ angular.module(
                                     (ok) ->
                                         blockUI.stop()
                                 )
+                        onMouseEnter: (event) =>
+                            @setState({focus: true})
+                            @props.focusCallback(_conf, true)
+                        onMouseLeave: (event) =>
+                            @setState({focus: false})
+                            @props.focusCallback(_conf, false)
+                        title: _info_str
                     }
                     span(
                         {className: _icon}
@@ -542,7 +707,19 @@ angular.module(
             propTypes: {
                 configHelper: React.PropTypes.object
                 device: React.PropTypes.object
+                focusCallback: React.PropTypes.func.isRequired
             }
+            getInitialState: () ->
+                return {counter: 0}
+
+            shouldComponentUpdate: (next_props, next_state) ->
+                # very simple update cache, compare local render count with counter from config
+                _doit = false
+                if @props.configHelper.render_count != @state.counter
+                    @setState({counter: @props.configHelper.render_count})
+                    _doit = true
+                return _doit
+
             render: () ->
                 dev = @props.device
                 if dev.is_meta_device
@@ -569,6 +746,7 @@ angular.module(
                                 configHelper: @props.configHelper
                                 rowElement: row_el
                                 device: dev
+                                focusCallback: @props.focusCallback
                             }
                         ) for row_el in @props.configHelper.active_rows
                     ]
@@ -581,6 +759,7 @@ angular.module(
             propTypes: {
                 configHelper: React.PropTypes.object
                 groupStruct: React.PropTypes.object
+                focusCallback: React.PropTypes.func.isRequired
             }
             render: () ->
                 return tbody(
@@ -597,6 +776,7 @@ angular.module(
                             {
                                 configHelper: @props.configHelper
                                 device: dev
+                                focusCallback: @props.focusCallback
                             }
                         ) for dev in @props.groupStruct.devices
                     ]
@@ -607,9 +787,28 @@ angular.module(
         propTypes: {
             configHelper: React.PropTypes.object
         }
+
+        getInitialState: () ->
+            return {
+                counter: 0
+                # idx of focused element (integer of config)
+                focus_el: 0
+            }
+
+        force_redraw: () ->
+            @setState({counter: @state.counter + 1})
+
         render: () ->
+            focus_cb = (el, state) =>
+                if state
+                    @setState({focus_el: el.idx})
+                else
+                    if @state.focus_el
+                        @setState({focus_el: 0})
+
             if not @props.configHelper.devices.length
                 return null
+
             table(
                 {
                     key: "top"
@@ -619,6 +818,7 @@ angular.module(
                 head_factory(
                     {
                         configHelper: @props.configHelper
+                        focusElement: @state.focus_el
                     }
                 )
                 [
@@ -626,6 +826,7 @@ angular.module(
                         {
                             configHelper: @props.configHelper
                             groupStruct: group
+                            focusCallback: focus_cb
                         }
                     ) for group in @props.configHelper.groups
                 ]
