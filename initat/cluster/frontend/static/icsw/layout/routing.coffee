@@ -41,7 +41,7 @@ menu_module = angular.module(
                     (user) ->
                         if user.user.idx
                             # check rights, acls might still be missing, TODO, Fixme ...
-                            console.log "CR", user, icswRouteHelper.check_rights(user)
+                            # console.log "CR", user, icswRouteHelper.check_rights(user)
                             icswRouteHelper.check_rights(user)
                             _defer.resolve(user)
                         else
