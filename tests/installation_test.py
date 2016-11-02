@@ -35,7 +35,7 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
                 time.sleep(1)
 
     if package_manager == "zypper":
-        setup_command = "zypper ref && zypper --non-interactive in icsw-server icsw-client nginx-init"
+        setup_command = "zypper --non-interactive --no-gpg-checks ref && zypper --non-interactive --no-gpg-checks in icsw-server icsw-client nginx-init"
     elif package_manager == "apt-get":
         setup_command = "apt-get update && apt-get -y --force-yes install icsw-server icsw-client nginx-init"
     elif package_manager == "yum":

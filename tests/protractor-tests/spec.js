@@ -39,12 +39,12 @@ describe('ICSW Basic Interface Tests:', function() {
 
     this.select_all_devices_button = element(by.xpath("/html/body/icsw-layout-sub-menubar/nav/ul/li[2]/icsw-tools-button[2]/button"));
 
-    this.devices_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]'));
+    this.devices_menu_button = element(by.xpath("/html/body/icsw-layout-menubar/nav/div/div/icsw-menu/div/ul/li[1]/a/span[1]"));
     this.device_information_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[3]/a'));
     this.device_tree_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[4]/a'));
 
-    this.device_assign_configuration_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[5]/a'));
-    this.network_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[6]/a'));
+    this.device_assign_configuration_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[6]/a'));
+    this.network_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[2]/li[3]/a'));
 
     this.device_power_controlling_connections_menu_button = element(by.xpath('/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[2]/li[6]/a'));
 
@@ -170,13 +170,11 @@ describe('ICSW Basic Interface Tests:', function() {
       browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.devices_menu_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function () {
         icsw_homepage.devices_menu_button.click();
 
-
-        var add_new_device_button = element(by.xpath("/html/body/icsw-layout-menubar/nav/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[2]/a"));
+        var add_new_device_button = element(by.xpath("/html/body/icsw-layout-menubar/nav/div/div/icsw-menu/div/ul/li[1]/ul/li/div/div/ul[1]/li[2]/a"));
         browser.wait(EC.and(EC.elementToBeClickable(add_new_device_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function () {
           add_new_device_button.click();
 
-          var create_device_button = element(by.buttonText("create Device"));
-          browser.wait(EC.and(EC.elementToBeClickable(create_device_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function () {
+          browser.sleep(7500).then(function () {
             deferred.fulfill('ok');
           });
         });
@@ -644,17 +642,17 @@ describe('ICSW Basic Interface Tests:', function() {
       var icsw_homepage = new icswHomepage();
       icsw_homepage.get().then(function () {
         goto_add_new_device_page(icsw_homepage).then(function () {
-          var create_device_button = element(by.buttonText("create Device"));
-
           var fqdn_field = element(by.model('device_data.full_name'));
           var devicegroup_field = element(by.model('device_data.device_group'));
           var comment_field = element(by.model('device_data.comment'));
+          var ip_field = element(by.model('device_data.ip'));
 
           var promises = [];
 
           promises.push(fqdn_field.clear());
           promises.push(devicegroup_field.clear());
           promises.push(comment_field.clear());
+          promises.push(ip_field.clear());
 
           protractor.promise.all(promises).then(function () {
             promises.length = 0;
@@ -662,12 +660,15 @@ describe('ICSW Basic Interface Tests:', function() {
             var fqdn = "local-icsw-server";
             var devicegroup = "init_workstations";
             var comment = "testcomment";
+            var ip = "127.0.0.1";
 
             promises.push(fqdn_field.sendKeys(fqdn));
             promises.push(devicegroup_field.sendKeys(devicegroup));
             promises.push(comment_field.sendKeys(comment));
+            promises.push(ip_field.sendKeys(ip));
 
             protractor.promise.all(promises).then(function () {
+              var create_device_button = element(by.buttonText("create Device"));
               create_device_button.click();
             })
           })
@@ -690,16 +691,19 @@ describe('ICSW Basic Interface Tests:', function() {
           var fqdn_field = element(by.model('device_data.full_name'));
           var devicegroup_field = element(by.model('device_data.device_group'));
           var comment_field = element(by.model('device_data.comment'));
+          var ip_field = element(by.model('device_data.ip'));
 
           var fqdn = "local-icsw-server";
           var devicegroup = "init_workstations";
           var comment = "";
+          var ip = "127.0.0.1";
 
           var promises = [];
 
           promises.push(fqdn_field.clear());
           promises.push(devicegroup_field.clear());
           promises.push(comment_field.clear());
+          promises.push(ip_field.clear());
 
 
           protractor.promise.all(promises).then(function() {
@@ -707,10 +711,9 @@ describe('ICSW Basic Interface Tests:', function() {
 
             promises.push(fqdn_field.sendKeys(fqdn));
             promises.push(devicegroup_field.sendKeys(devicegroup));
+            promises.push(ip_field.sendKeys(ip));
 
             protractor.promise.all(promises).then(function() {
-              var click_elem = element(by.xpath("/html/body/div[3]/div/icsw-device-create-mask/div/h3"));
-
               var foo = element(by.xpath("/html/body/div[3]/div/icsw-device-create-mask/div/form/uib-accordion/div/div[1]"));
               screenshotify(foo, "create_new_device_server", true);
             })
@@ -739,11 +742,11 @@ describe('ICSW Basic Interface Tests:', function() {
             var title = 'Assign Configurations';
 
             browser.wait(EC.titleIs(title)).then(function () {
-              var input_field = element(by.xpath("/html/body/div[3]/div/div/icsw-device-configuration-overview/div[2]/div/input"));
+              var input_field = element(by.xpath("/html/body/div[3]/div/div/icsw-device-config-overview/div[2]/div/input"));
               browser.wait(EC.presenceOf(input_field)).then(function () {
                 browser.wait(EC.and(EC.elementToBeClickable(icsw_homepage.select_all_devices_button), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function () {
                   icsw_homepage.select_device("local-icsw-server").then(function() {
-                    var screenshot_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-configuration-overview/div[2]/uib-accordion/div/div/div[2]/div"));
+                    var screenshot_element = element(by.xpath("/html/body/div[3]/div/div/icsw-device-config-overview/div[2]/uib-accordion/div/div/div[2]/div"));
                     browser.wait(EC.and(EC.presenceOf(screenshot_element), EC.invisibilityOf(icsw_homepage.overlay_element))).then(function() {
                       var config_button = element.all(by.className("glyphicon-minus")).first();
 
