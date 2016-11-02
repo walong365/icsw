@@ -720,7 +720,7 @@ angular.module(
         constructor: () ->
             super()
             @simple_attributes = [
-                "type", "name", "description", "system_template", "parent_template", "user", "enabled",
+                "type", "name", "description", "system_template", "parent_template", "user", "enabled", "multi",
             ]
 ]).service("icswStaticAssetTemplateFieldBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
 

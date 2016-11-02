@@ -928,13 +928,10 @@ monitoring_device_module = angular.module(
                 system_template: false
                 parent_template: null
                 staticassettemplatefield_set: []
-                type: ""
-                types: []
+                type: "standard"
                 multi: false
+                enabled: true
             }
-
-            for static_asset_type in $scope.struct.template_tree.static_asset_type_keys
-                obj.types.push(static_asset_type)
 
             _ok_label = "Create"
         else
@@ -944,6 +941,10 @@ monitoring_device_module = angular.module(
 
         sub_scope = $scope.$new(true)
         sub_scope.edit_obj = obj
+        sub_scope.types = []
+        for static_asset_type in $scope.struct.template_tree.static_asset_type_keys
+            sub_scope.types.push(static_asset_type)
+
         sub_scope.create = create
 
         sub_scope.modify_or_create_field = ($event, as_temp, field, create) ->
@@ -1012,6 +1013,7 @@ monitoring_device_module = angular.module(
         ).then(
             (fin) ->
                 $scope.struct.template_tree.link()
+                $scope.struct.template_tree.add_references()
                 sub_scope.$destroy()
         )
 

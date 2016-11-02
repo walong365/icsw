@@ -96,9 +96,9 @@ device_properties_overview = angular.module(
                 ).then(
                     (data) ->
                         for device_id in device_id_list
-                            console.log(device_id)
+                            # console.log(device_id)
                             device = $scope.struct.device_tree.all_lut[device_id]
-                            console.log(device)
+                            # console.log(device)
 
                             salt_device(device, data[device.idx])
 

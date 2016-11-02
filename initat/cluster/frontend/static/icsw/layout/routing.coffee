@@ -32,36 +32,27 @@ menu_module = angular.module(
 ) ->
     $urlRouterProvider.otherwise("/login")
     icswRouteExtensionProvider.add_route("login")
-    icswRouteExtensionProvider.add_route("main")
-    icswRouteExtensionProvider.add_route("logout")
-    return
-    $stateProvider.state(
-        "main",
+    icswRouteExtensionProvider.add_route(
+        "main"
         {
-            url: "/main"
-            abstract: true
-            templateUrl: "icsw/main.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "ICSW Main page"
-            resolve:
-                user: ["$q", "icswUserService", "icswRouteHelper", "$state", ($q, icswUserService, icswRouteHelper, $state) ->
-                    _defer = $q.defer()
-                    icswUserService.load("router").then(
-                        (user) ->
-                            if user.user.idx
-                                # check rights, acls might still be missing, TODO, Fixme ...
-                                console.log "CR", user, icswRouteHelper.check_rights(user)
-                                icswRouteHelper.check_rights(user)
-                                _defer.resolve(user)
-                            else
-                                $state.go("login")
-                                _defer.reject(user)
-                    )
-                    return _defer.promise
-                ]
-            controller: "icswMainCtrl"
+            user: ["$q", "icswUserService", "icswRouteHelper", "$state", ($q, icswUserService, icswRouteHelper, $state) ->
+                _defer = $q.defer()
+                icswUserService.load("router").then(
+                    (user) ->
+                        if user.user.idx
+                            # check rights, acls might still be missing, TODO, Fixme ...
+                            console.log "CR", user, icswRouteHelper.check_rights(user)
+                            icswRouteHelper.check_rights(user)
+                            _defer.resolve(user)
+                        else
+                            $state.go("login")
+                            _defer.reject(user)
+                )
+                return _defer.promise
+            ]
         }
     )
+    icswRouteExtensionProvider.add_route("logout")
 ]).controller("icswMainCtrl",
 [
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",

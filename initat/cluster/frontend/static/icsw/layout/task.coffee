@@ -48,7 +48,7 @@ angular.module(
             if @id_path? and @id_path
                 @lut[_.get(el, @id_path)] = el
             @idx++
-            console.log @lut, @list
+            # console.log @lut, @list
 
     class icswTaskDef
         # taskdefinition, container for Defined Tasks
@@ -99,7 +99,7 @@ angular.module(
             @$$forward_ok = @_step_idx < @task_def.json.taskStep.length - 1
             @$$backward_ok = @_step_idx > 0
             @active_step = @task_def.json.taskStep[@_step_idx]
-            console.log @active_step
+            # console.log @active_step
             $state.go(@active_step.routeName)
             @$$info_str = " #{@_step_idx + 1} / #{@task_def.json.taskStep.length} "
             _signal()

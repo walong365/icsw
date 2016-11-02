@@ -333,7 +333,7 @@ menu_module = angular.module(
             return _res
     )
 ]).config(["$translateProvider", ($translateProvider) ->
-    console.log $translateProvider.uniformLanguageTag('bcp47').determinePreferredLanguage()
+    $translateProvider.uniformLanguageTag('bcp47').determinePreferredLanguage()
 ]).factory("icswReactMenuFactory",
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",

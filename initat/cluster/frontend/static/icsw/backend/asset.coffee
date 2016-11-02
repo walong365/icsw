@@ -207,6 +207,7 @@ device_asset_module = angular.module(
             @static_assets = []
             for _key in @static_asset_type_keys
                 @static_assets.push([_key, @static_asset_type_lut[_key]])
+            @num_enabled = (true for entry in @list when entry.enabled).length
             @link()
 
         link: () =>
@@ -217,7 +218,7 @@ device_asset_module = angular.module(
                 @salt_template(entry)
 
         salt_template: (entry) =>
-            console.log(entry)
+            # console.log(entry)
             entry.$$num_fields = entry.staticassettemplatefield_set.length
             entry.refs_content = "..."
             entry.num_refs = 0
@@ -330,6 +331,7 @@ device_asset_module = angular.module(
 
         delete_field: (template, field) =>
             d = $q.defer()
+            #noinspection JSUnresolvedVariable
             Restangular.restangularizeElement(null, field, ICSW_URLS.ASSET_STATIC_ASSET_TEMPLATE_FIELD_DETAIL.slice(1).slice(0, -2))
             field.remove(null, {"Content-Type": "application/json"}).then(
                 (ok) =>
@@ -369,29 +371,53 @@ device_asset_module = angular.module(
             return d.promise
 
         # device related calls
-        build_asset_struct: (device) =>
+        build_asset_struct: (device, asset_struct) =>
+            if asset_struct.to_remove?
+                # already init, reset
+                asset_struct.to_remove.length = 0
+                asset_struct.to_add_single.length = 0
+                asset_struct.to_add_multi.length = 0
+            else
+                # not init, add fields
+                # staticassets which can be removed
+                asset_struct.to_remove = []
+                # templates which can be added (single instance)
+                asset_struct.to_add_single = []
+                # templates which can be added (multiple instance)
+                asset_struct.to_add_multi = []
+            # number of assets set
+            asset_struct.num_set = 0
+            # number available (not set or templates which allow multiple instances)
+            asset_struct.num_available = 0
             # return populated asset struture
             _asset_lut = {}
             for _as in device.staticasset_set
-                _asset_lut[_as.static_asset_template] = _as
+                asset_struct.num_set++
+                # salt it
                 @salt_device_asset(_as)
+                _as_idx = _as.static_asset_template
+                if _as_idx not of _asset_lut
+                    # for static asset templates where multiple instances are allowed
+                    _asset_lut[_as_idx] = []
+                _asset_lut[_as_idx].push(_as)
+                asset_struct.to_remove.push(_as)
+            # console.log "* asset_struct=", asset_struct
 
-            _asset_struct = {
-                used: []
-                unused: []
-                num_available: 0
-            }
             for _asset in @list
-                if _asset.idx of _asset_lut
-                    _asset_struct.used.push(_asset_lut[_asset.idx])
-                else
-                    _asset_struct.unused.push(_asset)
-            _asset_struct.num_available = (entry for entry in _asset_struct.unused when entry.enabled).length
-            return _asset_struct
+                # console.log "a=", _asset
+                if _asset.enabled
+                    if _asset.multi
+                        asset_struct.to_add_multi.push(_asset)
+                        asset_struct.num_available++
+                    else if _asset.idx not of _asset_lut
+                        asset_struct.to_add_single.push(_asset)
+                        asset_struct.num_available++
 
         salt_device_asset: (as) =>
             # salts StaticAsset of device
             as.$$static_asset_template = @lut[as.static_asset_template]
+            as.$$template_name = as.$$static_asset_template.name
+            as.$$template_type = as.$$static_asset_template.type
             _used_fields = []
             for _f in as.staticassetfieldvalue_set
                 _f.$$field = @field_lut[_f.static_asset_template_field]

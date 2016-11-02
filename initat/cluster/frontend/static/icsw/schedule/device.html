@@ -311,9 +311,9 @@
                     <th>Type</th>
                     <th>User</th>
                     <th>Enabled</th>
+                    <th>Multi</th>
                     <th>#Refs</th>
                     <th>#Fields</th>
-                    <th>Multi</th>
                     <th>Created</th>
                     <th>Actions</th>
                 </tr>
@@ -334,9 +334,8 @@
                         <span ng-show="obj.system_template" class="label label-success">system</span>
                         <span ng-show="!obj.system_template">{{ struct.user_group_tree.user_lut[obj.user].login }}</span>
                     </td>
-                    <td class="text-center">
-                        {{ obj.enabled | yesno1 }}
-                    </td>
+                    <td class="text-center" ng-bind-html="obj.enabled | yesno4">
+                    <td class="text-center" ng-bind-html="obj.multi | yesno3">
                     <td class="text-center">
                         <button ng-show="obj.num_refs" uib-popover-html="obj.refs_content" type="button" class="btn btn-xs btn-info">
                             {{ obj.num_refs }} <span class="fa fa-info-circle fa_icsw"></span>
@@ -346,7 +345,6 @@
                     <td class="text-center">
                         {{ obj.$$num_fields }}
                     </td>
-                    <td class="text-center" ng-bind-html="obj.multi | yesno3">
                     </td>
                     <td class="text-center">
                         {{ obj.$$created }}
@@ -384,12 +382,19 @@
             </div>
             <div class="form-group">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
-                    Template Type<span class="asteriskField">*</span>
+                    Template Type
                 </label>
                 <div class="controls col-xs-7">
-                    <input class="form-control maxwidth500" uib-typeahead="value for value in edit_obj.types" ng-model="edit_obj.type"/>
+                    <input
+                        class="form-control maxwidth500"
+                        uib-typeahead="value for value in types"
+                        ng-model="edit_obj.type"
+                    />
                 </div>
             </div>
+        </fieldset>
+        <fieldset ng-if="!edit_obj.num_refs">
+            <legend>Base flags</legend>
             <div class="form-group">
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Allow multiple instances
@@ -398,8 +403,6 @@
                     <icsw-tools-yes-no flag="edit_obj.multi"></icsw-tools-yes-no>
                 </div>
             </div>
-        </fieldset>
-        <div ng-if="!edit_obj.num_refs">
             <div class="form-group">
                 <label class="col-sm-3 control-label icsw-formlabel" title="Template is enabled">
                     Enabled
@@ -408,7 +411,7 @@
                     <icsw-tools-yes-no flag="edit_obj.enabled"></icsw-tools-yes-no>
                 </div>
             </div>
-        </div>
+        </fieldset>
         <fieldset ng-if="!create">
             <legend>
                 Fields

@@ -374,7 +374,7 @@ angular.module(
                         if _log
                             console.error "missing attribute #{_name} in dashboardEntry for", @
 
-    _add_route = (name) ->
+    _add_route = (name, resolve_map) ->
         # console.log ICSW_CONFIG_JSON
         # reads from ICSW_CONFIG_JSON and adds to $stateProvider
         if name not of ICSW_CONFIG_JSON.routes
@@ -385,6 +385,8 @@ angular.module(
         _ext = new icswRouteExtension(_data.icswData)
         _struct.entries.push(_ext)
         _state_data = angular.copy(_data.stateData)
+        if resolve_map?
+            _state_data.resolve = resolve_map
         _state_data.icswData = _ext
         $stateProvider.state(name, _state_data)
         return _ext
@@ -405,9 +407,9 @@ angular.module(
         #    _struct.entries.push(_ext)
         #    return _ext
 
-        add_route: (name) ->
+        add_route: (name, resolve_map) ->
             # could be omitted be adding all states found
-            return _add_route(name)
+            return _add_route(name, resolve_map)
     }
 ]).service("icswRouteHelper",
 [
