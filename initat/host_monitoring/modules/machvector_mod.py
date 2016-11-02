@@ -33,7 +33,9 @@ from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, process_tools, server_command, config_store
 from ..constants import MACHVECTOR_CS_NAME
 
-RELOAD_MACHVECTOR = False
+from threading import Lock
+
+MACHINE_VECTOR = None
 
 class _general(hm_classes.hm_module):
     class Meta:
@@ -61,6 +63,8 @@ class _general(hm_classes.hm_module):
 
     def _init_machine_vector(self):
         self.machine_vector = machine_vector(self)
+        global MACHINE_VECTOR
+        MACHINE_VECTOR = self.machine_vector
 
     def init_machine_vector(self, mvect):
         pass
@@ -120,12 +124,15 @@ class graph_setup_command(hm_classes.hm_command):
         self.parser.add_argument("--target_ip", dest="target_ip", type=str)
 
     def __call__(self, srv_com, cur_ns):
-        print cur_ns.send_name
-        print cur_ns.target_ip
-        print "call called"
+        if cur_ns.send_name:
+            send_name = cur_ns.send_name
+        else:
+            send_name = srv_com['send_name'].text
 
-        global RELOAD_MACHVECTOR
-        RELOAD_MACHVECTOR = True
+        if cur_ns.target_ip:
+            target_ip = cur_ns.target_ip
+        else:
+            target_ip = srv_com['target_ip'].text
 
         cs = config_store.ConfigStore(
             MACHVECTOR_CS_NAME,
@@ -134,37 +141,45 @@ class graph_setup_command(hm_classes.hm_command):
             access_mode=config_store.AccessModeEnum.LOCAL,
             fix_access_mode=True,
         )
+
+
+        print send_name
+        print target_ip
         print cs.keys()
 
         next_free_id = 0
         for send_id in cs.keys():
             _struct = cs[send_id]
             if isinstance(_struct, dict):
-                next_free_id = max(int(send_id), next_free_id)
-
-        next_free_id += 1
+                next_free_id += 1
+                if _struct['target'] == target_ip and _struct['send_name'] == send_name:
+                    return
 
         _dict = {
-            "target": cur_ns.target_ip,
+            "target": target_ip,
             "send_every": 30,
             "enabled": True,
-            "immediate": False,
-            "send_name": cur_ns.send_name,
+            "immediate": True,
+            "send_name": send_name,
             "full_info_every": 10,
             "port": 8002,
             "format": "xml"
         }
 
+        print next_free_id
+
         cs["{:d}".format(next_free_id)] = _dict
         cs.write()
 
+        MACHINE_VECTOR.reload()
+
     def interpret(self, srv_com, cur_ns):
-        print srv_com
         return limits.mon_STATE_OK, "lol"
 
 
 class machine_vector(object):
     def __init__(self, module):
+        self.lock = Lock()
         self.module = module
         # actual dictionary, including full-length dictionary keys
         self.__act_dict = {}
@@ -294,12 +309,12 @@ class machine_vector(object):
             self.cs.write()
 
         p_pool = self.module.main_proc
+        p_pool.unregister_timer(self._send_vector)
         for send_id in self.cs.keys():
             _struct = self.cs[send_id]
             if isinstance(_struct, dict):
                 if _struct["enabled"]:
                     _struct["sent"] = 0
-                    p_pool.unregister_timer(self._send_vector)
                     p_pool.register_timer(
                         self._send_vector,
                         _struct.get("send_every", 30),
@@ -337,8 +352,10 @@ class machine_vector(object):
         self.cs.write()
 
     def reload(self):
+        self.lock.acquire()
         self.log("reloading machine vector")
         self.read_config()
+        self.lock.release()
 
     def _remove_old_dirs(self):
         # delete external directories
@@ -358,9 +375,11 @@ class machine_vector(object):
                 self.log("removed old external directory {}".format(old_dir))
 
     def _send_vector(self, *args, **kwargs):
+        self.lock.acquire()
         send_id = args[0]
         _struct = self.cs[send_id]
         print _struct
+        print send_id
         _p_until = _struct.get("pause_until", 0)
         cur_time = int(time.time())
         # print "_", _p_until, cur_time
@@ -428,10 +447,7 @@ class machine_vector(object):
                 )
                 _struct["pause_until"] = _w_time
         self.cs[send_id] = _struct
-        global RELOAD_MACHVECTOR
-        if RELOAD_MACHVECTOR:
-            RELOAD_MACHVECTOR = False
-            self.reload()
+        self.lock.release()
 
     def close(self):
         for _s_id, t_sock in self.__socket_dict.iteritems():

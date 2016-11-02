@@ -856,7 +856,7 @@ from initat.cluster.backbone.models import MachineVector
 from initat.cluster.backbone.models import mon_check_command
 
 
-class device_completion(View):
+class DeviceCompletion(View):
     @method_decorator(login_required)
     def post(self, request):
         device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
@@ -909,4 +909,46 @@ class device_completion(View):
 
         return HttpResponse(
             json.dumps(info_dict)
+        )
+
+from initat.icsw.service.instance import InstanceXML
+from initat.tools import logging_tools, process_tools, server_command, net_tools
+from initat.cluster.backbone.models import config
+
+class SimpleGraphSetupGetData(View):
+    def post(self, request):
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
+
+        collectd_devices = [obj.device.idx for obj in config.objects.get(name="rrd_collector").device_config_set.all()]
+
+
+
+
+
+
+class SimpleGraphSetup(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
+
+        devices = device.objects.filter(idx__in=device_pks)
+
+        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+
+        collectd_devices = [obj.device for obj in config.objects.get(name="rrd_collector").device_config_set.all()]
+        print(collectd_devices)
+
+        for _device in devices:
+            for collectd_device in collectd_devices:
+                new_con = net_tools.ZMQConnection(
+                    "graph_setup_{:d}".format(_device.idx),
+                )
+
+                conn_str = "tcp://{}:{:d}".format(_device.all_ips()[0], hm_port)
+
+                srv_com = server_command.srv_command(command="graph_setup", send_name=_device.full_name, target_ip=collectd_device.all_ips()[0])
+                new_con.add_connection(conn_str, srv_com)
+
+        return HttpResponse(
+            json.dumps([])
         )

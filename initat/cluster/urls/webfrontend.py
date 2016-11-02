@@ -195,7 +195,8 @@ boot_patterns = [
 ]
 
 device_patterns = [
-    url("^device_completion$", device_views.device_completion.as_view(), name="device_completion"),
+    url("^device_completion$", device_views.DeviceCompletion.as_view(), name="device_completion"),
+    url("^simple_graph_setup$", device_views.SimpleGraphSetup.as_view(), name="simple_graph_setup"),
     # url("^device_tree$", device_views.device_tree.as_view(), name="tree"),
     # url("^device_tree_smart$", device_views.device_tree_smart.as_view(), name="tree_smart"),
     url("^select_parents$", device_views.select_parents.as_view(), name="select_parents"),

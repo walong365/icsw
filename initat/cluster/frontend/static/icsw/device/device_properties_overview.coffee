@@ -150,6 +150,8 @@ device_properties_overview = angular.module(
             heading = "Location Data"
         else if setup_type == 2
             heading = "Asset Data"
+        else if setup_type == 3
+            heading = "Graphing Setup"
 
         o = {
             type: setup_type
@@ -189,4 +191,17 @@ device_properties_overview = angular.module(
     $scope.show_device = ($event, dev) ->
         DeviceOverviewService($event, [dev])
 
+    $scope.setup_graphing = (dev) ->
+        console.log(dev)
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
+                data:
+                    device_pks: [dev.idx]
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                console.log(data)
+        )
 ])
