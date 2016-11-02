@@ -532,7 +532,12 @@ if __name__ == "__main__":
         "ab": 4,
         "c": True,
     }
+    cs["xqe"] = {
+        "ab": 4,
+        "c": True,
+    }
     cs["x"] = "la"
     print(cs.show())
     print(cs["awqe"])
+    print(cs["xqe"])
     print(cs.keys())
