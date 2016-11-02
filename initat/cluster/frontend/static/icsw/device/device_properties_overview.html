@@ -17,7 +17,11 @@
          }
     </style>
     <div class="container-fluid">
-        <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching data from server ...</div>
+        <div
+            uib-alert
+            class="alert-warning"
+            ng-show="!struct.data_loaded">Fetching data from server ...
+        </div>
         <div ng-if="struct.data_loaded">
             <uib-tabset>
                 <uib-tab ng-click="perform_lazy_refresh()">
@@ -47,6 +51,7 @@
                                 <th st-sort="name">Name</th>
                                 <th st-sort="device_group_name">Group</th>
                                 <th st-sort="$$date_created" st-sort-default="reverse">Created at</th>
+                                <th>Creator</th>
                                 <th st-sort="$$monitoring_checks_availability_class" class="text-center">Monitoring Checks</th>
                                 <th st-sort="$$location_data_availability_class" class="text-center">Location Data</th>
                                 <th st-sort="$$asset_data_availability_class" class="text-center">Asset Data</th>
@@ -71,13 +76,16 @@
 
                         <tbody>
                             <tr ng-repeat="obj in entries_displayed">
-                                <td>{{ obj.full_name }}</td>
+                                <td>
+                                    <button type="button" class="btn btn-xs btn-success" ng-click="show_device($event, obj)">{{ obj.full_name }}</button>
+                                </td>
                                 <td>{{ obj.device_group_name }}</td>
-                                <td>{{ obj.$$date_created }}</td>
+                                <td class="text-center">{{ obj.$$date_created }}</td>
+                                <td class="text-center">{{ obj.$$creator }}</td>
                                 <td class="text-center"><div ng-class="obj.$$monitoring_checks_availability_class"><strong><a href="" ng-click='open_in_new_tab(obj, 0)'>{{ obj.$$monitoring_checks_availability_text }}</a></strong></div></td>
                                 <td class="text-center"><div ng-class="obj.$$location_data_availability_class"><strong><a href="" ng-click='open_in_new_tab(obj, 1)'>{{ obj.$$location_data_availability_text }}</a></strong></div></td>
                                 <td class="text-center"><div ng-class="obj.$$asset_data_availability_class"><strong><a href="" ng-click='open_in_new_tab(obj, 2)'>{{ obj.$$asset_data_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="obj.$$graphing_data_availability_class"><strong>{{ obj.$$graphing_data_availability_text }}</strong></div></td>
+                                <td class="text-xcenter"><div ng-class="obj.$$graphing_data_availability_class"><strong>{{ obj.$$graphing_data_availability_text }}</strong></div></td>
                                 <td>
                                     <div class="progress">
                                         <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"

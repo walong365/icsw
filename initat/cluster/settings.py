@@ -315,7 +315,8 @@ ADDITIONAL_ANGULAR_APPS = []
 # ADDITIONAL_URLS = []
 ICSW_ADDITIONAL_JS = []
 ICSW_ADDITIONAL_HTML = []
-ICSW_ADDITIONAL_MENU = []
+# dict:
+ICSW_ADDITIONAL_APPS = {}
 
 # my authentication backend
 AUTHENTICATION_BACKENDS = (
@@ -343,7 +344,9 @@ for sub_dir in os.listdir(dir_name):
                         raise
                     else:
                         ICSW_ADDON_APPS.append(sub_dir)
-                        ICSW_ADDITIONAL_MENU.append(os.path.join(sub_dir, "menu", "menu.xml"))
+                        ICSW_ADDITIONAL_APPS[sub_dir] = {
+                            "config": os.path.join(sub_dir, "config", "config.xml")
+                        }
                         ADDITIONAL_ANGULAR_APPS.extend(
                             [_el.attrib["name"] for _el in _tree.findall(".//app")]
                         )

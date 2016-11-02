@@ -380,12 +380,6 @@ angular.module(
         state_list: _struct.icsw_states 
     }
 
-    $scope.get_header_class = (state) ->
-        return "fa #{state.icswData.menuHeader.icon}"
-
-    $scope.get_entry_class = (state) ->
-        return "fa #{state.icswData.menuEntry.icon}"
-
     $scope.go = ($event, state) ->
         $state.go(state)
 

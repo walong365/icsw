@@ -11,9 +11,8 @@
         <div class="container-fluid">
             <icsw-menu-progress-bars user="struct.current_user"></icsw-menu-progress-bars>
 
-            <icsw-menu icsw-menu-side="left"></icsw-menu>
-
             <div class="collapse navbar-collapse">
+                <icsw-menu icsw-menu-side="left"></icsw-menu>
                 <!-- @if DEBUG -->
                 <form class="navbar-form navbar-left" ng-class="struct.overall_style">
                     <div class="input-group">
@@ -34,11 +33,8 @@
                     </div>
                 </form>
                 <!-- @endif -->
-                <icsw-system-ova-display></icsw-system-ova-display>
-                <icsw-background-job-info></icsw-background-job-info>
-                <icsw-menu
-                    icsw-menu-side="right"
-                ></icsw-menu>
+                <icsw-right-menu></icsw-right-menu>
+                <!-- <icsw-background-job-info></icsw-background-job-info>-->
             </div>
         </div>
     </nav>

@@ -62,7 +62,7 @@
 <script type="text/ng-template" id="icsw.device.info.tab.tab_setup">
     <uib-tab select="activate('$$modify')">
         <uib-tab-heading>
-            Modify <span class="fa fa-wrench"></span>
+            Config <span class="fa fa-wrench"></span>
         </uib-tab-heading>
         <icsw-device-info-tab-modify></icsw-device-info-tab-modify>
     </uib-tab>
@@ -120,7 +120,8 @@
 
 <script type="text/ng-template" id="icsw.device.info.form">
     <fieldset>
-        <legend>Device Information for: '{{ edit_obj.$$full_device_name }}'
+        <legend>
+            Device Information for: '{{ edit_obj.$$full_device_name }}'
             <img ng-if="edit_obj.mon_ext_host" ng-src="{{ edit_obj.$$image_source }}" width="16" style="margin-left:5px;"></img>
         </legend>
         <div class="form-group row">

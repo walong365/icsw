@@ -329,7 +329,7 @@
 <script type="text/ng-template" id="icsw.device.static.asset.overview">
     <fieldset>
         <legend>
-            Static Inventory Entries ({{ struct.asset_struct.used.length }} of {{ struct.asset_tree.list.length }} set)
+            Static Inventory Entries ({{ struct.asset_struct.num_set }} used)
             <icsw-tools-button
                 type="show"
                 size="xs"
@@ -338,23 +338,37 @@
             ></icsw-tools-button>
         </legend>
         <div ng-show="struct.shown">
-           {{ struct.asset_struct.used.length }} Inventory Entries Shown
-            <icsw-tools-button
-                type="create"
-                size="xs"
-                value="add Inventory Entry"
-                ng-show="struct.asset_struct.unused.length && struct.asset_struct.num_available"
-                ng-click="add_assets($event)"
-            ></icsw-tools-button>
+            <h4>
+                {{ struct.asset_struct.to_remove.length }} Inventory Entries Shown
+                <icsw-tools-button
+                    type="create"
+                    size="xs"
+                    value="add Inventory Entry"
+                    ng-show="struct.asset_struct.num_available"
+                    ng-click="add_assets($event)"
+                ></icsw-tools-button>
+            </h4>
             <table
+                st-table="assets_shown"
+                st-safe-src="struct.asset_struct.to_remove"
                 class="table table-condensed table-hover table-striped"
                 style="width:auto;"
-                ng-show="struct.asset_struct.used.length"
+                ng-show="struct.asset_struct.to_remove.length"
             >
                 <thead>
                     <tr>
-                        <th>Name</th>
-                        <th>Type</th>
+                        <td colspan="99">
+                            <div
+                                icsw-tools-pagination
+                                st-items-by-page="20"
+                                st-displayed-pages="11"
+                                possible-items-by-page="10,20,50,100"
+                            ></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort="$$template_name">Name</th>
+                        <th st-sort="$$template_type">Type</th>
                         <th>#Fields</th>
                         <th>#Unused</th>
                         <th>FieldInfo</th>
@@ -362,9 +376,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr ng-repeat="asset in struct.asset_struct.used">
-                        <td>{{ asset.$$static_asset_template.name }}</td>
-                        <td>{{ asset.$$static_asset_template.$$staticAssetType }}</td>
+                    <tr ng-repeat="asset in assets_shown">
+                        <td>{{ asset.$$template_name }}</td>
+                        <td>{{ asset.$$template_type }}</td>
                         <td class="text-center">{{ asset.staticassetfieldvalue_set.length }}</td>
                         <td class="text-center">
                             <button ng-show="asset.$$unused_fields.length" ng-click="add_unused_fields($event, asset)" type="button" class="btn btn-xs btn-info">
@@ -388,14 +402,28 @@
 
 <script type="text/ng-template" id="icsw.device.static.asset.add">
     <h3>Please select new Template(s)</h3>
-    <div ng-repeat="asset in unused_list" class="form-group row">
-        <label class="control-label col-sm-6">
-            {{ asset.name }} ({{ asset.type }})
-        </label>
-        <div class="controls col-sm-6">
-            <icsw-tools-yes-no flag="asset.$$create"/>
+    <fieldset ng-if="unused_single_list.length">
+        <legend>Single instance templates</legend>
+        <div ng-repeat="asset in unused_single_list" class="form-group row">
+            <label class="control-label col-sm-6">
+                {{ asset.name }} ({{ asset.type }})
+            </label>
+            <div class="controls col-sm-6">
+                <icsw-tools-yes-no flag="asset.$$create"/>
+            </div>
         </div>
-    </div>
+    </fieldset>
+    <fieldset ng-if="unused_multi_list.length">
+        <legend>Multi instance templates</legend>
+        <div ng-repeat="asset in unused_multi_list" class="form-group row">
+            <label class="control-label col-sm-6">
+                {{ asset.name }} ({{ asset.type }})
+            </label>
+            <div class="controls col-sm-6">
+                <icsw-tools-yes-no flag="asset.$$create"/>
+            </div>
+        </div>
+    </fieldset>
 </script>
 
 <script type="text/ng-template" id="icsw.device.static.asset.add.unused">

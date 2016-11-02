@@ -46,7 +46,7 @@
 angular.module(
     "icsw.menu", []
 ).constant(
-    "ICSW_MENU_JSON", {
+    "ICSW_CONFIG_JSON", {
     // <!-- ICSWAPPS:MENU:START -->
     // <!-- ICSWAPPS:MENU:END -->
     }
@@ -59,6 +59,7 @@ icsw_app = angular.module(
         "ngResource",
         "ngCookies",
         "ngSanitize",
+        "pascalprecht.translate",
         "ngPromiseExtras",
         "ui.bootstrap",
         "ui.router",
@@ -72,6 +73,7 @@ icsw_app = angular.module(
         "icsw.tools.reacttree",
         "icsw.layout.theme",
         "icsw.layout.menu",
+        "icsw.layout.task",
         "icsw.tools",
         "icsw.login",
         "icsw.layout.routing",
@@ -106,6 +108,10 @@ icsw_app = angular.module(
         "icsw.device.config",
         "icsw.device.connection",
         "icsw.device.category",
+        "icsw.device.monconfig",
+        "icsw.device.location",
+        "icsw.device.status_history",
+        "icsw.device.partition",
         "icsw.livestatus.livestatus",
         "icsw.livestatus.comp.sources",
         "icsw.livestatus.comp.connect",
@@ -118,10 +124,6 @@ icsw_app = angular.module(
         "icsw.livestatus.comp.tabular",
         "icsw.livestatus.comp.elements",
         "icsw.livestatus.comp.info",
-        "icsw.device.monconfig",
-        "icsw.device.location",
-        "icsw.device.status_history",
-        "icsw.device.partition",
         "icsw.license.overview",
         "icsw.monitoring.overview",
         "icsw.monitoring.monitoring_basic",

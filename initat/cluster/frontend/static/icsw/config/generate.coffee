@@ -115,7 +115,6 @@ config_gen_module = angular.module(
                         $scope
                         {
                             show_selection_buttons: false
-                            show_icons: true
                             show_select: false
                             show_descendants: false
                         }

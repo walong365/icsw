@@ -68,7 +68,7 @@ def check_integer(inst, attr_name, **kwargs):
     cur_val = getattr(inst, attr_name)
     min_val, max_val = (
         kwargs.get("min_val", None),
-        kwargs.get("max_val", None)
+        kwargs.get("max_val", None),
     )
     if cur_val is None and kwargs.get("none_to_zero", False):
         cur_val = 0

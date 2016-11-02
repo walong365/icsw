@@ -208,23 +208,6 @@
     </ul>
 </script>
 
-<script type="text/ng-template" id="icsw.system.ova.display">
-    <ul class="nav navbar-nav navbar-right">
-        <li class="dropdown">
-            <div ng-if="struct.data_ok" style="margin-top: 14px;">
-                <span
-                    class="cursorpointer"
-                    ng-class="struct.ocs.info_class"
-                    title="Ova usage counter"
-                    ng-click="go_to_license($event)"
-                >
-                    {{ struct.ocs.info_str }}
-                </span>
-            </div>
-        </li>
-    </ul>
-</script>
-
 <script type="text/ng-template" id="icsw.system.ova.graph">
     <icsw-rrd-graph-remote
         ng-if="struct.base_data_set"

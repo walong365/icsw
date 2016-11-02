@@ -244,7 +244,7 @@ class ThemeViewSet(viewsets.ViewSet):
                 "name": "Default",
             },
         ]
-        if settings.ICSW_OVERALL_STYLE != "condensed":
+        if settings.ICSW_OVERALL_STYLE != "condensed" or True:
             # shitty styles only for non-condensed mode
             _t_list.extend(
                 [

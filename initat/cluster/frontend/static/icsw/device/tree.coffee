@@ -296,6 +296,7 @@ angular.module(
         # console.log "ss=", sub_scope
         sub_scope.edit_obj = obj
         sub_scope.struct = $scope.struct
+        sub_scope.edit_flags = {multi: false}
         # init form
         icswComplexModalService(
             {
@@ -328,7 +329,10 @@ angular.module(
                                         if name_m
                                             new_name = ("0" for _idx in [0..name_m[2].length]).join("") + String(parseInt(name_m[2]) + 1)
                                             sub_scope.edit_obj.name = name_m[1] + new_name.substr(new_name.length - name_m[2].length) + name_m[3]
-                                        d.resolve("device created")
+                                        if sub_scope.edit_flags.multi
+                                            d.reject("device created, continue")
+                                        else
+                                            d.resolve("device created")
                                     (notok) ->
                                         d.reject("device not created")
                                 )

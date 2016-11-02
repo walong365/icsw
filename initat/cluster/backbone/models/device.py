@@ -184,7 +184,6 @@ class device(models.Model):
     )
     partdev = models.CharField(max_length=192, blank=True)
     fixed_partdev = models.IntegerField(null=True, blank=True)
-    bz2_capable = models.IntegerField(null=True, blank=True)
     new_state = models.ForeignKey("backbone.status", null=True, db_column="newstate_id", blank=True)
     rsync = models.BooleanField(default=False)
     rsync_compressed = models.BooleanField(default=False)
@@ -204,7 +203,6 @@ class device(models.Model):
     dhcp_write = models.NullBooleanField(default=False)
     dhcp_written = models.NullBooleanField(default=False)
     dhcp_error = models.CharField(max_length=765, blank=True)
-    propagation_level = models.IntegerField(default=0, blank=True)
     last_install = models.CharField(max_length=192, blank=True)
     last_boot = models.CharField(max_length=192, blank=True)
     last_kernel = models.CharField(max_length=192, blank=True)
@@ -215,12 +213,12 @@ class device(models.Model):
     # performance data tracking, also needed for IPMI and SNMP active monitoring
     enable_perfdata = models.BooleanField(default=True, verbose_name="enable perfdata, check IPMI, SNMP and WMI")
     flap_detection_enabled = models.BooleanField(default=True)
-    show_in_bootcontrol = models.BooleanField(default=True)
     # not so clever here, better in extra table, FIXME
     # cpu_info = models.TextField(blank=True, null=True)
     # machine uuid, cannot be unique due to MySQL problems with unique TextFields
     uuid = models.TextField(default="", max_length=64)
     date = models.DateTimeField(auto_now_add=True)
+    creator = models.ForeignKey("backbone.user", null=True)
     # slaves
     master_connections = models.ManyToManyField("self", through="cd_connection", symmetrical=False, related_name="slave_connections")
     # automap root for nagvis

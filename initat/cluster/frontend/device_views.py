@@ -43,7 +43,7 @@ from initat.cluster.backbone.models import device_group, device, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
     SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
-    AssetBatch, DeviceScanLock, device_variable_scope, StaticAsset, DeviceClass, \
+    DeviceScanLock, device_variable_scope, StaticAsset, DeviceClass, \
     dvs_allowed_name
 from initat.cluster.backbone.models import get_change_reset_list
 from initat.cluster.backbone.models.functions import can_delete_obj
@@ -663,6 +663,7 @@ class create_device(permission_required_mixin, View):
                         mon_resolve_name=device_data["resolve_via_ip"],
                         comment=device_data["comment"],
                         mon_ext_host=cur_img,
+                        creator=request.user,
                     )
                 except:
                     request.xml_response.error(

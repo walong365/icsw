@@ -31,38 +31,25 @@ menu_module = angular.module(
     $stateProvider, $urlRouterProvider, icswRouteExtensionProvider,
 ) ->
     $urlRouterProvider.otherwise("/login")
-    $stateProvider.state(
-        "login"
+    icswRouteExtensionProvider.add_route("login")
+    icswRouteExtensionProvider.add_route(
+        "main"
         {
-            url: "/login",
-            templateUrl: "icsw/login.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "ICSW Login"
-        }
-    ).state(
-        "main",
-        {
-            url: "/main"
-            abstract: true
-            templateUrl: "icsw/main.html"
-            icswData: icswRouteExtensionProvider.create
-                pageTitle: "ICSW Main page"
-            resolve:
-                user: ["$q", "icswUserService", "icswRouteHelper", "$state", ($q, icswUserService, icswRouteHelper, $state) ->
-                    _defer = $q.defer()
-                    icswUserService.load("router").then(
-                        (user) ->
-                            if user.user.idx
-                                # check rights, acls might still be missing, TODO, Fixme ...
-                                icswRouteHelper.check_rights(user)
-                                _defer.resolve(user)
-                            else
-                                $state.go("login")
-                                _defer.reject(user)
-                    )
-                    return _defer.promise
-                ]
-            controller: "icswMainCtrl"
+            user: ["$q", "icswUserService", "icswRouteHelper", "$state", ($q, icswUserService, icswRouteHelper, $state) ->
+                _defer = $q.defer()
+                icswUserService.load("router").then(
+                    (user) ->
+                        if user.user.idx
+                            # check rights, acls might still be missing, TODO, Fixme ...
+                            console.log "CR", user, icswRouteHelper.check_rights(user)
+                            icswRouteHelper.check_rights(user)
+                            _defer.resolve(user)
+                        else
+                            $state.go("login")
+                            _defer.reject(user)
+                )
+                return _defer.promise
+            ]
         }
     )
     icswRouteExtensionProvider.add_route("logout")
@@ -208,18 +195,12 @@ menu_module = angular.module(
                 true
             else
                 icswBreadcrumbs.add_state(to_state)
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_STATE_CHANGED"))
     )
 
     $scope.$on("$stateChangeError", (event, to_state, to_params, from_state, from_params, error) ->
         console.error "error moving to state #{to_state.name} (#{to_state}), error is #{error}"
-        _to_login = true
-        if to_state.icswData?
-            if to_state.icswData.redirectToFromOnError
-                _to_login = false
-        if _to_login
-            $state.go("login")
-        else
-            $state.go(from_state, from_params)
+        $state.go("login")
     )
 ]).directive('icswUpdateTitle',
 [

@@ -2,13 +2,6 @@
     <icsw-device-create-mask ng-cloak></icsw-device-create-mask>
 </script>
 
-<script type="text/ng-template" id="icsw.device.create.icon.template">
-    <a>
-        <img ng-src="{{ match.label.data_image }}" width="16"/>
-        {{ match.label.name }}
-    </a>
-</script>
-
 <script type="text/ng-template" id="icsw.device.create.mask">
     <div class="container-fluid">
         <h3>Create a new Device</h3>
@@ -55,7 +48,7 @@
                             </span>
                         </div>
                     </div>
-                    <div class="form-group" ng-show="rest_data.mon_ext_host">
+                    <div class="form-group" ng-if="struct.mon_ext_host">
                         <label class="control-label col-md-5 icsw-formlabel">Icon</label>
                         <div class="controls col-md-6">
                             <div class="form-inline">
@@ -65,8 +58,8 @@
                                     name="icon"
                                     class="form-control"
                                     ng-model="device_data.icon_name"
-                                    uib-typeahead="value.name as value for value in rest_data.mon_ext_host | filter:{name:$viewValue}"
-                                    uib-typeahead-template-url="icsw.device.create.icon.template"
+                                    uib-typeahead="value as value.name for value in struct.mon_ext_host | filter:{name:$viewValue}"
+                                    typeahead-template-url="icsw.device.create.icon.template"
                                     uib-typeahead-append-to-body="true"
                                 />
                             </div>
@@ -121,4 +114,11 @@
             </uib-accordion>
         </form>
     </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.create.icon.template">
+    <a>
+        <img ng-src="{{ match.model.data_image }}" width="16"/>
+        {{ match.model.name }}
+    </a>
 </script>

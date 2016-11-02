@@ -21,11 +21,11 @@
 
 from __future__ import unicode_literals, print_function
 
+import codecs
 import json
 import os
 import re
 import sys
-import codecs
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
@@ -37,13 +37,13 @@ from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools
 
 
-class MenuRelax(object):
+class ConfigRelax(object):
     def __init__(self):
         _inst = InstanceXML(quiet=True)
         all_instances = sum([_inst.xpath(".//config-enums/config-enum/text()") for _inst in _inst.get_all_instances()], [])
         all_perms = [_perm.perm_name for _perm in csw_permission.objects.all()] + ["$$CHECK_FOR_SUPERUSER"]
         _content = file(
-            "{}/menu_relax.xml".format(os.path.join(settings.FILE_ROOT, "menu")),
+            "{}/config_relax.xml".format(os.path.join(settings.FILE_ROOT, "config")),
             "r",
         ).read()
         _content = _content.replace(
@@ -126,90 +126,81 @@ class FileModify(object):
             new_content.append(line)
         self._content = "\n".join(new_content)
 
-    def route_xml_to_json(self, xml):
-        def _iter_dict(el):
-            if el.tag in ["route", "routeSubGroup"] or el.attrib["type"] == "dict":
-                r_v = {}
-                for _attr_name in el.attrib.iterkeys():
-                    if _attr_name.count("_") == 1:
-                        _name, _type = _attr_name.split("_")
-                        if _type == "bool":
-                            r_v[_name] = True if el.attrib[_attr_name] in ["yes"] else False
-                        elif _type == "int":
-                            r_v[_name] = int(el.attrib[_attr_name])
-                        else:
-                            r_v[_name] = el.attrib[_attr_name]
-                for sub_el in el:
-                    r_v[sub_el.tag] = _iter_dict(sub_el)
-            elif el.attrib["type"] == "list":
-                return [sub_el.text for sub_el in el]
-            return r_v
+    def config_xml_to_json(self, xml):
+        LIST_TEXT_TAGS = {"rights", "licenses", "serviceTypes"}
+        LIST_TAGS = {"menuHeader", "routeSubGroup", "menuEntry", "route", "task", "taskStep"}
+        # use attributes instead of ElementTag as key for parent dict
+        NAME_DICT_TAGS = {
+            "route": "name",
+            "infoText": "language",
+        }
+        APPEND_TEXT_TAGS = {"value"}
+
+        def _iter_dict(parent_el, el):
+            if el.tag is etree.Comment:
+                # filter out comments
+                return
+            # print("***", el.tag)
+            # build local dict
+            r_v = {}
+            for _attr_name in el.attrib.iterkeys():
+                if _attr_name.count("_") == 1:
+                    _name, _type = _attr_name.split("_")
+                else:
+                    # all other attributes are of type str
+                    _name, _type = (_attr_name, "str")
+                if _type == "bool":
+                    r_v[_name] = True if el.attrib[_attr_name] in ["yes"] else False
+                elif _type == "int":
+                    r_v[_name] = int(el.attrib[_attr_name])
+                else:
+                    r_v[_name] = el.attrib[_attr_name]
+            if el.text and el.text.strip():
+                r_v["text"] = el.text.strip()
+            if el.tag in LIST_TEXT_TAGS:
+                # special form of list of text values
+                r_v = []
+                parent_el.setdefault(el.tag, r_v)
+            elif el.tag in NAME_DICT_TAGS:
+                # use name of r_v as dict key
+                parent_el[r_v[NAME_DICT_TAGS[el.tag]]] = r_v
+            elif el.tag in LIST_TAGS:
+                parent_el.setdefault(el.tag, []).append(r_v)
+            elif el.tag in APPEND_TEXT_TAGS:
+                # child of LIST_TEXT_TAG
+                parent_el.append(el.text)
+            else:
+                parent_el[el.tag] = r_v
+            for sub_el in el:
+                _iter_dict(r_v, sub_el)
 
         _res = {}
-        for route in xml:
-            if route.tag is etree.Comment:
-                continue
+        for el in xml:
             try:
-                _res[route.attrib["name"]] = _iter_dict(route)
+                _iter_dict(_res, el)
             except:
                 print(
                     "Error handling the element '{}': {}".format(
-                        etree.tostring(route, pretty_print=True),
+                        etree.tostring(el, pretty_print=True),
                         process_tools.get_except_info(),
                     )
                 )
                 raise
-        return ["    {}".format(_line) for _line in json.dumps(_res, indent=4).split("\n")[1:-1]]
+        return [
+            "    {}".format(_line) for _line in json.dumps(_res, indent=4).split("\n")[1:-1]
+        ]
 
-    def transform(self, in_xml):
-        # should be a XSLT transformation
-        new_xml = E.routes()
-        for menu_idx, group in enumerate(in_xml.findall(".//routeGroup")):
-            key_str = group.attrib["name"]
-            menu_head_el = group.find(".//menuHeader")
-            if menu_head_el is not None:
-                menu_head_el.attrib["ordering_int"] = "{:d}".format((menu_idx + 1) * 10)
-                menu_head_el.attrib["key_str"] = key_str
-            _header_added = False
-            for sub_idx, sub_group_el in enumerate(group.xpath(".//routeSubGroup")):
-                subgroup_str = "{}_{}".format(key_str, sub_group_el.attrib["name_str"].lower())
-                sub_group_el.attrib["ordering_int"] = "{:d}".format((sub_idx + 1) * 10)
-                sub_group_el.attrib["groupkey_str"] = key_str
-                sub_group_el.attrib["subgroupkey_str"] = subgroup_str
-                _sub_group_added = False
-                for route_idx, route in enumerate(sub_group_el.findall(".//route")):
-                    _me = route.find(".//icswData/menuEntry")
-                    if _me is not None:
-                        if menu_head_el is None:
-                            raise ValueError("No menu_head_el defined")
-                        _data = route.find(".//icswData")
-                        _me.attrib["groupkey_str"] = key_str
-                        _me.attrib["subgroupkey_str"] = subgroup_str
-                        _me.attrib["ordering_int"] = "{:d}".format((route_idx + 1) * 10)
-                        if not _sub_group_added:
-                            _sub_group_added = True
-                            _data.append(
-                                E.routeSubGroup(
-                                    **{_key: _value for _key, _value in sub_group_el.attrib.iteritems()}
-                                )
-                            )
-                        if not _header_added:
-                            # add header to first route entry with menuEntry
-                            _header_added = True
-                            _data.append(
-                                E.menuHeader(
-                                    **{_key: _value for _key, _value in menu_head_el.attrib.iteritems()}
-                                )
-                            )
-                    new_xml.append(route)
-
-        return new_xml
-
-    def read_menus(self, mp_list):
+    def read_configs(self, mp_list):
+        # mp_list is a list of tuples (app, config.path)
         # relax instance
-        _my_relax = MenuRelax()
-        _xml = E.routes()
-        for _file in mp_list:
+        _my_relax = ConfigRelax()
+        ROOT_ELEMENTS = ["routes", "menu", "tasks"]
+        _total_xml = E.config(
+            *[
+                getattr(E, _root_el_name)() for _root_el_name in ROOT_ELEMENTS
+            ]
+        )
+        for _app_name, _file in mp_list:
             # simple merger, to be improved
             _full_path = os.path.join(settings.FILE_ROOT, _file)
             _src_xml = etree.fromstring(
@@ -219,36 +210,50 @@ class FileModify(object):
                 _my_relax.validate(_src_xml)
             except:
                 sys.stderr.write(
-                    "*** Error validating {}: {}\n".format(
+                    "*** Error validating {} for app {}: {}\n".format(
                         _full_path,
+                        _app_name,
                         process_tools.get_except_info(),
                     )
                 )
             else:
-                for _top_el in _src_xml:
-                    _xml.append(_top_el)
+                for _el_name in ROOT_ELEMENTS:
+                    _src_el = _src_xml.find(_el_name)
+                    if _src_el is not None:
+                        _dst_el = _total_xml.find(_el_name)
+                        for _el in _src_el:
+                            _el.attrib["app"] = _app_name
+                            _dst_el.append(_el)
+        # sys.exit(0)
         # check for validity
-        _my_relax.validate(_xml)
-        _xml = self.transform(_xml)
-        # move to json
-
-        import pprint
-        # pprint.pprint(self.route_xml_to_json(_xml))
-        return self.route_xml_to_json(_xml)
+        try:
+            _my_relax.validate(_total_xml)
+        except:
+            sys.stderr.write(
+                "*** Error validating merged XML: {}\n".format(
+                    process_tools.get_except_info(),
+                )
+            )
+            raise
+        # transform XML
+        # _total_xml = self.transform(_total_xml)
+        # transform to json
+        # print("\n".join(self.config_xml_to_json(_total_xml)))
+        return self.config_xml_to_json(_total_xml)
 
     def inject(self, options):
         _v_dict = {}
-        for _attr_name in [
-            "ADDITIONAL_ANGULAR_APPS",
-            "ICSW_ADDITIONAL_JS",
-            "ICSW_ADDITIONAL_HTML",
-            "ICSW_ADDITIONAL_MENU",
+        for _attr_name, _default in [
+            ("ADDITIONAL_ANGULAR_APPS", []),
+            ("ICSW_ADDITIONAL_JS", []),
+            ("ICSW_ADDITIONAL_HTML", []),
+            ("ICSW_ADDITIONAL_APPS", {}),
         ]:
             self.debug("attribute '{}'".format(_attr_name))
             if options["with_addons"]:
                 _val = getattr(settings, _attr_name)
             else:
-                _val = []
+                _val = _default
             self.debug("  ->  {}".format(str(_val)))
             _v_dict[_attr_name] = _val
         marker_re = re.compile("^.*<!-- ICSWAPPS:(?P<type>[A-Z]+):(?P<mode>[A-Z]+) -->.*$")
@@ -287,8 +292,12 @@ class FileModify(object):
                             _injected += 1
                             new_content.append(file(_html, "r").read())
                     elif marker_type == "MENU":
-                        menu_paths = [os.path.join("menu", "menu.xml")] + _v_dict["ICSW_ADDITIONAL_MENU"]
-                        menu_json_lines = self.read_menus(menu_paths)
+                        menu_paths = [
+                             ("frontend", os.path.join("config", "config.xml"))
+                         ] + [
+                            (_key, _value["config"]) for _key, _value in _v_dict["ICSW_ADDITIONAL_APPS"].iteritems()
+                        ]
+                        menu_json_lines = self.read_configs(menu_paths)
                         for _line in menu_json_lines:
                             _injected += 1
                             new_content.append(_line)

@@ -712,6 +712,8 @@ device_variable_module = angular.module(
         num_available: 0
         # flag: shown or not
         shown: false
+        # asset helper struct
+        asset_struct: {}
     }
 
     _reload_assets = () ->
@@ -731,8 +733,7 @@ device_variable_module = angular.module(
         ).then(
             (data) ->
                 $scope.struct.dvs_tree = data[0]
-                # build lut, template_idx -> device_asset
-                $scope.struct.asset_struct = $scope.struct.asset_tree.build_asset_struct($scope.struct.device)
+                $scope.struct.asset_tree.build_asset_struct($scope.struct.device, $scope.struct.asset_struct)
                 defer.resolve("done")
         )
         return defer.promise
@@ -756,7 +757,9 @@ device_variable_module = angular.module(
     )
 
     $scope.delete_asset = ($event, asset) ->
-        icswToolsSimpleModalService("Really delete static asset #{asset.$$static_asset_template.name} ?").then(
+        icswToolsSimpleModalService(
+            "Really delete static asset '#{asset.$$static_asset_template.name}' from '#{$scope.struct.device.full_name}' ?"
+        ).then(
             (ok) ->
                 blockUI.start()
                 Restangular.restangularizeElement(null, asset, ICSW_URLS.ASSET_DEVICE_ASSET_DETAIL.slice(1).slice(0, -2))
@@ -774,14 +777,20 @@ device_variable_module = angular.module(
     $scope.add_assets = ($event) ->
         sub_scope = $scope.$new(true)
         sub_scope.asset_tree = $scope.struct.asset_tree
-        unused_list = []
 
-        for _us in $scope.struct.asset_struct.unused
-            if _us.enabled
-                unused_list.push(_us)
-                # set create flag to false
-                _us.$$create = false
-        sub_scope.unused_list = _.orderBy(unused_list, ["name"], ["asc"])
+        unused_single_list = []
+        for _us in $scope.struct.asset_struct.to_add_single
+            unused_single_list.push(_us)
+            # set create flag to false
+            _us.$$create = false
+        sub_scope.unused_single_list = _.orderBy(unused_single_list, ["name"], ["asc"])
+
+        unused_multi_list = []
+        for _us in $scope.struct.asset_struct.to_add_multi
+            unused_multi_list.push(_us)
+            # set create flag to false
+            _us.$$create = false
+        sub_scope.unused_multi_list = _.orderBy(unused_multi_list, ["name"], ["asc"])
 
         icswComplexModalService(
             {
@@ -792,7 +801,10 @@ device_variable_module = angular.module(
                 ok_callback: (modal) ->
                     d = $q.defer()
                     _to_add = []
-                    for _us in sub_scope.unused_list
+                    for _us in sub_scope.unused_single_list
+                        if _us.$$create
+                            _to_add.push(_us)
+                    for _us in sub_scope.unused_multi_list
                         if _us.$$create
                             _to_add.push(_us)
                     if _to_add.length
