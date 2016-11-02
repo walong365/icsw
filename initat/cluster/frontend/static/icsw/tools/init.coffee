@@ -1790,6 +1790,7 @@ angular.module(
                     _extra_len = _tot_len - _map_len
                     _end = new Date().getTime()
                     # runtime in milliseconds
+                    #noinspection JSUnresolvedVariable
                     _run_time = icswTools.get_diff_time_ms(_end - _start)
                     console.log " -> #{@name} loaded in #{_run_time} (#{_map_len} + #{_extra_len})"
                     if @_cancel_load
