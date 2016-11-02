@@ -594,10 +594,10 @@ class get_fieldvalues_for_template(View):
                             warn_delta = datetime.timedelta(days=template_field.date_warn_value)
                             critical_delta = datetime.timedelta(days=template_field.date_critical_value)
 
-                            if (datetime.date.today() + warn_delta) > template_field.value_date:
+                            if (datetime.date.today() + warn_delta) > template_field_value.value_date:
                                 data[static_asset_template.idx][template_field.ordering]['status'] = 1
                                 field_object['status'] = 1
-                            if (datetime.date.today() + critical_delta) > template_field.value_date:
+                            if (datetime.date.today() + critical_delta) > template_field_value.value_date:
                                 data[static_asset_template.idx][template_field.ordering]['status'] = 2
                                 field_object['status'] = 2
 
