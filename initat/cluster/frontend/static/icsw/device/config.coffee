@@ -262,6 +262,7 @@ angular.module(
                         @num_rows++
                     else
                         @num_rows += entry.mon_check_command_set.length
+            @render_count++
             $rootScope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"))
 
         click: (device, config) =>

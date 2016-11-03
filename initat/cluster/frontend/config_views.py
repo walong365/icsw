@@ -92,8 +92,8 @@ class alter_config_cb(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         _stream_data = json.loads(request.POST["stream_data"])
-        import pprint
-        pprint.pprint(_stream_data)
+        # import pprint
+        # pprint.pprint(_stream_data)
         logger.info(
             "handling config stream with {}".format(
                 logging_tools.get_plural("entry", len(_stream_data)),
