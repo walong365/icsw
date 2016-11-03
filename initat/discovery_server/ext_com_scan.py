@@ -18,9 +18,10 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ discovery-server, base scan functions """
+from __future__ import unicode_literals
+
 import collections
 import datetime
-import threading
 import time
 import traceback
 

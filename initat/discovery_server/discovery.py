@@ -19,6 +19,8 @@
 #
 """ discovery-server, discovery part """
 
+from __future__ import unicode_literals
+
 import copy
 import time
 
