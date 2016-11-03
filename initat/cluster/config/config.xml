@@ -20,14 +20,17 @@
                     <value>backbone.user.modify_tree</value>
                 </rights>
                 <description>
-                    <infoText language="en">Create new devices</infoText>
-                    <infoText language="de">Erzeuge neue Geräte</infoText>
+                    <infoText language="en">Create a new device</infoText>
+                    <infoText language="de">Erzeuge neues Geräte</infoText>
                 </description>
             </icswData>
         </route>
         <route name="main.devicepropertiesoverview">
             <stateData url="/device/overview" templateUrl="icsw/device/properties/overview"/>
             <icswData pageTitle="Setup Status">
+                <description>
+                    <infoText language="en">Show the setup progress of devices</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.deviceinfo">
@@ -37,6 +40,9 @@
                 <rights>
                     <value>backbone.user.modify_tree</value>
                 </rights>
+                <description>
+                    <infoText language="en">A detailed view of devices and device groups</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.devtree">
@@ -46,6 +52,9 @@
                 <rights>
                     <value>backbone.user.modify_tree</value>
                 </rights>
+                <description>
+                    <infoText language="en">A tree-like view of devices and device groups</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.deviceconfig">
@@ -54,6 +63,9 @@
                 <rights>
                     <value>backbone.device.change_config</value>
                 </rights>
+                <description>
+                    <infoText language="en"></infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.devicemonconfig">
@@ -62,6 +74,9 @@
                 <rights>
                     <value>backbone.device.change_config</value>
                 </rights>
+                <description>
+                    <infoText language="en">Perform monitoring checks on particular devices</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.devicesrvconfig">
@@ -70,6 +85,9 @@
                 <rights>
                     <value>backbone.device.change_config</value>
                 </rights>
+                <description>
+                    <infoText language="en">Enable system services on particular devices</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.devicenetwork">
@@ -78,6 +96,9 @@
                 <rights>
                     <value>backbone.device.change_network</value>
                 </rights>
+                <description>
+                    <infoText language="en">Networking and peering configuration</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.devvars">
@@ -86,6 +107,9 @@
                 <rights>
                     <value>backbone.device.change_variables</value>
                 </rights>
+                <description>
+                    <infoText language="en">Define variables and assign them to devices</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.configoverview">
@@ -94,6 +118,9 @@
                 <rights>
                     <value>backbone.device.change_config</value>
                 </rights>
+                <description>
+                    <infoText language="en">Add and modify assignable monitoring checks and system services</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.domaintree">
@@ -102,6 +129,9 @@
                 <rights>
                     <value>backbone.user.modify_domain_name_tree</value>
                 </rights>
+                <description>
+                    <infoText language="en">Manage DNS entries</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.categorytree">
@@ -110,6 +140,9 @@
                 <rights>
                     <value>backbone.user.modify_category_tree</value>
                 </rights>
+                <description>
+                    <infoText language="en">Organize devices into different device categories</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.devlocation">
@@ -118,6 +151,9 @@
                 <rights>
                     <value>backbone.user.modify_category_tree</value>
                 </rights>
+                <description>
+                    <infoText language="en">Manage geographic locations and assign devices to them</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.deviceconnection">
@@ -126,6 +162,9 @@
                 <rights>
                     <value>backbone.device.change_connection</value>
                 </rights>
+                <description>
+                    <infoText language="en">IPMI configuration</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.scheddevice">
@@ -134,6 +173,9 @@
                 <rights>
                     <value>backbone.device.dispatch_settings</value>
                 </rights>
+                <description>
+                    <infoText language="en">Manage scheduling definitions</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.livestatus">
@@ -146,6 +188,9 @@
                 <rights>
                     <value>backbone.mon_check_command.show_monitoring_dashboard</value>
                 </rights>
+                <description>
+                    <infoText language="en">A customizable view on your monitoring data</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.monitorov">
@@ -154,6 +199,9 @@
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
+                <description>
+                    <infoText language="en">Visualize the chronological evolution of the device availability</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.graph">
@@ -166,6 +214,9 @@
                 <rights>
                     <value>backbone.device.show_graphs</value>
                 </rights>
+                <description>
+                    <infoText language="en">Visualize graphing results</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.monitordisk">
@@ -174,6 +225,9 @@
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
+                <description>
+                    <infoText language="en">TODO: should be removed</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.statushistory">
@@ -186,6 +240,9 @@
                 <rights>
                     <value>backbone.device.show_status_history</value>
                 </rights>
+                <description>
+                    <infoText language="en">A detailed view of the result with respect to a particular device and monitoring check</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.eventlog">
@@ -197,6 +254,9 @@
                 <rights>
                     <value>backbone.device.discovery_server</value>
                 </rights>
+                <description>
+                    <infoText language="en">TODO</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.monitorbuildinfo">
@@ -205,12 +265,18 @@
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
+                <description>
+                    <infoText language="en">Trigger a monitoring configuration re-build</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.locationtest">
             <stateData url="/devlocationtest" templateUrl="icsw/device/location/overview"/>
             <icswData pageTitle="Location Service">
-                    </icswData>
+                    <description>
+                        <infoText language="en">TODO: Should be removed</infoText>
+                    </description>
+            </icswData>
         </route>
         <route name="main.kpievaluation">
             <stateData url="/kpi/evaluation" templateUrl="icsw/config/kpi/evaluation/table"/>
@@ -221,6 +287,9 @@
                 <rights>
                     <value>backbone.kpi.kpi</value>
                 </rights>
+                <description>
+                    <infoText language="en">Extract KPIs from the monitoring results</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.kpisettings">
@@ -232,6 +301,9 @@
                 <rights>
                     <value>backbone.kpi.kpi</value>
                 </rights>
+                <description>
+                    <infoText language="en">Define KPIs by means of customizable pipelines</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.monitorbasics">
@@ -240,6 +312,9 @@
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
+                <description>
+                    <infoText language="en">General monitoring configuration</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.monitorhint">
@@ -248,6 +323,9 @@
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
+                <description>
+                    <infoText language="en">TODO</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.monitordevice">
@@ -257,6 +335,9 @@
                     <value>backbone.mon_check_command.setup_monitoring</value>
                     <value>backbone.device.change_monitoring</value>
                 </rights>
+                <description>
+                    <infoText language="en">Device-specific monitoring configuration</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.devasset">
@@ -269,6 +350,9 @@
                 <rights>
                     <value>backbone.device.assets</value>
                 </rights>
+                <description>
+                    <infoText language="en">Show the result of asset runs</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.schedoverviewasset">
@@ -277,6 +361,9 @@
                 <rights>
                     <value>backbone.dispatchersetting.setup</value>
                 </rights>
+                <description>
+                    <infoText language="en">Manage scheduling settings for asset runs</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.schedasset">
@@ -285,6 +372,9 @@
                 <rights>
                     <value>backbone.device.dispatch_settings</value>
                 </rights>
+                <description>
+                    <infoText language="en">Show the time of the next scheduled assets runs</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.report">
@@ -294,6 +384,9 @@
                 <rights>
                     <value>backbone.device.assets</value>
                 </rights>
+                <description>
+                    <infoText language="en">Generate asset reports</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.statictemplates">
@@ -302,6 +395,9 @@
                 <rights>
                     <value>backbone.staticassettemplate.setup</value>
                 </rights>
+                <description>
+                    <infoText language="en">Define custom asset types</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.inventorystaticoverview">
@@ -310,6 +406,9 @@
                 <rights>
                     <value>backbone.staticassettemplate.setup</value>
                 </rights>
+                <description>
+                    <infoText language="en">An overview of the assignment of custom asset types</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.deployboot">
