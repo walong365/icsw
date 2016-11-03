@@ -865,7 +865,7 @@ class device_completion(View):
 
         # build monitoring check information
         device_checks_count = {}
-        for check in mon_check_command.objects.all():
+        for check in mon_check_command.objects.all().prefetch_related("config__device_config_set"):
             for device_idx in check.get_configured_device_pks():
                 if device_idx not in device_checks_count:
                     device_checks_count[device_idx] = 0

@@ -787,13 +787,13 @@ config_module = angular.module(
     }
 ]).service('icswConfigMonCheckCommandListService',
 [
-    "icswSimpleAjaxCall", "icswToolsSimpleModalService",
-    "icswTools", "Restangular", "ICSW_URLS",  "$q", "blockUI",
+    "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster",
+    "icswTools", "Restangular", "ICSW_URLS",  "$q", "blockUI", "icswFormTools",
     "icswConfigTreeService", "icswMonitoringBasicTreeService", "icswMonCheckCommandBackup",
     "icswComplexModalService", "$compile", "$templateCache",
 (
-    icswSimpleAjaxCall, icswToolsSimpleModalService,
-    icswTools, Restangular, ICSW_URLS, $q, blockUI,
+    icswSimpleAjaxCall, icswToolsSimpleModalService, toaster,
+    icswTools, Restangular, ICSW_URLS, $q, blockUI, icswFormTools,
     icswConfigTreeService, icswMonitoringBasicTreeService, icswMonCheckCommandBackup,
     icswComplexModalService, $compile, $templateCache
 ) ->
@@ -839,14 +839,16 @@ config_module = angular.module(
                 return "---"
 
         create_or_edit: (scope, event, create, obj_or_parent, ext_config_tree, ext_mon_tree) ->
+            # may also be called from assign config checks, scope is then the $rootScope
+            r_defer = $q.defer()
+            config_tree = ext_config_tree
+            mon_tree = ext_mon_tree
             if create
-                config_tree = ext_config_tree
-                mon_tree = ext_mon_tree
                 # config must be in the local scope
-                scope.config = obj_or_parent
-                c_name = "cc_#{scope.config.name}"
+                config = obj_or_parent
+                c_name = "cc_#{config.name}"
                 c_idx = 1
-                cc_names = (cc.name for cc in scope.config.mon_check_command_set)
+                cc_names = (cc.name for cc in config.mon_check_command_set)
                 while true
                     if "#{c_name}_#{c_idx}" in cc_names
                         c_idx++
@@ -854,7 +856,7 @@ config_module = angular.module(
                         break
                 c_name = "#{c_name}_#{c_idx}"
                 obj_or_parent = {
-                    config: scope.config.idx
+                    config: config.idx
                     name: c_name
                     is_active: true
                     description: "Check command"
@@ -868,6 +870,7 @@ config_module = angular.module(
                 dbu.create_backup(obj_or_parent)
             sub_scope = scope.$new(false)
             sub_scope.edit_obj = obj_or_parent
+            console.log "mt=", mon_tree
             sub_scope.mccs_list = mon_tree.mon_check_command_special_list
             sub_scope.template_list = mon_tree.mon_service_templ_list
 
@@ -965,11 +968,11 @@ config_module = angular.module(
                     ok_callback: (modal) ->
                         d = $q.defer()
                         if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "")
+                            icswFormTools.show_form_error(sub_scope.form_data)
                             d.reject("form not valid")
                         else
                             if create
-                                config_tree.create_mon_check_command(scope.config, sub_scope.edit_obj).then(
+                                config_tree.create_mon_check_command(config, sub_scope.edit_obj).then(
                                     (ok) ->
                                         d.resolve("created")
                                     (notok) ->
@@ -996,7 +999,9 @@ config_module = angular.module(
                 (fin) ->
                     console.log "finish"
                     sub_scope.$destroy()
+                    r_defer.resolve("done")
             )
+            return r_defer.promise
 
         delete: (scope, event, mon) ->
             icswToolsSimpleModalService("Really delete MonCheckCommand #{mon.name} ?").then(

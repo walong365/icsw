@@ -443,7 +443,7 @@ class mon_check_command(models.Model):
 
     def get_configured_device_pks(self):
         from initat.cluster.backbone.models import device_config
-        return [dev_conf.device_id for dev_conf in device_config.objects.filter(config_id=self.config_id)]
+        return [dev_conf.device_id for dev_conf in self.config.device_config_set.all()]
 
     def get_object_type(self):
         return "mon"
