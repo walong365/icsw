@@ -340,7 +340,6 @@ angular.module(
                                     idx: parseInt(add_entry.attr("pk"))
                                 }
                             )
-                            console.log config.device_config_set.length
                     @remove_pending()
                     defer.resolve("changed")
 
