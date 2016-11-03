@@ -124,13 +124,13 @@ angular.module(
             # step 2: set configs for all meta-devices
 
             for conf in @config_tree.list
+                if @mode in ["gen", "srv"]
+                    conf.$$_dc_name = conf.name
+                else
+                    conf.$$_dc_num_mcs = conf.mon_check_command_set.length
+                    conf.$$_dc_name = ("#{_v.name} #{_v.description}" for _v in conf.mon_check_command_set).join(" ")
                 for dev in @md_list
                     # build name value to match against
-                    if @mode in ["gen", "srv"]
-                        conf.$$_dc_name = conf.name
-                    else
-                        conf.$$_dc_num_mcs = conf.mon_check_command_set.length
-                        conf.$$_dc_name = ("#{_v.name} #{_v.description}" for _v in conf.mon_check_command_set).join(" ")
                     _id = "#{dev.idx}::#{conf.idx}"
                     for dc in conf.device_config_set
                         if dc.device == dev.idx
@@ -262,6 +262,7 @@ angular.module(
                         @num_rows++
                     else
                         @num_rows += entry.mon_check_command_set.length
+            @render_count++
             $rootScope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"))
 
         click: (device, config) =>
@@ -339,7 +340,6 @@ angular.module(
                                     idx: parseInt(add_entry.attr("pk"))
                                 }
                             )
-                            console.log config.device_config_set.length
                     @remove_pending()
                     defer.resolve("changed")
 
@@ -505,9 +505,11 @@ angular.module(
 
 ]).service("icswDeviceConfigTableReact",
 [
-    "$q", "blockUI",
+    "$q", "blockUI", "icswConfigMonCheckCommandListService", "icswMonitoringBasicTreeService",
+    "$rootScope",
 (
-    $q, blockUI,
+    $q, blockUI, icswConfigMonCheckCommandListService, icswMonitoringBasicTreeService,
+    $rootScope,
 )->
     {table, thead, div, tr, span, th, td, tbody, button} = React.DOM
     rot_header = React.createFactory(
@@ -530,6 +532,10 @@ angular.module(
                     _title_str = "#{re.description} (#{re.name})"
                     _info_str = _title_str
                 _focus = @state.mouse or @props.focus
+                if _focus
+                    _classname = "bg-danger cursorpointer"
+                else
+                    _classname = "cursorpointer"
                 return th(
                     {
                         className: "icsw-config-rotate"
@@ -541,11 +547,29 @@ angular.module(
                             onMouseLeave: (event) =>
                                 @setState({mouse: false})
                             title: _title_str
+                            onClick: (event) =>
+                                if @props.configHelper.mode in ["mon"]
+                                    icswMonitoringBasicTreeService.load("config_edit").then(
+                                        (mon_tree) =>
+                                            icswConfigMonCheckCommandListService.create_or_edit(
+                                                $rootScope
+                                                event
+                                                false
+                                                @props.rowElement
+                                                @props.configHelper.config_tree
+                                                mon_tree
+                                            ).then(
+                                                (done) =>
+                                                    @props.configHelper.link()
+                                            )
+                                    )
+                                else
+                                    console.error "not implemented"
                         }
                         span(
                             {
                                 key: "text1"
-                                className: if _focus then "bg-danger" else ""
+                                className: _classname
                             }
                             _info_str
                         )
@@ -569,6 +593,8 @@ angular.module(
             render: () ->
                 _conf_headers = []
                 _conf_infos = []
+                _last_idx = 0
+                _mark_header = false
                 for row_el in @props.configHelper.active_rows
                     if @props.configHelper.mode in ["gen", "srv"]
                         _conf = row_el
@@ -578,6 +604,9 @@ angular.module(
                         _focus = _conf.idx == @props.focusElement
                     else
                         _focus = false
+                    if _conf.idx != _last_idx
+                        _last_idx = _conf.idx
+                        _mark_header = !_mark_header
                     _conf_headers.push(
                         rot_header(
                             {
@@ -592,7 +621,7 @@ angular.module(
                         th(
                             {
                                 key: "info-#{row_el.idx}"
-                                className: "text-center"
+                                className: ["text-center", if _mark_header then "bg-success" else "bg-warning"].join(" ")
                             }
                             span(
                                 {

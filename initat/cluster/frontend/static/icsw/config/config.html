@@ -725,7 +725,7 @@
                             <input class="textinput textInput form-control" maxlength="192" name="description" ng-model="edit_obj.description" type="text"/>
                         </div>
                     </div>
-                    <div class="form-group" ng_show="edit_obj.is_active">
+                    <div class="form-group" ng-show="edit_obj.is_active">
                         <label class="control-label col-sm-2 icsw-formlabel">
                             Special MonCheck command
                         </label>
@@ -752,7 +752,7 @@
                         <span class="glyphicon glyphicon-exclamation-sign"></span>
                         {{ get_mccs_already_used_warning(edit_obj) }}
                     </div>
-                    <div class="form-group" ng_show="!edit_obj.mon_check_command_special && edit_obj.is_active">
+                    <div class="form-group" ng-if="!edit_obj.mon_check_command_special && edit_obj.is_active">
                         <label class="control-label col-sm-2 requiredField icsw-formlabel">
                             Command line<span class="asteriskField">*</span>
                         </label>
@@ -820,7 +820,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="form-group" ng_show="!edit_obj.is_event_handler && get_event_handlers(edit_obj).length">
+                    <div class="form-group" ng-show="!edit_obj.is_event_handler && get_event_handlers(edit_obj).length">
                         <label class="control-label col-sm-2 icsw-formlabel">
                             Event handler
                         </label>
@@ -897,7 +897,7 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <div class="checkbox" ng_show="edit_obj.event_handler == undefined">
+                                <div class="checkbox" ng-show="edit_obj.event_handler == undefined">
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
                                             <icsw-tools-yes-no-small flag="edit_obj.is_event_handler"></icsw-tools-yes-no-small>

@@ -76,14 +76,17 @@ angular.module(
                     ).then(
                         (new_data) ->
                             srv_data = new_data[0].plain()[0]
-                            srv_data = srv_data[_.keys(srv_data)[0]]
-                            [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(
-                                srv_data
-                                weights
-                                status_utils_functions.host_colors
-                                status_utils_functions.host_cssclass
-                                scope.float_format
-                            )
+                            if _.keys(srv_data).length
+                                srv_data = srv_data[_.keys(srv_data)[0]]
+                                [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(
+                                    srv_data
+                                    weights
+                                    status_utils_functions.host_colors
+                                    status_utils_functions.host_cssclass
+                                    scope.float_format
+                                )
+                            else
+                                [scope.host_data, scope.pie_data] = [[], []]
                             line_data = new_data[1].plain()[0]
                             line_data = line_data[_.keys(line_data)[0]]
                             if line_data?

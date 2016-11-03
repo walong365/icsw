@@ -137,6 +137,7 @@ class CapabilityProcess(threading_tools.process_obj):
         _bldr = drop_com.builder
         # print "*", cur_time, drop_com, _bldr
         my_vector = _bldr("values")
+        _total = 0
         for _csr in icswEggConsumer.objects.all():
             my_vector.append(
                 hm_classes.mvect_entry(
@@ -144,6 +145,19 @@ class CapabilityProcess(threading_tools.process_obj):
                     info="Ova consumed by {} on {}".format(_csr.action, _csr.content_type.model),
                     default=0,
                     value=_csr.consumed,
+                    factor=1,
+                    base=1,
+                    valid_until=cur_time + 3600,
+                ).build_xml(_bldr)
+            )
+            _total += _csr.consumed
+        if _total:
+            my_vector.append(
+                hm_classes.mvect_entry(
+                    "icsw.ova.overall",
+                    info="Ova consumed by all actions on all models",
+                    default=0,
+                    value=_total,
                     factor=1,
                     base=1,
                     valid_until=cur_time + 3600,

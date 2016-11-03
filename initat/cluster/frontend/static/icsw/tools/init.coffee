@@ -1865,4 +1865,31 @@ angular.module(
         get_lang: () ->
             return def_lang
     }
+]).service("icswFormTools",
+[
+    "toaster",
+(
+    toaster,
+) ->
+    show_form_error = (form) ->
+        _errors = []
+        for _why, value of form.$error
+            for entry in value
+                _errors.push("<li>#{_why}: #{entry.$name}</li>")
+
+        _pf = if _errors.length > 1 then "s" else ""
+        toaster.pop(
+            {
+                type: "warning"
+                title: "#{_errors.length} form validation problem#{_pf}"
+                body: "<ul>" + _errors.join("") + "</ul>"
+                bodyOutputType: "trustedHtml"
+            }
+        )
+
+    return {
+        show_form_error: (form) ->
+            return show_form_error(form)
+    }
+
 ])
