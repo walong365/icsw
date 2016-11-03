@@ -498,7 +498,12 @@ class get_fieldvalues_for_template(View):
     def post(self, request):
         idx_list = [int(value) for value in request.POST.getlist("idx_list[]")]
 
-        static_asset_templates = StaticAssetTemplate.objects.filter(idx__in=idx_list)
+        static_asset_templates = StaticAssetTemplate.objects.filter(
+            Q(idx__in=idx_list)
+        ).prefetch_related(
+            "staticassettemplatefield_set__staticassetfieldvalue_set__static_asset__device",
+            # "staticassettemplatefield_set__device"
+        )
 
         data = {}
 

@@ -22,12 +22,13 @@
 from __future__ import unicode_literals, print_function
 
 import argparse
+import base64
+import bz2
 import datetime
+import functools
 import json
 import os
 import re
-import base64
-import bz2
 import uuid
 
 import memcache
@@ -532,6 +533,24 @@ class MemCacheBasedDict(object):
         self._key_modified(key)
 
 
+class ConfigKeyError(object):
+    def __init__(self, *args, **kwargs):
+        self._func = args[0]
+
+    def __get__(self, obj, objtype):
+        """ Support instance methods. """
+        # copy object
+        self.config = obj
+        # partial magic
+        return functools.partial(self.__call__, obj)
+
+    def __call__(self, *args, **kwargs):
+        try:
+            return self._func(*args, **kwargs)
+        except KeyError:
+            raise KeyError("Key {} not defined ({})".format(args[0], self.obj.key_info))
+
+
 class Configuration(object):
     def __init__(self, name, *args, **kwargs):
         inst_xml = instance.InstanceXML(quiet=True)
@@ -630,24 +649,22 @@ class Configuration(object):
                 self.log("Setting config for key {} to {}".format(key, value))
         self.__c_dict.update_mode = False
 
-    def pretty_print(self, key):
-        if key in self.__c_dict:
-            return self.__c_dict[key].pretty_print()
-        else:
-            raise KeyError("Key {} not found in c_dict".format(key))
+    @property
+    def key_info(self):
+        return "{}".format(", ".join(sorted(self.__c_dict.keys())))
 
+    @ConfigKeyError
+    def pretty_print(self, key):
+        return self.__c_dict[key].pretty_print()
+
+    @ConfigKeyError
     def __getitem__(self, key):
         # print os.getpid(), key
-        if key in self.__c_dict:
-            return self.__c_dict[key].value
-        else:
-            raise KeyError("Key {} not found in c_dict".format(key))
+        return self.__c_dict[key].value
 
+    @ConfigKeyError
     def __delitem__(self, key):
-        if key in self.__c_dict:
-            del self.__c_dict[key]
-        else:
-            raise KeyError("Key {} not found in c_dict".format(key))
+        del self.__c_dict[key]
 
     def __setitem__(self, key, value):
         if key in self.__c_dict:
@@ -659,7 +676,7 @@ class Configuration(object):
             # import the signal changes
             self.__c_dict.key_changed(key)
         else:
-            raise KeyError("Key {} not found in c_dict".format(key))
+            raise KeyError("Key {} not known ({})".format(key, self.key_info))
 
     def get_config_info(self):
         gk = sorted(self.keys())
@@ -719,43 +736,33 @@ class Configuration(object):
     def get_cvar(self, key):
         return self.__c_dict[key]
 
+    @ConfigKeyError
     def get_source(self, key):
-        if key in self.__c_dict:
-            return self.__c_dict[key].source
-        else:
-            raise KeyError("Key {} not found in c_dict".format(key))
+        return self.__c_dict[key].source
 
+    @ConfigKeyError
     def fixed(self, key):
-        if key in self.__c_dict:
-            return self.__c_dict[key].fixed
-        else:
-            raise KeyError("Key {} not found in c_dict".format(key))
+        return self.__c_dict[key].fixed
 
+    @ConfigKeyError
     def is_global(self, key):
-        if key in self.__c_dict:
-            return self.__c_dict[key].is_global
-        else:
-            raise KeyError("Key {} not found in c_dict".format(key))
+        return self.__c_dict[key].is_global
 
+    @ConfigKeyError
     def set_global(self, key, value):
-        if key in self.__c_dict:
-            self.__c_dict[key].is_global = value
-        else:
-            raise KeyError("Key {} not found in c_dict".format(key))
+        self.__c_dict[key].is_global = value
 
+    @ConfigKeyError
     def database(self, key):
-        if key in self.__c_dict:
-            return self.__c_dict[key].database
-        else:
-            raise KeyError("Key {} not found in c_dict".format(key))
+        return self.__c_dict[key].database
 
+    @ConfigKeyError
     def get_type(self, key):
-        if key in self.__c_dict:
-            return self.__c_dict[key].short_type
-        else:
-            raise KeyError("Key {} not found in c_dict".format(key))
+        return self.__c_dict[key].short_type
 
     def parse_file(self, *args, **kwargs):
+        # only used in proepilogue, to be removed ...
+        # TODO, Fixme
         if len(args):
             file_name = args[0]
         else:

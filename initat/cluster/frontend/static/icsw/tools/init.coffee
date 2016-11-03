@@ -192,14 +192,19 @@ angular.module(
 (
     uiGmapMapScriptLoader, $q, icswSystemLicenseDataService,
 ) ->
+    _load_pending = false
     _is_init = false
     _map = undefined
+    _pending_clients = []
 
     init = () ->
         defer = $q.defer()
         if _is_init
             defer.resolve(_map)
+        else if _load_pending
+            _pending_clients.push(defer)
         else
+            _load_pending = true
             icswSystemLicenseDataService.load("gmap_init").then(
                 (data) ->
                     uiGmapMapScriptLoader.load(
@@ -216,8 +221,12 @@ angular.module(
                     ).then(
                         (map) ->
                             _is_init = true
+                            _load_pending = false
                             _map = map
                             defer.resolve(_map)
+                            for _client in _pending_clients
+                                _client.resolve(_map)
+                            _pending_clients.length = 0
                     )
             )
         return defer.promise
@@ -1781,6 +1790,7 @@ angular.module(
                     _extra_len = _tot_len - _map_len
                     _end = new Date().getTime()
                     # runtime in milliseconds
+                    #noinspection JSUnresolvedVariable
                     _run_time = icswTools.get_diff_time_ms(_end - _start)
                     console.log " -> #{@name} loaded in #{_run_time} (#{_map_len} + #{_extra_len})"
                     if @_cancel_load
