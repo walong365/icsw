@@ -349,14 +349,14 @@ class detail_view(
         # except ValidationError as cur_exc:
         #    print cur_exc
         # print dir(resp), resp.data
-        new_model = self.model.objects.get(Q(pk=kwargs["pk"]))
+        new_obj = self.model.objects.get(Q(pk=kwargs["pk"]))
         if self.model._meta.object_name == "device":
-            root_pwd = new_model.crypt(req_changes.get("root_passwd", ""))
+            root_pwd = new_obj.crypt(req_changes.get("root_passwd", ""))
             if root_pwd:
-                new_model.root_passwd = root_pwd
-                new_model.save()
+                new_obj.root_passwd = root_pwd
+                new_obj.save()
         if not silent:
-            c_list, r_list = get_change_reset_list(prev_model, new_model, req_changes)
+            c_list, r_list = get_change_reset_list(prev_model, new_obj, req_changes)
             # print c_list, r_list
             resp.data["_change_list"] = c_list
             resp.data["_reset_list"] = r_list
@@ -683,6 +683,11 @@ class device_tree_list(
     def post(self, request, *args, **kwargs):
         resp = self.create(request, *args, **kwargs)
         if resp.status_code in [200, 201, 202, 203]:
+            if not resp.data["creator"]:
+                _new_dev = device.objects.get(Q(pk=resp.data["idx"]))
+                _new_dev.creator = request.user
+                resp.data["creator"] = _new_dev.creator_id
+                _new_dev.save(update_fields=["creator"])
             resp.data["_messages"] = [u"created '{}'".format(unicode(self.model._meta.object_name))]
         return resp
 
