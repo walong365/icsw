@@ -435,15 +435,18 @@ class export_assetbatch_to_pdf(View):
 class DeviceStaticAssetViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def create_asset(self, request):
-        new_asset = StaticAssetSerializer(data=request.data)
-        if new_asset.is_valid():
-            asset = new_asset.save()
-            asset.add_fields()
-            return Response(StaticAssetSerializer(asset).data)
-        else:
-            raise ValidationError(
-                "cannot create new StaticAsset"
-            )
+        _count = request.data.get("count", 1)
+        for _iter in xrange(_count):
+            new_asset = StaticAssetSerializer(data=request.data)
+            if new_asset.is_valid():
+                asset = new_asset.save()
+                asset.add_fields()
+            else:
+                raise ValidationError(
+                    "cannot create new StaticAsset"
+                )
+        # return only latest asset
+        return Response(StaticAssetSerializer(asset).data)
 
     @method_decorator(login_required)
     def delete_asset(self, request, **kwargs):

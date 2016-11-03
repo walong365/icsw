@@ -790,6 +790,7 @@ device_variable_module = angular.module(
             unused_multi_list.push(_us)
             # set create flag to false
             _us.$$create = false
+            _us.$$count = 1
         sub_scope.unused_multi_list = _.orderBy(unused_multi_list, ["name"], ["asc"])
 
         icswComplexModalService(
@@ -815,6 +816,7 @@ device_variable_module = angular.module(
                                         device: $scope.struct.device.idx
                                         static_asset_template: _us.idx
                                         create_user: $scope.struct.user.user.idx
+                                        count: _us.$$count
                                     }
                                 )
                             ) for _us in _to_add
