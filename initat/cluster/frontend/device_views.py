@@ -906,7 +906,6 @@ class DeviceCompletion(View):
             except DeviceFlagsAndSettings.DoesNotExist:
                 pass
 
-
             info_dict[_device.idx]["monitoring_checks"] = 0
             if _device.idx in device_checks_count:
                 info_dict[_device.idx]["monitoring_checks"] = device_checks_count[_device.idx]
@@ -920,7 +919,6 @@ class DeviceCompletion(View):
         return HttpResponse(
             json.dumps(info_dict)
         )
-
 
 
 class SimpleGraphSetup(View):

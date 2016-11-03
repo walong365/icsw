@@ -57,7 +57,6 @@ class Threshold(object):
         self.__values = []
         self.log_info()
         self.reset_flags()
-        # print unicode(_mvv.mv_struct_entry.machine_vector.device), unicode(_mvv), _mvv.full_key
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__log_com("[TH {:d} {}] {}".format(self.th.idx, self.th.name, what), log_level)

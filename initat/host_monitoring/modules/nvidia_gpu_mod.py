@@ -17,8 +17,11 @@
 #
 """ NVidia GPU monitoring """
 
+from __future__ import print_function, unicode_literals
+
 import commands
-from lxml import etree  # @UnusedImport
+
+from lxml import etree
 
 from initat.host_monitoring import hm_classes
 from initat.tools import logging_tools, process_tools
@@ -410,7 +413,7 @@ class _general(hm_classes.hm_module):
                     out = TEST_OUT
                 else:
                     out = self._exec_command(". -q -x")
-                _tree = etree.fromstring(out)  # @UndefinedVariable
+                _tree = etree.fromstring(out)
             except:
                 self.log(
                     "error parsing {}: {}".format(

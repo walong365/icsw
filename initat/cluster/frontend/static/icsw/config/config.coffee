@@ -870,7 +870,6 @@ config_module = angular.module(
                 dbu.create_backup(obj_or_parent)
             sub_scope = scope.$new(false)
             sub_scope.edit_obj = obj_or_parent
-            console.log "mt=", mon_tree
             sub_scope.mccs_list = mon_tree.mon_check_command_special_list
             sub_scope.template_list = mon_tree.mon_service_templ_list
 
