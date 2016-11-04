@@ -106,15 +106,7 @@
                     <icsw-device-mon-config-overview ng-if="tab.type == 0" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-mon-config-overview>
                     <icsw-device-location-overview ng-if="tab.type == 1" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-location-overview>
                     <icsw-device-asset-overview-reduced ng-if="tab.type == 2" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-asset-overview-reduced>
-                    <div ng-if="tab.type == 3">
-                        <div class="input-group">
-                            <br/><label class="control-label">Target </label><br/>
-                            <select class="form-control" ng-model="tab.pdf_page_format">
-                                <option value="A4">A4</option>
-                                <option value="landscape(A4)">A4 landscape</option>
-                            </select>
-                        </div>
-                    </div>
+                    <icsw-rrd-graph-normal ng-if="tab.type == 3" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-rrd-graph-normal>
                 </uib-tab>
             </uib-tabset>
         </div>

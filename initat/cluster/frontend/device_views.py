@@ -901,8 +901,13 @@ class DeviceCompletion(View):
             info_dict[_device.idx]["graphing_data_warning"] = False
 
             try:
-                info_dict[_device.idx]["graphing_data_warning"] = \
-                    _device.flags_and_settings.graph_enslavement_start is not None
+                if _device.flags_and_settings.graph_enslavement_start:
+                    seconds_since_graph_setup = \
+                        (datetime.datetime.now(tz=pytz.utc) - _device.flags_and_settings.graph_enslavement_start).total_seconds()
+                else:
+                    seconds_since_graph_setup = 0
+
+                info_dict[_device.idx]["graphing_data_warning"] = seconds_since_graph_setup < 30
             except DeviceFlagsAndSettings.DoesNotExist:
                 pass
 

@@ -183,7 +183,7 @@ device_properties_overview = angular.module(
         else if setup_type == 2
             heading = "Asset Data"
         else if setup_type == 3
-            heading = "Graphing Setup"
+            heading = "Graphing Data"
 
         o = {
             type: setup_type
@@ -224,23 +224,26 @@ device_properties_overview = angular.module(
         DeviceOverviewService($event, [dev])
 
     $scope.setup_graphing = (dev) ->
-        icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
-            (_yes) ->
-                blockUI.start("Please wait...")
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
-                        data:
-                            device_pk: dev.idx
-                        dataType: "json"
-                    }
-                ).then(
-                    (data) ->
-                        $scope.struct.device_ids_needing_refresh.push(dev.idx)
-                        perform_refresh(true)
-                        blockUI.stop()
-                )
-            (_no) ->
-                console.log("no")
-        )
+        if dev.$$graphing_data_availability_class == "alert-danger"
+            icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
+                (_yes) ->
+                    blockUI.start("Please wait...")
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
+                            data:
+                                device_pk: dev.idx
+                            dataType: "json"
+                        }
+                    ).then(
+                        (data) ->
+                            $scope.struct.device_ids_needing_refresh.push(dev.idx)
+                            perform_refresh(true)
+                            blockUI.stop()
+                    )
+                (_no) ->
+                    console.log("no")
+            )
+        else if dev.$$graphing_data_availability_class == "alert-success"
+          $scope.open_in_new_tab(dev, 3)
 ])
