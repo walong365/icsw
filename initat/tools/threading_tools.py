@@ -156,11 +156,17 @@ class debug_zmq_sock(object):
     def setsockopt(self, *args):
         return self._sock.setsockopt(*args)
 
+    def setsockopt_string(self, *args):
+        return self._sock.setsockopt_string(*args)
+
     def getsockopt(self, *args):
         return self._sock.getsockopt(*args)
 
     def fileno(self):
         return self._sock.getsockopt(zmq.FD)
+
+    def disconnect(self, *args):
+        return self._sock.disconnect(*args)
 
     def poll(self, **kwargs):
         return self._sock.poll(**kwargs)
@@ -365,14 +371,14 @@ class PollerBase(object):
         # self.__waiting = 0
 
     def register_poller(self, zmq_socket, sock_type, callback, **kwargs):
-        if self.debug_zmq:
+        if self.debug_zmq and not isinstance(zmq_socket, int):
             self.fd_lookup[zmq_socket._sock] = zmq_socket
         self.poller_handler.setdefault(zmq_socket, {})[sock_type] = callback
         self.poller_kwargs.setdefault(zmq_socket, {})[sock_type] = kwargs
         cur_mask = 0
         for mask in self.poller_handler[zmq_socket].keys():
             cur_mask |= mask
-        if self.debug_zmq:
+        if self.debug_zmq and not isinstance(zmq_socket, int):
             self.poller.register(zmq_socket._sock, cur_mask)
         else:
             self.poller.register(zmq_socket, cur_mask)

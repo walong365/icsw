@@ -52,7 +52,7 @@ __all__ = [
 """
 XML structure on icinga.init.at (27.2.2015):
 
-top levels: ['machine_vector']
+top levels: ['Machine_vector']
 [machine_vector (store_name) ->
     [pde (active, file_name, host, init_time, last_update, name, type_instance) ->
         [value (base, factor, index, info, key, name, unit, v_type) ->
@@ -84,7 +84,7 @@ class MachineVector(models.Model):
 
 
 class MVStructEntry(models.Model):
-    # structural entry for machine_vector, references an RRD-file on disk
+    # structural entry for MachineVector, references an RRD-file on disk
     idx = models.AutoField(primary_key=True)
     machine_vector = models.ForeignKey("MachineVector")
     file_name = models.CharField(max_length=256, default="")
@@ -124,7 +124,7 @@ class MVStructEntry(models.Model):
 
 
 class MVValueEntry(models.Model):
-    # value entry for machine_vector
+    # value entry for MachineVector
     idx = models.AutoField(primary_key=True)
     mv_struct_entry = models.ForeignKey("MVStructEntry")
     # base for generating {k,M,G,T} values, in most cases 1000 or 1024

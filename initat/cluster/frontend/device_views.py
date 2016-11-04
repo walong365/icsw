@@ -851,12 +851,13 @@ class DeviceClassViewSet(viewsets.ViewSet):
             ).data
         )
 
-from initat.cluster.backbone.models import AssetBatch
-from initat.cluster.backbone.models import MachineVector
-from initat.cluster.backbone.models import mon_check_command
+from initat.icsw.service.instance import InstanceXML
+from initat.tools import logging_tools, process_tools, server_command, net_tools
+from initat.cluster.backbone.models import config, DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch
+import pytz
 
 
-class device_completion(View):
+class DeviceCompletion(View):
     @method_decorator(login_required)
     def post(self, request):
         device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
@@ -897,6 +898,14 @@ class device_completion(View):
             if _device.idx in device_graph_count:
                 info_dict[_device.idx]["graphing_data"] = device_graph_count[_device.idx]
 
+            info_dict[_device.idx]["graphing_data_warning"] = False
+
+            try:
+                info_dict[_device.idx]["graphing_data_warning"] = \
+                    _device.flags_and_settings.graph_enslavement_start != None
+            except DeviceFlagsAndSettings.DoesNotExist:
+                pass
+
             info_dict[_device.idx]["monitoring_checks"] = 0
             if _device.idx in device_checks_count:
                 info_dict[_device.idx]["monitoring_checks"] = device_checks_count[_device.idx]
@@ -909,4 +918,46 @@ class device_completion(View):
 
         return HttpResponse(
             json.dumps(info_dict)
+        )
+
+
+class SimpleGraphSetup(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        device_pk = int(request.POST.get("device_pk"))
+
+        _device = device.objects.get(idx=device_pk)
+
+        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+
+        collectd_devices = [obj.device for obj in config.objects.get(name="rrd_collector").device_config_set.all()]
+
+        _status = ""
+
+        device_flags = DeviceFlagsAndSettings.objects.filter(device=_device)
+
+        for collectd_device in collectd_devices:
+            new_con = net_tools.ZMQConnection(
+                "graph_setup_{:d}".format(_device.idx),
+            )
+
+            conn_str = "tcp://{}:{:d}".format(_device.all_ips()[0], hm_port)
+
+            srv_com = server_command.srv_command(command="graph_setup", send_name=_device.full_name, target_ip=collectd_device.all_ips()[0])
+            new_con.add_connection(conn_str, srv_com)
+
+            _status = new_con.loop()[0].get_result()
+
+        if not device_flags:
+            obj = DeviceFlagsAndSettings.objects.create(
+                device=_device,
+                graph_enslavement_start=datetime.datetime.now(tz=pytz.utc)
+            )
+            obj.save()
+        else:
+            device_flags[0].graph_enslavement_start = datetime.datetime.now(tz=pytz.utc)
+            device_flags[0].save()
+
+        return HttpResponse(
+            json.dumps(_status)
         )

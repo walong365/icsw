@@ -20,6 +20,8 @@
 
 # separated to enable flawless import from webfrontend
 
+from __future__ import unicode_literals
+
 __all__ = [
     "host_service_id_util",
 ]

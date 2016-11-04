@@ -120,7 +120,7 @@ class MonFileContainer(dict, LogBufferMixin):
                     continue
                 _types.setdefault(act_le.obj_type, []).append(True)
                 self._content.extend(act_le.emit_content())
-            [cur_hash.update(_line) for _line in self._content]
+            [cur_hash.update(_line.encode("utf8")) for _line in self._content]
             _info_str = "created {} for {}: {}".format(
                 logging_tools.get_plural("entry", len(act_list)),
                 logging_tools.get_plural("object_type", len(_types)),

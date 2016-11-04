@@ -19,12 +19,15 @@
 #
 """ machine vector base classes and support functions """
 
+from __future__ import unicode_literals, print_function
+
 import copy
 import json
 import os
 import re
 import shutil
 import time
+from threading import Lock
 
 from lxml import etree
 from lxml.builder import E
@@ -43,7 +46,7 @@ class _general(hm_classes.hm_module):
 
     def init_module(self):
         if hasattr(self.main_proc, "register_vector_receiver"):
-            # at first init the machine_vector
+            # at first init the MachineVector
             self._init_machine_vector()
             # then start the polling loop, 30 seconds default timeout (defined in main.py) poll time
             _mpc = self.main_proc.CC.CS["hm.machvector.poll.time"]
@@ -59,7 +62,7 @@ class _general(hm_classes.hm_module):
                 self.machine_vector.close()
 
     def _init_machine_vector(self):
-        self.machine_vector = machine_vector(self)
+        self.machine_vector = MachineVector(self)
 
     def init_machine_vector(self, mvect):
         pass
@@ -88,7 +91,7 @@ class get_mvector_command(hm_classes.hm_command):
             vector_keys = sorted(srv_com.xpath(".//ns:mve/@name", start_el=cur_vector, smart_strings=False))
             used_keys = [key for key in vector_keys if any([cur_re.search(key) for cur_re in re_list]) or not re_list]
             ret_array = [
-                "Machinevector id {}, {}, {} shown:".format(
+                "MachineVector id {}, {}, {} shown:".format(
                     cur_vector.attrib["version"],
                     logging_tools.get_plural("key", len(vector_keys)),
                     logging_tools.get_plural("key", len(used_keys)),
@@ -112,8 +115,40 @@ class get_mvector_command(hm_classes.hm_command):
             return limits.mon_STATE_OK, "\n".join(ret_array)
 
 
-class machine_vector(object):
+class graph_setup_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        self.parser.add_argument("--send-name", dest="send_name", type=str)
+        self.parser.add_argument("--target-ip", dest="target_ip", type=str)
+
+    def __call__(self, srv_com, cur_ns):
+        if cur_ns.send_name:
+            send_name = cur_ns.send_name
+        else:
+            send_name = srv_com['send_name'].text
+
+        if cur_ns.target_ip:
+            target_ip = cur_ns.target_ip
+        else:
+            target_ip = srv_com['target_ip'].text
+
+        if self.module.machine_vector.add_target(send_name, target_ip):
+            srv_com.set_result("added new target")
+        else:
+            srv_com.set_result(
+                "new target already present",
+                server_command.SRV_REPLY_STATE_WARN,
+            )
+
+    def interpret(self, srv_com, cur_ns):
+        _result, _state = srv_com.get_log_tuple()
+        _state = server_command.srv_reply_to_nag_state(_state)
+        return _state, _result
+
+
+class MachineVector(object):
     def __init__(self, module):
+        self.lock = Lock()
         self.module = module
         # actual dictionary, including full-length dictionary keys
         self.__act_dict = {}
@@ -162,13 +197,14 @@ class machine_vector(object):
         self.cs.write()
         self._remove_old_dirs()
 
+        self.send_vector_functions = []
+
     def read_config(self):
         # close sockets
         for _send_id, sock in self.__socket_dict.iteritems():
             self.log("closing socket with id {}".format(_send_id))
             sock.close()
         self.__socket_dict = {}
-        _conf_name = "/etc/sysconfig/host-monitoring.d/machvector.xml"
         if config_store.ConfigStore.exists(MACHVECTOR_CS_NAME):
             self.cs = config_store.ConfigStore(
                 MACHVECTOR_CS_NAME,
@@ -178,10 +214,12 @@ class machine_vector(object):
                 fix_access_mode=True,
             )
         else:
+            # old config
+            _conf_name = "/etc/sysconfig/host-monitoring.d/machvector.xml"
             if os.path.isfile(_conf_name):
                 # migrate old config
                 try:
-                    xml_struct = etree.fromstring(file(_conf_name, "r").read())  # @UndefinedVariable
+                    xml_struct = etree.fromstring(file(_conf_name, "r").read())
                 except:
                     self.log(
                         "cannot read {}: {}".format(
@@ -240,6 +278,7 @@ class machine_vector(object):
             self.cs.write()
 
         p_pool = self.module.main_proc
+        p_pool.unregister_timer(self._send_vector)
         for send_id in self.cs.keys():
             _struct = self.cs[send_id]
             if isinstance(_struct, dict):
@@ -281,9 +320,47 @@ class machine_vector(object):
                     self.cs[send_id] = _struct
         self.cs.write()
 
+    def add_target(self, send_name, target_ip):
+        self.log(
+            "adding new target (send_name={}, target_ip={})".format(
+                send_name,
+                target_ip,
+            )
+        )
+        next_free_id = 0
+        for send_id in self.cs.keys():
+            _struct = self.cs[send_id]
+            if isinstance(_struct, dict):
+                if (_struct["send_name"], _struct["target"]) == (send_name, target_ip):
+                    next_free_id = None
+                    break
+                else:
+                    next_free_id += 1
+
+        if next_free_id is not None:
+            _dict = {
+                "target": target_ip,
+                "send_every": 30,
+                "enabled": True,
+                "immediate": True,
+                "send_name": send_name,
+                "full_info_every": 10,
+                "port": 8002,
+                "format": "xml"
+            }
+
+            self.cs["{:d}".format(next_free_id)] = _dict
+            self.cs.write()
+            self.reload()
+            return True
+        else:
+            return False
+
     def reload(self):
+        self.lock.acquire()
         self.log("reloading machine vector")
         self.read_config()
+        self.lock.release()
 
     def _remove_old_dirs(self):
         # delete external directories
@@ -303,6 +380,7 @@ class machine_vector(object):
                 self.log("removed old external directory {}".format(old_dir))
 
     def _send_vector(self, *args, **kwargs):
+        self.lock.acquire()
         send_id = args[0]
         _struct = self.cs[send_id]
         _p_until = _struct.get("pause_until", 0)
@@ -370,6 +448,7 @@ class machine_vector(object):
                 )
                 _struct["pause_until"] = _w_time
         self.cs[send_id] = _struct
+        self.lock.release()
 
     def close(self):
         for _s_id, t_sock in self.__socket_dict.iteritems():
@@ -382,8 +461,12 @@ class machine_vector(object):
         try:
             rcv_com = server_command.srv_command(source=zmq_sock.recv_unicode())
         except:
-            self.log("error interpreting data as srv_command: {}".format(process_tools.get_except_info()),
-                     logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "error interpreting data as srv_command: {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
         else:
             for in_vector in rcv_com.xpath(".//*[@type='vector']", smart_strings=False):
                 for values_list in in_vector:

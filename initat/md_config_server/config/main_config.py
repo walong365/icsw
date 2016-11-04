@@ -512,7 +512,7 @@ class MainConfig(dict, NagVisMixin):
                             Q(active=True)
                         ) if cur_u.password_ssha.count(":")
                     ] + [""]
-                )
+                ).encode("utf8")
             )
             if global_config["ENABLE_NAGVIS"]:
                 self.NV_create_access_entries()

@@ -63,6 +63,7 @@ __all__ = [
     "DeviceBootHistory",
     "log_source_lookup",
     "HardwareFingerPrint",
+    "DeviceFlagsAndSettings"
 ]
 
 
@@ -449,6 +450,12 @@ class device(models.Model):
         unique_together = [("name", "domain_tree_node"), ]
         verbose_name = u'Device'
 
+class DeviceFlagsAndSettings(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    device = models.OneToOneField(device, related_name='flags_and_settings')
+
+    graph_enslavement_start = models.DateTimeField(null=True)
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):

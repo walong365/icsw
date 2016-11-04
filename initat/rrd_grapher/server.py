@@ -122,7 +122,7 @@ class server_process(
                 _struct.extend(DataStore.compound_struct(_struct))
                 cur_res["struct"] = _struct
             else:
-                self.log("no machine_vector found for device {:d}".format(dev_pk), logging_tools.LOG_LEVEL_WARN)
+                self.log("no MachineVector found for device {:d}".format(dev_pk), logging_tools.LOG_LEVEL_WARN)
             node_results.append(cur_res)
         # _json = self._to_json(node_results, set(["info", "active", "key", "name", "part", "pk"]))
         # pprint.pprint(node_results, depth=5)

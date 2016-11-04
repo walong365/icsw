@@ -261,6 +261,7 @@ def get_quota_str(uqs):
 
 
 def _get_user(user_name):
+    user_name = user_name.decode("unicode_escape")
     from initat.cluster.backbone.models import user
     from django.db.models import Q
     _uo = user.objects

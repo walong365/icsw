@@ -44,10 +44,12 @@ device_properties_overview = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
     "icswDeviceTreeService", "$timeout", "DeviceOverviewService", "icswUserGroupRoleTreeService",
+    "icswToolsSimpleModalService"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
     icswDeviceTreeService, $timeout, DeviceOverviewService, icswUserGroupRoleTreeService,
+    icswToolsSimpleModalService
 ) ->
     $scope.struct = {
         device_tree: undefined
@@ -58,7 +60,23 @@ device_properties_overview = angular.module(
         device_ids_needing_refresh: []
 
         tabs: []
+
+        reload_timer: undefined
     }
+
+    start_timer = () ->
+        stop_timer()
+        $scope.struct.reload_timer = $timeout(
+            () ->
+                perform_refresh(true)
+            10000
+        )
+
+    stop_timer = () ->
+        # check if present and stop timer
+        if $scope.struct.reload_timer?
+            $timeout.cancel($scope.struct.reload_timer)
+            $scope.struct.reload_timer = undefined
 
 
 
@@ -80,31 +98,34 @@ device_properties_overview = angular.module(
 
 
                 if partial_refresh
-                    device_id_list = $scope.struct.device_ids_needing_refresh
+                    device_id_list = (idx for idx in $scope.struct.device_ids_needing_refresh)
+                    console.log(device_id_list)
                 else
                     device_id_list = (device.idx for device in $scope.struct.devices)
 
                 # console.log(device_id_list)
 
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.DEVICE_DEVICE_COMPLETION
-                        data:
-                            device_pks: device_id_list
-                        dataType: "json"
-                    }
-                ).then(
-                    (data) ->
-                        for device_id in device_id_list
-                            # console.log(device_id)
-                            device = $scope.struct.device_tree.all_lut[device_id]
-                            # console.log(device)
+                if device_id_list.length > 0
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.DEVICE_DEVICE_COMPLETION
+                            data:
+                                device_pks: device_id_list
+                            dataType: "json"
+                        }
+                    ).then(
+                        (data) ->
+                            $scope.struct.device_ids_needing_refresh.length = 0
 
-                            salt_device(device, data[device.idx])
+                            for device_id in device_id_list
+                                device = $scope.struct.device_tree.all_lut[device_id]
 
-                        $scope.struct.data_loaded = true
-                        $scope.struct.device_ids_needing_refresh.length = 0
-                )
+                                salt_device(device, data[device.idx])
+
+                            $scope.struct.data_loaded = true
+                            if $scope.struct.device_ids_needing_refresh.length > 0
+                                start_timer()
+                    )
         )
 
     perform_refresh(false)
@@ -120,6 +141,8 @@ device_properties_overview = angular.module(
         info_not_available_text = "Not Available"
         info_available_class = "alert-success"
         info_available_text = "Available"
+        info_warning_class = "alert-warning"
+        info_warning_text = "In Progress..."
 
         info_list_names = [
             ["monitoring_checks", 25],
@@ -143,6 +166,12 @@ device_properties_overview = angular.module(
 
                 device.$$overview_completion_percentage += weight
 
+            else if device_hints[info_list_name + "_warning"] == true
+                device["$$" + info_list_name + "_availability_class"] = info_warning_class
+                device["$$" + info_list_name + "_availability_text"] = info_warning_text
+
+                $scope.struct.device_ids_needing_refresh.push(device.idx)
+
     $scope.open_in_new_tab = (device, setup_type) ->
         if setup_type == 0
             heading = "Monitoring Checks"
@@ -150,6 +179,8 @@ device_properties_overview = angular.module(
             heading = "Location Data"
         else if setup_type == 2
             heading = "Asset Data"
+        else if setup_type == 3
+            heading = "Graphing Setup"
 
         o = {
             type: setup_type
@@ -189,4 +220,22 @@ device_properties_overview = angular.module(
     $scope.show_device = ($event, dev) ->
         DeviceOverviewService($event, [dev])
 
+    $scope.setup_graphing = (dev) ->
+        icswToolsSimpleModalService("Try to perform graphing setup on device? [Requires host-monitoring on device]").then(
+            (_yes) ->
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
+                        data:
+                            device_pk: dev.idx
+                        dataType: "json"
+                    }
+                ).then(
+                    (data) ->
+                        $scope.struct.device_ids_needing_refresh.push(dev.idx)
+                        start_timer()
+                )
+            (_no) ->
+                console.log("no")
+        )
 ])
