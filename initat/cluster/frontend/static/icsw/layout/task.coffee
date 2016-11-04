@@ -325,13 +325,13 @@ angular.module(
                     span(
                         {
                             key: "np"
-                            className: "label label-primary cursorpointer"
+                            className: "label label-primary cursorpointer fa fa-magic wizardbutton"
                             title: "No task active"
-                            style: {fontSize: "24px"}
+                            # style: {fontSize: "24px"}
                             onClick: (event) ->
                                 icswTaskService.choose_task()
                         }
-                        "?"
+                        " "
                     )
                 )
                 _a_style = {padding: "12px"}
@@ -339,7 +339,8 @@ angular.module(
                 {}
                 a(
                     {
-                        style: _a_style
+                        # style: _a_style
+                        className: "task-wizard"
                     }
                     _el_list
                 )

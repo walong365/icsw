@@ -249,7 +249,7 @@ angular.module(
 (
     hotkeysProvider,
 ) ->
-    hotkeysProvider.templateHeader = "<h1>ICSW Key help</h1>"
+    hotkeysProvider.templateHeader = "<h1>ICSW Key Help</h1>"
     hotkeysProvider.includeCheatSheet = true
     hotkeysProvider.cheatSheetHotkey = "F1"
 ]).config([

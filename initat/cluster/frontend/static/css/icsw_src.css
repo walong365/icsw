@@ -294,6 +294,9 @@ icsw-connect-element-display .panel[layout_unlocked="false"] h4 {
     background-color: transparent;
     margin: 10px;
 }
+.cfp-hotkeys-keys {
+    text-transform: uppercase;
+}
 /* HELP PAGE END */
 
 /* BODY START */
@@ -415,6 +418,13 @@ div.yamm hr {
     font-size: 12px;
     padding-right: 0px;
     margin-top: 5px;
+}
+.navbar-right .task-wizard {
+    padding: 17px 0 0 0;!important
+}
+.navbar-right .task-wizard .wizardbutton{
+    padding: 6px 6px 4px 6px;
+    font-size: 17px;
 }
 /* MENU END */
 
