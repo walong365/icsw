@@ -932,37 +932,19 @@ class SimpleGraphSetup(View):
     def post(self, request):
         device_pk = int(request.POST.get("device_pk"))
 
-        _device = device.objects.get(idx=device_pk)
+        srv_com = server_command.srv_command(command="add_rrd_target")
+        srv_com["device_pk"] = device_pk
 
-        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        (result, _) = contact_server(
+            request,
+            icswServiceEnum.collectd_server,
+            srv_com,
+        )
 
-        collectd_devices = [obj.device for obj in config.objects.get(name="rrd_collector").device_config_set.all()]
-
-        _status = ""
-
-        device_flags = DeviceFlagsAndSettings.objects.filter(device=_device)
-
-        for collectd_device in collectd_devices:
-            new_con = net_tools.ZMQConnection(
-                "graph_setup_{:d}".format(_device.idx),
-            )
-
-            conn_str = "tcp://{}:{:d}".format(_device.all_ips()[0], hm_port)
-
-            srv_com = server_command.srv_command(command="graph_setup", send_name=_device.full_name, target_ip=collectd_device.all_ips()[0])
-            new_con.add_connection(conn_str, srv_com)
-
-            _status = new_con.loop()[0].get_result()
-
-        if not device_flags:
-            obj = DeviceFlagsAndSettings.objects.create(
-                device=_device,
-                graph_enslavement_start=datetime.datetime.now(tz=pytz.utc)
-            )
-            obj.save()
+        if result:
+            _status = bool(result.get_result())
         else:
-            device_flags[0].graph_enslavement_start = datetime.datetime.now(tz=pytz.utc)
-            device_flags[0].save()
+            _status = False
 
         return HttpResponse(
             json.dumps(_status)

@@ -24,8 +24,10 @@ import os
 import re
 import socket
 import time
-
 import zmq
+import pytz
+import datetime
+
 from django.conf import settings
 from django.db.models import Q
 from lxml import etree
@@ -33,12 +35,12 @@ from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.var_cache import VarCache
-from initat.cluster.backbone.models import device, snmp_scheme
+from initat.cluster.backbone.models import device, snmp_scheme, net_ip
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.snmp.process import SNMPProcessContainer
 from initat.tools import config_tools, configfile, logging_tools, process_tools, \
-    server_command, server_mixins, threading_tools, uuid_tools
+    server_command, server_mixins, threading_tools, uuid_tools, net_tools
 from .aggregate import aggregate_process
 from .background import SNMPJob, BackgroundJob, IPMIBuilder
 from .collectd_struct import CollectdHostInfo, ext_com, HostMatcher, FileCreator
@@ -48,10 +50,14 @@ from .resize import resize_process
 from .rsync import RSyncMixin
 from .sensor_threshold import ThresholdContainer
 
+from initat.discovery_server.discovery import GetRouteToDevicesMixin
+from initat.icsw.service.instance import InstanceXML
+from initat.cluster.backbone.models import config, DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch
+
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
-class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendToRemoteServerMixin):
+class server_process(GetRouteToDevicesMixin, server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendToRemoteServerMixin):
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
         long_host_name, _mach_name = process_tools.get_fqdn()
@@ -139,6 +145,7 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
         self.add_process(SyncProcess("dbsync"), start=True)
         db_tools.close_connection()
         # self.init_notify_framework(global_config)
+        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
 
     def _init_perfdata(self):
         from initat.collectd.collectd_types import IMPORT_ERRORS, ALL_PERFDATA
@@ -502,6 +509,8 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
                         self._sync_sensor_threshold(in_com)
                     elif com_text == "trigger_sensor_threshold":
                         self._trigger_sensor_threshold(in_com)
+                    elif com_text == "add_rrd_target":
+                        self._add_rrd_target(in_com)
                     # background notify glue
                     # elif com_text in ["wf_notify"]:
                     #    _send_result = False
@@ -1088,3 +1097,40 @@ class server_process(server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendT
     def _trigger_sensor_threshold(self, in_com):
         in_com.set_result("triggered sensor_threshold")
         self.tc.trigger(in_com)
+
+    def _add_rrd_target(self, srv_com):
+        device_pk = int(srv_com["device_pk"].text)
+
+        target_dev = device.objects.get(idx=device_pk)
+        collectd_dev = device.objects.get(pk=global_config["SERVER_IDX"])
+
+        self.get_route_to_devices([collectd_dev, target_dev])
+
+        if target_dev.target_ip and collectd_dev.target_ip:
+            device_flags = DeviceFlagsAndSettings.objects.filter(device=target_dev)
+
+            new_con = net_tools.ZMQConnection(
+                "graph_setup_{:d}".format(target_dev.idx),
+            )
+
+            conn_str = "tcp://{}:{:d}".format(target_dev.target_ip, self.__hm_port)
+
+            if not device_flags:
+                obj = DeviceFlagsAndSettings.objects.create(
+                    device=target_dev,
+                    graph_enslavement_start=datetime.datetime.now(tz=pytz.utc)
+                )
+                obj.save()
+            else:
+                device_flags[0].graph_enslavement_start = datetime.datetime.now(tz=pytz.utc)
+                device_flags[0].save()
+
+            srv_com = server_command.srv_command(command="graph_setup", send_name=target_dev.full_name, target_ip=collectd_dev.target_ip)
+            new_con.add_connection(conn_str, srv_com)
+
+            srv_com.set_result(1)
+        else:
+            srv_com.set_result(0)
+
+        return srv_com
+
