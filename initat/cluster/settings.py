@@ -36,7 +36,8 @@ from django.utils.crypto import get_random_string
 from django.utils.translation import ugettext_lazy as _
 from lxml import etree
 
-from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, SITE_PACKAGES_BASE
+from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, SITE_PACKAGES_BASE, \
+    DB_ACCESS_MULTI_CS_NAME
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, config_store, process_tools
 
@@ -87,11 +88,6 @@ DATABASE_ROUTERS = [
 
 # database config
 _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True, access_mode=config_store.AccessModeEnum.GLOBAL)
-if config_store.ConfigStore.exists(DB_ACCESS_CS_NAME):
-    _ps = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True, access_mode=config_store.AccessModeEnum.LOCAL)
-else:
-    # this only happens when check_content_stores_server was NOT called
-    raise ImproperlyConfigured("DB-Access not configured (store not found or not readable)")
 
 # version config
 # TODO: check for local config when running in debug (development) mode
@@ -134,25 +130,51 @@ ICSW_GOOGLE_MAPS_KEY = _cs["google.maps.key"]
 
 _c_key = hashlib.new("md5")
 
-for src_key, dst_key, _add_to_cache_key in [
-    ("db.database", "NAME", True),
-    ("db.user", "USER", True),
-    ("db.passwd", "PASSWORD", True),
+if _cs.get("multiple.databases", False):
+    _db_access_cs = DB_ACCESS_MULTI_CS_NAME
+    _db_idx = _cs["default.database.idx"]
+    ICSW_DATABASE_LIST = []
+else:
+    _db_access_cs = DB_ACCESS_CS_NAME
+    _db_idx = None
+    ICSW_DATABASE_LIST = []
+
+if config_store.ConfigStore.exists(_db_access_cs):
+    _ps = config_store.ConfigStore(_db_access_cs, quiet=True, access_mode=config_store.AccessModeEnum.LOCAL)
+else:
+    # this only happens when check_content_stores_server was NOT called
+    raise ImproperlyConfigured("DB-Access not configured (store {} not found or not readable)".format(_db_access_cs))
+
+for src_key, dst_key, _add_to_cache_key, _default in [
+    ("db.database", "NAME", True, None),
+    ("db.user", "USER", True, None),
+    ("db.passwd", "PASSWORD", True, None),
     # to make cache_key the same on different machines
-    ("db.host", "HOST", False),
-    ("db.engine", "ENGINE", True),
+    ("db.host", "HOST", False, None),
+    ("db.engine", "ENGINE", True, None),
+    ("db.info", "ICSW_INFO", False, "Default database"),
 ]:
     if src_key in _ps:
         if _add_to_cache_key:
             _c_key.update(src_key)
             _c_key.update(_ps[src_key])
         DATABASES["default"][dst_key] = _ps[src_key]
-    if DATABASES["default"].get("ENGINE", "???").count("sqlite"):
-        # set default timeout very high
-        DATABASES["default"][b"OPTIONS"] = {b"timeout": 30}
+    elif _default:
+        DATABASES["default"][dst_key] = _default
+    else:
+        raise ImproperlyConfigured(
+            "key {} -> {} not found in db_access_cs '{}'".format(
+                src_key,
+                dst_key,
+                _db_access_cs,
+            )
+        )
 
+print("*", DATABASES)
+
+# build a cache key for accessing memcached
 ICSW_CACHE_KEY_LONG = _c_key.hexdigest()
-# short to ICSW_CACHE_KEY
+# short ICSW_CACHE_KEY
 ICSW_CACHE_KEY = ICSW_CACHE_KEY_LONG[:4]
 
 FILE_ROOT = os.path.normpath(os.path.dirname(__file__))
