@@ -195,6 +195,7 @@ boot_patterns = [
 ]
 
 device_patterns = [
+    url("^system_completion$", device_views.SystemCompletion.as_view(), name="system_completion"),
     url("^device_completion$", device_views.DeviceCompletion.as_view(), name="device_completion"),
     url("^simple_graph_setup$", device_views.SimpleGraphSetup.as_view(), name="simple_graph_setup"),
     # url("^device_tree$", device_views.device_tree.as_view(), name="tree"),

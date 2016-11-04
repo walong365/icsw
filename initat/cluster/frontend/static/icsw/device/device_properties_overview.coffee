@@ -62,7 +62,27 @@ device_properties_overview = angular.module(
         tabs: []
 
         reload_timer: undefined
+
+        system_completion: 0
+        devices_availability_class: "alert-danger"
+        devices_availability_text: "Not Available"
+
+        monitoring_checks_availability_class: "alert-danger"
+        monitoring_checks_availability_text: "Not Available"
+
+        users_availability_class: "alert-danger"
+        users_availability_text: "Not Available"
+
+        location_availability_class: "alert-danger"
+        location_availability_text: "Not Available"
     }
+
+    info_not_available_class = "alert-danger"
+    info_not_available_text = "Not Available"
+    info_available_class = "alert-success"
+    info_available_text = "Available"
+    info_warning_class = "alert-warning"
+    info_warning_text = "In Progress..."
 
     start_timer = (refresh_time) ->
         stop_timer()
@@ -140,13 +160,6 @@ device_properties_overview = angular.module(
         else
             device.$$creator = "N/A"
 
-        info_not_available_class = "alert-danger"
-        info_not_available_text = "Not Available"
-        info_available_class = "alert-success"
-        info_available_text = "Available"
-        info_warning_class = "alert-warning"
-        info_warning_text = "In Progress..."
-
         info_list_names = [
             ["monitoring_checks", 25],
             ["location_data", 25],
@@ -193,6 +206,21 @@ device_properties_overview = angular.module(
 
         for tab in $scope.struct.tabs
             if tab.device_id == o.device_id && tab.heading == o.heading
+                return
+
+        $scope.struct.tabs.push(o)
+
+    $scope.open_in_new_tab_for_system = (setup_type) ->
+        if setup_type == 4
+            heading = "Devices"
+
+        o = {
+            type: setup_type
+            heading: heading
+        }
+
+        for tab in $scope.struct.tabs
+            if tab.heading == o.heading
                 return
 
         $scope.struct.tabs.push(o)
@@ -246,4 +274,36 @@ device_properties_overview = angular.module(
             )
         else if dev.$$graphing_data_availability_class == "alert-success"
           $scope.open_in_new_tab(dev, 3)
+
+    $scope.system_overview_tab_clicked = () ->
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                info_list_names = [
+                    ["devices", 25]
+                ]
+
+                $scope.struct.system_completion = 0
+
+                for obj in info_list_names
+                    info_list_name = obj[0]
+                    weight = obj[1]
+
+                    $scope.struct[info_list_name + "_availability_class"] = info_not_available_class
+                    $scope.struct[info_list_name + "_availability_text"] = info_not_available_text
+
+
+                    if data[info_list_name] > 0
+                        $scope.struct[info_list_name + "_availability_class"] = info_available_class
+                        $scope.struct[info_list_name + "_availability_text"] = data[info_list_name + "_text"]
+
+                        $scope.struct.system_completion += weight
+
+
+                console.log(data)
+        )
 ])
