@@ -36,8 +36,42 @@ from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin, NRPEScanMixin,
 from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
 
+class GetRouteToDevicesMixin(object):
+    def get_route_to_devices(self, dev_list):
+        src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
+        src_nds = src_dev.netdevice_set.all().values_list("pk", flat=True)
+        self.log(u"device list: {}".format(u", ".join([unicode(cur_dev) for cur_dev in dev_list])))
+        router_obj = config_tools.RouterObject(self.log)
+        for cur_dev in dev_list:
+            routes = router_obj.get_ndl_ndl_pathes(
+                src_nds,
+                cur_dev.netdevice_set.all().values_list("pk", flat=True),
+                only_endpoints=True,
+                add_penalty=True
+            )
+            cur_dev.target_ip = None
+            if routes:
+                for route in sorted(routes):
+                    found_ips = net_ip.objects.filter(Q(netdevice=route[2]))
+                    if found_ips:
+                        cur_dev.target_ip = found_ips[0].ip
+                        break
+            if cur_dev.target_ip:
+                self.log(
+                    "contact device {} via {}".format(
+                        unicode(cur_dev),
+                        cur_dev.target_ip
+                    )
+                )
+            else:
+                self.log(
+                    u"no route to device {} found".format(unicode(cur_dev)),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+        del router_obj
 
-class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, NRPEScanMixin, EggConsumeMixin):
+
+class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, NRPEScanMixin, EggConsumeMixin):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
@@ -193,36 +227,3 @@ class DiscoveryProcess(threading_tools.process_obj, HostMonitoringMixin, BaseSca
     def _snmp_result(self, *args, **kwargs):
         _batch_id, _error, _src, _results = args
         SNMPBatch.glob_feed_snmp(_batch_id, _error, _src, _results)
-
-    def get_route_to_devices(self, dev_list):
-        src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
-        src_nds = src_dev.netdevice_set.all().values_list("pk", flat=True)
-        self.log(u"device list: {}".format(u", ".join([unicode(cur_dev) for cur_dev in dev_list])))
-        router_obj = config_tools.RouterObject(self.log)
-        for cur_dev in dev_list:
-            routes = router_obj.get_ndl_ndl_pathes(
-                src_nds,
-                cur_dev.netdevice_set.all().values_list("pk", flat=True),
-                only_endpoints=True,
-                add_penalty=True
-            )
-            cur_dev.target_ip = None
-            if routes:
-                for route in sorted(routes):
-                    found_ips = net_ip.objects.filter(Q(netdevice=route[2]))
-                    if found_ips:
-                        cur_dev.target_ip = found_ips[0].ip
-                        break
-            if cur_dev.target_ip:
-                self.log(
-                    "contact device {} via {}".format(
-                        unicode(cur_dev),
-                        cur_dev.target_ip
-                    )
-                )
-            else:
-                self.log(
-                    u"no route to device {} found".format(unicode(cur_dev)),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-        del router_obj

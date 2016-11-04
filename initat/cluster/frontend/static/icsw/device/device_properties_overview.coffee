@@ -64,12 +64,12 @@ device_properties_overview = angular.module(
         reload_timer: undefined
     }
 
-    start_timer = () ->
+    start_timer = (refresh_time) ->
         stop_timer()
         $scope.struct.reload_timer = $timeout(
             () ->
                 perform_refresh(true)
-            10000
+            refresh_time
         )
 
     stop_timer = () ->
@@ -81,6 +81,7 @@ device_properties_overview = angular.module(
 
 
     perform_refresh = (partial_refresh) ->
+        console.log("performing_refresh:" + partial_refresh)
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -124,7 +125,9 @@ device_properties_overview = angular.module(
 
                             $scope.struct.data_loaded = true
                             if $scope.struct.device_ids_needing_refresh.length > 0
-                                start_timer()
+                                start_timer(15000)
+
+                            console.log("performing_refresh done")
                     )
         )
 
@@ -221,8 +224,9 @@ device_properties_overview = angular.module(
         DeviceOverviewService($event, [dev])
 
     $scope.setup_graphing = (dev) ->
-        icswToolsSimpleModalService("Try to perform graphing setup on device? [Requires host-monitoring on device]").then(
+        icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
             (_yes) ->
+                blockUI.start("Please wait...")
                 icswSimpleAjaxCall(
                     {
                         url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
@@ -233,7 +237,8 @@ device_properties_overview = angular.module(
                 ).then(
                     (data) ->
                         $scope.struct.device_ids_needing_refresh.push(dev.idx)
-                        start_timer()
+                        perform_refresh(true)
+                        blockUI.stop()
                 )
             (_no) ->
                 console.log("no")
