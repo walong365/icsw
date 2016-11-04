@@ -164,6 +164,8 @@ def main():
         ("session.multiple.per.user.allowed", False),
         ("missing.timezone.is.critical", True),
         ("overall.style", "normal"),
+        ("multiple.databases", False),
+        ("default.database.idx", 0),
     ]:
         if _name not in new_store:
             new_store[_name] = _default

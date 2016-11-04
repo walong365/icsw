@@ -148,8 +148,10 @@ class backup_process(threading_tools.process_obj):
             for _key in sorted(_def_db.keys()):
                 self.log("    {}={}".format(_key, _def_db[_key]))
             _engine = _def_db.get("ENGINE", "unknown").split(".")[-1]
+            # map old to new values
+            _engine = {"postgresql_psycopg2": "postgresql"}.get(_engine, _engine)
             bu_dict = {
-                "postgresql_psycopg2": {
+                "postgresql": {
                     "dump_bin": "pg_dump",
                     "cmdline": "{DUMP} -c -f {FILENAME} -F c -Z 4 -h {HOST} -U {USER} {NAME} -w {EXCLUDE}",
                     "pgpass": True

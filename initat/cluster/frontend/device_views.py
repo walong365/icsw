@@ -862,7 +862,13 @@ class DeviceCompletion(View):
     def post(self, request):
         device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
 
-        devices = device.objects.prefetch_related("assetbatch_set").filter(idx__in=device_pks)
+        devices = device.objects.prefetch_related(
+            "assetbatch_set"
+        ).select_related(
+            "flags_and_settings"
+        ).filter(
+            Q(idx__in=device_pks)
+        )
 
         # build monitoring check information
         device_checks_count = {}

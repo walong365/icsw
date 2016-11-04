@@ -30,29 +30,38 @@ import os
 import sys
 
 __all__ = [
+
+    # config stores
+
     b"GEN_CS_NAME",
     b"DB_ACCESS_CS_NAME",
+    b"DB_ACCESS_MULTI_CS_NAME",
     b"VERSION_CS_NAME",
+
+    # directories
+
+    b"ICSW_ROOT",
     b"CLUSTER_DIR",
     b"CONFIG_STORE_ROOT",
     b"USER_EXTENSION_ROOT",
     b"LOG_ROOT",
     b"MON_DAEMON_INFO_FILE",
     b"PY_LIBDIR_SHORT",
-    b"ICSW_ROOT",
     b"SITE_PACKAGES_BASE",
+
     b"INITAT_BASE",
     b"INITAT_BASE_DEBUG",
 ]
 
 GEN_CS_NAME = "icsw.general"
 DB_ACCESS_CS_NAME = "icsw.db.access"
+DB_ACCESS_MULTI_CS_NAME = "icsw.db.access.multi"
 VERSION_CS_NAME = "icsw.sysversion"
 
 # python version
 _PY_VERSION = "{:d}.{:d}".format(
     sys.version_info.major,
-    sys.version_info.minor
+    sys.version_info.minor,
 )
 PY_LIBDIR_SHORT = "python{}".format(_PY_VERSION)
 
