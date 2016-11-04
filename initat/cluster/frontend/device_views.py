@@ -902,7 +902,7 @@ class DeviceCompletion(View):
 
             try:
                 info_dict[_device.idx]["graphing_data_warning"] = \
-                    _device.flags_and_settings.graph_enslavement_start != None
+                    _device.flags_and_settings.graph_enslavement_start is not None
             except DeviceFlagsAndSettings.DoesNotExist:
                 pass
 

@@ -123,6 +123,17 @@
                 </description>
             </icswData>
         </route>
+        <route name="main.moncheckoverview">
+            <stateData url="/moncheckoverview" templateUrl="icsw/main/moncheck/overview.html"/>
+            <icswData pageTitle="Monitoring checks Setup">
+                <rights>
+                    <value>backbone.device.change_config</value>
+                </rights>
+                <description>
+                    <infoText language="en">Add and modify assignable monitoring checks</infoText>
+                </description>
+            </icswData>
+        </route>
         <route name="main.domaintree">
             <stateData url="/domaintree" templateUrl="icsw/main/device/domaintree.html"/>
             <icswData pageTitle="Domain Names">
@@ -619,6 +630,7 @@
             </routeSubGroup>
             <routeSubGroup name="Attributes">
                 <menuEntry icon="fa-check-square-o" name="Assignable Configuration Setup" routeName="main.configoverview"/>
+                <menuEntry icon="fa-check-square-o" name="Monitoringcheck Setup" routeName="main.moncheckoverview"/>
                 <menuEntry icon="fa-list-alt" routeName="main.domaintree" name="Domain Names"/>
                 <menuEntry icon="fa-table" name="Categories" routeName="main.categorytree"/>
                 <menuEntry icon="fa-map-marker" name="Locations" routeName="main.devlocation"/>

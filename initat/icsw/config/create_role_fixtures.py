@@ -94,93 +94,93 @@ def create_noctua_fixtures():
     # config
     print("Creeating configurations.")
     ping_config = factories.Config(
-        name="check_ping",
+        name="check-ping",
         config_catalog=first_cc,
     )
     snmp_config = factories.Config(
-        name="check_snmp_info",
+        name="check-snmp-info",
         config_catalog=first_cc,
     )
     ssh_config = factories.Config(
-        name="check_ssh",
+        name="check-ssh",
         config_catalog=first_cc,
     )
     http_config = factories.Config(
-        name="check_http",
+        name="check-http",
         config_catalog=first_cc,
     )
     https_config = factories.Config(
-        name="check_https",
+        name="check-https",
         config_catalog=first_cc,
     )
     ldap_config = factories.Config(
-        name="check_ldap",
+        name="check-ldap",
         config_catalog=first_cc,
     )
     imap_config = factories.Config(
-        name="check_imap",
+        name="check-imap",
         config_catalog=first_cc,
     )
     imaps_config = factories.Config(
-        name="check_imaps",
+        name="check-imaps",
         config_catalog=first_cc,
     )
     pop3s_config = factories.Config(
-        name="check_pop3s",
+        name="check-pop3s",
         config_catalog=first_cc,
     )
     smtps_config = factories.Config(
-        name="check_smtps",
+        name="check-smtps",
         config_catalog=first_cc,
     )
     print("Creating monitoring checks.")
     factories.MonCheckCommand(
-        name="snmp_info",
+        name="snmp-info",
         command_line="$USER3$ -m $HOSTADDRESS$ -C $ARG1$ -V $ARG2$ snmp_info",
         config=snmp_config
     ).categories.add(cat_serv)
     factories.MonCheckCommand(
-        name="check_ping",
+        name="check-ping",
         command_line="$USER2$ -m localhost ping $HOSTADDRESS$ 5 5.0",
         config=ping_config
     ).categories.add(cat_serv)
     factories.MonCheckCommand(
-        name="check_ssh",
+        name="check-ssh",
         command_line="$USER1$/check_ssh $HOSTADDRESS$",
         config=ssh_config
     ).categories.add(cat_serv)
     factories.MonCheckCommand(
-        name="check_http",
+        name="check-http",
         command_line="$USER1$/check_http -H $HOSTADDRESS$",
         config=http_config
     ).categories.add(cat_web)
     factories.MonCheckCommand(
-        name="check_imaps",
+        name="check-imaps",
         command_line="$USER1$/check_imap -H $HOSTADDRESS$ -p 993 -S",
         config=imaps_config
     ).categories.add(cat_mail)
     factories.MonCheckCommand(
-        name="check_ldap",
+        name="check-ldap",
         command_line="$USER1$/check_ldap -H $HOSTADDRESS$ -b dc=init,dc=at -3",
         config=ldap_config
     ).categories.add(cat_serv)
     factories.MonCheckCommand(
-        name="check_https",
+        name="check-https",
         command_line="$USER1$/check_http -S -H $HOSTADDRESS$ -C 30",
         config=https_config
     ).categories.add(cat_web)
     factories.MonCheckCommand(
-        name="check_imap",
+        name="check-imap",
         command_line="$USER1$/check_imap -H $HOSTADDRESS$ -p 143",
         config=imap_config
     ).categories.add(cat_mail)
     factories.MonCheckCommand(
-        name="check_pop3s",
+        name="check-pop3s",
         command_line="$USER1$/check_pop3 -H $HOSTADDRESS$ -p 995 -S",
         config=pop3s_config
     ).categories.add(cat_mail)
     factories.MonCheckCommand(
-        name="check_smtps",
+        name="check-smtps",
         command_line="$USER1$/check_smtps -H $HOSTADDRESS$ -p 465 -S",
         config=smtps_config
     ).categories.add(cat_mail)
@@ -201,14 +201,7 @@ def create_noctua_fixtures():
     factories.DeviceConfig(
         device=first_dev,
         config=factories.Config(
-            name="monitor_server",
-            config_catalog=first_cc
-        ),
-    )
-    factories.DeviceConfig(
-        device=first_dev,
-        config=factories.Config(
-            name="rrd_server",
+            name="rrd-server",
             config_catalog=first_cc
         ),
     )
@@ -222,14 +215,7 @@ def create_noctua_fixtures():
     factories.DeviceConfig(
         device=first_dev,
         config=factories.Config(
-            name="rrd_collector",
-            config_catalog=first_cc
-        ),
-    )
-    factories.DeviceConfig(
-        device=first_dev,
-        config=factories.Config(
-            name="discovery_server",
+            name="rrd-collector",
             config_catalog=first_cc
         ),
     )
