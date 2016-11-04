@@ -450,12 +450,6 @@ class device(models.Model):
         unique_together = [("name", "domain_tree_node"), ]
         verbose_name = u'Device'
 
-class DeviceFlagsAndSettings(models.Model):
-    idx = models.AutoField(primary_key=True)
-
-    device = models.OneToOneField(device, related_name='flags_and_settings')
-
-    graph_enslavement_start = models.DateTimeField(null=True)
 
 @receiver(signals.pre_save, sender=device)
 def device_pre_save(sender, **kwargs):
@@ -591,6 +585,14 @@ def device_post_save(sender, **kwargs):
                     if _possible_classes[0] is not None:
                         _md.device_class = DeviceClass.objects.get(Q(pk=_possible_classes[0]))
                     _md.save(update_fields=["device_class"])
+
+
+class DeviceFlagsAndSettings(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    device = models.OneToOneField(device, related_name='flags_and_settings')
+
+    graph_enslavement_start = models.DateTimeField(null=True)
 
 
 class DeviceScanLock(models.Model):

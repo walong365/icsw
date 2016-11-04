@@ -30,25 +30,48 @@ config_module = angular.module(
 (
     icswTools, ICSW_URLS, $q, Restangular, $rootScope, icswSimpleAjaxCall, ICSW_SIGNALS,
 ) ->
+    EL_LIST = [
+        "list", "cse_list", "catalog_list",
+        "hint_list",
+    ]
     class icswConfigTree
-        constructor: (@list, @cse_list, @catalog_list, @hint_list, @cat_tree) ->
+        constructor: (list, cse_list, catalog_list, hint_list, cat_tree, mon_basic_tree) ->
             @uploaded_configs = []
             @filtered_list = []
+            @filtered_mcc_list = []
+            @cat_tree = cat_tree
+            @mon_basic_tree = mon_basic_tree
+            for entry in EL_LIST
+                @[entry] = []
+            # monitoring check command list
+            @mcc_list = []
+            @update(list, cse_list, catalog_list, hint_list)
+
+        update: (args...) =>
+            for [entry, _list] in _.zip(EL_LIST, args)
+                @[entry].length = 0
+                for _el in _list
+                    @[entry].push(_el)
             @build_luts()
 
         build_luts: () =>
             _start = new Date().getTime()
+            @mcc_list.length = 0
             # new entries added
             @lut = _.keyBy(@list, "idx")
             @cse_lut = _.keyBy(@cse_list, "idx")
             @catalog_lut = _.keyBy(@catalog_list, "idx")
             @hint_lut = _.keyBy(@hint_list, "idx")
             @mcc_to_config_lut = {}
-            @mcc_lut = {}
             for config in @list
+                # links
+                config.$$config_tree = @
                 for mcc in config.mon_check_command_set
+                    mcc.$$config = config
+                    mcc.$$config_name = config.name
                     @mcc_to_config_lut[mcc.idx] = config.idx
-                    @mcc_lut[mcc.idx] = mcc
+                    @mcc_list.push(mcc)
+            @mcc_lut = _.keyBy(@mcc_list, "idx")
             @resolve_hints()
             @reorder()
             @update_filtered_list()
@@ -273,6 +296,7 @@ config_module = angular.module(
                 @_enrich_config(config)
             @_populate_filter_fields()
             @$selected = (entry for entry in @list when entry.$selected).length
+            @$mcc_selected = 0
 
         # filter functions
         _populate_filter_fields: () =>
@@ -294,7 +318,7 @@ config_module = angular.module(
                         s.push(cvar.$$filter_string)
                 for moncc in entry.mon_check_command_set
                     _local_s = []
-                    for attr_name in ["name", "description", "check_command"]
+                    for attr_name in ["name", "description", "check_command", "command_line"]
                         _local_s.push(moncc[attr_name])
                     moncc.$$filter_string = _local_s.join(" ")
                     s.push(moncc.$$filter_string)
@@ -327,6 +351,7 @@ config_module = angular.module(
             if not with_service?
                 with_service = 0
             @filtered_list.length = 0
+            @filtered_mcc_list.length = 0
             for entry in @list
                 if entry.$$filter_set?
                     # search_str defined due some filtering
@@ -339,6 +364,8 @@ config_module = angular.module(
                         else
                             scr.$$filter_match = false
                     for mon in entry.mon_check_command_set
+                        if mon.$$filter_string.match(search_re)
+                            @filtered_mcc_list.push(mon)
                         if filter_settings.mon
                             mon.$$filter_match = if mon.$$filter_string.match(search_re) then true else false
                             if mon.$$filter_match
@@ -624,10 +651,10 @@ config_module = angular.module(
 ]).service("icswConfigTreeService",
 [
     "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTools", "icswConfigTree",
-    "$rootScope", "ICSW_SIGNALS", "icswCategoryTreeService", "icswTreeBase",
+    "$rootScope", "ICSW_SIGNALS", "icswCategoryTreeService", "icswTreeBase", "icswMonitoringBasicTreeService",
 (
     $q, Restangular, ICSW_URLS, icswCachingCall, icswTools, icswConfigTree,
-    $rootScope, ICSW_SIGNALS, icswCategoryTreeService, icswTreeBase,
+    $rootScope, ICSW_SIGNALS, icswCategoryTreeService, icswTreeBase, icswMonitoringBasicTreeService,
 ) ->
     rest_map = [
         ICSW_URLS.REST_CONFIG_LIST,
@@ -639,6 +666,7 @@ config_module = angular.module(
         extra_calls: (client) =>
             return [
                 icswCategoryTreeService.load(client)
+                icswMonitoringBasicTreeService.load(client)
             ]
 
     return new icswConfigTreeService(
