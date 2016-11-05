@@ -41,9 +41,11 @@ device_variable_module = angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswDeviceVariableListService", "icswDeviceVariableScopeTreeService",
+    "icswComplexModalService", "icswFormTools", "icswDeviceVariableScopeBackup",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswDeviceVariableListService, icswDeviceVariableScopeTreeService,
+    icswComplexModalService, icswFormTools, icswDeviceVariableScopeBackup,
 ) ->
     $scope.struct = {
         # device variable scope tree
@@ -64,6 +66,62 @@ device_variable_module = angular.module(
                 $scope.struct.loaded = true
         )
     $scope.reload()
+
+    $scope.create_scope = ($event) ->
+        create_or_edit_scope($event, true, null)
+
+    create_or_edit_scope = ($event, create, var_scope) ->
+        sub_scope = $scope.$new(true)
+        console.log "cs"
+        sub_scope.create = create
+        if create
+            sub_scope.edit_obj = {
+                name: "varscope"
+                description: "New Variable scope"
+                priority: 50
+                fixed: true
+            }
+        else
+            dbu = new icswDeviceVariableScopeBackup()
+            dbu.create_backup(var_scope)
+            sub_scope.edit_obj = var_scope
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.variable.scope.form"))(sub_scope)
+                title: "Variable Scope '#{sub_scope.edit_obj.name}'"
+                ok_label: if create then "Create" else "Modify"
+                closable: true
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    if icswFormTools.check_form(sub_scope.form_data, d)
+                        if create
+                            # single creation
+                            sub_scope.edit_obj.editable = true
+                            $scope.struct.device_variable_scope_tree.create_variable_scope(sub_scope.edit_obj).then(
+                                (new_conf) ->
+                                    d.resolve("created")
+                                (notok) ->
+                                    d.reject("not created")
+                            )
+                        else
+                            $scope.struct.device_variable_scope_tree.update_variable_scope(sub_scope.edit_obj).then(
+                                (new_var) ->
+                                    d.resolve("updated")
+                                (not_ok) ->
+                                    d.reject("not updated")
+                            )
+                    return d.promise
+                cancel_callback: (modal) ->
+                    if not create
+                        dbu.restore_backup(var_scope)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+        )
 
 ]).directive("icswVariableScopeTable",
 [
@@ -179,7 +237,6 @@ device_variable_module = angular.module(
             (fin) ->
                 sub_scope.$destroy()
         )
-
 
     $scope.create_dvs_an = ($event, var_scope) ->
         create_or_edit($event, var_scope, true, null)

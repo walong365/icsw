@@ -1890,9 +1890,21 @@ angular.module(
             }
         )
 
+    check_form = (form, wait_defer) ->
+        if form.$invalid
+            show_form_error(form)
+            if wait_defer?
+                wait_defer.reject("form not valid")
+            return false
+        else
+            return true
+
     return {
         show_form_error: (form) ->
             return show_form_error(form)
+
+        check_form: (form, wait_defer) ->
+            return check_form(form, wait_defer)
     }
 
 ])

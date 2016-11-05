@@ -777,6 +777,26 @@ class DeviceVariableViewSet(viewsets.ViewSet):
 
 class DeviceVariableScopeViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
+    def create_var_scope(self, request):
+        new_scope = device_variable_scope_serializer(data=request.data)
+        if new_scope.is_valid():
+            new_scope.save()
+        else:
+            raise ValidationError(
+                "New Scope not valid: {}".format(
+                    ", ".join(
+                        [
+                            "{}: {}".format(
+                                _key,
+                                ", ".join(_value),
+                            ) for _key, _value in new_scope.errors.iteritems()
+                        ]
+                    )
+                )
+            )
+        return Response(new_scope.data)
+
+    @method_decorator(login_required)
     def list(self, request):
         return Response(
             device_variable_scope_serializer(

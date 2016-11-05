@@ -170,7 +170,7 @@ for src_key, dst_key, _add_to_cache_key, _default in [
             )
         )
 
-print("*", DATABASES)
+# print("*", DATABASES)
 
 # build a cache key for accessing memcached
 ICSW_CACHE_KEY_LONG = _c_key.hexdigest()

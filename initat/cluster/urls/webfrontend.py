@@ -220,7 +220,7 @@ device_patterns = [
     ),
     url(
         "^device_variable_scope_call$",
-        device_views.DeviceVariableScopeViewSet.as_view({"get": "list"}),
+        device_views.DeviceVariableScopeViewSet.as_view({"get": "list", "post": "create_var_scope"}),
         name="device_variable_scope_list",
     ),
     url(
