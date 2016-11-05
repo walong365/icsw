@@ -343,6 +343,76 @@ angular.module(
             return new icswDeviceTreeHelper(tree, devices)
     }
 
+]).service("icswEnrichmentRequest",
+[
+    "$q", "icswTools", "icswNetworkTreeService",
+(
+    $q, icswTools, icswNetworkTreeService,
+) ->
+    class icswEnrichmentRequest
+        constructor: () ->
+            @idx = 0
+            @defer_lut = {}
+            @all_lut = {}
+            @all_devs = {}
+            @dev_reqs = {}
+            @start_time = new Date().getTime()
+
+        feed: (dth, en_list, en_req, defer) =>
+            # device_tree_helper, enrichment_list, enrichment_request, defer
+            @idx++
+            @defer_lut[@idx] = [defer, dth, en_list, en_req]
+            @join_requests(en_req)
+            req_keys = _.keys(en_req)
+            # merge devices
+            for dev in dth.devices
+                if dev.idx not of @all_devs
+                    @all_devs[dev.idx] = dev
+                    @dev_reqs[dev.idx] = []
+                @dev_reqs[dev.idx] = _.union(@dev_reqs[dev.idx], req_keys)
+            # console.log "+", @dev_reqs
+
+        join_requests: (l_req) =>
+            # merge local_requests into global_requests
+            for _key, _value of l_req
+                if _key not of @all_lut
+                    @all_lut[_key] = _value
+                else
+                    @all_lut[_key] = _.union(@all_lut[_key], l_req[_key])
+
+        feed_result: (enricher, result) =>
+            _end = new Date().getTime()
+            _reqs = $q.defer()
+            if "network_info" of @all_lut
+                icswNetworkTreeService.load("enr").then(
+                    (done) =>
+                        _reqs.resolve("loaded")
+                )
+            else
+                _reqs.resolve("not needed")
+            _reqs.promise.then(
+                (done) =>
+                    # runtime in milliseconds
+                    _run_time = icswTools.get_diff_time_ms(_end - @start_time)
+                    console.log "*** enrichment_request for #{_.keys(@all_lut)} took #{_run_time}"
+                    # step 1: clear all infos
+                    for _pk, _dev of @all_devs
+                        _dev.$$_enrichment_info.clear_infos(@all_lut)
+                    # step 2: feed results
+                    for _key, _list of @defer_lut
+                        [defer, dth, en_list, en_req] = _list
+                        # filtering is done in feed_results
+                        enricher.feed_results(result, dth, en_req)
+                    # step 3: build luts
+                    for _key, _list of @defer_lut
+                        [defer, dth, en_list, en_req] = _list
+                        # build local luts
+                        (dev.$$_enrichment_info.build_luts(en_list) for dev in dth.devices)
+                        # build global luts
+                        enricher.build_g_luts(en_list, dth)
+                        # resolve
+                        defer.resolve(dth.devices)
+            )
 ]).service("icswEnrichmentInfo",
 [
     "icswNetworkTreeService", "icswTools", "$q",
@@ -417,7 +487,7 @@ angular.module(
                     else
                         @device[@get_attr_name(req)].length = 0
 
-        build_luts: (en_list, dth_obj) =>
+        build_luts: (en_list) =>
             # build luts
             for req in en_list
                 _call_name = "post_#{req}"
@@ -544,40 +614,48 @@ angular.module(
                     to_load[req].push(d_req[0])
             return to_load
 
-        feed_results: (result, en_req) =>
+        feed_results: (result, dth, en_req) =>
+            # result is a global result
             # feed result into device_tree
             for key, obj_list of result
-                devices_set = []
-                for obj in obj_list
-                    _pks = []
-                    if obj.device?
-                        _pks.push(obj.device)
-                    # parent / child
-                    else if obj.parent? and obj.child?
-                        _pks.push(obj.parent)
-                        _pks.push(obj.child)
-                    if _pks.length
-                        for _pk in _pks
-                            @device.all_lut[_pk].$$_enrichment_info.feed_result(key, obj)
-                            # remember devices with a valid result
-                            if _pk not in devices_set
-                                devices_set.push(_pk)
-                    else
-                        console.error "feed_results, ", obj
-                        throw new Error("No device / parent / child attribute found in object")
-                _missing = _.difference(en_req[key], devices_set)
-                for _pk in _missing
-                    @device.all_lut[_pk].$$_enrichment_info.feed_empty_result(key)
+                # filter according to local result
+                if key of en_req
+                    devices_set = []
+                    for obj in obj_list
+                        _pks = []
+                        if obj.device?
+                            _pks.push(obj.device)
+                        # parent / child
+                        else if obj.parent? and obj.child?
+                            _pks.push(obj.parent)
+                            _pks.push(obj.child)
+                        if _pks.length
+                            for _pk in _pks
+                                # filter according to device_tree_helper
+                                if _pk of dth.device_lut
+                                    # @device is the device tree
+                                    @device.all_lut[_pk].$$_enrichment_info.feed_result(key, obj)
+                                    # remember devices with a valid result
+                                    if _pk not in devices_set
+                                        devices_set.push(_pk)
+                        else
+                            console.error "feed_results, ", obj
+                            throw new Error("No device / parent / child attribute found in object")
+                    _missing = _.difference(en_req[key], devices_set)
+                    for _pk in _missing
+                        @device.all_lut[_pk].$$_enrichment_info.feed_empty_result(key)
 
 ]).service("icswDeviceTree",
 [
     "icswTools", "ICSW_URLS", "$q", "Restangular", "icswEnrichmentInfo",
     "icswSimpleAjaxCall", "$rootScope", "$timeout", "icswDeviceTreeGraph",
     "ICSW_SIGNALS", "icswDeviceTreeHelper", "icswNetworkTreeService",
+    "icswEnrichmentRequest",
 (
     icswTools, ICSW_URLS, $q, Restangular, icswEnrichmentInfo,
     icswSimpleAjaxCall, $rootScope, $timeout, icswDeviceTreeGraph,
-    ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService
+    ICSW_SIGNALS, icswDeviceTreeHelper, icswNetworkTreeService,
+    icswEnrichmentRequest,
 ) ->
     class icswDeviceTree
         constructor: (full_list, group_list, domain_tree, cat_tree, device_variable_scope_tree, device_class_tree) ->
@@ -661,6 +739,8 @@ angular.module(
             # set the clusterDevice Group
             if @cluster_device_group_device
                 @cluster_device_group = @group_lut[@cluster_device_group_device.device_group]
+            # init enrich requests
+            @enrich_requests = []
             # console.log @enabled_list.length, @disabled_list.length, @all_list.length
             @link()
 
@@ -983,65 +1063,73 @@ angular.module(
 
         # enrichment functions
         enrich_devices: (dth, en_list, force=false) =>
+            _resolve_local = (result, dth, en_list, defer) ->
+                _reqs = $q.defer()
+                # fetch missing requirements
+                # FIXME: make this more dynamic
+                if "network_info" in en_list
+                    true
+                else
+                    _reqs.resolve("not needed")
+                _reqs.promise.then(
+                    (ok) =>
+                        # clear previous values
+                        # console.log "clear previous enrichment values"
+                        (dev.$$_enrichment_info.clear_infos(en_req) for dev in dth.devices)
+                        # console.log "set new enrichment values"
+                        # feed results back to enricher
+                        @enricher.feed_results(result, en_req)
+                        # build local luts
+                        (dev.$$_enrichment_info.build_luts(en_list) for dev in dth.devices)
+                        # build global luts
+                        @build_helper_luts(en_list, dth)
+                        # resolve with device list
+                        defer.resolve(dth.devices)
+                )
+
             # dth ... icswDeviceTreeHelper
             # en_list .. enrichment list
             defer  = $q.defer()
-            # build request
-            en_req = @enricher.merge_requests(
-                (
-                    dev.$$_enrichment_info.build_request(en_list, force) for dev in dth.devices
-                )
-            )
-            _fetch = $q.defer()
-            if _.isEmpty(en_req)
-                # empty request, just feed to dth
-                # console.log "enrichment:", en_list, "for", dth, "not needed"
-                _fetch.resolve({})
-            else
-                #console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
-                _start = new Date().getTime()
-                # non-empty request, fetch from server
-                icswSimpleAjaxCall(
-                    url: ICSW_URLS.DEVICE_ENRICH_DEVICES
-                    data: {
-                        enrich_request: angular.toJson(en_req)
-                    }
-                    dataType: "json"
-                ).then(
-                    (result) =>
-                        _end = new Date().getTime()
-                        # runtime in milliseconds
-                        _run_time = icswTools.get_diff_time_ms(_end - _start)
-                        console.log "*** enrichment_request for #{_.keys(en_req)} took #{_run_time}"
-                        _fetch.resolve(result)
-                )
-            _fetch.promise.then(
-                (result) =>
-                    # fetch missing requirements
-                    # FIXME: make this more dynamic
-                    _reqs = $q.defer()
-                    if "network_info" in en_list
-                        icswNetworkTreeService.load("enr").then(
-                            (done) =>
-                                _reqs.resolve("loaded")
+            @enrich_requests.push([dth, en_list, force, defer])
+            # use timeout to merge all requests done in one $digest-cycle
+            $timeout(
+                () =>
+                    # console.log "go", @enrich_requests.length
+                    all_reqs = new icswEnrichmentRequest()
+                    for [dth, en_list, force, defer] in @enrich_requests
+                        # build request
+                        en_req = @enricher.merge_requests(
+                            (
+                                dev.$$_enrichment_info.build_request(en_list, force) for dev in dth.devices
+                            )
                         )
-                    else
-                        _reqs.resolve("not needed")
-                    _reqs.promise.then(
-                        (ok) =>
-                            # clear previous values
-                            # console.log "clear previous enrichment values"
-                            (dev.$$_enrichment_info.clear_infos(en_req) for dev in dth.devices)
-                            # console.log "set new enrichment values"
-                            # feed results back to enricher
-                            @enricher.feed_results(result, en_req)
-                            # build local luts
-                            (dev.$$_enrichment_info.build_luts(en_list, dth) for dev in dth.devices)
-                            # build global luts
-                            @build_helper_luts(en_list, dth)
-                            # resolve with device list
-                            defer.resolve(dth.devices)
+                        if _.isEmpty(en_req)
+                            # console.log "enrichment:", en_list, "for", dth, "not needed"
+                            # empty request, just feed to dth
+                            # resolve directly
+                            _local_req = new icswEnrichmentRequest()
+                            # feed info
+                            _local_req.feed(dth, en_list, en_req, defer)
+                            # resolve with empty result
+                            _local_req.feed_result(@enricher, {})
+                            # _resolve_local({}, dth, en_list, defer)
+                        else
+                            all_reqs.feed(dth, en_list, en_req, defer)
+                    # reset list
+                    @enrich_requests.length = 0
+                    #console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
+                    # non-empty request, fetch from server
+                    icswSimpleAjaxCall(
+                        url: ICSW_URLS.DEVICE_ENRICH_DEVICES
+                        data: {
+                            enrich_request: angular.toJson(all_reqs.all_lut)
+                        }
+                        dataType: "json"
+                    ).then(
+                        (result) =>
+                            all_reqs.feed_result(@enricher, result)
                     )
+                0
             )
             return defer.promise
 
