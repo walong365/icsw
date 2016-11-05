@@ -130,6 +130,8 @@ angular.module(
             _info_f = []
             if entry.fixed
                 _info_f.push("fixed")
+            if entry.system_scope
+                _info_f.push("system")
             if entry.description
                 _info_f.push(entry.description)
             if _info_f.length
@@ -171,7 +173,7 @@ angular.module(
 
         update_variable_scope: (var_scope) =>
             defer = $q.defer()
-            Restangular.restangularizeElement(null, var_scope, ICSW_URLS.DEVICE_DEVICE_VARIABLE_SCOPE_LIST.slice(1))
+            Restangular.restangularizeElement(null, var_scope, ICSW_URLS.DEVICE_DEVICE_VARIABLE_SCOPE_DETAIL.slice(1).slice(0, -2))
             var_scope.put().then(
                 (new_obj) =>
                     _.remove(@list, (_vs) => return _vs.idx == var_scope.idx)

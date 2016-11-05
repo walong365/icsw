@@ -604,6 +604,13 @@ class device_variable_scope_factory(factory.django.DjangoModelFactory):
             self.fixed = extracted
             self.save()
 
+    @factory.post_generation
+    def system_scope(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.system_scope != extracted:
+            self.system_scope = extracted
+            self.save()
+
 
 class DVSAllowedNameFactory(factory.django.DjangoModelFactory):
     class Meta:

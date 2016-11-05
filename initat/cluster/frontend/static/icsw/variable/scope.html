@@ -51,9 +51,17 @@
     <h3>
         Variable Scope '{{ var_scope.name }}',
         <span ng-show="var_scope.description">({{ var_scope.description }})</span>
-        Number of Entries: {{ var_scope.dvs_allowed_name_set.length }}
-        <icsw-tools-button size="xs" type="create" ng-click="create_dvs_an($event, var_scope)"></icsw-tools-button>
     </h3>
+    <h4>
+        Number of Entries: {{ var_scope.dvs_allowed_name_set.length }}
+        <icsw-tools-button
+            size="xs"
+            type="modify"
+            ng-click="edit_var_scope($event, var_scope)"
+            ng-if="!var_scope.system_scope"
+        ></icsw-tools-button>
+        <icsw-tools-button size="xs" type="create" ng-click="create_dvs_an($event, var_scope)"></icsw-tools-button>
+    </h4>
     <table st-table="entries" st-safe-src="var_scope.dvs_allowed_name_set" class="table table-condensed table-striped" style="width:auto;">
         <thead>
             <tr>

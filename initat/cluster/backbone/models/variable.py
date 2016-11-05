@@ -95,11 +95,13 @@ class device_variable_scope(models.Model):
     # description
     description = models.TextField(default="", blank=True)
     # variable prefix
-    prefix = models.CharField(max_length=127, default="")
+    prefix = models.CharField(max_length=127, default="", blank=True)
     # is fixed
     fixed = models.BooleanField(default=False)
+    # system scope, not editable
+    system_scope = models.BooleanField(default=False)
     # forced flags, json-encoded flags
-    forced_flags = models.CharField(max_length=127, default="")
+    forced_flags = models.CharField(max_length=127, default="", blank=True)
     # is default scope
     default_scope = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)

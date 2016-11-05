@@ -790,11 +790,44 @@ class DeviceVariableScopeViewSet(viewsets.ViewSet):
                                 _key,
                                 ", ".join(_value),
                             ) for _key, _value in new_scope.errors.iteritems()
-                        ]
+                            ]
                     )
                 )
             )
         return Response(new_scope.data)
+
+    @method_decorator(login_required)
+    def update_var_scope(self, request, *args, **kwargs):
+        _prev_scope = device_variable_scope.objects.get(Q(pk=kwargs["pk"]))
+        # print _prev_var
+        _cur_ser = device_variable_scope_serializer(
+            device_variable_scope.objects.get(Q(pk=kwargs["pk"])),
+            data=request.data
+        )
+        # print "*" * 20
+        # print _cur_ser.device_variable_type
+        if _cur_ser.is_valid():
+            _new_scope = _cur_ser.save()
+            resp = _cur_ser.data
+            c_list, r_list = get_change_reset_list(_prev_scope, _new_scope, request.data)
+            resp = Response(resp)
+            # print c_list, r_list
+            resp.data["_change_list"] = c_list
+            resp.data["_reset_list"] = r_list
+            return resp
+        else:
+            raise ValidationError(
+                "New Scope not valid: {}".format(
+                    ", ".join(
+                        [
+                            "{}: {}".format(
+                                _key,
+                                ", ".join(_value),
+                            ) for _key, _value in _cur_ser.errors.iteritems()
+                        ]
+                    )
+                )
+            )
 
     @method_decorator(login_required)
     def list(self, request):
