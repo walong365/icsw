@@ -21,7 +21,8 @@
 angular.module(
     "icsw.system.background",
     [
-        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
+        "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap",
+        "init.csw.filters", "restangular"
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.backgroundinfo")

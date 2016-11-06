@@ -46,6 +46,8 @@ from django.views.generic import View
 from rest_framework import viewsets
 from rest_framework.response import Response
 from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.cluster.backbone.middleware import thread_local_middleware, \
+    thread_local_obj
 
 from initat.cluster.backbone.models import user, login_history, background_job, RouteTrace
 from initat.cluster.backbone.serializers import user_serializer, background_job_serializer
@@ -197,6 +199,10 @@ def _login(request, _user_object, login_credentials=None):
         request.session["password"] = base64.b64encode(login_password.decode("utf-8"))
     else:
         request.session["login_name"] = _user_object.login
+
+    # set user in thread_local middleware, otherwise the background job handling would not work
+    thread_local_middleware.user = _user_object
+
     _user_object.login_count += 1
     _user_object.save(update_fields=["login_count"])
     _theme_shorts = [_short for _short, _long in settings.THEMES]
@@ -410,7 +416,7 @@ class BackgroundJobViewSet(viewsets.ViewSet):
                 "user",
             ).prefetch_related(
                 "background_job_run_set"
-            )[0:100],
+            ).order_by("-idx")[0:100],
             many=True
         )
         return Response(serializer.data)

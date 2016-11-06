@@ -134,7 +134,8 @@ def _insert_bg_job(cmd, cause, obj):
         return
     # create entry to be handled by the cluster-server
     # get local device, key is defined in routing.py
-    _routing_key = "_WF_ROUTING"
+    # see routing.py, SrvTypeRouting definition
+    _routing_key = "_WF_ROUTING_{}".format(settings.ICSW_CACHE_KEY)
     _resolv_dict = cache.get(_routing_key)
     if _resolv_dict:
         _r_dict = json.loads(_resolv_dict)
