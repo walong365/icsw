@@ -68,6 +68,7 @@
                 <th>Device</th>
                 <th
                     ng-repeat="dvs in var_scope.dvs_allowed_name_set"
+                    title="{{ dvs.description }}"
                 >
                     {{ dvs.name }}
                 </th>
@@ -80,9 +81,7 @@
                 <td>
                     {{ struct.helper.device.full_name }}
                 </td>
-                <td ng-repeat="ivar in struct.scope.list">
-                    <code>{{ ivar.def.name }}</code>
-                    ({{ ivar.def.description }}):
+                <td ng-repeat="ivar in struct.scope.list" class="text-center">
                     <span ng-show="ivar.set">{{ ivar.var.$var_value }}</span>
                     <span ng-show="!ivar.set">N/A</span>
                 </td>
