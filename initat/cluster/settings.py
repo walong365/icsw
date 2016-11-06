@@ -36,8 +36,8 @@ from django.utils.crypto import get_random_string
 from django.utils.translation import ugettext_lazy as _
 from lxml import etree
 
-from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, SITE_PACKAGES_BASE, \
-    DB_ACCESS_MULTI_CS_NAME
+from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, \
+    SITE_PACKAGES_BASE
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, config_store, process_tools
 
@@ -130,20 +130,58 @@ ICSW_GOOGLE_MAPS_KEY = _cs["google.maps.key"]
 
 _c_key = hashlib.new("md5")
 
-if _cs.get("multiple.databases", False):
-    _db_access_cs = DB_ACCESS_MULTI_CS_NAME
-    _db_idx = _cs["default.database.idx"]
-    ICSW_DATABASE_LIST = []
-else:
-    _db_access_cs = DB_ACCESS_CS_NAME
-    _db_idx = None
-    ICSW_DATABASE_LIST = []
-
-if config_store.ConfigStore.exists(_db_access_cs):
-    _ps = config_store.ConfigStore(_db_access_cs, quiet=True, access_mode=config_store.AccessModeEnum.LOCAL)
+if config_store.ConfigStore.exists(DB_ACCESS_CS_NAME):
+    _ps = config_store.ConfigStore(
+        DB_ACCESS_CS_NAME,
+        quiet=True,
+        access_mode=config_store.AccessModeEnum.LOCAL,
+        fix_prefix_on_read=False,
+    )
 else:
     # this only happens when check_content_stores_server was NOT called
-    raise ImproperlyConfigured("DB-Access not configured (store {} not found or not readable)".format(_db_access_cs))
+    raise ImproperlyConfigured(
+        "DB-Access not configured (store {} not found or not readable)".format(
+            DB_ACCESS_CS_NAME
+        )
+    )
+
+
+def _read_db_settings(store, key):
+    if key is None:
+        return store.get_dict()
+    else:
+        return store[key]
+
+_multi_db_prefix = "db"
+
+if _cs.get("multiple.databases", False):
+    _db_idx = "{:d}".format(_cs["default.database.idx"])
+    if not _ps.prefix:
+        raise ImproperlyConfigured(
+            "prefix required but not found in DB_ACCESS file"
+        )
+    elif _ps.prefix != _multi_db_prefix:
+        raise ImproperlyConfigured(
+            "prefix '{}' has not the required value '{}'".format(
+                _ps.prefix,
+                _multi_db_prefix,
+            )
+        )
+    ICSW_DATABASE_DICT = {
+        _key: _read_db_settings(_ps, _key) for _key in _ps.keys()
+    }
+
+else:
+    _db_idx = "0"
+    if _ps.prefix:
+        raise ImproperlyConfigured(
+            "prefix defined but not allowed in DB_ACCESS file"
+        )
+    ICSW_DATABASE_DICT = {
+        "0": _read_db_settings(_ps, None)
+    }
+
+_database_dict = ICSW_DATABASE_DICT[_db_idx]
 
 for src_key, dst_key, _add_to_cache_key, _default in [
     ("db.database", "NAME", True, None),
@@ -154,11 +192,11 @@ for src_key, dst_key, _add_to_cache_key, _default in [
     ("db.engine", "ENGINE", True, None),
     ("db.info", "ICSW_INFO", False, "Default database"),
 ]:
-    if src_key in _ps:
+    if src_key in _database_dict:
         if _add_to_cache_key:
             _c_key.update(src_key)
-            _c_key.update(_ps[src_key])
-        DATABASES["default"][dst_key] = _ps[src_key]
+            _c_key.update(_database_dict[src_key])
+        DATABASES["default"][dst_key] = _database_dict[src_key]
     elif _default:
         DATABASES["default"][dst_key] = _default
     else:
@@ -166,7 +204,7 @@ for src_key, dst_key, _add_to_cache_key, _default in [
             "key {} -> {} not found in db_access_cs '{}'".format(
                 src_key,
                 dst_key,
-                _db_access_cs,
+                DB_ACCESS_CS_NAME,
             )
         )
 

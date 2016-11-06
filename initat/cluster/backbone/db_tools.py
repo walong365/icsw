@@ -26,9 +26,10 @@ from __future__ import unicode_literals, print_function
 import socket
 
 from django.conf import settings
+
 from django.db import OperationalError
 
-from initat.constants import DB_ACCESS_CS_NAME, DB_ACCESS_MULTI_CS_NAME
+from initat.constants import DB_ACCESS_CS_NAME
 from initat.tools import config_store
 
 # connection test timeout
@@ -41,7 +42,7 @@ def is_oracle():
 
 
 def is_reachable():
-    if not config_store.ConfigStore.exists(DB_ACCESS_CS_NAME) and not config_store.ConfigStore.exists(DB_ACCESS_MULTI_CS_NAME):
+    if not config_store.ConfigStore.exists(DB_ACCESS_CS_NAME):
         return False
     from django.db import connections
     _settings = settings.DATABASES["default"]
