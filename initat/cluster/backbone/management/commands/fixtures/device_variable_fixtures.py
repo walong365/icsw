@@ -68,7 +68,6 @@ def add_fixtures(**kwargs):
             editable = not _name.startswith("*")
             if not editable:
                 _name = _name[1:]
-            print("*", _name)
             factories.DVSAllowedNameFactory(
                 name=_name,
                 description=_descr,
