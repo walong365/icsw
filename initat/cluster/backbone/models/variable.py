@@ -118,7 +118,6 @@ class dvs_allowed_name(models.Model):
     name = models.CharField(
         max_length=127,
         default="",
-        unique=True,
     )
     # globally unique
     unique = models.BooleanField(default=False)
@@ -150,6 +149,9 @@ class dvs_allowed_name(models.Model):
             self.forced_type,
             self.group,
         )
+
+    class Meta:
+        unique_together = ("name", "device_variable_scope")
 
 
 @receiver(signals.pre_save, sender=dvs_allowed_name)

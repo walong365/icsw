@@ -1064,6 +1064,7 @@ angular.module(
         # enrichment functions
         enrich_devices: (dth, en_list, force=false) =>
             _resolve_local = (result, dth, en_list, defer) ->
+            # no longer needed, now handled by enrichment request
                 _reqs = $q.defer()
                 # fetch missing requirements
                 # FIXME: make this more dynamic
@@ -1094,41 +1095,43 @@ angular.module(
             # use timeout to merge all requests done in one $digest-cycle
             $timeout(
                 () =>
-                    # console.log "go", @enrich_requests.length
-                    all_reqs = new icswEnrichmentRequest()
-                    for [dth, en_list, force, defer] in @enrich_requests
-                        # build request
-                        en_req = @enricher.merge_requests(
-                            (
-                                dev.$$_enrichment_info.build_request(en_list, force) for dev in dth.devices
+                    # may be zero due to request merging
+                    if @enrich_requests.length
+                        # console.log "go", @enrich_requests.length
+                        all_reqs = new icswEnrichmentRequest()
+                        for [dth, en_list, force, defer] in @enrich_requests
+                            # build request
+                            en_req = @enricher.merge_requests(
+                                (
+                                    dev.$$_enrichment_info.build_request(en_list, force) for dev in dth.devices
+                                )
                             )
+                            if _.isEmpty(en_req)
+                                # console.log "enrichment:", en_list, "for", dth, "not needed"
+                                # empty request, just feed to dth
+                                # resolve directly
+                                _local_req = new icswEnrichmentRequest()
+                                # feed info
+                                _local_req.feed(dth, en_list, en_req, defer)
+                                # resolve with empty result
+                                _local_req.feed_result(@enricher, {})
+                                # _resolve_local({}, dth, en_list, defer)
+                            else
+                                all_reqs.feed(dth, en_list, en_req, defer)
+                        # reset list
+                        @enrich_requests.length = 0
+                        #console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
+                        # non-empty request, fetch from server
+                        icswSimpleAjaxCall(
+                            url: ICSW_URLS.DEVICE_ENRICH_DEVICES
+                            data: {
+                                enrich_request: angular.toJson(all_reqs.all_lut)
+                            }
+                            dataType: "json"
+                        ).then(
+                            (result) =>
+                                all_reqs.feed_result(@enricher, result)
                         )
-                        if _.isEmpty(en_req)
-                            # console.log "enrichment:", en_list, "for", dth, "not needed"
-                            # empty request, just feed to dth
-                            # resolve directly
-                            _local_req = new icswEnrichmentRequest()
-                            # feed info
-                            _local_req.feed(dth, en_list, en_req, defer)
-                            # resolve with empty result
-                            _local_req.feed_result(@enricher, {})
-                            # _resolve_local({}, dth, en_list, defer)
-                        else
-                            all_reqs.feed(dth, en_list, en_req, defer)
-                    # reset list
-                    @enrich_requests.length = 0
-                    #console.log "*** enrichment:", en_list, "for", dth, "resulted in non-empty", en_req
-                    # non-empty request, fetch from server
-                    icswSimpleAjaxCall(
-                        url: ICSW_URLS.DEVICE_ENRICH_DEVICES
-                        data: {
-                            enrich_request: angular.toJson(all_reqs.all_lut)
-                        }
-                        dataType: "json"
-                    ).then(
-                        (result) =>
-                            all_reqs.feed_result(@enricher, result)
-                    )
                 0
             )
             return defer.promise
