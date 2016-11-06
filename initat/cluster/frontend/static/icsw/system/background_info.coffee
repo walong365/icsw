@@ -78,7 +78,7 @@ angular.module(
 (
     $q,
 ) ->
-    {tr, td, strong} = React.DOM
+    {tr, td, strong, span} = React.DOM
 
     get_line_class = (job) ->
         if job.result == 0
@@ -98,6 +98,15 @@ angular.module(
             4: "Unknown"
         }[srv_reply]
 
+    get_srv_reply_span_state = (srv_reply) ->
+        return {
+            0: "label-success"
+            1: "label-warning"
+            2: "label-danger"
+            3: "label-danger"
+            4: "label-primary"
+        }[srv_reply]
+
     get_diff_time = (dt) ->
         if dt
             return moment(dt).fromNow()
@@ -112,18 +121,19 @@ angular.module(
 
     return React.createClass(
         render: () ->
-            if @props.background_job_run_set.length
-                _states = (
-                    entry.state for entry in @props.background_job_run_set
+            detail_spans = []
+            for entry in @props.background_job_run_set
+                detail_spans.push(
+                    span(
+                        {
+                            key: "span#{entry.idx}"
+                            className: "label " + get_srv_reply_span_state(entry.state)
+                            title: entry.result
+                        }
+                        get_srv_reply_str(entry.state)
+
+                    )
                 )
-                details = (get_srv_reply_str(reply) for reply in _states)
-
-                # console.log @props.state, @props.result
-                # console.log _states
-                # console.log @props.background_job_run_set
-            else
-                details = []
-
             return tr(
                 {
                     key: @props.idx,
@@ -150,8 +160,8 @@ angular.module(
                     )
                     td({key: "init"}, @props.initiator_name)
                     td({key: "nums", className: "text-center"}, @props.num_servers or "-")
-                    td({key: "details", className: "text-center"}, details.join(", "))
                     td({key: "numo", className: "text-center"}, @props.num_objects or "-")
+                    td({key: "details", className: "text-center"}, detail_spans)
                     td({key: "cause"}, @props.cause)
                     td({key: "until"}, get_time(@props.valid_until))
                 ]

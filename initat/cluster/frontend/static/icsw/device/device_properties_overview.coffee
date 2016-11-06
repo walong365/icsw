@@ -52,6 +52,9 @@ device_properties_overview = angular.module(
     icswToolsSimpleModalService
 ) ->
     $scope.struct = {
+        # selected devices
+        devices: []
+        # device tree
         device_tree: undefined
         ugr_tree: undefined
         data_loaded: false
@@ -79,6 +82,12 @@ device_properties_overview = angular.module(
             $scope.struct.reload_timer = undefined
 
 
+    $scope.new_devsel = (devs) ->
+        $scope.struct.devices.length = 0
+        for entry in devs
+            if not entry.is_meta_device
+                $scope.struct.devices.push(entry)
+        perform_refresh(false)
 
     perform_refresh = (partial_refresh) ->
         console.log("performing_refresh:" + partial_refresh)
@@ -91,12 +100,6 @@ device_properties_overview = angular.module(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.ugr_tree = data[1]
-                $scope.struct.devices.length = 0
-
-                for device in $scope.struct.device_tree.all_list
-                    if !device.is_meta_device
-                        $scope.struct.devices.push(device)
-
 
                 if partial_refresh
                     device_id_list = (idx for idx in $scope.struct.device_ids_needing_refresh)
@@ -130,8 +133,6 @@ device_properties_overview = angular.module(
                             console.log("performing_refresh done")
                     )
         )
-
-    perform_refresh(false)
 
     salt_device = (device, device_hints) ->
         device.$$date_created = moment(device.date).format("YYYY-MM-DD HH:mm:ss")

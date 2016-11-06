@@ -4,8 +4,11 @@
             <uib-tab heading="Device Variables">
                 <icsw-device-variable-overview icsw-sel-man="0"></icsw-device-variable-overview>
             </uib-tab>
-            <uib-tab heading="Scope Variables">
+            <uib-tab heading="Variable Scopes">
                 <icsw-variable-scope-overview></icsw-variable-scope-overview>
+            </uib-tab>
+            <uib-tab heading="Fixed Scope Overview">
+                <icsw-device-fixed-variable-scope-overview icsw-sel-man="0"></icsw-device-fixed-variable-scope-overview>
             </uib-tab>
         </uib-tabset>
     </div>
@@ -29,6 +32,64 @@
         <th>Comment</th>
         <th colspan="1">Action</th>
     </tr>
+</script>
+
+<script type="text/ng-template" id="icsw.device.fixed.variable.scope.overview">
+    <div uib-alert class="alert-warning" ng-show="!struct.data_loaded">Fetching data from server ...</div>
+    <div ng-show="struct.data_loaded">
+        <h3>
+            Fixed Scope Device Variables ({{ struct.devices.length }} devices)
+        </h3>
+        <uib-tabset ng-if="struct.data_loaded">
+            <uib-tab ng-repeat="entry in struct.dvs_tree.$$fixed_list">
+                <uib-tab-heading>
+                    {{ entry.name }}
+                </uib-tab-heading>
+                <icsw-device-fixed-variable-scope-table
+                    icsw-device-helpers="struct.helpers"
+                    icsw-variable-scope="entry"
+                ></icsw-device-fixed-variable-scope-table>
+            </uib-tab>
+        </uib-tabset>
+
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.device.fixed.variable.scope.table">
+    <h4>
+        Scope {{ var_scope.$$info_str }}
+    </h4>
+    <table
+        class="table table-condensed table-striped"
+        style="width: auto;"
+    >
+        <thead>
+            <tr>
+                <th>Device</th>
+                <th
+                    ng-repeat="dvs in var_scope.dvs_allowed_name_set"
+                >
+                    {{ dvs.name }}
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr
+                ng-repeat="struct in struct.structs"
+            >
+                <td>
+                    {{ struct.helper.device.full_name }}
+                </td>
+                <td ng-repeat="ivar in struct.scope.list">
+                    <code>{{ ivar.def.name }}</code>
+                    ({{ ivar.def.description }}):
+                    <span ng-show="ivar.set">{{ ivar.var.$var_value }}</span>
+                    <span ng-show="!ivar.set">N/A</span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+
 </script>
 
 <script type="text/ng-template" id="icsw.device.variable.row">

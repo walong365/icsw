@@ -1100,6 +1100,7 @@ angular.module(
                         # console.log "go", @enrich_requests.length
                         all_reqs = new icswEnrichmentRequest()
                         for [dth, en_list, force, defer] in @enrich_requests
+                            # console.log "build"
                             # build request
                             en_req = @enricher.merge_requests(
                                 (
@@ -1110,6 +1111,7 @@ angular.module(
                                 # console.log "enrichment:", en_list, "for", dth, "not needed"
                                 # empty request, just feed to dth
                                 # resolve directly
+                                # console.log "empty", en_req, en_list
                                 _local_req = new icswEnrichmentRequest()
                                 # feed info
                                 _local_req.feed(dth, en_list, en_req, defer)

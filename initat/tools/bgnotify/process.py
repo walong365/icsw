@@ -194,7 +194,10 @@ class ServerBackgroundNotifyMixin(object):
                     )
                     if not _ok:
                         _send_xml.set_result(
-                            "error sending to {}".format(_conn_str),
+                            "error sending to {} via {}".format(
+                                _srv_type.name,
+                                _conn_str
+                            ),
                             server_command.SRV_REPLY_STATE_CRITICAL
                         )
                         self.bg_notify_handle_result(_send_xml)
