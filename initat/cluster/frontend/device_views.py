@@ -972,12 +972,18 @@ class DeviceCompletion(View):
             info_dict[_device.idx]["monitoring_checks"] = 0
             if _device.idx in device_checks_count:
                 info_dict[_device.idx]["monitoring_checks"] = device_checks_count[_device.idx]
+                info_dict[_device.idx]["monitoring_checks_extended_text"] = "{}".format(device_checks_count[_device.idx])
 
             info_dict[_device.idx]["location_data"] = 0
             if _device.idx in device_location_count:
                 info_dict[_device.idx]["location_data"] = device_location_count[_device.idx]
+                info_dict[_device.idx]["location_data_extended_text"] = "{}".format(device_location_count[_device.idx])
 
-            info_dict[_device.idx]["asset_data"] = _device.assetbatch_set.count()
+            asset_scan_count = _device.assetbatch_set.count()
+            info_dict[_device.idx]["asset_data"] = asset_scan_count
+
+            if asset_scan_count:
+                info_dict[_device.idx]["asset_data_extended_text"] = "{}".format(asset_scan_count)
 
         return HttpResponse(
             json.dumps(info_dict)

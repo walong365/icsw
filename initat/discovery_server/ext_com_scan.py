@@ -877,7 +877,7 @@ class Dispatcher(object):
         for asset_batch in AssetBatch.objects.filter(
             run_status__in=[BatchStatus.PLANNED, BatchStatus.RUNNING, BatchStatus.FINISHED_RUNS, BatchStatus.GENERATING_ASSETS]):
             if asset_batch.run_start_time:
-                diff_time = (_now - asset_batch.run_start_time).seconds
+                diff_time = (_now - asset_batch.run_start_time).total_seconds()
                 if diff_time > 86400:
                     self.log("Closing pending/processing AssetBatch now={}".format(_now), logging_tools.LOG_LEVEL_ERROR)
                     self.log("Closing pending/processing AssetBatch run_start_time={}".format(asset_batch.run_start_time), logging_tools.LOG_LEVEL_ERROR)
