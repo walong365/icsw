@@ -636,16 +636,20 @@ class Migration(migrations.Migration):
     ]
     """
         )
+        # first step: fast sync without migrations
+        os.environ["ICSW_DISABLE_MIGRATIONS"] = "yes"
+        apply_migration("", migrate_ars=["--run-syncdb"])
+        del os.environ["ICSW_DISABLE_MIGRATIONS"]
         # first step: migrate contenttypes
-        apply_migration("contenttypes")
+        apply_migration("contenttypes", migrate_args=["--fake-initial", "--fake"])
         # go to migration 0982'
-        apply_migration("backbone", target_migration=["0982"], migrate_ars=["--run-syncdb", "--fake-initial"])
-        apply_migration("admin")
-        apply_migration("reversion")
-        apply_migration("backbone", migrate_args=["--run-syncdb", "--fake-initial"])
-        apply_migration("auth")
-        apply_migration("sessions")
-        apply_migration("sites")
+        apply_migration("backbone", target_migration=["0982"], migrate_args=["--fake-initial", "--fake"])
+        apply_migration("admin", migrate_args=["--fake-initial", "--fake"])
+        apply_migration("reversion", migrate_args=["--fake-initial", "--fake"])
+        apply_migration("backbone", migrate_args=["--fake-initial", "--fake"])
+        apply_migration("auth", migrate_args=["--fake-initial", "--fake"])
+        apply_migration("sessions", migrate_args=["--fake-initial", "--fake"])
+        apply_migration("sites", migrate_args=["--fake-initial", "--fake"])
     else:
         ds0 = DirSave(CMIG_DIR, 799)
         os.environ["INIT_REMOVE_APP_NAME_1"] = "django.contrib.sites"

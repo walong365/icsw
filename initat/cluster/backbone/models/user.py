@@ -743,21 +743,28 @@ class user_manager(models.Manager):
                 # hack for setup_cluster.py
                 password = os.environ["DJANGO_SUPERUSER_PASSWORD"]
         # create group
-        user_group = group.objects.create(
-            groupname="{}grp".format(login),
-            gid=max(list(group.objects.all().values_list("gid", flat=True)) + [665]) + 1,
-            group_comment="auto created group for admin {}".format(login),
-            homestart="/",
-        )
-        new_admin = self.create(
-            login=login,
-            email=email,
-            uid=max(list(user.objects.all().values_list("uid", flat=True)) + [665]) + 1,
-            group=user_group,
-            comment="admin created by createsuperuser",
-            password=password,
-            is_superuser=True
-        )
+        _grpname = "{}grp".format(login)
+        try:
+            user_group = group.objects.get(Q(groupname=_grpname))
+        except group.DoesNotExist:
+            user_group = group.objects.create(
+                groupname=_grpname,
+                gid=max(list(group.objects.all().values_list("gid", flat=True)) + [665]) + 1,
+                group_comment="auto created group for admin {}".format(login),
+                homestart="/",
+            )
+        try:
+            new_admin = user.objects.get(Q(login=login))
+        except user.DoesNotExist:
+            new_admin = self.create(
+                login=login,
+                email=email,
+                uid=max(list(user.objects.all().values_list("uid", flat=True)) + [665]) + 1,
+                group=user_group,
+                comment="admin created by createsuperuser",
+                password=password,
+                is_superuser=True
+            )
         return new_admin
 
 

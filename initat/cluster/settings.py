@@ -449,6 +449,7 @@ if any([_app.startswith("initat.cluster.") for _app in INSTALLED_APPS]):
     AUTH_USER_MODEL = "backbone.user"
 else:
     ICSW_INCLUDE_URLS = False
+# print(AUTH_USER_MODEL)
 
 INSTALLED_APPS = tuple(INSTALLED_APPS)
 
@@ -478,6 +479,10 @@ TEMPLATES = [
 ]
 
 INSTALLED_APPS = tuple(list(INSTALLED_APPS) + ["rest_framework"])
+
+# fake migrations
+if "ICSW_DISABLE_MIGRATIONS" in os.environ:
+    MIGRATION_MODULES = {_app.split(".")[-1]: None for _app in list(INSTALLED_APPS)}
 
 if _show_apps:
     print(
