@@ -111,7 +111,7 @@
                     icsw-device-tree="struct.device_tree"
                 ></icsw-group-edit>
             </uib-tab>
-            <uib-tab ng-repeat="edit_user in struct.edit_users">
+            <uib-tab ng-repeat="edit_user in struct.edit_users" class="animateTab">
                 <uib-tab-heading>
                     <span class="fa fa-user"></span>
                     User {{ edit_user.login }} ({{ edit_user.uid }})
