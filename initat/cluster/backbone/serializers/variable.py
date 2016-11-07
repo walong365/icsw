@@ -48,7 +48,7 @@ class dvs_allowed_name_serializer(serializers.ModelSerializer):
 
 
 class device_variable_scope_serializer(serializers.ModelSerializer):
-    dvs_allowed_name_set = dvs_allowed_name_serializer(many=True)
+    dvs_allowed_name_set = dvs_allowed_name_serializer(many=True, read_only=True)
 
     class Meta:
         fields = "__all__"

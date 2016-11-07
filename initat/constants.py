@@ -35,7 +35,6 @@ __all__ = [
 
     b"GEN_CS_NAME",
     b"DB_ACCESS_CS_NAME",
-    b"DB_ACCESS_MULTI_CS_NAME",
     b"VERSION_CS_NAME",
 
     # directories
@@ -55,7 +54,6 @@ __all__ = [
 
 GEN_CS_NAME = "icsw.general"
 DB_ACCESS_CS_NAME = "icsw.db.access"
-DB_ACCESS_MULTI_CS_NAME = "icsw.db.access.multi"
 VERSION_CS_NAME = "icsw.sysversion"
 
 # python version

@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of icsw-client
 #
@@ -33,6 +33,60 @@ def quiet_log(_a, _b):
     pass
 
 
+def _show_store(opts, store):
+    print("Read store {} ({}):".format(opts.store, store.info))
+    _dict_store = True if store.prefix else False
+    if _dict_store:
+        _dict_keys = store.keys(only_dict=True)
+    else:
+        _dict_keys = []
+    # all keys
+    _all_keys = store.keys()
+    # flat (== non-dict) keys
+    _flat_keys = set(_all_keys) - set(_dict_keys)
+    _dict = store.get_dict()
+    if opts.sort_by_value:
+        _keys = [
+            _key for (_value, _key) in sorted(
+                [
+                    (_dict[_key], _key) for _key in _flat_keys
+                    ]
+            )
+            ]
+    else:
+        _keys = sorted(_flat_keys)
+    if _flat_keys:
+        print("Flat keys ({:d}):".format(len(_flat_keys)))
+        for _key in _keys:
+            _value = store[_key]
+            print(
+                "    {:<30s} ({:<13s}): {}".format(
+                    _key,
+                    str(type(_value)),
+                    str(_value),
+                )
+            )
+    if _dict_keys:
+        print("Dict keys ({:d}):".format(len(_dict_keys)))
+        for _key in sorted(_dict_keys):
+            _value = store[_key]
+            print(
+                "    dict index {} ({})".format(
+                    _key,
+                    logging_tools.get_plural("value", len(_value.keys())),
+                )
+            )
+            for _dkey in sorted(_value.keys()):
+                _dvalue = _value[_dkey]
+                print(
+                    "        {:<30s} ({:<13s}): {}".format(
+                        _dkey,
+                        str(type(_dvalue)),
+                        str(_dvalue),
+                    )
+                )
+
+
 def main(opts):
     if opts.mode == "liststores":
         _names = ConfigStore.get_store_names()
@@ -54,22 +108,8 @@ def main(opts):
                     print("    {:<34s} ({})".format(_name, _store.info))
     elif opts.mode == "showstore":
         if ConfigStore.exists(opts.store):
-            _store = ConfigStore(opts.store, log_com=quiet_log)
-            print("Read store {} ({}):".format(opts.store, _store.info))
-            _dict = _store.get_dict()
-            if opts.sort_by_value:
-                _keys = [_key for (_value, _key) in sorted([(str(_value), _key) for _key, _value in _dict.iteritems()])]
-            else:
-                _keys = sorted(_dict.keys())
-            for _key in _keys:
-                _value = _store[_key]
-                print(
-                    "    {:<30s} ({:<13s}): {}".format(
-                        _key,
-                        str(type(_value)),
-                        str(_value),
-                    )
-                )
+            store = ConfigStore(opts.store, log_com=quiet_log, fix_prefix_on_read=False)
+            _show_store(opts, store)
         else:
             print("unknown store {}".format(opts.store))
     elif opts.mode == "storeexists":
@@ -92,6 +132,21 @@ def main(opts):
         print("setting key '{}' of store {} to '{}'".format(opts.key, opts.store, opts.value))
         _store[opts.key] = opts.value
         _store.write()
+    elif opts.mode == "addprefix":
+        if not ConfigStore.exists(opts.store):
+            print("CStore {} does not exist".format(opts.store))
+        else:
+            _store = ConfigStore(opts.store, fix_prefix_on_read=False)
+            if _store.prefix:
+                print("CStore {} already has a prefix: {}".format(opts.store, _store.info))
+            elif not opts.prefix:
+                print("Need prefix")
+            else:
+                print("Adding prefix {} to cstore ({})".format(opts.prefix, _store.info))
+                print("Moving all current keys to index {}".format(opts.index))
+                _store.set_prefix(opts.prefix, opts.index)
+                _show_store(opts, _store)
+                _store.write()
     elif opts.mode == "createstore":
         if ConfigStore.exists(opts.store):
             print("CStore {} already exists".format(opts.store))

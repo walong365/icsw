@@ -997,4 +997,107 @@ device_variable_module = angular.module(
                 sub_scope.$destroy()
         )
 
+]).directive("icswDeviceFixedVariableScopeOverview",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.fixed.variable.scope.overview")
+        controller: "icswDeviceFixedVariableScopeOverviewCtrl"
+        scope: true
+    }
+]).controller("icswDeviceFixedVariableScopeOverviewCtrl",
+[
+    "$scope", "$q", "icswDeviceTreeService", "icswDeviceTreeHelperService",
+    "icswDeviceVariableScopeTreeService", "icswDeviceFixedVariableHelper",
+(
+    $scope, $q, icswDeviceTreeService, icswDeviceTreeHelperService,
+    icswDeviceVariableScopeTreeService, icswDeviceFixedVariableHelper,
+) ->
+    $scope.struct = {
+        # device tree
+        device_tree: undefined
+        # devvarscope_tree
+        dvs_tree: undefined
+        # helper object
+        helper: undefined
+        # device helpers
+        helpers: []
+        # fixed variable helper
+        # fixed_var_helper: undefined
+        # data loaded: show / hide
+        data_loaded: false
+        # devices
+        devices: []
+    }
+
+    load_data = () ->
+        $scope.struct.data_loaded = false
+        $q.all(
+            [
+                icswDeviceTreeService.load($scope.$id)
+                icswDeviceVariableScopeTreeService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                $scope.struct.device_tree = data[0]
+                $scope.struct.dvs_tree = data[1]
+                helper =  icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                $scope.struct.device_tree.enrich_devices(helper, ["variable_info"]).then(
+                    (_done) ->
+                        # console.log "****", $scope.devices
+                        $scope.struct.helper = helper
+                        for dev in $scope.struct.devices
+                            $scope.struct.helpers.push(
+                                new icswDeviceFixedVariableHelper($scope.struct.dvs_tree, dev)
+                            )
+                        $scope.struct.data_loaded = true
+                )
+        )
+    $scope.new_devsel = (devs) ->
+        $scope.struct.devices.length = 0
+        $scope.struct.helpers.length = 0
+        for entry in devs
+            if not entry.is_meta_device
+                $scope.struct.devices.push(entry)
+        load_data()
+]).directive("icswDeviceFixedVariableScopeTable",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.fixed.variable.scope.table")
+        controller: "icswDeviceFixedVariableScopeTableCtrl"
+        scope: {
+            helpers: "=icswDeviceHelpers"
+            var_scope: "=icswVariableScope"
+        }
+        link: (scope, element, attrs) ->
+            scope.link()
+    }
+]).controller("icswDeviceFixedVariableScopeTableCtrl",
+[
+    "$scope", "$q",
+(
+    $scope, $q,
+) ->
+    $scope.struct = {
+        structs: []
+    }
+
+    $scope.link = () ->
+        $scope.struct.structs.length = 0
+        for entry in $scope.helpers
+            $scope.struct.structs.push(
+                {
+                    helper: entry
+                    scope: entry.scope_struct_lut[$scope.var_scope.idx]
+                }
+            )
 ])

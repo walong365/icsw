@@ -88,7 +88,14 @@ class get_docu_info(View):
 
 class get_overall_style(View):
     def post(self, request):
-        return HttpResponse(json.dumps({"overall_style": settings.ICSW_OVERALL_STYLE}), content_type="application/json")
+        return HttpResponse(
+            json.dumps(
+                {
+                    "overall_style": settings.ICSW_OVERALL_STYLE
+                }
+            ),
+            content_type="application/json"
+        )
 
 
 class get_routing_info(View):

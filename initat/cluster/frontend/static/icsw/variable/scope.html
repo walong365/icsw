@@ -1,19 +1,28 @@
-<script type="text/ng-template" id="icsw/device/variable.html">
-    <div class="container-fluid">
-        <uib-tabset>
-            <uib-tab heading="Device Variables">
-                <icsw-device-variable-overview icsw-sel-man="0"></icsw-device-variable-overview>
-            </uib-tab>
-            <uib-tab heading="Variable Scopes">
-                <icsw-variable-scope-overview></icsw-variable-scope-overview>
-            </uib-tab>
-        </uib-tabset>
-    </div>
-</script>
-
 <script type="text/ng-template" id="icsw.variable.scope.overview">
     <h3 ng-show="struct.loaded">
-        Scopes defined: {{ struct.device_variable_scope_tree.list.length }}, fixed: {{ struct.device_variable_scope_tree.$$num_fixed_scopes }}
+        Scopes defined:
+        <button
+            uib-popover-html="struct.device_variable_scope_tree.$$all_info_str"
+            popover-placement="right"
+            type="button"
+            class="btn btn-xs btn-info"
+        >
+            {{ struct.device_variable_scope_tree.list.length }}
+        </button>, fixed:
+        <button
+            uib-popover-html="struct.device_variable_scope_tree.$$fixed_info_str"
+            popover-placement="right"
+            type="button"
+            class="btn btn-xs btn-info"
+        >
+            {{ struct.device_variable_scope_tree.$$num_fixed_scopes }}
+        </button>
+        <icsw-tools-button
+            type="create"
+            value="Create new fixed Scope"
+            size="sm"
+            ng-click="create_scope($event)">
+        </icsw-tools-button>
     </h3>
     <uib-tabset ng-if="struct.loaded">
         <uib-tab ng-repeat="entry in struct.device_variable_scope_tree.$$fixed_list">
@@ -29,9 +38,17 @@
     <h3>
         Variable Scope '{{ var_scope.name }}',
         <span ng-show="var_scope.description">({{ var_scope.description }})</span>
-        Number of Entries: {{ var_scope.dvs_allowed_name_set.length }}
-        <icsw-tools-button size="xs" type="create" ng-click="create_dvs_an($event, var_scope)"></icsw-tools-button>
     </h3>
+    <h4>
+        Number of Entries: {{ var_scope.dvs_allowed_name_set.length }}
+        <icsw-tools-button
+            size="xs"
+            type="modify"
+            ng-click="edit_var_scope($event, var_scope)"
+            ng-if="!var_scope.system_scope"
+        ></icsw-tools-button>
+        <icsw-tools-button size="xs" type="create" ng-click="create_dvs_an($event, var_scope)"></icsw-tools-button>
+    </h4>
     <table st-table="entries" st-safe-src="var_scope.dvs_allowed_name_set" class="table table-condensed table-striped" style="width:auto;">
         <thead>
             <tr>
@@ -63,6 +80,7 @@
                 <td>
                     <icsw-tools-button type="modify" size="xs" ng-show="entry.editable" ng-click="edit_dvs_an($event, var_scope, entry)"></icsw-tools-button>
                     <icsw-tools-button type="delete" size="xs" ng-show="entry.editable" ng-click="delete_dvs_an($event, entry)"></icsw-tools-button>
+                    <span class="text-danger" ng-show="!entry.editable">Not editable</span>
                 </td>
             </tr>
         </tbody>
@@ -124,6 +142,38 @@
                 </label>
                 <div class="controls col-sm-8">
                     <icsw-tools-yes-no flag="edit_obj.unique"/>
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
+
+<script type="text/ng-template" id="icsw.variable.scope.form">
+    <form class="form-horizontal" name="form_data">
+        <fieldset>
+            <legend>Basic Settings</legend>
+            <div class="form-group ng-class:form_error('name')">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control maxwidth500" name="name" maxlength="765" ng-model="edit_obj.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group ng-class:form_error('description')">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Description
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control maxwidth500" name="description" maxlength="765" ng-model="edit_obj.description" type="text"/>
+                </div>
+            </div>
+            <div class="form-group ng-class:form_error('group')">
+                <label class="control-label col-sm-3 icsw-formlabel">
+                    Priority
+                </label>
+                <div class="controls col-sm-8">
+                    <input class="textinput textInput form-control maxwidth500" min="0" max="255" name="priority" maxlength="765" ng-model="edit_obj.priority" type="number"/>
                 </div>
             </div>
         </fieldset>

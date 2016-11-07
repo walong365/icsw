@@ -21,16 +21,17 @@
 #
 """ models for NOCTUA and CORVUS, device variable definition file """
 
+from __future__ import unicode_literals, print_function
+
 import datetime
+import json
 import logging
 import uuid
-import json
 
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.db.models import signals
-from enum import Enum
 from django.dispatch import receiver
 
 from initat.cluster.backbone.models.functions import check_empty_string, \
@@ -39,9 +40,9 @@ from initat.cluster.backbone.models.functions import check_empty_string, \
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "device_variable",
-    "device_variable_scope",
-    "dvs_allowed_name",
+    b"device_variable",
+    b"device_variable_scope",
+    b"dvs_allowed_name",
 ]
 
 
@@ -94,9 +95,13 @@ class device_variable_scope(models.Model):
     # description
     description = models.TextField(default="", blank=True)
     # variable prefix
-    prefix = models.CharField(max_length=127, default="")
+    prefix = models.CharField(max_length=127, default="", blank=True)
+    # is fixed
+    fixed = models.BooleanField(default=False)
+    # system scope, not editable
+    system_scope = models.BooleanField(default=False)
     # forced flags, json-encoded flags
-    forced_flags = models.CharField(max_length=127, default="")
+    forced_flags = models.CharField(max_length=127, default="", blank=True)
     # is default scope
     default_scope = models.BooleanField(default=False)
     date = models.DateTimeField(auto_now_add=True)
@@ -113,7 +118,6 @@ class dvs_allowed_name(models.Model):
     name = models.CharField(
         max_length=127,
         default="",
-        unique=True,
     )
     # globally unique
     unique = models.BooleanField(default=False)
@@ -145,6 +149,21 @@ class dvs_allowed_name(models.Model):
             self.forced_type,
             self.group,
         )
+
+    class Meta:
+        unique_together = ("name", "device_variable_scope")
+
+
+@receiver(signals.pre_save, sender=dvs_allowed_name)
+def dvs_allowed_name__pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if not cur_inst.device_variable_scope.fixed:
+            raise ValidationError(
+                "Scope {} is not fixed".format(
+                    unicode(cur_inst.device_variable_scope)
+                )
+            )
 
 
 class device_variable(models.Model):
@@ -296,7 +315,7 @@ def device_variable_pre_save(sender, **kwargs):
                     ).filter(
                         Q(name=cur_inst.name) & Q(device_variable_scope=_dvs)
                     ).count()
-                    print "Fg", _found
+                    print("Fg", _found)
                 if _allowed_struct.forced_type:
                     if cur_inst.var_type != _allowed_struct.forced_type:
                         raise ValidationError("Type is not allowed")

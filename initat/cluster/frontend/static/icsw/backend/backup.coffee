@@ -744,5 +744,13 @@ angular.module(
             @simple_attributes = [
                 "forced_type", "name", "description", "group", "unique", "device_variable_scope",
             ]
+]).service("icswDeviceVariableScopeBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswDeviceVariableCopseBackup extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "description", "prefix", "forced_flags", "priority",
+            ]
 ])
 

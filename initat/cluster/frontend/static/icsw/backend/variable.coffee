@@ -108,25 +108,36 @@ angular.module(
         update: (list) =>
             @list.length = 0 
             for entry in list
-                @salt_scope(entry)
                 @list.push(entry)
-            icswTools.order_in_place(@list, ["priority"], ["desc"])
-            @$$fixed_list = (entry for entry in @list when entry.$$fixed)
-            @$$num_fixed_scopes =  @$$fixed_list.length
             @build_luts()
             
         build_luts: () =>
+            (@salt_scope(entry) for entry in @list)
+            icswTools.order_in_place(@list, ["priority"], ["desc"])
+            @$$fixed_list = (entry for entry in @list when entry.fixed)
+            @$$num_fixed_scopes =  @$$fixed_list.length
+            # info strings
+            @$$all_info_str = (entry.$$info_str for entry in @list).join("<br/>")
+            @$$fixed_info_str = (entry.$$info_str for entry in @$$fixed_list).join("<br/>")
             @lut = _.keyBy(@list, "idx")
             @lut_by_name= _.keyBy(@list, "name")
 
         salt_scope: (entry) =>
-            if entry.dvs_allowed_name_set.length
-                entry.$$fixed = true
+            if entry.fixed
                 (@salt_allowed_name(_dve) for _dve in entry.dvs_allowed_name_set)
                 icswTools.order_in_place(entry.dvs_allowed_name_set, ["name"], ["asc"])
-            else
-                entry.$$fixed = false
-            
+            _info = entry.name
+            _info_f = []
+            if entry.fixed
+                _info_f.push("fixed")
+            if entry.system_scope
+                _info_f.push("system")
+            if entry.description
+                _info_f.push(entry.description)
+            if _info_f.length
+                _info = "#{_info} (#{_info_f.join(', ')})"
+            entry.$$info_str = _info
+
         # return a new device_fixed_variable_helper
         build_fixed_variable_helper: (device) =>
             fvh = new icswDeviceFixedVariableHelper(@, device)
@@ -145,6 +156,32 @@ angular.module(
                     defer.resolve("ok")
                 (notok) ->
                     defer.resolve("not ok")
+            )
+            return defer.promise
+
+        create_variable_scope: (var_scope) =>
+            defer = $q.defer()
+            Restangular.all(ICSW_URLS.DEVICE_DEVICE_VARIABLE_SCOPE_LIST.slice(1)).post(var_scope).then(
+                (new_obj) =>
+                    @list.push(new_obj)
+                    @build_luts()
+                    defer.resolve("created")
+                (not_ok) ->
+                    defer.reject("variable scope not created")
+            )
+            return defer.promise
+
+        update_variable_scope: (var_scope) =>
+            defer = $q.defer()
+            Restangular.restangularizeElement(null, var_scope, ICSW_URLS.DEVICE_DEVICE_VARIABLE_SCOPE_DETAIL.slice(1).slice(0, -2))
+            var_scope.put().then(
+                (new_obj) =>
+                    _.remove(@list, (_vs) => return _vs.idx == var_scope.idx)
+                    @list.push(new_obj)
+                    @build_luts()
+                    defer.resolve("created")
+                (not_ok) ->
+                    defer.reject("variable scope not updated")
             )
             return defer.promise
 
@@ -170,7 +207,7 @@ angular.module(
                     @salt_scope(var_scope)
                     defer.resolve("created")
                 (not_ok) ->
-                    defer.reject("variable not created")
+                    defer.reject("variable not updated")
             )
             return defer.promise
 

@@ -224,63 +224,6 @@ menu_module = angular.module(
                             icswMenuProgressService.set_rebuilding(0)
                 )
     }
-]).directive("icswBackgroundJobInfo",
-[
-    "$templateCache", "ICSW_URLS", "icswSimpleAjaxCall", "$timeout", "$state",
-    "$rootScope", "ICSW_SIGNALS",
-(
-    $templateCache, ICSW_URLS, icswSimpleAjaxCall, $timeout, $state,
-    $rootScope, ICSW_SIGNALS
-) ->
-    @backg_timer = null
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.menu.background.job.info")
-        replace: true
-        link: (scope, el, attrs) ->
-            scope.button_class = ""
-            scope.background_jobs = 0
-            scope.button_text = ""
-            scope.show = false
-            scope.redirect_to_bgj_info = () ->
-                if scope.has_menu_permission('background_job.show_background')
-                    $state.go("main.backgroundinfo")
-                return false
-
-            scope.button_class = "btn btn-xs btn-warning"
-            get_background_job_class = () ->
-                if scope.background_jobs < 4
-                    return "btn btn-xs btn-warning pull-right"
-                else
-                    return "btn btn-xs btn-danger pull-right"
-            reload = () ->
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.MAIN_GET_NUMBER_OF_BACKGROUND_JOBS
-                        dataType: "json"
-                    }
-                ).then(
-                    (data) ->
-                        scope.background_jobs = data["background_jobs"]
-                        if scope.background_jobs
-                            scope.show = true
-                            scope.button_class = get_background_job_class()
-                            scope.button_text = scope.background_jobs
-                        else
-                            scope.show = false
-                )
-                # reload every 30 seconds
-                @backg_timer = $timeout(reload, 30000)
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
-                if @backg_timer?
-                    $timeout.cancel(@backg_timer)
-                reload()
-            )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
-                if @backg_timer?
-                    $timeout.cancel(@backg_timer)
-            )
-    }
 ]).factory("icswReactMenuBarFactory",
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
@@ -618,13 +561,80 @@ menu_module = angular.module(
                 # _render()
             )
     }
+]).service("icswReactBackgroundJobInfoFactory",
+[
+    "$q", "$timeout", "$rootScope", "ICSW_SIGNALS", "icswSimpleAjaxCall",
+    "$state", "ICSW_URLS",
+(
+    $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
+    $state, ICSW_URLS,
+) ->
+    {ul, li, div, a, button} = React.DOM
+    return React.createClass(
+        displayName: "icswBackgroundJobInfo"
+        getInitialState: () ->
+            _reload = () =>
+                if @backg_timer
+                    $timeout.cancel(@back_timer)
+                @backg_timer = $timeout(_reload, 30000)
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.MAIN_GET_NUMBER_OF_BACKGROUND_JOBS
+                        dataType: "json"
+                    }
+                ).then(
+                    (data) =>
+                        @setState({num_jobs: data["background_jobs"]})
+                )
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () =>
+                _reload()
+            )
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () =>
+                if @backg_timer?
+                    $timeout.cancel(@backg_timer)
+            )
+# _reload()
+            return {
+                num_jobs: 0
+            }
+        componentWillMount: () =>
+            @backg_timer = null
+
+        render: () ->
+            if @state.num_jobs == 0
+                return null
+            if @state.num_jobs > 4
+                _class = "btn btn-xs btn-danger"
+            else
+                _class = "btn btn-xs btn-warning"
+            return li(
+                {}
+                a(
+                    {
+                        style: {paddingTop: "14px", paddingBottom: "10px"}
+                    }
+                    button(
+                        {
+                            type: "button"
+                            title: "Number of Background jobs"
+                            className: _class
+                            # style: {paddingTop: "0px"}
+                            onClick: (event) =>
+                                $state.go("main.backgroundinfo")
+                        }
+                        @state.num_jobs
+                    )
+                )
+            )
+
+    )
 ]).service("icswReactRightMenuFactory",
 [
     "$q", "icswReactMenuFactory", "icswRouteHelper", "icswTaskOverviewReact",
-    "icswReactOvaDisplayFactory", "icswOverallStyle",
+    "icswReactOvaDisplayFactory", "icswOverallStyle", "icswReactBackgroundJobInfoFactory",
 (
     $q, icswReactMenuFactory, icswRouteHelper, icswTaskOverviewReact,
-    icswReactOvaDisplayFactory, icswOverallStyle,
+    icswReactOvaDisplayFactory, icswOverallStyle, icswReactBackgroundJobInfoFactory,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
     return React.createClass(
@@ -661,6 +671,12 @@ menu_module = angular.module(
                             key: "ova"
                         }
                     )
+                    React.createElement(
+                        icswReactBackgroundJobInfoFactory
+                        {
+                            key: "bg"
+                        }
+                    )
                     (
                         React.createElement(
                             icswReactMenuFactory
@@ -688,8 +704,7 @@ menu_module = angular.module(
             _element = ReactDOM.render(
                 React.createElement(
                     icswReactRightMenuFactory
-                    {
-                    }
+                    {}
                 )
                 el[0]
             )
