@@ -440,4 +440,10 @@ div.yamm hr {
     text-decoration: none;
 }
 /* SUBMENU END */
-
+li.animateTab > a,
+li.animateTab > a:after {
+    animation-name: newTabAnim;
+    animation-duration: 0.3s;
+    animation-iteration-count: 3;
+    animation-timing-function: ease-out;
+}
