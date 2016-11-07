@@ -164,6 +164,9 @@ table.rotateheaders th {
     border: none;
     border-bottom: 1px solid #222222;
 }
+body.condensed .submenu-bar{
+    margin-top: -25px!important;
+}
 .submenu-bar .sub-breadcrumb {
     font-size: 12px;
     font-weight: 500;
@@ -189,6 +192,9 @@ table.rotateheaders th {
 .navbar-fixed-top {
     border-width: 0;
 }
+.navbar-form.condensed{
+    margin: 12.5px 0 0 0;
+}
 .label {
     border-radius: 1px;
 }
@@ -213,11 +219,17 @@ table.rotateheaders th {
 .navbar-nav > li > ul.dropdown-menu a {
     color: #cccccc;
 }
+.navbar.condensed {
+    min-height: 50px;
+}
 /* menu end */
 .menu-help-text{
   font-size: 12px!important;
-  padding: 0 -1.6em 0.4em 1.6em;
+  margin: 0 -1.6em 0.4em 1.6em!important;
   display: none;
+}
+.condensed .menu-help-text{
+    margin: 0 -1.7em 0.4em 1.7em!important;
 }
 @keyframes newTabAnim {
     from { text-decoration:none; color:#ffffff;}
