@@ -339,7 +339,7 @@ setup_progress = angular.module(
                     console.log("no")
             )
         else if dev.$$graphing_data_availability_class == "alert-success"
-          $scope.open_in_new_tab(dev, 3)
+          $scope.open_in_new_tab_for_devices(dev, 3)
 
     $scope.system_overview_tab_clicked = () ->
         perform_refresh_for_system_status()
