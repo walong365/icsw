@@ -376,12 +376,12 @@ menu_module = angular.module(
                 a(
                     a_attrs
                     span(
-                        {className: "fa #{data.$$menuEntry.icon} fa_icsw", key: "span", style: {width: "1.5em", fontSize: "1.5em"}}
+                        {className: "fa #{data.$$menuEntry.icon} fa_icsw", key: "span"}
                     )
                     " #{data.$$menuEntry.name}"
                 )
                 p(
-                    {key: "d", style: {"textIndent": "12px"}}
+                    {key: "d", className: "menu-help-text"}
                     _info_text
                 )
             )

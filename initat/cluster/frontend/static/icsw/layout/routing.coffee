@@ -58,16 +58,18 @@ menu_module = angular.module(
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
     "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS", "icswThemeService",
+    "toaster",
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
     icswBreadcrumbs, $state, $window, Restangular, ICSW_URLS, icswThemeService,
+    toaster
 ) ->
     _bind_keys = () ->
         hotkeys.bindTo($scope).add(
             # combo: "ctrl+h"
             combo : "f1"
-            #description: "Show help"
+            #description: "Show Help"
             helpVisible: false
             allowIn: ["INPUT", "SELECT", "TEXTAREA"]
             callback: (event) ->
@@ -87,7 +89,23 @@ menu_module = angular.module(
             callback: (event) ->
                 event.preventDefault()
                 icswThemeService.toggle()
+        ).add(
+            combo: "f4"  # F3 for select tasks
+            allowIn: ["INPUT", "SELECT", "TEXTAREA"]
+            description: "Show/Hide Menu Help"
+            callback: (event) ->
+                event.preventDefault()
+                help_el = angular.element('.menu-help-text')
+                if help_el.attr("el_shown") == "1"
+                     help_el.hide()
+                     help_el.attr("el_shown", "")
+                     toaster.pop("success", "", "Menu Help hidden")
+                else
+                     help_el.show()
+                     help_el.attr("el_shown", "1")
+                     toaster.pop("success", "", "Menu Help visible")
         )
+
     $scope.struct = {
         current_user: undefined
         route_counter: 0

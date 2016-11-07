@@ -123,7 +123,7 @@ angular.module(
             struct.keys_defined = true
             hotkeys.add(
                 combo: "f3"
-                description: "Select task"
+                description: "Select Task"
                 allowIn: ["INPUT"]
                 callback: (event) ->
                     _choose_task()
@@ -131,8 +131,8 @@ angular.module(
             )
             if struct.active_task
                 hotkeys.add(
-                    combo: "f4"
-                    description: "One step forward"
+                    combo: "right"
+                    description: "One Step forward"
                     allowIn: ["INPUT"]
                     callback: (event) ->
                         if struct.active_task
@@ -140,8 +140,8 @@ angular.module(
                         event.preventDefault()
                 )
                 hotkeys.add(
-                    combo: "f6"
-                    description: "One step backward"
+                    combo: "left"
+                    description: "One Step backward"
                     allowIn: ["INPUT"]
                     callback: (event) ->
                         if struct.active_task

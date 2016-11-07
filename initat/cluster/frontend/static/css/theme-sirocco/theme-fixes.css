@@ -80,6 +80,10 @@ span.fancytree-expander {
 .fa { /* chrome fix */
     font-family: FontAwesome,Arial,Helvetica,sans-serif;
 }
+.fa_icsw {
+    width: 1.1em;
+    font-size: 1.1em;
+}
 .nav-tabs {
     margin-top: 7px;
 }
@@ -219,5 +223,10 @@ table.rotateheaders th {
     padding: 20px 20px 20px 17px;
 }
 .navbar-nav > li > ul.dropdown-menu a {
-    color: #666666;
+    color: #444444;
+}
+.menu-help-text{
+  font-size: 12px!important;
+  padding: 0 -1.6em 0.4em 1.6em;
+  display: none;
 }

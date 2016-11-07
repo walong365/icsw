@@ -18,6 +18,10 @@
     font-size: 11px;
     line-height: 1.42857;
 }
+.fa_icsw {
+    width: 1.5em;
+    font-size: 1.5em;
+}
 icsw-tools-button{
     line-height: 1;
 }
@@ -66,7 +70,10 @@ icsw-tools-button{
 .submenu-bar .label {
     font-size: 100%;
 }
-
+.menu-help-text{
+    text-indent: 12px;
+    display: none;
+}
 .cfp-hotkeys {
     border-radius: 10px;
 }
