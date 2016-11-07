@@ -57,7 +57,6 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     dvs_allowed_name_serializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-from initat.tools import logging_tools, server_command, process_tools
 
 logger = logging.getLogger("cluster.device")
 
@@ -905,7 +904,8 @@ class DeviceClassViewSet(viewsets.ViewSet):
         )
 
 from initat.tools import logging_tools, process_tools, server_command
-from initat.cluster.backbone.models import DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch
+from initat.cluster.backbone.models import DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch, user, \
+    device_mon_location
 import pytz
 
 
@@ -1018,10 +1018,33 @@ class SystemCompletion(View):
     def post(self, request):
         info_dict = {}
 
-        devices = device.objects.filter(is_meta_device=False)
+        devices_count = device.objects.filter(is_meta_device=False).count()
 
-        info_dict['devices'] = len(devices)
-        info_dict['devices_text'] = "{} Devices".format(len(devices))
+        info_dict['devices'] = devices_count
+        info_dict['devices_text'] = "{} Device".format(devices_count)
+
+        mon_check_count = mon_check_command.objects.all().count()
+
+        info_dict['monitoring_checks'] = mon_check_count
+        info_dict['monitoring_checks_text'] = "{} Check".format(mon_check_count)
+
+        info_dict['monitoring_checks'] = mon_check_count
+        info_dict['monitoring_checks_text'] = "{} Check".format(mon_check_count)
+
+        user_count = user.objects.all().count() - 1
+
+        info_dict["users"] = user_count
+        info_dict["users_text"] = "{} User".format(user_count)
+
+        locations_count = device_mon_location.objects.all().count()
+
+        info_dict["locations"] = locations_count
+        info_dict["locations_text"] = "{} Location".format(locations_count)
+
+        info_names = ["devices", "monitoring_checks", "users", "locations"]
+        for info_name in info_names:
+            if info_dict[info_name] > 1:
+                info_dict[info_name + "_text"] += "s"
 
         return HttpResponse(
             json.dumps(info_dict)

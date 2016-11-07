@@ -2560,6 +2560,18 @@ user_module = angular.module(
         $scope.struct.dom_element = el
         _load()
 
+]).directive("icswUserTree",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.user.tree")
+        controller: "icswUserGroupRoleTreeCtrl"
+        scope: true
+    }
 ])
 
 virtual_desktop_utils = {
