@@ -638,7 +638,7 @@ class Migration(migrations.Migration):
         )
         # first step: fast sync without migrations
         os.environ["ICSW_DISABLE_MIGRATIONS"] = "yes"
-        apply_migration("", migrate_ars=["--run-syncdb"])
+        apply_migration("", migrate_args=["--run-syncdb"])
         del os.environ["ICSW_DISABLE_MIGRATIONS"]
         # first step: migrate contenttypes
         apply_migration("contenttypes", migrate_args=["--fake-initial", "--fake"])

@@ -182,6 +182,21 @@ def main(opt_ns):
             else:
                 break
     elif opt_ns.childcom in META_COMS:
+        # check wether the meta-server is running
+        opt_ns.meta = True
+        orig_service = opt_ns.service  # save the "service" argument
+        opt_ns.service = ['meta-server']
+        cur_c.check_system(opt_ns, inst_xml)
+        opt_ns.service = orig_service
+        meta_server_instance = inst_xml.tree.xpath(
+            "/instances/instance[@name='meta-server']"
+        )[0]
+        meta_server_state = meta_server_instance.xpath(
+            "result/process_state_info/@state"
+        )
+        if not meta_server_state or int(meta_server_state[0]):
+            print("Warning: meta-server is not running")
+
         # contact meta-server at localhost
         _result = query_local_meta_server(inst_xml, opt_ns.childcom, services=opt_ns.service)
         if _result is None:

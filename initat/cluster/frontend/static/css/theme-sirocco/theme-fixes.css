@@ -183,6 +183,9 @@ table.rotateheaders th {
     vertical-align: 10;
     border-bottom: 1px solid #dddddd;
 }
+body.condensed .submenu-bar{
+    margin-top: -25px!important;
+}
 .submenu-bar .sub-breadcrumb {
     font-size: 12px;
     font-weight: bold;
@@ -208,6 +211,9 @@ table.rotateheaders th {
 .submenu-bar .quickselect a {
     color: #666666;
 }
+.navbar-form.condensed{
+    margin: 12.5px 0 0 0;
+}
 .navbar-fixed-top {
     border-width: 0;
 }
@@ -225,10 +231,16 @@ table.rotateheaders th {
 .navbar-nav > li > ul.dropdown-menu a {
     color: #444444;
 }
+.navbar.condensed {
+    min-height: 50px;
+}
 .menu-help-text{
-  font-size: 12px!important;
-  padding: 0 -1.6em 0.4em 1.6em;
-  display: none;
+    font-size: 12px!important;
+    margin: 0 -1.6em 0.4em 1.6em!important;
+    display: none;
+}
+.condensed .menu-help-text{
+    margin: 0 -1.7em 0.4em 1.7em!important;
 }
 @keyframes newTabAnim {
     from {   background-image: linear-gradient(to bottom, #f0f0f0, #f0f0f0); }
