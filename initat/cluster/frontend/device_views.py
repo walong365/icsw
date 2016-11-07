@@ -904,9 +904,8 @@ class DeviceClassViewSet(viewsets.ViewSet):
             ).data
         )
 
-from initat.icsw.service.instance import InstanceXML
-from initat.tools import logging_tools, process_tools, server_command, net_tools
-from initat.cluster.backbone.models import config, DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch
+from initat.tools import logging_tools, process_tools, server_command
+from initat.cluster.backbone.models import DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch
 import pytz
 
 
@@ -1006,4 +1005,18 @@ class SimpleGraphSetup(View):
 
         return HttpResponse(
             json.dumps(_status)
+        )
+
+class SystemCompletion(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        info_dict = {}
+
+        devices = device.objects.filter(is_meta_device=False)
+
+        info_dict['devices'] = len(devices)
+        info_dict['devices_text'] = "{} Devices".format(len(devices))
+
+        return HttpResponse(
+            json.dumps(info_dict)
         )

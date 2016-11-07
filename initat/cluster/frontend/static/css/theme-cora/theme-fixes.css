@@ -80,7 +80,10 @@ span.fancytree-expander {
 .fa { /* chrome fix */
     font-family: FontAwesome,Arial,Helvetica,sans-serif;
 }
-
+.fa_icsw {
+    width: 1.1em;
+    font-size: 1.1em;
+}
 ::-webkit-scrollbar-track { background-color: #999999; }
 ::-webkit-scrollbar{ width: 13px; }
 ::-webkit-scrollbar-thumb { background-color: #444444; -webkit-border-radius: 6px; border-radius: 6px; }
@@ -211,3 +214,8 @@ table.rotateheaders th {
     color: #cccccc;
 }
 /* menu end */
+.menu-help-text{
+  font-size: 12px!important;
+  padding: 0 -1.6em 0.4em 1.6em;
+  display: none;
+}
