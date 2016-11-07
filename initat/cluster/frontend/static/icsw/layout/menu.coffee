@@ -971,7 +971,8 @@ menu_module = angular.module(
                 ret_path.push(home_link)
             else if entry.level == 1
                 # menu
-                ret_path.push({name: entry.data.name, icon: ""})
+                entryname = if entry.data.name == "$$USER_INFO" then "Usermenu" else entry.data.name
+                ret_path.push({name: entryname, icon: ""})
             else if entry.level == 2
                 # subgroup
                 ret_path.push({name: entry.data.name, icon: ""})

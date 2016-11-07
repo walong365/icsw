@@ -77,3 +77,7 @@ icsw-tools-button{
 .cfp-hotkeys {
     border-radius: 10px;
 }
+@keyframes newTabAnim {
+    from { background-color: #ffffff; }
+    to { background-color: #eeeeee;}
+}
