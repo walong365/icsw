@@ -363,10 +363,10 @@ class DataStore(object):
         #     os.mkdir(data_store.store_dir)
         # entry_re = re.compile("^(?P<full_name>.*)_(?P<pk>\d+).info.xml$")
         for mv in MachineVector.objects.filter(Q(device__enabled=True) & Q(device__device_group__enabled=True)):
-            DataStore.g_log("building structure for {}".format(unicode(mv.device)))
+            DataStore.g_log(u"building structure for {}".format(unicode(mv.device)))
             new_ds = DataStore(mv)
         DataStore.compound_tree = CompoundTree(DataStore.g_log)
 
     @staticmethod
     def g_log(what, log_level=logging_tools.LOG_LEVEL_OK):
-        DataStore.process.log("[ds] {}".format(what), log_level)
+        DataStore.process.log(u"[ds] {}".format(what), log_level)
