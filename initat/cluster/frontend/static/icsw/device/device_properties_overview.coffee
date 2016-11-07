@@ -91,7 +91,7 @@ device_properties_overview = angular.module(
         stop_timer()
         $scope.struct.reload_timer = $timeout(
             () ->
-                perform_refresh(true)
+                perform_refresh_for_device_status(true)
             refresh_time
         )
 
@@ -107,9 +107,10 @@ device_properties_overview = angular.module(
         for entry in devs
             if not entry.is_meta_device
                 $scope.struct.devices.push(entry)
-        perform_refresh(false)
+        perform_refresh_for_device_status(false)
+        perform_refresh_for_system_status()
 
-    perform_refresh = (partial_refresh) ->
+    perform_refresh_for_device_status = (partial_refresh) ->
         console.log("performing_refresh:" + partial_refresh)
         $q.all(
             [
@@ -123,11 +124,8 @@ device_properties_overview = angular.module(
 
                 if partial_refresh
                     device_id_list = (idx for idx in $scope.struct.device_ids_needing_refresh)
-                    console.log(device_id_list)
                 else
                     device_id_list = (device.idx for device in $scope.struct.devices)
-
-                # console.log(device_id_list)
 
                 if device_id_list.length > 0
                     icswSimpleAjaxCall(
@@ -152,6 +150,40 @@ device_properties_overview = angular.module(
 
                             console.log("performing_refresh done")
                     )
+                else
+                    $scope.struct.data_loaded = true
+        )
+
+    perform_refresh_for_system_status = () ->
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                info_list_names = [
+                    ["devices", 25]
+                ]
+
+                $scope.struct.system_completion = 0
+
+                for obj in info_list_names
+                    info_list_name = obj[0]
+                    weight = obj[1]
+
+                    $scope.struct[info_list_name + "_availability_class"] = info_not_available_class
+                    $scope.struct[info_list_name + "_availability_text"] = info_not_available_text
+
+
+                    if data[info_list_name] > 0
+                        $scope.struct[info_list_name + "_availability_class"] = info_available_class
+                        $scope.struct[info_list_name + "_availability_text"] = data[info_list_name + "_text"]
+
+                        $scope.struct.system_completion += weight
+
+
+                console.log(data)
         )
 
     salt_device = (device, device_hints) ->
@@ -244,7 +276,7 @@ device_properties_overview = angular.module(
         )
 
     $scope.perform_lazy_refresh = () ->
-        perform_refresh(true)
+        perform_refresh_for_device_status(true)
 
     $scope.mark_unfresh = (tab) ->
         $scope.struct.device_ids_needing_refresh.push(tab.device_id)
@@ -267,7 +299,7 @@ device_properties_overview = angular.module(
                     ).then(
                         (data) ->
                             $scope.struct.device_ids_needing_refresh.push(dev.idx)
-                            perform_refresh(true)
+                            perform_refresh_for_device_status(true)
                             blockUI.stop()
                     )
                 (_no) ->
@@ -277,34 +309,6 @@ device_properties_overview = angular.module(
           $scope.open_in_new_tab(dev, 3)
 
     $scope.system_overview_tab_clicked = () ->
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION
-                dataType: "json"
-            }
-        ).then(
-            (data) ->
-                info_list_names = [
-                    ["devices", 25]
-                ]
+        perform_refresh_for_system_status()
 
-                $scope.struct.system_completion = 0
-
-                for obj in info_list_names
-                    info_list_name = obj[0]
-                    weight = obj[1]
-
-                    $scope.struct[info_list_name + "_availability_class"] = info_not_available_class
-                    $scope.struct[info_list_name + "_availability_text"] = info_not_available_text
-
-
-                    if data[info_list_name] > 0
-                        $scope.struct[info_list_name + "_availability_class"] = info_available_class
-                        $scope.struct[info_list_name + "_availability_text"] = data[info_list_name + "_text"]
-
-                        $scope.struct.system_completion += weight
-
-
-                console.log(data)
-        )
 ])
