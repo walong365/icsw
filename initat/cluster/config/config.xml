@@ -25,11 +25,11 @@
                 </description>
             </icswData>
         </route>
-        <route name="main.devicepropertiesoverview">
-            <stateData url="/device/overview" templateUrl="icsw/device/properties/overview"/>
-            <icswData pageTitle="Setup Status">
+        <route name="main.setupprogress">
+            <stateData url="/setup/progress" templateUrl="icsw/setup/progress"/>
+            <icswData pageTitle="Setup Progress">
                 <description>
-                    <infoText language="en">Show the setup progress of devices</infoText>
+                    <infoText language="en">Show the setup progress of the system and devices</infoText>
                 </description>
             </icswData>
         </route>
@@ -619,8 +619,8 @@
         <menuHeader name="Devices" icon="fa-desktop" side="left">
             <routeSubGroup name="Settings">
                 <menuEntry icon="fa-plus-circle" name="Add new Device" routeName="main.devicecreate"/>
-                <menuEntry icon="fa-cubes" name="Setup Status" routeName="main.devicepropertiesoverview"/>
-                <menuEntry icon="fa-bars" routeName="main.deviceinfo" name="Device Information"/>
+                <menuEntry icon="fa-cubes" name="Setup Progress" routeName="main.setupprogress"/>
+                <menuEntry icon="fa-bars" name="Device Information" routeName="main.deviceinfo"/>
                 <menuEntry icon="fa-tree" name="Device Tree" routeName="main.devtree"/>
                 <menuEntry icon="fa-check-square" name="Assign Configurations" routeName="main.deviceconfig"/>
                 <menuEntry icon="fa-check-square" name="Assign Monitoring checks" routeName="main.devicemonconfig"/>

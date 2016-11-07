@@ -20,14 +20,14 @@
 
 # variable related module
 
-device_properties_overview = angular.module(
-    "icsw.device.properties.overview",
+setup_progress = angular.module(
+    "icsw.setup.progress",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
-    icswRouteExtensionProvider.add_route("main.devicepropertiesoverview")
-]).directive("icswDevicePropertiesOverview",
+    icswRouteExtensionProvider.add_route("main.setupprogress")
+]).directive("icswSetupProgress",
 [
     "$templateCache",
 (
@@ -35,11 +35,11 @@ device_properties_overview = angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.device.properties.overview")
-        controller: "icswDevicePropertiesOverviewCtrl"
+        template: $templateCache.get("icsw.setup.progress")
+        controller: "icswSetupProgressCtrl"
         scope: true
     }
-]).controller("icswDevicePropertiesOverviewCtrl",
+]).controller("icswSetupProgressCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
