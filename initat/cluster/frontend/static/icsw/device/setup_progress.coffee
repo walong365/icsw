@@ -66,6 +66,8 @@ setup_progress = angular.module(
 
         reload_timer: undefined
 
+        active_tab_index: 0
+
         system_completion: 0
         devices_availability_class: "alert-danger"
         devices_availability_text: "Not Available"
@@ -78,6 +80,10 @@ setup_progress = angular.module(
 
         location_availability_class: "alert-danger"
         location_availability_text: "Not Available"
+
+        show_extended_information_button_value: "Off"
+        show_extended_information_button_class: "btn btn-default"
+        show_extended_information_button_enabled: false
     }
 
     info_not_available_class = "alert-danger"
@@ -137,6 +143,7 @@ setup_progress = angular.module(
                         }
                     ).then(
                         (data) ->
+                            console.log(data)
                             $scope.struct.device_ids_needing_refresh.length = 0
 
                             for device_id in device_id_list
@@ -208,20 +215,28 @@ setup_progress = angular.module(
 
             device["$$" + info_list_name + "_availability_class"] = info_not_available_class
             device["$$" + info_list_name + "_availability_text"] = info_not_available_text
+            device["$$" + info_list_name + "_availability_extended_text"] = info_not_available_text
+            device["$$" + info_list_name + "_sort_hint"] = 0
 
             if device_hints[info_list_name] > 0
                 device["$$" + info_list_name + "_availability_class"] = info_available_class
                 device["$$" + info_list_name + "_availability_text"] = info_available_text
+                device["$$" + info_list_name + "_availability_extended_text"] = info_available_text
+                device["$$" + info_list_name + "_sort_hint"] = device_hints[info_list_name]
 
                 device.$$overview_completion_percentage += weight
 
-            else if device_hints[info_list_name + "_warning"] == true
+            if device_hints[info_list_name + "_warning"] == true
                 device["$$" + info_list_name + "_availability_class"] = info_warning_class
                 device["$$" + info_list_name + "_availability_text"] = info_warning_text
+                device["$$" + info_list_name + "_availability_extended_text"] = info_available_text
 
                 $scope.struct.device_ids_needing_refresh.push(device.idx)
 
-    $scope.open_in_new_tab = (device, setup_type) ->
+            if device_hints[info_list_name + "_extended_text"] != undefined
+                device["$$" + info_list_name + "_availability_extended_text"] = device_hints[info_list_name + "_extended_text"]
+
+    $scope.open_in_new_tab_for_devices = (device, setup_type) ->
         if setup_type == 0
             heading = "Monitoring Checks"
         else if setup_type == 1
@@ -242,21 +257,40 @@ setup_progress = angular.module(
                 return
 
         $scope.struct.tabs.push(o)
+        $timeout(
+            () ->
+                $scope.struct.active_tab_index = $scope.struct.tabs.length + 1
+            0
+        )
+
 
     $scope.open_in_new_tab_for_system = (setup_type) ->
         if setup_type == 4
-            heading = "Devices"
+            heading = "Device Tree"
+            special_flag_name = "devices_available"
+            special_flag_value = true
+
+            if $scope.struct.devices_availability_class == "alert-danger"
+                special_flag_value = false
+                heading = "Create new Device"
 
         o = {
             type: setup_type
             heading: heading
         }
 
+        o[special_flag_name] = special_flag_value
+
         for tab in $scope.struct.tabs
             if tab.heading == o.heading
                 return
 
         $scope.struct.tabs.push(o)
+        $timeout(
+            () ->
+                $scope.struct.active_tab_index = $scope.struct.tabs.length + 1
+            0
+        )
 
     $scope.close_tab = (to_be_closed_tab) ->
         $timeout(
@@ -271,15 +305,14 @@ setup_progress = angular.module(
                     $scope.struct.tabs.push(tab)
 
                 if tabs_tmp.length == 0
-                    $scope.perform_lazy_refresh()
+                    perform_refresh_for_device_status(true)
             0
         )
 
-    $scope.perform_lazy_refresh = () ->
-        perform_refresh_for_device_status(true)
 
     $scope.mark_unfresh = (tab) ->
-        $scope.struct.device_ids_needing_refresh.push(tab.device_id)
+        if tab["device_id"] != undefined
+            $scope.struct.device_ids_needing_refresh.push(tab.device_id)
 
     $scope.show_device = ($event, dev) ->
         DeviceOverviewService($event, [dev])
@@ -310,5 +343,19 @@ setup_progress = angular.module(
 
     $scope.system_overview_tab_clicked = () ->
         perform_refresh_for_system_status()
+
+    $scope.device_overview_tab_clicked = () ->
+        perform_refresh_for_device_status(true)
+
+    $scope.show_extended_information_button_pressed = () ->
+        $scope.struct.show_extended_information_button_enabled = !$scope.struct.show_extended_information_button_enabled
+
+        if $scope.struct.show_extended_information_button_enabled
+            $scope.struct.show_extended_information_button_value = "On"
+            $scope.struct.show_extended_information_button_class = "btn btn-success"
+        else
+            $scope.struct.show_extended_information_button_value = "Off"
+            $scope.struct.show_extended_information_button_class = "btn btn-default"
+
 
 ])

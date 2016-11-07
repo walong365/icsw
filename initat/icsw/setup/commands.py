@@ -368,7 +368,7 @@ def create_db_cf(opts):
         return False
 
     # content
-    _cs = config_store.ConfigStore(DB_ACCESS_CS_NAME, access_mode=config_store.AccessModeEnum.LOCAL)
+    _cs = config_store.ConfigStore(DB_ACCESS_CS_NAME, access_mode=config_store.AccessModeEnum.LOCAL, fix_prefix_on_read=False)
     for _key in sorted(c_dict):
         if not _key.startswith("_"):
             _cs["db.{}".format(_key.lower())] = c_dict[_key]
@@ -875,7 +875,7 @@ def main(args):
                 # use existing db_cf
                 setup_db_cf = False
             else:
-                _db_cf_f = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True)
+                _db_cf_f = config_store.ConfigStore(DB_ACCESS_CS_NAME, quiet=True, fix_prefix_on_read=False)
                 if not len(_db_cf_f.keys()):
                     print("DB access file {} already exists but is empty, ignoring ...".format(DB_ACCESS_CS_NAME))
                     setup_db_cf = True
