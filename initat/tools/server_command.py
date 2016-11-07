@@ -174,7 +174,7 @@ class srv_command(object):
             raise ValueError("srv_com_level '{}' not valid".format(level))
         self["result"].attrib.update(
             {
-                "reply": ret_str,
+                "reply": unicode(ret_str),
                 "state": "{:d}".format(level)
             }
         )
