@@ -506,6 +506,9 @@
                 <rights>
                     <value>backbone.background_job.show_background</value>
                 </rights>
+                <description>
+                    <infoText language="en">A list of one-shot jobs</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.history">
@@ -514,6 +517,9 @@
                 <rights>
                     <value>backbone.user.snapshots</value>
                 </rights>
+                <description>
+                    <infoText language="en">A chronological list of database changes</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.serverinfo">
@@ -522,6 +528,9 @@
                 <rights>
                     <value>$$CHECK_FOR_SUPERUSER</value>
                 </rights>
+                <description>
+                    <infoText language="en">Information about server processes and cluster roles</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.statelist">
@@ -530,6 +539,9 @@
                 <rights>
                     <value>$$CHECK_FOR_SUPERUSER</value>
                 </rights>
+                <description>
+                    <infoText language="en">TO BE REMOVED?</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.usertree">
@@ -538,6 +550,9 @@
                 <rights>
                     <value>backbone.group.group_admin</value>
                 </rights>
+                <description>
+                    <infoText language="en">User and group management</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.syslicenseoverview">
@@ -546,6 +561,9 @@
                 <rights>
                     <value>$$CHECK_FOR_SUPERUSER</value>
                 </rights>
+                <description>
+                    <infoText language="en">License and ova management</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.schedoverview">
@@ -554,22 +572,31 @@
                 <rights>
                     <value>backbone.dispatchersetting.setup</value>
                 </rights>
+                <description>
+                    <infoText language="en">TODO</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.useraccount">
             <stateData url="/useraccount" templateUrl="icsw/main/user/account.html"/>
             <icswData pageTitle="Account Info">
-                    </icswData>
+                <description>
+                    <infoText language="en">Personal account settings</infoText>
+                </description>
+            </icswData>
         </route>
         <route name="main.empty">
             <stateData url="/empty" templateUrl="icsw/main/empty.html"/>
             <icswData pageTitle="Placeholder">
-                    </icswData>
+            </icswData>
         </route>
         <route name="logout">
             <stateData url="/empty" templateUrl="icsw/logout.html"/>
             <icswData pageTitle="Logout">
-                    </icswData>
+                <description>
+                    <infoText language="en">Terminate the current session</infoText>
+                </description>
+            </icswData>
         </route>
         <route name="main.dashboard">
             <stateData url="/dashboard" templateUrl="icsw/main/dashboard.html"/>

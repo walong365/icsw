@@ -131,18 +131,16 @@ angular.module(
             )
             if struct.active_task
                 hotkeys.add(
-                    combo: "right"
+                    combo: "pageup"
                     description: "One Step forward"
-                    allowIn: ["INPUT"]
                     callback: (event) ->
                         if struct.active_task
                             struct.active_task.step_forward()
                         event.preventDefault()
                 )
                 hotkeys.add(
-                    combo: "left"
+                    combo: "pagedown"
                     description: "One Step backward"
-                    allowIn: ["INPUT"]
                     callback: (event) ->
                         if struct.active_task
                             struct.active_task.step_backward()

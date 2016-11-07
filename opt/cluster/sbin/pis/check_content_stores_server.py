@@ -129,7 +129,12 @@ def migrate_db_cf():
         remove_file(DB_FILE)
     else:
         # check rights
-        config_store.ConfigStore(DB_ACCESS_CS_NAME, access_mode=config_store.AccessModeEnum.LOCAL, fix_access_mode=True)
+        config_store.ConfigStore(
+            DB_ACCESS_CS_NAME,
+            access_mode=config_store.AccessModeEnum.LOCAL,
+            fix_access_mode=True,
+            fix_prefix_on_read=False
+        )
 
 
 def main():

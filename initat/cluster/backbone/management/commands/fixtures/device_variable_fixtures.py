@@ -41,6 +41,9 @@ def add_fixtures(**kwargs):
             fixed=_fixed,
             system_scope=_sys_scope,
         )
+    # set default scope
+    _fact_dict["normal"].default_scope = True
+    _fact_dict["normal"].save()
     _defaults = {
         "inventory": [
             ("serial", "Serial number", "admin", "s"),
