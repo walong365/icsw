@@ -26,6 +26,7 @@ from __future__ import unicode_literals, print_function
 import socket
 
 from django.conf import settings
+
 from django.db import OperationalError
 
 from initat.constants import DB_ACCESS_CS_NAME
@@ -46,7 +47,7 @@ def is_reachable():
     from django.db import connections
     _settings = settings.DATABASES["default"]
     if _settings.get("HOST", "").strip() and _settings["HOST"] not in ["localhost", "127.0.0.1"]:
-        if _settings["ENGINE"].lower().count("psyco"):
+        if _settings["ENGINE"].lower().count("postgres"):
             _port = int(_settings.get("PORT", "5432") or "5432")
             try:
                 _c = socket.create_connection((_settings["HOST"], _port), DB_TIMEOUT)

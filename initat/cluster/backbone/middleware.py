@@ -23,6 +23,9 @@
 """ middleware for django """
 
 # from backend.models import site_call_log, session_call_log
+
+from __future__ import unicode_literals, print_function
+
 import fcntl
 import time
 import struct
@@ -54,6 +57,10 @@ class thread_local_middleware(object):
     def user(self):
         return getattr(thread_local_obj, "user", None)
 
+    @user.setter
+    def user(self, user):
+        setattr(thread_local_obj, "user", user)
+        
     @property
     def request(self):
         return getattr(thread_local_obj, "request", None)

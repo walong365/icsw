@@ -20,14 +20,14 @@
 
 # variable related module
 
-device_properties_overview = angular.module(
-    "icsw.device.properties.overview",
+setup_progress = angular.module(
+    "icsw.setup.progress",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.select"
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
-    icswRouteExtensionProvider.add_route("main.devicepropertiesoverview")
-]).directive("icswDevicePropertiesOverview",
+    icswRouteExtensionProvider.add_route("main.setupprogress")
+]).directive("icswSetupProgress",
 [
     "$templateCache",
 (
@@ -35,11 +35,11 @@ device_properties_overview = angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: $templateCache.get("icsw.device.properties.overview")
-        controller: "icswDevicePropertiesOverviewCtrl"
+        template: $templateCache.get("icsw.setup.progress")
+        controller: "icswSetupProgressCtrl"
         scope: true
     }
-]).controller("icswDevicePropertiesOverviewCtrl",
+]).controller("icswSetupProgressCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
@@ -52,6 +52,9 @@ device_properties_overview = angular.module(
     icswToolsSimpleModalService
 ) ->
     $scope.struct = {
+        # selected devices
+        devices: []
+        # device tree
         device_tree: undefined
         ugr_tree: undefined
         data_loaded: false
@@ -62,14 +65,34 @@ device_properties_overview = angular.module(
         tabs: []
 
         reload_timer: undefined
+
+        system_completion: 0
+        devices_availability_class: "alert-danger"
+        devices_availability_text: "Not Available"
+
+        monitoring_checks_availability_class: "alert-danger"
+        monitoring_checks_availability_text: "Not Available"
+
+        users_availability_class: "alert-danger"
+        users_availability_text: "Not Available"
+
+        location_availability_class: "alert-danger"
+        location_availability_text: "Not Available"
     }
 
-    start_timer = () ->
+    info_not_available_class = "alert-danger"
+    info_not_available_text = "Not Available"
+    info_available_class = "alert-success"
+    info_available_text = "Available"
+    info_warning_class = "alert-warning"
+    info_warning_text = "In Progress..."
+
+    start_timer = (refresh_time) ->
         stop_timer()
         $scope.struct.reload_timer = $timeout(
             () ->
-                perform_refresh(true)
-            10000
+                perform_refresh_for_device_status(true)
+            refresh_time
         )
 
     stop_timer = () ->
@@ -79,8 +102,16 @@ device_properties_overview = angular.module(
             $scope.struct.reload_timer = undefined
 
 
+    $scope.new_devsel = (devs) ->
+        $scope.struct.devices.length = 0
+        for entry in devs
+            if not entry.is_meta_device
+                $scope.struct.devices.push(entry)
+        perform_refresh_for_device_status(false)
+        perform_refresh_for_system_status()
 
-    perform_refresh = (partial_refresh) ->
+    perform_refresh_for_device_status = (partial_refresh) ->
+        console.log("performing_refresh:" + partial_refresh)
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -90,20 +121,11 @@ device_properties_overview = angular.module(
             (data) ->
                 $scope.struct.device_tree = data[0]
                 $scope.struct.ugr_tree = data[1]
-                $scope.struct.devices.length = 0
-
-                for device in $scope.struct.device_tree.all_list
-                    if !device.is_meta_device
-                        $scope.struct.devices.push(device)
-
 
                 if partial_refresh
                     device_id_list = (idx for idx in $scope.struct.device_ids_needing_refresh)
-                    console.log(device_id_list)
                 else
                     device_id_list = (device.idx for device in $scope.struct.devices)
-
-                # console.log(device_id_list)
 
                 if device_id_list.length > 0
                     icswSimpleAjaxCall(
@@ -124,11 +146,45 @@ device_properties_overview = angular.module(
 
                             $scope.struct.data_loaded = true
                             if $scope.struct.device_ids_needing_refresh.length > 0
-                                start_timer()
+                                start_timer(15000)
+
+                            console.log("performing_refresh done")
                     )
+                else
+                    $scope.struct.data_loaded = true
         )
 
-    perform_refresh(false)
+    perform_refresh_for_system_status = () ->
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                info_list_names = [
+                    ["devices", 25]
+                ]
+
+                $scope.struct.system_completion = 0
+
+                for obj in info_list_names
+                    info_list_name = obj[0]
+                    weight = obj[1]
+
+                    $scope.struct[info_list_name + "_availability_class"] = info_not_available_class
+                    $scope.struct[info_list_name + "_availability_text"] = info_not_available_text
+
+
+                    if data[info_list_name] > 0
+                        $scope.struct[info_list_name + "_availability_class"] = info_available_class
+                        $scope.struct[info_list_name + "_availability_text"] = data[info_list_name + "_text"]
+
+                        $scope.struct.system_completion += weight
+
+
+                console.log(data)
+        )
 
     salt_device = (device, device_hints) ->
         device.$$date_created = moment(device.date).format("YYYY-MM-DD HH:mm:ss")
@@ -136,13 +192,6 @@ device_properties_overview = angular.module(
             device.$$creator = $scope.struct.ugr_tree.user_lut[device.creator].$$long_name
         else
             device.$$creator = "N/A"
-
-        info_not_available_class = "alert-danger"
-        info_not_available_text = "Not Available"
-        info_available_class = "alert-success"
-        info_available_text = "Available"
-        info_warning_class = "alert-warning"
-        info_warning_text = "In Progress..."
 
         info_list_names = [
             ["monitoring_checks", 25],
@@ -180,7 +229,7 @@ device_properties_overview = angular.module(
         else if setup_type == 2
             heading = "Asset Data"
         else if setup_type == 3
-            heading = "Graphing Setup"
+            heading = "Graphing Data"
 
         o = {
             type: setup_type
@@ -190,6 +239,21 @@ device_properties_overview = angular.module(
 
         for tab in $scope.struct.tabs
             if tab.device_id == o.device_id && tab.heading == o.heading
+                return
+
+        $scope.struct.tabs.push(o)
+
+    $scope.open_in_new_tab_for_system = (setup_type) ->
+        if setup_type == 4
+            heading = "Devices"
+
+        o = {
+            type: setup_type
+            heading: heading
+        }
+
+        for tab in $scope.struct.tabs
+            if tab.heading == o.heading
                 return
 
         $scope.struct.tabs.push(o)
@@ -212,7 +276,7 @@ device_properties_overview = angular.module(
         )
 
     $scope.perform_lazy_refresh = () ->
-        perform_refresh(true)
+        perform_refresh_for_device_status(true)
 
     $scope.mark_unfresh = (tab) ->
         $scope.struct.device_ids_needing_refresh.push(tab.device_id)
@@ -221,21 +285,30 @@ device_properties_overview = angular.module(
         DeviceOverviewService($event, [dev])
 
     $scope.setup_graphing = (dev) ->
-        icswToolsSimpleModalService("Try to perform graphing setup on device? [Requires host-monitoring on device]").then(
-            (_yes) ->
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
-                        data:
-                            device_pk: dev.idx
-                        dataType: "json"
-                    }
-                ).then(
-                    (data) ->
-                        $scope.struct.device_ids_needing_refresh.push(dev.idx)
-                        start_timer()
-                )
-            (_no) ->
-                console.log("no")
-        )
+        if dev.$$graphing_data_availability_class == "alert-danger"
+            icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
+                (_yes) ->
+                    blockUI.start("Please wait...")
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
+                            data:
+                                device_pk: dev.idx
+                            dataType: "json"
+                        }
+                    ).then(
+                        (data) ->
+                            $scope.struct.device_ids_needing_refresh.push(dev.idx)
+                            perform_refresh_for_device_status(true)
+                            blockUI.stop()
+                    )
+                (_no) ->
+                    console.log("no")
+            )
+        else if dev.$$graphing_data_availability_class == "alert-success"
+          $scope.open_in_new_tab(dev, 3)
+
+    $scope.system_overview_tab_clicked = () ->
+        perform_refresh_for_system_status()
+
 ])

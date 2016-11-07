@@ -195,6 +195,7 @@ boot_patterns = [
 ]
 
 device_patterns = [
+    url("^system_completion$", device_views.SystemCompletion.as_view(), name="system_completion"),
     url("^device_completion$", device_views.DeviceCompletion.as_view(), name="device_completion"),
     url("^simple_graph_setup$", device_views.SimpleGraphSetup.as_view(), name="simple_graph_setup"),
     # url("^device_tree$", device_views.device_tree.as_view(), name="tree"),
@@ -220,8 +221,22 @@ device_patterns = [
     ),
     url(
         "^device_variable_scope_call$",
-        device_views.DeviceVariableScopeViewSet.as_view({"get": "list"}),
+        device_views.DeviceVariableScopeViewSet.as_view(
+            {
+                "get": "list",
+                "post": "create_var_scope",
+            }
+        ),
         name="device_variable_scope_list",
+    ),
+    url(
+        "^device_variable_scope_detail/(?P<pk>[0-9]+)$",
+        device_views.DeviceVariableScopeViewSet.as_view(
+            {
+                "put": "update_var_scope",
+            }
+        ),
+        name="device_variable_scope_detail",
     ),
     url(
         "^device_variable_scope_entry$",

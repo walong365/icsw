@@ -2,6 +2,10 @@
     <icsw-config-config-overview></icsw-config-config-overview>
 </script>
 
+<script type="text/ng-template" id="icsw/main/moncheck/overview.html">
+    <icsw-config-moncheck-overview></icsw-config-moncheck-overview>
+</script>
+
 <script type="text/ng-template" id="icsw.config.config.overview">
     <div class="container-fluid">
         <uib-tabset>
@@ -23,6 +27,19 @@
             </uib-tab>
             <uib-tab heading="Uploads ({{ config_tree.uploaded_configs.length }})" ng-if="config_tree.uploaded_configs.length">
                 <icsw-config-uploaded></icsw-config-uploaded>
+            </uib-tab>
+        </uib-tabset>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.moncheck.overview">
+    <div class="container-fluid">
+        <uib-tabset>
+            <uib-tab heading="Configurations">
+                <icsw-config-moncheck-table></icsw-config-moncheck-table>
+            </uib-tab>
+            <uib-tab heading="Monitoring Categories">
+                <icsw-config-category-tree-edit mode="mon"></icsw-config-category-tree-edit>
             </uib-tab>
         </uib-tabset>
     </div>
@@ -198,6 +215,94 @@
                     </thead>
                     <tbody>
                         <tr icsw-config-line ng-repeat="config in configs_displayed" ng-class="config.$$config_line_class" ng-click="toggle_config_select($event, config)">
+                        </tr>
+                    </tbody>
+                </table>
+            </uib-tab>
+            <uib-tab ng-repeat="config in struct.open_configs" index="$index + 1">
+                <uib-tab-heading>
+                    {{ config.name }}
+                    <span class="label label-danger" ng-show="changed(config)">Changed</span>
+                    <icsw-tools-button size="xs" type="close" value="" ng-click="close_config($event, config)"></icsw-tools-button>
+                </uib-tab-heading>
+                <icsw-config-modify
+                    icsw-config-tree="struct.config_tree"
+                    icsw-config="config"
+                ></icsw-config-modify>
+            </uib-tab>
+        </uib-tabset>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.moncheck.table">
+    <div uib-alert class="alert-warning" ng-if="!struct.data_valid">
+        Loading data ...
+    </div>
+    <div ng-if="struct.data_valid">
+        <h3>
+            {{ struct.config_tree.mcc_list.length }} Monitoringchecks, {{ struct.config_tree.filtered_mcc_list.length }} shown, {{ struct.config_tree.$mcc_selected }} selected
+            <icsw-tools-button-static
+                type="create"
+                value="create new monitoring check"
+                ng-click="create_mon_check($event)"
+                size="xs"
+            ></icsw-tools-button-static>
+            <!-- <icsw-tools-button-static
+                ng-show="struct.config_tree.$selected"
+                type="clear"
+                value="clear selection"
+                ng-click="clear_selection($event)"
+                size="xs"
+            ></icsw-tools-button-static>
+            <icsw-tools-button-static
+                ng-show="struct.config_tree.$selected"
+                type="modify"
+                value="modify selection"
+                ng-click="modify_selection($event)"
+                size="xs"
+            ></icsw-tools-button-static> -->
+        </h3>
+        <uib-tabset active="struct.active_tab">
+            <uib-tab index="0">
+                <uib-tab-heading>
+                    Check List
+                </uib-tab-heading>
+                <table
+                    st-table="monccs_displayed"
+                    st-safe-src="struct.config_tree.filtered_mcc_list"
+                    class="table table-hover table-condensed table-striped"
+                    style="width:100%;"
+                >
+                    <thead>
+                        <tr>
+                            <td colspan="99">
+                                <div class="row">
+                                    <div class="col-sm-3">
+                                        <div class="input-group">
+                                            <input
+                                                ng-model="struct.search_str"
+                                                ng-model-options="{debounce: {default: 200, blur: 0}}"
+                                                ng-change="update_search()"
+                                                class="form-control"
+                                                placeholder="filter"
+                                            >
+                                            </input>
+                                        </div>
+                                    </div>
+                                    <div
+                                        icsw-tools-pagination
+                                        st-items-by-page="15"
+                                        st-displayed-pages="11"
+                                        possible-items-by-page="15,30,100,200"
+                                        class="col-sm-6"
+                                    ></div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr icsw-mon-check-command-header></tr>
+                    </thead>
+                    <tbody>
+                        <tr icsw-mon-check-command-line ng-repeat="obj in monccs_displayed">
                         </tr>
                     </tbody>
                 </table>
@@ -586,8 +691,12 @@
 
 <script type="text/ng-template" id="icsw.config.mon.table">
     <icsw-tools-rest-table-new target-list="monccs" config-service="icswConfigMonCheckCommandListService">
-        <table st-table="monccs_displayed" st-safe-src="monccs"
-               class="table table-condensed table-hover" style="width:100%;">
+        <table
+            st-table="monccs_displayed"
+            st-safe-src="monccs"
+            class="table table-condensed table-hover"
+            style="width:100%;"
+        >
             <thead>
                 <tr>
                     <td colspan="99">
@@ -609,63 +718,78 @@
                         </div>
                     </td>
                 </tr>
-                <tr>
-                    <th st-sort="name">Name</th>
-                    <th>Template</th>
-                    <th st-sort="description">Description</th>
-                    <th>Special</th>
-                    <th>Command Line</th>
-                    <!-- <th>active</th> -->
-                    <th>Vol</th>
-                    <th>Perf</th>
-                    <th>Is Event</th>
-                    <th>Event Handler</th>
-                    <th>EH Enabled</th>
-                    <th>Categories</th>
-                    <th colspan="4">Actions</th>
-                </tr>
+                <tr icsw-mon-check-command-header></tr>
             </thead>
             <tbody>
-                <tr ng-repeat="obj in monccs_displayed">
-                    <td>{{ obj.name }}</td>
-                    <td>{{ mon_tree.mon_service_templ_lut[obj.mon_service_templ].name || '-' }}</td>
-                    <td>{{ obj.description }}</td>
-                    <td>{{ obj.mon_check_command_special && 'yes' || 'no' }}</td>
-                    <td title="{{ config_service.get_mon_command_line(obj) }}" ng-if="obj.is_active">
-                        <input
-                            type="button"
-                            title="expand / collapse full command line"
-                            ng-class="obj._show_full_command && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
-                            value="e" ng-click="obj._show_full_command = !obj._show_full_command">
-                        </input>
-                        <span ng-if="!obj._show_full_command">{{ config_service.get_mon_command_line(obj) | limit_text:40:true }}</span>
-                        <span ng-if="obj._show_full_command">{{ config_service.get_mon_command_line(obj) }}</span>
-                    </td>
-                    <td title="{{ config_service.get_mon_command_line(obj) }}" ng-if="!obj.is_active">
-                        Passive check
-                    </td>
-                    <!-- <td>{{ obj.is_active | yesno2 }}</td> -->
-                    <td>{{ obj.volatile | yesno1 }}</td>
-                    <td>{{ obj.enable_perfdata | yesno1 }}</td>
-                    <td>{{ obj.is_event_handler | yesno1 }}</td>
-                    <td>{{ config_service.get_event_handler(obj.event_handler) }}</td>
-                    <td>{{ obj.event_handler_enabled }}</td>
-                    <td>{{ obj.categories.length || '-' }}</td>
-                    <td><input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/>
-                    <td><icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button-static></td>
-                    <td><input type="button" class="btn btn-warning btn-xs" ng-click="duplicate($event, obj, config)" value="duplicate"/></td>
-                    <td><icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button-static></td>
+                <tr icsw-mon-check-command-line ng-repeat="obj in monccs_displayed">
                 </tr>
             </tbody>
         </table>
     </icsw-tools-rest-table-new>
 </script>
 
+<script type="text/ng-template" id="icsw.mon.check.command.header">
+    <th st-sort="name">Name</th>
+    <th st-sort="$$config_name">Config</th>
+    <th>Template</th>
+    <th st-sort="description">Description</th>
+    <th>Special</th>
+    <th>Command Line</th>
+    <!-- <th>active</th> -->
+    <th>Vol</th>
+    <th>Perf</th>
+    <th>Is Event</th>
+    <th>Event Handler</th>
+    <th>EH Enabled</th>
+    <th>Categories</th>
+    <th colspan="4">Actions</th>
+</script>
+
+<script type="text/ng-template" id="icsw.mon.check.command.line">
+    <td>{{ obj.name }}</td>
+    <td>{{ obj.$$config_name }}</td>
+    <td>{{ mon_tree.mon_service_templ_lut[obj.mon_service_templ].name || '-' }}</td>
+    <td>{{ obj.description }}</td>
+    <td class="text-center"><span ng-bind-html="obj.mon_check_command_special | yesno3"></span></td>
+    <td title="{{ config_service.get_mon_command_line(obj) }}" ng-if="obj.is_active">
+        <input
+            type="button"
+            title="expand / collapse full command line"
+            ng-class="obj._show_full_command && 'btn btn-xs btn-success' || 'btn btn-xs btn-default'"
+            value="e" ng-click="obj._show_full_command = !obj._show_full_command">
+        </input>
+        <span ng-if="!obj._show_full_command">{{ config_service.get_mon_command_line(obj) | limit_text:40:true }}</span>
+        <span ng-if="obj._show_full_command">{{ config_service.get_mon_command_line(obj) }}</span>
+    </td>
+    <td title="{{ config_service.get_mon_command_line(obj) }}" ng-if="!obj.is_active">
+        Passive check
+    </td>
+    <!-- <td>{{ obj.is_active | yesno2 }}</td> -->
+    <td class="text-center"><span ng-bind-html="obj.volatile | yesno3"></span></td>
+    <td class="text-center"><span ng-bind-html="obj.enable_perfdata | yesno3"></span></td>
+    <td class="text-center"><span ng-bind-html="obj.is_event_handler | yesno3"></span></td>
+    <td>{{ config_service.get_event_handler(obj) }}</td>
+    <td class="text-center"><span ng-bind-html="obj.event_handler_enabled | yesno3"></span></td>
+    <td class="text-center">{{ obj.categories.length || '-' }}</td>
+    <td>
+        <input type="button" ng-class="obj.$selected && 'btn btn-primary btn-xs' || 'btn btn-xs btn-default'" value="sel" ng-click="config_service.select(obj)"/>
+    </td>
+    <td>
+        <icsw-tools-button-static type="modify" value="modify" ng-click="edit($event, obj)" size="xs"></icsw-tools-button-static>
+    </td>
+    <td>
+        <input type="button" class="btn btn-warning btn-xs" ng-click="duplicate($event, obj)" value="duplicate"/>
+    </td>
+    <td>
+        <icsw-tools-button-static type="delete" value="delete" ng-click="delete($event, obj)" size="xs"></icsw-tools-button-static>
+    </td>
+</script>
+
 <script type="text/ng-template" id="icsw.config.generate.config">
     <div ng-show="has_valid_license('netboot')">
         <input type="button" class="btn btn-info btn-sm" value="Show Device Configuration" ng-show="devsel_list.length" ng-click="generate_config()"/>
         <span ng-show="devsel_list.length">
-            <!--for {{ dev_names() }}-->
+            <!--for {{ dev_names() }} -->
         </span>
         <div ng-show="result_trees.length">
             <uib-tabset>
@@ -707,6 +831,26 @@
             <uib-tab heading="Basic setup">
                 <fieldset>
                     <legend>Basic settings</legend>
+                    <div class="form-group" ng-if="!fixed_config">
+                        <label class="control-label col-sm-2 icsw-formlabel">
+                            Configuration
+                        </label>
+
+                        <div class="controls col-sm-9">
+                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                                <ui-select ng-model="edit_obj.config" ng-disabled="false">
+                                    <ui-select-match class="ui-select-match" placeholder="please select a configuration">
+                                        {{ $select.selected.name }}
+                                    </ui-select-match>
+                                    <ui-select-choices
+                                        class="ui-select-choices"
+                                        repeat="value.idx as value in config_tree.list | props_filter:{name:$select.search}" group-by="'group'">
+                                        <div ng-bind-html="value.name | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                        </div>
+                    </div>
                     <div class="form-group  ng-class:form_error('name')">
                         <label class="control-label col-sm-2 requiredField icsw-formlabel">
                             Name<span class="asteriskField">*</span>
@@ -910,7 +1054,7 @@
                     </div>
                 </fieldset>
             </uib-tab>
-            <uib-tab heading="Categories">
+            <uib-tab heading="Categories" ng-if="!create">
                 <fieldset>
                     <legend>Categories</legend>
                     <icsw-config-category-tree-select
@@ -920,7 +1064,7 @@
                     ></icsw-config-category-tree-select>
                 </fieldset>
             </uib-tab>
-            <uib-tab heading="History">
+            <uib-tab heading="History" ng-if="!create">
                 <icsw-history-model-history style="config" icsw-model="'mon_check_command'" icsw-object-id="edit_obj.idx">
                 </icsw-history-model-history>
             </uib-tab>

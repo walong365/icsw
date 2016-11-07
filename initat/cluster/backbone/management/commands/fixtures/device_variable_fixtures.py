@@ -28,16 +28,18 @@ from initat.tools import process_tools
 
 def add_fixtures(**kwargs):
     _fact_dict = {}
-    for _name, _prefix, _descr, _pri in [
-        ("normal", "", "default Scope", 100),
-        ("inventory", "__$$ICSW_INV$$__", "Scope for device inventory", 50),
-        ("comm", "__$$ICSW_COM$$__", "Scope for device communication", 20),
+    for _name, _prefix, _descr, _pri, _fixed, _sys_scope in [
+        ("normal", "", "default Scope", 100, False, True),
+        ("inventory", "__$$ICSW_INV$$__", "Scope for device inventory", 50, True, False),
+        ("comm", "__$$ICSW_COM$$__", "Scope for device communication", 20, True, True),
     ]:
         _fact_dict[_name] = factories.device_variable_scope_factory(
             name=_name,
             prefix=_prefix,
             description=_descr,
             priority=_pri,
+            fixed=_fixed,
+            system_scope=_sys_scope,
         )
     _defaults = {
         "inventory": [

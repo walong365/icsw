@@ -503,45 +503,48 @@ angular.module(
 
                     for menuEntry in routeSubGroup.menuEntry
                         state = $state.get(menuEntry.routeName)
-                        data = state.icswData
-                        data.$$menuEntry = menuEntry
-                        menuEntry.sref = $state.href(state)
-                        _add = true
-                        if data.rights?
-                            if _user and _acls_valid
-                                if data.rights[0] == "$$CHECK_FOR_SUPERUSER"
-                                    if _user?
-                                        if _user.user.is_superuser
-                                            _add = true
+                        if state? and state
+                            data = state.icswData
+                            data.$$menuEntry = menuEntry
+                            menuEntry.sref = $state.href(state)
+                            _add = true
+                            if data.rights?
+                                if _user and _acls_valid
+                                    if data.rights[0] == "$$CHECK_FOR_SUPERUSER"
+                                        if _user?
+                                            if _user.user.is_superuser
+                                                _add = true
+                                            else
+                                                _add = false
                                         else
                                             _add = false
                                     else
-                                        _add = false
+                                        # console.log data.rights
+                                        _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
+                                        # if not _add
+                                        #    console.log "NOT", data.rights
+                                    if data.licenses? and _add
+                                        _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
+                                        if not _add
+                                            console.warn "license(s) #{data.licenses} missing"
+                                    if data.serviceTypes? and _add
+                                        _add = icswAcessLevelService.has_all_service_types(data.serviceTypes)
+                                        if not _add
+                                            console.warn "service_type(s) #{data.serviceTypes} missing"
                                 else
-                                    # console.log data.rights
-                                    _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
-                                    # if not _add
-                                    #    console.log "NOT", data.rights
-                                if data.licenses? and _add
-                                    _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
-                                    if not _add
-                                        console.warn "license(s) #{data.licenses} missing"
-                                if data.serviceTypes? and _add
-                                    _add = icswAcessLevelService.has_all_service_types(data.serviceTypes)
-                                    if not _add
-                                        console.warn "service_type(s) #{data.serviceTypes} missing"
-                            else
-                                _add = false
-                        data.$$allowed = _add
-                        _cur_sg.add_node(state)
-                        if data.$$allowed
-                            _struct.allowed_states.push(state)
-                            if data.$$menuEntry
-                                _struct.menu_states.push(state)
-                            if data.validForQuicklink
-                                _struct.quicklink_states.push(state)
-                            if data.$$dashboardEntry
-                                _struct.dashboard_states.push(state)
+                                    _add = false
+                            data.$$allowed = _add
+                            _cur_sg.add_node(state)
+                            if data.$$allowed
+                                _struct.allowed_states.push(state)
+                                if data.$$menuEntry
+                                    _struct.menu_states.push(state)
+                                if data.validForQuicklink
+                                    _struct.quicklink_states.push(state)
+                                if data.$$dashboardEntry
+                                    _struct.dashboard_states.push(state)
+                        else
+                            console.error "unknown state #{menuEntry.routeName}"
                 # if data.$$routeSubGroup
                 #    _struct.route_sub_groups.push(state)
             # signal: we have changed the rights
@@ -1887,9 +1890,21 @@ angular.module(
             }
         )
 
+    check_form = (form, wait_defer) ->
+        if form.$invalid
+            show_form_error(form)
+            if wait_defer?
+                wait_defer.reject("form not valid")
+            return false
+        else
+            return true
+
     return {
         show_form_error: (form) ->
             return show_form_error(form)
+
+        check_form: (form, wait_defer) ->
+            return check_form(form, wait_defer)
     }
 
 ])

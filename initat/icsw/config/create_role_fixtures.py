@@ -33,7 +33,8 @@ from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import config_catalog, category_tree, \
     device_group, config, mon_period, mon_contact, \
     user, network, network_type, netdevice_speed, network_device_type, group, \
-    host_check_command, domain_name_tree
+    host_check_command, domain_name_tree, ConfigServiceEnum
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import ipvx_tools
 from initat.tools import process_tools
 
@@ -62,7 +63,6 @@ def get_default_gateway_linux():
 
 def get_interface_by_ip(if_address):
     for interface in netifaces.interfaces():
-        # print interface
         try:
             for link in netifaces.ifaddresses(interface)[netifaces.AF_INET]:
                 if(link['addr'] == if_address):
@@ -94,93 +94,93 @@ def create_noctua_fixtures():
     # config
     print("Creeating configurations.")
     ping_config = factories.Config(
-        name="check-ping",
+        name="check_ping",
         config_catalog=first_cc,
     )
     snmp_config = factories.Config(
-        name="check-snmp-info",
+        name="check_snmp_info",
         config_catalog=first_cc,
     )
     ssh_config = factories.Config(
-        name="check-ssh",
+        name="check_ssh",
         config_catalog=first_cc,
     )
     http_config = factories.Config(
-        name="check-http",
+        name="check_http",
         config_catalog=first_cc,
     )
     https_config = factories.Config(
-        name="check-https",
+        name="check_https",
         config_catalog=first_cc,
     )
     ldap_config = factories.Config(
-        name="check-ldap",
+        name="check_ldap",
         config_catalog=first_cc,
     )
     imap_config = factories.Config(
-        name="check-imap",
+        name="check_imap",
         config_catalog=first_cc,
     )
     imaps_config = factories.Config(
-        name="check-imaps",
+        name="check_imaps",
         config_catalog=first_cc,
     )
     pop3s_config = factories.Config(
-        name="check-pop3s",
+        name="check_pop3s",
         config_catalog=first_cc,
     )
     smtps_config = factories.Config(
-        name="check-smtps",
+        name="check_smtps",
         config_catalog=first_cc,
     )
     print("Creating monitoring checks.")
     factories.MonCheckCommand(
-        name="snmp-info",
+        name="snmp_info",
         command_line="$USER3$ -m $HOSTADDRESS$ -C $ARG1$ -V $ARG2$ snmp_info",
         config=snmp_config
     ).categories.add(cat_serv)
     factories.MonCheckCommand(
-        name="check-ping",
+        name="check_ping",
         command_line="$USER2$ -m localhost ping $HOSTADDRESS$ 5 5.0",
         config=ping_config
     ).categories.add(cat_serv)
     factories.MonCheckCommand(
-        name="check-ssh",
+        name="check_ssh",
         command_line="$USER1$/check_ssh $HOSTADDRESS$",
         config=ssh_config
     ).categories.add(cat_serv)
     factories.MonCheckCommand(
-        name="check-http",
+        name="check_http",
         command_line="$USER1$/check_http -H $HOSTADDRESS$",
         config=http_config
     ).categories.add(cat_web)
     factories.MonCheckCommand(
-        name="check-imaps",
+        name="check_imaps",
         command_line="$USER1$/check_imap -H $HOSTADDRESS$ -p 993 -S",
         config=imaps_config
     ).categories.add(cat_mail)
     factories.MonCheckCommand(
-        name="check-ldap",
+        name="check_ldap",
         command_line="$USER1$/check_ldap -H $HOSTADDRESS$ -b dc=init,dc=at -3",
         config=ldap_config
     ).categories.add(cat_serv)
     factories.MonCheckCommand(
-        name="check-https",
+        name="check_https",
         command_line="$USER1$/check_http -S -H $HOSTADDRESS$ -C 30",
         config=https_config
     ).categories.add(cat_web)
     factories.MonCheckCommand(
-        name="check-imap",
+        name="check_imap",
         command_line="$USER1$/check_imap -H $HOSTADDRESS$ -p 143",
         config=imap_config
     ).categories.add(cat_mail)
     factories.MonCheckCommand(
-        name="check-pop3s",
+        name="check_pop3s",
         command_line="$USER1$/check_pop3 -H $HOSTADDRESS$ -p 995 -S",
         config=pop3s_config
     ).categories.add(cat_mail)
     factories.MonCheckCommand(
-        name="check-smtps",
+        name="check_smtps",
         command_line="$USER1$/check_smtps -H $HOSTADDRESS$ -p 465 -S",
         config=smtps_config
     ).categories.add(cat_mail)
@@ -198,31 +198,28 @@ def create_noctua_fixtures():
     )
 
     print("Creating device configurations.")
-    factories.DeviceConfig(
-        device=first_dev,
-        config=factories.Config(
-            name="rrd-server",
-            config_catalog=first_cc
-        ),
-    )
-    factories.DeviceConfig(
-        device=first_dev,
-        config=factories.Config(
-            name="server",
-            config_catalog=first_cc
-        ),
-    )
-    factories.DeviceConfig(
-        device=first_dev,
-        config=factories.Config(
-            name="rrd-collector",
-            config_catalog=first_cc
-        ),
-    )
-    factories.DeviceConfig(
-        device=first_dev,
-        config=ssh_config,
-    )
+    configs = [
+        # (name of the service, should be assigned?, part icswServiceEnum?)
+        ("discovery-server", True, True),
+        ("monitor-server", True, True),
+        ("monitor-slave", True, True),
+        ("rrd-collector", True, False),
+        ("server", True, False),
+        ]
+    for (service_name, assign, enum_service) in configs:
+        config_service_enum = None
+        if enum_service:
+            enum_name = icswServiceEnum[service_name.replace('-', '_')].name
+            config_service_enum = ConfigServiceEnum.objects.get(
+                enum_name=enum_name,
+            )
+        config = factories.Config(
+            name=service_name,
+            config_catalog=first_cc,
+            config_service_enum=config_service_enum
+        )
+        if assign:
+            factories.DeviceConfig(device=first_dev, config=config)
 
     print("Creating monitoring periods.")
     initial_mon_period = factories.MonPeriod(

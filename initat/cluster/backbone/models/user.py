@@ -21,6 +21,8 @@
 #
 """ NOCTUA / CORUVS models, user part """
 
+from __future__ import unicode_literals, print_function
+
 import base64
 import crypt
 import datetime
@@ -42,43 +44,41 @@ from django.db.models import Q, signals
 from django.dispatch import receiver
 from django.utils.encoding import force_text
 
-from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models.functions import check_empty_string, check_integer, \
     get_vnc_enc
-from initat.cluster.backbone.signals import UserChanged, GroupChanged, VirtualDesktopUserSettingChanged, \
-    RoleChanged
+from initat.cluster.backbone.signals import UserChanged, GroupChanged, RoleChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store
 
 __all__ = [
-    "csw_permission",
-    "csw_object_permission",
-    "user",
-    "group",
-    "Role",
-    "RolePermission",
-    "RoleObjectPermission",
-    "user_device_login",
-    "user_variable",
-    "group_permission",
-    "group_object_permission",
-    "user_permission",
-    "user_object_permission",
-    "user_quota_setting",
-    "group_quota_setting",
-    "AC_MASK_READ",
-    "AC_MASK_MODIFY",
-    "AC_MASK_DELETE",
-    "AC_MASK_CREATE",
-    "AC_MASK_DICT",
-    "user_scan_run",
-    "user_scan_result",
-    "virtual_desktop_protocol",
-    "virtual_desktop_user_setting",
-    "window_manager",
-    "login_history",
-    "UserLogEntry",
-    "RouteTrace",
+    b"csw_permission",
+    b"csw_object_permission",
+    b"user",
+    b"group",
+    b"Role",
+    b"RolePermission",
+    b"RoleObjectPermission",
+    b"user_device_login",
+    b"user_variable",
+    b"group_permission",
+    b"group_object_permission",
+    b"user_permission",
+    b"user_object_permission",
+    b"user_quota_setting",
+    b"group_quota_setting",
+    b"AC_MASK_READ",
+    b"AC_MASK_MODIFY",
+    b"AC_MASK_DELETE",
+    b"AC_MASK_CREATE",
+    b"AC_MASK_DICT",
+    b"user_scan_run",
+    b"user_scan_result",
+    b"virtual_desktop_protocol",
+    b"virtual_desktop_user_setting",
+    b"window_manager",
+    b"login_history",
+    b"UserLogEntry",
+    b"RouteTrace",
 ]
 
 
@@ -996,7 +996,9 @@ class user(models.Model):
         ]
         return u"{}{}".format(
             self.login,
-            u" ({})".format(" ".join(_add_fields)) if _add_fields else "",
+            u" ({})".format(
+                " ".join(_add_fields)
+            ) if _add_fields else "",
         )
 
 

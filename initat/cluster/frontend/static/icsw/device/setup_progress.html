@@ -1,9 +1,9 @@
-<script type="text/ng-template" id="icsw/device/properties/overview">
-    <icsw-device-properties-overview></icsw-device-properties-overview>
+<script type="text/ng-template" id="icsw/setup/progress">
+    <icsw-setup-progress icsw-sel-man="0"></icsw-setup-progress>
 </script>
 
 
-<script type="text/ng-template" id="icsw.device.properties.overview">
+<script type="text/ng-template" id="icsw.setup.progress">
     <style>
         .table > tbody > tr > td {
             vertical-align: middle !important;
@@ -14,6 +14,8 @@
         a {
           color:inherit;
           text-decoration: none;
+          display:table-cell;
+          vertical-align:middle;
          }
     </style>
     <div class="container-fluid">
@@ -24,9 +26,43 @@
         </div>
         <div ng-if="struct.data_loaded">
             <uib-tabset>
+                    <uib-tab ng-click="system_overview_tab_clicked()">
+                    <uib-tab-heading>
+                        <span>System Status</span>
+                    </uib-tab-heading>
+                    <br><label class="control-label">Component Setup Status:</label><br/>
+                    <table
+                        class="table table-condensed table-striped table-hover simple-border"
+                    >
+                        <thead>
+                            <tr>
+                                <th>Devices</th>
+                                <th>Monitoring Checks</th>
+                                <th>Users</th>
+                                <th>Location</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <tr>
+                                <td class="text-center"><div ng-class="struct.devices_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(4)'>{{ struct.devices_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="struct.monitoring_checks_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.monitoring_checks_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="struct.users_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.users_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="struct.location_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.location_availability_text }}</a></strong></div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <br><label class="control-label">Total System Setup Progress:</label><br/>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"
+                            aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( struct.system_completion + '%' ) }">
+                            <span>{{ struct.system_completion }}</span>
+                        </div>
+                    </div>
+                </uib-tab>
                 <uib-tab ng-click="perform_lazy_refresh()">
                     <uib-tab-heading>
-                        <span>Device Overview</span>
+                        <span>Device Status</span>
                     </uib-tab-heading>
                     <br/>
                     <table
@@ -80,12 +116,12 @@
                                     <button type="button" class="btn btn-xs btn-success" ng-click="show_device($event, obj)">{{ obj.full_name }}</button>
                                 </td>
                                 <td>{{ obj.device_group_name }}</td>
-                                <td class="text-center">{{ obj.$$date_created }}</td>
-                                <td class="text-center">{{ obj.$$creator }}</td>
-                                <td class="text-center"><div ng-class="obj.$$monitoring_checks_availability_class"><strong><a href="" ng-click='open_in_new_tab(obj, 0)'>{{ obj.$$monitoring_checks_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="obj.$$location_data_availability_class"><strong><a href="" ng-click='open_in_new_tab(obj, 1)'>{{ obj.$$location_data_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="obj.$$asset_data_availability_class"><strong><a href="" ng-click='open_in_new_tab(obj, 2)'>{{ obj.$$asset_data_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="obj.$$graphing_data_availability_class"><strong><a href="" ng-click='setup_graphing(obj)'>{{ obj.$$graphing_data_availability_text }}</a></strong></div></td>
+                                <td>{{ obj.$$date_created }}</td>
+                                <td>{{ obj.$$creator }}</td>
+                                <td class="text-center"><div ng-class="obj.$$monitoring_checks_availability_class"><strong><a href="" ng-click='open_in_new_tab(obj, 0)' style="height:25px;">{{ obj.$$monitoring_checks_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="obj.$$location_data_availability_class"><strong><a href="" ng-click='open_in_new_tab(obj, 1)' style="height:25px;">{{ obj.$$location_data_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="obj.$$asset_data_availability_class"><strong><a href="" ng-click='open_in_new_tab(obj, 2)' style="height:25px;">{{ obj.$$asset_data_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="obj.$$graphing_data_availability_class"><strong><a href="" ng-click='setup_graphing(obj)' style="height:25px;">{{ obj.$$graphing_data_availability_text }}</a></strong></div></td>
                                 <td>
                                     <div class="progress">
                                         <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"
@@ -106,15 +142,7 @@
                     <icsw-device-mon-config-overview ng-if="tab.type == 0" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-mon-config-overview>
                     <icsw-device-location-overview ng-if="tab.type == 1" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-location-overview>
                     <icsw-device-asset-overview-reduced ng-if="tab.type == 2" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-device-asset-overview-reduced>
-                    <div ng-if="tab.type == 3">
-                        <div class="input-group">
-                            <br/><label class="control-label">Target </label><br/>
-                            <select class="form-control" ng-model="tab.pdf_page_format">
-                                <option value="A4">A4</option>
-                                <option value="landscape(A4)">A4 landscape</option>
-                            </select>
-                        </div>
-                    </div>
+                    <icsw-rrd-graph-normal ng-if="tab.type == 3" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-rrd-graph-normal>
                 </uib-tab>
             </uib-tabset>
         </div>

@@ -777,6 +777,59 @@ class DeviceVariableViewSet(viewsets.ViewSet):
 
 class DeviceVariableScopeViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
+    def create_var_scope(self, request):
+        new_scope = device_variable_scope_serializer(data=request.data)
+        if new_scope.is_valid():
+            new_scope.save()
+        else:
+            raise ValidationError(
+                "New Scope not valid: {}".format(
+                    ", ".join(
+                        [
+                            "{}: {}".format(
+                                _key,
+                                ", ".join(_value),
+                            ) for _key, _value in new_scope.errors.iteritems()
+                            ]
+                    )
+                )
+            )
+        return Response(new_scope.data)
+
+    @method_decorator(login_required)
+    def update_var_scope(self, request, *args, **kwargs):
+        _prev_scope = device_variable_scope.objects.get(Q(pk=kwargs["pk"]))
+        # print _prev_var
+        _cur_ser = device_variable_scope_serializer(
+            device_variable_scope.objects.get(Q(pk=kwargs["pk"])),
+            data=request.data
+        )
+        # print "*" * 20
+        # print _cur_ser.device_variable_type
+        if _cur_ser.is_valid():
+            _new_scope = _cur_ser.save()
+            resp = _cur_ser.data
+            c_list, r_list = get_change_reset_list(_prev_scope, _new_scope, request.data)
+            resp = Response(resp)
+            # print c_list, r_list
+            resp.data["_change_list"] = c_list
+            resp.data["_reset_list"] = r_list
+            return resp
+        else:
+            raise ValidationError(
+                "New Scope not valid: {}".format(
+                    ", ".join(
+                        [
+                            "{}: {}".format(
+                                _key,
+                                ", ".join(_value),
+                            ) for _key, _value in _cur_ser.errors.iteritems()
+                        ]
+                    )
+                )
+            )
+
+    @method_decorator(login_required)
     def list(self, request):
         return Response(
             device_variable_scope_serializer(
@@ -851,9 +904,8 @@ class DeviceClassViewSet(viewsets.ViewSet):
             ).data
         )
 
-from initat.icsw.service.instance import InstanceXML
-from initat.tools import logging_tools, process_tools, server_command, net_tools
-from initat.cluster.backbone.models import config, DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch
+from initat.tools import logging_tools, process_tools, server_command
+from initat.cluster.backbone.models import DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch
 import pytz
 
 
@@ -862,7 +914,13 @@ class DeviceCompletion(View):
     def post(self, request):
         device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
 
-        devices = device.objects.prefetch_related("assetbatch_set").filter(idx__in=device_pks)
+        devices = device.objects.prefetch_related(
+            "assetbatch_set"
+        ).select_related(
+            "flags_and_settings"
+        ).filter(
+            Q(idx__in=device_pks)
+        )
 
         # build monitoring check information
         device_checks_count = {}
@@ -901,8 +959,13 @@ class DeviceCompletion(View):
             info_dict[_device.idx]["graphing_data_warning"] = False
 
             try:
-                info_dict[_device.idx]["graphing_data_warning"] = \
-                    _device.flags_and_settings.graph_enslavement_start != None
+                if _device.flags_and_settings.graph_enslavement_start:
+                    seconds_since_graph_setup = \
+                        (datetime.datetime.now(tz=pytz.utc) - _device.flags_and_settings.graph_enslavement_start).total_seconds()
+                else:
+                    seconds_since_graph_setup = 0
+
+                info_dict[_device.idx]["graphing_data_warning"] = seconds_since_graph_setup < 30
             except DeviceFlagsAndSettings.DoesNotExist:
                 pass
 
@@ -926,38 +989,34 @@ class SimpleGraphSetup(View):
     def post(self, request):
         device_pk = int(request.POST.get("device_pk"))
 
-        _device = device.objects.get(idx=device_pk)
+        srv_com = server_command.srv_command(command="add_rrd_target")
+        srv_com["device_pk"] = device_pk
 
-        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+        (result, _) = contact_server(
+            request,
+            icswServiceEnum.collectd_server,
+            srv_com,
+        )
 
-        collectd_devices = [obj.device for obj in config.objects.get(name="rrd_collector").device_config_set.all()]
-
-        _status = ""
-
-        device_flags = DeviceFlagsAndSettings.objects.filter(device=_device)
-
-        for collectd_device in collectd_devices:
-            new_con = net_tools.ZMQConnection(
-                "graph_setup_{:d}".format(_device.idx),
-            )
-
-            conn_str = "tcp://{}:{:d}".format(_device.all_ips()[0], hm_port)
-
-            srv_com = server_command.srv_command(command="graph_setup", send_name=_device.full_name, target_ip=collectd_device.all_ips()[0])
-            new_con.add_connection(conn_str, srv_com)
-
-            _status = new_con.loop()[0].get_result()
-
-        if not device_flags:
-            obj = DeviceFlagsAndSettings.objects.create(
-                device=_device,
-                graph_enslavement_start=datetime.datetime.now(tz=pytz.utc)
-            )
-            obj.save()
+        if result:
+            _status = bool(result.get_result())
         else:
-            device_flags[0].graph_enslavement_start = datetime.datetime.now(tz=pytz.utc)
-            device_flags[0].save()
+            _status = False
 
         return HttpResponse(
             json.dumps(_status)
+        )
+
+class SystemCompletion(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        info_dict = {}
+
+        devices = device.objects.filter(is_meta_device=False)
+
+        info_dict['devices'] = len(devices)
+        info_dict['devices_text'] = "{} Devices".format(len(devices))
+
+        return HttpResponse(
+            json.dumps(info_dict)
         )

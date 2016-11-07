@@ -26,14 +26,37 @@ config_module = angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.configoverview")
-]).directive("icswConfigConfigOverview", ["$templateCache", ($templateCache) ->
+    icswRouteExtensionProvider.add_route("main.moncheckoverview")
+]).directive("icswConfigConfigOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.config.overview")
         # controller: "icswConfigConfigCtrl"
         scope: true
     }
-]).directive("icswConfigCatalogTable", ["$templateCache", ($templateCache) ->
+]).directive("icswConfigMoncheckOverview",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.config.moncheck.overview")
+        # controller: "icswConfigConfigCtrl"
+        scope: true
+    }
+]).directive("icswConfigCatalogTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.catalog.table")
@@ -133,7 +156,12 @@ config_module = angular.module(
                         blockUI.stop()
                 )
         )
-]).directive("icswConfigConfigTable", ["$templateCache", ($templateCache) ->
+]).directive("icswConfigConfigTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.config.table")
@@ -142,6 +170,23 @@ config_module = angular.module(
         link: (scope, el, attr) ->
             scope.select = (obj) ->
                 obj.isSelected = !obj.isSelected
+            scope.set_mode("config")
+    }
+]).directive("icswConfigMoncheckTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict : "EA"
+        template : $templateCache.get("icsw.config.moncheck.table")
+        scope: true
+        controller: "icswConfigConfigTableCtrl"
+        link: (scope, el, attr) ->
+            scope.select = (obj) ->
+                obj.isSelected = !obj.isSelected
+            scope.set_mode("moncheck")
     }
 ]).controller("icswConfigConfigTableCtrl",
 [
@@ -150,16 +195,20 @@ config_module = angular.module(
     "icswToolsButtonConfigService", "icswConfigTreeService",
     "icswSimpleAjaxCall", "icswMonitoringBasicTreeService", "$rootScope",
     "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswConfigBackup",
-    "icswComplexModalService", "icswBackupTools", "$timeout",
+    "icswComplexModalService", "icswBackupTools", "$timeout", "icswConfigMonCheckCommandListService",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, FileUploader, $http, blockUI, icswTools, ICSW_URLS,
     icswToolsButtonConfigService, icswConfigTreeService,
     icswSimpleAjaxCall, icswMonitoringBasicTreeService, $rootScope,
     ICSW_SIGNALS, icswToolsSimpleModalService, icswConfigBackup,
-    icswComplexModalService, icswBackupTools, $timeout,
+    icswComplexModalService, icswBackupTools, $timeout, icswConfigMonCheckCommandListService,
 ) ->
+
+    # used for config and monitoring check setup
     $scope.struct = {
+        # overall mode
+        mode: undefined
         # data valid
         data_valid: undefined
         # config tree
@@ -191,12 +240,20 @@ config_module = angular.module(
 
     $scope.update_search = () ->
         if $scope.struct.config_tree?
-            $scope.struct.config_tree.update_filtered_list(
-                $scope.struct.search_str
-                $scope.struct.filter_settings
-                $scope.struct.with_server
-                $scope.struct.with_service
-            )
+            if $scope.struct.mode == "config"
+                $scope.struct.config_tree.update_filtered_list(
+                    $scope.struct.search_str
+                    $scope.struct.filter_settings
+                    $scope.struct.with_server
+                    $scope.struct.with_service
+                )
+            else
+                $scope.struct.config_tree.update_filtered_list(
+                    $scope.struct.search_str
+                    {config: false, mon: true, script: false, var: false}
+                    0
+                    0
+                )
 
     _update_filter_settings = () ->
         for _fltr in ["config", "script", "mon", "var"]
@@ -235,7 +292,23 @@ config_module = angular.module(
                 _update_filter_settings()
         )
 
-    _fetch()
+    $scope.set_mode = (mode) ->
+        $scope.struct.mode = mode
+        if $scope.struct.mode == "moncheck"
+            $scope.config_service = icswConfigMonCheckCommandListService
+
+            # see icsw.mon.check.command.line
+
+            $scope.delete = ($event, mon) ->
+                $scope.config_service.delete(null, $event, mon)
+
+            $scope.edit = ($event, mon) ->
+                $scope.config_service.create_or_edit($scope, $event, false, mon)
+
+            $scope.create_mon_check = ($event) =>
+                $scope.config_service.create_or_edit($scope, $event, true, $scope.struct.config_tree)
+
+        _fetch()
 
     $scope.modify_config = ($event, config, jump_to) =>
         $event.stopPropagation()
@@ -501,7 +574,7 @@ config_module = angular.module(
         )
 
     $scope.create_mon_check_command = (event, config) ->
-        icswConfigMonCheckCommandListService.create_or_edit($scope, event, true, config, $scope.config_tree, $scope.struct.mon_tree)
+        icswConfigMonCheckCommandListService.create_or_edit($scope, event, true, config)
 
     $scope.create_var = (event, config, var_type) ->
         icswConfigVarListService.create_or_edit($scope, event, true, config, $scope.config_tree, var_type)
@@ -509,7 +582,32 @@ config_module = angular.module(
     $scope.create_script = (event, config) ->
         icswConfigScriptListService.create_or_edit($scope, event, true, config, $scope.config_tree)
 
-]).directive("icswConfigLine", ["$templateCache", ($templateCache) ->
+]).directive("icswMonCheckCommandLine",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.mon.check.command.line")
+    }
+]).directive("icswMonCheckCommandHeader",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.mon.check.command.header")
+    }
+]).directive("icswConfigLine",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.config.line")
@@ -823,14 +921,15 @@ config_module = angular.module(
 
         get_mon_command_line: (mon) ->
             if mon.mon_check_command_special
-                return mon_tree.mon_check_command_special_lut[mon.mon_check_command_special].command_line
+                return mon.$$config.$$config_tree.mon_basic_tree.mon_check_command_special_lut[mon.mon_check_command_special].command_line
             else
                 return mon.command_line
 
-        get_event_handler: (ev_idx) ->
+        get_event_handler: (mon) ->
+            ev_idx = mon.event_handler
             if ev_idx
                 # not fast but working
-                ev_config = (entry for entry in config_tree.list when ev_idx of entry.mon_check_command_lut)
+                ev_config = (entry for entry in mon.$$config.$$config_tree.list when ev_idx of entry.mon_check_command_lut)
                 if ev_config.length
                     return (entry for entry in ev_config[0].mon_check_command_set when entry.idx == ev_idx)[0].name
                 else
@@ -838,14 +937,22 @@ config_module = angular.module(
             else
                 return "---"
 
-        create_or_edit: (scope, event, create, obj_or_parent, ext_config_tree, ext_mon_tree) ->
+        create_or_edit: (scope, event, create, obj_or_parent) ->
             # may also be called from assign config checks, scope is then the $rootScope
             r_defer = $q.defer()
-            config_tree = ext_config_tree
-            mon_tree = ext_mon_tree
+            sub_scope = scope.$new(true)
+            # console.log "*", ext_config_tree, ext_mon_tree
             if create
-                # config must be in the local scope
-                config = obj_or_parent
+                if obj_or_parent.$$config_tree?
+                    config = obj_or_parent
+                    config_tree = config.$$config_tree
+                    sub_scope.fixed_config = true
+                else
+                    # config not set, use first one
+                    config_tree = obj_or_parent
+                    config = config_tree.list[0]
+                    sub_scope.fixed_config = false
+
                 c_name = "cc_#{config.name}"
                 c_idx = 1
                 cc_names = (cc.name for cc in config.mon_check_command_set)
@@ -866,9 +973,13 @@ config_module = angular.module(
                     arg_value: "80"
                 }
             else
+                config_tree = obj_or_parent.$$config.$$config_tree
                 dbu = new icswMonCheckCommandBackup()
                 dbu.create_backup(obj_or_parent)
-            sub_scope = scope.$new(false)
+                sub_scope.fixed_config = true
+            mon_tree = config_tree.mon_basic_tree
+            sub_scope.config_tree = config_tree
+            sub_scope.create = create
             sub_scope.edit_obj = obj_or_parent
             sub_scope.mccs_list = mon_tree.mon_check_command_special_list
             sub_scope.template_list = mon_tree.mon_service_templ_list
@@ -1006,7 +1117,7 @@ config_module = angular.module(
             icswToolsSimpleModalService("Really delete MonCheckCommand #{mon.name} ?").then(
                 () =>
                     blockUI.start()
-                    scope.configTree.delete_mon_check_command(scope.config, mon).then(
+                    mon.$$config.$$config_tree.delete_mon_check_command(mon.$$config, mon).then(
                         () ->
                             blockUI.stop()
                             console.log "mon deleted"
@@ -1016,7 +1127,12 @@ config_module = angular.module(
             )
 
     }
-]).directive("icswConfigMonTable", ["$templateCache", ($templateCache) ->
+]).directive("icswConfigMonTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.config.mon.table")

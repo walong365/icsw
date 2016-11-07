@@ -241,7 +241,7 @@ def enter_data(c_dict, opts):
             c_dict["port"] = _input("DB port", def_port)
     c_dict["engine"] = {
         "mysql": "django.db.backends.mysql",
-        "psql": "django.db.backends.postgresql_psycopg2",
+        "psql": "django.db.backends.postgresql",
         "sqlite": "django.db.backends.sqlite3",
     }[c_dict["_engine"]]
 

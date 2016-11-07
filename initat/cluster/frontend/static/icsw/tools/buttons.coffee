@@ -358,9 +358,9 @@ angular.module(
                     scope.isShow
                     (new_val) ->
                         if new_val
-                            scope.button_value = attrs.showValue or gettextCatalog.getString("show")
+                            scope.button_value = attrs.showValue or gettextCatalog.getString("hide")
                         else
-                            scope.button_value = attrs.hideValue or gettextCatalog.getString("hide")
+                            scope.button_value = attrs.hideValue or gettextCatalog.getString("show")
                 )
             else if attrs.type == "enable"
                 scope.$watch(

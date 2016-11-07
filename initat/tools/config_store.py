@@ -174,7 +174,17 @@ class ConfigVar(object):
 class ConfigStore(object):
     IDG_GID = None
 
-    def __init__(self, name, log_com=None, read=True, quiet=False, prefix=None, access_mode=None, fix_access_mode=False):
+    def __init__(
+        self,
+        name,
+        log_com=None,
+        read=True,
+        quiet=False,
+        prefix=None,
+        access_mode=None,
+        fix_access_mode=False,
+        fix_prefix_on_read=True,
+    ):
         # do not move this to a property, otherwise the Makefile will no longer work
         self.file_name = ConfigStore.build_path(name)
         self.tree_valid = True
@@ -186,11 +196,24 @@ class ConfigStore(object):
         self.__uid, self.__gid, self.__mode = (None, None, None)
         self.vars = {}
         self.__required_access_mode = access_mode
+        # checks prefix when reading and fix if necessary
+        # if True the prefix from file is set to the argument value
+        # if False we take the value from the file
+        self.__fix_prefix_on_read = fix_prefix_on_read
         self.__access_mode = None
         if read:
             self.read()
             if fix_access_mode and self.__required_access_mode is not None and not self.access_mode_is_ok:
                 self.write()
+
+    def set_prefix(self, prefix, index):
+        print(self.prefix)
+        if self.prefix:
+            raise ValueError("prefix already set ({})".format(self.prefix))
+        vars = {_key: _value.get_value() for _key, _value in self.vars.iteritems()}
+        self.vars = {}
+        self.prefix = prefix
+        self[index] = vars
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         if not self.__quiet:
@@ -289,14 +312,17 @@ class ConfigStore(object):
                     _xml_prefix = _tree.get("prefix", "")
                     _rewrite = False
                     if (_xml_prefix or None) != self.prefix:
-                        self.log(
-                            "prefix differs (self='{}', XML='{}'), rewriting file".format(
-                                self.prefix,
-                                _xml_prefix or None,
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR,
-                        )
-                        _rewrite = True
+                        if self.__fix_prefix_on_read:
+                            self.log(
+                                "prefix differs (self='{}', XML='{}'), rewriting file".format(
+                                    self.prefix,
+                                    _xml_prefix or None,
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR,
+                            )
+                            _rewrite = True
+                        else:
+                            self.prefix = _xml_prefix
                     else:
                         self.prefix = _xml_prefix
                     _found, _parsed = (0, 0)
@@ -366,8 +392,10 @@ class ConfigStore(object):
 
     @property
     def info(self):
-        return "{} defined, access mode is {} {}".format(
-            logging_tools.get_plural("key", len(self.vars)),
+        return "{} and {} defined, {}, access mode is {} {}".format(
+            logging_tools.get_plural("key", len(self.keys())),
+            logging_tools.get_plural("value", len(self.vars)),
+            "prefix is '{}'".format(self.prefix) if self.prefix else "no prefix defined",
             "valid" if self.access_mode_is_ok else "invalid",
             self.__access_mode,
         )
