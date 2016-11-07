@@ -26,9 +26,43 @@
         </div>
         <div ng-if="struct.data_loaded">
             <uib-tabset>
+                    <uib-tab ng-click="system_overview_tab_clicked()">
+                    <uib-tab-heading>
+                        <span>System Status</span>
+                    </uib-tab-heading>
+                    <br><label class="control-label">Component Setup Status:</label><br/>
+                    <table
+                        class="table table-condensed table-striped table-hover simple-border"
+                    >
+                        <thead>
+                            <tr>
+                                <th>Devices</th>
+                                <th>Monitoring Checks</th>
+                                <th>Users</th>
+                                <th>Location</th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <tr>
+                                <td class="text-center"><div ng-class="struct.devices_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(4)'>{{ struct.devices_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="struct.monitoring_checks_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.monitoring_checks_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="struct.users_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.users_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="struct.location_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.location_availability_text }}</a></strong></div></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <br><label class="control-label">Total System Setup Progress:</label><br/>
+                    <div class="progress">
+                        <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"
+                            aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( struct.system_completion + '%' ) }">
+                            <span>{{ struct.system_completion }}</span>
+                        </div>
+                    </div>
+                </uib-tab>
                 <uib-tab ng-click="perform_lazy_refresh()">
                     <uib-tab-heading>
-                        <span>Device Overview</span>
+                        <span>Device Status</span>
                     </uib-tab-heading>
                     <br/>
                     <table
@@ -99,40 +133,6 @@
                             </tr>
                         </tbody>
                     </table>
-                </uib-tab>
-                <uib-tab ng-click="system_overview_tab_clicked()">
-                    <uib-tab-heading>
-                        <span>System Overview</span>
-                    </uib-tab-heading>
-                    <br><label class="control-label">Component Setup Status:</label><br/>
-                    <table
-                        class="table table-condensed table-striped table-hover simple-border"
-                    >
-                        <thead>
-                            <tr>
-                                <th>Devices</th>
-                                <th>Monitoring Checks</th>
-                                <th>Users</th>
-                                <th>Location</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            <tr>
-                                <td class="text-center"><div ng-class="struct.devices_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(4)'>{{ struct.devices_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="struct.monitoring_checks_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.monitoring_checks_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="struct.users_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.users_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="struct.location_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.location_availability_text }}</a></strong></div></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                    <br><label class="control-label">Total System Setup Progress:</label><br/>
-                    <div class="progress">
-                        <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"
-                            aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( struct.system_completion + '%' ) }">
-                            <span>{{ struct.system_completion }}</span>
-                        </div>
-                    </div>
                 </uib-tab>
                 <uib-tab ng-repeat="tab in struct.tabs" ng-click="mark_unfresh(tab)">
                     <uib-tab-heading>
