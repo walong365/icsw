@@ -170,7 +170,10 @@ setup_progress = angular.module(
         ).then(
             (data) ->
                 info_list_names = [
-                    ["devices", 25]
+                    ["devices", 25],
+                    ["monitoring_checks", 25]
+                    ["users", 25]
+                    ["locations", 25]
                 ]
 
                 $scope.struct.system_completion = 0
@@ -274,12 +277,22 @@ setup_progress = angular.module(
                 special_flag_value = false
                 heading = "Create new Device"
 
+        else if setup_type == 5
+            heading = "Monitoring Checks"
+        else if setup_type == 6
+            heading = "Users"
+        else if setup_type == 7
+            heading = "Locations"
+
+
+
         o = {
             type: setup_type
             heading: heading
         }
 
-        o[special_flag_name] = special_flag_value
+        if special_flag_name != undefined
+            o[special_flag_name] = special_flag_value
 
         for tab in $scope.struct.tabs
             if tab.heading == o.heading

@@ -22,13 +22,15 @@
 
 """ meta-server, config """
 
+from __future__ import unicode_literals, print_function
+
 from initat.tools import configfile, process_tools
 
 __all__ = [
-    "global_config",
+    b"global_config",
     # original sql schema version
-    "INIT_SQL_SCHEMA_VERSION",
-    "SQL_SCHEMA_VERSION",
+    b"INIT_SQL_SCHEMA_VERSION",
+    b"SQL_SCHEMA_VERSION",
 ]
 
 

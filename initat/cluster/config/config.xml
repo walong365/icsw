@@ -276,6 +276,9 @@
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
+                <licenses>
+                    <value>md_config_server</value>
+                </licenses>
                 <description>
                     <infoText language="en">Trigger a monitoring configuration re-build</infoText>
                 </description>
@@ -284,9 +287,9 @@
         <route name="main.locationtest">
             <stateData url="/devlocationtest" templateUrl="icsw/device/location/overview"/>
             <icswData pageTitle="Location Service">
-                    <description>
-                        <infoText language="en">TODO: Should be removed</infoText>
-                    </description>
+                <description>
+                    <infoText language="en">TODO: Should be removed</infoText>
+                </description>
             </icswData>
         </route>
         <route name="main.kpievaluation">
@@ -323,6 +326,9 @@
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
+                <licenses>
+                    <value>md_config_server</value>
+                </licenses>
                 <description>
                     <infoText language="en">General monitoring configuration</infoText>
                 </description>
@@ -334,6 +340,9 @@
                 <rights>
                     <value>backbone.mon_check_command.setup_monitoring</value>
                 </rights>
+                <licenses>
+                    <value>md_config_server</value>
+                </licenses>
                 <description>
                     <infoText language="en">TODO</infoText>
                 </description>
@@ -346,6 +355,9 @@
                     <value>backbone.mon_check_command.setup_monitoring</value>
                     <value>backbone.device.change_monitoring</value>
                 </rights>
+                <licenses>
+                    <value>md_config_server</value>
+                </licenses>
                 <description>
                     <infoText language="en">Device-specific monitoring configuration</infoText>
                 </description>

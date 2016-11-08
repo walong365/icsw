@@ -46,9 +46,9 @@
                         <tbody>
                             <tr>
                                 <td class="text-center"><div ng-class="struct.devices_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(4)'>{{ struct.devices_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="struct.monitoring_checks_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.monitoring_checks_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="struct.users_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.users_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="struct.location_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(0)'>{{ struct.location_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="struct.monitoring_checks_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(5)'>{{ struct.monitoring_checks_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="struct.users_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(6)'>{{ struct.users_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="struct.locations_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(7)'>{{ struct.locations_availability_text }}</a></strong></div></td>
                             </tr>
                         </tbody>
                     </table>
@@ -159,6 +159,9 @@
                     <icsw-rrd-graph-normal ng-if="tab.type == 3" icsw-sel-man="1" icsw-select-device="{{ tab.device_id }}"></icsw-rrd-graph-normal>
                     <icsw-device-tree-overview ng-if="tab.type == 4 && tab.devices_available == true"></icsw-device-tree-overview>
                     <icsw-device-create-mask ng-if="tab.type == 4 && tab.devices_available == false"></icsw-device-create-mask>
+                    <br ng-if="tab.type == 5"/><icsw-config-moncheck-overview ng-if="tab.type == 5"></icsw-config-moncheck-overview>
+                    <br ng-if="tab.type == 6"/><icsw-user-tree ng-if="tab.type == 6"></icsw-user-tree>
+                    <br ng-if="tab.type == 7"/><icsw-config-location ng-if="tab.type == 7"></icsw-config-location>
                 </uib-tab>
             </uib-tabset>
         </div>

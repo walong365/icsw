@@ -79,7 +79,7 @@
         runs_on="client"
         pid_file_name="collserver/collserver.pid"
         has_force_stop="1"
-        wait_time="300"
+        wait_time="15"
         reload="1"
     >
         <module-name>initat.host_monitoring.main</module-name>

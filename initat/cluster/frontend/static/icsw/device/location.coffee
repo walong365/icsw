@@ -931,4 +931,15 @@ angular.module(
                     react_el.force_redraw()
             )
     }
+]).directive("icswConfigLocation",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.config.location")
+        scope: true
+    }
 ])

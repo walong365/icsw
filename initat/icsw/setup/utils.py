@@ -120,7 +120,7 @@ class DirSave(object):
 def remove_pyco(start_dir):
     # remove pyc / pyo files
     _removed = []
-    print("remove pyc/pyo files in {} ..:".format(start_dir))
+    print("remove pyc/pyo files in {} ... :".format(start_dir))
     for _dir, _dir_list, _file_list in os.walk(start_dir):
         for _file in _file_list:
             if _file.endswith(".pyc") or _file.endswith(".pyo"):
