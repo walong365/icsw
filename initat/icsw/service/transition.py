@@ -124,7 +124,6 @@ class ServiceTransition(object):
                 else:
                     _doit = True
                 if _doit:
-                    print(_action)
                     if _action == "wait":
                         self.__wait_dict[entry.name] = cur_time
                     else:
@@ -174,5 +173,4 @@ class ServiceTransition(object):
             if not len(_srvc.entry.findall(".//result/pids/pid")):
                 del self.__wait_dict[_name]
                 _vanished += 1
-        print("V=", _vanished)
         return _vanished

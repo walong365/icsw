@@ -792,7 +792,6 @@ class ServiceState(object):
 
         # list of unfullfilled dependencies
         _uf_list = []
-        _deps_ok = True
         if action == "start":
             _dep_list = self.instance.get_start_dependencies(inst_name)
             if len(_dep_list):
@@ -800,25 +799,24 @@ class ServiceState(object):
                     _state = self.__state_dict[_dep]
                     if constants.STATE_DICT[_state[0]] != "ok":
                         _uf_list.append(_dep)
-                        _deps_ok = False
         elif action == "stop":
             _dep_list = self.instance.get_stop_dependencies(inst_name)
-            self.log("*** {} {} {}".format(action, inst_name, str(_dep_list)))
-            self.log("filtered: {}".format(str(_filter_list(_dep_list))))
+            # self.log("*** {} {} {}".format(action, inst_name, str(_dep_list)))
+            # self.log("filtered: {}".format(str(_filter_list(_dep_list))))
             for _dep in _filter_list(_dep_list):
                 _state = self.__state_dict[_dep]
-                self.log(
-                    "*** list [{}]: {} {} {}".format(
-                        _dep,
-                        str(self.__state_dict[_dep]),
-                        constants.STATE_DICT[_state[0]],
-                        constants.STATE_DICT[_state[0]] != "dead",
-                    )
-                )
+                # self.log(
+                #    "*** list [{}]: {} {} {}".format(
+                #        _dep,
+                #        str(self.__state_dict[_dep]),
+                #        constants.STATE_DICT[_state[0]],
+                #        constants.STATE_DICT[_state[0]] != "dead",
+                #    )
+                # )
                 # print "*", _dep, _state, constants.STATE_DICT
                 if constants.STATE_DICT[_state[0]] != "dead":
                     _uf_list.append(_dep)
-                    _deps_ok = False
+        _deps_ok = len(_uf_list) == 0
         if _deps_ok:
             self.log(
                 "dependencies for action {} on instance {} fullfilled".format(
