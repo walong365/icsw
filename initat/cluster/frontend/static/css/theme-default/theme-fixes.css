@@ -78,6 +78,9 @@ icsw-tools-button{
 .condensed .menu-help-text{
     margin: -0.3em -3.2em 0.4em 3.2em!important;
 }
+.ovabutton-na {
+    margin-top: 3px;
+}
 .cfp-hotkeys {
     border-radius: 10px;
 }

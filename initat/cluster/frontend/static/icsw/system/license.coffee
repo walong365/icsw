@@ -185,11 +185,11 @@ angular.module(
     }
 ]).service("icswReactOvaDisplayFactory",
 [
-    "$q", "$timeout", "icswSystemOvaCounterService", "$state",
+    "$q", "$timeout", "icswSystemOvaCounterService", "$state", "ICSW_URLS",
 (
-    $q, $timeout, icswSystemOvaCounterService, $state,
+    $q, $timeout, icswSystemOvaCounterService, $state, ICSW_URLS
 ) ->
-    {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
+    {ul, li, a, span, div, p, strong, h3, hr, img, button, table, tr, td, tbody} = React.DOM
     return React.createClass(
         displayName: "icswOvaDisplay"
 
@@ -240,16 +240,54 @@ angular.module(
             if @struct.data_ok
                 return li(
                     {}
-                    a(
-                        {}
-                        span(
+                    button(
+                        {
+                        type: "button"
+                        className: "ova-statusbutton cursorpointer btn btn-xs btn-default"
+                        onClick: (event) ->
+                            $state.go("main.syslicenseoverview")
+                        title: "Ova usage counter"
+                        }
+                        table(
                             {
-                                className: "cursorpointer #{@struct.ocs.info_class}"
-                                title: "Ova usage counter"
-                                onClick: (event) ->
-                                    $state.go("main.syslicenseoverview")
+                            className: "condensed"
                             }
-                            @struct.ocs.info_str
+                            tbody(
+                                {}
+                                tr(
+                                    {}
+                                    td(
+                                        {
+                                        rowSpan: 2
+                                        }
+                                        img(
+                                            {
+                                            key: "ova"
+                                            src: "#{ICSW_URLS.STATIC_URL}/egg_#{@struct.ocs.status_class}.svg"
+                                            height: "30"
+                                            className: "pull-left"
+                                            style: { marginRight: 5}
+                                            }
+                                        )
+                                    )
+                                    td(
+                                        {
+                                        className: "text-right"
+                                        }
+                                        @struct.ocs.system_cradle.available
+                                    )
+                                )
+                                tr(
+                                    {}
+                                    td(
+                                        {
+                                        className: "text-right"
+                                        style: { borderTop: "1px solid #666666" }
+                                        }
+                                        @struct.ocs.system_cradle.installed
+                                        )
+                                )
+                            )
                         )
                     )
                 )
@@ -257,7 +295,22 @@ angular.module(
                 return li(
                     {}
                     a(
-                        {}
+                        {
+                        style: { paddingBottom: 0 }
+                        className: "ovabutton-na"
+                        }
+                        img(
+                            {
+                            key: "ova"
+                            src: "#{ICSW_URLS.STATIC_URL}/egg.svg"
+                            height: "25"
+                            className: "pull-left"
+                            style: {
+                                marginRight: 5
+                                marginTop: -5
+                                }
+                            }
+                        )
                         span(
                             {}
                             "N/A"
