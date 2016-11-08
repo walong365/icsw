@@ -323,8 +323,8 @@ angular.module(
                     span(
                         {
                             key: "np"
-                            className: "label label-primary cursorpointer fa fa-magic wizardbutton"
-                            title: "No task active"
+                            className: "label label-default cursorpointer fa fa-star wizardbutton"
+                            title: "No Task active"
                             # style: {fontSize: "24px"}
                             onClick: (event) ->
                                 icswTaskService.choose_task()
