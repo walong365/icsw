@@ -36,6 +36,10 @@ angular.module(
     # default language
     def_lang = icswLanguageTool.get_lang()
 
+    G_STRUCT = {
+        modal_open: false
+    }
+
     class icswContainer
         constructor: (@id_path) ->
             @idx = 0
@@ -163,6 +167,9 @@ angular.module(
             struct.task_container.feed(new icswTaskDef(_task))
 
     _choose_task = () ->
+        if G_STRUCT.modal_open
+            return
+        G_STRUCT.modal_open = true
         edit_scope = $rootScope.$new(true)
         edit_scope.task_container = struct.task_container
         # need object for ui-select to work properly
@@ -179,37 +186,37 @@ angular.module(
             edit_scope.active_task = edit_scope.task_container.list[edit_scope.edit_obj.task]
 
         edit_scope.task_changed()
-        if !$rootScope.task_modal?
-            $rootScope.task_modal = true
-            icswComplexModalService(
-                {
-                    message: $compile($templateCache.get("icsw.task.choose.task"))(edit_scope)
-                    title: "Choose Task"
-                    closable: true
-                    ok_label: "Select"
-                    cancel_label: cancel_label
-                    ok_callback: (modal) ->
-                        d = $q.defer()
-                        struct.active_task = new icswTask(edit_scope.active_task)
-                        update_keys()
-                        _signal()
-                        d.resolve("done")
-                        return d.promise
-                    cancel_callback: (modal) ->
-                        d = $q.defer()
-                        struct.active_task = null
-                        update_keys()
-                        _signal()
-                        d.resolve("done")
-                        return d.promise
-                }
-            ).then(
-                (fin) ->
-                    console.log "done"
-                    edit_scope.$destroy()
-                    $rootScope.task_modal = undefined
+
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.task.choose.task"))(edit_scope)
+                title: "Choose Task"
+                closable: true
+                ok_label: "Select"
+                cancel_label: cancel_label
+                ok_callback: (modal) ->
+                    d = $q.defer()
+                    struct.active_task = new icswTask(edit_scope.active_task)
+                    update_keys()
                     _signal()
-            )
+                    d.resolve("done")
+                    return d.promise
+                cancel_callback: (modal) ->
+                    d = $q.defer()
+                    struct.active_task = null
+                    update_keys()
+                    _signal()
+                    d.resolve("done")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                console.log "done"
+                edit_scope.$destroy()
+                $rootScope.task_modal = undefined
+                G_STRUCT.modal_open = false
+                _signal()
+        )
 
     # init tasks
     _init_tasks()
