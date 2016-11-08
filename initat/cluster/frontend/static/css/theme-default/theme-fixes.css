@@ -78,10 +78,19 @@ icsw-tools-button{
 .condensed .menu-help-text{
     margin: -0.3em -3.2em 0.4em 3.2em!important;
 }
+.ovabutton-na {
+    margin-top: 3px;
+}
 .cfp-hotkeys {
     border-radius: 10px;
 }
 @keyframes newTabAnim {
     from { background-color: #ffffff; }
     to { background-color: #eeeeee;}
+}
+.icswMenuDeact,
+.icswMenuDeact:hover{
+    cursor: not-allowed;
+    text-decoration: none;
+    color: #999999!important;
 }

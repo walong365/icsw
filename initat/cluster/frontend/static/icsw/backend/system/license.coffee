@@ -55,6 +55,7 @@ angular.module(
             else
                 _class = "success"
             @info_class = "label label-#{_class}"
+            @status_class = _class
 
 ]).service("icswSystemOvaCounterService",
 [

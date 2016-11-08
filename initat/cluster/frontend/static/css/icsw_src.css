@@ -176,6 +176,9 @@ del {
 .ace_editor {
     height: 200px;
 }
+button table {
+    background-color: transparent;
+}
 .input-group .form-control-inline,
 .form-control-inline {
     min-width: 0;
@@ -449,4 +452,15 @@ li.animateTab > a:after {
     animation-duration: 0.3s;
     animation-iteration-count: 3;
     animation-timing-function: ease-out;
+}
+.ova-statusbutton td {
+    font-size: 12px;
+    font-weight: bold;
+    color: #666666;
+}
+.ova-statusbutton {
+    margin: 16.5px 0 0 5px;
+}
+body.condensed .ova-statusbutton {
+    margin: 6.5px 0 0 5px;
 }

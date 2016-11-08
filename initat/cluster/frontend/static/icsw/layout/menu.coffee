@@ -313,7 +313,7 @@ menu_module = angular.module(
                 else
                     a_attrs.href = data.$$menuEntry.sref
             else
-                # _a_classes.push("cursorpointer")
+                _a_classes.push("icswMenuDeact")
                 a_attrs.pointerEvents = "none"
                 a_attrs.title = "not available: missing #{data.$$missing_info}"
             if data.$$menuEntry.entryClass?

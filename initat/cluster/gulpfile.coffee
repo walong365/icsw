@@ -482,6 +482,7 @@ gulp.task("deploy-images", () ->
     return gulp.src(
         [   
             "frontend/static/images/*.jpg"
+            "frontend/static/images/symbols/*.svg"
             "frontend/static/images/product/*.png"
             "frontend/static/css/*.gif"
         ]
