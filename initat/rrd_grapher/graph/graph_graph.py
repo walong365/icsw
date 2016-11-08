@@ -19,6 +19,8 @@
 #
 """ structures and functions for the grapher part of rrd-grapher service """
 
+from __future__ import print_function, unicode_literals
+
 import datetime
 import os
 import rrdtool
@@ -409,7 +411,7 @@ class RRDGraph(object):
                             rrd_args.extend(self._create_job_args(_graph_target.dev_list, _job_add_dict))
                             self.proc.flush_rrdcached(_graph_target.file_names)
                             try:
-                                draw_result = rrdtool.graphv(*rrd_args)
+                                draw_result = rrdtool.graphv(*[str(_val) for _val in rrd_args])
                             except:
                                 # in case of strange 'argument 0 has to be a string or a list of strings' 
                                 self.log("error creating graph: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)

@@ -508,6 +508,7 @@ angular.module(
                             data.$$menuEntry = menuEntry
                             menuEntry.sref = $state.href(state)
                             _add = true
+                            _missing_info = []
                             if data.rights?
                                 if _user and _acls_valid
                                     if data.rights[0] == "$$CHECK_FOR_SUPERUSER"
@@ -521,19 +522,24 @@ angular.module(
                                     else
                                         # console.log data.rights
                                         _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
-                                        # if not _add
-                                        #    console.log "NOT", data.rights
+                                    if not _add
+                                        _missing_info.push("user rights")
                                     if data.licenses? and _add
                                         _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
                                         if not _add
+                                            _missing_info.push("license")
                                             console.warn "license(s) #{data.licenses} missing"
                                     if data.serviceTypes? and _add
                                         _add = icswAcessLevelService.has_all_service_types(data.serviceTypes)
                                         if not _add
+                                            _missing_info.push("service type")
                                             console.warn "service_type(s) #{data.serviceTypes} missing"
                                 else
                                     _add = false
                             data.$$allowed = _add
+                            data.$$missing_info = _missing_info.join(", ")
+                            # console.log "*", _add, state.name
+                            # always add state to menu
                             _cur_sg.add_node(state)
                             if data.$$allowed
                                 _struct.allowed_states.push(state)

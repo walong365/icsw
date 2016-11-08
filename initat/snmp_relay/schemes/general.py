@@ -17,6 +17,8 @@
 #
 """ SNMP general schemes for SNMP relayer """
 
+from __future__ import print_function, unicode_literals
+
 from .base import SNMPRelayScheme
 
 

@@ -19,6 +19,8 @@
 #
 """ config part of rrd-grapher """
 
+from __future__ import print_function, unicode_literals
+
 from initat.tools import configfile, process_tools
 
 global_config = configfile.get_global_config(process_tools.get_programm_name())

@@ -19,6 +19,8 @@
 #
 """ rrd-grapher for graphing rrd-data """
 
+from __future__ import print_function, unicode_literals
+
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
@@ -32,8 +34,8 @@ import sys
 
 
 def run_code():
-    from initat.rrd_grapher.server import server_process
-    server_process().loop()
+    from initat.rrd_grapher.server import ServerProcess
+    ServerProcess().loop()
 
 
 def main():

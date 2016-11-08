@@ -52,8 +52,3 @@ class doc_page(View):
             #    page = page.split(".")[0]
             # this won't work anymore // BM 11052015
             # return HttpResponse(file(settings.HANDBOOK_CHUNKS[page], "r").read())
-
-
-# class test_page(View):
-#    def get(self, request):
-#        return render_me(request, "docu_root.html", {"chunk_name": "index.xhtml"})

@@ -22,20 +22,20 @@
 
 """ auth views for nginx """
 
-import logging
-import pprint
+from __future__ import unicode_literals, print_function
 
-from django.views.generic import View
-from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import render
 import base64
-import time
 import bz2
+import logging
 import pickle
-from django.template import Template
-from initat.tools import process_tools
-from django.template.loader import render_to_string
+import time
+
+from django.http import HttpResponse, HttpResponseRedirect
 from django.template import RequestContext
+from django.template import Template
+from django.views.generic import View
+
+from initat.tools import process_tools
 
 logger = logging.getLogger("cluster.auth")
 
@@ -60,7 +60,7 @@ class auth_user(View):
                 _cookie = MyCookie(request.COOKIES["AUTH_COOKIE"])
                 _init_time = _cookie["init"]
             except:
-                print process_tools.get_except_info()
+                print(process_tools.get_except_info())
                 return HttpResponse("Unauthorized", status=401)
             else:
                 if abs(_init_time - time.time()) < 3:
@@ -85,7 +85,7 @@ class do_login(View):
     def get(self, request):
         # print csrf.get_token()
         _req = RequestContext(request)
-        print request.GET
+        # print request.GET
         # pprint.pprint([(k, v) for k, v in request.META.iteritems() if k.upper().count("HTTP")])
         # pprint.pprint(request.META)
         _temp = Template(
@@ -105,7 +105,7 @@ class do_login(View):
     def post(self, request):
         # print request.GET, request.POST["name"]
         _user, _passwd = (request.POST["user"], request.POST["password"])
-        print request.POST["next"]
+        # print request.POST["next"]
 
         response = HttpResponseRedirect(request.POST["next"])  # Redirect("/atest")
         _cookie = MyCookie()

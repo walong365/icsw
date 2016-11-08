@@ -19,6 +19,8 @@
 #
 """ rms-server, config and constants """
 
+from __future__ import print_function, unicode_literals
+
 from initat.tools import configfile, process_tools
 
 # global config

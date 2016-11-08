@@ -239,10 +239,20 @@ body.condensed .submenu-bar{
     margin: 0 -1.6em 0.4em 1.6em!important;
     display: none;
 }
+.ova-statusbutton{
+    padding: 1px 5px;
+    background-color: #f0f0f0!important;
+}
 .condensed .menu-help-text{
     margin: 0 -1.7em 0.4em 1.7em!important;
 }
 @keyframes newTabAnim {
     from {   background-image: linear-gradient(to bottom, #f0f0f0, #f0f0f0); }
     to {    background-image: linear-gradient(to bottom, #cccccc, #cccccc);}
+}
+.icswMenuDeact,
+.icswMenuDeact:hover{
+    cursor: not-allowed;
+    text-decoration: none;
+    color: #aaaaaa!important;
 }

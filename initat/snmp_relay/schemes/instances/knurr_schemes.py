@@ -1,4 +1,4 @@
-# Copyright (C) 2009-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2009-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,6 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ knurr schemes for SNMP relayer """
+
+from __future__ import print_function, unicode_literals
 
 from initat.host_monitoring import limits
 from initat.snmp.snmp_struct import snmp_oid

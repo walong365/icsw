@@ -293,6 +293,10 @@ menu_module = angular.module(
     def_lang = icswLanguageTool.get_lang()
 
     menu_line = React.createClass(
+        propTypes: {
+            state: React.PropTypes.object
+        }
+
         displayName: "icswMenuEntry"
 
         render: () ->
@@ -300,20 +304,27 @@ menu_module = angular.module(
             data = state.icswData
             a_attrs = {
                 key: "a"
-                className: "icswMenuColor"
             }
-            if data.$$menuEntry.href?
-                a_attrs.href = data.$$menuEntry.href
+            _a_classes = []
+            if data.$$allowed
+                _a_classes.push("icswMenuColor")
+                if data.$$menuEntry.href?
+                    a_attrs.href = data.$$menuEntry.href
+                else
+                    a_attrs.href = data.$$menuEntry.sref
             else
-                a_attrs.href = data.$$menuEntry.sref
+                _a_classes.push("icswMenuDeact")
+                a_attrs.pointerEvents = "none"
+                a_attrs.title = "not available: missing #{data.$$missing_info}"
             if data.$$menuEntry.entryClass?
-                a_attrs.className = "#{a_attrs.className} #{data.$$menuEntry.entryClass}"
+                _a_classes.push(data.$$menuEntry.entryClass)
             if data.$$menuEntry.title?
                 a_attrs.title = data.$$menuEntry.title
             if data.description[def_lang]?
                 _info_text = data.description[def_lang].text
             else
                 _info_text = "Example text for this entry wwwwww wwww qweqw pqow oiudf oijrl woe oiu qw qw f et ze wol qwoeiuqwoieu ln vldeou9z oqaweeh r"
+            a_attrs.className = _a_classes.join(" ")
             return li(
                 {key: "li"}
                 a(
@@ -324,15 +335,16 @@ menu_module = angular.module(
                     " #{data.$$menuEntry.name}"
                 )
                 p(
-                    {key: "d", className: "menu-help-text"}
+                    {key: "descr", className: "menu-help-text"}
                     _info_text
+                    if data.$$allowed then "ok" else "not ok"
                 )
             )
     )
     return React.createClass(
-        propTypes:
+        propTypes: {
             menu: React.PropTypes.object
-
+        }
         displayName: "icswMenuHeader"
 
         render: () ->
@@ -341,35 +353,38 @@ menu_module = angular.module(
             _items = []
             for sg_state in @props.menu.entries
                 sg_data = sg_state.data
-                if sg_state.data.hidden?
-                    _hidden = sg_state.data.hidden
+                # if sg_state.data.hidden?
+                #    console.log "***", sg_state.data
+                #    _hidden = sg_state.data.hidden
+                # else
+                #    _hidden = false
+                # if not _hidden
+                if overall_style != "condensed"
+                    _head = li(
+                        {
+                            key: "#{sg_state.$$menu_key}_li"
+                        }
+                        p({key: "p"}, strong({key: "strong"}, sg_data.name))
+                    )
                 else
-                    _hidden = false
-                if not _hidden
-                    if overall_style != "condensed"
-                        _head = li(
-                            {
-                                key: "#{sg_state.$$menu_key}_li"
-                            }
-                            p({key: "p"}, strong({key: "strong"}, sg_data.name))
-                        )
-                    else
-                        _head = li(
-                            {
-                                key: "#{sg_state.$$menu_key}_li"
-                            }
-                            h3({key: "h3"}, sg_data.name)
-                        )
-                    _items.push(_head)
-
-
+                    _head = li(
+                        {
+                            key: "#{sg_state.$$menu_key}_li"
+                        }
+                        h3({key: "h3"}, sg_data.name)
+                    )
+                _head_added = false
                 for menu_entry in sg_state.entries
                     state = menu_entry.data
                     data = state.icswData
                     _key = menu_entry.$$menu_key
-                    if data.$$menuEntry.isHidden? and data.$$menuEntry.isHidden
-                        continue
-                    if data.$$allowed
+                    # if data.$$menuEntry.isHidden? and data.$$menuEntry.isHidden
+                    #     continue
+                    if data.$$allowed or true
+                        if not _head_added
+                            # only add head when first entry is added
+                            _head_added = true
+                            _items.push(_head)
                         items_added += 1
                         _items.push(
                             React.createElement(menu_line, {key: _key, state: state})
@@ -386,16 +401,18 @@ menu_module = angular.module(
                         menu_name = ""
                         _force_icon = true
                     else
-                        _user = icswUserService.get().user
+                        menu_name = "---"
+                        _user = icswUserService.get()
+                        # user may not be defined (early draw of menu)
                         if _user?
-                            menu_name = _user.login
-                            menu_title = _user.info
-                            if _user.login != _user.login_name
-                                menu_name = "#{menu_name} (via alias #{_user.login_name})"
+                            _user = _user.user
+                            if _user?
+                                menu_name = _user.login
+                                menu_title = _user.info
+                                if _user.login != _user.login_name
+                                    menu_name = "#{menu_name} (via alias #{_user.login_name})"
                             # n title="{{ struct.current_user.full_name }}">{{ struct.current_user.login }}</span>
                             # uct.current_user.login != struct.current_user.login_name"> (via alias {{ struct.current_user.login_name }})</span>
-                        else
-                            menu_name = "---"
                 # header = state.icswData.menuHeader
                 key= @props.menu.$$menu_key
 
@@ -403,10 +420,13 @@ menu_module = angular.module(
                 # get number of rows
                 if _num_items > 12
                     _num_cols = 3
+                    _col_style = "col-sm-4"
                 else if _num_items > 6
                     _num_cols = 2
+                    _col_style = "col-sm-6"
                 else
                     _num_cols = 1
+                    _col_style = "col-sm-12"
                 # entries per col
                 _max_per_col = parseInt(_num_items / _num_cols) + 1
 
@@ -420,7 +440,7 @@ menu_module = angular.module(
                             ul(
                                 {
                                     key: "#{key}_c#{ul_items.length}_ul"
-                                    className: "col-sm-" + 12 / _num_cols + " list-unstyled"
+                                    className: "#{_col_style} list-unstyled"
                                 }
                                 stream
                             )

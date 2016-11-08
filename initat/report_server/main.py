@@ -19,8 +19,9 @@
 #
 """ report-server, main part """
 
+from __future__ import print_function, unicode_literals
+
 import os
-import sys
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
@@ -35,8 +36,8 @@ from initat.report_server.config import global_config
 
 
 def run_code():
-    from initat.report_server.server import server_process
-    s = server_process()
+    from initat.report_server.server import ServerProcess
+    s = ServerProcess()
     s.loop()
 
 

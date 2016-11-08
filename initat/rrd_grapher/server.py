@@ -19,6 +19,8 @@
 #
 """ server-part of rrd-grapher """
 
+from __future__ import print_function, unicode_literals
+
 import json
 import os
 
@@ -35,7 +37,7 @@ from initat.tools import configfile, logging_tools, \
 
 
 @server_mixins.RemoteCallProcess
-class server_process(
+class ServerProcess(
     server_mixins.ICSWBasePool,
     server_mixins.RemoteCallMixin,
 ):

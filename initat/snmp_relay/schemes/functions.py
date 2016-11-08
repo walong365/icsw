@@ -17,6 +17,8 @@
 #
 """ helper functions for SNMP relayer """
 
+from __future__ import print_function, unicode_literals
+
 
 def k_str(i_val):
     f_val = float(i_val)

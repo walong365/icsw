@@ -21,20 +21,25 @@
 
 from __future__ import unicode_literals
 
-import os
 import base64
 import datetime
-import tempfile
 import logging
+import os
+import tempfile
 from io import BytesIO
 
 import PollyReports
+
+
 PollyReports.Element.text_conversion = unicode
+
+
 def pollyreports_gettext(self, row):
     value = self.getvalue(row)
     if value is None:
         return ""
     return unicode(value)
+
 PollyReports.Element.gettext = pollyreports_gettext
 
 from PIL import Image as PILImage
@@ -64,7 +69,7 @@ from initat.cluster.backbone.models import network, AssetBatch
 from initat.cluster.backbone.models import user
 from initat.cluster.backbone.models.report import ReportHistory
 from initat.cluster.backbone.models.user import AC_READONLY, AC_MODIFY, AC_CREATE, AC_FULL
-from initat.cluster.backbone.models import device, AssetType, PackageTypeEnum, RunStatus, RunResult
+from initat.cluster.backbone.models import device, AssetType, PackageTypeEnum
 from initat.cluster.backbone.models.asset import ASSET_DATETIMEFORMAT
 
 try:
@@ -84,10 +89,9 @@ else:
     NOCTUA_LOGO_PATH = os.path.join(settings.STATIC_ROOT, "noctua-flat-trans.png")
 
 
-
-
 # this makes problems when running package-knife builds on devices without installed icsw-server
 # package because DEBUG=False
+
 pdfmetrics.registerFont(TTFont('SourceSansPro-Black',
                                os.path.join(_file_root, "fonts", "SourceSansPro-Black.ttf")))
 pdfmetrics.registerFont(TTFont('SourceSansPro-BlackIt',
@@ -665,7 +669,6 @@ class PDFReportGenerator(ReportGenerator):
             logo = PILImage.new('RGB', (255, 255), "white")  # create a new white image
             logo.save(self.logo_buffer, format="BMP")
 
-
         if self.general_settings["pdf_page_format"] == "A4":
             self.page_format = A4
         elif self.general_settings["pdf_page_format"] == "landscape(A4)":
@@ -819,10 +822,22 @@ class PDFReportGenerator(ReportGenerator):
 
                 _dict[key] = s_new_comps
 
-        header_list.append(ColoredRule((0, rule_position), self.page_format[0] - (self.margin * 2), thickness=1.5,
-            hexcolor=HexColor(0xBDBDBD)))
-        detail_list.append(ColoredRule((0, 0), self.page_format[0] - (self.margin * 2), thickness=0.1,
-            hexcolor=HexColor(0xBDBDBD)))
+        header_list.append(
+            ColoredRule(
+                (0, rule_position),
+                self.page_format[0] - (self.margin * 2),
+                thickness=1.5,
+                hexcolor=HexColor(0xBDBDBD)
+            )
+        )
+        detail_list.append(
+            ColoredRule(
+                (0, 0),
+                self.page_format[0] - (self.margin * 2),
+                thickness=0.1,
+                hexcolor=HexColor(0xBDBDBD)
+            )
+        )
 
         rpt.pageheader = Band(header_list)
         rpt.detailband = Band(detail_list)
@@ -1199,8 +1214,13 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Install Status", "update_status", 15.0)]
                 header_names_right = [("Install Date", "install_date", 15.0)]
 
-                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
-                    time_str), header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper(
+                    "{} {} for [{}] ({})".format(
+                        section_number, heading, _device.full_name,
+                        time_str
+                    ),
+                    header_names_left, header_names_right, rpt, data
+                )
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1231,8 +1251,13 @@ class PDFReportGenerator(ReportGenerator):
                                      ("License Key", "license_key", 50.0)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
-                    time_str), header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper(
+                    "{} {} for [{}] ({})".format(
+                        section_number, heading, _device.full_name,
+                        time_str
+                    ),
+                    header_names_left, header_names_right, rpt, data
+                )
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1282,8 +1307,13 @@ class PDFReportGenerator(ReportGenerator):
                 header_names_right = [("Size", "package_size", 15.00),
                                       ("Install Date", "package_install_date", 15.00)]
 
-                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
-                    time_str), header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper(
+                    "{} {} for [{}] ({})".format(
+                        section_number, heading, _device.full_name,
+                        time_str
+                    ),
+                    header_names_left, header_names_right, rpt, data
+                )
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1322,8 +1352,13 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Optional", "update_optional", 33.33)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
-                    time_str), header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper(
+                    "{} {} for [{}] ({})".format(
+                        section_number, heading, _device.full_name,
+                        time_str
+                    ),
+                    header_names_left, header_names_right, rpt, data
+                )
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1357,8 +1392,13 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Attributes", "hardware_attributes", 70.00)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
-                    time_str), header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper(
+                    "{} {} for [{}] ({})".format(
+                        section_number, heading, _device.full_name,
+                        time_str
+                    ),
+                    header_names_left, header_names_right, rpt, data
+                )
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1395,8 +1435,13 @@ class PDFReportGenerator(ReportGenerator):
                                      ("PID", "process_id", 50.0)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
-                    time_str), header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper(
+                    "{} {} for [{}] ({})".format(
+                        section_number, heading, _device.full_name,
+                        time_str
+                    ),
+                    header_names_left, header_names_right, rpt, data
+                )
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1433,8 +1478,13 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Value", "value", 54.0)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
-                    time_str), header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper(
+                    "{} {} for [{}] ({})".format(
+                        section_number, heading, _device.full_name,
+                        time_str
+                    ),
+                    header_names_left, header_names_right, rpt, data
+                )
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1479,8 +1529,13 @@ class PDFReportGenerator(ReportGenerator):
                                      ("Device", "device", 28.75)]
                 header_names_right = []
 
-                self.__config_report_helper("{} {} for [{}] ({})".format(section_number, heading, _device.full_name,
-                    time_str), header_names_left, header_names_right, rpt, data)
+                self.__config_report_helper(
+                    "{} {} for [{}] ({})".format(
+                        section_number, heading, _device.full_name,
+                        time_str
+                    ),
+                    header_names_left, header_names_right, rpt, data
+                )
 
                 rpt.generate(canvas)
                 report.number_of_pages += rpt.pagenumber
@@ -1558,9 +1613,13 @@ class PDFReportGenerator(ReportGenerator):
                 if hdd.size:
                     hdd_size = sizeof_fmt(hdd.size)
 
-                data.append([Paragraph(hdd_name, style_sheet["BodyText"]),
-                                 Paragraph(hdd_serial, style_sheet["courier"]),
-                                 Paragraph(hdd_size, style_sheet["BodyText"])])
+                data.append(
+                    [
+                        Paragraph(hdd_name, style_sheet["BodyText"]),
+                        Paragraph(hdd_serial, style_sheet["courier"]),
+                        Paragraph(hdd_size, style_sheet["BodyText"])
+                    ]
+                )
 
                 for partition in hdd.partition_set.all():
                     mountpoint = "N/A"
@@ -1572,7 +1631,6 @@ class PDFReportGenerator(ReportGenerator):
                         size = sizeof_fmt(partition.size)
 
                     data.append([mountpoint, "", size])
-
 
         p0_3 = Paragraph('<b>HDDs & Partitions:</b>', style_sheet["BodyText"])
         t_3 = Table(data,
@@ -1604,10 +1662,12 @@ class PDFReportGenerator(ReportGenerator):
                     # filled_text_length = stringWidth(filled_text, fontName="SourceSansPro-Regular", fontSize=10)
                     # filled_length = 125 - free_start
 
-                    s = String(2.0, 2.75, filled_text,
-                            fontName="SourceSansPro-Regular",
-                            fontSize=10,
-                            fillColor=colors.white)
+                    s = String(
+                        2.0, 2.75, filled_text,
+                        fontName="SourceSansPro-Regular",
+                        fontSize=10,
+                        fillColor=colors.white
+                    )
                     d.add(s)
                 else:
                     d = Paragraph("N/A", style_sheet["BodyText"])
@@ -2010,12 +2070,14 @@ class PDFReportGenerator(ReportGenerator):
 
                 page_width, page_heigth = self.page_format
 
-                can.drawImage(_tmp_file.name,
+                can.drawImage(
+                    _tmp_file.name,
                     page_width - (13 * mm) - self.logo_width,
                     page_heigth - 5 * mm - self.logo_height,
                     self.logo_width,
                     self.logo_height,
-                    mask="auto")
+                    mask="auto"
+                )
 
                 can.setFillColor(HexColor(0xBDBDBD))
                 can.setStrokeColor(HexColor(0xBDBDBD))
@@ -2404,8 +2466,13 @@ class XlsxReportGenerator(ReportGenerator):
                                 sheet_partitions.append([hdd.disc, partition.mountpoint, partition.size])
 
                         for logical_volume in ar.asset_batch.partition_table.logicaldisc_set.all():
-                            sheet_logical_volumes.append([logical_volume.device_name,
-                                logical_volume.size, logical_volume.free_space, logical_volume.filesystem_name])
+                            sheet_logical_volumes.append(
+                                [
+                                    logical_volume.device_name,
+                                    logical_volume.size,
+                                    logical_volume.free_space, logical_volume.filesystem_name
+                                ]
+                            )
 
                 else:
                     sheet = workbook.create_sheet()
@@ -2724,7 +2791,6 @@ def _generate_hardware_info_data_dict(_devices):
                     else:
                         display_str = unicode(display)
 
-
                 if assetrun.asset_batch.partition_table:
                     for hdd in assetrun.asset_batch.partition_table.partition_disc_set.all():
                         s = "Name:{}|Serial:{}|Size:{}".format(hdd.disc, hdd.serial, sizeof_fmt(hdd.size))
@@ -2734,16 +2800,20 @@ def _generate_hardware_info_data_dict(_devices):
                             hdd_str = s
 
                         for partition in hdd.partition_set.all():
-                            s = "HDD:{}|Mountpoint:{}|Size:{}".format(hdd.disc, partition.mountpoint,
-                                sizeof_fmt(partition.size))
+                            s = "HDD:{}|Mountpoint:{}|Size:{}".format(
+                                hdd.disc, partition.mountpoint,
+                                sizeof_fmt(partition.size)
+                            )
                             if partition_str != "N/A":
                                 partition_str += "\n{}".format(s)
                             else:
                                 partition_str = s
 
                     for logical_volume in assetrun.asset_batch.partition_table.logicaldisc_set.all():
-                        s = "DeviceName:{}|Size:{}|FreeSpace:{}|Filesystem:{}".format(logical_volume.device_name,
-                            logical_volume.size, logical_volume.free_space, logical_volume.filesystem_name)
+                        s = "DeviceName:{}|Size:{}|FreeSpace:{}|Filesystem:{}".format(
+                            logical_volume.device_name,
+                            logical_volume.size, logical_volume.free_space, logical_volume.filesystem_name
+                        )
                         if logical_str != "N/A":
                             logical_str += "\n{}".format(s)
                         else:

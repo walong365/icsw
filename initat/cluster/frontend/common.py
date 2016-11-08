@@ -1,9 +1,9 @@
 #!/usr/bin/python -Ot
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2015 Bernhard Mallinger
+# Copyright (C) 2015-2016 Bernhard Mallinger, Andreas Lang-Nevyjel
 #
-# Send feedback to: <mallinger@init.at>
+# Send feedback to: <mallinger@init.at>, <lang-nevyjel@init.at>
 #
 # This file is part of icsw-server
 #
@@ -20,6 +20,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 from __future__ import print_function, unicode_literals
 
 import datetime

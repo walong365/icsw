@@ -110,8 +110,8 @@ pre {
     display: inline;
 }
 
-table.rotateheaders th {
-    background-color: #313131;
+table.rotateheaders {
+    background-color: transparent;
 }
 .modal-body table.rotateheaders th {
     background-color: #393939;
@@ -234,4 +234,10 @@ body.condensed .submenu-bar{
 @keyframes newTabAnim {
     from { text-decoration:none; color:#ffffff;}
     to { text-decoration: underline; color:#e2972d;}
+}
+.icswMenuDeact,
+.icswMenuDeact:hover{
+    cursor: not-allowed;
+    text-decoration: none;
+    color: #777777!important;
 }
