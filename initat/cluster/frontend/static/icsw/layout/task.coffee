@@ -169,7 +169,7 @@ angular.module(
         if struct.active_task
             edit_scope.edit_obj = {task: struct.active_task.task_def.idx}
             edit_scope.running_task = struct.active_task
-            cancel_label = "Cancel task"
+            cancel_label = "Cancel Task"
         else
             edit_scope.edit_obj = {task: 0}
             edit_scope.running_task = null
@@ -179,35 +179,38 @@ angular.module(
             edit_scope.active_task = edit_scope.task_container.list[edit_scope.edit_obj.task]
 
         edit_scope.task_changed()
+        if !$rootScope.task_modal?
+            $rootScope.task_modal = true
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("icsw.task.choose.task"))(edit_scope)
+                    title: "Choose Task"
+                    closable: true
+                    ok_label: "Select"
+                    cancel_label: cancel_label
+                    ok_callback: (modal) ->
+                        d = $q.defer()
+                        struct.active_task = new icswTask(edit_scope.active_task)
+                        update_keys()
+                        _signal()
+                        d.resolve("done")
+                        return d.promise
+                    cancel_callback: (modal) ->
+                        d = $q.defer()
+                        struct.active_task = null
+                        update_keys()
+                        _signal()
+                        d.resolve("done")
+                        return d.promise
+                }
+            ).then(
+                (fin) ->
+                    console.log "done"
+                    edit_scope.$destroy()
+                    $rootScope.task_modal = undefined
+                    _signal()
+            )
 
-        icswComplexModalService(
-            {
-                message: $compile($templateCache.get("icsw.task.choose.task"))(edit_scope)
-                title: "Choose task"
-                closable: true
-                ok_label: "Select"
-                cancel_label: cancel_label
-                ok_callback: (modal) ->
-                    d = $q.defer()
-                    struct.active_task = new icswTask(edit_scope.active_task)
-                    update_keys()
-                    _signal()
-                    d.resolve("done")
-                    return d.promise
-                cancel_callback: (modal) ->
-                    d = $q.defer()
-                    struct.active_task = null
-                    update_keys()
-                    _signal()
-                    d.resolve("done")
-                    return d.promise
-            }
-        ).then(
-            (fin) ->
-                console.log "done"
-                edit_scope.$destroy()
-                _signal()
-        )
     # init tasks
     _init_tasks()
     # update keys
