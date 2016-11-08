@@ -29,10 +29,10 @@ import subprocess
 import sys
 
 from django.db.models import Q
+
 from initat.cluster.backbone import factories
 from initat.cluster.backbone.models import config_catalog, category_tree, \
-    device_group, config, mon_period, mon_contact, \
-    user, network, network_type, netdevice_speed, network_device_type, group, \
+    user, network_type, netdevice_speed, network_device_type, group, \
     host_check_command, domain_name_tree, ConfigServiceEnum
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import ipvx_tools
@@ -92,7 +92,7 @@ def create_noctua_fixtures():
     cat_mail = ct.add_category("/mon/services/mail")
 
     # config
-    print("Creeating configurations.")
+    print("Creating configurations.")
     ping_config = factories.Config(
         name="check_ping",
         config_catalog=first_cc,
@@ -205,7 +205,7 @@ def create_noctua_fixtures():
         ("monitor-slave", True, True),
         ("rrd-collector", True, False),
         ("server", True, False),
-        ]
+    ]
     for (service_name, assign, enum_service) in configs:
         config_service_enum = None
         if enum_service:
@@ -216,7 +216,8 @@ def create_noctua_fixtures():
         config = factories.Config(
             name=service_name,
             config_catalog=first_cc,
-            config_service_enum=config_service_enum
+            config_service_enum=config_service_enum,
+            server_config=True,
         )
         if assign:
             factories.DeviceConfig(device=first_dev, config=config)

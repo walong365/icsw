@@ -33,10 +33,10 @@ import zmq
 from initat.tools import process_tools, server_command, logging_tools
 
 __all__ = [
-    "ZMQConnection",
-    "zmq_connection",
-    "SendCommand",
-    "SendCommandDefaults",
+    b"ZMQConnection",
+    b"zmq_connection",
+    b"SendCommand",
+    b"SendCommandDefaults",
 ]
 
 

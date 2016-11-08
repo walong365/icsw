@@ -40,7 +40,10 @@ BACKUP_DIR = os.path.join(SSL_DIR, "backups")
 
 CA_MODES = ["ca", "server", "client"]
 
-__all__ = ["openssl_config_mixin", "ca"]
+__all__ = [
+    b"openssl_config_mixin",
+    b"ca"
+]
 
 
 def build_subj(sub_dict):
