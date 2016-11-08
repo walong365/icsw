@@ -1,3 +1,7 @@
+<script type="text/ng-template" id="icsw/main/user/tree.html">
+    <icsw-user-tree></icsw-user-tree>
+</script>
+
 <script type="text/ng-template" id="icsw/main/user/account.html">
     <div ng-controller="icswUserAccountCtrl">
         <icsw-user-account-detail></icsw-user-account-detail>
@@ -27,7 +31,7 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw/main/user/tree.html">
+<script type="text/ng-template" id="icsw.user.tree">
     <div ng-controller="icswUserGroupRoleTreeCtrl" class="container-fluid">
         <div ng-if="struct.error_string">
             <div uib-alert class="alert-warning">{{ struct.error_string }}</div>

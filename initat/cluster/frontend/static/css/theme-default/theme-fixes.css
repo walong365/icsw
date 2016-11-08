@@ -71,8 +71,12 @@ icsw-tools-button{
     font-size: 100%;
 }
 .menu-help-text{
-    text-indent: 12px;
+    margin: -0.4em 0 0 2.7em!important;
+    font-size: 13px!important;
     display: none;
+}
+.condensed .menu-help-text{
+    margin: -0.3em -3.2em 0.4em 3.2em!important;
 }
 .cfp-hotkeys {
     border-radius: 10px;

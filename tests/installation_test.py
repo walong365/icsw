@@ -1,5 +1,6 @@
 #!/usr/bin/python-init -Ot
 
+import datetime
 import subprocess
 import time
 import paramiko
@@ -57,6 +58,7 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
             sys.stdout.write(status_msg)
             sys.stdout.flush()
 
+            start_time = datetime.datetime.now()
             ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(command)
             log_file.write("*** Command executed: {}\n".format(command))
 
@@ -67,7 +69,10 @@ def install_icsw_base_system(host, username, password, package_manager, machine_
                 except StopIteration:
                     break
 
-            sys.stdout.write("done\n")
+            end_time = datetime.datetime.now()
+
+            sys.stdout.write("done in ({})\n".format((end_time - start_time)))
+            log_file.write("*** Command ({}) execution took: {}\n".format(command, (end_time - start_time)))
             sys.stdout.flush()
 
 
@@ -107,6 +112,7 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
             args.append(method)
             args.append(action_uri)
 
+            start_time = datetime.datetime.now()
             while True:
                 output = subprocess.check_output(args)
                 log_file.write("*** Command executed: {}\n".format("".join(args)))
@@ -120,7 +126,10 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
                 else:
                     break
 
-            sys.stdout.write("done\n")
+            end_time = datetime.datetime.now()
+
+            log_file.write("*** Command ({}) execution took: {}\n".format("".join(args), (end_time - start_time)))
+            sys.stdout.write("done (execution took {})\n".format((end_time - start_time)))
             sys.stdout.flush()
 
 
