@@ -21,11 +21,13 @@
 #
 """ meta-server, main part """
 
+from __future__ import print_function, unicode_literals
+
 import os
 
 from initat.client_version import VERSION_STRING
 from initat.meta_server.config import global_config
-from initat.meta_server.server import main_process
+from initat.meta_server.server import MainProcess
 from initat.tools import configfile
 
 
@@ -38,5 +40,5 @@ def main():
     options = global_config.handle_commandline(
         description="meta-server, version is {}".format(VERSION_STRING),
     )
-    main_process().loop()
+    MainProcess().loop()
     os._exit(0)

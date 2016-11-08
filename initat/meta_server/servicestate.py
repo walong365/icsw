@@ -22,16 +22,19 @@
 
 """ meta-server, ServiceState code """
 
+from __future__ import print_function, unicode_literals
+
+import commands
 import os
 import sqlite3
 import time
-import commands
+
 import inflection
 
+from initat.constants import MON_DAEMON_INFO_FILE
+from initat.icsw.service import constants
 from initat.meta_server.config import global_config, SQL_SCHEMA_VERSION, INIT_SQL_SCHEMA_VERSION
 from initat.tools import logging_tools, server_command, process_tools
-from initat.icsw.service import constants
-from initat.constants import MON_DAEMON_INFO_FILE
 
 LOCK_TIMEOUT = 30
 TRANSACTION_WINDOW = 300
@@ -621,6 +624,18 @@ class ServiceState(object):
                     ),
                 )
                 trans_id = crs.lastrowid
+                if name in self.__transition_lock_dict:
+                    _diff_time = cur_time - self.__transition_lock_dict[name]
+                    self.log(
+                        "renewing transition lock for {} ({:.2f} -> {:.2f}, delta is {:.2f})".format(
+                            name,
+                            self.__transition_lock_dict[name],
+                            cur_time,
+                            _diff_time,
+                        )
+                    )
+                else:
+                    self.log("creating transition lock for {}".format(name))
                 self.__transition_lock_dict[name] = cur_time
             return [
                 ServiceStateTranstaction(
@@ -647,6 +662,7 @@ class ServiceState(object):
                 (t_id,),
             ).fetchone()[0]
             if name in self.__transition_lock_dict:
+                self.log("removing transition lock for {}".format(name))
                 del self.__transition_lock_dict[name]
 
     def _check_for_throttle(self, el, cur_time, t_dict):
@@ -680,6 +696,7 @@ class ServiceState(object):
                         _c_state = int(_res.find("configured_state_info").attrib["state"])
                         _lic_state = int(_res.find("license_info").attrib["state"])
                         _proc_info_str = _res.find("process_state_info").get("proc_info_str", "")
+                        # decide what to do
                         _is_ok, _action = self._update_state(_el.name, _p_state, _c_state, _lic_state, _proc_info_str)
                         if not _is_ok:
                             _gen_trans = False
@@ -954,8 +971,11 @@ class ServiceState(object):
         with self.get_cursor(cached=False) as crsr:
             enable_list = [
                 (_entry[0], _entry[1]) for _entry in crsr.execute(
-                    "SELECT idx, name FROM service WHERE target_state={:d}".format(
-                        constants.TARGET_STATE_STOPPED
+                    "SELECT idx, name FROM service WHERE target_state=?",
+                    (
+                        "{:d}".format(
+                            constants.TARGET_STATE_STOPPED
+                        )
                     )
                 ).fetchall() if _entry[1] in services
             ]
@@ -985,8 +1005,11 @@ class ServiceState(object):
         with self.get_cursor(cached=False) as crsr:
             disable_list = [
                 (_entry[0], _entry[1]) for _entry in crsr.execute(
-                    "SELECT idx, name FROM service WHERE target_state={:d}".format(
-                        constants.TARGET_STATE_RUNNING
+                    "SELECT idx, name FROM service WHERE target_state=?",
+                    (
+                        "{:d}".format(
+                            constants.TARGET_STATE_RUNNING
+                        )
                     )
                 ).fetchall() if _entry[1] in services
             ]

@@ -41,6 +41,6 @@
     "gulp-webserver": "^0.9.1",
     "http-proxy-middleware": "^0.17.2",
     "run-sequence": "^1.1.5",
-    "typescript": "^2.0.7"
+    "typescript": "^2.0.8"
   }
 }

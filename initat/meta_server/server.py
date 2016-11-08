@@ -21,24 +21,26 @@
 #
 """ meta-server, server process """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import stat
 import time
 
 import zmq
-from initat.tools import configfile, logging_tools, mail_tools, process_tools, server_command, \
-    threading_tools, inotify_tools
 
-from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.client_version import VERSION_STRING
 from initat.host_monitoring import hm_classes
+from initat.host_monitoring.client_enums import icswServiceEnum
 from initat.icsw.service import container, transition, instance, service_parser, clusterid
+from initat.tools import configfile, logging_tools, mail_tools, process_tools, server_command, \
+    threading_tools, inotify_tools
 from initat.tools.server_mixins import ICSWBasePoolClient
 from .config import global_config
 from .servicestate import ServiceState
 
 
-class main_process(ICSWBasePoolClient):
+class MainProcess(ICSWBasePoolClient):
     def __init__(self):
         self.__debug = global_config["DEBUG"]
         threading_tools.process_pool.__init__(self, "main")
@@ -298,7 +300,19 @@ class main_process(ICSWBasePoolClient):
 
     def _new_transitions(self, trans_list):
         self._log_transaction(trans_list)
+        _current_trans = sum([_trans.service_names for _trans in self.__transitions], [])
+        self.log(
+            "{} pending{}, {} ({})".format(
+                logging_tools.get_plural("transition", len(_current_trans)),
+                " ({})".format(", ".join(sorted(_current_trans))) if _current_trans else "",
+                logging_tools.get_plural("new transition", len(trans_list)),
+                ", ".join(sorted([_trans.name for _trans in trans_list])),
+            )
+        )
         for _trans in trans_list:
+            if _trans.name in _current_trans:
+                self.log("removing all pending transitions for {}".format(_trans.name), logging_tools.LOG_LEVEL_ERROR)
+                self.__transitions = [entry for entry in self.__transitions if _trans.name not in entry.service_names]
             _new_t = transition.ServiceTransition(
                 _trans.action,
                 [_trans.name],
@@ -381,24 +395,6 @@ class main_process(ICSWBasePoolClient):
                     logging_tools.get_diff_time_str(end_time - act_time),
                 )
             )
-
-    def _read_msi_from_disk(self, file_name):
-        new_meta_info = process_tools.MSIBlock(file_name, self.log)
-        if new_meta_info.name:
-            self.log(
-                "read meta_info_block for {} (file {}, info: {})".format(
-                    new_meta_info.name,
-                    file_name,
-                    new_meta_info.get_info()
-                )
-            )
-        else:
-            self.log(
-                "error reading meta_info_block from {} (name returned None)".format(file_name),
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            new_meta_info = None
-        return new_meta_info
 
     def _delete_msi_by_file_name(self, file_name):
         self.log("msi file {} has been removed, triggering check".format(file_name))
