@@ -90,14 +90,12 @@ class SetupLogger(object):
 
 @SetupLogger
 def selinux_enabled():
-    _bin = process_tools.find_file("selinuxenabled")
+    _bin = process_tools.find_file("getenforce")
     if _bin:
-        try:
-            c_out = subprocess.check_output(_bin)
-        except subprocess.CalledProcessError as e:
-            return False
-        else:
+        c_out = subprocess.check_output(_bin)
+        if c_out.strip() == "Enforcing":
             return True
+        return False
     else:
         return False
 
