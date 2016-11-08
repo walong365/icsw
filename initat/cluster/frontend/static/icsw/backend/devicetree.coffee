@@ -167,16 +167,29 @@ angular.module(
             # FIXME, todo: remove entries when a device gets deleted
             @netdevice_list.length = 0
             @net_ip_list.length = 0
+
+            # FIXME, todo: remove temporary lists. find out why netdevice_set is populated with duplicate entries first
+            netdevice_list_tmp = []
+            net_ip_list_tmp = []
+
             for dev in @devices
                 for nd in dev.netdevice_set
                     nd.$$devicename = @tree.all_lut[nd.device].full_name
-                    @netdevice_list.push(nd)
+                    netdevice_list_tmp.push(nd)
                     for ip in nd.net_ip_set
                         ip.$$devicename = nd.$$devicename
                         ip.$$devname = nd.devname
-                        @net_ip_list.push(ip)
-            @netdevice_lut = icswTools.build_lut(@netdevice_list)
-            @net_ip_lut = icswTools.build_lut(@net_ip_list)
+                        net_ip_list_tmp.push(ip)
+
+            @netdevice_lut = icswTools.build_lut(netdevice_list_tmp)
+            @net_ip_lut = icswTools.build_lut(net_ip_list_tmp)
+
+            for net_device_key in Object.keys(@netdevice_lut)
+                @netdevice_list.push(@netdevice_lut[net_device_key])
+
+            for net_ip_key in Object.keys(@net_ip_lut)
+                @net_ip_list.push(@net_ip_lut[net_ip_key])
+
             @netdevice_list = _.orderBy(
                 @netdevice_list,
                 ["$$devicename", "devname"],
