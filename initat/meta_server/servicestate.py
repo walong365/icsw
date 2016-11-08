@@ -460,7 +460,7 @@ class ServiceState(object):
     def _init_states(self):
         # init state cache
         # instance name -> (running, ok) tuple
-        # current state cache
+        # current state cache (p[rogram]_state, c[onfigured]_state, l[icense]_state)
         self.__state_dict = {}
         # target state
         self.__target_dict = {}
@@ -790,6 +790,8 @@ class ServiceState(object):
 
         self.__dependency_problems.setdefault(inst_name, {"start": False, "stop": False})
 
+        # list of unfullfilled dependencies
+        _uf_list = []
         _deps_ok = True
         if action == "start":
             _dep_list = self.instance.get_start_dependencies(inst_name)
@@ -797,17 +799,40 @@ class ServiceState(object):
                 for _dep in _filter_list(_dep_list):
                     _state = self.__state_dict[_dep]
                     if constants.STATE_DICT[_state[0]] != "ok":
+                        _uf_list.append(_dep)
                         _deps_ok = False
         elif action == "stop":
             _dep_list = self.instance.get_stop_dependencies(inst_name)
+            self.log("*** {} {} {}".format(action, inst_name, str(_dep_list)))
+            self.log("filtered: {}".format(str(_filter_list(_dep_list))))
             for _dep in _filter_list(_dep_list):
                 _state = self.__state_dict[_dep]
+                self.log(
+                    "*** list [{}]: {} {} {}".format(
+                        _dep,
+                        str(self.__state_dict[_dep]),
+                        constants.STATE_DICT[_state[0]],
+                        constants.STATE_DICT[_state[0]] != "dead",
+                    )
+                )
                 # print "*", _dep, _state, constants.STATE_DICT
-                if constants.STATE_DICT[_state[0]] == "ok":
+                if constants.STATE_DICT[_state[0]] != "dead":
+                    _uf_list.append(_dep)
                     _deps_ok = False
-        if not _deps_ok:
+        if _deps_ok:
             self.log(
-                "dependencies for action {} on instance {} not fullfilled".format(action, inst_name),
+                "dependencies for action {} on instance {} fullfilled".format(
+                    action,
+                    inst_name,
+                ),
+            )
+        else:
+            self.log(
+                "dependencies for action {} on instance {} not fullfilled ({})".format(
+                    action,
+                    inst_name,
+                    ", ".join(sorted(_uf_list)),
+                ),
                 logging_tools.LOG_LEVEL_WARN
             )
         self.__dependency_problems[inst_name][action] = not _deps_ok

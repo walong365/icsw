@@ -241,6 +241,9 @@ class InstanceXML(object):
                 self.__needed_for_start.setdefault(_inst_name, []).append(_need)
                 if _sym:
                     self.__needed_for_stop.setdefault(_need, []).append(_inst_name)
+        # import pprint
+        # pprint.pprint(self.__needed_for_start)
+        # pprint.pprint(self.__needed_for_stop)
 
     def get_start_dependencies(self, inst_name):
         # return list of required started instances for given instance name

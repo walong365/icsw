@@ -32,8 +32,8 @@ from initat.constants import LOG_ROOT
 from initat.tools import logging_tools
 
 __all__ = [
-    "get_logger",
-    "install_global_logger",
+    b"get_logger",
+    b"install_global_logger",
 ]
 
 

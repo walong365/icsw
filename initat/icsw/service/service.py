@@ -492,6 +492,8 @@ class Service(object):
         # remove meta server
         ms_name = self.msi_name
         if os.path.exists(ms_name):
+            if ms_name.endswith("meta-server"):
+                return
             self.log("removing msi-block {}".format(ms_name))
             os.unlink(ms_name)
 
@@ -630,6 +632,7 @@ class MetaService(Service):
     def _check(self, result, act_proc_dict):
         ms_name = self.msi_name
         if os.path.exists(ms_name):
+            print("ex")
             # TODO : cache msi files
             ms_block = process_tools.MSIBlock(ms_name)
             start_time = ms_block.start_time
@@ -637,6 +640,7 @@ class MetaService(Service):
             diff_dict = {key: value for key, value in ms_block.bound_dict.iteritems() if value}
             diff_procs = sum([abs(_v) for _v in diff_dict.values()]) if diff_dict else 0
             act_pids = ms_block.pids_found
+            print("d", diff_dict, "p", diff_procs, "a", act_pids)
             # print "*", act_pids
             unique_pids = set(act_pids)
             num_started = len(act_pids)

@@ -161,7 +161,7 @@ class MainProcess(ICSWBasePoolClient):
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
             self.log(
-                "got signal ({}), nsis={}, debug={}".format(
+                "got signal ({}), next_stop_is_restart={}, debug={}".format(
                     err_cause,
                     self.__next_stop_is_restart,
                     global_config["DEBUG"],
