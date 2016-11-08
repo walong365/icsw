@@ -60,7 +60,7 @@ class auth_user(View):
                 _cookie = MyCookie(request.COOKIES["AUTH_COOKIE"])
                 _init_time = _cookie["init"]
             except:
-                print process_tools.get_except_info()
+                print(process_tools.get_except_info())
                 return HttpResponse("Unauthorized", status=401)
             else:
                 if abs(_init_time - time.time()) < 3:
