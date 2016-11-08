@@ -52,6 +52,10 @@ class ServiceTransition(object):
         self.__init_time = time.time()
 
     @property
+    def service_names(self):
+        return [entry.name for entry in self.list]
+
+    @property
     def init_time(self):
         return self.__init_time
 
@@ -91,19 +95,32 @@ class ServiceTransition(object):
             # format: name -> init_time
             self.__wait_dict = {}
         _loopcount = 0
+        _wait_infos = {}
         while True:
             _loopcount += 1
             new_list = []
             for _action, entry in self._action_list:
                 cur_time = time.time()
-                _doit = True
                 if entry.name in self.__wait_dict:
                     _wait_time = 2 if self.target == "debug" else int(entry.attrib["wait_time"])
-                    if abs(cur_time - self.__wait_dict[entry.name]) < _wait_time:
+                    # minor transition fix for faster shutdown of host-monitoring, to be removed ...
+                    if _wait_time == 300 and entry.name == "host-monitoring":
+                        _wait_time = 15
+                    _diff_time = abs(cur_time - self.__wait_dict[entry.name])
+                    if _diff_time < _wait_time:
+                        if entry.name not in _wait_infos:
+                            _wait_infos[entry.name] = "wait_time of {:d} seconds not reached for {} (elapsed: {:.2f})".format(
+                                _wait_time,
+                                entry.name,
+                                _diff_time,
+                            )
                         new_list.append((_action, entry))
                         _doit = False
                     else:
                         del self.__wait_dict[entry.name]
+                        _doit = True
+                else:
+                    _doit = True
                 if _doit:
                     if _action == "wait":
                         self.__wait_dict[entry.name] = cur_time
@@ -113,7 +130,7 @@ class ServiceTransition(object):
                         else:
                             entry.action(_action, cur_c.proc_dict)
             self._action_list = new_list
-            if not self._check_waiting(cur_c):
+            if not self._check_vanished(cur_c):
                 # no processes vanished, return
                 break
         e_time = time.time()
@@ -121,14 +138,17 @@ class ServiceTransition(object):
             logging_tools.get_plural("pending element", len(self._action_list)),
             action_info(self._action_list[0]) if len(self._action_list) == 1 else "",
             "(inner loops: {:d})".format(_loopcount) if _loopcount > 1 else "",
-        ]
-        _info = [_el for _el in _info if _el.strip()]
+        ] + _wait_infos.values()
         self.log(
             "step {:d} after {} took {}, {}".format(
                 self.__step_num,
                 logging_tools.get_diff_time_str(e_time - self.__init_time),
                 logging_tools.get_diff_time_str(e_time - s_time),
-                " ".join(_info),
+                ", ".join(
+                    [
+                        _el for _el in _info if _el.strip()
+                    ]
+                )
             )
         )
         if not self._action_list:
@@ -140,7 +160,7 @@ class ServiceTransition(object):
             )
         return len(self._action_list)
 
-    def _check_waiting(self, cur_c):
+    def _check_vanished(self, cur_c):
         _vanished = 0
         _check_keys = self.__wait_dict.keys()
         for _name in _check_keys:

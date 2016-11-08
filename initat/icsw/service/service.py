@@ -474,11 +474,12 @@ class Service(object):
         _meta_pids = set([int(_val.text) for _val in self.entry.findall(".//pids/pid")])
         # protect myself from getting killed :-)
         _proc_pids = self._find_pids_by_name(act_proc_dict) - set([os.getpid()])
+        # self.log("cleanup {} {}".format(str(_meta_pids), str(_proc_pids)))
         _all_pids = _meta_pids | _proc_pids
         if _all_pids:
             for _pid in _all_pids:
                 try:
-                    cur_proc = psutil.Process(_pid)
+                    _cur_proc = psutil.Process(_pid)
                 except psutil.NoSuchProcess:
                     self.log("process {:d} no longer exists".format(_pid), logging_tools.LOG_LEVEL_WARN)
                 else:
