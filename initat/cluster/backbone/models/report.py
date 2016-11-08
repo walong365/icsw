@@ -18,6 +18,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 
+from __future__ import unicode_literals, print_function
+
 import os
 import base64
 import hashlib
@@ -32,7 +34,7 @@ from initat.cluster.settings import REPORT_DATA_STORAGE_DIR
 # (Django Database) Classes
 ########################################################################################################################
 
-FILENAME_DATE_STRING = "%Y_%m_%d"#_%H_%M_%S"
+FILENAME_DATE_STRING = "%Y_%m_%d"   # _%H_%M_%S"
 HASH_ALGORITHM = "sha256"
 
 

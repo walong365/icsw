@@ -1,7 +1,31 @@
-from collections import defaultdict, OrderedDict
-from enum import IntEnum
+# -*- coding: utf-8 -*-
+#
+# Copyright (C) 2014,2016 Andreas Lang-Nevyjel
+#
+# Send feedback to: <lang-nevyjel@init.at>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License Version 2 as
+# published by the Free Software Foundation.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+#
+
+
+from __future__ import unicode_literals, print_function
+
 import re
-from docutils.nodes import entry
+from collections import defaultdict, OrderedDict
+
+from enum import IntEnum
+
 from initat.tools.server_command import srv_command
 
 
@@ -388,8 +412,9 @@ class Hardware(object):
         )
         for sub_tree in win32_tree['Win32_DiskDrive']:
             hdd = HardwareHdd(win32_tree=sub_tree)
-            hdd.partitions = [partition_path_partitions[p]
-                for p in disk_path_partition[hdd._path_w32]]
+            hdd.partitions = [
+                partition_path_partitions[p] for p in disk_path_partition[hdd._path_w32]
+                ]
             self.hdds.append(hdd)
 
         for sub_tree in win32_tree['Win32_NetworkAdapter']:
@@ -835,8 +860,11 @@ class LogicalDisc(HardwareBase):
         'free_space': ('FreeSpace', int),
     }
 
-    def __init__(self, lshw_dump=None, win32_tree=None, dmi_handle=None,
-            lsblk_entry=None):
+    def __init__(
+        self,
+        lshw_dump=None, win32_tree=None, dmi_handle=None,
+        lsblk_entry=None
+    ):
         self.device_name = None
         self.mount_point = None
         self.file_system = None

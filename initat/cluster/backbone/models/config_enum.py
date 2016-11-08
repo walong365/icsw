@@ -21,6 +21,8 @@
 #
 """ enums for config to create a app-spanning 'global' configenum object """
 
+from __future__ import unicode_literals, print_function
+
 from enum import Enum
 
 from initat.cluster.backbone.models.service_enum_base import icswServiceEnumBase, EggAction

@@ -21,6 +21,8 @@
 #
 """ model definitions, partitions """
 
+from __future__ import unicode_literals, print_function
+
 import re
 
 from django.core.exceptions import ValidationError
@@ -32,14 +34,14 @@ from initat.cluster.backbone.models.functions import check_integer
 from initat.tools import logging_tools
 
 __all__ = [
-    "partition_fs",
-    "sys_partition",
-    "lvm_lv",
-    "lvm_vg",
-    "LogicalDisc",
-    "partition",
-    "partition_disc",
-    "partition_table",
+    b"partition_fs",
+    b"sys_partition",
+    b"lvm_lv",
+    b"lvm_vg",
+    b"LogicalDisc",
+    b"partition",
+    b"partition_disc",
+    b"partition_table",
 ]
 
 
@@ -234,7 +236,9 @@ class partition_disc(models.Model):
     disc = models.CharField(max_length=192)
     serial = models.TextField(default='')
     size = models.BigIntegerField(null=True)
-    label_type = models.CharField(max_length=128, default="gpt",
+    label_type = models.CharField(
+        max_length=128,
+        default="gpt",
         choices=[("gpt", "GPT"), ("msdos", "MSDOS")],
     )
     priority = models.IntegerField(null=True, default=0)

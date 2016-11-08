@@ -21,6 +21,8 @@
 #
 """ package definitions for ICSW """
 
+from __future__ import unicode_literals, print_function
+
 import time
 
 from django.core.exceptions import ValidationError
@@ -33,12 +35,12 @@ from lxml.builder import E
 from initat.cluster.backbone.models.functions import check_empty_string
 
 __all__ = [
-    "package_repo",
-    "package_search",
-    "package_search_result",
-    "package",
-    "package_device_connection",
-    "package_service",
+    b"package_repo",
+    b"package_search",
+    b"package_search_result",
+    b"package",
+    b"package_device_connection",
+    b"package_service",
 ]
 
 
@@ -433,7 +435,7 @@ class package_device_connection(models.Model):
                                 self.installed = "u"
                         else:
                             self.installed = "u"
-                            print "*** interpret_response (package) ***", etree.tostring(xml, pretty_print=True)
+                            print("*** interpret_response (package) ***", etree.tostring(xml, pretty_print=True))
             else:
                 pp_lines = pp_text.split("\n")
                 self.installed_name, self.installed_release, self.installed_version = ("", "", "")

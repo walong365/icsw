@@ -21,6 +21,8 @@
 #
 """ model definitions, configuration """
 
+from __future__ import unicode_literals, print_function
+
 import logging
 
 from django.apps import apps
@@ -32,15 +34,15 @@ from django.dispatch import receiver
 from initat.cluster.backbone.models.functions import check_integer, check_empty_string
 
 __all__ = [
-    "config_catalog",
-    "config",
-    "ConfigServiceEnum",
-    "config_str",
-    "config_int",
-    "config_blob",
-    "config_bool",
-    "config_script",
-    "device_config",
+    b"config_catalog",
+    b"config",
+    b"ConfigServiceEnum",
+    b"config_str",
+    b"config_int",
+    b"config_blob",
+    b"config_bool",
+    b"config_script",
+    b"device_config",
 ]
 
 

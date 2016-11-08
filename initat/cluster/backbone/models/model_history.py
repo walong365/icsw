@@ -21,6 +21,8 @@
 #
 """ Complementary wrapper around django reversion """
 
+from __future__ import unicode_literals, print_function
+
 from django.contrib.contenttypes.models import ContentType
 from django.core import serializers
 from django.db import models

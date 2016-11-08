@@ -21,12 +21,14 @@
 #
 """ database definitions for hints """
 
+from __future__ import unicode_literals, print_function
+
 from django.db import models
 
 __all__ = [
-    "config_hint",
-    "config_var_hint",
-    "config_script_hint",
+    b"config_hint",
+    b"config_var_hint",
+    b"config_script_hint",
 ]
 
 

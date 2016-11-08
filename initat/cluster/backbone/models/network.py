@@ -20,6 +20,8 @@
 # -*- coding: utf-8 -*-
 #
 
+from __future__ import unicode_literals, print_function
+
 import logging
 import re
 
@@ -39,16 +41,16 @@ from initat.constants import GEN_CS_NAME
 from initat.tools import ipvx_tools, logging_tools, process_tools, config_store
 
 __all__ = [
-    "network",
-    "network_type",
-    "net_ip",
-    "network_device_type",
-    "netdevice",
-    "netdevice_speed",
-    "peer_information",
-    "snmp_network_type",
-    "NetDeviceDesiredStateEnum",
-    "NetDeviceSNMPMonOptions",
+    b"network",
+    b"network_type",
+    b"net_ip",
+    b"network_device_type",
+    b"netdevice",
+    b"netdevice_speed",
+    b"peer_information",
+    b"snmp_network_type",
+    b"NetDeviceDesiredStateEnum",
+    b"NetDeviceSNMPMonOptions",
 ]
 
 logger = logging.getLogger(__name__)

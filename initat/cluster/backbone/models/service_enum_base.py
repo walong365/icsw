@@ -21,13 +21,15 @@
 #
 """ serviceEnum Base for 'global' configenum object, for servers """
 
+from __future__ import unicode_literals, print_function
+
 from django.db.models import Q
 from initat.host_monitoring.service_enum_base import icswServiceEnumBaseClient
 from django.contrib.contenttypes.models import ContentType
 
 __all__ = [
-    "icswServiceEnumBase",
-    "EggAction",
+    b"icswServiceEnumBase",
+    b"EggAction",
 ]
 
 

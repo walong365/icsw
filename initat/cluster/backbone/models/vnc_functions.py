@@ -35,16 +35,18 @@
 #  (GEnie : OUTER; CIS : [71755,204]) Graven Imagery, 1992.
 #
 
+from __future__ import unicode_literals, print_function
+
 import pdb
 import sys
 from struct import pack, unpack
 
 
 __all__ = [
-    "ForkedPdb",
-    "desfunc",
-    "deskey",
-    "get_vnc_enc",
+    b"ForkedPdb",
+    b"desfunc",
+    b"deskey",
+    b"get_vnc_enc",
 ]
 
 

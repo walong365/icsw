@@ -18,6 +18,8 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+from __future__ import unicode_literals, print_function
+
 from collections import defaultdict
 
 import dateutil.relativedelta
@@ -35,14 +37,14 @@ from .functions import check_integer
 
 
 __all__ = [
-    "DispatcherSettingSchedule",
-    "DispatcherSettingScheduleEnum",
-    "DispatcherSetting",
-    "DeviceDispatcherLink",
-    "DispatchSetting",
-    "DiscoverySource",
-    "ScanHistory",
-    "ScheduleItem",
+    b"DispatcherSettingSchedule",
+    b"DispatcherSettingScheduleEnum",
+    b"DispatcherSetting",
+    b"DeviceDispatcherLink",
+    b"DispatchSetting",
+    b"DiscoverySource",
+    b"ScanHistory",
+    b"ScheduleItem",
 ]
 
 
@@ -160,7 +162,7 @@ def DispatcherSettingPreSave(sender, **kwargs):
             if _name == _sched:
                 _check = True
             # if _val is not None:
-        print _cur_inst.sched_start_second
+        print(_cur_inst.sched_start_second)
 
 
 class DeviceDispatcherLink(models.Model):

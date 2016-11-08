@@ -21,6 +21,8 @@
 #
 """ helper functions for ICSW models """
 
+from __future__ import unicode_literals, print_function
+
 import collections
 import datetime
 import time
@@ -309,7 +311,7 @@ def get_change_reset_list(s_obj, d_obj, required_changes=None):
             # ignore
             pass
         else:
-            print "FieldType() in get_change_reset_list: {}".format(cur_t)
+            print("FieldType() in get_change_reset_list: {}".format(cur_t))
     return c_list, r_list
 
 

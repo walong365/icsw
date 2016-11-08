@@ -21,6 +21,8 @@
 #
 """ Model definitions for domain related objects """
 
+from __future__ import unicode_literals, print_function
+
 import StringIO
 import os
 import re
@@ -41,15 +43,15 @@ from initat.cluster.backbone.models.functions import check_empty_string, check_n
 from initat.tools import process_tools
 
 __all__ = [
-    "domain_name_tree",
-    "valid_domain_re",
-    "domain_tree_node",
-    "category_tree",
-    "category",
-    "TREE_SUBTYPES",
-    "TOP_MONITORING_CATEGORY",
-    "location_gfx",
-    "device_mon_location",
+    b"domain_name_tree",
+    b"valid_domain_re",
+    b"domain_tree_node",
+    b"category_tree",
+    b"category",
+    b"TREE_SUBTYPES",
+    b"TOP_MONITORING_CATEGORY",
+    b"location_gfx",
+    b"device_mon_location",
 ]
 
 # top monitoring category

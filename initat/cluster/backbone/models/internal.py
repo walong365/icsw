@@ -22,6 +22,8 @@
 
 """ model definitions, internal stuff (database version, patch levels, ....) """
 
+from __future__ import unicode_literals, print_function
+
 from django.db import models
 from django.db.models import Q
 from django.db.utils import ProgrammingError, DatabaseError
@@ -29,8 +31,8 @@ from initat.cluster.backbone.models.functions import memoize_with_expiry
 
 
 __all__ = [
-    "ICSWVersion",
-    "VERSION_NAME_LIST",
+    b"ICSWVersion",
+    b"VERSION_NAME_LIST",
 ]
 
 

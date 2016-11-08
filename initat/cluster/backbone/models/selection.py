@@ -21,12 +21,14 @@
 #
 """ selection models for NOCTUA, CORVUS and NESTOR """
 
+from __future__ import unicode_literals, print_function
+
 from django.db import models
 from django.db.models import Q
 
 
 __all__ = [
-    "DeviceSelection",
+    b"DeviceSelection",
 ]
 
 

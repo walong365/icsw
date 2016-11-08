@@ -19,6 +19,8 @@
 #
 """ database definitions for recording icinga events and aggregating them """
 
+from __future__ import unicode_literals, print_function
+
 import collections
 import itertools
 import logging
