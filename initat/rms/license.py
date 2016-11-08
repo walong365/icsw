@@ -21,6 +21,8 @@
 """ rms-server, license monitoring part """
 
 # from initat.cluster.backbone.models.functions import cluster_timezone
+from __future__ import print_function, unicode_literals
+
 import datetime
 import itertools
 import os
@@ -280,7 +282,7 @@ class LicenseProcess(threading_tools.process_obj):
                 ext_license_site=site,
             )
 
-            print 'created coarse with start {}'.format(check_coarse.start_date)
+            print('created coarse with start {}'.format(check_coarse.start_date))
 
             total_timespan_seconds = (end - start).total_seconds()
 
@@ -301,8 +303,8 @@ class LicenseProcess(threading_tools.process_obj):
                 used_avg = 0.0
                 issued_avg = 0.0
 
-                print 'from', lic_state_data[0].ext_license_check.date
-                print 'to', lic_state_data[-1].ext_license_check.date
+                print('from', lic_state_data[0].ext_license_check.date)
+                print('to', lic_state_data[-1].ext_license_check.date)
 
                 if lic_state_data:
                     # calc data from time spans where we have both start and end point in duration
@@ -366,29 +368,29 @@ class LicenseProcess(threading_tools.process_obj):
 
                     used_start = calc_start('used')
                     used_end = calc_end('used')
-                    print 'start ', used_start
-                    print 'end ', used_end
+                    print('start ', used_start)
+                    print('end ', used_end)
                     used_avg += used_start + used_end
 
                     iss_start = calc_start('issued')
                     iss_end = calc_end('issued')
-                    print 'start ', iss_start
-                    print 'end ', iss_end
+                    print('start ', iss_start)
+                    print('end ', iss_end)
                     issued_avg += iss_start + iss_end
 
-                print 'exact', used_avg
-                print 'exact iss', issued_avg
+                print('exact', used_avg)
+                print('exact iss', issued_avg)
 
                 used_approximated = lic_state_data.aggregate(Avg('used')).itervalues().next()
 
                 if abs(used_approximated - used_avg) > max((abs(used_approximated) + abs(used_avg)) * 0.01, 0.0001):
-                    print 'used divergence: ', used_approximated, " ", used_avg, " at ", start, duration_type
-                print 'approx', used_approximated
+                    print('used divergence: ', used_approximated, " ", used_avg, " at ", start, duration_type)
+                print('approx', used_approximated)
                 used_min = lic_state_data.aggregate(Min('used')).itervalues().next()
                 used_max = lic_state_data.aggregate(Max('used')).itervalues().next()
 
                 issued_approximated = lic_state_data.aggregate(Avg('issued')).itervalues().next()
-                print 'approx iss', issued_approximated
+                print('approx iss', issued_approximated)
                 issued_min = lic_state_data.aggregate(Min('issued')).itervalues().next()
                 issued_max = lic_state_data.aggregate(Max('issued')).itervalues().next()
 
@@ -421,7 +423,7 @@ class LicenseProcess(threading_tools.process_obj):
                     ext_lic_id = vendor_lic_version['ext_license_version']
                     vendor_id = vendor_lic_version['vendor']
 
-                    print 'version_state:', 'ver', vendor_lic_version['ext_license_version'], 'vendor', vendor_lic_version['vendor']
+                    print('version_state:', 'ver', vendor_lic_version['ext_license_version'], 'vendor', vendor_lic_version['vendor'])
 
                     # usage:
                     version_state_usage_data = timespan_usage_data.filter(ext_license_version_state__ext_license_version_id=ext_lic_id,
@@ -487,7 +489,7 @@ class LicenseProcess(threading_tools.process_obj):
                         logging_tools.LOG_LEVEL_ERROR
                     )
 
-                print self, "INFO for license {}  estim: {}, actual: {}".format(lic_id, estimated_usages, actual_usages)
+                print(self, "INFO for license {}  estim: {}, actual: {}".format(lic_id, estimated_usages, actual_usages))
 
             #  print 'state freq counted: ', _freq_cnt_sanity
             #  if _freq_cnt_sanity != len(timespan_version_state_data):
@@ -507,18 +509,18 @@ class LicenseProcess(threading_tools.process_obj):
                     # first run
                     self.log("No archive data found for duration {}, creating".format(duration_type.__name__))
                     earliest_datetime = ext_license_check.objects.filter(ext_license_site=site).earliest('date')
-                    print earliest_datetime
+                    print(earliest_datetime)
                     next_start_time = duration_type.get_time_frame_start(earliest_datetime.date)
-                    print next_start_time
+                    print(next_start_time)
 
                 do_loop = True
                 last_time = time.time()
                 while do_loop:
-                    print 'took ', time.time() - last_time
+                    print('took ', time.time() - last_time)
                     last_time = time.time()
                     # check if we can calculate next day
                     next_end_time = duration_type.get_end_time_for_start(next_start_time)
-                    print 'end', next_end_time
+                    print('end', next_end_time)
                     try:
                         first_later_check = ext_license_check.objects.filter(date__gt=next_end_time, ext_license_site=site).earliest('date')
                     except ext_license_check.DoesNotExist:

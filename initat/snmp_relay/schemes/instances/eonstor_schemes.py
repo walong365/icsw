@@ -17,6 +17,8 @@
 #
 """ eonstor schemes for SNMP relayer """
 
+from __future__ import print_function, unicode_literals
+
 from initat.host_monitoring import limits
 from initat.snmp.snmp_struct import snmp_oid
 from initat.tools import logging_tools, process_tools

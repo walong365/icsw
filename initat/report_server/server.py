@@ -19,6 +19,8 @@
 #
 """ report-server, server process """
 
+from __future__ import print_function, unicode_literals
+
 from initat.cluster.backbone import db_tools
 
 from initat.cluster.backbone.server_enums import icswServiceEnum
@@ -31,7 +33,7 @@ from initat.report_server.generation import ReportGenerationProcess
 
 
 @server_mixins.RemoteCallProcess
-class server_process(
+class ServerProcess(
     server_mixins.ICSWBasePool,
     server_mixins.RemoteCallMixin,
     server_mixins.SendToRemoteServerMixin

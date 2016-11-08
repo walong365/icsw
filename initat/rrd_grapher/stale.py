@@ -19,8 +19,10 @@
 #
 """ check for stale and old graphs, part of rrd-grapher """
 
+from __future__ import print_function, unicode_literals
+
 import os
-import rrdtool  # @UnresolvedImport
+import rrdtool
 import stat
 import time
 

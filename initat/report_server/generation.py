@@ -18,6 +18,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ report-server, report part """
+
+from __future__ import print_function, unicode_literals
+
 import traceback
 import ast
 
@@ -27,6 +30,7 @@ from initat.cluster.backbone.models.report import ReportHistory
 from initat.tools import logging_tools, threading_tools
 from initat.report_server.config import global_config
 from initat.report_server.report import PDFReportGenerator, XlsxReportGenerator
+
 
 class ReportGenerationProcess(threading_tools.process_obj):
     def process_init(self):

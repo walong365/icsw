@@ -21,6 +21,8 @@
 #
 """ logcheck-server (to be run on a syslog_server), server process """
 
+from __future__ import print_function, unicode_literals
+
 import os
 
 import zmq
@@ -35,7 +37,7 @@ from initat.tools import server_mixins, configfile, logging_tools, \
 
 
 @server_mixins.RemoteCallProcess
-class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, server_mixins.SendToRemoteServerMixin):
+class ServerProcess(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin, server_mixins.SendToRemoteServerMixin):
     def __init__(self):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         self.CC.init(icswServiceEnum.logcheck_server, global_config)

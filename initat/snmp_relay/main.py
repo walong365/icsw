@@ -17,6 +17,8 @@
 #
 """ SNMP relayer """
 
+from __future__ import print_function, unicode_literals
+
 import os
 
 from initat.snmp_relay.config import global_config

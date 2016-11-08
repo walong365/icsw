@@ -17,6 +17,8 @@
 #
 """ SNMP relayer, server part """
 
+from __future__ import print_function, unicode_literals
+
 import difflib
 import os
 import socket
@@ -124,7 +126,7 @@ class server_process(server_mixins.ICSWBasePool):
         return self.__host_objects[host_tuple]
 
     def _int_error(self, err_cause):
-        self.log("_int_error() called, cause %s" % (str(err_cause)), logging_tools.LOG_LEVEL_WARN)
+        self.log("_int_error() called, cause {}".format(str(err_cause)), logging_tools.LOG_LEVEL_WARN)
         if not self.__snmp_running:
             self.log("exit already requested, ignoring", logging_tools.LOG_LEVEL_WARN)
         else:
@@ -156,10 +158,10 @@ class server_process(server_mixins.ICSWBasePool):
                 try:
                     os.unlink(file_name)
                 except:
-                    self.log("... %s" % (process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("... {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             wait_iter = 0
             while os.path.exists(file_name) and wait_iter < 100:
-                self.log("socket %s still exists, waiting" % (sock_name))
+                self.log("socket {} still exists, waiting".format(sock_name))
                 time.sleep(0.1)
                 wait_iter += 1
             cur_socket = self.zmq_context.socket(sock_type)
@@ -168,14 +170,14 @@ class server_process(server_mixins.ICSWBasePool):
                 # client.bind("tcp://*:8888")
             except zmq.ZMQError:
                 self.log(
-                    "error binding %s: %s" % (
+                    "error binding {}: {}".format(
                         short_sock_name,
                         process_tools.get_except_info()
                     ),
                     logging_tools.LOG_LEVEL_CRITICAL)
                 raise
             else:
-                setattr(self, "%s_socket" % (short_sock_name), cur_socket)
+                setattr(self, "{}_socket".format(short_sock_name), cur_socket)
                 os.chmod(file_name, 0777)
                 self.receiver_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
                 self.receiver_socket.setsockopt(zmq.RCVHWM, hwm_size)  # @UndefinedVariable
@@ -219,13 +221,13 @@ class server_process(server_mixins.ICSWBasePool):
                 except:
                     self.log("error looking up {}: {}".format(full_name, process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
             if ip_addr not in self.__ip_lut:
-                self.log("resolved %s to %s" % (target, ip_addr))
+                self.log("resolved {} to {}".format(target, ip_addr))
                 self.__ip_lut[ip_addr] = target
             self.__forward_lut[target] = ip_addr
-            self.log("ip resolving: %s -> %s" % (target, ip_addr))
+            self.log("ip resolving: {} -> {}".format(target, ip_addr))
             if orig_target != target:
                 self.__forward_lut[orig_target] = ip_addr
-                self.log("ip resolving: %s -> %s" % (orig_target, ip_addr))
+                self.log("ip resolving: {} -> {}".format(orig_target, ip_addr))
         return ip_addr
 
     def _snmp_finished(self, data):  # src_proc, src_pid, *args, **kwargs):
@@ -243,11 +245,21 @@ class server_process(server_mixins.ICSWBasePool):
             self.log("{}info for {}: {}".format(
                 "[F] " if num_refresh else "[I] ",
                 scheme.net_obj.name,
-                ", ".join(["%d %s" % (cur_num, info_str) for cur_num, info_str in [
-                    (num_cached, "cached"),
-                    (num_refresh, "to refresh"),
-                    (num_pending, "pending"),
-                    (num_hot_enough, "hot enough")] if cur_num])))
+                ", ".join(
+                    [
+                        "{:d} {}".format(
+                            cur_num,
+                            info_str
+                        ) for cur_num, info_str in [
+                            (num_cached, "cached"),
+                            (num_refresh, "to refresh"),
+                            (num_pending, "pending"),
+                            (num_hot_enough, "hot enough")
+                        ] if cur_num
+                    ]
+                )
+            )
+        )
         if num_refresh:
             self.__pending_schemes[scheme.envelope] = scheme
             self.spc.start_batch(*scheme.proc_data)
@@ -257,7 +269,7 @@ class server_process(server_mixins.ICSWBasePool):
     def _snmp_end(self, scheme):
         if self.__verbose > 3:
             self.log(
-                "snmp_end for %s, return_sent is %s, xml_input is %s" % (
+                "snmp_end for {}, return_sent is {}, xml_input is {}".format(
                     scheme.net_obj.name,
                     scheme.return_sent,
                     scheme.xml_input,
@@ -327,7 +339,7 @@ class server_process(server_mixins.ICSWBasePool):
                     if com_part:
                         raise ValueError("not fully parsed ({})".format(com_part))
                 except:
-                    self.log("error parsing %s" % (body), logging_tools.LOG_LEVEL_ERROR)
+                    self.log("error parsing {}".format(body), logging_tools.LOG_LEVEL_ERROR)
                     arg_list = []
                 host, snmp_version, snmp_community, timeout = parts[0:4]
                 timeout = int(timeout)
@@ -462,7 +474,7 @@ class server_process(server_mixins.ICSWBasePool):
             )
         self._check_ret_dict(envelope)
         self.sender_socket.send(envelope, zmq.SNDMORE)  # @UndefinedVariable
-        self.sender_socket.send_unicode(u"%d\0%s" % (ret_state, ret_str))
+        self.sender_socket.send_unicode(u"{:d}\0{}".format(ret_state, ret_str))
 
     def _send_return_xml(self, scheme):
         self._check_ret_dict(scheme.envelope)
@@ -476,7 +488,7 @@ class server_process(server_mixins.ICSWBasePool):
             if cur_time - self.__ret_dict[env_str] < max_sto:
                 if self.__verbose > 2:
                     self.log(
-                        "sleeping to avoid too fast resending (%.5f < %.5f) for %s" % (
+                        "sleeping to avoid too fast resending ({:.5f} < {:.5f}) for {}".format(
                             cur_time - self.__ret_dict[env_str],
                             max_sto,
                             env_str

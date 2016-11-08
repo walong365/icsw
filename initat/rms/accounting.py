@@ -27,6 +27,8 @@ in the PE-config (so we get one line per PE-Slave), hence we use the
 
 """
 
+from __future__ import print_function, unicode_literals
+
 import datetime
 import os
 import time

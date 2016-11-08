@@ -17,6 +17,8 @@
 #
 """ SNMP schemes for SNMP relayer """
 
+from __future__ import print_function, unicode_literals
+
 import socket
 import re
 
@@ -119,7 +121,7 @@ class host_process_scheme(SNMPRelayScheme):
                 if _dict:
                     for _key in sorted(_dict):
                         _value = _dict[_key]
-                        print _value
+                        print(_value)
                         info_f.append(
                             "{}@{:d}: {} {}".format(
                                 _value[2],

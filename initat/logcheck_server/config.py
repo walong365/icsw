@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2001-2008,2011-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2008,2011-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,6 +20,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ logcheck-server, global config """
+
+from __future__ import print_function, unicode_literals
 
 from initat.tools import configfile, process_tools
 

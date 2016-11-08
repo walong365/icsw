@@ -19,6 +19,8 @@
 #
 """ structures and functions for the grapher part of rrd-grapher service """
 
+from __future__ import print_function, unicode_literals
+
 import datetime
 import os
 import rrdtool

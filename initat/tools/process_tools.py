@@ -835,8 +835,10 @@ class cached_file(object):
                 self.log(
                     "error stating() {}: {}".format(
                         self.__name,
-                        get_except_info()),
-                    logging_tools.LOG_LEVEL_ERROR)
+                        get_except_info()
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
                 self.content = None
                 self.changed()
             else:
@@ -852,8 +854,10 @@ class cached_file(object):
                         self.log(
                             u"error reading from {}: {}".format(
                                 self.__name,
-                                get_except_info()),
-                            logging_tools.LOG_LEVEL_ERROR)
+                                get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                         self.content = None
                     else:
                         self.content = content
@@ -894,10 +898,18 @@ def append_pids(name, pid=None, mode="a"):
             pass
     long_mode = {
         "a": "appending",
-        "w": "writing"
+        "w": "writing",
     }[mode]
     try:
-        open(fname, mode).write("\n".join(["{:d}".format(cur_p) for cur_p in actp] + [""]))
+        open(fname, mode).write(
+            "\n".join(
+                [
+                    "{:d}".format(cur_p) for cur_p in actp
+                ] + [
+                    ""
+                ]
+            )
+        )
     except:
         logging_tools.my_syslog(
             "error {} {} ({}) to {}: {}".format(
@@ -933,28 +945,34 @@ def remove_pids(name, pid=None):
         fname = name
     else:
         fname = "{}.pid".format(os.path.join(RUN_DIR, name))
-    try:
-        pid_lines = [entry.strip() for entry in open(fname, "r").read().split("\n")]
-    except:
-        logging_tools.my_syslog("error interpreting file: {}".format(get_except_info()))
-    else:
-        for del_pid in actp:
-            num_removed = 0
-            new_lines = []
-            for line in pid_lines:
-                if line == str(del_pid):
-                    num_removed += 1
-                else:
-                    new_lines.append(line)
-            pid_lines = new_lines
+    if os.path.isfile(fname):
         try:
-            open(fname, "w").write("\n".join(pid_lines))
-            os.chmod(fname, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+            pid_lines = [entry.strip() for entry in open(fname, "r").read().split("\n")]
         except:
-            logging_tools.my_syslog("error removing {:d} pids ({}) to {}".format(
-                len(actp),
-                ",".join(["{:d}".format(line) for line in actp]),
-                fname))
+            logging_tools.my_syslog("error interpreting file: {}".format(get_except_info()))
+        else:
+            for del_pid in actp:
+                num_removed = 0
+                new_lines = []
+                for line in pid_lines:
+                    if line == str(del_pid):
+                        num_removed += 1
+                    else:
+                        new_lines.append(line)
+                pid_lines = new_lines
+            try:
+                open(fname, "w").write("\n".join(pid_lines))
+                os.chmod(fname, stat.S_IRUSR | stat.S_IWUSR | stat.S_IRGRP | stat.S_IROTH)
+            except:
+                logging_tools.my_syslog(
+                    "error removing {:d} pids ({}) to {}".format(
+                        len(actp),
+                        ",".join(["{:d}".format(line) for line in actp]),
+                        fname
+                    )
+                )
+    else:
+        logging_tools.my_syslog("pidfile {} does not exist".format(fname))
 
 
 def delete_pid(name):
