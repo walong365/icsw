@@ -1,3 +1,7 @@
+<script type="text/ng-template" id="icsw/main/device/location.html">
+    <icsw-config-location></icsw-config-location>
+</script>
+
 <script type="text/ng-template" id="icsw/main/category/tree.html">
     <div class="container-fluid">
         <uib-tabset>
@@ -12,10 +16,13 @@
     </div>
 </script>
 
-<script type="text/ng-template" id="icsw/main/device/location.html">
+<script type="text/ng-template" id="icsw.config.location">
     <div class="container-fluid">
         <uib-tabset icsw-config-location-tab-helper icsw-config-location-gfx-enhance-helper>
-            <uib-tab heading="Location Configuration" select="set_active_tab('conf')">
+            <uib-tab heading="Manage Locations" select="set_active_tab('avail')">
+                <icsw-config-category-tree-edit mode="location"></icsw-config-category-tree-edit>
+            </uib-tab>
+            <uib-tab heading="Configure Locations" select="set_active_tab('conf')">
                 <icsw-config-category-location-map-edit
                     preview-gfx="preview_gfx"
                     active-tab="active_tab"
@@ -35,9 +42,6 @@
                         </icsw-config-category-tree-map-enhance>
                     </uib-tab>
                 </uib-tabset>
-            </uib-tab>
-            <uib-tab heading="Manage Locations" select="set_active_tab('avail')">
-                <icsw-config-category-tree-edit mode="location"></icsw-config-category-tree-edit>
             </uib-tab>
         </uib-tabset>
     </div>
