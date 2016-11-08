@@ -61,16 +61,37 @@ th.icsw-config-rotate {
 
 th.icsw-config-rotate > div {
     transform:
-        translate(8px, -12px)
-        rotate(315deg);
+        translate(18px, -9px)
+        rotate(-40deg);
     width: 30px;
+    font-size: 12px;
 }
 
 th.icsw-config-rotate > div > span {
   border-bottom: 1px solid #ccc;
   padding: 5px 10px;
 }
-
+/*
+th.icsw-config-rotate {
+    text-align:center;
+    white-space:nowrap;
+    transform:
+        translate(80px, -2px)
+        rotate(-45deg);
+    width: 30px;
+}
+th.icsw-config-rotate > div {
+    margin:0 -999px;/* virtually reduce space needed on width to very little * /
+    display:inline-block;
+}
+th.icsw-config-rotate div:before {
+    content:'';
+    width:0;
+    padding-top:70%;
+    /* takes width as reference, + 10% for faking some extra padding * /
+    display:inline-block;
+    vertical-align:middle;
+}*/
 .angular-google-map-container {
     height: 480px;
 }
@@ -264,7 +285,7 @@ icsw-connect-element-display .panel[layout_unlocked="false"] h4 {
 }
 .maxwidth500 {
     max-width: 500px;
-    min-size: 240px;
+    min-width: 240px;
 }
 .icsw-buttoncol {
     max-width: 765px;

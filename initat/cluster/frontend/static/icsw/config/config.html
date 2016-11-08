@@ -826,20 +826,20 @@
 
 <script type="text/ng-template" id="icsw.mon.check.command.form">
     <form class="form-horizontal" name="form_data">
-        <h2>Check command '{{ edit_obj.name }}'</h2>
+        <h3>Check command '{{ edit_obj.name }}'</h3>
         <uib-tabset>
             <uib-tab heading="Basic setup">
                 <fieldset>
-                    <legend>Basic settings</legend>
+                    <legend>Basic Settings</legend>
                     <div class="form-group" ng-if="!fixed_config">
                         <label class="control-label col-sm-2 icsw-formlabel">
                             Configuration
                         </label>
 
                         <div class="controls col-sm-9">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                            <div class="maxwidth500">
                                 <ui-select ng-model="edit_obj.config" ng-disabled="false">
-                                    <ui-select-match class="ui-select-match" placeholder="please select a configuration">
+                                    <ui-select-match class="ui-select-match" placeholder="Please select a Configuration">
                                         {{ $select.selected.name }}
                                     </ui-select-match>
                                     <ui-select-choices
@@ -857,7 +857,7 @@
                         </label>
 
                         <div class="controls col-sm-9">
-                            <input class="textinput textInput form-control" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" maxlength="192" name="name" ng-model="edit_obj.name" required="True" type="text"/>
                         </div>
                     </div>
                     <div class="form-group">
@@ -866,18 +866,18 @@
                         </label>
 
                         <div class="controls col-sm-9">
-                            <input class="textinput textInput form-control" maxlength="192" name="description" ng-model="edit_obj.description" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" maxlength="192" name="description" ng-model="edit_obj.description" type="text"/>
                         </div>
                     </div>
                     <div class="form-group" ng-show="edit_obj.is_active">
                         <label class="control-label col-sm-2 icsw-formlabel">
-                            Special MonCheck command
+                            Special MonCheck Command
                         </label>
 
                         <div class="controls col-sm-9">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                            <div class="maxwidth500 input-group">
                                 <ui-select ng-model="edit_obj.mon_check_command_special" ng-disabled="false">
-                                    <ui-select-match class="ui-select-match" placeholder="please select a special command">
+                                    <ui-select-match class="ui-select-match" placeholder="Please select a Special Command">
                                         {{$select.selected.info}}
                                     </ui-select-match>
                                     <ui-select-choices class="ui-select-choices" repeat="value.idx as value in mccs_list | props_filter:{name:$select.search}" group-by="'group'">
@@ -898,11 +898,11 @@
                     </div>
                     <div class="form-group" ng-if="!edit_obj.mon_check_command_special && edit_obj.is_active">
                         <label class="control-label col-sm-2 requiredField icsw-formlabel">
-                            Command line<span class="asteriskField">*</span>
+                            Command Line<span class="asteriskField">*</span>
                         </label>
 
                         <div class="controls col-sm-9">
-                            <input class="textinput textInput form-control" maxlength="765" name="command_line" ng-model="edit_obj.command_line" required="True" type="text"/>
+                            <input class="textinput textInput form-control maxwidth500" maxlength="765" name="command_line" ng-model="edit_obj.command_line" required="True" type="text"/>
                         </div>
                     </div>
                     <div class="form-group" ng-show="edit_obj.mon_check_command_special">
@@ -929,11 +929,11 @@
                         </div>
                     </div>
                     <div class="form-group" ng-show="!edit_obj.mon_check_command_special && edit_obj.is_active">
-                        <label class="control-label col-sm-2 icsw-formlabel">Info</label>
+                        <label class="control-label col-sm-2 icsw-formlabel">Information</label>
 
                         <div class="col-sm-9 list-group">
                             <ul>
-                                <li class="list-group-item" ng-repeat="value in get_moncc_info(edit_obj)">
+                                <li class="list-group-item maxwidth500" ng-repeat="value in get_moncc_info(edit_obj)">
                                     {{ value }}
                                 </li>
                             </ul>
@@ -941,13 +941,13 @@
                     </div>
                 </fieldset>
                 <fieldset>
-                    <legend>Additional settings</legend>
+                    <legend>Additional Settings</legend>
                     <div class="form-group">
                         <label class="control-label col-sm-2 icsw-formlabel">
                             Monitoring Service Template
                         </label>
                         <div class="controls col-sm-9">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                            <div class="maxwidth500 input-group">
                                 <ui-select ng-model="edit_obj.mon_service_templ" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="please select a service template">
                                         {{ $select.selected.name }}
@@ -966,11 +966,11 @@
                     </div>
                     <div class="form-group" ng-show="!edit_obj.is_event_handler && get_event_handlers(edit_obj).length">
                         <label class="control-label col-sm-2 icsw-formlabel">
-                            Event handler
+                            Event Handler
                         </label>
 
                         <div class="controls col-sm-9">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                            <div class="maxwidth500 input-group">
                                 <ui-select ng-model="edit_obj.event_handler" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="please select an event handler">
                                         {{ $select.selected.name }}
@@ -985,9 +985,9 @@
                     </div>
                 </fieldset>
                 <fieldset ng-show="!edit_obj.mon_check_command_special && !edit_obj.is_event_handler">
-                    <legend>Active / passive settings</legend>
+                    <legend>Active / Passive Settings</legend>
                     <div class="form-group">
-                        <div class="checkbox">
+                        <div class="">
                             <div class="controls col-lg-offset-0 col-sm-9">
                                 <label>
                                     <icsw-tools-yes-no-small flag="edit_obj.is_active"></icsw-tools-yes-no-small>
@@ -996,7 +996,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="form-group col-sm-12" ng-show="!edit_obj.is_active"><b>Set result via</b></div>
+                    <div class="form-group col-sm-12" ng-show="!edit_obj.is_active"><b>Set Result via</b></div>
                     <div class="form-group col-sm-12" ng-show="!edit_obj.is_active">
                         <code>
                         /opt/cluster/bin/set_passive_checkresult.py --device &lt;FQDN&gt; --check {{ edit_obj.name }}
@@ -1009,7 +1009,7 @@
                     <div class="row">
                         <div class="col-md-4">
                             <div class="form-group">
-                                <div class="checkbox">
+                                <div class="">
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
                                             <icsw-tools-yes-no-small flag="edit_obj.volatile"></icsw-tools-yes-no-small>
@@ -1019,7 +1019,7 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <div class="checkbox">
+                                <div class="">
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
                                             <icsw-tools-yes-no-small flag="edit_obj.enable_perfdata"></icsw-tools-yes-no-small>
@@ -1031,7 +1031,7 @@
                         </div>
                         <div class="col-md-6">
                             <div class="form-group">
-                                <div class="checkbox">
+                                <div class="">
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
                                             <icsw-tools-yes-no-small flag="edit_obj.event_handler_enabled"></icsw-tools-yes-no-small>
@@ -1041,7 +1041,7 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <div class="checkbox" ng-show="edit_obj.event_handler == undefined">
+                                <div class="" ng-show="edit_obj.event_handler == undefined">
                                     <div class="controls col-lg-offset-0 col-sm-9">
                                         <label>
                                             <icsw-tools-yes-no-small flag="edit_obj.is_event_handler"></icsw-tools-yes-no-small>
