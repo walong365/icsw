@@ -250,6 +250,24 @@ body.condensed .submenu-bar{
     from {   background-image: linear-gradient(to bottom, #f0f0f0, #f0f0f0); }
     to {    background-image: linear-gradient(to bottom, #cccccc, #cccccc);}
 }
+.navbar-right .task-wizard {
+    padding: 43px 0 0 0!important;
+}
+.navbar-right.condensed .task-wizard {
+    padding: 17px 0 0 0!important;
+}
+.ova-statusbutton {
+    margin: 30px 0 0 5px;
+}
+body.condensed .ova-statusbutton {
+    margin: 8px 0 0 5px;
+}
+a.bttn-bgjobs {
+    padding: 43px 0 0 5px!important;
+}
+.navbar-right.condensed a.bttn-bgjobs {
+    padding: 15px 0 0 5px!important;
+}
 .icswMenuDeact,
 .icswMenuDeact:hover{
     cursor: not-allowed;

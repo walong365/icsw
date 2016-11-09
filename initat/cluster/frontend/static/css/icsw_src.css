@@ -444,14 +444,35 @@ div.yamm hr {
     margin-top: 5px;
 }
 .navbar-right .task-wizard {
-    padding: 28.5px 0 0 0!important;
+    padding: 25px 0 0 0!important;
 }
 .navbar-right.condensed .task-wizard {
-    padding: 18.5px 0 0 0!important;
+    padding: 14px 0 0 0!important;
 }
 .navbar-right .task-wizard .wizardbutton{
     padding: 4px;
     font-size: 17px;
+}
+.ova-statusbutton td {
+    font-size: 12px;
+    font-weight: bold;
+    color: #666666;
+}
+.ova-statusbutton {
+    margin: 23px 0 0 5px;
+}
+body.condensed .ova-statusbutton {
+    margin: 5px 0 0 5px;
+}
+a.bttn-bgjobs {
+    padding: 23px 0 0 5px!important;
+}
+.navbar-right.condensed a.bttn-bgjobs {
+    padding: 14px 0 0 5px!important;
+}
+a.bttn-bgjobs button{
+    font-size: 14px;
+    font-weight: bold;
 }
 /* MENU END */
 
@@ -473,34 +494,4 @@ li.animateTab > a:after {
     animation-duration: 0.3s;
     animation-iteration-count: 3;
     animation-timing-function: ease-out;
-}
-.ova-statusbutton td {
-    font-size: 12px;
-    font-weight: bold;
-    color: #666666;
-}
-.ova-statusbutton {
-    margin: 16.5px 0 0 5px;
-}
-body.condensed .ova-statusbutton {
-    margin: 6.5px 0 0 5px;
-}
-
-.setupsteps {
-    padding: 28px 20px;
-}
-
-/* Make the badge float in the top right corner of the button */
-.setupsteps__badge {
-  margin: 19px 15px 0 0;
-  background-color: #fa3e3e;
-  border-radius: 2px;
-  color: white;
-
-  padding: 1px 3px;
-  font-size: 10px;
-
-  position: absolute; /* Position the badge within the relatively positioned button */
-  top: 0;
-  right: 0;
 }
