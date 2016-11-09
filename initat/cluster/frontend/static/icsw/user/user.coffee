@@ -240,7 +240,7 @@ user_module = angular.module(
     "Restangular", "icswUser", "icswTreeBase", "icswThemeService",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, $rootScope, ICSW_SIGNALS,
-    Restangular, icswUser, icswTreeBase, icswThemeService
+    Restangular, icswUser, icswTreeBase, icswThemeService,
 ) ->
     class icswUserService extends icswTreeBase
         get: () =>
@@ -275,10 +275,17 @@ user_module = angular.module(
                 # not authenticated, no signal to send
                 return null
 
-        update: () =>
+        update_user: () =>
+            # update user, called from account
+            @new_data_set()
             result = @get_result()
-            icswThemeService.setcurrent(result.user.ui_theme_selection)
             return result.update_user()
+
+        new_data_set: () =>
+            # called from icswTreeBase
+            result = @get_result()
+            # send theme to themeservice
+            icswThemeService.setcurrent(result.user.ui_theme_selection)
 
     return new icswUserService(
         "User"
@@ -1307,7 +1314,7 @@ user_module = angular.module(
 
     $scope.update_account = () ->
         blockUI.start("saving account changes")
-        icswUserService.update().then(
+        icswUserService.update_user().then(
            (data) ->
                blockUI.stop()
            (resp) ->
@@ -1936,7 +1943,6 @@ user_module = angular.module(
                     if $scope.object.idx? and $scope.object.idx
                         _role_idxs.push($scope.object.idx)
                 else
-                    console.log "*", $scope
                     for role in $scope.object.roles
                         _role_idxs.push(role)
                 for _role_idx in _role_idxs

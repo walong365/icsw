@@ -61,6 +61,12 @@ angular.module(
         cluster_data: undefined
         # login form disabled
         disabled: true
+        # show icsw info
+        show_info: false
+        # databases
+        icsw_databases: []
+        # active database idx
+        active_database_idx: ""
     }
     $scope.init_login = () ->
         $q.all(
@@ -92,7 +98,8 @@ angular.module(
                 # show loginform when we know which kind of product it is
                 $scope.struct.data_valid = true
                 # current user is still valid, force logout
-
+                $scope.struct.icsw_databases = angular.fromJson($(xml).find("value[name='icsw_databases']").text())
+                $scope.struct.active_database_idx = $(xml).find("value[name='active_database_idx']").text()
                 if data[3].is_authenticated()
                     $state.go("logout")
                 if first_call

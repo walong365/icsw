@@ -239,6 +239,14 @@ class login_addons(View):
         request.xml_response["next_url"] = _next_url or ""
         request.xml_response["theme_default"] = settings.THEME_DEFAULT
         request.xml_response["password_character_count"] = "{:d}".format(_cs["password.character.count"])
+        request.xml_response["icsw_databases"] = json.dumps(
+            [
+                {
+                    _key.replace(".", "_"): _value for _key, _value in _entry.iteritems()
+                } for _entry in settings.ICSW_DATABASE_DICT.values()
+            ]
+        )
+        request.xml_response["active_database_idx"] = settings.ICSW_ACTIVE_DATABASE_IDX
 
 
 class ThemeViewSet(viewsets.ViewSet):

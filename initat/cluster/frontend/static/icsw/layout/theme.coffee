@@ -31,6 +31,8 @@ angular.module(
 ) ->
     _theme_list = []
     _theme_lut = {}
+    _theme_set = false
+    _pending_sets = []
     Restangular.all(ICSW_URLS.SESSION_GET_THEME_SETUP.slice(1)).getList().then(
         (data) ->
             _t_setup = data.plain()
@@ -42,9 +44,18 @@ angular.module(
                 _idx++
                 _theme_list.push(entry)
             _theme_lut = _.keyBy(_theme_list, (entry) -> return entry.short)
+            _theme_set = true
+            _process_pending_sets()
     )
+
+    _process_pending_sets = () ->
+        if _pending_sets.length
+            console.log("handling #{_pending_sets.length} pending theme selections")
+            for entry in _pending_sets
+                activate(entry)
+            _pending_sets.length = 0
+
     activate = (theme) ->
-        default_theme = $window.sessionStorage.getItem('default_theme')
         # normalize value
         theme = _.get(
             {
@@ -53,17 +64,21 @@ angular.module(
             theme
             theme
         )
-        if not _theme_lut[theme]
-            theme = default_theme
-            console.log("theme does not exist, setting default theme:", theme)
-        maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
-        maintheme_tag.setAttribute("href", "static/theme_#{theme}.css")
-        $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then(
-            (response) ->
-                svgstyle_tag = angular.element.find("style[icsw-layout-svg-style]")[0]
-                data = if response.data? then response.data else response
-                svgstyle_tag.innerHTML = data
-            )
+        if not _theme_set
+            _pending_sets.push(theme)
+        else
+            if not _theme_lut[theme]
+                default_theme = $window.sessionStorage.getItem('default_theme')
+                console.warn("theme '#{theme}' does not exist, setting default theme '#{default_theme}'")
+                theme = default_theme
+            maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
+            maintheme_tag.setAttribute("href", "static/theme_#{theme}.css")
+            $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then(
+                (response) ->
+                    svgstyle_tag = angular.element.find("style[icsw-layout-svg-style]")[0]
+                    data = if response.data? then response.data else response
+                    svgstyle_tag.innerHTML = data
+                )
 
     setdefault = (default_theme) =>
         $window.sessionStorage.setItem('default_theme', default_theme)

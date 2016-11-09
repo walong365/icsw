@@ -1813,10 +1813,13 @@ angular.module(
                         # load should be canceled, for forced logout for instance
                         @_cancel_load = false
                     else
+                        # result already set, update result
                         if @_result?
                             @update_result(data...)
                         else
                             @init_result(data...)
+                        if @new_data_set?
+                            @new_data_set()
                         @send_results()
                         # signal if required
                         _send_signal = @_get_load_signal(@_result)

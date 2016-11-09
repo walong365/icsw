@@ -148,9 +148,14 @@ else:
 
 def _read_db_settings(store, key):
     if key is None:
-        return store.get_dict()
+        _r_dict = store.get_dict()
+        _r_dict["idx"] = "0"
     else:
-        return store[key]
+        _r_dict = store[key]
+        _r_dict["idx"] = key
+    if "db.info" not in _r_dict:
+        _r_dict["db.info"] = "Database {}".format(_r_dict["idx"])
+    return _r_dict
 
 _multi_db_prefix = "db"
 
@@ -180,6 +185,8 @@ else:
     ICSW_DATABASE_DICT = {
         "0": _read_db_settings(_ps, None)
     }
+
+ICSW_ACTIVE_DATABASE_IDX = _db_idx
 
 _database_dict = ICSW_DATABASE_DICT[_db_idx]
 

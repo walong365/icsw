@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Bernhard Mallinger
+# Copyright (C) 2015-2016 Bernhard Mallinger
 #
 # Send feedback to: <mallinger@init.at>
 #
@@ -23,12 +23,12 @@ import json
 import time
 
 from django.db import transaction
-from initat.tools import logging_tools
 
-from initat.cluster_server.modules import cs_base_class
-from initat.cluster.backbone.models import DeleteRequest
 import initat
+from initat.cluster.backbone.models import DeleteRequest
 from initat.cluster.backbone.models.functions import can_delete_obj
+from initat.cluster_server.modules import cs_base_class
+from initat.tools import logging_tools
 
 
 class handle_delete_requests(cs_base_class.server_com):
