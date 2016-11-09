@@ -905,7 +905,7 @@ class DeviceClassViewSet(viewsets.ViewSet):
 
 from initat.tools import logging_tools, process_tools, server_command
 from initat.cluster.backbone.models import DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch, user, \
-    device_mon_location
+    category
 import pytz
 import ast
 
@@ -1061,9 +1061,12 @@ class SystemCompletion(View):
         user_count = user.objects.all().count() - 1
 
         info_dict["users"] = user_count
-        info_dict["users_text"] = "{} User".format(user_count)
+        info_dict["users_text"] = "{} (non-admin) User".format(user_count)
 
-        locations_count = device_mon_location.objects.all().count()
+        locations_count = 0
+        for _category in category.objects.all():
+            if _category.full_name.startswith("/location/"):
+                locations_count += 1
 
         info_dict["locations"] = locations_count
         info_dict["locations_text"] = "{} Location".format(locations_count)
