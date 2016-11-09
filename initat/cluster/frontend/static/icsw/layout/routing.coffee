@@ -58,12 +58,12 @@ menu_module = angular.module(
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
     "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS", "icswThemeService",
-    "toaster", "icswMenuSettings",
+    "icswMenuSettings",
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
     icswBreadcrumbs, $state, $window, Restangular, ICSW_URLS, icswThemeService,
-    toaster, icswMenuSettings,
+    icswMenuSettings,
 ) ->
     _bind_keys = () ->
         hotkeys.bindTo($scope).add(

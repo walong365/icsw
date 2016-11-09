@@ -592,7 +592,7 @@ class server_check(object):
             else:
                 if self.device:
                     # get config
-                    _co = config.objects  # @UndefinedVariable
+                    _co = config.objects
                     if self.__server_type is None:
                         _queries = [
                             (
@@ -1048,8 +1048,7 @@ class device_with_config(dict):
                 "device__is_meta_device",
             ]
         direct_list = direct_list.select_related(
-            "device",
-            "config",
+            "config__config_service_enum",
             "device__device_group",
         ).values_list(
             *_value_list
@@ -1063,7 +1062,9 @@ class device_with_config(dict):
                 "domain_tree_node"
             ).filter(
                 Q(device_group__in=exp_group)
-            ).values_list("name", "pk", "device_group", "is_meta_device"):
+            ).values_list(
+                "name", "pk", "device_group", "is_meta_device"
+            ):
                 if not group_dev[3]:
                     group_dict.setdefault(group_dev[2], []).append(group_dev)
                 else:

@@ -46,10 +46,14 @@
                 </div>
             </div>
         </div>
-        <div class="panel panel-default" ng-show="showicswinfo" class="ng-cloak" style="position:absolute;right:0;bottom:0;">
+        <div class="panel panel-default" ng-show="struct.show_info" class="ng-cloak" style="position:absolute; right:0; bottom:0;">
             <div class="panel-heading">
-                <h3 class="panel-title"><div class="bootstrap-dialog-close-button" style="display: block;"><button class="close" ng-click="showicswinfo=false">×</button></div>
-                    &nbsp;</h3>
+                <h3 class="panel-title">
+                    <div class="bootstrap-dialog-close-button" style="display: block;">
+                        <button class="close" ng-click="struct.show_info=false">×</button>
+                    </div>
+                    &nbsp;
+                </h3>
             </div>
             <div class="panel-body" style="background-color:rgba(255, 255, 255, 0.1)">
                 <fieldset>
@@ -61,6 +65,17 @@
                     <p class="text-right" ng-show="struct.cluster_data.DATABASE_VERSION">
                         Version info is {{ struct.cluster_data.DATABASE_VERSION }}[D] {{ struct.cluster_data.SOFTWARE_VERSION }}[S] {{ struct.cluster_data.MODELS_VERSION }}[M]
                     </p>
+                </fieldset>
+                <fieldset>
+                    <legend>Database information</legend>
+                    <ui-select ng-model="struct.active_database_idx" style="max-width:400px; min-width:400px;">
+                        <ui-select-match class="ui-select-match" placeholder="Select a database to use">
+                            {{ $select.selected.db_info }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.icsw_databases">
+                            <div ng-bind-html="value.db_info | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
                 </fieldset>
                 <fieldset>
                     <legend>License Information</legend>
@@ -86,9 +101,10 @@
                 </fieldset>
             </div>
         </div>
-        <div style="position:absolute;right:0;bottom:0;" ng-show="!showicswinfo" class="hidden-xs">
-            <button id="showicswinfobttn" ng-click="showicswinfo=true" class="btn btn-sm btn-info">
-                <i class="fa fa-info-circle" aria-hidden="true" style="font-size:20px;"></i></button>
+        <div style="position:absolute;right:0;bottom:0;" ng-show="!struct.show_info" class="hidden-xs">
+            <button ng-click="struct.show_info=true" class="btn btn-sm btn-info">
+                <i class="fa fa-info-circle" aria-hidden="true" style="font-size:20px;"></i>
+            </button>
         </div>
     </div>
 </script>
