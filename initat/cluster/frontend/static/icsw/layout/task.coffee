@@ -159,7 +159,7 @@ angular.module(
             hotkeys.del("f6")
 
     _signal = () ->
-        $rootScope.$emit(ICSW_SIGNALS("ICSW_PROCESS_SETTINGS_CHANGED"))
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_TASK_SETTINGS_CHANGED"))
 
     _init_tasks = () ->
         _task_list = ICSW_CONFIG_JSON.tasks.task
@@ -261,7 +261,7 @@ angular.module(
 
         componentWillMount: () ->
             @setState({struct: icswTaskService.get_struct()})
-            @_dereg_handler = $rootScope.$on(ICSW_SIGNALS("ICSW_PROCESS_SETTINGS_CHANGED"), () =>
+            @_dereg_handler = $rootScope.$on(ICSW_SIGNALS("ICSW_TASK_SETTINGS_CHANGED"), () =>
                 console.log "ipc"
                 @force_redraw()
             )
