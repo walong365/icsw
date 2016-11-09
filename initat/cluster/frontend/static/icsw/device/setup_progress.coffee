@@ -44,12 +44,12 @@ setup_progress = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
     "icswDeviceTreeService", "$timeout", "DeviceOverviewService", "icswUserGroupRoleTreeService",
-    "icswToolsSimpleModalService"
+    "icswToolsSimpleModalService", "SetupProgressHelper", "ICSW_SIGNALS", "$rootScope"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
     icswDeviceTreeService, $timeout, DeviceOverviewService, icswUserGroupRoleTreeService,
-    icswToolsSimpleModalService
+    icswToolsSimpleModalService, SetupProgressHelper, ICSW_SIGNALS, $rootScope
 ) ->
     $scope.struct = {
         # selected devices
@@ -84,6 +84,8 @@ setup_progress = angular.module(
         show_extended_information_button_value: "Off"
         show_extended_information_button_class: "btn btn-default"
         show_extended_information_button_enabled: false
+
+        tasks: []
     }
 
     info_not_available_class = "alert-danger"
@@ -275,7 +277,7 @@ setup_progress = angular.module(
         $scope.struct.tabs.push(o)
         $timeout(
             () ->
-                $scope.struct.active_tab_index = $scope.struct.tabs.length + 1
+                $scope.struct.active_tab_index = $scope.struct.tabs.length + 2
             0
         )
 
@@ -314,7 +316,7 @@ setup_progress = angular.module(
         $scope.struct.tabs.push(o)
         $timeout(
             () ->
-                $scope.struct.active_tab_index = $scope.struct.tabs.length + 1
+                $scope.struct.active_tab_index = $scope.struct.tabs.length + 2
             0
         )
 
@@ -380,6 +382,10 @@ setup_progress = angular.module(
     $scope.device_overview_tab_clicked = () ->
         perform_refresh_for_device_status(true)
 
+    $scope.setup_tasks_tab_clicked = () ->
+        perform_refresh_for_system_status()
+        setup_tasks()
+
     $scope.show_extended_information_button_pressed = () ->
         $scope.struct.show_extended_information_button_enabled = !$scope.struct.show_extended_information_button_enabled
 
@@ -391,4 +397,99 @@ setup_progress = angular.module(
             $scope.struct.show_extended_information_button_class = "btn btn-default"
 
 
+    setup_tasks = () ->
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_OPEN_SETUP_TASKS_CHANGED"))
+        tasks = [
+            [1, "Add at least one Device to the system", "devices", 4],
+            [2, "Add at least one monitoring check to the system", "monitoring_checks", 5],
+            [3, "Add at least one user to the system (excluding the admin user)", "users", 6],
+            [4, "Add at least one location to the system", "locations", 7]
+        ]
+
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                info_list_names = [
+                    "devices",
+                    "monitoring_checks"
+                    "users"
+                    "locations"
+                ]
+
+                info_list_dict = {}
+
+                for info_list_name in info_list_names
+                    info_list_dict[info_list_name] = data[info_list_name]
+
+                $scope.struct.tasks.length = 0
+
+                for task_struct in tasks
+                    task_number = task_struct[0]
+                    task_description = task_struct[1]
+                    info_list_name = task_struct[2]
+                    setup_type = task_struct[3]
+
+                    task = {}
+                    task.task_number = task_number
+                    task.task_description = task_description
+                    task.setup_type = setup_type
+
+                    if info_list_dict[info_list_name] > 0
+                        task.task_bg_color_class = "success"
+                        task.task_icon_class = "fa-check"
+                    else
+                        task.task_bg_color_class = "danger"
+                        task.task_icon_class = "fa-times"
+
+                    $scope.struct.tasks.push(task)
+        )
+
+    setup_tasks()
+
+    $scope.$on("$destroy", () ->
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_OPEN_SETUP_TASKS_CHANGED"))
+    )
+
+]).service("SetupProgressHelper",
+[
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall"
+(
+    $q, ICSW_URLS, icswSimpleAjaxCall
+) ->
+
+    _unfulfilled_setup_tasks = () ->
+        defer = $q.defer()
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                info_list_names = [
+                    "devices",
+                    "monitoring_checks"
+                    "users"
+                    "locations"
+                ]
+
+                unfilled_tasks = 0
+
+                for info_list_name in info_list_names
+                    if data[info_list_name] == 0
+                        unfilled_tasks += 1
+
+                defer.resolve(unfilled_tasks)
+        )
+
+        return defer.promise
+
+    return {
+        unfulfilled_setup_tasks: () ->
+            return _unfulfilled_setup_tasks()
+    }
 ])

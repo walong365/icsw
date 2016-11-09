@@ -904,7 +904,7 @@ user_module = angular.module(
         handle_click: (event, entry) =>
             @clear_active()
             entry.set_active(true)
-            @scope.add_edit_object_from_tree(entry)
+            @scope.add_edit_object_from_tree(entry, event)
             @scope.$digest()
 
 ]).service("icswDiskUsageTree",
@@ -973,10 +973,12 @@ user_module = angular.module(
         edit_roles: []
         edit_groups: []
         edit_users: []
+        activetab: 0
+        tabmaxid: 0
     }
 
     $scope.reload = () ->
-        $scope.struct.error_string = "loading tree..."
+        $scope.struct.error_string = "Loading Tree ..."
         $scope.struct.edit_roles.length = 0
         $scope.struct.edit_groups.length = 0
         $scope.struct.edit_users.length = 0
@@ -1124,17 +1126,17 @@ user_module = angular.module(
 
     # edit object functions
 
-    $scope.add_edit_object_from_tree = (treenode) ->
+    $scope.add_edit_object_from_tree = (treenode, event) ->
         if treenode._node_type == "r"
             if treenode._depth
                 # do not edit top-level role
-                $scope.add_edit_object(treenode.obj, "role")
+                $scope.add_edit_object(treenode.obj, "role", event)
         else if treenode._node_type == "g"
-            $scope.add_edit_object(treenode.obj, "group")
+            $scope.add_edit_object(treenode.obj, "group", event)
         else
-            $scope.add_edit_object(treenode.obj, "user")
+            $scope.add_edit_object(treenode.obj, "user", event)
 
-    $scope.add_edit_object = (obj, obj_type) ->
+    $scope.add_edit_object = (obj, obj_type, event) ->
         if obj_type == "role"
             ref_list = $scope.struct.edit_roles
             bu_def = icswRoleBackup
@@ -1148,7 +1150,13 @@ user_module = angular.module(
             bu_obj = new bu_def()
             bu_obj.create_backup(obj)
             # console.log bu_obj, obj
+            $scope.struct.tabmaxid += 1
+            obj.tabindex = $scope.struct.tabmaxid + 1
             ref_list.push(obj)
+        if !event.shiftKey
+            $timeout(() ->
+                $scope.struct.activetab = obj.tabindex
+            , 0)
 
     # close open tabs
 
@@ -1194,7 +1202,7 @@ user_module = angular.module(
     $scope.changed = (object) ->
         return icswBackupTools.changed(object)
 
-    $scope.create_role = () ->
+    $scope.create_role = (event) ->
         new_role = {
             $$changed: true
             name: "New Role"
@@ -1203,9 +1211,9 @@ user_module = angular.module(
             rolepermission_set: []
             roleobjectpermission_set: []
         }
-        $scope.add_edit_object(new_role, "role")
+        $scope.add_edit_object(new_role, "role", event)
 
-    $scope.create_group = () ->
+    $scope.create_group = (event) ->
         gid = 200
         gids = (entry.gid for entry in $scope.struct.ugr_tree.group_list)
         for entry in $scope.struct.edit_groups
@@ -1221,9 +1229,9 @@ user_module = angular.module(
             group_quota_setting_set: []
             roles: []
         }
-        $scope.add_edit_object(new_group, "group")
+        $scope.add_edit_object(new_group, "group", event)
 
-    $scope.create_user = () ->
+    $scope.create_user = (event) ->
         uid = 200
         uids = (entry.uid for entry in $scope.struct.ugr_tree.user_list)
         for entry in $scope.struct.edit_users
@@ -1244,7 +1252,7 @@ user_module = angular.module(
             user_quota_setting_set: []
             roles: []
         }
-        $scope.add_edit_object(new_user, "user")
+        $scope.add_edit_object(new_user, "user", event)
 
     $scope.sync_users = () ->
         blockUI.start("Sending sync to server ...")
@@ -2319,7 +2327,7 @@ user_module = angular.module(
             # chord code
             svg = @d3_element.append("svg").attr("width", diameter).attr("height", diameter).append("g").attr("transform", "translate(#{outer_radius},#{outer_radius})")
             chord = @d3.chord().padAngle(0.05)
-            console.log "c=", chord(matrix)
+            # console.log "c=", chord(matrix)
             arc = @d3.arc().innerRadius(inner_radius).outerRadius(outer_radius)
             ribbon = @d3.ribbon().radius(inner_radius)
             color = @d3.scaleOrdinal().domain(d3.range(4)).range(["#000000", "#FFDD89", "#957244", "#F26223"])

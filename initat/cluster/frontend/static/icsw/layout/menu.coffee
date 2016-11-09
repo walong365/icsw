@@ -697,12 +697,67 @@ menu_module = angular.module(
             )
 
     )
+]).service("icswReactOpenSetupTasksFactory",
+[
+    "$q", "$timeout", "$rootScope", "ICSW_SIGNALS", "icswSimpleAjaxCall",
+    "$state", "ICSW_URLS", "SetupProgressHelper"
+(
+    $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
+    $state, ICSW_URLS, SetupProgressHelper
+) ->
+    {ul, li, div, a, button, p, strong, span} = React.DOM
+    return React.createClass(
+        displayName: "icswOpenSetupTasksInfo"
+        getInitialState: () ->
+            _reload = () =>
+                SetupProgressHelper.unfulfilled_setup_tasks().then(
+                    ((unfulfilled_setup_tasks) ->
+                        @setState({num_unfulfilled: unfulfilled_setup_tasks})
+                    ).bind(@)
+                )
+
+            $rootScope.$on(ICSW_SIGNALS("ICSW_OPEN_SETUP_TASKS_CHANGED"), () =>
+                _reload()
+            )
+
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () =>
+                _reload()
+            )
+
+            return {
+                num_unfulfilled: 0
+            }
+
+        render: () ->
+            if @state.num_unfulfilled > 0
+                return li(
+                    {
+                        key: "setupSteps"
+                    }
+                    p(
+                        {
+                            href: "#/main/setup/progress"
+                            key: "p"
+                            className: "setupsteps"
+                        },
+                        strong({key: "strong"}, "Open Setup Tasks")
+                    )
+                    span({
+                            className: "setupsteps__badge"
+                            key: "setupsteps__badge__key"
+                        }
+                        @state.num_unfulfilled
+                    )
+                )
+            else
+                return null
+    )
 ]).service("icswReactRightMenuFactory",
 [
-    "$q", "icswReactMenuFactory", "icswRouteHelper", "icswTaskOverviewReact",
+    "$q", "icswReactMenuFactory", "icswRouteHelper", "icswTaskOverviewReact", "icswReactOpenSetupTasksFactory"
     "icswReactOvaDisplayFactory", "icswOverallStyle", "icswReactBackgroundJobInfoFactory",
 (
-    $q, icswReactMenuFactory, icswRouteHelper, icswTaskOverviewReact,
+    $q, icswReactMenuFactory, icswRouteHelper, icswTaskOverviewReact, icswReactOpenSetupTasksFactory
     icswReactOvaDisplayFactory, icswOverallStyle, icswReactBackgroundJobInfoFactory,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
@@ -727,6 +782,12 @@ menu_module = angular.module(
                     {
                         className: "nav navbar-nav navbar-right #{icswOverallStyle.get()}"
                     }
+                    React.createElement(
+                        icswReactOpenSetupTasksFactory
+                        {
+                            key: "openSetupTasks"
+                        }
+                    )
                     React.createElement(
                         icswTaskOverviewReact
                         {

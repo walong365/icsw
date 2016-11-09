@@ -25,7 +25,39 @@
             ng-show="!struct.data_loaded">Fetching data from server ...
         </div>
         <div ng-if="struct.data_loaded">
-            <uib-tabset active="struct.active_tab_index">
+            <uib-tabset ng-click="setup_tasks_tab_clicked()" active="struct.active_tab_index">
+                <uib-tab>
+                    <uib-tab-heading>
+                        <span>Setup Tasks</span>
+                    </uib-tab-heading>
+
+                <table
+                    class="table table-condensed table-hover table-striped"
+                    style="width:auto;"
+                >
+                    <thead>
+                        <tr>
+                            <th>Task</th>
+                            <th style="width: 500px">Description</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr ng-click="open_in_new_tab_for_system(task.setup_type)" ng-repeat="task in struct.tasks">
+                            <td class="text-center">
+                                {{ task.task_number }}.
+                            </td>
+                            <td>
+                                {{ task.task_description }}
+                            </td>
+                            <td ng-class="task.task_bg_color_class" class="text-center">
+                                <i ng-class="task.task_icon_class"></i>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                </uib-tab>
                 <uib-tab ng-click="system_overview_tab_clicked()">
                     <uib-tab-heading>
                         <span>System Status</span>
