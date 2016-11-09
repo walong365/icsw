@@ -188,7 +188,7 @@ device_asset_module = angular.module(
 
     $scope.load_package_tree = () ->
         console.log("called")
-        blockUI.start("Loading Data...")
+        blockUI.start("Loading Data ...")
         $q.all(
             [
                 icswAssetPackageTreeService.load($scope.$id)
@@ -572,7 +572,7 @@ device_asset_module = angular.module(
             if tab.asset_batch.idx == asset_batch.idx
                 return
 
-        blockUI.start("Please wait...")
+        blockUI.start("Please wait ...")
 
         $q.all(
             [

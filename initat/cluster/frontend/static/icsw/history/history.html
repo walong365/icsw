@@ -1,12 +1,14 @@
 <script type="text/ng-template" id="icsw/history/overview">
-    <icsw-history-overview></icsw-history-overview>
+    <div class="container-fluid">
+        <icsw-history-overview></icsw-history-overview>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.history.overview">
-    <h2>System history
-        <span class="text-warning" ng-show="struct.loading">Fetching base data...</span>
-    </h2>
-    <ui-select ng-model="struct.selected_model" style="max-width:400px; min-width:240px;" ng-show="!struct.loading">
+    <h3>System History
+        <span class="text-warning" ng-show="struct.loading">Fetching Base Data ...</span>
+    </h3>
+    <ui-select ng-model="struct.selected_model" class="maxwidth500" ng-show="!struct.loading">
         <ui-select-match class="ui-select-match" placeholder="please select model">
             {{ $select.selected[0] }}
         </ui-select-match>
@@ -19,11 +21,11 @@
 
 <script type="text/ng-template" id="icsw.history.model_history">
     <h3 ng-show="style != 'config'">{{ models_with_history[icsw_model] }}
-        <span ng-show="struct.num_entries">({{ struct.num_entries }} entries)</span>
+        <span ng-show="struct.num_entries">({{ struct.num_entries }} Entries)</span>
     </h3>
     <div class="alert alert-warning" ng-show="struct.loading">
         <button class="btn btn-sm btn-danger" ladda="struct.loading" disabled="disabled"></button>
-        Please wait, Fetching data from server
+        Please wait, fetching Data from Server ...
     </div>
     <table class="table table-condensed table-hover table-striped" style="width: auto"
             st-table="entries_display" st-safe-src="struct.entries" ng-show="!struct.loading">
@@ -43,7 +45,7 @@
                 <th>User</th>
                 <th>Type</th>
                 <th>Object</th>
-                <th>Object ID</th>
+                <th class="text-right">Object ID</th>
                 <th></th>
                 <th>Change</th>
             </tr>
@@ -54,7 +56,7 @@
                 <td>{{ struct.user_group_tree.user_lut[entry.meta.user].login }}</td>
                 <td>{{ entry.meta.type }}
                 <td>{{ entry.meta.object_repr }}</td>
-                <td>{{ entry.meta.object_id }}</td>
+                <td class="text-right">{{ entry.meta.object_id }}</td>
                 <td></td>
                 <td>
                     <div ng-show="on_revert_defined">

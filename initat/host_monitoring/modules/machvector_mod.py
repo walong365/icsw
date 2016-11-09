@@ -417,6 +417,7 @@ class MachineVector(object):
             _struct.get("port", 8002),
         )
         try:
+            self.log("Sending machvector to {}:{}".format(t_host, t_port))
             if send_format == "xml":
                 self.__socket_dict[send_id].send_unicode(unicode(etree.tostring(send_vector)))  # @UndefinedVariable
             else:

@@ -1,5 +1,5 @@
 <script type="text/ng-template" id="icsw.device.livestatus.maplist">
-    <div uib-alert class="alert-warning" ng-show="!struct.data_valid">Loading data...</div>
+    <div uib-alert class="alert-warning" ng-show="!struct.data_valid">Loading Data ...</div>
     <div ng-if="struct.data_valid">
         <h3 ng-show="!struct.maps_present">No maps to show</h3>
         <h3 ng-show="struct.maps_present">
@@ -39,6 +39,7 @@
                 </label>
                 <div class="controls col-sm-7">
                     <ui-select ng-model="struct.cur_gfx_size" style="width:200px;">
+                        <ui-select-match class="ui-select-match" placeholder="choose size ...">
                         <ui-select-match class="ui-select-match" placeholder="choose size ...">
                             {{ $select.selected }}
                         </ui-select-match>

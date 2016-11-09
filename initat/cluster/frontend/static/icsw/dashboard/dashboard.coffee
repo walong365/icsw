@@ -561,7 +561,7 @@ dashboard_module = angular.module(
             _del_name = @current_layout_name
             icswToolsSimpleModalService("Really delete Layout '#{_del_name}' ?").then(
                 (doit) =>
-                    blockUI.start("Removing layout...")
+                    blockUI.start("Removing Layout ...")
                     @user.delete_var(@_get_var_name()).then(
                         (ok) =>
                             _.remove(@layout_names, (entry) -> return entry == _del_name)

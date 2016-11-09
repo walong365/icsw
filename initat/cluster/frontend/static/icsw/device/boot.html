@@ -4,7 +4,7 @@
 
 <script type="text/ng-template" id="icsw.device.boot.table">
     <div class="container-fluid">
-        <div uib-alert class="alert-warning" ng-show="!struct.tree_valid">Loading BaseData ...</div>
+        <div uib-alert class="alert-warning" ng-show="!struct.tree_valid">Loading Base Data ...</div>
         <h3>
             <span class="label label-danger" ng-show="struct.boot_helper.connection_problem_counter" title="number of connection problems">{{ struct.boot_helper.connection_problem_counter }}</span>
             Boot Configuration for {{ struct.devices.length }} Devices,
@@ -21,7 +21,7 @@
                     ng-click="toggle_boot_option(entry.short)"
                 />
             </div>
-            <input class="form-control" ng-model="struct.device_sel_filter" placeholder="selection..." ng-change="change_sel_filter()"/>
+            <input class="form-control" ng-model="struct.device_sel_filter" placeholder="Selection ..." ng-change="change_sel_filter()"/>
         </form>
         <table st-table="entries_displayed" st-safe-src="struct.devices" ng-show="struct.devices.length" class="table table-condensed" style="width:auto;">
             <thead>
@@ -169,7 +169,7 @@
                 ng-value="dev.$$boot_helper.log_btn_value"
                 ng-click="change_devlog_flag(dev)"
             />
-            Number of log lines: {{ dev.$$boot_helper.logs_present }} of {{ dev.$$boot_helper.num_logs }}
+            Number of Log Lines: {{ dev.$$boot_helper.logs_present }} of {{ dev.$$boot_helper.num_logs }}
         </form>
     </td>
 </script>
@@ -193,7 +193,7 @@
                 <th>User</th>
                 <th>Status</th>
                 <th>Message</th>
-                <th colspan="2">when</th>
+                <th colspan="2">When</th>
             </tr>
         </thead>
         <tbody>
@@ -415,12 +415,12 @@
 </script>
 
 <script type="text/ng-template" id="icsw.boot.mac.bootlog.info">
-    <div uib-alert class="alert-warning" ng-show="!struct.data_valid">Fetching initial data...</div>
+    <div uib-alert class="alert-warning" ng-show="!struct.data_valid">Fetching initial Data ...</div>
     <div class="row">
         <div class="col-md-6">
             <h4>
-                Showing {{ struct.boot_list.length }} Macbootlog entries
-                <span class="text-warning" ng-show="struct.updating">Updating...</span>
+                Showing {{ struct.boot_list.length }} Macbootlog Entries
+                <span class="text-warning" ng-show="struct.updating">Updating ...</span>
             </h4>
             <table
                 st-table="boot_displayed"
@@ -441,7 +441,7 @@
                         <th>IP</th>
                         <th>MAC</th>
                         <th>Ignored</th>
-                        <th>created</th>
+                        <th>Created</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -475,8 +475,8 @@
                     </tr>
                     <tr>
                         <th>MAC</th>
-                        <th>ignored</th>
-                        <th>usecount</th>
+                        <th>Ignored</th>
+                        <th>Usecount</th>
                         <th>Action</th>
                     </tr>
                 </thead>

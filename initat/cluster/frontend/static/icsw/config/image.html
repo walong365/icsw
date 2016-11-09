@@ -12,7 +12,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.image.overview">
-    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server...</div>
+    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching Data from Server ...</div>
     <h3>
         Images ({{ struct.image_tree.list.length }} Entries)
         <icsw-tools-button type="search" size="xs" value="Scan for images" ng-click="scan_for_images()"></icsw-tools-button>
@@ -80,7 +80,7 @@
 
 <script type="text/ng-template" id="icsw.image.new.images">
     <div ng-show="struct.new_images.length > 0">
-        <h2>Images found ({{ struct.new_images.length}})</h2>
+        <h3>Images found ({{ struct.new_images.length}})</h3>
         <table class="table table-condensed table-hover" style="width:auto;">
             <thead icsw-image-head-new></thead>
             <tbody>

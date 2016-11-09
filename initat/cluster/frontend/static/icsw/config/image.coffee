@@ -176,7 +176,7 @@ angular.module(
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
-                        blockUI.start("saving image data...")
+                        blockUI.start("Saving Image Data ...")
                         $scope.struct.image_tree.update_image(image).then(
                             (ok) ->
                                 blockUI.stop()
@@ -234,7 +234,7 @@ angular.module(
         )
 
     $scope.take_image = (obj) =>
-        blockUI.start("Take new image...")
+        blockUI.start("Take new Image ...")
         icswSimpleAjaxCall(
             url: ICSW_URLS.SETUP_USE_IMAGE
             data:
