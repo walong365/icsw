@@ -766,6 +766,8 @@ angular.module(
         ICSW_LOCATION_SETTINGS_GFX_UPDATED: "icsw.location.settings.gfx.updated"
         ICSW_USER_GROUP_TREE_LOADED: "icsw.user.group.tree.loaded"
         ICSW_USER_GROUP_TREE_CHANGED: "icsw.user.group.tree.changed"
+        # fired when we add / remove a right to a role
+        ICSW_USER_GROUP_ROLE_CHANGED: "icsw.user.group.role.changed"
         ICSW_PACKAGE_INSTALL_LIST_CHANGED: "icsw.package.install.list.changed"
         # license tree loaded
         ICSW_LICENSE_DATA_LOADED: "icsw.license.data.loaded"

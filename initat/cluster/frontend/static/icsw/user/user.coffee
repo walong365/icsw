@@ -1381,6 +1381,84 @@ user_module = angular.module(
         link: (scope, element, attrs) ->
             scope.set_type("user")
     }
+]).service("icswUGRTools",
+[
+    "$q",
+(
+    $q,
+) ->
+    struct = {
+        obj_list_cache: {}
+        obj_lut_cache: {}
+    }
+
+    clean_cache = () ->
+        struct.obj_list_cache = {}
+        struct.obj_lut_cache = {}
+
+    get_cache = (key, device_tree, ugs_tree) ->
+        if key not of struct.obj_list_cache
+            _list = []
+            if key == "backbone.device"
+                for entry in device_tree.enabled_list
+                    if entry.is_meta_device
+                        if entry.is_cluster_device_group
+                            _name = "[CDG] " + entry.full_name.substr(8)
+                        else
+                            _name = "[MD] " + entry.full_name.substr(8)
+                    else
+                        _name = entry.full_name
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: _name
+                            group: "DeviceGroup " + device_tree.group_lut[entry.device_group].name
+                        }
+                    )
+            else if key == "backbone.user"
+                for entry in ugs_tree.user_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.login
+                            group: "Group " + ugs_tree.group_lut[entry.group].groupname
+                        }
+                    )
+            else if key == "backbone.group"
+                for entry in ugs_tree.group_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.groupname
+                            group: ""
+                        }
+                    )
+            else if key == "backbone.device_group"
+                for entry in ugs_tree.group_list
+                    _list.push(
+                        {
+                            idx: entry.idx
+                            name: entry.name
+                            group: ""
+                        }
+                    )
+            else
+                console.error "unknown OLP-key '#{key}'"
+            struct.obj_list_cache[key] = _list
+            struct.obj_lut_cache[key] = _.keyBy(_list, "idx")
+        return struct.obj_list_cache[key]
+
+    return {
+        clean_cache: () ->
+            return clean_cache()
+
+        get_cache: (key, device_tree, ugs_tree) ->
+            return get_cache(key, device_tree, ugs_tree)
+
+        get_cache_lut: (key, device_tree, ugs_tree) ->
+            get_cache(key, device_tree, ugs_tree)
+            return struct.obj_lut_cache[key]
+    }
 ]).controller("icswUserGroupEditCtrl",
 [
     "$scope", "$q", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
@@ -1389,9 +1467,6 @@ user_module = angular.module(
     $scope, $q, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
     blockUI, icswBackupTools,
 ) ->
-
-    $scope.obj_list_cache = {}
-    $scope.obj_lut_cache = {}
 
     _set_permissions_from_src = () ->
         $scope.object = $scope.src_object.$$_ICSW_backup_data
@@ -1415,67 +1490,6 @@ user_module = angular.module(
             $scope.create_mode = false
         else
             $scope.create_mode = true
-
-    _object_list = (key) ->
-        if key not of $scope.obj_list_cache
-            _list = []
-            if key == "backbone.device"
-                for entry in $scope.device_tree.enabled_list
-                    if entry.is_meta_device
-                        if entry.is_cluster_device_group
-                            _name = "[CDG] " + entry.full_name.substr(8)
-                        else
-                            _name = "[MD] " + entry.full_name.substr(8)
-                    else
-                        _name = entry.full_name
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: _name
-                            group: "DeviceGroup " + $scope.device_tree.group_lut[entry.device_group].name
-                        }
-                    )
-            else if key == "backbone.user"
-                for entry in $scope.tree.user_list
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: entry.login
-                            group: "Group " + $scope.tree.group_lut[entry.group].groupname
-                        }
-                    )
-            else if key == "backbone.group"
-                for entry in $scope.tree.group_list
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: entry.groupname
-                            group: ""
-                        }
-                    )
-            else
-                console.error "unknown OLP-key '#{key}'"
-            $scope.obj_list_cache[key] = _list
-            $scope.obj_lut_cache[key] = _.keyBy(_list, "idx")
-        return $scope.obj_list_cache[key]
-
-    $scope.object_list = () ->
-        if $scope.new_perm.permission
-            _list = []
-            # create cache
-            perm = $scope.perm_tree.permission_lut[$scope.new_perm.permission]
-            if perm.valid_for_object_level
-                return _object_list(perm.key)
-            else
-                return []
-        else
-            return []
-
-    # _enrich_permission = (perm) ->
-    #    if $scope.type == "user"
-    #        perm.user = $scope.user.idx
-    #    else
-    #        perm.group = $scope.group.idx
 
     $scope.changed = () ->
         return icswBackupTools.changed($scope.src_object)
@@ -1570,15 +1584,24 @@ user_module = angular.module(
 ]).controller("icswRoleEditCtrl",
 [
     "$scope", "$q", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
-    "blockUI", "icswBackupTools",
+    "blockUI", "icswBackupTools", "icswUGRTools", "$rootScope",
 (
     $scope, $q, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
-    blockUI, icswBackupTools,
+    blockUI, icswBackupTools, icswUGRTools, $rootScope,
 ) ->
 
-    $scope.obj_list_cache = {}
-    $scope.obj_lut_cache = {}
+    icswUGRTools.clean_cache()
 
+    $scope.struct = {
+        # object type
+        type: undefined
+        # src object
+        src_object: undefined
+        # object
+        object: undefined
+        # create mode
+        create_mode: false
+    }
     $scope.new_perm = {
         permission: undefined
         level: 0
@@ -1586,71 +1609,18 @@ user_module = angular.module(
     }
 
     _set_permissions_from_src = () ->
-        $scope.object = $scope.src_object.$$_ICSW_backup_data
-        $scope.permission_set = $scope.object.rolepermission_set
-        $scope.object_permission_set = $scope.object.roleobjectpermission_set
+        $scope.struct.object = $scope.struct.src_object.$$_ICSW_backup_data
+        $scope.permission_set = $scope.struct.object.rolepermission_set
+        $scope.object_permission_set = $scope.struct.object.roleobjectpermission_set
 
     $scope.set_type = (ug_type) ->
-        $scope.type = ug_type
-        $scope.src_object = $scope.role
+        $scope.struct.type = ug_type
+        $scope.struct.src_object = $scope.role
         _set_permissions_from_src()
-        $scope.modify_ok = true
-        if $scope.object.idx?
-            $scope.create_mode = false
+        if $scope.struct.object.idx?
+            $scope.struct.create_mode = false
         else
-            $scope.create_mode = true
-
-    _object_list = (key) ->
-        if key not of $scope.obj_list_cache
-            _list = []
-            if key == "backbone.device"
-                for entry in $scope.device_tree.enabled_list
-                    if entry.is_meta_device
-                        if entry.is_cluster_device_group
-                            _name = "[CDG] " + entry.full_name.substr(8)
-                        else
-                            _name = "[MD] " + entry.full_name.substr(8)
-                    else
-                        _name = entry.full_name
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: _name
-                            group: "DeviceGroup " + $scope.device_tree.group_lut[entry.device_group].name
-                        }
-                    )
-            else if key == "backbone.user"
-                for entry in $scope.tree.user_list
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: entry.login
-                            group: "Group " + $scope.tree.group_lut[entry.group].groupname
-                        }
-                    )
-            else if key == "backbone.group"
-                for entry in $scope.tree.group_list
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: entry.groupname
-                            group: ""
-                        }
-                    )
-            else if key == "backbone.device_group"
-                for entry in $scope.device_tree.group_list
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: entry.name
-                            group: ""
-                        }
-                    )
-            else
-                console.error "unknown OLP-key '#{key}'"
-            $scope.obj_list_cache[key] = _list
-            $scope.obj_lut_cache[key] = _.keyBy(_list, "idx")
-        return $scope.obj_list_cache[key]
+            $scope.struct.create_mode = true
 
     $scope.object_list = () ->
         if $scope.new_perm.permission
@@ -1658,7 +1628,7 @@ user_module = angular.module(
             # create cache
             perm = $scope.perm_tree.permission_lut[$scope.new_perm.permission]
             if perm.valid_for_object_level
-                return _object_list(perm.key)
+                return icswUGRTools.get_cache(perm.key, $scope.device_tree, $scope.tree)
             else
                 return []
         else
@@ -1667,10 +1637,7 @@ user_module = angular.module(
     $scope.get_perm_object = (perm) ->
         _perm = $scope.get_perm(perm.csw_object_permission.csw_permission)
         # console.log perm, _perm
-        if _perm.key not of $scope.obj_list_cache
-            # build cache
-            _object_list(_perm.key)
-        _lut = $scope.obj_lut_cache[_perm.key]
+        _lut = icswUGRTools.get_cache_lut(_perm.key, $scope.device_tree, scope.tree)
         _pk = perm.csw_object_permission.object_pk
         if _pk of _lut
             return _lut[_pk].name
@@ -1687,6 +1654,7 @@ user_module = angular.module(
         }
         if icswUserGroupRoleTools.get_perm_fp(_new_p) not in (icswUserGroupRoleTools.get_perm_fp(_old_p) for _old_p in $scope.permission_set)
             $scope.permission_set.push(_new_p)
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_ROLE_CHANGED"))
 
     $scope.create_object_permission = () ->
         # add new object permission
@@ -1701,14 +1669,16 @@ user_module = angular.module(
 
         if icswUserGroupRoleTools.get_perm_fp(_new_p) not in (icswUserGroupRoleTools.get_perm_fp(_old_p) for _old_p in $scope.object_permission_set)
             $scope.object_permission_set.push(_new_p)
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_ROLE_CHANGED"))
 
     $scope.delete_permission = (perm) ->
         _fp = icswUserGroupRoleTools.get_perm_fp(perm)
         _.remove($scope.permission_set, (entry) -> return _fp == icswUserGroupRoleTools.get_perm_fp(entry))
         _.remove($scope.object_permission_set, (entry) -> return _fp == icswUserGroupRoleTools.get_perm_fp(entry))
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_ROLE_CHANGED"))
 
     $scope.changed = () ->
-        return icswBackupTools.changed($scope.src_object)
+        return icswBackupTools.changed($scope.struct.src_object)
 
     $scope.close = () ->
         $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, "role")
@@ -1835,11 +1805,12 @@ user_module = angular.module(
 ]).controller("icswUserGroupRolePermissionsCtrl",
 [
     "$scope", "icswDeviceTreeService", "icswUserGroupRolePermissionTreeService", "$q",
-    "icswUserGroupRoleTreeService", "$rootScope", "ICSW_SIGNALS",
+    "icswUserGroupRoleTreeService", "$rootScope", "ICSW_SIGNALS", "icswUGRTools",
 (
     $scope, icswDeviceTreeService, icswUserGroupRolePermissionTreeService, $q,
-    icswUserGroupRoleTreeService, $rootScope, ICSW_SIGNALS,
+    icswUserGroupRoleTreeService, $rootScope, ICSW_SIGNALS, icswUGRTools,
 ) ->
+    icswUGRTools.clean_cache()
     # console.log "o=", $scope.object
     $scope.struct = {
         # device tree
@@ -1856,63 +1827,19 @@ user_module = angular.module(
         object_permissions: []
         # flag: any permissions defined
         any_defined: false
-        # object list cache
-        obj_list_cache: {}
-        # object lut
-        obj_lut_cache: {}
     }
 
-    _object_list = (key) ->
-        if key not of $scope.struct.obj_list_cache
-            _list = []
-            if key == "backbone.device"
-                for entry in $scope.struct.device_tree.enabled_list
-                    if entry.is_meta_device
-                        if entry.is_cluster_device_group
-                            _name = "[CDG] " + entry.full_name.substr(8)
-                        else
-                            _name = "[MD] " + entry.full_name.substr(8)
-                    else
-                        _name = entry.full_name
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: _name
-                            group: "DeviceGroup " + $scope.struct.device_tree.group_lut[entry.device_group].name
-                        }
-                    )
-            else if key == "backbone.user"
-                for entry in $scope.tree.user_list
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: entry.login
-                            group: "Group " + $scope.struct.device_tree.group_lut[entry.group].groupname
-                        }
-                    )
-            else if key == "backbone.group"
-                for entry in $scope.tree.group_list
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: entry.groupname
-                            group: ""
-                        }
-                    )
-            else if key == "backbone.device_group"
-                for entry in $scope.struct.device_tree.group_list
-                    _list.push(
-                        {
-                            idx: entry.idx
-                            name: entry.name
-                            group: ""
-                        }
-                    )
-            else
-                console.error "unknown OLP-key '#{key}'"
-            $scope.struct.obj_list_cache[key] = _list
-            $scope.struct.obj_lut_cache[key] = _.keyBy(_list, "idx")
-        return $scope.struct.obj_list_cache[key]
+    _update_roles = () ->
+        $scope.struct.any_defined = false
+        $scope.struct.permissions.length = 0
+        $scope.struct.object_permissions.length = 0
+        for role in $scope.struct.roles
+            for entry in role.rolepermission_set
+                $scope.struct.permissions.push(entry)
+                $scope.struct.any_defined = true
+            for entry in role.roleobjectpermission_set
+                $scope.struct.object_permissions.push(entry)
+                $scope.struct.any_defined = true
 
     $scope.start = () ->
         $scope.struct.roles.length = 0
@@ -1947,13 +1874,7 @@ user_module = angular.module(
                         _role_idxs.push(role)
                 for _role_idx in _role_idxs
                     $scope.struct.roles.push($scope.struct.ugr_tree.role_lut[_role_idx])
-                for role in $scope.struct.roles
-                    for entry in role.rolepermission_set
-                        $scope.struct.permissions.push(entry)
-                        $scope.struct.any_defined = true
-                    for entry in role.roleobjectpermission_set
-                        $scope.struct.object_permissions.push(entry)
-                        $scope.struct.any_defined = true
+                _update_roles()
         )
 
     $scope.get_perm = (perm) ->
@@ -1962,10 +1883,7 @@ user_module = angular.module(
     $scope.get_perm_object = (perm) ->
         _perm = $scope.get_perm(perm.csw_object_permission.csw_permission)
         # console.log perm, _perm
-        if _perm.key not of $scope.struct.obj_lut_cache
-            # build cache
-            _object_list(_perm.key)
-        _lut = $scope.struct.obj_lut_cache[_perm.key]
+        _lut = icswUGRTools.get_cache_lut(_perm.key, $scope.struct.device_tree, $scope.struct.ugr_tree)
         _pk = perm.csw_object_permission.object_pk
         if _pk of _lut
             return _lut[_pk].name
@@ -1975,8 +1893,14 @@ user_module = angular.module(
     _remove_call = $rootScope.$on(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"), (event) ->
         $scope.start()
     )
+
+    _rc2 = $rootScope.$on(ICSW_SIGNALS("ICSW_USER_GROUP_ROLE_CHANGED"), () ->
+        _update_roles()
+    )
+
     $scope.$on("$destroy", () ->
         _remove_call()
+        _rc2()
     )
 
 ]).directive("icswUserQuotaSettings",
