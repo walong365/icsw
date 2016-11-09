@@ -983,7 +983,7 @@ class DeviceCompletion(View):
                 else:
                     seconds_since_graph_setup = 0
 
-                info_dict[_device.idx]["graphing_data_warning"] = seconds_since_graph_setup < 30
+                info_dict[_device.idx]["graphing_data_warning"] = seconds_since_graph_setup < (60 * 5)
             except DeviceFlagsAndSettings.DoesNotExist:
                 pass
 
