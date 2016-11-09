@@ -36,8 +36,8 @@
         <div ng-if="struct.error_string">
             <div uib-alert class="alert-warning">{{ struct.error_string }}</div>
         </div>
-        <uib-tabset ng-if="struct.tree_loaded">
-            <uib-tab>
+        <uib-tabset active="struct.activetab" ng-if="struct.tree_loaded">
+            <uib-tab index="0">
                 <uib-tab-heading>
                     User ({{ struct.ugr_tree.user_list.length }}) /
                     Group ({{ struct.ugr_tree.group_list.length }}) /
@@ -55,19 +55,19 @@
                                     </button>
                                     <ul class="dropdown-menu">
                                         <li>
-                                            <a ng-click="create_role()">
+                                            <a ng-click="create_role($event)">
                                                 <span class="fa fa-bell fa-fw"></span>
                                                 Role
                                             </a>
                                         </li>
                                         <li>
-                                            <a ng-click="create_group()">
+                                            <a ng-click="create_group($event)">
                                                 <span class="fa fa-group fa-fw"></span>
                                                 Group
                                             </a>
                                         </li>
                                         <li>
-                                            <a ng-click="create_user()">
+                                            <a ng-click="create_user($event)">
                                                 <span class="fa fa-user fa-fw"></span>
                                                 User
                                             </a>
@@ -85,7 +85,7 @@
                     </div>
                 </div>
             </uib-tab>
-            <uib-tab ng-repeat="edit_role in struct.edit_roles">
+            <uib-tab ng-repeat="edit_role in struct.edit_roles" index="edit_role.tabindex">
                 <uib-tab-heading>
                     <span class="fa fa-bell"></span>
                     Role {{ edit_role.name }}
@@ -100,7 +100,7 @@
                     icsw-device-tree="struct.device_tree"
                 ></icsw-role-edit>
             </uib-tab>
-            <uib-tab ng-repeat="edit_group in struct.edit_groups">
+            <uib-tab ng-repeat="edit_group in struct.edit_groups" index="edit_group.tabindex">
                 <uib-tab-heading>
                     <span class="fa fa-group"></span>
                     Group {{ edit_group.name }} ({{ edit_group.gid }})
@@ -115,7 +115,7 @@
                     icsw-device-tree="struct.device_tree"
                 ></icsw-group-edit>
             </uib-tab>
-            <uib-tab ng-repeat="edit_user in struct.edit_users" class="animateTab">
+            <uib-tab ng-repeat="edit_user in struct.edit_users" index="edit_user.tabindex">
                 <uib-tab-heading>
                     <span class="fa fa-user"></span>
                     User {{ edit_user.login }} ({{ edit_user.uid }})
@@ -511,7 +511,7 @@
 
 <script type="text/ng-template" id="icsw.user.edit.form">
     <form class="form-horizontal" name="form_data">
-        <h3>Details for user '{{ user.login }}', password is
+        <h3>Details for User '{{ user.login }}', Password is
             <span ng-if="password_set()">set</span>
             <span ng-if="!password_set()">not set</span>
         </h3>
