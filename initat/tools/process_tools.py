@@ -226,8 +226,8 @@ def get_socket(context, r_type, **kwargs):
         ("BACKLOG", kwargs.get("backlog", 1)),
         ("TCP_KEEPALIVE", 1),
         ("TCP_KEEPALIVE_IDLE", 300),
-        ("RECONNECT_IVL_MAX", kwargs.get("reconnect_ivl", 500)),
-        ("RECONNECT_IVL", kwargs.get("reconnect_ivl_max", 200)),
+        ("RECONNECT_IVL_MAX", kwargs.get("reconnect_ivl_max", 500)),
+        ("RECONNECT_IVL", kwargs.get("reconnect_ivl", 200)),
     ]:
         _sock.setsockopt(getattr(zmq, _opt), _value)
     if kwargs.get("immediate", False):

@@ -404,7 +404,11 @@ class SocketProcess(threading_tools.process_obj):
         cur_time = time.time()
         to_list = [entry for entry in TCPCon.pending if abs(entry.s_time - cur_time) > 20]
         if to_list:
-            self.log("removing {} (timeout)".format(logging_tools.get_plural("TCP connection", len(to_list))))
+            self.log(
+                "removing {} (timeout)".format(
+                    logging_tools.get_plural("TCP connection", len(to_list))
+                )
+            )
             for _entry in to_list:
                 _entry.log("timeout", logging_tools.LOG_LEVEL_WARN)
                 _entry.close()

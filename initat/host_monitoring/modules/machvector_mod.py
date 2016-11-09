@@ -27,7 +27,6 @@ import os
 import re
 import shutil
 import time
-from threading import Lock
 
 from lxml import etree
 from lxml.builder import E
@@ -148,7 +147,6 @@ class graph_setup_command(hm_classes.hm_command):
 
 class MachineVector(object):
     def __init__(self, module):
-        self.lock = Lock()
         self.module = module
         # actual dictionary, including full-length dictionary keys
         self.__act_dict = {}
@@ -299,7 +297,7 @@ class MachineVector(object):
                         backlog=4,
                         # to stop 0MQ trashing the target socket
                         reconnect_ivl=1000,
-                        reconnect_ivl_max=30000
+                        reconnect_ivl_max=30000,
                     )
                     target_str = "tcp://{}:{:d}".format(
                         _struct.get("target", "127.0.0.1"),
@@ -357,10 +355,8 @@ class MachineVector(object):
             return False
 
     def reload(self):
-        self.lock.acquire()
         self.log("reloading machine vector")
         self.read_config()
-        self.lock.release()
 
     def _remove_old_dirs(self):
         # delete external directories
@@ -380,7 +376,6 @@ class MachineVector(object):
                 self.log("removed old external directory {}".format(old_dir))
 
     def _send_vector(self, *args, **kwargs):
-        self.lock.acquire()
         send_id = args[0]
         _struct = self.cs[send_id]
         _p_until = _struct.get("pause_until", 0)
@@ -417,7 +412,7 @@ class MachineVector(object):
             _struct.get("port", 8002),
         )
         try:
-            self.log("Sending machvector to {}:{}".format(t_host, t_port))
+            # self.log("Sending machvector to {}:{}".format(t_host, t_port))
             if send_format == "xml":
                 self.__socket_dict[send_id].send_unicode(unicode(etree.tostring(send_vector)))  # @UndefinedVariable
             else:
@@ -449,7 +444,6 @@ class MachineVector(object):
                 )
                 _struct["pause_until"] = _w_time
         self.cs[send_id] = _struct
-        self.lock.release()
 
     def close(self):
         for _s_id, t_sock in self.__socket_dict.iteritems():
