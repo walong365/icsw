@@ -680,12 +680,12 @@ menu_module = angular.module(
                 {}
                 a(
                     {
-                        style: {paddingTop: "14px", paddingBottom: "10px"}
+                        className: "bttn-bgjobs"
                     }
                     button(
                         {
                             type: "button"
-                            title: "Number of Background jobs"
+                            title: "Number of Background Jobs"
                             className: _class
                             # style: {paddingTop: "0px"}
                             onClick: (event) =>

@@ -90,8 +90,8 @@
     </td>
     <td>{{ struct.device_tree.device_class_tree.lut[obj.device_class].name }}</td>
     <td>{{ group.description }}</td>
-    <td>{{ group.enabled | yesno1 }}</td>
-    <td>
+    <td class="text-center">{{ group.enabled | yesno1 }}</td>
+    <td class="text-right">
         <b ng-show="group.num_devices">{{ group.num_devices }}</b>
         <b ng-show="!group.num_devices">---</b>
     </td>
@@ -113,14 +113,14 @@
     </td>
     <td>{{ struct.device_tree.device_class_tree.lut[obj.device_class].name }}</td>
     <td>{{ obj.comment }}</td>
-    <td>
+    <td class="text-center">
         <span ng-show="obj.device_group_obj.enabled">{{ obj.enabled | yesno1 }}</span>
         <span ng-show="!obj.device_group_obj.enabled"><em>{{ obj.enabled | yesno1 }}</em></span>
     </td>
     <td>&nbsp;</td>
     <td ng-show="hide_lut['tln']">{{ struct.domain_tree.show_dtn(obj) }}</td>
-    <td ng-show="hide_lut['rrd_store']">{{ obj.store_rrd_data | yesno2 }}</td>
-    <td ng-show="hide_lut['passwd']">{{ obj.root_passwd_set && 'set' || 'not set' }}</td>
+    <td ng-show="hide_lut['rrd_store']" class="text-center">{{ obj.store_rrd_data | yesno2 }}</td>
+    <td ng-show="hide_lut['passwd']" class="text-center">{{ obj.root_passwd_set && 'set' || 'not set' }}</td>
     <td ng-show="hide_lut['mon_master']">{{ struct.monitor_server_lut[obj.monitor_server].$$full_name_with_type }}</td>
     <td ng-show="hide_lut['boot_master']">{{ struct.mother_server_lut[obj.bootserver].full_name }}</td>
     <td>

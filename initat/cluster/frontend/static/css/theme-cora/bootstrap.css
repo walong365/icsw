@@ -6727,6 +6727,12 @@ button.close {
 .modal-header {
   background-color: #92aa00;
 }
+.modal.type-danger .modal-header {
+  background-color: #bb3d1e;
+}
+.modal.type-warning .modal-header {
+  background-color: #e2972d;
+}
 .modal-title,
 .modal-title .bootstrap-dialog-title,
 .bootstrap-dialog-title {
