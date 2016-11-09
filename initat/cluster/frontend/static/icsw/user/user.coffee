@@ -275,11 +275,17 @@ user_module = angular.module(
                 # not authenticated, no signal to send
                 return null
 
+        update_user: () =>
+            # update user, called from account
+            @new_data_set()
+            result = @get_result()
+            return result.update_user()
+
         new_data_set: () =>
+            # called from icswTreeBase
             result = @get_result()
             # send theme to themeservice
             icswThemeService.setcurrent(result.user.ui_theme_selection)
-            return result.update_user()
 
     return new icswUserService(
         "User"
@@ -1308,7 +1314,7 @@ user_module = angular.module(
 
     $scope.update_account = () ->
         blockUI.start("saving account changes")
-        icswUserService.update().then(
+        icswUserService.update_user().then(
            (data) ->
                blockUI.stop()
            (resp) ->
