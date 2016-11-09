@@ -907,12 +907,30 @@ from initat.tools import logging_tools, process_tools, server_command
 from initat.cluster.backbone.models import DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch, user, \
     device_mon_location
 import pytz
+import ast
 
 
 class DeviceCompletion(View):
     @method_decorator(login_required)
     def post(self, request):
         device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
+
+        srv_com = server_command.srv_command(command="check_rrd_graph_freshness")
+        srv_com["device_pk"] = device_pks[0]
+        srv_com["device_pks"] = device_pks
+
+        (result, _) = contact_server(
+            request,
+            icswServiceEnum.grapher_server,
+            srv_com
+        )
+
+        result_str, status = result.get_result()
+        rrd_modification_dict = None
+        print(status)
+        if status == 0:
+            rrd_modification_dict = ast.literal_eval(result_str)
+            print(rrd_modification_dict)
 
         devices = device.objects.prefetch_related(
             "assetbatch_set"
@@ -968,6 +986,15 @@ class DeviceCompletion(View):
                 info_dict[_device.idx]["graphing_data_warning"] = seconds_since_graph_setup < 30
             except DeviceFlagsAndSettings.DoesNotExist:
                 pass
+
+            if _device.idx in rrd_modification_dict and rrd_modification_dict[_device.idx] > 0:
+                _now = datetime.datetime.now()
+                modification_time = datetime.datetime.fromtimestamp(rrd_modification_dict[_device.idx])
+
+                rrd_age_in_seconds = int((_now - modification_time).total_seconds())
+
+                info_dict[_device.idx]["graphing_data_age_in_seconds"] = rrd_age_in_seconds
+                info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} seconds ago".format(rrd_age_in_seconds)
 
             info_dict[_device.idx]["monitoring_checks"] = 0
             if _device.idx in device_checks_count:

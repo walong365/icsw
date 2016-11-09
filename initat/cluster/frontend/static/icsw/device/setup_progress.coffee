@@ -143,7 +143,6 @@ setup_progress = angular.module(
                         }
                     ).then(
                         (data) ->
-                            console.log(data)
                             $scope.struct.device_ids_needing_refresh.length = 0
 
                             for device_id in device_id_list
@@ -155,6 +154,7 @@ setup_progress = angular.module(
                             if $scope.struct.device_ids_needing_refresh.length > 0
                                 start_timer(15000)
 
+                            console.log($scope.struct.device_ids_needing_refresh)
                             console.log("performing_refresh done")
                     )
                 else
@@ -216,6 +216,8 @@ setup_progress = angular.module(
             info_list_name = obj[0]
             weight = obj[1]
 
+            needs_refresh = false
+
             device["$$" + info_list_name + "_availability_class"] = info_not_available_class
             device["$$" + info_list_name + "_availability_text"] = info_not_available_text
             device["$$" + info_list_name + "_availability_extended_text"] = info_not_available_text
@@ -233,11 +235,22 @@ setup_progress = angular.module(
                 device["$$" + info_list_name + "_availability_class"] = info_warning_class
                 device["$$" + info_list_name + "_availability_text"] = info_warning_text
                 device["$$" + info_list_name + "_availability_extended_text"] = info_available_text
-
-                $scope.struct.device_ids_needing_refresh.push(device.idx)
+                needs_refresh = true
 
             if device_hints[info_list_name + "_extended_text"] != undefined
                 device["$$" + info_list_name + "_availability_extended_text"] = device_hints[info_list_name + "_extended_text"]
+
+            if device_hints[info_list_name + "_age_in_seconds"] != undefined
+                device["$$" + info_list_name + "_sort_hint"] = device_hints[info_list_name + "_age_in_seconds"]
+
+                if device_hints[info_list_name + "_age_in_seconds"] > (60 * 60)
+                    device["$$" + info_list_name + "_availability_class"] = info_warning_class
+                    device["$$" + info_list_name + "_availability_text"] = "Stale data found..."
+                    needs_refresh = true
+
+            if needs_refresh
+                $scope.struct.device_ids_needing_refresh.push(device.idx)
+
 
     $scope.open_in_new_tab_for_devices = (device, setup_type) ->
         if setup_type == 0
@@ -331,25 +344,32 @@ setup_progress = angular.module(
         DeviceOverviewService($event, [dev])
 
     $scope.setup_graphing = (dev) ->
+        f = (_yes) ->
+                blockUI.start("Please wait...")
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
+                        data:
+                            device_pk: dev.idx
+                        dataType: "json"
+                    }
+                ).then(
+                    (data) ->
+                        $scope.struct.device_ids_needing_refresh.push(dev.idx)
+                        perform_refresh_for_device_status(true)
+                        blockUI.stop()
+                )
         if dev.$$graphing_data_availability_class == "alert-danger"
             icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
-                (_yes) ->
-                    blockUI.start("Please wait...")
-                    icswSimpleAjaxCall(
-                        {
-                            url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
-                            data:
-                                device_pk: dev.idx
-                            dataType: "json"
-                        }
-                    ).then(
-                        (data) ->
-                            $scope.struct.device_ids_needing_refresh.push(dev.idx)
-                            perform_refresh_for_device_status(true)
-                            blockUI.stop()
-                    )
+                f
                 (_no) ->
                     console.log("no")
+            )
+        else if dev.$$graphing_data_availability_class == "alert-warning"
+            icswToolsSimpleModalService("Re-enable graphing for this device? [Requires installed host-monitoring]").then(
+                f
+                (_no) ->
+                    $scope.open_in_new_tab_for_devices(dev, 3)
             )
         else if dev.$$graphing_data_availability_class == "alert-success"
           $scope.open_in_new_tab_for_devices(dev, 3)

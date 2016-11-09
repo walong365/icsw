@@ -105,7 +105,7 @@
                                 <th st-sort="$$monitoring_checks_sort_hint" class="text-center">Monitoring Checks</th>
                                 <th st-sort="$$location_data_sort_hint" class="text-center">Locations</th>
                                 <th st-sort="$$asset_data_sort_hint" class="text-center">Asset Scans</th>
-                                <th st-sort="$$graphing_data_availability_text" class="text-center">Graphing Data</th>
+                                <th st-sort="$$graphing_data_sort_hint" class="text-center">Graphing Data</th>
                                 <th st-sort="$$overview_completion_percentage" class="text-center">% Complete</th>
                             </tr>
                             <tr>
@@ -135,7 +135,7 @@
                                 <td class="text-center"><div ng-class="obj.$$monitoring_checks_availability_class"><strong><a href="" ng-click='open_in_new_tab_for_devices(obj, 0)' style="height:25px;">{{ struct.show_extended_information_button_enabled ? obj.$$monitoring_checks_availability_extended_text : obj.$$monitoring_checks_availability_text}}</a></strong></div></td>
                                 <td class="text-center"><div ng-class="obj.$$location_data_availability_class"><strong><a href="" ng-click='open_in_new_tab_for_devices(obj, 1)' style="height:25px;">{{ struct.show_extended_information_button_enabled ? obj.$$location_data_availability_extended_text : obj.$$location_data_availability_text }}</a></strong></div></td>
                                 <td class="text-center"><div ng-class="obj.$$asset_data_availability_class"><strong><a href="" ng-click='open_in_new_tab_for_devices(obj, 2)' style="height:25px;">{{ struct.show_extended_information_button_enabled ? obj.$$asset_data_availability_extended_text : obj.$$asset_data_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="obj.$$graphing_data_availability_class"><strong><a href="" ng-click='setup_graphing(obj)' style="height:25px;">{{ obj.$$graphing_data_availability_text }}</a></strong></div></td>
+                                <td class="text-center"><div ng-class="obj.$$graphing_data_availability_class"><strong><a href="" ng-click='setup_graphing(obj)' style="height:25px;">{{ struct.show_extended_information_button_enabled ? obj.$$graphing_data_availability_extended_text : obj.$$graphing_data_availability_text }}</a></strong></div></td>
                                 <td>
                                     <div class="progress">
                                         <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"

@@ -23,9 +23,11 @@ from __future__ import print_function, unicode_literals
 
 import json
 import os
+import stat
 
 from django.conf import settings
 
+from initat.cluster.backbone.models import device, MachineVector
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.rrd_grapher.config import global_config
@@ -146,6 +148,34 @@ class ServerProcess(
     @server_mixins.RemoteCall(sync=False, target_process="graph")
     def graph_rrd(self, srv_com, **kwargs):
         # here we have to possibility to modify srv_com before we send it to the remote process
+        return srv_com
+
+    @server_mixins.RemoteCall()
+    def check_rrd_graph_freshness(self, srv_com, **kwargs):
+        device_idx_list = []
+        for child in srv_com.tree.getchildren():
+            if "device_pks" in child.tag:
+                for child in child.getchildren():
+                    device_idx_list.append(int(child.text))
+
+        devices = device.objects.filter(idx__in=device_idx_list)
+
+        result_dict = {}
+
+        for _device in devices:
+            machine_vector = MachineVector.objects.filter(device=_device)
+            newest_timestamp = 0
+
+            if machine_vector:
+                machine_vector = machine_vector[0]
+
+                for entry in machine_vector.mvstructentry_set.all():
+                    newest_timestamp = max(newest_timestamp, os.stat(entry.file_name)[stat.ST_MTIME])
+
+            result_dict[_device.idx] = newest_timestamp
+
+        srv_com.set_result(result_dict)
+
         return srv_com
 
     def loop_end(self):
