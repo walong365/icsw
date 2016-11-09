@@ -987,7 +987,7 @@ class DeviceCompletion(View):
             except DeviceFlagsAndSettings.DoesNotExist:
                 pass
 
-            if _device.idx in rrd_modification_dict and rrd_modification_dict[_device.idx] > 0:
+            if rrd_modification_dict and _device.idx in rrd_modification_dict and rrd_modification_dict[_device.idx] > 0:
                 _now = datetime.datetime.now()
                 modification_time = datetime.datetime.fromtimestamp(rrd_modification_dict[_device.idx])
 

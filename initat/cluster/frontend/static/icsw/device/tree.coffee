@@ -77,10 +77,10 @@ angular.module(
     $scope.hide_list = [
         # short, full, default
         ["tln", "DTN", false, "Show top level node"]
-        ["rrd_store", "RRD store", false, "Show if sensor data is store on disk"]
+        ["rrd_store", "RRD Store", false, "Show if sensor data is store on disk"]
         ["passwd", "Password", false, "Show if a password is set"]
-        ["mon_master", "MonMaster", false, "Show monitoring master"]
-        ["boot_master", "BootMaster", false, "Show boot master"]
+        ["mon_master", "Monitoring Master", false, "Show monitoring master"]
+        ["boot_master", "Boot Master", false, "Show boot master"]
     ]
     $scope.column_list = [
         ['name', 'Name'],
