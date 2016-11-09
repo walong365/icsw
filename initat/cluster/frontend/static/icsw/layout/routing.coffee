@@ -58,12 +58,12 @@ menu_module = angular.module(
     "$scope", "hotkeys", "icswLayoutSelectionDialogService", "icswUserService",
     "$rootScope", "ICSW_SIGNALS", "icswRouteHelper", "icswSystemLicenseDataService",
     "icswBreadcrumbs", "$state", "$window", "Restangular", "ICSW_URLS", "icswThemeService",
-    "toaster",
+    "toaster", "icswMenuSettings",
 (
     $scope, hotkeys, icswLayoutSelectionDialogService, icswUserService,
     $rootScope, ICSW_SIGNALS, icswRouteHelper, icswSystemLicenseDataService,
     icswBreadcrumbs, $state, $window, Restangular, ICSW_URLS, icswThemeService,
-    toaster
+    toaster, icswMenuSettings,
 ) ->
     _bind_keys = () ->
         hotkeys.bindTo($scope).add(
@@ -95,15 +95,7 @@ menu_module = angular.module(
             description: "Show/Hide Menu Help"
             callback: (event) ->
                 event.preventDefault()
-                help_el = angular.element('.menu-help-text')
-                if help_el.attr("el_shown") == "1"
-                     help_el.hide()
-                     help_el.attr("el_shown", "")
-                     toaster.pop("success", "", "Menu Help hidden")
-                else
-                     help_el.show()
-                     help_el.attr("el_shown", "1")
-                     toaster.pop("success", "", "Menu Help visible")
+                icswMenuSettings.set_menu_help(!icswMenuSettings.get_menu_help())
         )
 
     $scope.struct = {

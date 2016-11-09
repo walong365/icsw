@@ -167,7 +167,7 @@ kernel_module = angular.module(
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
-                        blockUI.start("saving kernel data...")
+                        blockUI.start("Saving Kernel Data ...")
                         $scope.struct.kernel_tree.update_kernel(kernel).then(
                             (ok) ->
                                 blockUI.stop()

@@ -509,6 +509,7 @@ angular.module(
                             menuEntry.sref = $state.href(state)
                             _add = true
                             _missing_info = []
+                            _missing_short = []
                             if data.rights?
                                 if _user and _acls_valid
                                     if data.rights[0] == "$$CHECK_FOR_SUPERUSER"
@@ -524,20 +525,24 @@ angular.module(
                                         _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
                                     if not _add
                                         _missing_info.push("user rights")
+                                        _missing_short.push("R")
                                     if data.licenses? and _add
                                         _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
                                         if not _add
                                             _missing_info.push("license")
-                                            console.warn "license(s) #{data.licenses} missing"
+                                            _missing_short.push("L")
+                                            # console.warn "license(s) #{data.licenses} missing"
                                     if data.serviceTypes? and _add
                                         _add = icswAcessLevelService.has_all_service_types(data.serviceTypes)
                                         if not _add
                                             _missing_info.push("service type")
-                                            console.warn "service_type(s) #{data.serviceTypes} missing"
+                                            _missing_short.push("S")
+                                            # console.warn "service_type(s) #{data.serviceTypes} missing"
                                 else
                                     _add = false
                             data.$$allowed = _add
                             data.$$missing_info = _missing_info.join(", ")
+                            data.$$missing_short = _missing_short
                             # console.log "*", _add, state.name
                             # always add state to menu
                             _cur_sg.add_node(state)
@@ -774,8 +779,10 @@ angular.module(
         ICSW_RMS_FAIR_SHARE_TREE_SELECTED: "icsw.rms.fair.share.tree.selected"
         # overall style changed
         ICSW_OVERALL_STYLE_CHANGED: "icsw.overall.style.changed"
-        # process settings changed
-        ICSW_PROCESS_SETTINGS_CHANGED: "icsw.process.settings.changed"
+        # task settings changed
+        ICSW_TASK_SETTINGS_CHANGED: "icsw.task.settings.changed"
+        # icsw menu settings changed
+        ICSW_MENU_SETTINGS_CHANGED: "icsw.menu.settings.changed"
 
         # local signals (for local $emit / $on)
 

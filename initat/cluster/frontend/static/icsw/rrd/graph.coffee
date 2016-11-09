@@ -302,7 +302,7 @@ angular.module(
         $scope.feed_rrd_json = (json) ->
             if "error" of json
                 toaster.pop("error", "", json["error"])
-                $scope.struct.error_string = "Error loading tree"
+                $scope.struct.error_string = "Error loading Tree"
             else
                 $scope.struct.base_setting.set_auto_select_re()
                 # to machine vector
@@ -757,7 +757,7 @@ angular.module(
                         key: "top"
                         className: "text-danger"
                     }
-                    "Error loading graph (#{_graph.num})"
+                    "Error loading Graph (#{_graph.num})"
                 )
             else
                 _head1_list = [
@@ -776,7 +776,7 @@ angular.module(
                                     className:  if @state.open then "glyphicon glyphicon-chevron-down" else "glyphicon glyphicon-chevron-right"
                                 }
                             )
-                            "graph ##{_graph.num}"
+                            " graph ##{_graph.num}"
                         ]
                     )
                 ]
@@ -798,7 +798,7 @@ angular.module(
                                         className:  "glyphicon glyphicon-download-alt"
                                     }
                                 )
-                                "download"
+                                " download"
                             ]
                         )
                     )

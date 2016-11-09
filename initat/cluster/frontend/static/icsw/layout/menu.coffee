@@ -135,6 +135,46 @@ menu_module = angular.module(
     #     icswLayoutSelectionDialogService.show_dialog()
 
     # apply selected theme if theme is set in session
+]).service("icswMenuSettings",
+[
+    "$rootScope", "ICSW_SIGNALS",
+(
+    $rootScope, ICSW_SIGNALS,
+) ->
+    SETTINGS = {
+        menu_help: false
+    }
+
+    _get_menu_help = () ->
+        return SETTINGS.menu_help
+
+    _set_menu_help = (flag) ->
+        SETTINGS.menu_help = flag
+        _redraw()
+        return _get_menu_help()
+
+    _redraw = () ->
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_SETTINGS_CHANGED"))
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"), (event) ->
+        _redraw()
+    )
+    $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
+        console.log "mps", settings
+        _redraw()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
+        _redraw()
+    )
+
+    return {
+        set_menu_help: (state) ->
+            return _set_menu_help(state)
+        get_menu_help: () ->
+            return _get_menu_help()
+    }
+
 ]).directive("icswLayoutMenubar",
 [
     "$templateCache",
@@ -281,11 +321,11 @@ menu_module = angular.module(
 [
     "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
     "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
-    "icswUserService", "icswOverallStyle", "icswLanguageTool",
+    "icswUserService", "icswOverallStyle", "icswLanguageTool", "icswMenuSettings",
 (
     icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
-    icswUserService, icswOverallStyle, icswLanguageTool,
+    icswUserService, icswOverallStyle, icswLanguageTool, icswMenuSettings,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
 
@@ -312,10 +352,18 @@ menu_module = angular.module(
                     a_attrs.href = data.$$menuEntry.href
                 else
                     a_attrs.href = data.$$menuEntry.sref
+                _mis_span = null
             else
                 _a_classes.push("icswMenuDeact")
                 a_attrs.pointerEvents = "none"
                 a_attrs.title = "not available: missing #{data.$$missing_info}"
+                _mis_span = span(
+                    {
+                        className: "label label-danger"
+                        key: "mis"
+                    }
+                    data.$$missing_short.join("")
+                )
             if data.$$menuEntry.entryClass?
                 _a_classes.push(data.$$menuEntry.entryClass)
             if data.$$menuEntry.title?
@@ -325,6 +373,14 @@ menu_module = angular.module(
             else
                 _info_text = "Example text for this entry wwwwww wwww qweqw pqow oiudf oijrl woe oiu qw qw f et ze wol qwoeiuqwoieu ln vldeou9z oqaweeh r"
             a_attrs.className = _a_classes.join(" ")
+            if icswMenuSettings.get_menu_help()
+                help_p = p(
+                    {key: "descr"} # , className: "menu-help-text"}
+                    _info_text
+                    if data.$$allowed then "ok" else "not ok"
+                )
+            else
+                help_p = null
             return li(
                 {key: "li"}
                 a(
@@ -332,13 +388,10 @@ menu_module = angular.module(
                     span(
                         {className: "fa #{data.$$menuEntry.icon} fa_icsw", key: "span"}
                     )
-                    " #{data.$$menuEntry.name}"
+                    " #{data.$$menuEntry.name} "
+                    _mis_span
                 )
-                p(
-                    {key: "descr", className: "menu-help-text"}
-                    _info_text
-                    if data.$$allowed then "ok" else "not ok"
-                )
+                help_p
             )
     )
     return React.createClass(
@@ -573,12 +626,8 @@ menu_module = angular.module(
                 )
                 el[0]
             )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"), (event) ->
+            $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_SETTINGS_CHANGED"), (event) ->
                 _element.force_redraw()
-            )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
-                console.log "mps", settings
-                # _render()
             )
     }
 ]).service("icswReactBackgroundJobInfoFactory",
@@ -728,12 +777,8 @@ menu_module = angular.module(
                 )
                 el[0]
             )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"), (event) ->
+            $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_SETTINGS_CHANGED"), (event) ->
                 _element.force_redraw()
-            )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
-                console.log "mps", settings
-                # _render()
             )
     }
 ]).directive("icswLayoutSubMenubar",

@@ -70,7 +70,7 @@ class ServiceTransition(object):
             )
         self.__step_num += 1
         s_time = time.time()
-        # next step usgin service container cur_c
+        # next step using service container cur_c
         cur_c.update_proc_dict()
         if self.__step_num == 1:
             # init action list
@@ -84,8 +84,10 @@ class ServiceTransition(object):
                     "init action_list with {}: {}".format(
                         logging_tools.get_plural("element", len(self._action_list)),
                         ", ".join(
-                            ["{} ({})".format(entry.name, action) for action, entry in self._action_list]
-                        ),
+                            [
+                                "{} ({})".format(entry.name, action) for action, entry in self._action_list
+                            ]
+                        )
                     )
                 )
             else:
@@ -161,7 +163,9 @@ class ServiceTransition(object):
         return len(self._action_list)
 
     def _check_vanished(self, cur_c):
+        # see of some of the monitored processes have vanished
         _vanished = 0
+        # services to check
         _check_keys = self.__wait_dict.keys()
         for _name in _check_keys:
             _srvc = [entry for entry in self.list if entry.name == _name][0]
