@@ -1,10 +1,10 @@
 
 <script type="text/ng-template" id="icsw.discovery.overview">
     <div st-table="entries" st-safe-src="selected_dispatch_settings" icsw-tools-table-leak-filtered="entries_filtered">
-        <h2>
-            Discovery ({{ entries_filtered.length }} entries)
+        <h3>
+            Discovery ({{ entries_filtered.length }} Entries)
             <icsw-tools-button type="create" value="create new" ng-click="dialog_service.show_create_dispatch_setting()"></icsw-tools-button>
-        </h2>
+        </h3>
         <table class="table table-condensed table-hover" style="width:auto;">
             <thead>
                 <tr>
@@ -21,10 +21,10 @@
                 <tr>
                     <th st-sort="full_name" st-sort-default="true">Device</th>
                     <th st-sort="" class="center">sel</th>
-                    <th st-sort="">Scan type</th>
-                    <th st-sort="">Scan interval</th>
-                    <th st-sort="">Last scan</th>
-                    <th st-sort="">Scheduled scan</th>
+                    <th st-sort="">Scan Type</th>
+                    <th st-sort="">Scan Interval</th>
+                    <th st-sort="">Last Scan</th>
+                    <th st-sort="">Scheduled Scan</th>
                     <th st-sort=""></th>
                 </tr>
             </thead>
@@ -72,10 +72,10 @@
             </div>
             <div class="col-md-7">
                 <fieldset>
-                    <legend>Scan settings</legend>
+                    <legend>Scan Settings</legend>
                     <form class="form-horizontal">
                         <div class="form-group">
-                            <label class="control-label col-sm-3" for="id_scan_type">Scan type</label>
+                            <label class="control-label col-sm-3" for="id_scan_type">Scan Type</label>
 
                             <div class="controls col-sm-9">
 

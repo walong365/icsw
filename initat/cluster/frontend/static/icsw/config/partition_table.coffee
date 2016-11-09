@@ -367,7 +367,7 @@ partition_table_module = angular.module(
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
-                        blockUI.start("saving partition data...")
+                        blockUI.start("Saving Partition Data ...")
                         $scope.struct.partition_tree.create_partition_table_layout(sub_scope.edit_obj).then(
                             (ok) ->
                                 blockUI.stop()
@@ -406,7 +406,7 @@ partition_table_module = angular.module(
     $scope.delete = ($event, layout) ->
         icswToolsSimpleModalService("Really delete partition table '#{layout.name}' ?").then(
             () ->
-                blockUI.start("Deleting partition layout...")
+                blockUI.start("Deleting Partition Layout ...")
                 $scope.struct.partition_tree.delete_partition_table_layout(layout).then(
                     (ok) ->
                         # close tab if open
@@ -513,7 +513,7 @@ partition_table_module = angular.module(
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
-                        blockUI.start("saving partition data...")
+                        blockUI.start("Saving Partition Data ...")
                         $scope.part_tree.update_partition_table_layout($scope.layout).then(
                             (ok) ->
                                 blockUI.stop()
@@ -649,7 +649,7 @@ partition_table_module = angular.module(
                         toaster.pop("warning", "Form Validation Problem", "")
                         d.reject("form not valid")
                     else
-                        blockUI.start("saving part data...")
+                        blockUI.start("Saving Partition Data ...")
                         if create
                             $scope.part_tree.create_partition_part($scope.layout, disc, sub_scope.edit_obj).then(
                                 (ok) ->

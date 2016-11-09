@@ -90,9 +90,9 @@
 </script>
 
 <script type="text/ng-template" id="icsw.rrd.graph.list.header">
-    <h2>
-        {{ graphList.length }} graphs, {{ graphList[0].get_tv(graphList[0].ts_start_mom) }} to {{ graphList[0].get_tv(graphList[0].ts_end_mom) }}
-    </h2>
+    <h3>
+        {{ graphList.length }} Graphs, {{ graphList[0].get_tv(graphList[0].ts_start_mom) }} to {{ graphList[0].get_tv(graphList[0].ts_end_mom) }}
+    </h3>
     <table class="table-condensed">
         <tr ng-repeat="gkey in $$graph_keys">
             <td ng-repeat="(dkey, graph) in graphMatrix[gkey]" style="vertical-align:top;">
@@ -107,7 +107,7 @@
         <uib-accordion close-others="false">
             <div uib-accordion-group class="panel-default" ng-repeat="sensor in graph.sensors" is-open="sensor.open">
                 <uib-accordion-heading>
-                    Sensor key: <code>{{ sensor.mv_key }}</code>, device: {{ graph.device_tree.all_lut[sensor.device_id].full_name }}
+                    Sensor Key: <code>{{ sensor.mv_key }}</code>, Device: {{ graph.device_tree.all_lut[sensor.device_id].full_name }}
                     <span ng-show="sensor.thresholds.length">, #thresholds: {{  sensor.thresholds.length }}</span>
                     <i class="pull-right glyphicon" ng-class="{'glyphicon-chevron-down': sensor.open, 'glyphicon-chevron-right': !sensor.open}"></i>
                 </uib-accordion-heading>
@@ -117,8 +117,8 @@
                             <tr>
                                 <th>Name</th>
                                 <th>User</th>
-                                <th colspan="4" class="text-center">lower settings</th>
-                                <th colspan="4" class="text-center">upper settings</th>
+                                <th colspan="4" class="text-center">Lower Settings</th>
+                                <th colspan="4" class="text-center">Upper Settings</th>
                                 <th>NUsers</th>
                                 <th>Devices</th>
                                 <th class="text-center">Actions</th>
@@ -133,7 +133,7 @@
                 </div>
                 <div class="row">
                     <div class="col-md-12">
-                        Current values: <span ng-repeat="cf in sensor.cf_list">{{ cf }}={{ sensor.cfs[cf] }}, </span>
+                        Current Values: <span ng-repeat="cf in sensor.cf_list">{{ cf }}={{ sensor.cfs[cf] }}, </span>
                         <span class="pull-right">
                             <icsw-tools-button type="create" size="xs" ng-click="create_new_threshold(sensor)"/>
                         </span>
@@ -178,10 +178,10 @@
 
 <script type="text/ng-template" id="icsw.rrd.graph.threshold.form">
     <form class="form-horizontal" name="form_data">
-        <h3>Threshold definition</h3>
+        <h3>Threshold Definition</h3>
         <fieldset>
             <legend>
-                Base / Communication settings
+                Base / Communication Settings
             </legend>
             <div class="form-group">
                 <label class="col-md-3 control-label">Name:</label>

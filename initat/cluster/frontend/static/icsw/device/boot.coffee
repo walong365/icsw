@@ -296,7 +296,7 @@ angular.module(
             # connections
 
             @slave_connections_valid = false
-            @slave_connections_info = "waiting..."
+            @slave_connections_info = "waiting ..."
             @slave_connections = []
             @master_connections = []
 
@@ -999,7 +999,7 @@ angular.module(
             dev_pk_list = [dev.idx]
         else
             dev_pk_list = (dev.idx for dev in $scope.struct.devices when dev.$$boot_selected)
-        blockUI.start("Sending soft control command #{command}...")
+        blockUI.start("Sending soft control command #{command} ...")
         icswSimpleAjaxCall(
             url: ICSW_URLS.BOOT_SOFT_CONTROL
             data: {
@@ -1022,7 +1022,7 @@ angular.module(
                 if dev.$$boot_selected and dev.$$boot_helper.slave_connections.length
                     for slave_con in dev.$$boot_helper.slave_connections
                         cd_pk_list.push(slave_con.idx)
-        blockUI.start("Sending hard control command #{command} for #{cd_pk_list.length} devices ...")
+        blockUI.start("Sending Hard Control Command #{command} for #{cd_pk_list.length} Devices ...")
         icswSimpleAjaxCall(
             url: ICSW_URLS.BOOT_HARD_CONTROL
             data: {
@@ -1184,7 +1184,7 @@ angular.module(
                         _bs.bo_enabled = $scope.struct.boot_options.get_bo_enabled()
                         _bs.change_macaddr = sub_scope.$$change_macaddr
                         defer = $q.defer()
-                        blockUI.start("Saving data...")
+                        blockUI.start("Saving Data ...")
                         icswSimpleAjaxCall(
                             {
                                 url: ICSW_URLS.BOOT_UPDATE_DEVICE

@@ -21,9 +21,9 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.domain.name.tree">
-    <h2>
+    <h3>
         Domain Name Tree ({{ struct.tree.list.length}} Entries)
-    </h2>
+    </h3>
     <div class="panel panel-default">
         <div class="panel-body" ng-if="struct.tree">
             <icsw-tools-rest-table-new target-list="tree_nodes" config-service="icswConfigDTNListService" icsw-config-object="struct">

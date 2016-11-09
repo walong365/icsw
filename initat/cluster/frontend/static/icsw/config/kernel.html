@@ -1,9 +1,9 @@
 <script type="text/ng-template" id="icsw.kernel.overview">
     <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching Data from Server ...</div>
-    <h2>
+    <h3>
         Kernels ({{ struct.kernel_tree.list.length }} Entries)
         <icsw-tools-button type="search" size="xs" value="Scan for kernels" ng-click="scan_for_kernels()"></icsw-tools-button>
-    </h2>
+    </h3>
     <table
         st-table="entries_displayed"
         st-safe-src="struct.kernel_tree.list"

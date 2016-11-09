@@ -3,9 +3,9 @@
 </script>
 
 <script type="text/ng-template" id="icsw.history.overview">
-    <h2>System history
-        <span class="text-warning" ng-show="struct.loading">Fetching base data...</span>
-    </h2>
+    <h3>System History
+        <span class="text-warning" ng-show="struct.loading">Fetching Base Data ...</span>
+    </h3>
     <ui-select ng-model="struct.selected_model" style="max-width:400px; min-width:240px;" ng-show="!struct.loading">
         <ui-select-match class="ui-select-match" placeholder="please select model">
             {{ $select.selected[0] }}
@@ -23,7 +23,7 @@
     </h3>
     <div class="alert alert-warning" ng-show="struct.loading">
         <button class="btn btn-sm btn-danger" ladda="struct.loading" disabled="disabled"></button>
-        Please wait, Fetching data from server
+        Please wait, fetching Data from Server
     </div>
     <table class="table table-condensed table-hover table-striped" style="width: auto"
             st-table="entries_display" st-safe-src="struct.entries" ng-show="!struct.loading">
