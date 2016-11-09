@@ -53,8 +53,8 @@
                             <tr>
                                 <th>Table</th>
                                 <th>Field</th>
-                                <th>First level references</th>
-                                <th>Second level references</th>
+                                <th class="text-center">First Level References</th>
+                                <th class="text-center">Second Level References</th>
                                 <th>Action</th>
                             </tr>
 
@@ -65,13 +65,13 @@
                                 <td>
                                     {{entry.field_verbose_name}}
                                 </td>
-                                <td class="text-right">
+                                <td class="text-center">
                                     <icsw-tools-button type="show" size="xs" is-show="!entry.show_details"
                                                        ng-click="entry.show_details = !entry.show_details"
                                                        show-value="show ({{ entry.objects.list.length }})"
                                                        hide-value="hide ({{ entry.objects.list.length }})"></icsw-tools-button>
                                 </td>
-                                <td ng-class="(entry.objects.num_refs_of_refs == 0) ? 'text-right' : 'text-right text-danger'">
+                                <td ng-class="(entry.objects.num_refs_of_refs == 0) ? 'text-center' : 'text-center text-danger'">
                                     {{entry.objects.num_refs_of_refs}}
                                 </td>
                                 <td>
@@ -108,12 +108,13 @@
 
                         <div>
                             <div ng-show="!all_actions_defined(obj_pk)" class="text-danger">
-                                Please select actions for all references.
+                                Please select Actions for all References.
                             </div>
-
-                            <icsw-tools-button type="delete" value="force delete"
-                                               disabled="!all_actions_defined(obj_pk)"
-                                               ng-click="force_delete(obj_pk)"></icsw-tools-button>
+                            <div class="pull-right">
+                                <icsw-tools-button type="delete" value="force delete"
+                                                   disabled="!all_actions_defined(obj_pk)"
+                                                   ng-click="force_delete(obj_pk)"></icsw-tools-button>
+                            </div>
                         </div>
 
                     </div>
