@@ -520,7 +520,7 @@ class MSIBlock(object):
         # try to read complete info from file
         self.__name = None
         try:
-            xml_struct = etree.fromstring(open(name, "r").read())  # @UndefinedVariable
+            xml_struct = etree.fromstring(open(name, "r").read())
         except:
             self.log(
                 "error parsing XML file {} (MSIBlock): {}".format(
@@ -717,8 +717,7 @@ class MSIBlock(object):
             if cur_pid in act_dict:
                 try:
                     _stat = act_dict[cur_pid].status().lower()
-                    # print _stat
-                    if _stat in ["running", "sleeping"]:
+                    if _stat not in ["zombie", "dead"]:
                         self.__pids_found[cur_pid] = 1
                 except psutil.NoSuchProcess:
                     pass

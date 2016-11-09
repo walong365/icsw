@@ -307,7 +307,14 @@
             <dir value="/opt/cluster/icinga/" user="idmon" group="idg"/>
         </access-rights>
     </instance>
-    <instance check_type="meta" name="md-config-server" alias="md-config" pid_file_name="md-config-server/md-config-server.pid" reload="1" uuid-postfix="md-config-server">
+    <instance
+        check_type="meta"
+        name="md-config-server"
+        alias="md-config"
+        pid_file_name="md-config-server/md-config-server.pid"
+        reload="1"
+        uuid-postfix="md-config-server"
+    >
         <config-enums>
             <config-enum>monitor_server</config-enum>
         </config-enums>
