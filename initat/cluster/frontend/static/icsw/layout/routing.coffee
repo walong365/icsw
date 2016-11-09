@@ -82,6 +82,13 @@ menu_module = angular.module(
             callback: (event) ->
                 event.preventDefault()
                 icswLayoutSelectionDialogService.quick_dialog()
+        # ).add(
+        #    combo: "ctrl"
+        #    allowIn: ["INPUT", "SELECT", "TEXTAREA"]
+        #    description: "Toggle Theme"
+        #    callback: (event) ->
+        #        event.preventDefault()
+        #        icswThemeService.toggle()
         ).add(
             combo: "f2"
             allowIn: ["INPUT", "SELECT", "TEXTAREA"]

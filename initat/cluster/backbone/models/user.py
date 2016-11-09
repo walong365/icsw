@@ -400,7 +400,7 @@ class csw_object_permission(models.Model):
             obj = model_class.objects.get(pk=self.object_pk)
         except model_class.DoesNotExist:
             obj = "deleted object (pk: {})".format(self.object_pk)
-        return u"{} on {}".format(unicode(self.csw_permission), obj)
+        return u"{} on {}".format(unicode(self.csw_permission), unicode(obj))
 
     class Meta:
         verbose_name = "Object permission"
@@ -518,7 +518,7 @@ class RoleObjectPermission(models.Model):
         verbose_name = "Global Object permissions of Role"
 
     def __unicode__(self):
-        return u"Object permission {} for role {}".format(self.csw_permission, self.role)
+        return u"Object permission {} for role {}".format(unicode(self.csw_object_permission), self.role)
 
 
 @receiver(signals.post_save, sender=RoleObjectPermission)
@@ -982,7 +982,8 @@ class user(models.Model):
         # foreign keys to ignore
         fk_ignore_list = [
             "user_variable", "user_permission", "user_object_permission", "login_history", "user_quota_setting",
-            "virtual_desktop_user_setting",
+            "virtual_desktop_user_setting", "user_scan_run",
+
         ]
 
     class Meta:

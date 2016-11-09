@@ -475,35 +475,42 @@
         <thead>
             <tr>
                 <th>Role</th>
-                <th>Type</th>
+                <th class="text-center">Type</th>
                 <th>Name</th>
                 <th>Code</th>
-                <th>Level</th>
+                <th class="text-center">Level</th>
                 <th>Object</th>
                 <th>Application</th>
                 <th>Model</th>
+                <th ng-show="struct.modify">Action</th>
             </tr>
         </thead>
         <tbody>
             <tr ng-repeat="perm in struct.permissions">
                 <td>{{ perm.$$role.name }}</td>
-                <td>global</td>
+                <td class="text-center"><span class="label label-primary">global</span></td>
                 <td>{{ get_perm(perm.csw_permission).name }}</td>
                 <td>{{ get_perm(perm.csw_permission).codename }}</td>
-                <td>{{ struct.permission_tree.ac_level_lut[perm.level].info_string }}</td>
-                <td>&nbsp;</td>
+                <td class="text-center">{{ struct.permission_tree.ac_level_lut[perm.level].info_string }}</td>
+                <td>N/A</td>
                 <td>{{ get_perm(perm.csw_permission).content_type.app_label }}</td>
                 <td>{{ get_perm(perm.csw_permission).content_type.model }}</td>
+                <td ng-show="struct.modify">
+                    <icsw-tools-button type="delete" size="xs" ng-click="delete_perm($event, perm)"></icsw-tools-button>
+                </td>
             </tr>
             <tr ng-repeat="perm in struct.object_permissions">
                 <td>{{ perm.$$role.name }}</td>
-                <td>local</td>
+                <td class="text-center"><span class="label label-success">local</span></td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).name }}</td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).codename }}</td>
-                <td>{{ struct.permission_tree.ac_level_lut[perm.level].info_string }}</td>
+                <td class="text-center">{{ struct.permission_tree.ac_level_lut[perm.level].info_string }}</td>
                 <td>{{ get_perm_object(perm) }}</td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).content_type.app_label }}</td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).content_type.model }}</td>
+                <td ng-show="struct.modify">
+                    <icsw-tools-button type="delete" size="xs" ng-click="delete_object_perm($event, perm)"></icsw-tools-button>
+                </td>
             </tr>
         </tbody>
     </table>
