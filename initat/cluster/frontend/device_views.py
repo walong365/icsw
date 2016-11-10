@@ -994,7 +994,23 @@ class DeviceCompletion(View):
                 rrd_age_in_seconds = int((_now - modification_time).total_seconds())
 
                 info_dict[_device.idx]["graphing_data_age_in_seconds"] = rrd_age_in_seconds
-                info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} seconds ago".format(rrd_age_in_seconds)
+                info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} second(s) ago".format(rrd_age_in_seconds)
+                if rrd_age_in_seconds > 60:
+                    age_in_minutes = round(rrd_age_in_seconds / 60.0, 1)
+                    info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} minute(s) ago".format(
+                        age_in_minutes)
+                if rrd_age_in_seconds > (60 * 60):
+                    age_in_hours = round(rrd_age_in_seconds / (60.0 * 60.0), 1)
+                    info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} hour(s) ago".format(
+                        age_in_hours)
+                if rrd_age_in_seconds > (60 * 60 * 24):
+                    age_in_days = round(rrd_age_in_seconds / (60.0 * 60.0 * 24), 1)
+                    info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} day(s) ago".format(
+                        age_in_days)
+                if rrd_age_in_seconds > (60 * 60 * 24 * 7):
+                    age_in_weeks = round(rrd_age_in_seconds / (60.0 * 60.0 * 24 * 7), 1)
+                    info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} week(s) ago".format(
+                        age_in_weeks)
 
             info_dict[_device.idx]["monitoring_checks"] = 0
             if _device.idx in device_checks_count:

@@ -475,12 +475,8 @@ a.bttn-bgjobs button{
     font-weight: bold;
 }
 
-.setupsteps {
-    padding: 28px 20px;
-}
-
 .setupsteps__badge {
-  margin: 19px 15px 0 0;
+  margin: 0 0 0 0;
   background-color: #fa3e3e;
   border-radius: 2px;
   color: white;
@@ -489,8 +485,8 @@ a.bttn-bgjobs button{
   font-size: 10px;
 
   position: absolute;
-  top: 0;
-  right: 0;
+  top: 14px;
+  right: 8px;
 }
 
 /* MENU END */

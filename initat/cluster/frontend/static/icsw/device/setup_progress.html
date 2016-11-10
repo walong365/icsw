@@ -33,18 +33,17 @@
 
                 <table
                     class="table table-condensed table-hover table-striped"
-                    style="width:auto;"
                 >
                     <thead>
                         <tr>
-                            <th>Task</th>
-                            <th style="width: 500px">Description</th>
-                            <th>Status</th>
+                            <th style="width: 10px" class="lead">Task</th>
+                            <th style="width: 500px" class="lead">Description</th>
+                            <th style="width: 10px" class="lead">Status</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr ng-click="open_in_new_tab_for_system(task.setup_type)" ng-repeat="task in struct.tasks">
-                            <td class="text-center">
+                        <tr ng-click="open_in_new_tab_for_system(task.setup_type)" ng-repeat="task in struct.tasks" class="lead">
+                            <td>
                                 {{ task.task_number }}.
                             </td>
                             <td>
