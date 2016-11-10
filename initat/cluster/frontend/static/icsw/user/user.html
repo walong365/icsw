@@ -230,8 +230,10 @@
             <div class="controls col-sm-8">
                 <div class='input-group' style='max-width:400px; min-width:240px;'>
                     <ui-select ng-model='_edit_obj.device' ng-change="on_device_change()">
-                        <ui-select-match class="ui-select-match" placeholder='Select a device'>{{ $select.selected.name }}</ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat='value.idx as value in virtual_desktop_devices' group-by='&#39;model_name&#39;'>
+                        <ui-select-match class="ui-select-match" placeholder='Select a device'>
+                            {{ $select.selected.name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat='value.idx as value in virtual_desktop_devices' group-by="model_name">
                             <div ng-bind-html='value.name | highlight: $select.search'></div>
                         </ui-select-choices>
                     </ui-select>
@@ -249,7 +251,9 @@
             </label>
             <div class="controls col-sm-8">
                 <ui-select ng-model='_edit_obj.virtual_desktop_protocol' style='max-width:400px; min-width:240px;'>
-                    <ui-select-match class="ui-select-match" placeholder='Select an virtual desktop protocol'>{{ $select.selected.description }}</ui-select-match>
+                    <ui-select-match class="ui-select-match" placeholder='Select an virtual desktop protocol'>
+                        {{ $select.selected.description }}
+                    </ui-select-match>
                     <ui-select-choices class="ui-select-choices" repeat='value.idx as value in get_available_virtual_desktop_protocols(_edit_obj.device)' group-by='model_name'>
                         <div ng-bind-html='value.description | highlight: $select.search'></div>
                     </ui-select-choices>
@@ -278,7 +282,9 @@
             </label>
             <div class="controls col-sm-8">
                 <ui-select ng-model='_edit_obj.window_manager' style='max-width:400px; min-width:240px;'>
-                    <ui-select-match class="ui-select-match" placeholder='Select a wm'>{{ $select.selected.description }}</ui-select-match>
+                    <ui-select-match class="ui-select-match" placeholder='Select a wm'>
+                        {{ $select.selected.description }}
+                    </ui-select-match>
                     <ui-select-choices class="ui-select-choices" repeat='value.idx as value in get_available_window_managers(_edit_obj.device)' group-by='model_name'>
                         <div ng-bind-html='value.description | highlight: $select.search'></div>
                     </ui-select-choices>
@@ -291,7 +297,9 @@
             </label>
             <div class="controls col-sm-8">
                 <ui-select ng-model='_edit_obj.screen_size' style='max-width:400px; min-width:240px;'>
-                    <ui-select-match class="ui-select-match" placeholder='...'>{{ $select.selected.name }}</ui-select-match>
+                    <ui-select-match class="ui-select-match" placeholder='...'>
+                        {{ $select.selected.name }}
+                    </ui-select-match>
                     <ui-select-choices class="ui-select-choices" repeat='value as value in available_screen_sizes'>
                         <div ng-bind-html='value.name | highlight: $select.search'></div>
                     </ui-select-choices>
@@ -510,7 +518,7 @@
                     <span class="label label-warning" ng-show="perm.$$not_saved">new</span>
                 </td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).name }}</td>
-                <td>{{ get_perm(perm.csw_object_permission.csw_permission).codename }}</td>
+                <td><code>{{ get_perm(perm.csw_object_permission.csw_permission).codename }}</code></td>
                 <td class="text-center">{{ struct.permission_tree.ac_level_lut[perm.level].info_string }}</td>
                 <td>{{ get_perm_object(perm) }}</td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).content_type.app_label }}</td>
@@ -674,7 +682,9 @@
                         </label>
                         <div class="controls col-sm-8">
                             <ui-select ng-model="object.group" class="maxwidth500">
-                                <ui-select-match class="ui-select-match" placeholder="Select primary group">{{ $select.selected.groupname }}</ui-select-match>
+                                <ui-select-match class="ui-select-match" placeholder="Select primary group">
+                                    {{ $select.selected.groupname }}
+                                </ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.group_list | props_filter:{groupname:$select.search}">
                                     <div ng-bind-html="value.groupname | highlight: $select.search"></div>
                                 </ui-select-choices>
@@ -687,7 +697,9 @@
                         </label>
                         <div class="controls col-sm-8">
                             <ui-select multiple="multiple" ng-model="object.secondary_groups" class="maxwidth500">
-                                <ui-select-match class="ui-select-match" placeholder="Select secondary groups">{{ $item.groupname }}</ui-select-match>
+                                <ui-select-match class="ui-select-match" placeholder="Select secondary groups">
+                                    {{ $item.groupname }}
+                                </ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.group_list | props_filter:{groupname:$select.search}">
                                     <div ng-bind-html="value.groupname | highlight: $select.search"></div>
                                 </ui-select-choices>
@@ -701,7 +713,9 @@
                         <div class="controls col-sm-8">
                             <div class="input-group maxwidth500">
                                 <ui-select ng-model="object.export" class="maxwidth500">
-                                    <ui-select-match class="ui-select-match" placeholder="Select export entry">{{ $select.selected.info_string }}</ui-select-match>
+                                    <ui-select-match class="ui-select-match" placeholder="Select export entry">
+                                        {{ $select.selected.info_string }}
+                                    </ui-select-match>
                                     <ui-select-choices class="ui-select-choices" repeat="value.idx as value in settings_tree.home_export_list | props_filter:{info_string:$select.search}">
                                         <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                                     </ui-select-choices>
@@ -1002,6 +1016,13 @@
             <uib-tab heading="Permissions">
                 <fieldset>
                     <legend>Permissions</legend>
+                    <!-- <uib-accordion close-others="no" ng-if="struct.perm_dict">
+                        <div uib-accordion-group class="panel-default" ng-repeat="perm_key in struct.content_keys">
+                            <uib-accordion-heading>
+                                {{ perm_key }}
+                            </uib-accordion-heading>
+                        </div>
+                    </uib-accordion> -->
                     <div class="form-group">
                         <label class="control-label col-sm-2 icsw-formlabel">
                             Permission
@@ -1009,7 +1030,8 @@
                         <div class="controls col-sm-8">
                             <div class="input-group maxwidth500">
                                 <ui-select ng-model="new_perm.permission">
-                                    <ui-select-match class="ui-select-match" placeholder="Select a permission">{{ $select.selected.info_string }}
+                                    <ui-select-match class="ui-select-match" placeholder="Select a permission">
+                                        {{ $select.selected.info_string }}
                                     </ui-select-match>
                                     <ui-select-choices class="ui-select-choices" repeat="value.idx as value in perm_tree.permission_list | props_filter:{info_string:$select.search}" group-by="'model_name'">
                                         <div ng-bind-html="value.info_string | highlight: $select.search"></div>
@@ -1030,7 +1052,9 @@
                         <div class="controls col-sm-8">
                             <div class="input-group maxwidth500">
                                 <ui-select ng-model="new_perm.object">
-                                    <ui-select-match class="ui-select-match" placeholder="Select an object">{{ $select.selected.name }}</ui-select-match>
+                                    <ui-select-match class="ui-select-match" placeholder="Select an object">
+                                        {{ $select.selected.name }}
+                                    </ui-select-match>
                                     <ui-select-choices class="ui-select-choices" repeat="value.idx as value in object_list()| props_filter:{name:$select.search}" group-by="'group'">
                                         <div ng-bind-html="value.name | highlight: $select.search"></div>
                                     </ui-select-choices>
@@ -1049,7 +1073,9 @@
                         </label>
                         <div class="controls col-sm-8">
                             <ui-select ng-model="new_perm.level" class="maxwidth500">
-                                <ui-select-match class="ui-select-match" placeholder="Select a permission mode">{{ $select.selected.info_string }}</ui-select-match>
+                                <ui-select-match class="ui-select-match" placeholder="Select a permission mode">
+                                    {{ $select.selected.info_string }}
+                                </ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.level as value in perm_tree.ac_level_list">
                                     <div ng-bind-html="value.info_string | highlight: $select.search"></div>
                                 </ui-select-choices>
@@ -1164,7 +1190,9 @@
                             </label>
                             <div class="controls col-xs-8">
                                 <ui-select ng-model="struct.user.ui_theme_selection" class="maxwidth500">
-                                    <ui-select-match class="ui-select-match" placeholder="Select a theme">{{ $select.selected.name }}</ui-select-match>
+                                    <ui-select-match class="ui-select-match" placeholder="Select a theme">
+                                        {{ $select.selected.name }}
+                                    </ui-select-match>
                                     <ui-select-choices class="ui-select-choices" repeat="value.short as value in themes">
                                         <div ng-bind-html="value.name | highlight: $select.search"></div>
                                     </ui-select-choices>

@@ -72,7 +72,7 @@ angular.module(
                 step.$$idx = _idx
                 if _state.icswData?
                     _data = _state.icswData
-                    if _data.description.en?
+                    if _data.description[def_lang]?
                         step.$$info_str = "#{_data.description[def_lang].text}"
                     else if _data.$$menuEntry
                         step.$$info_str = _data.$$menuEntry.name

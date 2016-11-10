@@ -1631,6 +1631,10 @@ user_module = angular.module(
         object: undefined
         # create mode
         create_mode: false
+        # permission struct
+        perm_dict: undefined
+        # content keys
+        content_keys: []
     }
     $scope.new_perm = {
         permission: undefined
@@ -1642,6 +1646,17 @@ user_module = angular.module(
         $scope.struct.object = $scope.struct.src_object.$$_ICSW_backup_data
 
     $scope.start = () ->
+        # build object list
+        _struct = {}
+        $scope.struct.content_keys.length = 0
+        for entry in $scope.perm_tree.permission_list
+            content_key = "#{entry.content_type.app_label}.#{entry.content_type.model}"
+            if content_key not of _struct
+                _struct[content_key] = []
+                $scope.struct.content_keys.push(content_key)
+            _struct[content_key].push(entry)
+        $scope.struct.perm_dict = _struct
+
         $scope.struct.src_object = $scope.role
         _set_permissions_from_src()
         if $scope.struct.object.idx?
