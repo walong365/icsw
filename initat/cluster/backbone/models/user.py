@@ -371,7 +371,7 @@ class csw_permission(models.Model):
             object_pk=cur_pk,
         )
 
-    @staticmethod
+    @property
     def scope(self):
         return "G/O" if self.valid_for_object_level else "G"
 
@@ -462,7 +462,10 @@ class user_permission(models.Model):
         verbose_name = "Global permissions of users"
 
     def __unicode__(self):
-        return u"Permission {} for user {}".format(self.csw_permission, self.user)
+        return u"Permission {} for user {}".format(
+            unicode(self.csw_permission),
+            unicode(self.user),
+        )
 
 
 @receiver(signals.post_save, sender=user_permission)
@@ -490,7 +493,10 @@ class RolePermission(models.Model):
         verbose_name = "Global permissions of Role"
 
     def __unicode__(self):
-        return u"Permission {} for role {}".format(self.csw_permission, self.role)
+        return u"Permission {} for role {}".format(
+            unicode(self.csw_permission),
+            unicode(self.role),
+        )
 
 
 @receiver(signals.post_save, sender=RolePermission)
@@ -518,7 +524,10 @@ class RoleObjectPermission(models.Model):
         verbose_name = "Global Object permissions of Role"
 
     def __unicode__(self):
-        return u"Object permission {} for role {}".format(unicode(self.csw_object_permission), self.role)
+        return u"Object permission {} for role {}".format(
+            unicode(self.csw_object_permission),
+            unicode(self.role),
+        )
 
 
 @receiver(signals.post_save, sender=RoleObjectPermission)
@@ -543,7 +552,10 @@ class user_object_permission(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
     def __unicode__(self):
-        return u"Permission {} for user {}".format(self.csw_object_permission, self.user)
+        return u"Permission {} for user {}".format(
+            unicode(self.csw_object_permission),
+            unicode(self.user),
+        )
 
     class Meta:
         verbose_name = "Object permissions of users"
@@ -1566,6 +1578,11 @@ class Role(models.Model):
 
     class Meta:
         ordering = ("name",)
+
+    class CSW_Meta:
+        fk_ignore_list = [
+            "RolePermission", "RoleObjectPermission",
+        ]
 
 
 @receiver(signals.post_save, sender=Role)

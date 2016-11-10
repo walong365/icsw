@@ -467,7 +467,8 @@
 
 <script type="text/ng-template" id="icsw.user.group.role.permissions">
     <h3>
-        Roles: {{ struct.roles.length }},
+        <!-- show number of roles only when not editing roles -->
+        <span ng-show="object_type != 'role'">Roles: {{ struct.roles.length }},</span>
         Permissions: {{ struct.permissions.length }},
         Object Permissions: {{ struct.object_permissions.length }}
     </h3>
@@ -488,9 +489,12 @@
         <tbody>
             <tr ng-repeat="perm in struct.permissions">
                 <td>{{ perm.$$role.name }}</td>
-                <td class="text-center"><span class="label label-primary">global</span></td>
+                <td class="text-center">
+                    <span class="label label-primary">global</span>
+                    <span class="label label-warning" ng-show="perm.$$not_saved">new</span>
+                </td>
                 <td>{{ get_perm(perm.csw_permission).name }}</td>
-                <td>{{ get_perm(perm.csw_permission).codename }}</td>
+                <td><code>{{ get_perm(perm.csw_permission).codename }}</code></td>
                 <td class="text-center">{{ struct.permission_tree.ac_level_lut[perm.level].info_string }}</td>
                 <td>N/A</td>
                 <td>{{ get_perm(perm.csw_permission).content_type.app_label }}</td>
@@ -501,7 +505,10 @@
             </tr>
             <tr ng-repeat="perm in struct.object_permissions">
                 <td>{{ perm.$$role.name }}</td>
-                <td class="text-center"><span class="label label-success">local</span></td>
+                <td class="text-center">
+                    <span class="label label-success">local</span>
+                    <span class="label label-warning" ng-show="perm.$$not_saved">new</span>
+                </td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).name }}</td>
                 <td>{{ get_perm(perm.csw_object_permission.csw_permission).codename }}</td>
                 <td class="text-center">{{ struct.permission_tree.ac_level_lut[perm.level].info_string }}</td>
@@ -773,8 +780,15 @@
                             Associated Roles
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select multiple="multiple" ng-model="object.roles" class="maxwidth500">
-                                <ui-select-match class="ui-select-match" placeholder="Select the roles">{{ $item.name }}</ui-select-match>
+                            <ui-select multiple="multiple"
+                                ng-model="object.roles"
+                                class="maxwidth500"
+                                on-select="update_roles($event)"
+                                on-remove="update_roles($event)"
+                            >
+                                <ui-select-match class="ui-select-match" placeholder="Select the roles">
+                                    {{ $item.name }}
+                                </ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.role_list | props_filter:{name:$select.search}">
                                     <div ng-bind-html="value.name | highlight: $select.search"></div>
                                 </ui-select-choices>
@@ -908,8 +922,15 @@
                             Associated Roles
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select multiple="multiple" ng-model="object.roles" class="maxwidth500">
-                                <ui-select-match class="ui-select-match" placeholder="Select the roles">{{ $item.name }}</ui-select-match>
+                            <ui-select multiple="multiple"
+                                ng-model="object.roles"
+                                class="maxwidth500"
+                                on-select="update_roles($event)"
+                                on-remove="update_roles($event)"
+                            >
+                                <ui-select-match class="ui-select-match" placeholder="Select the roles">
+                                    {{ $item.name }}
+                                </ui-select-match>
                                 <ui-select-choices class="ui-select-choices" repeat="value.idx as value in tree.role_list | props_filter:{name:$select.search}">
                                     <div ng-bind-html="value.name | highlight: $select.search"></div>
                                 </ui-select-choices>

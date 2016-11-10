@@ -112,6 +112,7 @@ user_module = angular.module(
                     )
             else
                 console.error "unknown OLP-key '#{key}'"
+            console.log "***", key, _list
             struct.obj_list_cache[key] = _list
             struct.obj_lut_cache[key] = _.keyBy(_list, "idx")
         return struct.obj_list_cache[key]
@@ -360,6 +361,7 @@ user_module = angular.module(
             # called from icswTreeBase
             result = @get_result()
             # send theme to themeservice
+            console.log "***", result.user.ui_theme_selection
             icswThemeService.setcurrent(result.user.ui_theme_selection)
 
     return new icswUserService(
@@ -692,6 +694,23 @@ user_module = angular.module(
             )
             return defer.promise
 
+        delete_role: (role) =>
+            defer = $q.defer()
+            _del_url = ICSW_URLS.REST_ROLE_DETAIL.slice(1).slice(0, -2)
+            Restangular.restangularizeElement(null, role, _del_url)
+            role.remove().then(
+                (del) =>
+                    @build_luts()
+
+                    # send signal
+                    $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
+
+                    defer.resolve("deleted")
+                (not_del) =>
+                    defer.reject("not del")
+            )
+            return defer.promise
+
         # create calls for users and groups and roles
 
         create_user: (new_user) ->
@@ -824,13 +843,14 @@ user_module = angular.module(
             $q.allSettled(
                 _calls
             ).then(
-                (data) ->
+                (data) =>
                     for [res_info, [info_str, info_obj]] in _.zip(data, _call_info)
                         _perm_type = _.replace(_.replace(perm_type, "_", ""), "_", "")
                         if info_str == "add"
                             object["#{_perm_type}_set"].push(res_info.value)
                         else
                             _.remove(object["#{_perm_type}_set"], (entry) -> return entry.idx == info_obj.idx)
+                    @build_luts()
                     $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_TREE_CHANGED"))
                     defer.resolve("done")
             )
@@ -1423,7 +1443,7 @@ user_module = angular.module(
             device_tree: "=icswDeviceTree"
             settings_tree: "=icswUserGroupRoleSettingsTree"
         link: (scope, element, attrs) ->
-            scope.set_type("role")
+            scope.start()
     }
 ]).directive("icswGroupEdit",
 [
@@ -1466,10 +1486,10 @@ user_module = angular.module(
 ]).controller("icswUserGroupEditCtrl",
 [
     "$scope", "$q", "icswUserGroupRoleTools", "ICSW_SIGNALS", "icswToolsSimpleModalService", "icswUserGetPassword",
-    "blockUI", "icswBackupTools",
+    "blockUI", "icswBackupTools", "$rootScope", "$timeout",
 (
     $scope, $q, icswUserGroupRoleTools, ICSW_SIGNALS, icswToolsSimpleModalService, icswUserGetPassword,
-    blockUI, icswBackupTools,
+    blockUI, icswBackupTools, $rootScope, $timeout,
 ) ->
 
     _set_permissions_from_src = () ->
@@ -1556,9 +1576,10 @@ user_module = angular.module(
                 bu_def.create_backup($scope.src_object)
                 _set_permissions_from_src()
                 if $scope.create_mode
+                    $scope.create_mode = false
                     # close current tab
-                    $scope.src_object.$$ignore_changes = true
-                    $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+                    # $scope.src_object.$$ignore_changes = true
+                    # $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
                 blockUI.stop()
             (not_ok) ->
                 # create new backup
@@ -1567,6 +1588,13 @@ user_module = angular.module(
                 blockUI.stop()
         )
 
+    # role functions
+    $scope.update_roles = (event) ->
+        $timeout(
+            () ->
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_ROLE_CHANGED"))
+            10
+        )
 
     # password functions
 
@@ -1597,8 +1625,6 @@ user_module = angular.module(
     icswUserGroupRoleTools.clean_cache()
 
     $scope.struct = {
-        # object type
-        type: undefined
         # src object
         src_object: undefined
         # object
@@ -1615,8 +1641,7 @@ user_module = angular.module(
     _set_permissions_from_src = () ->
         $scope.struct.object = $scope.struct.src_object.$$_ICSW_backup_data
 
-    $scope.set_type = (ug_type) ->
-        $scope.struct.type = ug_type
+    $scope.start = () ->
         $scope.struct.src_object = $scope.role
         _set_permissions_from_src()
         if $scope.struct.object.idx?
@@ -1688,15 +1713,15 @@ user_module = angular.module(
         return icswBackupTools.changed($scope.struct.src_object)
 
     $scope.close = () ->
-        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, "role")
+        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.struct.src_object, "role")
 
     $scope.delete = () ->
         # check for deletion of own user / group, TODO, FIXME
-        icswToolsSimpleModalService("Really delete #{$scope.type}?").then(
+        icswToolsSimpleModalService("Really delete role ?").then(
             (doit) ->
-                blockUI.start("deleting #{$scope.type}")
+                blockUI.start("deleting role")
                 defer = $q.defer()
-                $scope.tree["delete_#{$scope.type}"]($scope.object).then(
+                $scope.tree.delete_role($scope.struct.src_object).then(
                     (deleted) ->
                         defer.resolve("ok")
                     (not_del) ->
@@ -1705,8 +1730,8 @@ user_module = angular.module(
                 defer.promise.then(
                     (removed) ->
                         blockUI.stop()
-                        $scope.src_object.$$ignore_changes = true
-                        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.src_object, $scope.type)
+                        $scope.struct.src_object.$$ignore_changes = true
+                        $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.struct.src_object, "role")
                     (not_rem) ->
                         blockUI.stop()
                 )
@@ -1752,20 +1777,21 @@ user_module = angular.module(
         # restore backup
         bu_def.restore_backup($scope.struct.src_object)
 
-        blockUI.start("updating #{$scope.struct.type} object")
+        blockUI.start("updating role object")
         defer = $q.defer()
 
-        if $scope.create_mode
+        if $scope.struct.create_mode
             # create new object
-            $scope.tree["create_#{$scope.struct.type}"]($scope.struct.src_object).then(
+            $scope.tree.create_role($scope.struct.src_object).then(
                 (created) ->
                     $scope.struct.src_object = created
+                    $scope.struct.create_mode = false
                     defer.resolve("created")
                 (not_saved) ->
                     defer.reject("not created")
             )
         else
-            $scope.tree["modify_#{$scope.struct.type}"]($scope.struct.src_object).then(
+            $scope.tree.modify_role($scope.struct.src_object).then(
                 (saved) ->
                     defer.resolve("saved")
                 (not_saved) ->
@@ -1775,18 +1801,18 @@ user_module = angular.module(
             (ok) ->
                 $q.all(
                     [
-                        $scope.tree["modify_#{$scope.struct.type}_permissions"]($scope.struct.src_object, perms_to_create, perms_to_remove)
-                        $scope.tree["modify_#{$scope.struct.type}_object_permissions"]($scope.struct.src_object, obj_perms_to_create, obj_perms_to_remove)
+                        $scope.tree.modify_role_permissions($scope.struct.src_object, perms_to_create, perms_to_remove)
+                        $scope.tree.modify_role_object_permissions($scope.struct.src_object, obj_perms_to_create, obj_perms_to_remove)
                     ]
                 ).then(
                     (done) ->
                         # create new backup
                         bu_def.create_backup($scope.struct.src_object)
                         _set_permissions_from_src()
-                        if $scope.struct.create_mode
-                            # close current tab
-                            $scope.struct.src_object.$$ignore_changes = true
-                            $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.struct.src_object, $scope.struct.type)
+                        #if $scope.struct.create_mode
+                        #    # close current tab
+                        #    $scope.struct.src_object.$$ignore_changes = true
+                        #    $scope.$emit(ICSW_SIGNALS("_ICSW_CLOSE_USER_GROUP"), $scope.struct.src_object, "role")
                         blockUI.stop()
                 )
             (not_ok) ->
@@ -1847,6 +1873,22 @@ user_module = angular.module(
     }
 
     _update_roles = () ->
+        _role_idxs = []
+        $scope.struct.roles.length = 0
+        if $scope.object_type == "role"
+            $scope.struct.modify = true
+            if $scope.object.idx? and $scope.object.idx
+                _role_idxs.push($scope.object.idx)
+            else
+                # new role, add it
+                $scope.struct.roles.push($scope.object)
+        else
+            $scope.struct.modify = false
+            for role in $scope.object.roles
+                _role_idxs.push(role)
+            # console.log $scope.object
+        for _role_idx in _role_idxs
+            $scope.struct.roles.push($scope.struct.ugr_tree.role_lut[_role_idx])
         $scope.struct.permissions.length = 0
         $scope.struct.object_permissions.length = 0
         for role in $scope.struct.roles
@@ -1887,17 +1929,6 @@ user_module = angular.module(
             _wait.resolve("already there")
         _wait.promise.then(
             (done) ->
-                _role_idxs = []
-                if $scope.object_type == "role"
-                    $scope.struct.modify = true
-                    if $scope.object.idx? and $scope.object.idx
-                        _role_idxs.push($scope.object.idx)
-                else
-                    $scope.struct.modify = false
-                    for role in $scope.object.roles
-                        _role_idxs.push(role)
-                for _role_idx in _role_idxs
-                    $scope.struct.roles.push($scope.struct.ugr_tree.role_lut[_role_idx])
                 _update_roles()
         )
 

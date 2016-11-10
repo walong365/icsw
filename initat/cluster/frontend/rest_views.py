@@ -386,7 +386,7 @@ class list_view(
 
     @rest_logging
     def post(self, request, *args, **kwargs):
-        new_obj = self.serializer_class(data=request.data)
+        new_obj = self.serializer_class(data=request.data, context={"request": request})
         if not new_obj.is_valid():
             raise ValidationError(
                 "cannot create new object: {}".format(

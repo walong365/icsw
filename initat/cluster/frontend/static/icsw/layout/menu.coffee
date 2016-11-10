@@ -142,7 +142,10 @@ menu_module = angular.module(
     $rootScope, ICSW_SIGNALS,
 ) ->
     SETTINGS = {
+        # menu help setting
         menu_help: false
+        # themes valid
+        themes_valid: false
     }
 
     _get_menu_help = () ->
@@ -152,6 +155,14 @@ menu_module = angular.module(
         SETTINGS.menu_help = flag
         _redraw()
         return _get_menu_help()
+
+    _get_themes_valid = () ->
+        return SETTINGS.themes_valid
+
+    _set_themes_valid = () ->
+        SETTINGS.themes_valid = true
+        _redraw()
+        return _get_themes_valid()
 
     _redraw = () ->
         $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_SETTINGS_CHANGED"))
@@ -171,8 +182,15 @@ menu_module = angular.module(
     return {
         set_menu_help: (state) ->
             return _set_menu_help(state)
+
         get_menu_help: () ->
             return _get_menu_help()
+
+        set_themes_valid: () ->
+            return _set_themes_valid()
+
+        get_themes_valid: () ->
+            return _get_themes_valid()
     }
 
 ]).directive("icswLayoutMenubar",
@@ -401,6 +419,8 @@ menu_module = angular.module(
         displayName: "icswMenuHeader"
 
         render: () ->
+            if not icswMenuSettings.get_themes_valid()
+                return null
             overall_style = icswOverallStyle.get()
             items_added = 0
             _items = []
@@ -755,10 +775,10 @@ menu_module = angular.module(
 ]).service("icswReactRightMenuFactory",
 [
     "$q", "icswReactMenuFactory", "icswRouteHelper", "icswTaskOverviewReact", "icswReactOpenSetupTasksFactory"
-    "icswReactOvaDisplayFactory", "icswOverallStyle", "icswReactBackgroundJobInfoFactory",
+    "icswReactOvaDisplayFactory", "icswOverallStyle", "icswReactBackgroundJobInfoFactory", "icswMenuSettings",
 (
     $q, icswReactMenuFactory, icswRouteHelper, icswTaskOverviewReact, icswReactOpenSetupTasksFactory
-    icswReactOvaDisplayFactory, icswOverallStyle, icswReactBackgroundJobInfoFactory,
+    icswReactOvaDisplayFactory, icswOverallStyle, icswReactBackgroundJobInfoFactory, icswMenuSettings,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
     return React.createClass(
@@ -772,6 +792,8 @@ menu_module = angular.module(
             @setState({counter: @state.counter + 1})
 
         render: () ->
+            if not icswMenuSettings.get_themes_valid()
+                return null
             _menu_struct = icswRouteHelper.get_struct()
             menus = (entry for entry in _menu_struct.menu_node.entries when entry.data.side == "right")
             return div(

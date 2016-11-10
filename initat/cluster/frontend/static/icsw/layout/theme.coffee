@@ -25,9 +25,9 @@ angular.module(
     ]
 ).service('icswThemeService',
 [
-    "$http", "ICSW_URLS", "$window", "Restangular",
+    "$http", "ICSW_URLS", "$window", "Restangular", "icswMenuSettings", "$timeout", "$injector",
 (
-    $http, ICSW_URLS, $window, Restangular,
+    $http, ICSW_URLS, $window, Restangular, icswMenuSettings, $timeout, $injector,
 ) ->
     _theme_list = []
     _theme_lut = {}
@@ -35,17 +35,21 @@ angular.module(
     _pending_sets = []
     Restangular.all(ICSW_URLS.SESSION_GET_THEME_SETUP.slice(1)).getList().then(
         (data) ->
-            _t_setup = data.plain()
-            _theme_list.length = 0
-            _idx = 0
-            for entry in _t_setup
-                # salt with idx
-                entry.idx = _idx
-                _idx++
-                _theme_list.push(entry)
-            _theme_lut = _.keyBy(_theme_list, (entry) -> return entry.short)
-            _theme_set = true
-            _process_pending_sets()
+            $timeout(
+                () ->
+                    _t_setup = data.plain()
+                    _theme_list.length = 0
+                    _idx = 0
+                    for entry in _t_setup
+                        # salt with idx
+                        entry.idx = _idx
+                        _idx++
+                        _theme_list.push(entry)
+                    _theme_lut = _.keyBy(_theme_list, (entry) -> return entry.short)
+                    _theme_set = true
+                    _process_pending_sets()
+                0
+            )
     )
 
     _process_pending_sets = () ->
@@ -72,12 +76,19 @@ angular.module(
                 console.warn("theme '#{theme}' does not exist, setting default theme '#{default_theme}'")
                 theme = default_theme
             maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
+            # console.log "theme=", theme
             maintheme_tag.setAttribute("href", "static/theme_#{theme}.css")
             $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then(
                 (response) ->
                     svgstyle_tag = angular.element.find("style[icsw-layout-svg-style]")[0]
                     data = if response.data? then response.data else response
                     svgstyle_tag.innerHTML = data
+                    # theme is now valid
+                    $timeout(
+                        () ->
+                            icswMenuSettings.set_themes_valid()
+                        0
+                    )
                 )
 
     setdefault = (default_theme) =>
@@ -101,6 +112,11 @@ angular.module(
             _idx = 0
         new_theme = _theme_list[_idx].short
         $window.sessionStorage.setItem('current_theme', new_theme)
+        icswUserService = $injector.get("icswUserService")
+        _cur_user = icswUserService.get()
+        if _cur_user? and _cur_user
+            _cur_user.user.ui_theme_selection = new_theme
+            _cur_user.update_user()
         activate(new_theme)
 
     return {
