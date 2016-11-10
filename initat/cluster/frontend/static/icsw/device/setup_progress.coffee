@@ -440,10 +440,10 @@ setup_progress = angular.module(
 
                     if info_list_dict[info_list_name] > 0
                         task.task_bg_color_class = "success"
-                        task.task_icon_class = "fa-check"
+                        task.task_icon_class = "fa fa-check fa-lg"
                     else
                         task.task_bg_color_class = "danger"
-                        task.task_icon_class = "fa-times"
+                        task.task_icon_class = "fa fa-times fa-lg"
 
                     $scope.struct.tasks.push(task)
         )

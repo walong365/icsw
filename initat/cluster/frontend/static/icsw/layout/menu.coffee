@@ -754,13 +754,12 @@ menu_module = angular.module(
                     {
                         key: "setupSteps"
                     }
-                    p(
+                    a(
                         {
                             href: "#/main/setup/progress"
                             key: "p"
-                            className: "setupsteps"
                         },
-                        strong({key: "strong"}, "Open Setup Tasks")
+                        "Open Issues"
                     )
                     span({
                             className: "setupsteps__badge"
