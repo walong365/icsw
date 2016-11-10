@@ -3,9 +3,13 @@
 </script>
 
 <script type="text/ng-template" id="icsw.system.license.overview">
-    <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Loading License Data</div>
+    <div uib-alert class="alert-warning" ng-if="!struct.data_valid">
+        Loading License Data
+    </div>
     <div class="container-fluid">
-        <h3 ng-show="struct.data_valid">License Overview (ServerID is {{ struct.license_tree.cluster_info.CLUSTER_ID }})</h3>
+        <h3 ng-show="struct.data_valid">
+            License Overview (ServerID is {{ struct.license_tree.cluster_info.CLUSTER_ID }})
+        </h3>
         <uib-accordion close-others="false" ng-if="struct.data_valid">
 
             <div uib-accordion-group class="panel-default" is-open="struct.your_licenses_open" is-disabled="license_views_disabled">
@@ -24,6 +28,7 @@
                 class="panel-default"
                 is-open="struct.lic_packs_open"
                 is-disabled="license_views_disabled"
+                ng-if="struct.license_tree.pack_list.length"
             >
                 <uib-accordion-heading>
                     License Packages
@@ -205,4 +210,7 @@
         icsw-from-date="struct.from_date"
         icsw-to-date="struct.to_date"
     ></icsw-rrd-graph-remote>
+    <div uib-alert class="alert-warning" ng-if="struct.graph_errors">
+        {{ struct.graph_errors }}
+    </div>
 </script>

@@ -355,6 +355,8 @@ angular.module(
         devices: []
         # load_called
         load_called: false
+        # graph errors
+        graph_errors: ""
     }
     _load = () ->
         $scope.struct.load_called = true
@@ -379,15 +381,18 @@ angular.module(
                 ]
                 $scope.struct.local_setting = local_setting
                 $scope.struct.base_setting = base_setting
-                $scope.struct.base_data_set = true
                 _routes = icswAcessLevelService.get_routing_info().routing
-                $scope.struct.to_date = moment()
-                $scope.struct.from_date = moment().subtract(moment.duration(4, "week"))
+                console.log _routes
                 if "rms_server" of _routes
+                    $scope.struct.to_date = moment()
+                    $scope.struct.from_date = moment().subtract(moment.duration(4, "week"))
+                    $scope.struct.base_data_set = true
                     _server = _routes["rms_server"][0]
                     _device = _dt.all_lut[_server[2]]
                     if _device?
                         $scope.struct.devices.push(_device)
+                else
+                    $scope.struct.graph_errors = "No graphing server defined"
         )
     _load()
     # $rootScope.$on(ICSW_SIGNALS("ICSW_RMS_FAIR_SHARE_TREE_SELECTED"), () ->
