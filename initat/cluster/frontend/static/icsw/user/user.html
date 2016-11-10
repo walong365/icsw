@@ -1015,7 +1015,46 @@
             </uib-tab>
             <uib-tab heading="Permissions">
                 <fieldset>
-                    <legend>Permissions</legend>
+                    <legend>Permissions ({{ perm_tree.permission_list.length }} defined)</legend>
+                    <table
+                        st-table="entries_displayed"
+                        st-safe-src="struct.perm_list"
+                        class="table table-condensed table-striped table-hover"
+                    >
+                        <thead>
+                            <tr>
+                                <td colspan="99">
+                                    <div class="pull-left">
+                                        <input st-search="" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="text"/>
+                                    </div>
+                                    <div icsw-tools-pagination
+                                        st-items-by-page="20"
+                                        st-displayed-pages="11"
+                                        possible-items-by-page="10,20,50,100"
+                                     ></div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th st-sort="$$perm_name">Name</th>
+                                <th st-sort="$$model" st-sort-default="true">Model</th>
+                                <th st-sort="$$codename">Code</th>
+                                <th st-sort="$$info_str">Info</th>
+                                <th st-sort="g_flag">Scope</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="perm in entries_displayed">
+                                <td>{{ perm.$$perm_name }}</td>
+                                <td>{{ perm.$$model }}</td>
+                                <td class="text-center"><code>{{ perm.$$codename }}</code></td>
+                                <td>{{ perm.$$info_str }}</td>
+                                <td class="text-center">
+                                    <span ng-show="perm.g_flag" class="label label-primary">global</span>
+                                    <span ng-show="!perm.g_flag" class="label label-success">local</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                     <!-- <uib-accordion close-others="no" ng-if="struct.perm_dict">
                         <div uib-accordion-group class="panel-default" ng-repeat="perm_key in struct.content_keys">
                             <uib-accordion-heading>

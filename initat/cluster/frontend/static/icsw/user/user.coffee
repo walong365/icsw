@@ -1631,10 +1631,8 @@ user_module = angular.module(
         object: undefined
         # create mode
         create_mode: false
-        # permission struct
-        perm_dict: undefined
-        # content keys
-        content_keys: []
+        # unrolled perm list
+        perm_list: []
     }
     $scope.new_perm = {
         permission: undefined
@@ -1645,17 +1643,24 @@ user_module = angular.module(
     _set_permissions_from_src = () ->
         $scope.struct.object = $scope.struct.src_object.$$_ICSW_backup_data
 
+    class PermEntry
+        constructor: (perm, g_flag) ->
+            @perm = perm
+            @g_flag = g_flag
+            @$$perm_key = @perm.key
+            @$$perm_name = @perm.name
+            @$$codename = @perm.codename
+            @$$info_str = @perm.info_string
+            @$$model = @perm.content_type.model
+
     $scope.start = () ->
         # build object list
-        _struct = {}
-        $scope.struct.content_keys.length = 0
+        $scope.struct.perm_list.length = 0
         for entry in $scope.perm_tree.permission_list
-            content_key = "#{entry.content_type.app_label}.#{entry.content_type.model}"
-            if content_key not of _struct
-                _struct[content_key] = []
-                $scope.struct.content_keys.push(content_key)
-            _struct[content_key].push(entry)
-        $scope.struct.perm_dict = _struct
+            # console.log "e=", entry
+            $scope.struct.perm_list.push(new PermEntry(entry, true))
+            if entry.valid_for_object_level
+                $scope.struct.perm_list.push(new PermEntry(entry, false))
 
         $scope.struct.src_object = $scope.role
         _set_permissions_from_src()
