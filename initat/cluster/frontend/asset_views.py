@@ -49,7 +49,9 @@ from initat.cluster.backbone.serializers import ScheduleItemSerializer, \
     StaticAssetTemplateFieldSerializer, StaticAssetSerializer, StaticAssetTemplateRefsSerializer, \
     AssetBatchSerializer, SimpleAssetBatchSerializer
 from initat.cluster.frontend.helper_functions import xml_wrapper
-from initat.report_server.report import PDFReportGenerator, generate_csv_entry_for_assetrun
+
+# moved to views
+# from initat.report_server.report import PDFReportGenerator, generate_csv_entry_for_assetrun
 
 try:
     from openpyxl import Workbook
@@ -278,6 +280,7 @@ class copy_static_template(View):
 class export_assetruns_to_csv(View):
     @method_decorator(login_required)
     def post(self, request):
+        from initat.report_server.report import generate_csv_entry_for_assetrun
         tmpfile = tempfile.SpooledTemporaryFile()
 
         writer = csv.writer(tmpfile)
@@ -379,6 +382,7 @@ class export_scheduled_runs_to_csv(View):
 class export_assetbatch_to_xlsx(View):
     @method_decorator(login_required)
     def post(self, request):
+        from initat.report_server.report import generate_csv_entry_for_assetrun
         ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
 
         assetruns = ab.assetrun_set.all()
@@ -408,6 +412,8 @@ class export_assetbatch_to_xlsx(View):
 class export_assetbatch_to_pdf(View):
     @method_decorator(login_required)
     def post(self, request):
+        from initat.report_server.report import PDFReportGenerator
+
         ab = AssetBatch.objects.get(idx=int(request.POST["pk"]))
 
         settings_dict = {
