@@ -111,6 +111,7 @@ session_patterns = [
     url(r"login", session_views.session_login.as_view(), name="login"),
     url(r"expel", session_views.session_expel.as_view(), name="expel"),
     url(r"log_addons$", session_views.login_addons.as_view(), name="login_addons"),
+    url(r"change_database$", session_views.change_database.as_view(), name="change_database"),
     url(r"get_authenticated_user$", session_views.UserView.as_view({"get": "get_user"}), name="get_authenticated_user"),
     url(r"get_csrf_token$", session_views.get_csrf_token.as_view(), name="get_csrf_token"),
     url(r"get_background_jobs$", session_views.BackgroundJobViewSet.as_view({"get": "get_bg_jobs"}), name="background_jobs"),

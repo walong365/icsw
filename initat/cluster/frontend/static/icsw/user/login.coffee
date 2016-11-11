@@ -67,6 +67,8 @@ angular.module(
         icsw_databases: []
         # active database idx
         active_database_idx: ""
+        # new database idx
+        new_database_idx: ""
     }
     $scope.init_login = () ->
         $q.all(
@@ -99,7 +101,11 @@ angular.module(
                 $scope.struct.data_valid = true
                 # current user is still valid, force logout
                 $scope.struct.icsw_databases = angular.fromJson($(xml).find("value[name='icsw_databases']").text())
+                # salt database
+                for entry in $scope.struct.icsw_databases
+                    entry.$$info_str = "#{entry.db_info} / #{entry.db_engine}"
                 $scope.struct.active_database_idx = $(xml).find("value[name='active_database_idx']").text()
+                $scope.struct.new_database_idx = $scope.struct.active_database_idx
                 if data[3].is_authenticated()
                     $state.go("logout")
                 if first_call
@@ -111,6 +117,20 @@ angular.module(
             password: ""
             next_url: ""
         }
+
+    $scope.activate_database = ($event) ->
+        blockUI.start("changing database")
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.SESSION_CHANGE_DATABASE
+                data:
+                    database_idx: $scope.struct.new_database_idx
+            }
+        ).then(
+            (ok) ->
+                blockUI.stop()
+                $state.go("logout")
+        )
 
     $scope.do_login = () ->
         blockUI.start("Logging in...")

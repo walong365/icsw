@@ -12,11 +12,11 @@
     <div ng-class="struct.connector.get_panel_class()" ng-if="struct.connector_set && struct.connector.setup_ok">
         <div class="panel-heading">
             <h4>
+                Display Pipeline '{{ struct.connector.name }}',
+                {{ struct.connector.num_display_elements }} ({{ struct.connector.num_total_elements }}) Elements<span ng-show="struct.connector.num_hidden_elements">,
+                {{ struct.connector.num_hidden_elements }} hidden</span>
                 <div class="form-inline input-group">
-                    Display Pipeline '{{ struct.connector.name }}',
-                    {{ struct.connector.num_display_elements }} ({{ struct.connector.num_total_elements }}) elements
-                    <span ng-show="struct.connector.num_hidden_elements">
-                        {{ struct.connector.num_hidden_elements }} hidden
+                    <span ng-show="struct.connector.num_hidden_elements" class="pull-left" style="margin-right:5px;">
                         <ui-select
                             ng-model="struct.connector.reopen_hidden"
                             style="max-width:400px; min-width:240px;"
@@ -31,14 +31,16 @@
                             </ui-select-choices>
                         </ui-select>
                     </span>
-                    <button name="button" class="btn" ng-click="struct.connector.toggle_running()" ng-class="struct.connector.running && 'btn btn-success' || 'btn btn-warning'" style="margin-right:5px;">
-                        <i class="fa" ng-class="struct.connector.running && 'fa fa-heartbeat' || 'fa fa-ban'" aria-hidden="true"></i>
-                        Liveupdates {{ struct.connector.running ? "enabled" : "paused" }}
-                    </button>
-                    <button name="button" class="btn" ng-click="toggle_gridster_lock()" ng-class="struct.connector.is_unlocked && 'btn btn-warning' || 'btn btn-success'">
-                        <i class="fa" ng-class="struct.connector.is_unlocked && 'fa fa-unlock' || 'fa fa-lock'" aria-hidden="true"></i>
-                        Layout {{ struct.connector.is_unlocked ? "unlocked" : "locked" }}
-                    </button>
+                    <div class="pull-left">
+                        <button name="button" class="btn" ng-click="struct.connector.toggle_running()" ng-class="struct.connector.running && 'btn btn-success' || 'btn btn-warning'" style="margin-right:5px;">
+                            <i class="fa" ng-class="struct.connector.running && 'fa fa-heartbeat' || 'fa fa-ban'" aria-hidden="true"></i>
+                            Liveupdates {{ struct.connector.running ? "enabled" : "paused" }}
+                        </button>
+                        <button name="button" class="btn" ng-click="toggle_gridster_lock()" ng-class="struct.connector.is_unlocked && 'btn btn-warning' || 'btn btn-success'">
+                            <i class="fa" ng-class="struct.connector.is_unlocked && 'fa fa-unlock' || 'fa fa-lock'" aria-hidden="true"></i>
+                            Layout {{ struct.connector.is_unlocked ? "unlocked" : "locked" }}
+                        </button>
+                    </div>
                 </div>
             </h4>
         </div>

@@ -39,6 +39,7 @@ import six
 import zmq
 
 from initat.tools import io_stream_helper, logging_tools, process_tools
+from initat.debug import ICSW_DEBUG_MODE
 
 # default stacksize
 DEFAULT_STACK_SIZE = 2 * 1024 * 1024
@@ -312,7 +313,9 @@ class TimerBase(object):
             _diff = cur_to.next_time - cur_time
             if _diff <= 0:
                 prev_ids = [_obj.timer_id for _obj in self.__timer_list]
+                self._db_debug.start_call()
                 cur_to()
+                self._db_debug.end_call()
                 # also remove if cur_to not in self.__timer_list (due to removal while processing cur_to() )
                 if not cur_to.oneshot:
                     # check for correct time
@@ -356,6 +359,70 @@ class TimerBase(object):
     @property
     def loop_timer(self):
         return self.__loop_timer
+
+
+class DBDebugBase(object):
+    def __new__(cls, log_com):
+        if ICSW_DEBUG_MODE:
+            return super(DBDebugBase, DBDebugEnabled).__new__(DBDebugEnabled, log_com)
+        else:
+            return super(DBDebugBase, DBDebugDisabled).__new__(DBDebugDisabled, log_com)
+
+
+class DBDebugDisabled(DBDebugBase):
+    def __init__(self, log_com):
+        pass
+
+    def start_call(self):
+        pass
+
+    def end_call(self):
+        pass
+
+
+class DBDebugEnabled(DBDebugBase):
+    def __init__(self, log_com):
+        self.__counter = 0
+        self.__log_com = log_com
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.__log_com("[DBD#{:d}] {}".format(self.__counter, what), log_level)
+
+    def start_call(self):
+        self.__counter += 1
+        self.__start_time = time.time()
+        try:
+            from django.db import connection, connections
+            _q = connection.queries
+            # print("id=", id(connection), os.getpid(), len(connections.all()), len(_q))
+            self.__num_pre_q = len(_q)
+        except:
+            self.__num_pre_q = None
+
+    def end_call(self):
+        self.__end_time = time.time()
+        if self.__num_pre_q is not None:
+            from django.db import connection, reset_queries
+            # print("*", connection.queries)
+            _num_q = len(connection.queries) - self.__num_pre_q
+            reset_queries()
+        else:
+            _num_q = None
+        # print(_num_q, self.__num_pre_q)
+        if _num_q or self.__num_pre_q:
+            self.log(
+                "queries (pre / act): {:d} / {:d} in {}".format(
+                    self.__num_pre_q,
+                    _num_q,
+                    logging_tools.get_diff_time_str(self.__end_time - self.__start_time)
+                )
+            )
+        else:
+            self.log(
+                "handling took {}".format(
+                    logging_tools.get_diff_time_str(self.__end_time - self.__start_time)
+                )
+            )
 
 
 class PollerBase(object):
@@ -444,10 +511,12 @@ class PollerBase(object):
                         # the socket could vanish
                         if r_type in self.poller_handler.get(sock, []):
                             try:
+                                self._db_debug.start_call()
                                 if self.poller_kwargs[sock][r_type].get("ext_call"):
                                     self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock), **self.poller_kwargs[sock][r_type])
                                 else:
                                     self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock))
+                                self._db_debug.end_call()
                             except:
                                 exc_info = process_tools.exception_info()
                                 self.log(
@@ -751,7 +820,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
         zmq_socket.setsockopt(zmq.IMMEDIATE, True)
         zmq_socket.setsockopt(zmq.ROUTER_MANDATORY, True)
         process_tools.bind_zmq_socket(zmq_socket, cs_name)
-        self.register_poller(zmq_socket, zmq.POLLIN, self._handle_message)  # @UndefinedVariable
+        self.register_poller(zmq_socket, zmq.POLLIN, self._handle_message)
         self.__add_sockets[cs_name] = zmq_socket
 
     def _send_start_message(self):
@@ -826,6 +895,11 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
         signal.signal(sig_num, self._sig_handler)
 
     def _code(self):
+        self._db_debug = DBDebugBase(self.log)
+        if "django.db" in sys.modules:
+            from initat.cluster.backbone import db_tools
+            db_tools.close_connection()
+            del sys.modules["django.db"]
         self["run_flag"] = True
         threading.currentThread().setName(self.name)
         self._install_signal_handlers()
@@ -984,6 +1058,7 @@ class process_pool(TimerBase, PollerBase, process_base, ExceptionHandlingMixin, 
         ICSWAutoInit.__init__(self)
         TimerBase.__init__(self)
         PollerBase.__init__(self)
+        self._db_debug = DBDebugBase(self.log)
         ExceptionHandlingMixin.__init__(self)
         self.pid = os.getpid()
         self.__socket_buffer = {}

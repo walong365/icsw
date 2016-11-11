@@ -66,7 +66,7 @@ def is_reachable():
 
 
 def close_connection():
-    from django.db import connection
+    from django.db import connection, reset_queries
     if is_oracle():
         try:
             connection.close()
@@ -74,3 +74,4 @@ def close_connection():
             pass
     else:
         connection.close()
+    reset_queries()

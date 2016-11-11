@@ -28,7 +28,7 @@ import os
 import sys
 import time
 
-from initat.icsw.icsw_tools import ICSW_DEBUG_MODE
+from initat.debug import ICSW_DEBUG_MODE
 from initat.tools import logging_tools
 from . import container
 from . import instance

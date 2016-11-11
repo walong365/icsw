@@ -19,18 +19,14 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" tools for icsw commands """
+""" debug settings for icsw """
 
 from __future__ import unicode_literals, print_function
 
 import os
 
-from initat.tools import process_tools
-
 __all__ = [
     "ICSW_DEBUG_MODE",
 ]
 
-ICSW_DEBUG_MODE = process_tools.get_machine_name() in ["eddie", "lemmy"] and (
-    os.environ.get("DEBUG_ICSW_SOFTWARE") or os.environ.get("ICSW_DEBUG_SOFTWARE")
-)
+ICSW_DEBUG_MODE = True if os.environ.get("DEBUG_ICSW_SOFTWARE") or os.environ.get("ICSW_DEBUG_SOFTWARE") else False

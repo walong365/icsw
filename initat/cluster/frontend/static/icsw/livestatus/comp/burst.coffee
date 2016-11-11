@@ -148,7 +148,7 @@ angular.module(
 ) ->
     # Network topology container, including selection and redraw button
     react_dom = ReactDOM
-    {div, g, text, line, polyline, path, svg, h3, span} = React.DOM
+    {div, g, text, line, polyline, path, svg, h3, span, h4} = React.DOM
     return React.createClass(
         propTypes: {
             # required types
@@ -330,16 +330,19 @@ angular.module(
             _svg = svg(
                 {
                     key: "svg.top"
-                    width: "#{@props.draw_parameters.total_width}px"
-                    height: "#{@props.draw_parameters.total_height}px"
+                    #width: "#{@props.draw_parameters.total_width}px"
+                    width: "100%"
+                    #height: "#{@props.draw_parameters.total_height}px"
                     fontFamily: "'Open-Sans', sans-serif"
                     fontSize: "10pt"
+                    viewBox: "126 25 330 330"
                 }
                 [
                     g(
                         {
                             key: "main"
-                            transform: "translate(#{@props.draw_parameters.total_width / 2}, #{@props.draw_parameters.total_height / 2})"
+                            # transform: "translate(#{@props.draw_parameters.total_width / 2}, #{@props.draw_parameters.total_width / 2})"
+                            transform: "translate(292, 192)"
                         }
                         _g_list
                     )
@@ -364,9 +367,12 @@ angular.module(
                                 className: "col-xs-12"
                             }
                             [
-                                h3(
-                                    {key: "graph.header"}
-                                    "Burst graph (" + @props.draw_parameters.get_segment_info()
+                                h4(
+                                    {
+                                        key: "graph.header"
+                                        style: { }
+                                    }
+                                    "Burst Graph (" + @props.draw_parameters.get_segment_info()
                                     if @clicked_focus then span(
                                         {
                                             key: "sel.span"

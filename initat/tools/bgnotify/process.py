@@ -163,7 +163,7 @@ class ServerBackgroundNotifyMixin(object):
                 if not _conn_str:
                     self.log(
                         u"got empty connection_string for {} ({})".format(
-                            _srv_type,
+                            _srv_type.name,
                             _send_xml["*command"],
                         ),
                         logging_tools.LOG_LEVEL_ERROR

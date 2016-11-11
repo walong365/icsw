@@ -33,7 +33,7 @@ from initat.cluster.backbone import license_file_reader
 from initat.cluster.backbone.models import License, device_variable, icswEggCradle, icswEggBasket, \
     icswEggEvaluationDef
 from initat.constants import VERSION_CS_NAME
-from initat.icsw.icsw_tools import ICSW_DEBUG_MODE
+from initat.debug import ICSW_DEBUG_MODE
 from initat.tools import process_tools, hfp_tools, config_store, logging_tools
 
 __all__ = [
@@ -160,7 +160,7 @@ def _install_license(content):
         if len(lic_file_node):
             lic_file_content = lic_file_node[0].text
             # validate
-            if License.objects.license_exists(lic_file_content): # and False:
+            if License.objects.license_exists(lic_file_content):  # and False:
                 print("License file already added.")
             else:
                 license_file_reader.LicenseFileReader(lic_file_content)

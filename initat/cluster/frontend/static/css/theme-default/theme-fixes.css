@@ -94,3 +94,8 @@ icsw-tools-button{
     text-decoration: none;
     color: #999999!important;
 }
+.wizardbutton{
+    background-color: #ffffff!important;
+    border: 1px solid #cccccc!important;
+    color: #777777!important;
+}
