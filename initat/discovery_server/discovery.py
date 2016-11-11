@@ -32,7 +32,7 @@ from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, config_tools, threading_tools
 from initat.tools.server_mixins import EggConsumeMixin
 from .config import global_config
-from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin, NRPEScanMixin, Dispatcher
+from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin, Dispatcher
 from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
 
@@ -71,7 +71,7 @@ class GetRouteToDevicesMixin(object):
         del router_obj
 
 
-class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, NRPEScanMixin, EggConsumeMixin):
+class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, EggConsumeMixin):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(global_config["LOG_NAME"], global_config["LOG_DESTINATION"], zmq=True, context=self.zmq_context)
@@ -83,7 +83,6 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
         self.register_func("snmp_result", self._snmp_result)
         self.register_func("base_scan", self._base_scan)
         self.register_func("wmi_scan", self._wmi_scan)
-        self.register_func("nrpe_scan", self._nrpe_scan)
         self.register_func("ext_con_result", self._ext_con_result)
         self.EC.init(global_config)
         self._server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
@@ -121,12 +120,6 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
     def _wmi_scan(self, *args, **kwargs):
         srv_com = server_command.srv_command(source=args[0])
         self._iterate(srv_com, "wmi_scan", ActiveDeviceScanEnum.BASE)
-        self.send_pool_message("remote_call_async_result", unicode(srv_com))
-        self._check_for_pending_jobs()
-
-    def _nrpe_scan(self, *args, **kwargs):
-        srv_com = server_command.srv_command(source=args[0])
-        self._iterate(srv_com, "nrpe_scan", ActiveDeviceScanEnum.BASE)
         self.send_pool_message("remote_call_async_result", unicode(srv_com))
         self._check_for_pending_jobs()
 

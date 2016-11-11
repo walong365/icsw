@@ -969,6 +969,7 @@ class AssetBatch(models.Model):
     # error string
     error_string = models.TextField(default="")
 
+    user = models.ForeignKey("backbone.user", null=True)
     device = models.ForeignKey("backbone.device")
     date = models.DateTimeField(auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
