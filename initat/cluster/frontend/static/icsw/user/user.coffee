@@ -102,7 +102,7 @@ user_module = angular.module(
                         }
                     )
             else if key == "backbone.device_group"
-                for entry in ugs_tree.group_list
+                for entry in device_tree.group_list
                     _list.push(
                         {
                             idx: entry.idx
@@ -112,7 +112,7 @@ user_module = angular.module(
                     )
             else
                 console.error "unknown OLP-key '#{key}'"
-            console.log "***", key, _list
+            # console.log "***", key, (_e.name for _e in _list)
             struct.obj_list_cache[key] = _list
             struct.obj_lut_cache[key] = _.keyBy(_list, "idx")
         return struct.obj_list_cache[key]
@@ -1624,6 +1624,48 @@ user_module = angular.module(
 
     icswUserGroupRoleTools.clean_cache()
 
+    class PermList
+        constructor: (for_global, model_name) ->
+            @global_perm = for_global
+            if not @global_perm
+                @model_name = model_name
+            else
+                @model_name = ""
+            @list = []
+            @display_list = []
+            @selected_perms = []
+
+        add_entry: (entry) =>
+            @list.push(entry)
+            @clear_selection()
+
+        clear_selection: () =>
+            for entry in @list
+                entry.$$selected = false
+                entry.$$line_class = ""
+            @selected_perms.length = 0
+
+        toggle_selection: (entry) =>
+            if entry.$$selected
+                entry.$$selected = false
+                entry.$$line_class = ""
+                _.remove(@selected_perms, (_p) => return _p.$$perm_key == entry.$$perm_key)
+            else
+                entry.$$selected = true
+                entry.$$line_class = "info"
+                @selected_perms.push(entry)
+
+    class PermEntry
+        constructor: (perm, g_flag) ->
+            # console.log "perm=", perm
+            @perm = perm
+            @g_flag = g_flag
+            @$$perm_name = @perm.name
+            @$$codename = @perm.codename
+            @$$perm_key = "#{@perm.key}.#{@$$codename}"
+            @$$info_str = @perm.info_string
+            @$$model = @perm.content_type.model
+
     $scope.struct = {
         # src object
         src_object: undefined
@@ -1632,7 +1674,9 @@ user_module = angular.module(
         # create mode
         create_mode: false
         # unrolled perm list
-        perm_list: []
+        global_perm_list: new PermList(true, "")
+        local_perm_lists: []
+        # device tree
     }
     $scope.new_perm = {
         permission: undefined
@@ -1643,24 +1687,23 @@ user_module = angular.module(
     _set_permissions_from_src = () ->
         $scope.struct.object = $scope.struct.src_object.$$_ICSW_backup_data
 
-    class PermEntry
-        constructor: (perm, g_flag) ->
-            @perm = perm
-            @g_flag = g_flag
-            @$$perm_key = @perm.key
-            @$$perm_name = @perm.name
-            @$$codename = @perm.codename
-            @$$info_str = @perm.info_string
-            @$$model = @perm.content_type.model
-
     $scope.start = () ->
         # build object list
-        $scope.struct.perm_list.length = 0
+        $scope.struct.global_perm_list.length = 0
+        $scope.struct.local_perm_lists.length = 0
+        _model_lut = {}
         for entry in $scope.perm_tree.permission_list
             # console.log "e=", entry
-            $scope.struct.perm_list.push(new PermEntry(entry, true))
+            $scope.struct.global_perm_list.add_entry(new PermEntry(entry, true))
             if entry.valid_for_object_level
-                $scope.struct.perm_list.push(new PermEntry(entry, false))
+                _model = entry.content_type.model
+                if _model not of _model_lut
+                    new_list = new PermList(false, _model)
+                    _model_lut[_model] = new_list
+                    $scope.struct.local_perm_lists.push(new_list)
+                else
+                    new_list = _model_lut[_model]
+                new_list.add_entry(new PermEntry(entry, false))
 
         $scope.struct.src_object = $scope.role
         _set_permissions_from_src()
@@ -1691,6 +1734,44 @@ user_module = angular.module(
             return "PK #{_pk} not found for #{_perm.key}"
 
     # create / add functions
+
+    # list for signals from tables
+    $scope.$on(
+        ICSW_SIGNALS("_ICSW_ROLE_ADD_PERMISSIONS"),
+        (event, struct) ->
+            if struct.perm_list.global_perm
+                # add global perms
+                for perm in struct.perm_list.selected_perms
+                    _new_p = {
+                        level: struct.level
+                        csw_permission: perm.perm.idx
+                    }
+                    if icswUserGroupRoleTools.get_perm_fp(_new_p) not in (icswUserGroupRoleTools.get_perm_fp(_old_p) for _old_p in $scope.struct.object.rolepermission_set)
+                        # for display
+                        _new_p.$$role = $scope.struct.src_object
+                        _new_p.$$not_saved = true
+                        $scope.struct.object.rolepermission_set.push(_new_p)
+            else
+                # add object perms
+                for perm in struct.perm_list.selected_perms
+                    for object in struct.object_list
+                        _new_p = {
+                            level: struct.level
+                            csw_object_permission: {
+                                csw_permission: perm.perm.idx
+                                object_pk: object
+                            }
+                        }
+                        if icswUserGroupRoleTools.get_perm_fp(_new_p) not in (icswUserGroupRoleTools.get_perm_fp(_old_p) for _old_p in $scope.struct.object.rolepermission_set)
+                            # for display
+                            _new_p.$$role = $scope.struct.src_object
+                            _new_p.$$not_saved = true
+                            $scope.struct.object.roleobjectpermission_set.push(_new_p)
+            struct.perm_list.clear_selection()
+            struct.object_list.length = 0
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_USER_GROUP_ROLE_CHANGED"))
+    )
+
     $scope.create_permission = () ->
         # add new global permission
         _np = $scope.new_perm
@@ -1842,6 +1923,60 @@ user_module = angular.module(
                 blockUI.stop()
         )
 
+
+]).directive("icswRolePermTable",
+[
+    "$templateCache",
+(
+    $templateCache
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.role.perm.table")
+        controller: "icswRolePermTableCtrl"
+        scope: {
+            perm_list: "=icswPermList"
+            tree: "=icswUserGroupRoleTree"
+            device_tree: "=icswDeviceTree"
+            perm_tree: "=icswPermissionTree"
+        }
+    }
+]).controller("icswRolePermTableCtrl",
+[
+    "$scope", "$q", "$rootScope", "ICSW_SIGNALS", "icswUserGroupRoleTools",
+(
+    $scope, $q, $rootScope, ICSW_SIGNALS, icswUserGroupRoleTools,
+) ->
+    $scope.perm_list.clear_selection()
+
+    $scope.struct = {
+        # object list (== selected objects)
+        object_list: []
+        # ref list (== objects to select)
+        ref_list: []
+        # permission level
+        level: 0
+        # permission list
+        perm_list: $scope.perm_list
+    }
+
+    if not $scope.perm_list.global_perm
+        # feed ref list
+        first_perm = $scope.perm_list.list[0]
+        $scope.struct.ref_list = icswUserGroupRoleTools.get_cache(
+            first_perm.perm.key
+            $scope.device_tree
+            $scope.tree
+        )
+
+    $scope.toggle_selection = ($event, perm) ->
+        $scope.perm_list.toggle_selection(perm)
+
+    $scope.clear_selections = ($event) ->
+        $scope.perm_list.clear_selection()
+
+    $scope.add_permissions = ($event) ->
+        $scope.$emit(ICSW_SIGNALS("_ICSW_ROLE_ADD_PERMISSIONS"), $scope.struct)
 
 ]).directive("icswUserGroupRolePermissions",
 [

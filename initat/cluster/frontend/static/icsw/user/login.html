@@ -67,8 +67,10 @@
                     </p>
                 </fieldset>
                 <fieldset>
-                    <legend>Database information</legend>
-                    <ui-select ng-model="struct.active_database_idx" style="max-width:400px; min-width:400px;">
+                    <legend>Database information ({{ struct.icsw_databases.length }})</legend>
+                    <ui-select
+                        ng-if="struct.icsw_databases.length > 1"
+                        ng-model="struct.active_database_idx" style="max-width:400px; min-width:400px;">
                         <ui-select-match class="ui-select-match" placeholder="Select a database to use">
                             {{ $select.selected.db_info }}
                         </ui-select-match>
@@ -76,6 +78,7 @@
                             <div ng-bind-html="value.db_info | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
+                    <span ng-show="struct.icsw_databases.length == 1">{{ struct.icsw_databases[0].db_info }}</span>
                 </fieldset>
                 <fieldset>
                     <legend>License Information</legend>

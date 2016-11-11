@@ -798,6 +798,7 @@ angular.module(
         _ICSW_CLOSE_CONFIG: "_icsw.close.config"
         _ICSW_DELETE_CONFIG: "_icsw.delete.config"
         _ICSW_UPDATE_MON_SELECTION: "_icsw.update.mon.selection"
+        _ICSW_ROLE_ADD_PERMISSIONS: "_icsw.role.add.permissions"
     }
     _rev_dict = {}
     for key, value of _dict
