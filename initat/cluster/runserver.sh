@@ -26,7 +26,7 @@ done
 
 RSOPTIONS="--traceback"
 
-[ "${_debug}" = "1" ] && export DEBUG_WEBFRONTEND=1
+[ "${_debug}" = "1" ] && export DEBUG_ICSW_SOFTWARE=1
 
 echo "settings: DEBUG=${_debug}, RSOPTIONS='${RSOPTIONS}', EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 

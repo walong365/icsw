@@ -29,6 +29,7 @@ from initat.cluster_server.config import global_config
 from initat.icsw.service import instance, container, service_parser
 from initat.icsw.service.tools import query_local_meta_server
 from initat.tools import process_tools, server_command, uuid_tools, net_tools, hfp_tools
+from initat.cluster.backbone.models import device
 
 
 class status(cs_base_class.server_com):

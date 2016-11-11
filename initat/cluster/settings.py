@@ -35,6 +35,7 @@ from django.core.exceptions import ImproperlyConfigured
 from django.utils.crypto import get_random_string
 from django.utils.translation import ugettext_lazy as _
 from lxml import etree
+from initat.debug import ICSW_DEBUG_MODE
 
 from initat.constants import GEN_CS_NAME, DB_ACCESS_CS_NAME, VERSION_CS_NAME, CLUSTER_DIR, \
     SITE_PACKAGES_BASE
@@ -51,7 +52,7 @@ if (sys.version_info.major, sys.version_info.minor) in [(2, 7)]:
     import threading
     threading._DummyThread._Thread__stop = lambda x: 42
 
-DEBUG = "DEBUG_WEBFRONTEND" in os.environ
+DEBUG = ICSW_DEBUG_MODE
 
 ADMINS = (
     ("Andreas Lang-Nevyjel", "lang-nevyjel@init.at"),

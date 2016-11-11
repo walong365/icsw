@@ -47,7 +47,8 @@ class CapabilityProcess(threading_tools.process_obj):
             zmq=True,
             context=self.zmq_context
         )
-        db_tools.close_connection()
+        # print("CC", os.getpid())
+        # db_tools.close_connection()
         self._instance = InstanceXML(log_com=self.log)
         self._init_network()
         self._init_capabilities()
