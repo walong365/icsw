@@ -717,7 +717,7 @@ menu_module = angular.module(
             )
 
     )
-]).service("icswReactOpenSetupTasksFactory",
+]).service("icswReactOpenIssuesFactory",
 [
     "$q", "$timeout", "$rootScope", "ICSW_SIGNALS", "icswSimpleAjaxCall",
     "$state", "ICSW_URLS", "SetupProgressHelper"
@@ -727,7 +727,7 @@ menu_module = angular.module(
 ) ->
     {ul, li, div, a, button, p, strong, span} = React.DOM
     return React.createClass(
-        displayName: "icswOpenSetupTasksInfo"
+        displayName: "icswOpenIssuesInfo"
         getInitialState: () ->
             _reload = () =>
                 SetupProgressHelper.unfulfilled_setup_tasks().then(
@@ -743,6 +743,8 @@ menu_module = angular.module(
             $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () =>
                 _reload()
             )
+
+            _reload()
 
             return {
                 num_unfulfilled: 0
@@ -773,10 +775,10 @@ menu_module = angular.module(
     )
 ]).service("icswReactRightMenuFactory",
 [
-    "$q", "icswReactMenuFactory", "icswRouteHelper", "icswTaskOverviewReact", "icswReactOpenSetupTasksFactory"
+    "$q", "icswReactMenuFactory", "icswRouteHelper", "icswTaskOverviewReact", "icswReactOpenIssuesFactory"
     "icswReactOvaDisplayFactory", "icswOverallStyle", "icswReactBackgroundJobInfoFactory", "icswMenuSettings",
 (
-    $q, icswReactMenuFactory, icswRouteHelper, icswTaskOverviewReact, icswReactOpenSetupTasksFactory
+    $q, icswReactMenuFactory, icswRouteHelper, icswTaskOverviewReact, icswReactOpenIssuesFactory
     icswReactOvaDisplayFactory, icswOverallStyle, icswReactBackgroundJobInfoFactory, icswMenuSettings,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr} = React.DOM
@@ -804,9 +806,9 @@ menu_module = angular.module(
                         className: "nav navbar-nav navbar-right #{icswOverallStyle.get()}"
                     }
                     React.createElement(
-                        icswReactOpenSetupTasksFactory
+                        icswReactOpenIssuesFactory
                         {
-                            key: "openSetupTasks"
+                            key: "openIssues"
                         }
                     )
                     React.createElement(

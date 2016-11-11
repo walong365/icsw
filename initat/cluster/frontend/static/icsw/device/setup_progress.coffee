@@ -78,8 +78,8 @@ setup_progress = angular.module(
         users_availability_class: "alert-danger"
         users_availability_text: "Not Available"
 
-        location_availability_class: "alert-danger"
-        location_availability_text: "Not Available"
+        locations_availability_class: "alert-danger"
+        locations_availability_text: "Not Available"
 
         show_extended_information_button_value: "Off"
         show_extended_information_button_class: "btn btn-default"
@@ -246,8 +246,9 @@ setup_progress = angular.module(
                 device["$$" + info_list_name + "_sort_hint"] = device_hints[info_list_name + "_age_in_seconds"]
 
                 if device_hints[info_list_name + "_age_in_seconds"] > (60 * 60)
-                    device["$$" + info_list_name + "_availability_class"] = info_warning_class
-                    device["$$" + info_list_name + "_availability_text"] = "Stale data found..."
+                    if device["$$" + info_list_name + "_availability_class"] != info_warning_class
+                      device["$$" + info_list_name + "_availability_class"] = info_warning_class
+                      device["$$" + info_list_name + "_availability_text"] = "Stale data found..."
                     needs_refresh = true
 
             if needs_refresh
@@ -383,7 +384,6 @@ setup_progress = angular.module(
         perform_refresh_for_device_status(true)
 
     $scope.setup_tasks_tab_clicked = () ->
-        perform_refresh_for_system_status()
         setup_tasks()
 
     $scope.show_extended_information_button_pressed = () ->
@@ -413,18 +413,7 @@ setup_progress = angular.module(
             }
         ).then(
             (data) ->
-                info_list_names = [
-                    "devices",
-                    "monitoring_checks"
-                    "users"
-                    "locations"
-                ]
-
-                info_list_dict = {}
-
-                for info_list_name in info_list_names
-                    info_list_dict[info_list_name] = data[info_list_name]
-
+                console.log(data)
                 $scope.struct.tasks.length = 0
 
                 for task_struct in tasks
@@ -437,13 +426,18 @@ setup_progress = angular.module(
                     task.task_number = task_number
                     task.task_description = task_description
                     task.setup_type = setup_type
+                    task.task_name = info_list_name
 
-                    if info_list_dict[info_list_name] > 0
+                    task.task_bg_color_class = "danger"
+                    task.task_icon_class = "fa fa-times fa-2x"
+
+                    if data[info_list_name] > 0 || data[info_list_name + "_ignore"] == true
                         task.task_bg_color_class = "success"
-                        task.task_icon_class = "fa fa-check fa-lg"
-                    else
-                        task.task_bg_color_class = "danger"
-                        task.task_icon_class = "fa fa-times fa-lg"
+                        task.task_icon_class = "fa fa-check fa-2x"
+
+                    task.ignore_text = "Ignore Issue"
+                    if data[info_list_name + "_ignore"] == true
+                        task.ignore_text = "Unignore Issue"
 
                     $scope.struct.tasks.push(task)
         )
@@ -453,6 +447,21 @@ setup_progress = angular.module(
     $scope.$on("$destroy", () ->
         $rootScope.$emit(ICSW_SIGNALS("ICSW_OPEN_SETUP_TASKS_CHANGED"))
     )
+
+    $scope.ignore_issue = (task) ->
+        blockUI.start("Please wait...")
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION_IGNORE_TOGGLE
+                data:
+                    system_component_name: task.task_name
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                setup_tasks()
+                blockUI.stop()
+        )
 
 ]).service("SetupProgressHelper",
 [
@@ -480,7 +489,7 @@ setup_progress = angular.module(
                 unfilled_tasks = 0
 
                 for info_list_name in info_list_names
-                    if data[info_list_name] == 0
+                    if data[info_list_name] == 0 && !(data[info_list_name + "_ignore"] == true)
                         unfilled_tasks += 1
 
                 defer.resolve(unfilled_tasks)
