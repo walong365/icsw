@@ -84,7 +84,5 @@ def main(opt_args=None):
         positional_arguments=False
     )
     # enable connection debugging
-    settings.DEBUG = global_config["DATABASE_DEBUG"]
-    settings.DATABASE_DEBUG = global_config["DATABASE_DEBUG"]
     run_code(options)
     return 0

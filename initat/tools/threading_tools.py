@@ -313,7 +313,7 @@ class TimerBase(object):
             _diff = cur_to.next_time - cur_time
             if _diff <= 0:
                 prev_ids = [_obj.timer_id for _obj in self.__timer_list]
-                self._db_debug.start_call()
+                self._db_debug.start_call("timer {}".format(_obj.timer_id))
                 cur_to()
                 self._db_debug.end_call()
                 # also remove if cur_to not in self.__timer_list (due to removal while processing cur_to() )
@@ -373,7 +373,7 @@ class DBDebugDisabled(DBDebugBase):
     def __init__(self, log_com):
         pass
 
-    def start_call(self):
+    def start_call(self, _name):
         pass
 
     def end_call(self):
@@ -384,17 +384,28 @@ class DBDebugEnabled(DBDebugBase):
     def __init__(self, log_com):
         self.__counter = 0
         self.__log_com = log_com
+        from django.conf import settings
+        self.__min_db_calls = settings.ICSW_DEBUG_MIN_DB_CALLS
+        self.__min_run_time = settings.ICSW_DEBUG_MIN_RUN_TIME
+        self.__show_calls = settings.ICSW_DEBUG_SHOW_DB_CALLS
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
-        self.__log_com("[DBD#{:d}] {}".format(self.__counter, what), log_level)
+        self.__log_com(
+            "[DBD#{:d}/{}] {}".format(
+                self.__counter,
+                self._name,
+                what
+            ),
+            log_level
+        )
 
-    def start_call(self):
+    def start_call(self, _name):
+        self._name = _name
         self.__counter += 1
         self.__start_time = time.time()
         try:
             from django.db import connection, connections
             _q = connection.queries
-            # print("id=", id(connection), os.getpid(), len(connections.all()), len(_q))
             self.__num_pre_q = len(_q)
         except:
             self.__num_pre_q = None
@@ -403,26 +414,37 @@ class DBDebugEnabled(DBDebugBase):
         self.__end_time = time.time()
         if self.__num_pre_q is not None:
             from django.db import connection, reset_queries
-            # print("*", connection.queries)
             _num_q = len(connection.queries) - self.__num_pre_q
+        else:
+            _num_q = 0
+        _run_time = abs(self.__end_time - self.__start_time)
+        if _run_time * 1000 > self.__min_run_time or _num_q > self.__min_db_calls:
+            if _num_q or self.__num_pre_q:
+                self.log(
+                    "queries (pre / act): {:d} / {:d} in {}".format(
+                        self.__num_pre_q,
+                        _num_q,
+                        logging_tools.get_diff_time_str(_run_time),
+                    )
+                )
+                if self.__show_calls:
+                    for _idx, _q in enumerate(connection.queries):
+                        if _q["sql"]:
+                            self.log(
+                                "{:4d} {} {}".format(
+                                    _idx,
+                                    _q["time"],
+                                    _q["sql"],
+                                )
+                            )
+            else:
+                self.log(
+                    "in {}".format(
+                        logging_tools.get_diff_time_str(_run_time),
+                    )
+                )
+        if _num_q:
             reset_queries()
-        else:
-            _num_q = None
-        # print(_num_q, self.__num_pre_q)
-        if _num_q or self.__num_pre_q:
-            self.log(
-                "queries (pre / act): {:d} / {:d} in {}".format(
-                    self.__num_pre_q,
-                    _num_q,
-                    logging_tools.get_diff_time_str(self.__end_time - self.__start_time)
-                )
-            )
-        else:
-            self.log(
-                "handling took {}".format(
-                    logging_tools.get_diff_time_str(self.__end_time - self.__start_time)
-                )
-            )
 
 
 class PollerBase(object):
@@ -511,7 +533,7 @@ class PollerBase(object):
                         # the socket could vanish
                         if r_type in self.poller_handler.get(sock, []):
                             try:
-                                self._db_debug.start_call()
+                                self._db_debug.start_call("socket")
                                 if self.poller_kwargs[sock][r_type].get("ext_call"):
                                     self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock), **self.poller_kwargs[sock][r_type])
                                 else:
@@ -896,10 +918,11 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
 
     def _code(self):
         self._db_debug = DBDebugBase(self.log)
-        if "django.db" in sys.modules:
+        try:
             from initat.cluster.backbone import db_tools
             db_tools.close_connection()
-            del sys.modules["django.db"]
+        except:
+            pass
         self["run_flag"] = True
         threading.currentThread().setName(self.name)
         self._install_signal_handlers()

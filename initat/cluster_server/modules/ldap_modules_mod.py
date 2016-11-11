@@ -349,7 +349,7 @@ class ldap_mixin(object):
         return par_dict
 
 
-class setup_ldap_server(cs_base_class.server_com, ldap_mixin):
+class setup_ldap_server(cs_base_class.icswCSServerCom, ldap_mixin):
     class Meta:
         needed_configs = [icswServiceEnum.ldap_server]
 
@@ -402,14 +402,14 @@ class command_mixin(object):
                 result = c_out.split("\n")
         return success, result
 
-# class create_ldap_certs(cs_base_class.server_com, ldap_mixin, command_mixin):
+# class create_ldap_certs(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin):
 #    class Meta:
 #        needed_configs = [icswServiceEnum.ldap_server]
 #    def _call(self, cur_inst):
 #        pass
 
 
-class init_ldap_config(cs_base_class.server_com, ldap_mixin, command_mixin):
+class init_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin, command_mixin):
     class Meta:
         needed_configs = [icswServiceEnum.ldap_server]
 
@@ -595,7 +595,7 @@ class init_ldap_config(cs_base_class.server_com, ldap_mixin, command_mixin):
             )
 
 
-class sync_ldap_config(cs_base_class.server_com, ldap_mixin):
+class sync_ldap_config(cs_base_class.icswCSServerCom, ldap_mixin):
     class Meta:
         needed_configs = [icswServiceEnum.ldap_server]
 

@@ -35,7 +35,7 @@ from initat.cluster_server.config import global_config
 from initat.tools import config_tools, ipvx_tools, logging_tools, process_tools, server_command
 
 
-class write_nameserver_config(cs_base_class.server_com):
+class write_nameserver_config(cs_base_class.icswCSServerCom):
     class Meta:
         needed_configs = [icswServiceEnum.bind_server]
 

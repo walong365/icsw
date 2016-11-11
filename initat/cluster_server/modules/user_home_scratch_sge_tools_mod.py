@@ -35,7 +35,7 @@ from initat.cluster_server.config import global_config
 from initat.tools import process_tools, server_command
 
 
-class create_user_home(cs_base_class.server_com):
+class create_user_home(cs_base_class.icswCSServerCom):
     class Meta:
         needed_option_keys = ["username"]
 
@@ -194,7 +194,7 @@ class create_user_home(cs_base_class.server_com):
                     )
 
 
-class create_sge_user(cs_base_class.server_com):
+class create_sge_user(cs_base_class.icswCSServerCom):
     class Meta:
         needed_configs = [icswServiceEnum.rms_server]
         needed_option_keys = ["username"]
@@ -243,7 +243,7 @@ class create_sge_user(cs_base_class.server_com):
                 pass
 
 
-class delete_sge_user(cs_base_class.server_com):
+class delete_sge_user(cs_base_class.icswCSServerCom):
     class Meta:
         needed_option_keys = ["username"]
 
@@ -274,7 +274,7 @@ class delete_sge_user(cs_base_class.server_com):
                 })
 
 
-class rename_sge_user(cs_base_class.server_com):
+class rename_sge_user(cs_base_class.icswCSServerCom):
     class Meta:
         needed_configs = [icswServiceEnum.rms_server]
         needed_option_keys = ["username", "old_username"]

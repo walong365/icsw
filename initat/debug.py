@@ -19,14 +19,34 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" debug settings for icsw """
+"""
+debug settings for icsw
+
+to enable base debugging set the environment variable ICSW_DEBUG_SOFTWARE
+
+to limit the debug calls of the server processes one can set
+the environment vars
+
+ICSW_DEBUG_MIN_RUN_TIME (in millisceonds)
+ICSW_DEUBG_MIN_DB_CALLS (minimum database calls)
+
+
+to log database calls set ICSW_DEUBG_SHOW_DB_CALLS
+
+"""
 
 from __future__ import unicode_literals, print_function
 
 import os
 
 __all__ = [
-    "ICSW_DEBUG_MODE",
+    b"ICSW_DEBUG_MODE",
+    b"ICSW_DEBUG_MIN_DB_CALLS",
+    b"ICSW_DEBUG_MIN_RUN_TIME",
+    b"ICSW_DEBUG_SHOW_DB_CALLS",
 ]
 
-ICSW_DEBUG_MODE = True if os.environ.get("DEBUG_ICSW_SOFTWARE") or os.environ.get("ICSW_DEBUG_SOFTWARE") else False
+ICSW_DEBUG_MODE = True if os.environ.get("ICSW_DEBUG_SOFTWARE") else False
+ICSW_DEBUG_MIN_RUN_TIME = float(os.environ.get("ICSW_DEBUG_MIN_RUN_TIME", "10000.0"))
+ICSW_DEBUG_MIN_DB_CALLS = int(os.environ.get("ICSW_DEBUG_MIN_DB_CALLS", "100"))
+ICSW_DEBUG_SHOW_DB_CALLS = True if os.environ.get("ICSW_DEBUG_SHOW_DB_CALLS") else False

@@ -36,7 +36,7 @@ import cs_base_class
 import cs_tools
 
 
-class write_yp_config(cs_base_class.server_com):
+class write_yp_config(cs_base_class.icswCSServerCom):
     class Meta:
         needed_configs = [icswServiceEnum.yp_server]
 

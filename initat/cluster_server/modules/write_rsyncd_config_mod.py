@@ -32,7 +32,7 @@ from initat.cluster_server.config import global_config
 from initat.tools import logging_tools, process_tools, server_command
 
 
-class write_rsyncd_config(cs_base_class.server_com):
+class write_rsyncd_config(cs_base_class.icswCSServerCom):
     class Meta:
         needed_configs = []  # "rsync_server"]
 

@@ -32,7 +32,7 @@ from initat.tools import process_tools, server_command, uuid_tools, net_tools, h
 from initat.cluster.backbone.models import device
 
 
-class status(cs_base_class.server_com):
+class status(cs_base_class.icswCSServerCom):
     class Meta:
         show_execution_time = False
 
@@ -41,8 +41,10 @@ class status(cs_base_class.server_com):
         self.main_proc.server_status(cur_inst.srv_com, self.main_proc.msi_block, global_config)
 
 
-class server_status(cs_base_class.server_com):
+class server_status(cs_base_class.icswCSServerCom):
     def _call(self, cur_inst):
+        # from initat.cluster.backbone.models import device
+        # print("devcount=", device.objects.all().count())
         inst_xml = instance.InstanceXML(cur_inst.log)
         cur_c = container.ServiceContainer(cur_inst.log)
         _def_ns = service_parser.Parser.get_default_ns()
@@ -67,7 +69,7 @@ class server_status(cs_base_class.server_com):
             )
 
 
-class server_control(cs_base_class.server_com):
+class server_control(cs_base_class.icswCSServerCom):
     def _call(self, cur_inst):
         cur_inst.srv_com["command"] = "state{}".format(cur_inst.srv_com["*control"])
         _result = net_tools.ZMQConnection(
@@ -80,7 +82,7 @@ class server_control(cs_base_class.server_com):
 
 
 # merged from modify_service_mod
-class modify_service(cs_base_class.server_com):
+class modify_service(cs_base_class.icswCSServerCom):
     class Meta:
         needed_option_keys = ["service", "mode"]
 
@@ -113,7 +115,7 @@ class modify_service(cs_base_class.server_com):
 
 
 # merged from version_mod
-class version(cs_base_class.server_com):
+class version(cs_base_class.icswCSServerCom):
     class Meta:
         show_execution_time = False
 
@@ -125,7 +127,7 @@ class version(cs_base_class.server_com):
 
 
 # merged from get_uuid_mod
-class get_uuid(cs_base_class.server_com):
+class get_uuid(cs_base_class.icswCSServerCom):
     class Meta:
         show_execution_time = False
 
@@ -136,7 +138,7 @@ class get_uuid(cs_base_class.server_com):
         )
 
 
-class get_0mq_id(cs_base_class.server_com):
+class get_0mq_id(cs_base_class.icswCSServerCom):
     class Meta:
         show_execution_time = False
 

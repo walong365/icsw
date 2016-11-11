@@ -35,7 +35,7 @@ ETC_HOSTS_FILENAME = "/etc/hosts"
 GROUP_DIR = "/opt/cluster/etc/pdsh"
 
 
-class write_etc_hosts(cs_base_class.server_com):
+class write_etc_hosts(cs_base_class.icswCSServerCom):
     class Meta:
         needed_configs = [icswServiceEnum.auto_etc_hosts]
 

@@ -25,7 +25,7 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 import cs_base_class
 
 
-class show_exportfs(cs_base_class.server_com):
+class show_exportfs(cs_base_class.icswCSServerCom):
     class Meta:
         needed_configs = [icswServiceEnum.cluster_server]
 

@@ -26,10 +26,10 @@ from initat.cluster_server.capabilities.virtual_desktop import virtual_desktop_s
 from initat.cluster_server.modules import cs_base_class
 
 
-class reload_virtual_desktop(cs_base_class.server_com):
+class reload_virtual_desktop(cs_base_class.icswCSServerCom):
     def _call(self, cur_inst):
         '''
-        :param com_instance cur_inst:
+        :param icswCSComInstance cur_inst:
         '''
         vdus_pk = cur_inst.srv_com["*vdus"]
         cur_inst.log("updating virtual desktop {}".format(vdus_pk))

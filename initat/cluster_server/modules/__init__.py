@@ -38,7 +38,7 @@ for mod_name in __all__:
         [
             cur_obj for cur_obj in [
                 getattr(new_mod, key) for key in dir(new_mod)
-            ] if type(cur_obj) == type and issubclass(cur_obj, cs_base_class.server_com)
+            ] if type(cur_obj) == type and issubclass(cur_obj, cs_base_class.icswCSServerCom)
         ]
     )
 

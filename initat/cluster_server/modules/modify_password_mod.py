@@ -30,7 +30,7 @@ from initat.cluster.backbone.models import user
 from initat.tools import server_command
 
 
-class modify_password(cs_base_class.server_com):
+class modify_password(cs_base_class.icswCSServerCom):
     class Meta:
         needed_configs = []
         needed_option_keys = ["user_name", "old_password", "new_password_1", "new_password_2"]

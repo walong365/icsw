@@ -31,7 +31,7 @@ import cs_base_class
 NEEDED_IMAGE_DIRS = ["usr", "etc", "bin", "sbin", "var"]
 
 
-class get_image_list(cs_base_class.server_com):
+class get_image_list(cs_base_class.icswCSServerCom):
     class Meta:
         needed_configs = [icswServiceEnum.image_server]
         needed_config_keys = ["IMAGE_SOURCE_DIR"]

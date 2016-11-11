@@ -55,7 +55,7 @@ def _build_obj(cur_inst, **kwargs):
     return obj_dict
 
 
-class ca_new(cs_base_class.server_com):
+class ca_new(cs_base_class.icswCSServerCom):
     class Meta:
         needed_option_keys = ["ca_name"]
 
@@ -80,7 +80,7 @@ class ca_new(cs_base_class.server_com):
                 )
 
 
-class ca_new_cert(cs_base_class.server_com):
+class ca_new_cert(cs_base_class.icswCSServerCom):
     class Meta:
         needed_option_keys = ["ca_name", "cert_file", "ca_mode"]
 
@@ -122,7 +122,7 @@ class ca_new_cert(cs_base_class.server_com):
                 )
 
 
-class ca_revoke_cert(cs_base_class.server_com):
+class ca_revoke_cert(cs_base_class.icswCSServerCom):
     class Meta:
         needed_option_keys = ["ca_name", "cert_serial", "revoke_cause"]
 
@@ -159,7 +159,7 @@ class ca_revoke_cert(cs_base_class.server_com):
                 )
 
 
-class ca_list_certs(cs_base_class.server_com):
+class ca_list_certs(cs_base_class.icswCSServerCom):
     class Meta:
         needed_option_keys = ["ca_name"]
 

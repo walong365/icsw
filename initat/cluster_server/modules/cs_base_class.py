@@ -22,7 +22,7 @@ from __future__ import unicode_literals, print_function
 
 import time
 
-from django.db import connection
+# from django.db import connection
 
 from initat.cluster.backbone import db_tools
 from initat.cluster_server.config import global_config
@@ -61,8 +61,14 @@ class BackgroundProcess(threading_tools.process_obj):
         # print [key for key in sys.modules.keys() if key.count("cluster_s")]
         import initat.cluster_server.modules
         sc_obj = initat.cluster_server.modules.command_dict[com_name]
-        loc_inst = com_instance(sc_obj, self.srv_com, self.option_dict, self.Meta, self.zmq_context,
-                                executing_process=self)
+        loc_inst = icswCSComInstance(
+            sc_obj,
+            self.srv_com,
+            self.option_dict,
+            self.Meta,
+            self.zmq_context,
+            executing_process=self,
+        )
         loc_inst.log = self.log
         loc_inst()
         del loc_inst.log
@@ -78,7 +84,7 @@ class BackgroundProcess(threading_tools.process_obj):
         self.__log_template.close()
 
 
-class com_instance(object):
+class icswCSComInstance(object):
     bg_idx = 0
 
     def __init__(self, sc_obj, srv_com, option_dict, meta_struct, zmq_context, executing_process=None):
@@ -118,8 +124,8 @@ class com_instance(object):
         if self.Meta.background:
             if self.Meta.cur_running < self.Meta.max_instances:
                 self.Meta.cur_running += 1
-                com_instance.bg_idx += 1
-                new_bg_name = "bg_{}_{:d}".format(self.sc_obj.name, com_instance.bg_idx)
+                icswCSComInstance.bg_idx += 1
+                new_bg_name = "bg_{}_{:d}".format(self.sc_obj.name, icswCSComInstance.bg_idx)
 
                 self.sc_obj.main_proc.add_process(BackgroundProcess(new_bg_name), start=True)
 
@@ -147,9 +153,6 @@ class com_instance(object):
                     server_command.SRV_REPLY_STATE_ERROR
                 )
         else:
-            db_debug = global_config["DATABASE_DEBUG"]
-            if db_debug:
-                pre_queries = len(connection.queries)
             self.start_time = time.time()
             try:
                 result = self.sc_obj._call(self)
@@ -191,11 +194,9 @@ class com_instance(object):
                     self.srv_com["result"].attrib["reply"],
                     logging_tools.get_diff_time_str(self.end_time - self.start_time)
                 )
-            if db_debug:
-                self.log("queries executed : {:d}".format(len(connection.queries) - pre_queries))
 
 
-class server_com(object):
+class icswCSServerCom(object):
     class Meta:
         # callable via net
         available_via_net = True
@@ -226,9 +227,9 @@ class server_com(object):
 
     def __init__(self):
         # copy Meta keys
-        for key in dir(server_com.Meta):
+        for key in dir(icswCSServerCom.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
-                setattr(self.Meta, key, getattr(server_com.Meta, key))
+                setattr(self.Meta, key, getattr(icswCSServerCom.Meta, key))
 
     def link(self, main_proc):
         self.main_proc = main_proc
@@ -268,4 +269,5 @@ class server_com(object):
         return (doit, srv_origin, err_str)
 
     def __call__(self, srv_com, option_dict):
-        return com_instance(self, srv_com, option_dict, self.Meta, self.main_proc.zmq_context)
+        _rv = icswCSComInstance(self, srv_com, option_dict, self.Meta, self.main_proc.zmq_context)
+        return _rv

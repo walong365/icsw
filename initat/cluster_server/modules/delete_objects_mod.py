@@ -31,7 +31,7 @@ from initat.cluster_server.modules import cs_base_class
 from initat.tools import logging_tools
 
 
-class handle_delete_requests(cs_base_class.server_com):
+class handle_delete_requests(cs_base_class.icswCSServerCom):
 
     class Meta:
         background = True
