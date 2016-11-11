@@ -249,6 +249,15 @@ class login_addons(View):
         request.xml_response["active_database_idx"] = settings.ICSW_ACTIVE_DATABASE_IDX
 
 
+class change_database(View):
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _idx = request.POST["database_idx"]
+        _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True, access_mode=config_store.AccessModeEnum.GLOBAL)
+        _cs["default.database.idx"] = _idx
+        _cs.write()
+
+
 class ThemeViewSet(viewsets.ViewSet):
     @csrf_exempt
     def get_all_themes(self, request):
