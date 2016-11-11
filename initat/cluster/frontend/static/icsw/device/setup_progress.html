@@ -12,11 +12,21 @@
             margin-bottom: 0px !important;
         }
         a {
-          color:inherit;
-          text-decoration: none;
-          display:table-cell;
-          vertical-align:middle;
-         }
+            color:inherit;
+            text-decoration: none;
+            display:table-cell;
+            vertical-align:middle;
+        }
+
+        .centerUL {
+            list-style: none;
+            margin: 0 0 0 0;
+            padding: 0 0 0 0;
+        }
+
+        .fa-2x {
+            font-size: 2em !important;
+        }
     </style>
     <div class="container-fluid">
         <div
@@ -38,19 +48,26 @@
                         <tr>
                             <th style="width: 10px" class="lead">Task</th>
                             <th style="width: 500px" class="lead">Description</th>
-                            <th style="width: 10px" class="lead">Status</th>
+                            <th style="width: 10px" class="lead text-center">Status</th>
+                            <th style="width: 10px" class="lead text-center">Action</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr ng-click="open_in_new_tab_for_system(task.setup_type)" ng-repeat="task in struct.tasks" class="lead">
+                        <tr ng-repeat="task in struct.tasks" class="lead">
                             <td>
                                 {{ task.task_number }}.
                             </td>
                             <td>
                                 {{ task.task_description }}
                             </td>
-                            <td ng-class="task.task_bg_color_class" class="text-center">
+                            <td ng-class="task.task_bg_color_class" class="text-center" ng-click="open_in_new_tab_for_system(task.setup_type)">
                                 <i ng-class="task.task_icon_class"></i>
+                            </td>
+                            <td class="text-center">
+                                <ul class="centerUL">
+                                    <li><a href ng-click="open_in_new_tab_for_system(task.setup_type)">Handle Issue</a></li>
+                                    <li><a href ng-click="ignore_issue(task)">{{ task.ignore_text }}</a></li>
+                                </ul>
                             </td>
                         </tr>
                     </tbody>

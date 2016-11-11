@@ -983,7 +983,7 @@ class DeviceCompletion(View):
                 else:
                     seconds_since_graph_setup = 0
 
-                info_dict[_device.idx]["graphing_data_warning"] = seconds_since_graph_setup < (60 * 5)
+                info_dict[_device.idx]["graphing_data_warning"] = seconds_since_graph_setup < (60 * 2)
             except DeviceFlagsAndSettings.DoesNotExist:
                 pass
 
@@ -1056,36 +1056,44 @@ class SimpleGraphSetup(View):
             json.dumps(_status)
         )
 
+#todo move somwhere sane
 class SystemCompletion(View):
-    @method_decorator(login_required)
     def post(self, request):
         info_dict = {}
 
+        system_device = device.objects.get(idx=1)
+
         devices_count = device.objects.filter(is_meta_device=False).count()
+        v = system_device.device_variable_set.filter(name="__ISSUES_IGNORE_{}__".format("devices"))
 
         info_dict['devices'] = devices_count
         info_dict['devices_text'] = "{} Device".format(devices_count)
+        info_dict['devices_ignore'] = len(v) > 0
 
         mon_check_count = mon_check_command.objects.all().count()
+        v = system_device.device_variable_set.filter(name="__ISSUES_IGNORE_{}__".format("monitoring_checks"))
 
         info_dict['monitoring_checks'] = mon_check_count
         info_dict['monitoring_checks_text'] = "{} Check".format(mon_check_count)
-
-        info_dict['monitoring_checks'] = mon_check_count
-        info_dict['monitoring_checks_text'] = "{} Check".format(mon_check_count)
+        info_dict['monitoring_checks_ignore'] = len(v) > 0
 
         user_count = user.objects.all().count() - 1
+        v = system_device.device_variable_set.filter(name="__ISSUES_IGNORE_{}__".format("users"))
 
         info_dict["users"] = user_count
         info_dict["users_text"] = "{} (non-admin) User".format(user_count)
+        info_dict["users_ignore"] = len(v) > 0
 
         locations_count = 0
         for _category in category.objects.all():
             if _category.full_name.startswith("/location/"):
                 locations_count += 1
 
+        v = system_device.device_variable_set.filter(name="__ISSUES_IGNORE_{}__".format("locations"))
+
         info_dict["locations"] = locations_count
         info_dict["locations_text"] = "{} Location".format(locations_count)
+        info_dict["locations_ignore"] = len(v) > 0
 
         info_names = ["devices", "monitoring_checks", "users", "locations"]
         for info_name in info_names:
@@ -1094,4 +1102,33 @@ class SystemCompletion(View):
 
         return HttpResponse(
             json.dumps(info_dict)
+        )
+
+#todo move somwhere sane
+class SystemCompletionIgnoreToggle(View):
+    def post(self, request):
+        system_component_name = request.POST.get("system_component_name")
+
+        system_device = device.objects.get(idx=1)
+
+        variable_name = "__ISSUES_IGNORE_{}__".format(system_component_name)
+
+        v = system_device.device_variable_set.filter(name=variable_name)
+
+        if v:
+            v[0].delete()
+        else:
+            system_device.device_variable_set.create(
+                device = system_device,
+                is_public = False,
+                name = variable_name,
+                local_copy_ok = False,
+                inherit = False,
+                protected = True,
+                var_type = "i",
+                val_int = 1
+            )
+
+        return HttpResponse(
+            json.dumps(1)
         )

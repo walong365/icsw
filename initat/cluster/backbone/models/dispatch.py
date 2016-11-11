@@ -242,9 +242,9 @@ class ScheduleItem(models.Model):
     # link to device
     device = models.ForeignKey("backbone.device")
     dispatch_setting = models.ForeignKey("backbone.DispatcherSetting", null=True)
-    source = models.IntegerField(choices=[(src.value, src.name) for src in DiscoverySource])
     planned_date = models.DateTimeField(default=None, null=True)
     run_now = models.BooleanField(default=False)
+    user = models.ForeignKey("backbone.user", null=True)
 
     def __repr__(self):
         return "ScheduleItem(dev={}, src={}, planned={}, run_now={})".format(

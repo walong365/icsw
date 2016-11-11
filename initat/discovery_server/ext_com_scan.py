@@ -25,22 +25,24 @@ import datetime
 import time
 import traceback
 
-import pytz
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils import timezone
 from lxml import etree
 
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network, \
     device_variable, AssetRun, RunStatus, BatchStatus, AssetType, ScanType, \
     AssetBatch, RunResult, DeviceDispatcherLink, DispatcherSettingScheduleEnum, \
-    ScheduleItem, DiscoverySource
+    ScheduleItem, DeviceLogEntry, LogSource, LogLevel
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
-from initat.tools import logging_tools, process_tools, server_command, net_tools, \
-    ipvx_tools
+from initat.tools import logging_tools, process_tools, server_command, ipvx_tools
 from .discovery_struct import ExtCom
+
+DEVICE_LOG_LEVEL_OK = LogLevel.objects.get(identifier="o")
+DEVICE_LOG_SOURCE = LogSource.objects.get(identifier=icswServiceEnum.discovery_server.name)
 
 DEFAULT_NRPE_PORT = 5666
 # the mapping between the result of the server command and the result of the
@@ -425,65 +427,6 @@ class WmiScanMixin(_ExtComScanMixin):
         return WmiScanBatch(dev_com, scan_dev).start_result
 
 
-class NRPEScanMixin(_ExtComScanMixin):
-    def nrpe_scan(self, dev_com, scan_dev):
-        self._register_timer()
-        return NRPEScanBatch(dev_com, scan_dev).start_result
-
-PACKAGE_CMD = "package"
-LICENSE_CMD = "license"
-HARDWARE_CMD = "hardware"
-UPDATES_CMD = "updates"
-PROCESS_CMD = "process"
-PENDING_UPDATES_CMD = "pending_updates"
-
-
-class NRPEScanBatch(ScanBatch):
-    SCAN_TYPE = 'NRPE'
-
-    def __init__(self, dev_com, scan_dev):
-        dev_com.attrib['scan_address'] = "127.0.0.1"
-        super(NRPEScanBatch, self).__init__(dev_com, scan_dev)
-
-        self._commands = self._command = dev_com.attrib.get('commands').split(",")
-        self._build_command()
-
-        if self.device.target_ip:
-            # self._ext_com = ExtCom(self.log, self._build_command())
-            # self._ext_com.run()
-            self.start_result = ResultNode(ok="started NRPE_scan")
-
-    def _build_command(self):
-        for _command in self._commands:
-            source = None
-            if _command == PACKAGE_CMD:
-                source = DiscoverySource.PACKAGE
-            elif _command == LICENSE_CMD:
-                source = DiscoverySource.LICENSE
-            elif _command == HARDWARE_CMD:
-                source = DiscoverySource.HARDWARE
-            elif _command == UPDATES_CMD:
-                source = DiscoverySource.UPDATE
-            elif _command == PROCESS_CMD:
-                source = DiscoverySource.PROCESS
-            elif _command == PENDING_UPDATES_CMD:
-                source = DiscoverySource.PENDING_UPDATE
-
-            if not source:
-                continue
-
-            # run scan once every hour
-            si = ScheduleItem.objects.create(
-                device=self.device,
-                source=10,
-                planned_date=datetime.datetime.now(tz=pytz.utc),
-                run_now=True,
-                dispatch_setting=None
-            )
-            si.save()
-
-        self.finish()
-
 LIST_SOFTWARE_CMD = "list-software-py3"
 LIST_KEYS_CMD = "list-keys-py3"
 LIST_METRICS_CMD = "list-metrics-py3"
@@ -652,6 +595,15 @@ class PlannedRunState(object):
         if _db_obj.asset_batch.run_status != BatchStatus.RUNNING:
             _db_obj.asset_batch.state_start_runs()
             _db_obj.asset_batch.save()
+
+            log_entry = DeviceLogEntry(
+                device=_db_obj.asset_batch.device,
+                source=DEVICE_LOG_SOURCE,
+                level=DEVICE_LOG_LEVEL_OK, text="AssetScan with BatchId:[{}] started".format(_db_obj.asset_batch.idx),
+                user=_db_obj.asset_batch.user
+            )
+            log_entry.save()
+
         self.__pdrf.num_running += 1
 
     def store_nrpe_result(self, state, result):
@@ -717,7 +669,7 @@ class PlannedRunState(object):
 
 class PlannedRunsForDevice(object):
 
-    def __init__(self, disp, device, ip):
+    def __init__(self, disp, device, ip, user):
         # mirrors AssetBatch
         self.disp = disp
         self.device = device
@@ -726,7 +678,7 @@ class PlannedRunsForDevice(object):
         # numbers of jobs running
         self.num_running = 0
         self.to_delete = False
-        self.asset_batch = AssetBatch(device=self.device)
+        self.asset_batch = AssetBatch(device=self.device, user=user)
         self.asset_batch.state_init()
         self.asset_batch.save()
         self.zmq_connections = []
@@ -820,13 +772,10 @@ class Dispatcher(object):
                 # not scheduled
                 next_run = _ScheduleItem(
                     device,
-                    # this makes absolutely no sense, FIXME, TODO
-                    DiscoverySource.PACKAGE,
                     align_time_to_baseline(_now, ds)
                 )
                 ScheduleItem.objects.create(
                     device=next_run.device,
-                    source=next_run.source,
                     planned_date=next_run.planned_date,
                     dispatch_setting=ds
                 )
@@ -837,12 +786,10 @@ class Dispatcher(object):
             if last_scheds[ds] < 2:
                 next_run = _ScheduleItem(
                     device,
-                    DiscoverySource.PACKAGE,
                     last_sched[ds].planned_date + get_time_inc_from_ds(ds)
                 )
                 ScheduleItem.objects.create(
                     device=next_run.device,
-                    source=next_run.source,
                     planned_date=next_run.planned_date,
                     dispatch_setting=ds,
                 )
@@ -901,12 +848,13 @@ class Dispatcher(object):
                     }
 
                     _dev = schedule_item.device
+                    _user = schedule_item.user
                     if _dev.idx not in self.__device_planned_runs:
                         self.__device_planned_runs[_dev.idx] = []
 
                     self.discovery_process.get_route_to_devices([_dev])
                     self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
-                    new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip)
+                    new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip, _user)
                     new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
 
                     if cap_dict.get("hm", False):
@@ -1008,7 +956,20 @@ class Dispatcher(object):
         # remove PlannedRuns which should be deleted
         _removed = 0
         for _dev_idx, pdrf_list in self.__device_planned_runs.iteritems():
-            _keep = [entry for entry in pdrf_list if not entry.to_delete]
+            _keep = []
+            for entry in pdrf_list:
+                if entry.to_delete:
+                    log_entry = DeviceLogEntry(
+                        device=entry.asset_batch.device,
+                        source=DEVICE_LOG_SOURCE,
+                        level=DEVICE_LOG_LEVEL_OK,
+                        text="AssetScan with BatchId:[{}] completed".format(entry.asset_batch.idx),
+                        user=entry.asset_batch.user
+                    )
+                    log_entry.save()
+                else:
+                    _keep.append(entry)
+
             _removed += len(pdrf_list) - len(_keep)
             self.__device_planned_runs[_dev_idx] = _keep
         if _removed:
@@ -1089,16 +1050,11 @@ class Dispatcher(object):
 
 
 class _ScheduleItem(object):
-    def __init__(self, device, source, planned_date):
-        """
-        :type dispatch_setting: DispatchSetting
-        """
-        # date always means datetime
+    def __init__(self, device, planned_date):
         self.device = device
-        self.source = source
-        self.planned_date = planned_date  # naive date according to interval
+        self.planned_date = planned_date
 
     def __repr__(self):
-        return "ScheduleItem(dev={}, src={}, planned={})".format(
-            self.device, self.source, self.planned_date
+        return "ScheduleItem(dev={}, planned={})".format(
+            self.device, self.planned_date
         )
