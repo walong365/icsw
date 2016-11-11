@@ -160,7 +160,7 @@ def _read_db_settings(store, key):
 _multi_db_prefix = "db"
 
 if _cs.get("multiple.databases", False):
-    _db_idx = "{:d}".format(_cs["default.database.idx"])
+    _db_idx = "{:d}".format(int(_cs["default.database.idx"]))
     if not _ps.prefix:
         raise ImproperlyConfigured(
             "prefix required but not found in DB_ACCESS file"
