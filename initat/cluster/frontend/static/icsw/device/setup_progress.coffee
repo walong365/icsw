@@ -446,6 +446,7 @@ setup_progress = angular.module(
 
     $scope.$on("$destroy", () ->
         $rootScope.$emit(ICSW_SIGNALS("ICSW_OPEN_SETUP_TASKS_CHANGED"))
+        stop_timer()
     )
 
     $scope.ignore_issue = (task) ->
