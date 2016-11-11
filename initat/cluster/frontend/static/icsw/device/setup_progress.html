@@ -35,6 +35,7 @@
             ng-show="!struct.data_loaded">Fetching data from server ...
         </div>
         <div ng-if="struct.data_loaded">
+            <br/>
             <uib-tabset ng-click="setup_tasks_tab_clicked()" active="struct.active_tab_index">
                 <uib-tab>
                     <uib-tab-heading>

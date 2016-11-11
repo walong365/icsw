@@ -1,0 +1,73 @@
+<script type="text/ng-template" id="icsw/device/log">
+    <icsw-device-log icsw-sel-man="0"></icsw-device-log>
+</script>
+
+
+<script type="text/ng-template" id="icsw.device.log">
+    <div class="container-fluid">
+        <div
+            uib-alert
+            class="alert-warning"
+            ng-show="!struct.data_loaded">Fetching data from server ...
+        </div>
+        <div ng-if="struct.data_loaded">
+            </br>
+            <uib-tabset ng-click="setup_tasks_tab_clicked()" active="struct.active_tab_index">
+                <uib-tab>
+                    <uib-tab-heading>
+                        <span>Overview</span>
+                    </uib-tab-heading>
+                    </br>
+                    <table
+                        st-table="entries_displayed"
+                        st-safe-src="struct.devices"
+                        class="table table-condensed table-striped table-hover simple-border"
+                    >
+                        <thead>
+                            <tr>
+                                <td colspan="99">
+                                    <span
+                                        icsw-tools-pagination
+                                        st-items-by-page="20"
+                                        st-displayed-pages="11"
+                                        possible-items-by-page="10,20,50,100"
+                                        class="pull-xs-left"
+                                    ></span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th st-sort="name">Name</th>
+                                <th st-sort="device_group_name">Group</th>
+                                <th st-sort="$$device_log_entries_count" style="width: 150px" class="text-center">Log Entry Count</th>
+                            </tr>
+                            <tr>
+                                <th>
+                                    <input st-search="name" placeholder="filter by device name" class="input-sm form-control" type="search"/>
+                                </th>
+                                <th>
+                                    <input st-search="device_group_name" placeholder="filter by group" class="input-sm form-control" type="search"/>
+                                </th>
+                                <th></th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+                            <tr ng-repeat="obj in entries_displayed" ng-click="open_in_new_tab(obj)">
+                                <td>
+                                    <button type="button" class="btn btn-xs btn-success" ng-click="show_device($event, obj)">{{ obj.full_name }}</button>
+                                </td>
+                                <td>{{ obj.device_group_name }}</td>
+                                <td class="text-center" ng-class="obj.$$device_log_entries_bg_color_class"><strong>{{ obj.$$device_log_entries_count }}</strong></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </uib-tab>
+                <uib-tab ng-repeat="tab in struct.tabs">
+                    <uib-tab-heading>
+                        <span>{{ tab.name }}</span>
+                    </uib-tab-heading>
+                </uib-tab>
+            </uib-tabset>
+        </div>
+    </div>
+</script>

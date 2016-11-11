@@ -39,13 +39,13 @@ from rest_framework import viewsets, status
 from rest_framework.response import Response
 
 from initat.cluster.backbone.models import device_group, device, \
-    cd_connection, domain_tree_node, category, netdevice, ComCapability, \
+    cd_connection, domain_tree_node, netdevice, ComCapability, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
     SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
     DeviceScanLock, device_variable_scope, StaticAsset, DeviceClass, \
     dvs_allowed_name
-from initat.cluster.backbone.models import get_change_reset_list
+from initat.cluster.backbone.models import get_change_reset_list, DeviceLogEntry
 from initat.cluster.backbone.models.functions import can_delete_obj
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
@@ -54,7 +54,7 @@ from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabil
     SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
     AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, DeviceScanLockSerializer, \
     device_variable_scope_serializer, StaticAssetSerializer, DeviceClassSerializer, \
-    dvs_allowed_name_serializer
+    dvs_allowed_name_serializer, DeviceLogEntrySerializer
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 
@@ -1131,3 +1131,20 @@ class SystemCompletionIgnoreToggle(View):
         return HttpResponse(
             json.dumps(1)
         )
+
+class DeviceLogEntryViewSet(viewsets.ViewSet):
+    def list(self, request):
+        prefetch_list = [
+            "source",
+            "level"
+        ]
+
+        if "device_pks" in request.query_params:
+            queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).filter(
+                device__in=json.loads(request.query_params.getlist("device_pks")[0]))
+        else:
+            queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).all()
+
+        serializer = DeviceLogEntrySerializer(queryset, many=True)
+
+        return Response(serializer.data)

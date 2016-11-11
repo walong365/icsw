@@ -25,7 +25,7 @@
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import device, device_config, device_group, \
-    cd_connection, DeviceSNMPInfo, DeviceScanLock, DeviceClass
+    cd_connection, DeviceSNMPInfo, DeviceScanLock, DeviceClass, DeviceLogEntry, LogSource, LogLevel
 
 
 __all__ = [
@@ -38,6 +38,7 @@ __all__ = [
     "device_serializer_boot",
     "DeviceSNMPInfoSerializer",
     "DeviceClassSerializer",
+    "DeviceLogEntrySerializer"
 ]
 
 
@@ -252,3 +253,21 @@ class DeviceClassSerializer(serializers.ModelSerializer):
     class Meta:
         fields = "__all__"
         model = DeviceClass
+
+class LogLevelSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LogLevel
+        fields = ("idx", "identifier", "level", "name", "date")
+
+class LogSourceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LogSource
+        fields = ("idx", "identifier", "device", "description", "date")
+
+class DeviceLogEntrySerializer(serializers.ModelSerializer):
+    source = LogSourceSerializer()
+    level = LogLevelSerializer()
+
+    class Meta:
+        model = DeviceLogEntry
+        fields = ("idx", "device", "source", "user", "level", "text", "date")

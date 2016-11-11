@@ -24,7 +24,7 @@ monitoring_device_module = angular.module(
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters",
         "restangular", "ui.select", "icsw.tools.table", "icsw.tools.button", "angular-ladda",
         "icsw.device.asset", "icsw.device.report", "icsw.device.inventory.static.overview",
-        "icsw.setup.progress"
+        "icsw.setup.progress", "icsw.device.log"
     ]
 ).config([
     "icswRouteExtensionProvider",

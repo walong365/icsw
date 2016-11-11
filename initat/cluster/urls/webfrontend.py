@@ -195,6 +195,7 @@ boot_patterns = [
 ]
 
 device_patterns = [
+    url("^device_log_entry_list", device_views.DeviceLogEntryViewSet.as_view({"get": "list"}), name="device_log_entry_list"),
     url("^system_completion_ignore_toggle$", device_views.SystemCompletionIgnoreToggle.as_view(), name="system_completion_ignore_toggle"),
     url("^system_completion$", device_views.SystemCompletion.as_view(), name="system_completion"),
     url("^device_completion$", device_views.DeviceCompletion.as_view(), name="device_completion"),

@@ -25,6 +25,14 @@
                 </description>
             </icswData>
         </route>
+        <route name="main.devicelog">
+            <stateData url="/device/log" templateUrl="icsw/device/log"/>
+            <icswData pageTitle="Device Logs">
+                <description>
+                    <infoText language="en">Show device specific logs</infoText>
+                </description>
+            </icswData>
+        </route>
         <route name="main.setupprogress">
             <stateData url="/setup/progress" templateUrl="icsw/setup/progress"/>
             <icswData pageTitle="Setup Progress">
@@ -675,6 +683,7 @@
                 <menuEntry icon="fa-map-marker" name="Locations" routeName="main.devlocation"/>
                 <menuEntry icon="fa-plug" name="Power Controlling Connections" routeName="main.deviceconnection"/>
                 <menuEntry icon="fa-clock-o" name="Scheduling" routeName="main.scheddevice"/>
+                <menuEntry icon="fa-fire" name="Device Logs" routeName="main.devicelog"/>
             </routeSubGroup>
         </menuHeader>
         <menuHeader name="Monitoring" icon="fa-eye" side="left">
