@@ -449,7 +449,6 @@ angular.module(
                 {
                     message: $compile($templateCache.get("icsw.connect.create.element"))(sub_scope)
                     title: "Add DisplayPipe Element"
-                    # css_class: "modal-wide"
                     ok_label: "Add"
                     closable: true
                     ok_callback: (modal) =>

@@ -87,7 +87,7 @@ angular.module(
             return _draw
 
         get_segment_info: () =>
-            _r_str = "#{@segments_drawn} segments"
+            _r_str = "#{@segments_drawn} Segments"
             if @segments_omitted
                 _r_str = "#{_r_str}, #{@segments_omitted} omitted"
                 

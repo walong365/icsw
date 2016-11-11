@@ -646,11 +646,18 @@ angular.module(
                 @load_data()
 
             _list = [
+                h4(
+                    {
+                        key: "heading"
+                        className: "pull-left"
+                    }
+                    "Network Topology"
+                )
                 button(
                     {
                         key: "b.redraw"
                         type: "button"
-                        className: "btn btn-warning btn-sm fa fa-pencil"
+                        className: "btn btn-warning btn-sm fa fa-pencil pull-right"
                         onClick: (event) =>
                             _load_data()
                     }
@@ -664,7 +671,7 @@ angular.module(
                         {
                             key: "b.scale"
                             type: "button"
-                            className: "btn btn-success btn-sm fa fa-arrows-alt"
+                            className: "btn btn-success btn-sm fa fa-arrows-alt pull-right"
                             onClick: (event) =>
                                 @graph_command.notify("scale")
                         }
@@ -677,7 +684,8 @@ angular.module(
                         {
                             key: "b.livestatus"
                             type: "button"
-                            className: if @state.with_livestatus then "btn btn-success btn-sm fa fa-bar-chart" else "btn btn-default btn-sm fa fa-bar-chart"
+                            className: "btn btn-sm fa fa-bar-chart pull-right " +
+                                if @state.with_livestatus then "btn-success" else " btn-default"
                             onClick: (event) =>
                                 @setState({with_livestatus: not @state.with_livestatus})
                         }
@@ -705,7 +713,7 @@ angular.module(
                 )
             _top_list = [
                 div(
-                    {key: "div0", className: "form-group form-inline"}
+                    {key: "div0", className: "form-group form-inline", style: {marginBottom: 0}}
                     _list
                 )
             ]
@@ -798,7 +806,7 @@ angular.module(
             super("icswLivestatusNetworkTopology", true, false)
             @set_template(
                 '<icsw-device-network-topology icsw-connect-element="con_element" icsw-sub-max-height></icsw-device-network-topology>'
-                "NetworkTopology"
+                "Network Topology"
                 8
                 8
             )

@@ -37,7 +37,7 @@ angular.module(
             super("icswLivestatusMonTabularDisplay", true, false)
             @set_template(
                 '<icsw-livestatus-mon-table-view icsw-connect-element="con_element"></icsw-livestatus-mon-table-view>'
-                "ServiceTabularDisplay"
+                "Service Tabular Display"
                 10
                 10
             )
@@ -91,7 +91,7 @@ angular.module(
             super("icswLivestatusDeviceTabularDisplay", true, false)
             @set_template(
                 '<icsw-livestatus-device-table-view icsw-connect-element="con_element"></icsw-livestatus-device-table-view>'
-                "DeviceTabularDisplay"
+                "Device Tabular Display"
                 10
                 10
             )
