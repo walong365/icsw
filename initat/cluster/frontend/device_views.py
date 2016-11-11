@@ -925,12 +925,11 @@ class DeviceCompletion(View):
             srv_com
         )
 
-        result_str, status = result.get_result()
         rrd_modification_dict = None
-        print(status)
-        if status == 0:
-            rrd_modification_dict = ast.literal_eval(result_str)
-            print(rrd_modification_dict)
+        if result:
+            result_str, status = result.get_result()
+            if status == 0:
+                rrd_modification_dict = ast.literal_eval(result_str)
 
         devices = device.objects.prefetch_related(
             "assetbatch_set"

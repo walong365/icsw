@@ -170,7 +170,10 @@ class ServerProcess(
                 machine_vector = machine_vector[0]
 
                 for entry in machine_vector.mvstructentry_set.all():
-                    newest_timestamp = max(newest_timestamp, os.stat(entry.file_name)[stat.ST_MTIME])
+                    try:
+                        newest_timestamp = max(newest_timestamp, os.stat(entry.file_name)[stat.ST_MTIME])
+                    except:
+                        pass
 
             result_dict[_device.idx] = newest_timestamp
 
