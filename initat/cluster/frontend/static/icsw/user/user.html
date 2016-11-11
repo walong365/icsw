@@ -1015,46 +1015,36 @@
             </uib-tab>
             <uib-tab heading="Permissions">
                 <fieldset>
-                    <legend>Permissions ({{ perm_tree.permission_list.length }} defined)</legend>
-                    <table
-                        st-table="entries_displayed"
-                        st-safe-src="struct.perm_list"
-                        class="table table-condensed table-striped table-hover"
-                    >
-                        <thead>
-                            <tr>
-                                <td colspan="99">
-                                    <div class="pull-left">
-                                        <input st-search="" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="text"/>
-                                    </div>
-                                    <div icsw-tools-pagination
-                                        st-items-by-page="20"
-                                        st-displayed-pages="11"
-                                        possible-items-by-page="10,20,50,100"
-                                     ></div>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th st-sort="$$perm_name">Name</th>
-                                <th st-sort="$$model" st-sort-default="true">Model</th>
-                                <th st-sort="$$codename">Code</th>
-                                <th st-sort="$$info_str">Info</th>
-                                <th st-sort="g_flag">Scope</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr ng-repeat="perm in entries_displayed">
-                                <td>{{ perm.$$perm_name }}</td>
-                                <td>{{ perm.$$model }}</td>
-                                <td class="text-center"><code>{{ perm.$$codename }}</code></td>
-                                <td>{{ perm.$$info_str }}</td>
-                                <td class="text-center">
-                                    <span ng-show="perm.g_flag" class="label label-primary">global</span>
-                                    <span ng-show="!perm.g_flag" class="label label-success">local</span>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <legend>Table selections</legend>
+                    <uib-tabset>
+                        <uib-tab>
+                            <uib-tab-heading>
+                                Global permissions ({{ struct.global_perm_list.list.length }})
+                            </uib-tab-heading>
+                            <icsw-role-perm-table
+                                icsw-perm-list="struct.global_perm_list"
+                                icsw-user-group-role-tree="tree"
+                                icsw-device-tree="device_tree"
+                                icsw-permission-tree="perm_tree"
+                            >
+                            </icsw-role-perm-table>
+                        </uib-tab>
+                        <uib-tab ng-repeat="local_pl in struct.local_perm_lists">
+                            <uib-tab-heading>
+                                Local permission for {{ local_pl.model_name }} ({{ local_pl.list.length }})
+                            </uib-tab-heading>
+                            <icsw-role-perm-table
+                                icsw-perm-list="local_pl"
+                                icsw-user-group-role-tree="tree"
+                                icsw-device-tree="device_tree"
+                                icsw-permission-tree="perm_tree"
+                            >
+                            </icsw-role-perm-table>
+                        </uib-tab>
+                    </uib-tabset>
+                </fieldset>
+                <fieldset ng-show="0">
+                    <legend>Single selection</legend>
                     <!-- <uib-accordion close-others="no" ng-if="struct.perm_dict">
                         <div uib-accordion-group class="panel-default" ng-repeat="perm_key in struct.content_keys">
                             <uib-accordion-heading>
@@ -1094,7 +1084,7 @@
                                     <ui-select-match class="ui-select-match" placeholder="Select an object">
                                         {{ $select.selected.name }}
                                     </ui-select-match>
-                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in object_list()| props_filter:{name:$select.search}" group-by="'group'">
+                                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in object_list() | props_filter:{name:$select.search}" group-by="'group'">
                                         <div ng-bind-html="value.name | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>
@@ -1124,6 +1114,9 @@
                     <icsw-tools-button type="create" value="create global permission" ng-click="create_permission()" ng-show="new_perm.permission"></icsw-tools-button>
                     &nbsp;
                     <icsw-tools-button type="create" value="create object level permission" ng-click="create_object_permission()" ng-show="new_perm.permission && new_perm.object"></icsw-tools-button>
+                </fieldset>
+                <fieldset>
+                    <legend>Permission overview</legend>
                     <div class="row">
                         <div class="col-sm-12">
                             <icsw-user-group-role-permissions
@@ -1144,6 +1137,98 @@
             <icsw-tools-button type="delete" ng-click="delete()"></icsw-tools-button>
         </div>
     </form>
+</script>
+
+<script type="text/ng-template" id="icsw.role.perm.table">
+    <h3>{{ perm_list.list.length }} Permissions available</h3>
+    <div class="container-fluid">
+        <div class="col-md-6 col-xs-12">
+            <table
+                st-table="perm_list.display_list"
+                st-safe-src="perm_list.list"
+                class="table table-condensed table-striped table-hover"
+            >
+                <thead>
+                    <tr>
+                        <td colspan="99">
+                            <div class="pull-left">
+                                <input st-search="" class="form-control form-control-inline" style="margin-right:20px;" placeholder="filter ..." type="text"/>
+                            </div>
+                            <div icsw-tools-pagination
+                                st-items-by-page="20"
+                                st-displayed-pages="11"
+                                possible-items-by-page="10,20,50,100"
+                             ></div>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th st-sort="$$perm_name">Name</th>
+                        <th st-sort="$$model" st-sort-default="true">Model</th>
+                        <th st-sort="$$codename">Code</th>
+                        <th st-sort="$$info_str">Info</th>
+                        <th st-sort="g_flag">Scope</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr ng-repeat="perm in perm_list.display_list" ng-click="toggle_selection($event, perm)" ng-class="perm.$$line_class">
+                        <td>{{ perm.$$perm_name }}</td>
+                        <td>{{ perm.$$model }}</td>
+                        <td class="text-center"><code>{{ perm.$$codename }}</code></td>
+                        <td>{{ perm.$$info_str }}</td>
+                        <td class="text-center">
+                            <span ng-show="perm.g_flag" class="label label-primary">global</span>
+                            <span ng-show="!perm.g_flag" class="label label-success">local</span>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="col-xs-12 col-md-6" ng-show="perm_list.selected_perms.length">
+            <fieldset>
+                <legend>
+                    {{ perm_list.selected_perms.length }} Selected permissions:
+                    <icsw-tools-button
+                        size="xs"
+                        type="clear"
+                        value="Clear selection"
+                        ng-click="clear_selections($event)"
+                    ></icsw-tools-button>
+                </legend>
+                <ul class="list-group">
+                    <li class="list-group-item" ng-repeat="sel_perm in perm_list.selected_perms">
+                        {{ sel_perm.$$perm_name }}
+                    </li>
+                </ul>
+            </fieldset>
+            <fieldset ng-if="!perm_list.global_perm">
+                <legend>Objects</legend>
+                <ui-select ng-model="struct.object_list" multiple>
+                    <ui-select-match class="ui-select-match" placeholder="Select an object">
+                        {{ $item.name }}
+                    </ui-select-match>
+                    <ui-select-choices class="ui-select-choices" repeat="value.idx as value in struct.ref_list | props_filter:{name:$select.search}" group-by="'group'">
+                        <div ng-bind-html="value.name | highlight: $select.search"></div>
+                    </ui-select-choices>
+                </ui-select>
+            </fieldset>
+            <fieldset>
+                <legend>Permission Level</legend>
+                <ui-select ng-model="struct.level" class="maxwidth500">
+                    <ui-select-match class="ui-select-match" placeholder="Select a permission mode">
+                        {{ $select.selected.info_string }}
+                    </ui-select-match>
+                    <ui-select-choices class="ui-select-choices" repeat="value.level as value in perm_tree.ac_level_list">
+                        <div ng-bind-html="value.info_string | highlight: $select.search"></div>
+                    </ui-select-choices>
+                </ui-select>
+            </fieldset>
+            <fieldset>
+                <div ng-show="perm_list.global_perm || (!perm_list.global_perm && struct.object_list.length)">
+                    <icsw-tools-button size="sm" type="create" ng-click="add_permissions($event)"></icsw-tools-button>
+                </div>
+            </fieldset>
+        </div>
+    </div>
 </script>
 
 <script type="text/ng-template" id="icsw.account.detail.form">
