@@ -363,13 +363,13 @@ angular.module(
 ]).controller("icswConfigCategoryTreeCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$timeout", "$rootScope",
-    "$q", "icswAcessLevelService", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryDisplayTree",
+    "$q", "icswAccessLevelService", "blockUI", "icswTools", "ICSW_URLS", "icswConfigCategoryDisplayTree",
     "icswSimpleAjaxCall", "toaster",
     "icswToolsSimpleModalService", "icswCategoryTreeService", "icswComplexModalService",
     "icswCategoryBackup", "icswInfoModalService", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $timeout, $rootScope,
-    $q, icswAcessLevelService, blockUI, icswTools, ICSW_URLS, icswConfigCategoryDisplayTree,
+    $q, icswAccessLevelService, blockUI, icswTools, ICSW_URLS, icswConfigCategoryDisplayTree,
     icswSimpleAjaxCall, toaster,
     icswToolsSimpleModalService,icswCategoryTreeService, icswComplexModalService,
     icswCategoryBackup, icswInfoModalService, ICSW_SIGNALS
@@ -890,12 +890,12 @@ angular.module(
 ]).controller("icswConfigCategoryTreeSelectCtrl",
 [
     "$scope", "$templateCache", "icswCatSelectionTreeService", "icswConfigTreeService", "$q",
-    "icswCategoryTreeService", "icswAcessLevelService", "blockUI", "icswSimpleAjaxCall",
+    "icswCategoryTreeService", "icswAccessLevelService", "blockUI", "icswSimpleAjaxCall",
     "ICSW_URLS", "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS", "icswBaseCategoryTree",
     "icswConfigCategoryModifyCall",
 (
     $scope, $templateCache, icswCatSelectionTreeService, icswConfigTreeService, $q,
-    icswCategoryTreeService, icswAcessLevelService, blockUI, icswSimpleAjaxCall,
+    icswCategoryTreeService, icswAccessLevelService, blockUI, icswSimpleAjaxCall,
     ICSW_URLS, icswDeviceTreeService, $rootScope, ICSW_SIGNALS, icswBaseCategoryTree,
     icswConfigCategoryModifyCall,
 ) ->
@@ -990,7 +990,7 @@ angular.module(
             _ct.change_select = true
             # iterate
             for _dev in $scope.struct.objects
-                if not icswAcessLevelService.acl_all(_dev, "backbone.device.change_category", 7)
+                if not icswAccessLevelService.acl_all(_dev, "backbone.device.change_category", 7)
                     _ct.change_select = false
                     break
             $scope.$watch(

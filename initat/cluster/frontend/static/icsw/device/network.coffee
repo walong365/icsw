@@ -31,19 +31,19 @@ angular.module(
 ]).controller("icswDeviceNetworkCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "icswAcessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
+    "$q", "icswAccessLevelService", "$rootScope", "$timeout", "blockUI", "icswTools", "icswToolsButtonConfigService", "ICSW_URLS",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "icswDeviceTreeService", "icswNetworkTreeService",
     "icswDomainTreeService", "icswPeerInformationService", "icswDeviceTreeHelperService", "icswComplexModalService",
     "icswNetworkDeviceBackup", "toaster", "icswNetworkIPBackup", "icswPeerInformationBackup", "icswDeviceBootBackup",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
-    $q, icswAcessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
+    $q, icswAccessLevelService, $rootScope, $timeout, blockUI, icswTools, icswToolsButtonConfigService, ICSW_URLS,
     icswSimpleAjaxCall, icswToolsSimpleModalService, icswDeviceTreeService, icswNetworkTreeService,
     icswDomainTreeService, icswPeerInformationService, icswDeviceTreeHelperService, icswComplexModalService,
     icswNetworkDeviceBackup, toaster, icswNetworkIPBackup, icswPeerInformationBackup, icswDeviceBootBackup
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
     # copy flags
     $scope.show_copy_button = false
     # accordion flags
@@ -1249,15 +1249,15 @@ angular.module(
     }
 ]).controller("icswDeviceNetworkClusterCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAccessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",
     "blockUI", "ICSW_SIGNALS", "$rootScope", "icswComplexModalService",
     "icswDeviceTreeService",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, $q, icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall,
+    $scope, $compile, $filter, $templateCache, Restangular, $q, icswAccessLevelService, ICSW_URLS, icswSimpleAjaxCall,
     blockUI, ICSW_SIGNALS, $rootScope, icswComplexModalService,
     icswDeviceTreeService,
 ) ->
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
     $scope.clusters = []
     $scope.devices = []
 

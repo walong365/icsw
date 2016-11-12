@@ -142,10 +142,10 @@ angular.module(
     return _list
 ]).directive("icswDeviceOverview",
 [
-    "$compile", "DeviceOverviewSettings", "$templateCache", "icswAcessLevelService",
+    "$compile", "DeviceOverviewSettings", "$templateCache", "icswAccessLevelService",
     "icswDeviceOverviewTabs", "ICSW_SIGNALS",
 (
-    $compile, DeviceOverviewSettings, $templateCache, icswAcessLevelService,
+    $compile, DeviceOverviewSettings, $templateCache, icswAccessLevelService,
     icswDeviceOverviewTabs, ICSW_SIGNALS,
 ) ->
     return {
@@ -174,7 +174,7 @@ angular.module(
 
             build_scope= () ->
                 sub_scope = scope.$new(true)
-                icswAcessLevelService.install(sub_scope)
+                icswAccessLevelService.install(sub_scope)
                 # copy devicelist
                 sub_scope.devicelist = (entry for entry in scope.devicelist)
                 sub_scope.popupmode = scope.popupmode
@@ -323,13 +323,13 @@ angular.module(
 [
     "$scope", "Restangular", "$q", "ICSW_URLS",
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
-    "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
+    "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
     "icswCategoryTreeService",
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
-    icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
+    icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
     icswCategoryTreeService,
 ) ->
@@ -403,7 +403,7 @@ angular.module(
         obj.$$image_source = img_url
         obj.$$monitoring_hint_info = hints
 
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
 
     _dereg_0 = $rootScope.$on(ICSW_SIGNALS("ICSW_CATEGORY_TREE_CHANGED"), () ->
         if $scope.struct.data_valid
@@ -533,15 +533,15 @@ angular.module(
 [
     "$scope", "Restangular", "$q", "ICSW_URLS",
     "$rootScope", "ICSW_SIGNALS", "icswDomainTreeService", "icswDeviceTreeService", "icswMonitoringBasicTreeService",
-    "icswAcessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
+    "icswAccessLevelService", "icswActiveSelectionService", "icswDeviceBackup", "icswDeviceGroupBackup",
     "icswDeviceTreeHelperService", "icswComplexModalService", "toaster", "$compile", "$templateCache",
 (
     $scope, Restangular, $q, ICSW_URLS,
     $rootScope, ICSW_SIGNALS, icswDomainTreeService, icswDeviceTreeService, icswMonitoringBasicTreeService,
-    icswAcessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
+    icswAccessLevelService, icswActiveSelectionService, icswDeviceBackup, icswDeviceGroupBackup,
     icswDeviceTreeHelperService, icswComplexModalService, toaster, $compile, $templateCache,
 ) ->
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
 
     $scope.struct = {
         # data is valid

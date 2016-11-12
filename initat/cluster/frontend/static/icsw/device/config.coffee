@@ -393,15 +393,15 @@ angular.module(
     }
 ]).controller("icswDeviceConfigCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAcessLevelService",
+    "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal", "icswAccessLevelService",
     "icswTools", "ICSW_URLS", "$timeout", "icswDeviceTreeService", "blockUI",
     "icswConfigTreeService", "icswDeviceConfigHelper",
 (
-    $scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAcessLevelService,
+    $scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal, icswAccessLevelService,
     icswTools, ICSW_URLS, $timeout, icswDeviceTreeService, blockUI,
     icswConfigTreeService, icswDeviceConfigHelper,
 ) ->
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
     $scope.struct = {
         # matrix view open
         matrix: true

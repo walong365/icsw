@@ -40,10 +40,10 @@ monitoring_overview_module = angular.module(
 ]).controller("icswMonitoringOverviewCtrl",
 [
     "$scope", "$compile", "$filter", "Restangular", "$q", "icswDeviceTreeService",
-    "icswAcessLevelService", "$timeout", "status_utils_functions", "ICSW_URLS",
+    "icswAccessLevelService", "$timeout", "status_utils_functions", "ICSW_URLS",
 (
     $scope, $compile, $filter, Restangular, $q, icswDeviceTreeService,
-    icswAcessLevelService, $timeout, status_utils_functions, ICSW_URLS,
+    icswAccessLevelService, $timeout, status_utils_functions, ICSW_URLS,
 ) ->
     $scope.struct = {
         # filter settings

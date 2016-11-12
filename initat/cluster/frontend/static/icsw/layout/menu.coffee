@@ -25,12 +25,12 @@ menu_module = angular.module(
     ]
 ).controller("icswMenuBaseCtrl",
 [
-    "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAcessLevelService",
+    "$scope", "$window", "ICSW_URLS", "icswSimpleAjaxCall", "icswAccessLevelService",
     "initProduct", "icswLayoutSelectionDialogService", "icswActiveSelectionService",
     "$q", "icswUserService", "blockUI", "$state", "icswSystemLicenseDataService",
     "$rootScope", "ICSW_SIGNALS", "$timeout", "icswOverallStyle",
 (
-    $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAcessLevelService,
+    $scope, $window, ICSW_URLS, icswSimpleAjaxCall, icswAccessLevelService,
     initProduct, icswLayoutSelectionDialogService, icswActiveSelectionService,
     $q, icswUserService, blockUI, $state, icswSystemLicenseDataService,
     $rootScope, ICSW_SIGNALS, $timeout, icswOverallStyle,
@@ -55,7 +55,7 @@ menu_module = angular.module(
     $scope.HANDBOOK_PDF_PRESENT = false
     $scope.HANDBOOK_CHUNKS_PRESENT = false
     $scope.HANDBOOK_PAGE = "---"
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
 
     # typeahead functions
     $scope.get_selections = (view_value) ->
@@ -284,11 +284,11 @@ menu_module = angular.module(
     }
 ]).factory("icswReactMenuBarFactory",
 [
-    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
+    "icswAccessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
     "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
     "icswUserService", "icswOverallStyle", "icswReactMenuFactory",
 (
-    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
+    icswAccessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
     icswUserService, icswOverallStyle, icswReactMenuFactory,
 ) ->
@@ -337,11 +337,11 @@ menu_module = angular.module(
     $translateProvider.uniformLanguageTag('bcp47').determinePreferredLanguage()
 ]).factory("icswReactMenuFactory",
 [
-    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
+    "icswAccessLevelService", "ICSW_URLS", "icswSimpleAjaxCall", "blockUI",
     "icswMenuProgressService", "$state", "icswRouteHelper", "icswTools",
     "icswUserService", "icswOverallStyle", "icswLanguageTool", "icswMenuSettings",
 (
-    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
+    icswAccessLevelService, ICSW_URLS, icswSimpleAjaxCall, blockUI,
     icswMenuProgressService, $state, icswRouteHelper, icswTools,
     icswUserService, icswOverallStyle, icswLanguageTool, icswMenuSettings,
 ) ->
@@ -625,10 +625,10 @@ menu_module = angular.module(
     )
 ]).directive("icswMenu",
 [
-    "icswReactMenuBarFactory", "icswAcessLevelService", "icswMenuProgressService",
+    "icswReactMenuBarFactory", "icswAccessLevelService", "icswMenuProgressService",
     "$rootScope", "ICSW_SIGNALS",
 (
-    icswReactMenuBarFactory, icswAcessLevelService, icswMenuProgressService,
+    icswReactMenuBarFactory, icswAccessLevelService, icswMenuProgressService,
     $rootScope, ICSW_SIGNALS
 ) ->
     return {
@@ -844,10 +844,10 @@ menu_module = angular.module(
     )
 ]).directive("icswRightMenu",
 [
-    "icswReactRightMenuFactory", "icswAcessLevelService", "icswMenuProgressService",
+    "icswReactRightMenuFactory", "icswAccessLevelService", "icswMenuProgressService",
     "$rootScope", "ICSW_SIGNALS",
 (
-    icswReactRightMenuFactory, icswAcessLevelService, icswMenuProgressService,
+    icswReactRightMenuFactory, icswAccessLevelService, icswMenuProgressService,
     $rootScope, ICSW_SIGNALS
 ) ->
     return {

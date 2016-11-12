@@ -165,17 +165,17 @@ angular.module(
 
 ]).controller("icswDeviceLocationCtrl",
 [
-    "$scope", "$q", "icswAcessLevelService", "icswDeviceTreeService",
+    "$scope", "$q", "icswAccessLevelService", "icswDeviceTreeService",
     "icswCategoryTreeService", "$rootScope", "ICSW_SIGNALS", "blockUI",
     "icswDeviceLocationTreeService", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswToolsSimpleModalService", "icswCategoryLocationHelper",
 (
-    $scope, $q, icswAcessLevelService, icswDeviceTreeService,
+    $scope, $q, icswAccessLevelService, icswDeviceTreeService,
     icswCategoryTreeService, $rootScope, ICSW_SIGNALS, blockUI,
     icswDeviceLocationTreeService, ICSW_URLS, icswSimpleAjaxCall,
     icswToolsSimpleModalService, icswCategoryLocationHelper,
 ) ->
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
     my_proxy = icswCategoryLocationHelper.get_location_proxy()
     $scope.struct = {
         device_list_ready: false

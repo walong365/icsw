@@ -122,7 +122,7 @@ angular.module(
 [
     "$scope", "$compile", "$templateCache", "Restangular", "$timeout",
     "icswCSRFService", "$rootScope", "ICSW_SIGNALS", "icswDeviceTreeService",
-    "$q", "icswAcessLevelService", "icswCategoryTreeService",
+    "$q", "icswAccessLevelService", "icswCategoryTreeService",
     "FileUploader", "blockUI", "icswTools", "ICSW_URLS", "icswCategoryBackup",
     "icswSimpleAjaxCall", "icswParseXMLResponseService", "toaster",
     "icswComplexModalService", "icswLocationGfxBackup", "icswToolsSimpleModalService",
@@ -130,7 +130,7 @@ angular.module(
 (
     $scope, $compile, $templateCache, Restangular, $timeout,
     icswCSRFService, $rootScope, ICSW_SIGNALS, icswDeviceTreeService,
-    $q, icswAcessLevelService, icswCategoryTreeService,
+    $q, icswAccessLevelService, icswCategoryTreeService,
     FileUploader, blockUI, icswTools, ICSW_URLS, icswCategoryBackup,
     icswSimpleAjaxCall, icswParseXMLResponseService, toaster,
     icswComplexModalService, icswLocationGfxBackup, icswToolsSimpleModalService,

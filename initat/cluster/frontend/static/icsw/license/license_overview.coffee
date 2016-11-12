@@ -98,10 +98,10 @@ lic_module = angular.module("icsw.license.overview",
 ]).controller("icswRMSLicenseLiveviewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q",
-    "$uibModal", "icswAcessLevelService", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
+    "$uibModal", "icswAccessLevelService", "$timeout", "ICSW_URLS", "icswSimpleAjaxCall",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q,
-    $uibModal, icswAcessLevelService, $timeout, ICSW_URLS, icswSimpleAjaxCall
+    $uibModal, icswAccessLevelService, $timeout, ICSW_URLS, icswSimpleAjaxCall
 ) ->
     $scope.servers = []
     $scope.licenses = []
@@ -176,10 +176,10 @@ lic_module = angular.module("icsw.license.overview",
     }
 ]).controller("icswLicenseOverviewCtrl",
 [
-    "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "icswAcessLevelService",
+    "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "icswAccessLevelService",
      "$timeout", "$sce", "d3_service", "dimple_service", "ICSW_URLS", "icswLicenseUsageTools",
 (
-    $scope, $compile, $filter, $templateCache, $q, $uibModal, icswAcessLevelService,
+    $scope, $compile, $filter, $templateCache, $q, $uibModal, icswAccessLevelService,
     $timeout, $sce, d3_service, dimple_service, ICSW_URLS, icswLicenseUsageTools,
 ) ->
     wait_list = restDataSource.add_sources([

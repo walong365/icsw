@@ -327,12 +327,6 @@ angular.module(
             @serviceTypes = []
             # pageTitle:
             @pageTitle = ""
-            # menuHeader
-            # @menuHeader = {}
-            # routeSubGroup
-            # @routeSubGroup = {}
-            # menuEntry
-            # @menuEntry = {}
             # dashboardEntry
             @dashboardEntry = {}
             # flag: valid for quicklink
@@ -410,22 +404,16 @@ angular.module(
             # needed for access from services / factories
             return _struct
 
-        # no longer needed, see routing.coffee
-        # create: (args) ->
-        #    _ext = new icswRouteExtension(args)
-        #    _struct.entries.push(_ext)
-        #    return _ext
-
         add_route: (name, resolve_map) ->
             # could be omitted be adding all states found
             return _add_route(name, resolve_map)
     }
 ]).service("icswRouteHelper",
 [
-    "icswRouteExtension", "$state", "$rootScope", "ICSW_SIGNALS", "icswAcessLevelService",
+    "icswRouteExtension", "$state", "$rootScope", "ICSW_SIGNALS", "icswAccessLevelService",
     "icswTools", "ICSW_CONFIG_JSON",
 (
-    icswRouteExtension, $state, $rootScope, ICSW_SIGNALS, icswAcessLevelService,
+    icswRouteExtension, $state, $rootScope, ICSW_SIGNALS, icswAccessLevelService,
     icswTools, ICSW_CONFIG_JSON,
 ) ->
     _init = false
@@ -522,18 +510,18 @@ angular.module(
                                             _add = false
                                     else
                                         # console.log data.rights
-                                        _add = icswAcessLevelService.has_all_menu_permissions(data.rights)
+                                        _add = icswAccessLevelService.has_all_menu_permissions(data.rights)
                                     if not _add
                                         _missing_info.push("user rights")
                                         _missing_short.push("R")
                                     if data.licenses? and _add
-                                        _add = icswAcessLevelService.has_all_valid_licenses(data.licenses)
+                                        _add = icswAccessLevelService.has_all_valid_licenses(data.licenses)
                                         if not _add
                                             _missing_info.push("license")
                                             _missing_short.push("L")
                                             # console.warn "license(s) #{data.licenses} missing"
                                     if data.serviceTypes? and _add
-                                        _add = icswAcessLevelService.has_all_service_types(data.serviceTypes)
+                                        _add = icswAccessLevelService.has_all_service_types(data.serviceTypes)
                                         if not _add
                                             _missing_info.push("service type")
                                             _missing_short.push("S")
@@ -649,7 +637,7 @@ angular.module(
                         # console.log "emit", scope.$id
                         # console.log "icsw_overview_emit_selection received"
                         if DeviceOverviewSettings.is_active()
-                            console.log "ov is active"
+                            console.warn "overlay is active"
                         else
                             _tree = icswDeviceTreeService.current()
                             if _tree?
@@ -658,7 +646,7 @@ angular.module(
                                     (_tree.all_lut[pk] for pk in icswActiveSelectionService.current().tot_dev_sel when _tree.all_lut[pk]?)
                                 )
                             else
-                                console.log "tree not valid, ignoring, triggering load"
+                                console.error "tree not valid, ignoring, triggering load"
                                 icswDeviceTreeService.load(scope.$id).then(
                                     (tree) ->
                                 )
@@ -1002,7 +990,7 @@ angular.module(
         _icswCallAjaxService(in_dict)
 
         return _def.promise
-]).service("icswAcessLevelService",
+]).service("icswAccessLevelService",
 [
     "ICSW_URLS", "ICSW_SIGNALS", "Restangular", "$q", "$rootScope",
     "icswSystemLicenseDataService",
@@ -1032,7 +1020,7 @@ angular.module(
 
     reload = (force) ->
         if _reload_pending
-            console.log "RELOAD PENDING"
+            console.warn "reload pending in icswAccessLevelService"
             return
         cur_time = moment().unix()
         if Math.abs(cur_time - _last_load) < 5 and not force

@@ -30,11 +30,11 @@ angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout", "$uibModal",
     "ICSW_URLS", 'FileUploader', "icswCSRFService", "blockUI", "icswParseXMLResponseService",
-    "icswSystemLicenseDataService", "icswAcessLevelService", "icswSystemOvaCounterService",
+    "icswSystemLicenseDataService", "icswAccessLevelService", "icswSystemOvaCounterService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, $uibModal,
     ICSW_URLS, FileUploader, icswCSRFService, blockUI, icswParseXMLResponseService,
-    icswSystemLicenseDataService, icswAcessLevelService, icswSystemOvaCounterService,
+    icswSystemLicenseDataService, icswAccessLevelService, icswSystemOvaCounterService,
 ) ->
     $scope.struct = {
         # data valid
@@ -88,7 +88,7 @@ angular.module(
         response = "<document>" + response + "</document>"
         icswParseXMLResponseService(response)
         icswSystemLicenseDataService.reload()
-        icswAcessLevelService.reload()
+        icswAccessLevelService.reload()
 
     $scope.uploader.onCompleteAll = () ->
         blockUI.stop()
@@ -333,10 +333,10 @@ angular.module(
     }
 ]).controller("icswOvaDisplayGraphCtrl",
 [
-    "$scope", "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting", "$q", "icswAcessLevelService"
+    "$scope", "icswRRDGraphUserSettingService", "icswRRDGraphBasicSetting", "$q", "icswAccessLevelService"
     "icswDeviceTreeService", "$rootScope", "ICSW_SIGNALS",
 (
-    $scope, icswRRDGraphUserSettingService, icswRRDGraphBasicSetting, $q, icswAcessLevelService,
+    $scope, icswRRDGraphUserSettingService, icswRRDGraphBasicSetting, $q, icswAccessLevelService,
     icswDeviceTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
     # ???
@@ -381,7 +381,7 @@ angular.module(
                 ]
                 $scope.struct.local_setting = local_setting
                 $scope.struct.base_setting = base_setting
-                _routes = icswAcessLevelService.get_routing_info().routing
+                _routes = icswAccessLevelService.get_routing_info().routing
                 console.log _routes
                 if "rms_server" of _routes
                     $scope.struct.to_date = moment()

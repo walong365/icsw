@@ -611,7 +611,7 @@ angular.module(
 ]).controller("icswDeviceBootCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "ICSW_SIGNALS",
-    "$q", "icswAcessLevelService", "$timeout", "$rootScope", "toaster",
+    "$q", "icswAccessLevelService", "$timeout", "$rootScope", "toaster",
     "icswTools", "ICSW_URLS", "icswSimpleAjaxCall", "icswDeviceTreeService",
     "icswActiveSelectionService", "icswConfigTreeService", "icswLogTreeService",
     "icswKernelTreeService", "icswImageTreeService", "icswUserGroupRoleTreeService",
@@ -620,7 +620,7 @@ angular.module(
     "icswBootDisplayOptions", "blockUI", "icswComplexModalService", "icswUserService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, ICSW_SIGNALS,
-    $q, icswAcessLevelService, $timeout, $rootScope, toaster,
+    $q, icswAccessLevelService, $timeout, $rootScope, toaster,
     icswTools, ICSW_URLS, icswSimpleAjaxCall, icswDeviceTreeService,
     icswActiveSelectionService, icswConfigTreeService, icswLogTreeService,
     icswKernelTreeService, icswImageTreeService, icswUserGroupRoleTreeService,
@@ -628,7 +628,7 @@ angular.module(
     icswGlobalBootHelper, icswDeviceTreeHelperService, icswBootDisplayOption,
     icswBootDisplayOptions, blockUI, icswComplexModalService, icswUserService,
 ) ->
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
 
     $scope.struct = {
         # tree is valid

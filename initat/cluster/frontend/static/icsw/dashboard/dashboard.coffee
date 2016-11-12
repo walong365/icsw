@@ -199,16 +199,16 @@ dashboard_module = angular.module(
 ]).controller("icswDashboardViewCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$timeout",
-    "icswAcessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",
+    "icswAccessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswDashboardElement", "icswDashboardContainerService", "icswUserService",
     "toaster",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout,
-    icswAcessLevelService, ICSW_URLS, icswSimpleAjaxCall,
+    icswAccessLevelService, ICSW_URLS, icswSimpleAjaxCall,
     icswDashboardElement, icswDashboardContainerService, icswUserService,
     toaster,
 ) ->
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
     $scope.ICSW_URLS = ICSW_URLS
     $scope.NUM_QUOTA_SERVERS = 0
     icswSimpleAjaxCall(
@@ -306,7 +306,7 @@ dashboard_module = angular.module(
         ($event, sizes, gridster) ->
             # console.log "tchanged", $event, sizes, gridster
     )
-    $scope.has_menu_permission = icswAcessLevelService.has_menu_permission
+    $scope.has_menu_permission = icswAccessLevelService.has_menu_permission
 ]).service("icswDashboardElement", [
     "$templateCache", "$q", "$compile", "$state",
 (

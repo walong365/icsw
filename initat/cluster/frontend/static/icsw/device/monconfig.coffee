@@ -69,12 +69,12 @@ angular.module(
 ]).controller("icswDeviceMonConfigCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "$uibModal",
-    "$timeout", "icswAcessLevelService", "ICSW_URLS", "blockUI",
+    "$timeout", "icswAccessLevelService", "ICSW_URLS", "blockUI",
     "icswSimpleAjaxCall", "toaster", "icswDeviceTreeService", "icswMonConfigTable",
     "icswDeviceTreeHelperService", "icswToolsSimpleModalService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $uibModal,
-    $timeout, icswAcessLevelService, ICSW_URLS, blockUI,
+    $timeout, icswAccessLevelService, ICSW_URLS, blockUI,
     icswSimpleAjaxCall, toaster, icswDeviceTreeService, icswMonConfigTable,
     icswDeviceTreeHelperService, icswToolsSimpleModalService,
 ) ->

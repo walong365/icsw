@@ -174,14 +174,14 @@ monitoring_build_info_module = angular.module(
 ]).controller("icswMonitoringBuildInfoCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$window",
-    "$q", "$uibModal", "icswAcessLevelService", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceTreeService",
+    "$q", "$uibModal", "icswAccessLevelService", "$timeout", "icswTools", "ICSW_URLS", "icswDeviceTreeService",
     "icswMonitoringSysInfoTreeService", "blockUI", "icswSimpleAjaxCall",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $window,
-    $q, $uibModal, icswAcessLevelService, $timeout, icswTools, ICSW_URLS, icswDeviceTreeService,
+    $q, $uibModal, icswAccessLevelService, $timeout, icswTools, ICSW_URLS, icswDeviceTreeService,
     icswMonitoringSysInfoTreeService, blockUI, icswSimpleAjaxCall,
 ) ->
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
 
     $scope.struct = {
         # infostruct
@@ -258,6 +258,8 @@ monitoring_build_info_module = angular.module(
         ).then(
             (data) ->
                 blockUI.stop()
+            (error) ->
+                blockUI.stop()
         )
 
 ]).directive('icswMonitoringBuildInfo', () ->
@@ -282,11 +284,11 @@ monitoring_build_info_module = angular.module(
     }
 ]).controller("icswMonitoringSysInfoNodeCtrl",
 [
-    "$scope", "icswSimpleAjaxCall", "ICSW_URLS", "blockUI", "icswAcessLevelService",
+    "$scope", "icswSimpleAjaxCall", "ICSW_URLS", "blockUI", "icswAccessLevelService",
 (
-    $scope, icswSimpleAjaxCall, ICSW_URLS, blockUI, icswAcessLevelService,
+    $scope, icswSimpleAjaxCall, ICSW_URLS, blockUI, icswAccessLevelService,
 ) ->
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
     $scope.struct = {
         # list of all nodes
         nodes: []

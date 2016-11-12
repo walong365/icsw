@@ -27,13 +27,13 @@ angular.module(
     icswRouteExtensionProvider.add_route("main.statelist")
 ]).controller("icswServerInfoOverviewCtrl",
 [
-    "$scope", "$timeout", "icswAcessLevelService", "blockUI", "$window", "ICSW_URLS",
+    "$scope", "$timeout", "icswAccessLevelService", "blockUI", "$window", "ICSW_URLS",
     "icswLayoutServerInfoService", "icswSimpleAjaxCall",
 (
-    $scope, $timeout, icswAcessLevelService, blockUI, $window, ICSW_URLS,
+    $scope, $timeout, icswAccessLevelService, blockUI, $window, ICSW_URLS,
     icswLayoutServerInfoService, icswSimpleAjaxCall
 ) ->
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
     $scope.struct = {
         # loading
         loading: false
@@ -57,10 +57,10 @@ angular.module(
     }
     $scope.$watch(
         () ->
-            return icswAcessLevelService.acl_valid()
+            return icswAccessLevelService.acl_valid()
         (new_val) ->
             if new_val
-                _ri = icswAcessLevelService.get_routing_info()
+                _ri = icswAccessLevelService.get_routing_info()
                 $scope.struct.routing_info = _ri.routing
                 if _ri.local_device
                     $scope.struct.local_device_ok = true
@@ -306,12 +306,12 @@ angular.module(
     }
 ]).controller("icswLayoutServerInfoInstanceCtrl",
 [
-    "$scope", "icswAcessLevelService",
+    "$scope", "icswAccessLevelService",
 (
-    $scope, icswAcessLevelService,
+    $scope, icswAccessLevelService,
 ) ->
 
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
     if $scope.server_info.has_service($scope.service_name)
         $scope.service = $scope.server_info.get_service($scope.service_name)
     else
@@ -368,10 +368,10 @@ angular.module(
     }
 ]).controller("icswInternalStateListCtrl",
 [
-    "$scope", "$timeout", "icswAcessLevelService", "blockUI", "$window", "ICSW_URLS",
+    "$scope", "$timeout", "icswAccessLevelService", "blockUI", "$window", "ICSW_URLS",
     "icswLayoutServerInfoService", "icswSimpleAjaxCall", "$state", "icswRouteHelper",
 (
-    $scope, $timeout, icswAcessLevelService, blockUI, $window, ICSW_URLS,
+    $scope, $timeout, icswAccessLevelService, blockUI, $window, ICSW_URLS,
     icswLayoutServerInfoService, icswSimpleAjaxCall, $state, icswRouteHelper,
 ) ->
     _struct = icswRouteHelper.get_struct()

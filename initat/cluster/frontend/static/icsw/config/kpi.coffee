@@ -28,11 +28,11 @@ angular.module(
     icswRouteExtensionProvider.add_route("main.kpievaluation")
 ]).controller("icswConfigKpiCtrl",
 [
-    "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout", "icswAcessLevelService"
+    "$scope", "ICSW_URLS", "icswConfigKpiDataService", "$timeout", "icswAccessLevelService"
 (
-    $scope, ICSW_URLS, icswConfigKpiDataService, $timeout, icswAcessLevelService
+    $scope, ICSW_URLS, icswConfigKpiDataService, $timeout, icswAccessLevelService
 ) ->
-    icswAcessLevelService.install($scope)
+    icswAccessLevelService.install($scope)
 
     cur_edit_kpi = undefined
 

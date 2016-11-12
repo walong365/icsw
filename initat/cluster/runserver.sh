@@ -1,7 +1,5 @@
 #!/bin/bash
 
-_debug=1
-
 function print_help {
     echo "usage:"
     echo
@@ -24,10 +22,8 @@ while (( "$#" )) ; do
     shift
 done
 
-RSOPTIONS="--traceback"
+export DEBUG_ICSW_SOFTWARE=1
 
-[ "${_debug}" = "1" ] && export DEBUG_ICSW_SOFTWARE=1
+echo "settings: EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 
-echo "settings: DEBUG=${_debug}, RSOPTIONS='${RSOPTIONS}', EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
-
-./manage.py runserver ${RSOPTIONS} ${EXTRA_OPTIONS} 0.0.0.0:8081
+./manage.py runserver --traceback ${EXTRA_OPTIONS} 0.0.0.0:8081

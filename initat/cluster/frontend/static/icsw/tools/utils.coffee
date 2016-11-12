@@ -88,13 +88,13 @@ angular.module(
     }
 ]).directive('icswToolsAddAclFunctions',
 [
-    "icswAcessLevelService",
+    "icswAccessLevelService",
 (
-    icswAcessLevelService
+    icswAccessLevelService
 ) ->
     return {
         restrict: "A"
         link: (scope, el, attrs) ->
-            icswAcessLevelService.install(scope)
+            icswAccessLevelService.install(scope)
     }
 ])

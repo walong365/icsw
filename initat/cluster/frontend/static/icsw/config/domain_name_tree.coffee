@@ -67,11 +67,11 @@ angular.module(
 ]).controller("icswConfigDomainNameTreeCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
-    "$q", "icswAcessLevelService", "ICSW_URLS", "icswConfigDomainNameTreeService",
+    "$q", "icswAccessLevelService", "ICSW_URLS", "icswConfigDomainNameTreeService",
     "icswDomainTreeService", "$rootScope", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
-    $q, icswAcessLevelService, ICSW_URLS, icswConfigDomainNameTreeService,
+    $q, icswAccessLevelService, ICSW_URLS, icswConfigDomainNameTreeService,
     icswDomainTreeService, $rootScope, ICSW_SIGNALS,
 ) ->
     $scope.struct = {}

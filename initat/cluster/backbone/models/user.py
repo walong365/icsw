@@ -118,8 +118,8 @@ class RouteTrace(models.Model):
         )
 
 
-# auth_cache structure
-class auth_cache(object):
+# icswAuthCache structure
+class icswAuthCache(object):
     def __init__(self, auth_obj):
         # auth_obj is a user or a group
         self.auth_obj = auth_obj
@@ -152,6 +152,7 @@ class auth_cache(object):
 
         def model_key(perm_key):
             return ".".join(perm_key.split(".")[:2])
+
         # dict, icsw_perm_key -> icsw_perm
         self.__perm_dict = {
             icsw_key(cur_perm): cur_perm for cur_perm in csw_permission.objects.all().select_related("content_type")
@@ -641,7 +642,7 @@ def check_content_permission(auth_obj, app_label, content_name):
 
 def check_permission(auth_obj, perm):
     if not hasattr(auth_obj, "_auth_cache"):
-        auth_obj._auth_cache = auth_cache(auth_obj)
+        auth_obj._auth_cache = icswAuthCache(auth_obj)
     app_label, content_name, codename = get_label_codename(perm)
     if app_label and content_name and codename:
         # caching code
@@ -652,7 +653,7 @@ def check_permission(auth_obj, perm):
 
 def check_object_permission(auth_obj, perm, obj):
     if not hasattr(auth_obj, "_auth_cache"):
-        auth_obj._auth_cache = auth_cache(auth_obj)
+        auth_obj._auth_cache = icswAuthCache(auth_obj)
     app_label, content_name, code_name = get_label_codename(perm)
     # print "* cop", auth_obj, perm, obj, app_label, codename
     if app_label and content_name and code_name:
@@ -671,7 +672,7 @@ def check_object_permission(auth_obj, perm, obj):
 
 def get_object_permission_level(auth_obj, perm, obj):
     if not hasattr(auth_obj, "_auth_cache"):
-        auth_obj._auth_cache = auth_cache(auth_obj)
+        auth_obj._auth_cache = icswAuthCache(auth_obj)
     app_label, content_name, code_name = get_label_codename(perm)
     # print "* cop", auth_obj, perm, obj, app_label, codename
     if app_label and content_name and code_name:
@@ -690,21 +691,21 @@ def get_object_permission_level(auth_obj, perm, obj):
 
 def get_object_access_levels(auth_obj, obj, is_superuser=False):
     if not hasattr(auth_obj, "_auth_cache"):
-        auth_obj._auth_cache = auth_cache(auth_obj)
+        auth_obj._auth_cache = icswAuthCache(auth_obj)
     return auth_obj._auth_cache.get_object_access_levels(obj, is_superuser)
 
 
 def get_all_object_perms(auth_obj, obj):
     # return all allowed permissions for a given object
     if not hasattr(auth_obj, "_auth_cache"):
-        auth_obj._auth_cache = auth_cache(auth_obj)
+        auth_obj._auth_cache = icswAuthCache(auth_obj)
     return auth_obj._auth_cache.get_all_object_perms(obj)
 
 
 def get_allowed_object_list(auth_obj, perm):
     # return all allowed objects for a given permissions
     if not hasattr(auth_obj, "_auth_cache"):
-        auth_obj._auth_cache = auth_cache(auth_obj)
+        auth_obj._auth_cache = icswAuthCache(auth_obj)
     app_label, content_name, code_name = get_label_codename(perm)
     return auth_obj._auth_cache.get_allowed_object_list(app_label, content_name, code_name)
 
@@ -712,7 +713,7 @@ def get_allowed_object_list(auth_obj, perm):
 def get_allowed_object_list_model(auth_obj, content_type):
     # return all allowed objects for all local permissions
     if not hasattr(auth_obj, "_auth_cache"):
-        auth_obj._auth_cache = auth_cache(auth_obj)
+        auth_obj._auth_cache = icswAuthCache(auth_obj)
     # add dummy codename
     app_label, content_name, code_name = get_label_codename("{}.*".format(content_type))
     return auth_obj._auth_cache.get_allowed_object_list_model(app_label, content_name)
@@ -721,7 +722,7 @@ def get_allowed_object_list_model(auth_obj, content_type):
 def get_global_permissions(auth_obj):
     # return all global permissions with levels (as dict)
     if not hasattr(auth_obj, "_auth_cache"):
-        auth_obj._auth_cache = auth_cache(auth_obj)
+        auth_obj._auth_cache = icswAuthCache(auth_obj)
     return auth_obj._auth_cache.get_global_permissions()
 
 
