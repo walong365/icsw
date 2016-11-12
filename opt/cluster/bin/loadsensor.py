@@ -23,6 +23,8 @@
 #
 """ python interface to emulate a loadsensor for SGE """
 
+from __future__ import print_function, unicode_literals
+
 import os
 import stat
 import sys
@@ -215,7 +217,7 @@ def main():
                         log_template.log("licenses are controlled via rms-server, reporting nothing to SGE", logging_tools.LOG_LEVEL_WARN)
                         sge_lines, rep_dict = ([], None)
                     # report to SGE
-                    print "\n".join(sge_lines)
+                    print("\n".join(sge_lines))
                     end_time = time.time()
                     if rep_dict:
                         log_template.info(

@@ -23,6 +23,8 @@
 #
 """ thin wrapper for old send_mail.py, calls icsw user mail """
 
+from __future__ import unicode_literals, print_function
+
 import argparse
 import subprocess
 import sys
@@ -36,7 +38,7 @@ def main():
     my_parser.add_argument("-t", "--to", type=str, nargs="*", help="to address [%(default)s]", default="root@localhost")
     my_parser.add_argument("message", nargs="+", help="message to send")
     cur_opts = my_parser.parse_args()
-    print cur_opts
+    # print cur_opts
     # build commandline
     cmd_line = [
         "/opt/cluster/sbin/icsw",

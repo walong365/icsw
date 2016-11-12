@@ -1,6 +1,6 @@
 #!/usr/bin/python-init -Otu
 #
-# Copyright (C) 2007-2009,2012,2014-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2007-2009,2012,2014-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -20,6 +20,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ calculates N for HPL from memory """
+
+from __future__ import print_function, unicode_literals
 
 import argparse
 import math
@@ -73,10 +75,10 @@ def main():
     )
     mem_tot_use = min(mem_tot_rel, mem_tot_abs) * options.nodes
     if mem_tot_use <= 0:
-        print "No memory left, please check settings"
+        print("No memory left, please check settings")
         sys.exit(-1)
     n_mat = math.sqrt(mem_tot_use / 8)
-    print options.precision * (int(n_mat / options.precision))
+    print(options.precision * (int(n_mat / options.precision)))
 
 if __name__ == "__main__":
     main()

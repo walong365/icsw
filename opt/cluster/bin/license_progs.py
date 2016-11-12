@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2005,2007,2014-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2005,2007,2014-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -22,6 +22,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ modify license settings """
+
+from __future__ import print_function, unicode_literals
 
 import argparse
 import os
@@ -65,7 +67,7 @@ def _lic_show(opts, act_conf):
             _lic = elo.licenses[_name]
             if _lic.license_type == _t_type:
                 out_list.append(_lic.get_info_line())
-    print unicode(out_list)
+    print(unicode(out_list))
 
 
 def _lic_fetch(opts, act_conf):
@@ -123,7 +125,7 @@ def _lic_addc(opts, act_conf):
     )
     current_lics = sge_license_tools.parse_license_lines(current_lics_file.lines, opts.site)
     if not opts.complex_name or opts.complex_name in current_lics:
-        print "complex name '{}' empty or already used".format(opts.complex_name)
+        print("complex name '{}' empty or already used".format(opts.complex_name))
         sys.exit(1)
     new_lic = sge_license_tools.sge_license(
         opts.complex_name,
@@ -243,7 +245,7 @@ def main():
             )
         )
         for _key in sorted(act_conf):
-            print " - {:<20} = '{}'".format(_key, act_conf[_key])
+            print(" - {:<20} = '{}'".format(_key, act_conf[_key]))
 
     if opts.mode == "show":
         _lic_show(opts, act_conf)

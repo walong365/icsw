@@ -21,6 +21,8 @@
 #
 """ frontend for SGE qstat """
 
+from __future__ import print_function, unicode_literals
+
 import argparse
 import os
 import sys
@@ -41,7 +43,7 @@ def check_environment():
             if os.path.isfile(v_src):
                 os.environ[v_name] = open(v_src, "r").read().strip()
             else:
-                print "error Cannot assign environment-variable '{}', exiting ...".format(v_name)
+                print("error Cannot assign environment-variable '{}', exiting ...".format(v_name))
                 sys.exit(1)
 
 
@@ -83,13 +85,15 @@ def sjs(s_info, opt_dict):
         ret_list.append(
             "{}, showing only {:d} (due to filter)".format(
                 logging_tools.get_plural("waiting job", int(wait_list.get("total"))),
-                len(wait_list)))
+                len(wait_list)
+            )
+        )
     if w_out_list:
         ret_list.append(str(w_out_list))
     if opt_dict.interactive:
         return "\n".join(ret_list)
     else:
-        print "\n".join(ret_list)
+        print("\n".join(ret_list))
 
 
 def sns(s_info, opt_dict):
@@ -125,7 +129,7 @@ def sns(s_info, opt_dict):
     if opt_dict.interactive:
         return "\n".join(ret_list)
     else:
-        print "\n".join(ret_list)
+        print("\n".join(ret_list))
 
 # following code from NH for interactive mode
 
@@ -328,10 +332,12 @@ class my_opt_parser(argparse.ArgumentParser):
 
 
 def log_com(what, level):
-    print "{} [{}] {}".format(
-        time.ctime(),
-        logging_tools.get_log_level_str(level),
-        what
+    print(
+        "{} [{}] {}".format(
+            time.ctime(),
+            logging_tools.get_log_level_str(level),
+            what
+        )
     )
 
 

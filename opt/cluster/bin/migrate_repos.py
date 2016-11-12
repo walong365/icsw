@@ -2,7 +2,7 @@
 #
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -29,6 +29,8 @@ modify Repositories of OpenSUSE-bases distributions
 deprecated script, no longer in use
 
 """
+
+from __future__ import print_function, unicode_literals
 
 import argparse
 import os
@@ -64,7 +66,7 @@ class Repo(dict):
         self.content = file(self.name, "r").read().split("\n")
         self._to_dict()
         if "baseurl" not in self:
-            print u"no baseurl in repo {}, ingoring".format(self.name)
+            print(u"no baseurl in repo {}, ingoring".format(self.name))
             return
         b_url = self["baseurl"]
         if b_url.count("www.initat.org") or (b_url.startswith("dir:///") and b_url.count("packages/RPMs")):
@@ -72,11 +74,11 @@ class Repo(dict):
             # print b_url, url_m
             if url_m:
                 if self.opts.list:
-                    print u"repo {}, current url is {}".format(self.name, b_url)
+                    print(u"repo {}, current url is {}".format(self.name, b_url))
                 else:
                     rest = url_m.groupdict()["rest"]
                     if self.opts.migrate and rest in ["", "", None]:
-                        print "migrating repo {} to split-repo".format(self["name"])
+                        print("migrating repo {} to split-repo".format(self["name"]))
                         # disable old
                         self._emit(self.name, enabled="0")
                         for new_repo in NEW_REPOS:
@@ -94,13 +96,13 @@ class Repo(dict):
                         repo_m = REPO_RE.match(rest)
                         new_url = "{}/{}{}".format(b_url[:-(len(rest) + 1)], repo_m.group("name"), target_pf)
                         if rest not in NO_SUB_REPOS:
-                            print "migrating repo {} to {} (rest is '{}')".format(self["name"], target_pf, rest)
-                            print "    relacing url '{}' with '{}'".format(b_url, new_url)
+                            print("migrating repo {} to {} (rest is '{}')".format(self["name"], target_pf, rest))
+                            print("    relacing url '{}' with '{}'".format(b_url, new_url))
                             self._emit(
                                 self.name,
                                 baseurl=new_url,
                             )
-                            print "    emit() done"
+                            print("    emit() done")
 
     def _to_dict(self):
         for line in self.content:
@@ -130,9 +132,11 @@ def main():
         try:
             _cur_repo = Repo(os.path.join(REPO_DIR, r_name), opts)
         except:
-            print "error handling repo {}: {}".format(
-                r_name,
-                process_tools.get_except_info(),
+            print(
+                "error handling repo {}: {}".format(
+                    r_name,
+                    process_tools.get_except_info(),
+                )
             )
 
 if __name__ == "__main__":
