@@ -1261,6 +1261,7 @@ class SystemCompletion(View):
 
 # todo move somwhere sane
 class SystemCompletionIgnoreToggle(View):
+    @method_decorator(login_required)
     def post(self, request):
         system_component_name = request.POST.get("system_component_name")
         return SystemTask.toggle_ignore(request, system_component_name)

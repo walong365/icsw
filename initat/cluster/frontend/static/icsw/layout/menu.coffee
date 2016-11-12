@@ -146,6 +146,8 @@ menu_module = angular.module(
         menu_help: false
         # themes valid
         themes_valid: false
+        # user is logged in
+        user_loggedin: false
     }
 
     _get_menu_help = () ->
@@ -170,12 +172,23 @@ menu_module = angular.module(
     $rootScope.$on(ICSW_SIGNALS("ICSW_ROUTE_RIGHTS_CHANGED"), (event) ->
         _redraw()
     )
+
     $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
         console.log "mps", settings
         _redraw()
     )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
+        _redraw()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+        SETTINGS.user_loggedin = true
+        _redraw()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
+        SETTINGS.user_loggedin = true
         _redraw()
     )
 
@@ -191,6 +204,9 @@ menu_module = angular.module(
 
         get_themes_valid: () ->
             return _get_themes_valid()
+
+        get_settings: () ->
+            return SETTINGS
     }
 
 ]).directive("icswLayoutMenubar",
@@ -653,14 +669,15 @@ menu_module = angular.module(
 ]).service("icswReactBackgroundJobInfoFactory",
 [
     "$q", "$timeout", "$rootScope", "ICSW_SIGNALS", "icswSimpleAjaxCall",
-    "$state", "ICSW_URLS",
+    "$state", "ICSW_URLS", "icswMenuSettings",
 (
     $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
-    $state, ICSW_URLS,
+    $state, ICSW_URLS, icswMenuSettings,
 ) ->
     {ul, li, div, a, button} = React.DOM
     return React.createClass(
         displayName: "icswBackgroundJobInfo"
+
         getInitialState: () ->
             _reload = () =>
                 if @backg_timer
@@ -675,14 +692,13 @@ menu_module = angular.module(
                     (data) =>
                         @setState({num_jobs: data["background_jobs"]})
                 )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () =>
+
+            if not icswMenuSettings.get_settings().user_loggedin and @backg_timer?
+                $timeout.cancel(@backg_timer)
+
+            if icswMenuSettings.get_settings().user_loggedin and not @backg_timer?
                 _reload()
-            )
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () =>
-                if @backg_timer?
-                    $timeout.cancel(@backg_timer)
-            )
-# _reload()
+
             return {
                 num_jobs: 0
             }
@@ -728,19 +744,15 @@ menu_module = angular.module(
     {ul, li, div, a, button, p, strong, span} = React.DOM
     return React.createClass(
         displayName: "icswOpenIssuesInfo"
+
         getInitialState: () ->
             _reload = () =>
                 SetupProgressHelper.unfulfilled_setup_tasks().then(
-                    ((unfulfilled_setup_tasks) ->
+                    (unfulfilled_setup_tasks) =>
                         @setState({num_unfulfilled: unfulfilled_setup_tasks})
-                    ).bind(@)
                 )
 
             $rootScope.$on(ICSW_SIGNALS("ICSW_OPEN_SETUP_TASKS_CHANGED"), () =>
-                _reload()
-            )
-
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () =>
                 _reload()
             )
 
@@ -751,19 +763,21 @@ menu_module = angular.module(
             }
 
         render: () ->
-            if @state.num_unfulfilled > 0
+            if @state.num_unfulfilled > -2
                 return li(
-                    {
-                        key: "setupSteps"
-                    }
+                    {}
                     a(
                         {
-                            href: "#/main/setup/progress"
+                            href: null
                             key: "p"
-                        },
+                            onClick: (event) ->
+                                $state.go("main.setupprogress")
+                                event.preventDefault()
+                        }
                         "Open Issues"
                     )
-                    span({
+                    span(
+                        {
                             className: "setupsteps__badge"
                             key: "setupsteps__badge__key"
                         }

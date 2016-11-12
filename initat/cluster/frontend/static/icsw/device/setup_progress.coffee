@@ -405,26 +405,29 @@ setup_progress = angular.module(
 
 ]).service("SetupProgressHelper",
 [
-    "$q", "ICSW_URLS", "icswSimpleAjaxCall"
+    "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswMenuSettings",
 (
-    $q, ICSW_URLS, icswSimpleAjaxCall
+    $q, ICSW_URLS, icswSimpleAjaxCall, icswMenuSettings,
 ) ->
 
     _unfulfilled_setup_tasks = () ->
         defer = $q.defer()
-        icswSimpleAjaxCall(
-            {
-                url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION
-                dataType: "json"
-            }
-        ).then(
-            (data) ->
-                unfilled_tasks = 0
-                for entry in data.list
-                    if not entry.fulfilled and not entry.ignore
-                        unfilled_tasks++
-                defer.resolve(unfilled_tasks)
-        )
+        if icswMenuSettings.get_settings().user_loggedin
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION
+                    dataType: "json"
+                }
+            ).then(
+                (data) ->
+                    unfilled_tasks = 0
+                    for entry in data.list
+                        if not entry.fulfilled and not entry.ignore
+                            unfilled_tasks++
+                    defer.resolve(unfilled_tasks)
+            )
+        else
+            defer.resolve(0)
 
         return defer.promise
 
