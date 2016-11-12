@@ -196,6 +196,8 @@ class device_variable(models.Model):
     )
     val_str = models.TextField(blank=True, null=True, default="")
     val_int = models.IntegerField(null=True, blank=True, default=0)
+    # boolean value
+    val_bool = models.NullBooleanField(null=True, blank=True, default=False)
     # base64 encoded
     val_blob = models.TextField(blank=True, null=True, default="")
     val_date = models.DateTimeField(null=True, blank=True)
@@ -205,6 +207,16 @@ class device_variable(models.Model):
     uuid = models.TextField(default="", max_length=64)
     date = models.DateTimeField(auto_now_add=True)
 
+    @staticmethod
+    def get_private_variable(**kwargs):
+        return device_variable(
+            is_public=False,
+            local_copy_ok=False,
+            inherit=False,
+            protected=True,
+            **kwargs
+        )
+
     def set_value(self, value):
         if type(value) == datetime.datetime:
             self.var_type = "d"
@@ -212,6 +224,9 @@ class device_variable(models.Model):
         elif type(value) in [int, long] or (isinstance(value, basestring) and value.isdigit()):
             self.var_type = "i"
             self.val_int = int(value)
+        elif isinstance(value, bool):
+            self.var_type = "B"
+            self.val_bool = value
         else:
             self.var_type = "s"
             self.val_str = value
@@ -222,6 +237,8 @@ class device_variable(models.Model):
             return self.val_int
         elif self.var_type == "s":
             return self.val_str
+        elif self.var_type == "B":
+            return self.val_bool
         else:
             return "get_value for {}".format(self.var_type)
 
@@ -232,7 +249,8 @@ class device_variable(models.Model):
             (["s"], "str"),
             (["b"], "blob"),
             (["d", "D"], "date"),
-            (["t"], "time")
+            (["t"], "time"),
+            (["B"], "bool"),
         ]:
             if self.var_type not in _short_list:
                 setattr(self, "val_{}".format(_long), None)

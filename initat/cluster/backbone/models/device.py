@@ -441,7 +441,7 @@ class device(models.Model):
             "mon_icinga_log_raw_service_flapping_data", "mon_icinga_log_raw_host_flapping_data",
             "mon_icinga_log_raw_service_notification_data", "mon_icinga_log_raw_host_notification_data",
             "mon_icinga_log_raw_service_downtime_data", "mon_icinga_log_raw_host_downtime_data",
-            "MachineVector",
+            "MachineVector", "MonHostTrace",
         ]
 
     class Meta:

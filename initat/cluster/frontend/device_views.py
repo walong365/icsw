@@ -1055,82 +1055,216 @@ class SimpleGraphSetup(View):
             json.dumps(_status)
         )
 
-#todo move somwhere sane
-class SystemCompletion(View):
-    def post(self, request):
-        info_dict = {}
 
-        system_device = device.objects.get(idx=1)
+VAR_IGNORE_RE = re.compile("^__ISSUES_IGNORE_(?P<name>.+)__$")
 
-        devices_count = device.objects.filter(is_meta_device=False).count()
-        v = system_device.device_variable_set.filter(name="__ISSUES_IGNORE_{}__".format("devices"))
 
-        info_dict['devices'] = devices_count
-        info_dict['devices_text'] = "{} Device".format(devices_count)
-        info_dict['devices_ignore'] = len(v) > 0
+class SystemTask(object):
+    def __init__(self, name, header, description, setup_type, points):
+        self.name = name
+        self.header = header
+        self.description = description
+        self.setup_type = setup_type
+        self.points = points
+        SystemTask.add_task(self)
 
-        mon_check_count = mon_check_command.objects.all().count()
-        v = system_device.device_variable_set.filter(name="__ISSUES_IGNORE_{}__".format("monitoring_checks"))
+    def __unicode__(self):
+        return "SystemTask {}".format(self.name)
 
-        info_dict['monitoring_checks'] = mon_check_count
-        info_dict['monitoring_checks_text'] = "{} Check".format(mon_check_count)
-        info_dict['monitoring_checks_ignore'] = len(v) > 0
+    def __repr__(self):
+        return unicode(self)
 
-        user_count = user.objects.all().count() - 1
-        v = system_device.device_variable_set.filter(name="__ISSUES_IGNORE_{}__".format("users"))
+    def get_dict(self, request, ignore_dict):
+        _dict = {
+            "number": self.number,
+            "header": self.header,
+            "ignore": ignore_dict.get(self.name, False),
+            "name": self.name,
+            "description": self.description,
+            "setup_type": self.setup_type,
+            "points": self.points,
+        }
+        _dict.update(self.handle(request, ignore_dict))
+        self.salt_dict(_dict)
+        return _dict
 
-        info_dict["users"] = user_count
-        info_dict["users_text"] = "{} (non-admin) User".format(user_count)
-        info_dict["users_ignore"] = len(v) > 0
+    def salt_dict(self, in_dict):
+        if in_dict["fulfilled"] or in_dict["ignore"]:
+            in_dict.update(
+                {
+                    "bg_color_class": "success",
+                    "icon_class": "fa fa-check fa-2x",
+                    "panel_class": "panel-success",
+                }
+            )
+        else:
+            in_dict.update(
+                {
+                    "bg_color_class": "danger",
+                    "icon_class": "fa fa-times fa-2x",
+                    "panel_class": "panel-danger",
+                }
+            )
+        if in_dict["ignore"]:
+            in_dict.update(
+                {
+                    "ignore_text": "Unignore Issue",
+                }
+            )
+        else:
+            in_dict.update(
+                {
+                    "ignore_text": "Ignore Issue",
+                }
+            )
 
-        locations_count = 0
-        for _category in category.objects.all():
-            if _category.full_name.startswith("/location/"):
-                locations_count += 1
+    @staticmethod
+    def extract_var_name(var_name):
+        _m = VAR_IGNORE_RE.match(var_name)
+        if _m:
+            return _m.group("name")
+        else:
+            return None
 
-        v = system_device.device_variable_set.filter(name="__ISSUES_IGNORE_{}__".format("locations"))
+    @staticmethod
+    def create_var_name(var_name):
+        return "__ISSUES_IGNORE_{}__".format(var_name)
 
-        info_dict["locations"] = locations_count
-        info_dict["locations_text"] = "{} Location".format(locations_count)
-        info_dict["locations_ignore"] = len(v) > 0
+    @staticmethod
+    def setup():
+        SystemTask.total_points = 0
+        SystemTask.tasks = []
+        SystemTask.name_lut = {}
 
-        info_names = ["devices", "monitoring_checks", "users", "locations"]
-        for info_name in info_names:
-            if info_dict[info_name] > 1:
-                info_dict[info_name + "_text"] += "s"
+    @staticmethod
+    def add_task(task):
+        SystemTask.tasks.append(task)
+        task.number = len(SystemTask.tasks)
+        SystemTask.name_lut[task.name] = task
+        SystemTask.total_points += task.points
 
-        return HttpResponse(
-            json.dumps(info_dict)
+    @staticmethod
+    def handle_request(request):
+        system_device = device.objects.prefetch_related(
+            "device_variable_set"
+        ).get(
+            Q(device_group__cluster_device_group=True)
         )
 
-#todo move somwhere sane
-class SystemCompletionIgnoreToggle(View):
-    def post(self, request):
-        system_component_name = request.POST.get("system_component_name")
-
-        system_device = device.objects.get(idx=1)
-
-        variable_name = "__ISSUES_IGNORE_{}__".format(system_component_name)
-
-        v = system_device.device_variable_set.filter(name=variable_name)
-
-        if v:
-            v[0].delete()
-        else:
-            system_device.device_variable_set.create(
-                device = system_device,
-                is_public = False,
-                name = variable_name,
-                local_copy_ok = False,
-                inherit = False,
-                protected = True,
-                var_type = "i",
-                val_int = 1
+        _ignore_dict = {
+            SystemTask.extract_var_name(_var.name): _var.get_value() for _var in system_device.device_variable_set.all() if SystemTask.extract_var_name(_var.name)
+        }
+        _r_list = [
+            _task.get_dict(request, _ignore_dict) for _task in SystemTask.tasks
+        ]
+        _points = sum([_dict["points"] for _dict in _r_list if _dict["fulfilled"]])
+        return HttpResponse(
+            json.dumps(
+                {
+                    "overview": {
+                        "total_points": SystemTask.total_points,
+                        "current_points": _points,
+                        "completed": int(100. * _points / SystemTask.total_points),
+                    },
+                    "list": _r_list,
+                }
             )
+        )
+
+    @staticmethod
+    def toggle_ignore(request, task_name):
+        system_device = device.objects.get(Q(device_group__cluster_device_group=True))
+
+        variable_name = SystemTask.create_var_name(task_name)
+
+        try:
+            cur_v = system_device.device_variable_set.get(Q(name=variable_name))
+        except device_variable.DoesNotExist:
+            cur_v = device_variable.get_private_variable(
+                device=system_device,
+                name=variable_name,
+            )
+            cur_v.set_value(True)
+        else:
+            cur_v.set_value(not cur_v.get_value())
+        cur_v.save()
 
         return HttpResponse(
             json.dumps(1)
         )
+
+
+class DeviceSystemTask(SystemTask):
+    def handle(self, request, ignore_dict):
+        _c = device.objects.filter(is_meta_device=False).count()
+        return {
+            "count": _c,
+            "fulfilled": _c > 0,
+            "text": logging_tools.get_plural("Device", _c),
+        }
+
+
+class MonitoringCheckSystemTask(SystemTask):
+    def handle(self, request, ignore_dict):
+        _c = mon_check_command.objects.all().count()
+        return {
+            "count": _c,
+            "fulfilled": _c > 0,
+            "text": logging_tools.get_plural("Monitoring check", _c),
+        }
+
+
+class UserSystemTask(SystemTask):
+    def handle(self, request, ignore_dict):
+        _c = user.objects.all().count() - 1
+        return {
+            "count": _c,
+            "fulfilled": _c > 0,
+            "text": logging_tools.get_plural("(non-admin) User", _c),
+        }
+
+
+class LocationSystemTask(SystemTask):
+    def handle(self, requets, ignore_dict):
+        _c = category.objects.filter(Q(full_name__startswith="/location/")).count()
+        return {
+            "count": _c,
+            "fulfilled": _c > 0,
+            "text": logging_tools.get_plural("Location", _c),
+        }
+
+
+class DeviceCategorySystemTask(SystemTask):
+    def handle(self, requets, ignore_dict):
+        _c = category.objects.filter(Q(full_name__startswith="/device/")).count()
+        return {
+            "count": _c,
+            "fulfilled": _c > 0,
+            "text": logging_tools.get_plural("Device Category", _c),
+        }
+
+
+SystemTask.setup()
+DeviceSystemTask("devices", "Devices", "Add at least one Device to the system", 4, 25)
+MonitoringCheckSystemTask("monitoring_checks", "Monitoring checks", "Add at least one monitoring check to the system", 5, 25)
+UserSystemTask("users", "Users", "Add at least one user to the system (excluding the admin user)", 6, 25)
+LocationSystemTask("locations", "Locations", "Add at least one location to the system", 7, 25)
+DeviceCategorySystemTask("devcat", "Device Categories", "Add at at least one device category", 8, 40)
+
+
+# todo move somwhere sane
+class SystemCompletion(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        return SystemTask.handle_request(request)
+
+
+# todo move somwhere sane
+class SystemCompletionIgnoreToggle(View):
+    def post(self, request):
+        system_component_name = request.POST.get("system_component_name")
+        return SystemTask.toggle_ignore(request, system_component_name)
+
 
 class DeviceLogEntryViewSet(viewsets.ViewSet):
     def list(self, request):
@@ -1141,7 +1275,8 @@ class DeviceLogEntryViewSet(viewsets.ViewSet):
 
         if "device_pks" in request.query_params:
             queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).filter(
-                device__in=json.loads(request.query_params.getlist("device_pks")[0]))
+                Q(device__in=json.loads(request.query_params.getlist("device_pks")[0]))
+            )
         else:
             queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).all()
 

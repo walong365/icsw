@@ -81,7 +81,8 @@
 </script> 
 
 <script type="text/ng-template" id="icsw.device.tree.meta.row">
-    <td colspan="2"><strong>{{ group.name }}</strong>
+    <td colspan="2">
+        <strong>{{ group.name }}</strong>
         <div class="btn-group btn-group-xs pull-right" ng-show="group.num_devices">
             <input type="button" class="btn btn-success" ng-click="change_dg_sel(1)" value="S"/>
             <input type="button" class="btn btn-primary" ng-click="change_dg_sel(0)" value="T"/>
@@ -107,7 +108,9 @@
 </script> 
 
 <script type="text/ng-template" id="icsw.device.tree.row">
-    <td>{{ obj.name }}</td>
+    <td>
+        <button type="button" class="btn btn-xs btn-primary" ng-click="show_device($event, obj)">{{ obj.name }}</button>
+    </td>
     <td class="text-center">
         <input type="button" ng-class="get_dev_sel_class()" ng-click="toggle_dev_sel()" value="sel"/>
     </td>

@@ -69,17 +69,6 @@ setup_progress = angular.module(
         active_tab_index: 0
 
         system_completion: 0
-        devices_availability_class: "alert-danger"
-        devices_availability_text: "Not Available"
-
-        monitoring_checks_availability_class: "alert-danger"
-        monitoring_checks_availability_text: "Not Available"
-
-        users_availability_class: "alert-danger"
-        users_availability_text: "Not Available"
-
-        locations_availability_class: "alert-danger"
-        locations_availability_text: "Not Available"
 
         show_extended_information_button_value: "Off"
         show_extended_information_button_class: "btn btn-default"
@@ -171,29 +160,8 @@ setup_progress = angular.module(
             }
         ).then(
             (data) ->
-                info_list_names = [
-                    ["devices", 25],
-                    ["monitoring_checks", 25]
-                    ["users", 25]
-                    ["locations", 25]
-                ]
-
-                $scope.struct.system_completion = 0
-
-                for obj in info_list_names
-                    info_list_name = obj[0]
-                    weight = obj[1]
-
-                    $scope.struct[info_list_name + "_availability_class"] = info_not_available_class
-                    $scope.struct[info_list_name + "_availability_text"] = info_not_available_text
-
-
-                    if data[info_list_name] > 0
-                        $scope.struct[info_list_name + "_availability_class"] = info_available_class
-                        $scope.struct[info_list_name + "_availability_text"] = data[info_list_name + "_text"]
-
-                        $scope.struct.system_completion += weight
-
+                $scope.struct.system_completion = data.overview.completed
+                console.log $scope.struct.system_completion
 
                 console.log(data)
         )
@@ -283,13 +251,14 @@ setup_progress = angular.module(
         )
 
 
-    $scope.open_in_new_tab_for_system = (setup_type) ->
+    $scope.open_in_new_tab_for_system = (task) ->
+        setup_type = task.setup_type
         if setup_type == 4
             heading = "Device Tree"
             special_flag_name = "devices_available"
             special_flag_value = true
 
-            if $scope.struct.devices_availability_class == "alert-danger"
+            if not task.fulfilled
                 special_flag_value = false
                 heading = "Create new Device"
 
@@ -398,14 +367,6 @@ setup_progress = angular.module(
 
 
     setup_tasks = () ->
-        $rootScope.$emit(ICSW_SIGNALS("ICSW_OPEN_SETUP_TASKS_CHANGED"))
-        tasks = [
-            [1, "Add at least one Device to the system", "devices", 4],
-            [2, "Add at least one monitoring check to the system", "monitoring_checks", 5],
-            [3, "Add at least one user to the system (excluding the admin user)", "users", 6],
-            [4, "Add at least one location to the system", "locations", 7]
-        ]
-
         icswSimpleAjaxCall(
             {
                 url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION
@@ -413,33 +374,11 @@ setup_progress = angular.module(
             }
         ).then(
             (data) ->
-                console.log(data)
                 $scope.struct.tasks.length = 0
 
-                for task_struct in tasks
-                    task_number = task_struct[0]
-                    task_description = task_struct[1]
-                    info_list_name = task_struct[2]
-                    setup_type = task_struct[3]
-
-                    task = {}
-                    task.task_number = task_number
-                    task.task_description = task_description
-                    task.setup_type = setup_type
-                    task.task_name = info_list_name
-
-                    task.task_bg_color_class = "danger"
-                    task.task_icon_class = "fa fa-times fa-2x"
-
-                    if data[info_list_name] > 0 || data[info_list_name + "_ignore"] == true
-                        task.task_bg_color_class = "success"
-                        task.task_icon_class = "fa fa-check fa-2x"
-
-                    task.ignore_text = "Ignore Issue"
-                    if data[info_list_name + "_ignore"] == true
-                        task.ignore_text = "Unignore Issue"
-
-                    $scope.struct.tasks.push(task)
+                for _result in data.list
+                    $scope.struct.tasks.push(_result)
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_OPEN_SETUP_TASKS_CHANGED"))
         )
 
     setup_tasks()
@@ -455,7 +394,7 @@ setup_progress = angular.module(
             {
                 url: ICSW_URLS.DEVICE_SYSTEM_COMPLETION_IGNORE_TOGGLE
                 data:
-                    system_component_name: task.task_name
+                    system_component_name: task.name
                 dataType: "json"
             }
         ).then(
@@ -480,19 +419,10 @@ setup_progress = angular.module(
             }
         ).then(
             (data) ->
-                info_list_names = [
-                    "devices",
-                    "monitoring_checks"
-                    "users"
-                    "locations"
-                ]
-
                 unfilled_tasks = 0
-
-                for info_list_name in info_list_names
-                    if data[info_list_name] == 0 && !(data[info_list_name + "_ignore"] == true)
-                        unfilled_tasks += 1
-
+                for entry in data.list
+                    if not entry.fulfilled and not entry.ignore
+                        unfilled_tasks++
                 defer.resolve(unfilled_tasks)
         )
 

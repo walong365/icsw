@@ -4,35 +4,13 @@
 
 
 <script type="text/ng-template" id="icsw.setup.progress">
-    <style>
-        .table > tbody > tr > td {
-            vertical-align: middle !important;
-        }
-        .table > tbody > tr > td > .progress {
-            margin-bottom: 0px !important;
-        }
-        a {
-            color:inherit;
-            text-decoration: none;
-            display:table-cell;
-            vertical-align:middle;
-        }
-
-        .centerUL {
-            list-style: none;
-            margin: 0 0 0 0;
-            padding: 0 0 0 0;
-        }
-
-        .fa-2x {
-            font-size: 2em !important;
-        }
-    </style>
-    <div class="container-fluid">
+    <div class="container-fluid" >
         <div
             uib-alert
             class="alert-warning"
-            ng-show="!struct.data_loaded">Fetching data from server ...
+            ng-show="!struct.data_loaded"
+        >
+            Fetching data from server ...
         </div>
         <div ng-if="struct.data_loaded">
             <br/>
@@ -42,70 +20,76 @@
                         <span>Setup Tasks</span>
                     </uib-tab-heading>
 
-                <table
-                    class="table table-condensed table-hover table-striped"
-                >
-                    <thead>
-                        <tr>
-                            <th style="width: 10px" class="lead">Task</th>
-                            <th style="width: 500px" class="lead">Description</th>
-                            <th style="width: 10px" class="lead text-center">Status</th>
-                            <th style="width: 10px" class="lead text-center">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="task in struct.tasks" class="lead">
-                            <td>
-                                {{ task.task_number }}.
-                            </td>
-                            <td>
-                                {{ task.task_description }}
-                            </td>
-                            <td ng-class="task.task_bg_color_class" class="text-center" ng-click="open_in_new_tab_for_system(task.setup_type)">
-                                <i ng-class="task.task_icon_class"></i>
-                            </td>
-                            <td class="text-center">
-                                <ul class="centerUL">
-                                    <li><a href ng-click="open_in_new_tab_for_system(task.setup_type)">Handle Issue</a></li>
-                                    <li><a href ng-click="ignore_issue(task)">{{ task.ignore_text }}</a></li>
-                                </ul>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                    <table
+                        class="table table-condensed table-hover table-striped"
+                    >
+                        <thead>
+                            <tr>
+                                <th style="width: 10px" class="lead">Task</th>
+                                <th style="width: 500px" class="lead">Description</th>
+                                <th style="width: 10px" class="lead text-center">Status</th>
+                                <th style="width: 10px" class="lead text-center">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="task in struct.tasks" class="lead">
+                                <td>
+                                    {{ task.number }}.
+                                </td>
+                                <td>
+                                    {{ task.description }}
+                                </td>
+                                <td ng-class="task.bg_color_class" class="text-center" ng-click="open_in_new_tab_for_system(task)">
+                                    <i ng-class="task.icon_class" style="font-size: 2em !important;"></i>
+                                </td>
+                                <td class="text-center">
+                                    <icsw-tools-button
+                                        type="modify"
+                                        ng-click="open_in_new_tab_for_system(task)"
+                                        size="sm"
+                                        value="Handle Issue"
+                                    ></icsw-tools-button>
+                                    <icsw-tools-button
+                                        type="enable"
+                                        ng-click="ignore_issue(task)"
+                                        is-enable="task.ignore"
+                                        size="sm"
+                                        icsw-value="task.ignore_text"
+                                    ></icsw-tools-button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
 
                 </uib-tab>
                 <uib-tab ng-click="system_overview_tab_clicked()">
                     <uib-tab-heading>
                         <span>System Status</span>
                     </uib-tab-heading>
-                    <br><label class="control-label">Component Setup Status:</label><br/>
-                    <table
-                        class="table table-condensed table-striped table-hover simple-border"
-                    >
-                        <thead>
-                            <tr>
-                                <th>Devices</th>
-                                <th>Monitoring Checks</th>
-                                <th>Users</th>
-                                <th>Location</th>
-                            </tr>
-                        </thead>
-
-                        <tbody>
-                            <tr>
-                                <td class="text-center"><div ng-class="struct.devices_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(4)'>{{ struct.devices_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="struct.monitoring_checks_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(5)'>{{ struct.monitoring_checks_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="struct.users_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(6)'>{{ struct.users_availability_text }}</a></strong></div></td>
-                                <td class="text-center"><div ng-class="struct.locations_availability_class"><strong><a style="height:100px;" href="" ng-click='open_in_new_tab_for_system(7)'>{{ struct.locations_availability_text }}</a></strong></div></td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <br>
+                        <label class="control-label">Component Setup Status:</label>
+                    <br/>
+                    <div class="container-fluid">
+                        <div ng-repeat="task in struct.tasks" class="col-md-4 col-xs-6">
+                            <div class="panel" ng-class="task.panel_class">
+                                <div class="panel-heading">
+                                    <h3 class="panel-title">{{ task.header }}</h3>
+                                </div>
+                                <div class="panel-body">
+                                    <strong>
+                                        <a href="" ng-click="open_in_new_tab_for_system(task)">{{ task.text }}</a>
+                                        &nbsp;
+                                        <i ng-class="task.icon_class"></i>
+                                    </strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <br><label class="control-label">Total System Setup Progress:</label><br/>
                     <div class="progress">
                         <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"
                             aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( struct.system_completion + '%' ) }">
-                            <span>{{ struct.system_completion }}</span>
+                            <span>{{ struct.system_completion }} %</span>
                         </div>
                     </div>
                 </uib-tab>

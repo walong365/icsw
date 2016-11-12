@@ -43,13 +43,13 @@ angular.module(
     "$uibModal", "blockUI", "icswTools", "ICSW_URLS", "icswToolsButtonConfigService",
     "icswSimpleAjaxCall", "icswToolsSimpleModalService", "toaster", "icswDialogDeleteObjects", "icswDeviceBackup",
     "icswDeviceTreeService", "icswDomainTreeService", "ICSW_SIGNALS", "$rootScope", "icswActiveSelectionService", "icswDeviceGroupBackup",
-    "icswConfigTreeService",
+    "icswConfigTreeService", "DeviceOverviewService",
 (
     $scope, $compile, $filter, $templateCache, Restangular, $q, $timeout, icswComplexModalService,
     $uibModal, blockUI, icswTools, ICSW_URLS, icswToolsButtonConfigService,
     icswSimpleAjaxCall, icswToolsSimpleModalService, toaster, icswDialogDeleteObjects, icswDeviceBackup,
     icswDeviceTreeService, icswDomainTreeService, ICSW_SIGNALS, $rootScope, icswActiveSelectionService, icswDeviceGroupBackup,
-    icswConfigTreeService,
+    icswConfigTreeService, DeviceOverviewService,
 ) ->
     $scope.icswToolsButtonConfigService = icswToolsButtonConfigService
 
@@ -381,6 +381,9 @@ angular.module(
                 # trigger refiltering of list
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_FORCE_TREE_FILTER"))
         )
+
+    $scope.show_device = ($event, device) ->
+        DeviceOverviewService($event, [device])
 
     $scope.get_tr_class = (obj) ->
         return if obj.is_meta_device then "success" else ""

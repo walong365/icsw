@@ -15,7 +15,11 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-"""contains command for deleting objects in background (we are the background)"""
+"""
+
+contains command for deleting objects in background (we are the background)
+
+"""
 
 from __future__ import unicode_literals, print_function
 
@@ -42,13 +46,14 @@ class handle_delete_requests(cs_base_class.icswCSServerCom):
         has_reqs = True
 
         while has_reqs:
-            req = None
             # obtain a request
             with transaction.atomic():
                 has_reqs = DeleteRequest.objects.all().exists()
                 if has_reqs:
                     req = DeleteRequest.objects.all().first()
                     req.delete()
+                else:
+                    req = None
 
             if req is not None:
                 # check if we should terminate (only if we have reqs left)

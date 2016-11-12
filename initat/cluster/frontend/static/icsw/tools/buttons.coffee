@@ -372,6 +372,8 @@ angular.module(
                         else
                             scope.button_value = gettextCatalog.getString("enable")
                             scope.css_class = "btn-success"
+                        if scope.icsw_value?
+                            scope.button_value = scope.icsw_value
                 )
             else if attrs.type == "lock"
                 scope.$watch(
