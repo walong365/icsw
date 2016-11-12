@@ -36,7 +36,6 @@ from initat.cluster.backbone.models import device, device_variable
 from initat.cluster.backbone.models.report import ReportHistory
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
-from initat.report_server.report import sizeof_fmt, _select_assetruns_for_device
 from initat.tools import server_command
 
 _ = {landscape, letter, A4, A3}
@@ -239,6 +238,7 @@ class GenerateReportXlsx(View):
 class ReportDataAvailable(View):
     @method_decorator(login_required)
     def post(self, request):
+        from initat.report_server.report import _select_assetruns_for_device
         idx_list = []
         for item in request.POST.iterlists():
             key, _list = item
@@ -294,6 +294,7 @@ class ReportHistoryAvailable(View):
     @method_decorator(login_required)
     def post(self, request):
         id(request)
+        from initat.report_server.report import sizeof_fmt
         data = {}
         report_ids = []
 
