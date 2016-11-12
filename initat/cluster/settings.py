@@ -63,24 +63,11 @@ ALLOWED_HOSTS = ["*"]
 
 INTERNAL_IPS = (
     "127.0.0.1",
-    "192.168.1.173",
 )
 
 MANAGERS = ADMINS
 
 MAIL_SERVER = "localhost"
-
-DATABASES = {
-    "default": {
-        "ENGINE": "django.db.backends.mysql",
-        "NAME": "",
-        "USER": "",
-        "PASSWORD": "",
-        "HOST": "",
-        "PORT": "",
-        # "CONN_MAX_AGE" : 30,
-    }
-}
 
 DATABASE_ROUTERS = [
     "initat.cluster.backbone.routers.icswDBRouter"
@@ -191,6 +178,17 @@ else:
 ICSW_ACTIVE_DATABASE_IDX = _db_idx
 
 _database_dict = ICSW_DATABASE_DICT[_db_idx]
+
+DATABASES = {
+    "default": {
+        "ENGINE": "",
+        "NAME": "",
+        "USER": "",
+        "PASSWORD": "",
+        "HOST": "",
+        "PORT": "",
+    }
+}
 
 for src_key, dst_key, _add_to_cache_key, _default in [
     ("db.database", "NAME", True, None),
@@ -345,7 +343,6 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable the admin:
     "django.contrib.admin",
     # Uncomment the next line to enable admin documentation:
-    # "django.contrib.admindocs",
     "django_extensions",
     "reversion",
 )

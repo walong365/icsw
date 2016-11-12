@@ -22,8 +22,10 @@ while (( "$#" )) ; do
     shift
 done
 
-export DEBUG_ICSW_SOFTWARE=1
+# enable debugging
 
-echo "settings: EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
+export ICSW_DEBUG_SOFTWARE=1
+
+[ ! -z $EXTRA_OPTIONS ] && echo "settings: EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 
 ./manage.py runserver --traceback ${EXTRA_OPTIONS} 0.0.0.0:8081

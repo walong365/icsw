@@ -565,7 +565,7 @@ class SGEInfo(object):
             if poll_result:
                 recv = client.recv_unicode()
             else:
-                print("timeout after {:d} seconds".format(timeout_secs))
+                self.log("timeout after {:d} seconds".format(timeout_secs), logging_tools.LOG_LEVEL_ERROR)
                 recv = None
             my_poller.unregister(client)
             del my_poller
