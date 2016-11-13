@@ -57,6 +57,8 @@ class HostBuildCache(object):
         self.log_cache = []
         self.counter = SimpleCounter()
         self.num_checks = 0
+        # dont set a default value (has to be set in build process)
+        # self.host_is_actively_checked = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_cache.append((what, log_level))

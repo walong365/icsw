@@ -280,7 +280,7 @@ class BuildProcess(
             # set global config and other global values
             gbc.set_global_config(cur_gc, cur_dmap, hdep_from_topo)
             self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
-            self._create_host_config_files(gbc)
+            self.create_all_host_configs(gbc)
             self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
             if self.build_mode in [BuildModes.all_master, BuildModes.all_slave, BuildModes.some_master, BuildModes.some_slave]:
                 # refresh implies _write_entries
@@ -346,7 +346,7 @@ class BuildProcess(
         cur_gc.add_config(MonAllHostDependencies(cur_gc))
         cur_gc.dump_logs()
 
-    def _create_host_config_files(self, gbc):
+    def create_all_host_configs(self, gbc):
         start_time = time.time()
         # get contacts with access to all devices
         _uo = user.objects
@@ -490,7 +490,7 @@ class BuildProcess(
             if gbc.build_dv:
                 gbc.build_dv.count()
 
-            self._create_single_host_config(
+            self.create_single_host_config(
                 gbc,
                 host,
                 all_access,
@@ -604,7 +604,7 @@ class BuildProcess(
             )
         )
 
-    def _create_single_host_config(
+    def create_single_host_config(
         self,
         gbc,
         host,
@@ -622,11 +622,11 @@ class BuildProcess(
         host_nc = cur_gc["device"]
         if cur_gc.master:
             if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
-                host_is_actively_checked = False
+                hbc.host_is_actively_checked = False
             else:
-                host_is_actively_checked = True
+                hbc.host_is_actively_checked = True
         else:
-            host_is_actively_checked = True
+            hbc.host_is_actively_checked = True
         hbc.log(
             "-------- {} ---------".format(
                 "master" if cur_gc.master else "slave {}".format(cur_gc.slave_name)
@@ -766,7 +766,7 @@ class BuildProcess(
                     # removed because this line screws active / passive checks
                     # act_host["checks_enabled"] = 1
                     # only allow active checks if this the active monitor master, very important for anovis
-                    act_host["active_checks_enabled"] = 1 if host_is_actively_checked else 0
+                    act_host["active_checks_enabled"] = 1 if hbc.host_is_actively_checked else 0
                     # we always allow passive checks
                     act_host["passive_checks_enabled"] = 1
                     # act_host["{}_checks_enabled".format("active" if checks_are_active else "passive")] = 1
@@ -806,7 +806,7 @@ class BuildProcess(
                             act_host["check_command"] = "check-host-ok"
                         else:
                             if act_def_dev.host_check_command:
-                                if host_is_actively_checked:
+                                if hbc.host_is_actively_checked:
                                     act_host["check_command"] = act_def_dev.host_check_command.name
                                 else:
                                     hbc.log("disabling host check_command (passive)")
@@ -855,10 +855,10 @@ class BuildProcess(
                         # print "*", conf_names
                         # print gbc.get_vars(host)
                         for conf_name in conf_names:
-                            self._add_config(
+                            self.add_host_config(
                                 gbc, hbc,
                                 host, conf_name, used_checks,
-                                act_def_serv, host_groups, host_is_actively_checked, host_config_list
+                                act_def_serv, host_groups, host_config_list
                             )
                         # add cluster checks
                         mhc_checks = gbc.get_cluster("hc", host.pk)
@@ -891,7 +891,6 @@ class BuildProcess(
                                         ],
                                         act_def_serv,
                                         serv_cgs,
-                                        host_is_actively_checked,
                                         serv_temp,
                                     )
                                     host_config_list.extend(sub_list)
@@ -945,7 +944,6 @@ class BuildProcess(
                                             ],
                                             act_def_serv,
                                             serv_cgs,
-                                            host_is_actively_checked,
                                             serv_temp,
                                         )
                                         host_config_list.extend(sub_list)
@@ -1116,7 +1114,7 @@ class BuildProcess(
         glob_log_str = "device {:<48s}{} ({}), d={:>3s}, {}".format(
             host.full_name[:48],
             "*" if len(host.name) > 48 else " ",
-            "a" if host_is_actively_checked else "p",
+            "a" if hbc.host_is_actively_checked else "p",
             "{:3d}".format(gbc.cur_dmap[host.pk]) if gbc.cur_dmap.get(host.pk) >= 0 else "---",
             info_str,
         )
@@ -1129,9 +1127,9 @@ class BuildProcess(
         # print("close", os.getpid())
         hbc.close()
 
-    def _add_config(
+    def add_host_config(
         self, gbc, hbc, host, conf_name, used_checks,
-        act_def_serv, host_groups, host_is_actively_checked, host_config_list
+        act_def_serv, host_groups, host_config_list
     ):
         cur_gc = gbc.global_config
         s_check = cur_gc["command"][conf_name]
@@ -1212,10 +1210,10 @@ class BuildProcess(
                                 self.log("unconfigured checks: {}".format(", ".join(sorted(_dead_coms))), logging_tools.LOG_LEVEL_CRITICAL)
                             _com_names = [gbc.mccs_dict[_entry].check_command_name for _entry in sc_array if _entry not in _dead_coms]
                             for _com_name in _com_names:
-                                self._add_config(
+                                self.add_host_config(
                                     gbc, hbc,
                                     host, _com_name, used_checks,
-                                    act_def_serv, host_groups, host_is_actively_checked, host_config_list
+                                    act_def_serv, host_groups, host_config_list
                                 )
                             sc_array = []
             else:
@@ -1227,7 +1225,7 @@ class BuildProcess(
                 serv_temp = gbc.serv_templates[s_check.get_template(act_def_serv.name)]
                 serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
                 sc_list = self.get_service(
-                    gbc, hbc, s_check, sc_array, act_def_serv, serv_cgs, host_is_actively_checked, serv_temp, **_rewrite_lut
+                    gbc, hbc, s_check, sc_array, act_def_serv, serv_cgs, serv_temp, **_rewrite_lut
                 )
                 host_config_list.extend(sc_list)
                 hbc.add_checks(len(sc_list))
@@ -1269,7 +1267,7 @@ class BuildProcess(
             _q = _q.filter(Q(monitor_server=self.__gen_config.monitor_server))
         return _q.count()
 
-    def get_service(self, gbc, hbc, s_check, sc_array, act_def_serv, serv_cgs, host_is_actively_checked, serv_temp, **kwargs):
+    def get_service(self, gbc, hbc, s_check, sc_array, act_def_serv, serv_cgs, serv_temp, **kwargs):
         host = hbc.device
         ev_defined = True if s_check.event_handler else False
         hbc.log(
@@ -1280,7 +1278,7 @@ class BuildProcess(
                 "cg: {}".format(", ".join(sorted(serv_cgs))) if serv_cgs else "no cgs",
                 "no evh" if not ev_defined else "evh is {} ({})".format(
                     s_check.event_handler.name,
-                    "enabled" if (s_check.event_handler_enabled and host_is_actively_checked) else "disabled",
+                    "enabled" if (s_check.event_handler_enabled and hbc.host_is_actively_checked) else "disabled",
                 ),
             )
         )
@@ -1292,15 +1290,15 @@ class BuildProcess(
             # event handlers
             if s_check.event_handler:
                 act_serv["event_handler"] = s_check.event_handler.name
-                act_serv["event_handler_enabled"] = "1" if (s_check.event_handler_enabled and host_is_actively_checked) else "0"
+                act_serv["event_handler_enabled"] = "1" if (s_check.event_handler_enabled and hbc.host_is_actively_checked) else "0"
             if arg_temp.check_active is not None:
                 # check flag overrides device specific setting
                 act_serv["{}_checks_enabled".format("active" if arg_temp.check_active else "passive")] = 1
                 act_serv["{}_checks_enabled".format("passive" if arg_temp.check_active else "active")] = 0
             else:
                 if arg_temp.is_active:
-                    act_serv["{}_checks_enabled".format("active" if host_is_actively_checked else "passive")] = 1
-                    act_serv["{}_checks_enabled".format("passive" if host_is_actively_checked else "active")] = 0
+                    act_serv["{}_checks_enabled".format("active" if hbc.host_is_actively_checked else "passive")] = 1
+                    act_serv["{}_checks_enabled".format("passive" if hbc.host_is_actively_checked else "active")] = 0
                 else:
                     act_serv["passive_checks_enabled"] = 1
                     act_serv["active_checks_enabled"] = 0
@@ -1325,10 +1323,10 @@ class BuildProcess(
                 act_serv["contact_groups"] = serv_cgs
             else:
                 act_serv["contact_groups"] = self.gc["NONE_CONTACT_GROUP"]
-            if not host_is_actively_checked:
+            if not hbc.host_is_actively_checked:
                 act_serv["check_freshness"] = 0
                 act_serv["freshness_threshold"] = 3600
-            if host_is_actively_checked and not cur_gc.master:
+            if hbc.host_is_actively_checked and not cur_gc.master:
                 # trace
                 act_serv["obsess_over_service"] = 1
             act_serv["flap_detection_enabled"] = 1 if (host.flap_detection_enabled and serv_temp.flap_detection_enabled) else 0
