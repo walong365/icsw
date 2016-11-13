@@ -135,10 +135,10 @@ class backup_process(threading_tools.process_obj):
         os.unlink(full_path)
 
     def _database_backup(self, bu_dir):
-        bu_name = datetime.datetime.now().strftime("db_bu_database_%Y%m%d_%H:%M:%S.psql")
+        bu_name = datetime.datetime.now().strftime("db_bu_database_%Y%m%d_%H:%M:%S")
         full_path = os.path.join(
             bu_dir,
-            bu_name
+            bu_name,
         )
         _def_db = settings.DATABASES.get("default", None)
         if not _def_db:
@@ -149,11 +149,16 @@ class backup_process(threading_tools.process_obj):
                 self.log("    {}={}".format(_key, _def_db[_key]))
             _engine = _def_db.get("ENGINE", "unknown").split(".")[-1]
             # map old to new values
-            _engine = {"postgresql_psycopg2": "postgresql"}.get(_engine, _engine)
+            _engine = {
+                "postgresql_psycopg2": "postgresql"
+            }.get(_engine, _engine)
             bu_dict = {
                 "postgresql": {
                     "dump_bin": "pg_dump",
-                    "cmdline": "{DUMP} -c -f {FILENAME} -F c -Z 4 -h {HOST} -U {USER} {NAME} -w {EXCLUDE}",
+                    "cmdlines": [
+                        "{DUMP} -c -f {FILENAME}.psql -F c -Z 4 -h {HOST} -U {USER} {NAME} -w {EXCLUDE}",
+                        "{DUMP} -f {FILENAME}.schema.psql -F c -Z 4 -h {HOST} -U {USER} {NAME} --schema-only -w {SCHEMA_ONLY}",
+                    ],
                     "pgpass": True
                 }
             }
@@ -164,39 +169,57 @@ class backup_process(threading_tools.process_obj):
                     self.log("cannot find dump binary {}".format(_bu_info["dump_bin"]), logging_tools.LOG_LEVEL_ERROR)
                 else:
                     self.log("found dump binary {} in {}".format(_bu_info["dump_bin"], _bin))
-                    cmdline = _bu_info["cmdline"].format(
-                        DUMP=_bin,
-                        FILENAME=full_path,
-                        EXCLUDE=" ".join(["-T {}".format(_ignore) for _ignore in self.get_ignore_list(True)]),
-                        **_def_db
-                    )
-                    _pgpass = _bu_info.get("pgpass", False)
-                    if _pgpass:
-                        _pgpassfile = "/root/.pgpass"
-                        if os.path.exists(_pgpassfile):
-                            _passcontent = file(_pgpassfile, "r").read()
-                        else:
-                            _passcontent = None
-                        file(_pgpassfile, "w").write("{HOST}:*:{NAME}:{USER}:{PASSWORD}\n".format(**_def_db))
-                        os.chmod(_pgpassfile, 0600)
-                    try:
-                        _output = subprocess.check_output(cmdline.split(), stderr=subprocess.PIPE)
-                    except subprocess.CalledProcessError:
-                        self.log(
-                            "error calling {}: {}".format(
-                                cmdline,
-                                process_tools.get_except_info(),
+                    for _line in _bu_info["cmdlines"]:
+                        cmdline = _line.format(
+                            DUMP=_bin,
+                            FILENAME=full_path,
+                            EXCLUDE=" ".join(
+                                [
+                                    "-T {}".format(_ignore) for _ignore in self.get_ignore_list(True)
+                                    ]
                             ),
-                            logging_tools.LOG_LEVEL_ERROR
+                            SCHEMA_ONLY=" ".join(
+                                [
+                                    "-t {}".format(_ignore) for _ignore in self.get_ignore_list(True)
+                                ]
+                            ),
+                            **_def_db
                         )
-                    else:
-                        self.log("successfully called {}: {}".format(cmdline, _output))
-                    if _pgpass:
-                        if _passcontent:
-                            file(_pgpassfile, "w").write(_passcontent)
+                        start_time = time.time()
+                        _pgpass = _bu_info.get("pgpass", False)
+                        if _pgpass:
+                            _pgpassfile = "/root/.pgpass"
+                            if os.path.exists(_pgpassfile):
+                                _passcontent = file(_pgpassfile, "r").read()
+                            else:
+                                _passcontent = None
+                            file(_pgpassfile, "w").write("{HOST}:*:{NAME}:{USER}:{PASSWORD}\n".format(**_def_db))
                             os.chmod(_pgpassfile, 0600)
+                        try:
+                            _output = subprocess.check_output(cmdline.split(), stderr=subprocess.PIPE)
+                        except subprocess.CalledProcessError:
+                            self.log(
+                                "error calling {}: {}".format(
+                                    cmdline,
+                                    process_tools.get_except_info(),
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
                         else:
-                            os.unlink(_pgpassfile)
+                            end_time = time.time()
+                            self.log(
+                                "successfully called {} in {}: {}".format(
+                                    cmdline,
+                                    logging_tools.get_diff_time_str(end_time - start_time),
+                                    _output,
+                                )
+                            )
+                        if _pgpass:
+                            if _passcontent:
+                                file(_pgpassfile, "w").write(_passcontent)
+                                os.chmod(_pgpassfile, 0600)
+                            else:
+                                os.unlink(_pgpassfile)
             else:
                 self.log("unsupported engine '{}' for database backup".format(_engine), logging_tools.LOG_LEVEL_WARN)
 
