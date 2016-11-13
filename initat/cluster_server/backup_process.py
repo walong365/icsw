@@ -38,7 +38,7 @@ class dummy_file(file):
     ending = None
 
 
-class backup_process(threading_tools.process_obj):
+class BackupProcess(threading_tools.process_obj):
     def process_init(self):
         global_config.close()
         self.__log_template = logging_tools.get_logger(

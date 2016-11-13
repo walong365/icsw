@@ -34,7 +34,7 @@ from initat.server_version import VERSION_STRING
 from initat.tools import cluster_location, logging_tools, process_tools, server_command, \
     server_mixins, threading_tools, uuid_tools, configfile
 from initat.tools.bgnotify.process import ServerBackgroundNotifyMixin
-from .backup_process import backup_process
+from .backup_process import BackupProcess
 from .capabilities import CapabilityProcess
 from .config import global_config
 from .license_checker import LicenseChecker
@@ -159,7 +159,7 @@ class ServerProcess(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
 
     def process_exit(self, src_process, src_pid):
         self.CC.process_removed(src_pid)
-        if src_process == "backup_process" and global_config["BACKUP_DATABASE"]:
+        if src_process == "BackupProcess" and global_config["BACKUP_DATABASE"]:
             self.log("backup process finished, exiting")
             self["exit_requested"] = True
 
@@ -361,9 +361,9 @@ class ServerProcess(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
         if cur_dt == self.__next_backup_dt or self.__next_backup_dt is None:
             self._set_next_backup_time()
             self.log("start DB-backup")
-            self.add_process(backup_process("backup_process"), start=True)
+            self.add_process(BackupProcess("BackupProcess"), start=True)
             self.send_to_process(
-                "backup_process",
+                "BackupProcess",
                 "start_backup",
             )
             db_tools.close_connection()

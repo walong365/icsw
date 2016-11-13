@@ -46,7 +46,7 @@ from django.utils.encoding import smart_unicode
 
 from initat.tools import logging_tools, process_tools
 
-# lazy init, for use in cluster-server.py::backup_process
+# lazy init, for use in cluster-server.py::BackupProcess
 BASE_OBJECT = None
 TIMEZONE = pytz.timezone(settings.TIME_ZONE)
 
@@ -91,7 +91,7 @@ def sql_iterator(queryset, step=2000):
 
 
 def _init_base_object():
-    # BASE_OBJECT is sometimes set externally, cf. cluster_server/backup_process.py
+    # BASE_OBJECT is sometimes set externally, cf. cluster_server/BackupProcess.py
     global BASE_OBJECT  # pylint: disable-msg=W0603
     if BASE_OBJECT is None:
         BASE_OBJECT = logging.getLogger(__name__)
