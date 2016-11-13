@@ -104,6 +104,8 @@ def main():
             os.setgid(gid)
             os.setuid(uid)
     if opts.debug:
+        # set debug flag
+        os.environ["ICSW_DEBUG_SOFTWARE"] = "1"
         abs_path = os.path.dirname(__file__)
         abs_path = os.path.split(os.path.split(abs_path)[0])[0]
         sys.path.insert(0, abs_path)

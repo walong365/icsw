@@ -29,18 +29,92 @@ from initat.cluster.backbone import routing
 from initat.cluster.backbone.var_cache import VarCache
 from initat.cluster.backbone.models import device, device_group, mon_check_command, user, \
     mon_host_cluster, mon_service_cluster, MonHostTrace, mon_host_dependency, mon_service_dependency, \
-    MonHostTraceGeneration
+    MonHostTraceGeneration, mon_check_command_special, netdevice
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.sink import SNMPSink
 from initat.tools import logging_tools, process_tools
 from .global_config import global_config
+from ..config import SimpleCounter
 
 __all__ = [
     b"BuildCache",
+    b"HostBuildCache",
 ]
 
 
+class HostBuildCache(object):
+    # cache for building a single host
+    def __init__(self, cur_dev):
+        # print("init", unicode(cur_dev))
+        # device object
+        self.device = cur_dev
+        # self.dynamic_checks = False
+        # list of dynamic checks
+        self.dynamic_checks = []
+        # device config file
+        self.device_file = None
+        self.start_time = time.time()
+        self.log_cache = []
+        self.counter = SimpleCounter()
+        self.num_checks = 0
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.log_cache.append((what, log_level))
+        if log_level == logging_tools.LOG_LEVEL_WARN:
+            self.counter.warning()
+        elif log_level == logging_tools.LOG_LEVEL_OK:
+            self.counter.ok()
+        else:
+            # everything else counts as error
+            self.counter.error()
+
+    def add_dynamic_check(self, s_check):
+        self.dynamic_checks.append(s_check)
+
+    def build_finished(self):
+        self.end_time = time.time()
+
+    def add_checks(self, num=1):
+        self.num_checks += num
+
+    @property
+    def write_logs(self):
+        # check for log emit
+        return True if self.counter.num_error else False
+
+    def flush_logs(self, logger):
+        for what, level in self.log_cache:
+            logger.log(level, what)
+
+    def close(self):
+        # check for changed flags / fields
+        upd_fields = []
+        _has_dyn_checks = True if len(self.dynamic_checks) else False
+        if self.device.dynamic_checks != _has_dyn_checks:
+            upd_fields.append("dynamic_checks")
+            self.device.dynamic_checks = _has_dyn_checks
+        if upd_fields:
+            self.device.save(update_fields=upd_fields)
+        # print(_has_dyn_checks, len(self.dynamic_checks))
+
+    @property
+    def info_str(self):
+        _counter = self.counter
+        # info string for logging
+        info_str = "{:3d} mcs, logs: {:3d} / {:3d} / {:3d} ({:3d} total) [{}] in {}".format(
+            self.num_checks,
+            _counter.num_ok,
+            _counter.num_warning,
+            _counter.num_error,
+            len(self.log_cache),
+            "l " if _counter.num_error == 0 else "lw",
+            logging_tools.get_diff_time_str(self.end_time - self.start_time),
+        )
+        return info_str
+
+
 class BuildCache(object):
+    # cache for build (all hosts)
     def __init__(self, log_com, full_build, routing_fingerprint=None, router_obj=None):
         s_time = time.time()
         self.log_com = log_com
@@ -63,7 +137,7 @@ class BuildCache(object):
                 self.log("creating new tracegeneration")
                 self.__trace_gen = router_obj.create_trace_generation()
             # delete old ones
-            _res = MonHostTrace.objects.exclude(Q(generation=self.__trace_gen)).delete()
+            MonHostTrace.objects.exclude(Q(generation=self.__trace_gen)).delete()
 
         # global luts
         self.mcc_lut_3 = {_check.pk: _check for _check in mon_check_command.objects.all()}
@@ -193,6 +267,33 @@ class BuildCache(object):
             "init build_cache in {}".format(
                 logging_tools.get_diff_time_str(e_time - s_time)
             )
+        )
+
+    def set_global_config(self, gc, cur_dmap, hdep_from_topo):
+        # set global config and other global values
+        # global_config gc is an instance of MainConfig()
+        self.global_config = gc
+        # distance map
+        self.cur_dmap = cur_dmap
+        # host dependency from topology
+        self.hdep_from_topo = hdep_from_topo
+        # mon check special command lut (mccs_dict)
+        mccs_dict = {
+            mccs.pk: mccs for mccs in mon_check_command_special.objects.all()
+        }
+        for _value in list(mccs_dict.values()):
+            mccs_dict[_value.name] = _value
+
+        for value in self.global_config["command"].values():
+            if value.mccs_id:
+                # add links back to check_command_names
+                mccs_dict[value.mccs_id].check_command_name = value.name
+        self.mccs_dict = mccs_dict
+        # set settings for local monitor server (== master or slave)
+        server_idxs = [self.global_config.monitor_server.pk]
+        # get netip-idxs of own host
+        self.server_net_idxs = set(
+            netdevice.objects.filter(Q(device__in=server_idxs)).filter(Q(enabled=True)).values_list("pk", flat=True)
         )
 
     def feed_unreachable_pks(self, unreachable_pks):

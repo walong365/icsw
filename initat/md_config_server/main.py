@@ -49,7 +49,7 @@ def main():
         ]
     )
     # enable connection debugging
-    settings.DEBUG = global_config["DEBUG"]
+    global_config["DEBUG"] = settings.DEBUG
     run_code()
     # exit
     os._exit(0)

@@ -24,23 +24,22 @@ from __future__ import unicode_literals, print_function
 import os
 import time
 
-from django.db import connection
 from django.db.models import Q
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device, device_variable, mon_contactgroup, netdevice, network_type, user, \
+from initat.cluster.backbone.models import device, device_variable, mon_contactgroup, network_type, user, \
     config, config_catalog, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special, mon_check_command
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
-    MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, SimpleCounter, MonFileContainer, \
+    MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, MonFileContainer, \
     StructuredMonBaseConfig
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, logging_tools, process_tools, server_mixins, server_command
-from ..config.build_cache import BuildCache
+from ..config.build_cache import BuildCache, HostBuildCache
 from ..constants import BuildModes
 from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
 
@@ -57,8 +56,6 @@ class BuildProcess(
         self.CC.init(None, global_config)
         db_tools.close_connection()
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
-        self.__mach_loggers = {}
-        self.__num_mach_logs = {}
         # self.version = int(time.time())
         # self.log("initial config_version is {:d}".format(self.version))
         self.register_func("start_build", self._start_build)
@@ -66,35 +63,9 @@ class BuildProcess(
 
     def loop_post(self):
         self.log("build {} process exiting".format(self.name))
-        for mach_logger in self.__mach_loggers.itervalues():
-            mach_logger.close()
         self.CC.close()
 
-    def mach_log(self, what, lev=logging_tools.LOG_LEVEL_OK, mach_name=None, **kwargs):
-        if "single_build" in kwargs:
-            self.__write_logs = kwargs["single_build"]
-        if mach_name is None:
-            mach_name = self.__cached_mach_name
-        else:
-            self.__cached_mach_name = mach_name
-        if mach_name not in self.__mach_loggers:
-            self.__num_mach_logs[mach_name] = 0
-            if self.__write_logs:
-                self.__mach_loggers[mach_name] = self._get_mach_logger(mach_name)
-            else:
-                self.__mach_loggers[mach_name] = []
-        self.__num_mach_logs[mach_name] += 1
-        if self.__write_logs:
-            self.__mach_loggers[mach_name].log(lev, what)
-        else:
-            self.__mach_loggers[mach_name].append((lev, what))
-        if kwargs.get("global_flag", False):
-            self.log(what, lev)
-
-    def get_num_mach_logs(self):
-        return self.__num_mach_logs.get(self.__cached_mach_name, 0)
-
-    def _get_mach_logger(self, mach_name):
+    def get_mach_logger(self, mach_name):
         return logging_tools.get_logger(
             "{}.{}".format(
                 global_config["LOG_NAME"],
@@ -105,24 +76,6 @@ class BuildProcess(
             context=self.zmq_context,
             init_logger=True,
         )
-
-    def close_mach_log(self, mach_name=None, **kwargs):
-        if mach_name is not None:
-            self.__cached_mach_name = mach_name
-        if self.__cached_mach_name:
-            mach_name = self.__cached_mach_name
-            del self.__num_mach_logs[mach_name]
-            if self.__write_logs:
-                self.__mach_loggers[mach_name].close()
-            else:
-                if kwargs.get("write_logs", False):
-                    # write logs because of flag (errors ?)
-                    _logger = self._get_mach_logger(mach_name)
-                    for _lev, _what in self.__mach_loggers[mach_name]:
-                        _logger.log(_lev, _what)
-                    _logger.close()
-                    del _logger
-            del self.__mach_loggers[mach_name]
 
     def _cleanup_db(self):
         # cleanup tasks for the database
@@ -192,7 +145,7 @@ class BuildProcess(
         self.build_cache = BuildCache(
             self.log,
             full_build=not self.single_build,
-            routing_fingerprint=self.routing_fingerprint
+            routing_fingerprint=self.routing_fingerprint,
         )
         self.fingerprint_set()
 
@@ -238,11 +191,9 @@ class BuildProcess(
             "rebuild_config called, version is {:d}, mode is {}, hdep_from_topo is {}".format(
                 self.version,
                 self.build_mode,
-                str(hdep_from_topo),
+                "enabled" if hdep_from_topo else "disabled",
             )
         )
-        if self.gc["DEBUG"]:
-            cur_query_count = len(connection.queries)
         cdg = device.objects.get(Q(device_group__cluster_device_group=True))
         if self.build_mode in [BuildModes.all_master, BuildModes.some_master]:
             # delete old gauge variables
@@ -319,15 +270,17 @@ class BuildProcess(
                 # recreate access files
                 cur_gc._create_access_entries()
 
-            _bc = self.build_cache
-            _bc.build_dv = build_dv
-            _bc.host_list = self.host_list
-            _bc.dev_templates = dev_templates
-            _bc.serv_templates = serv_templates
-            _bc.single_build = self.single_build
-            _bc.debug = self.gc["DEBUG"]
+            gbc = self.build_cache
+            gbc.build_dv = build_dv
+            gbc.host_list = self.host_list
+            gbc.dev_templates = dev_templates
+            gbc.serv_templates = serv_templates
+            gbc.single_build = self.single_build
+            gbc.debug = self.gc["DEBUG"]
+            # set global config and other global values
+            gbc.set_global_config(cur_gc, cur_dmap, hdep_from_topo)
             self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
-            self._create_host_config_files(_bc, cur_gc, cur_dmap, hdep_from_topo)
+            self._create_host_config_files(gbc)
             self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
             if self.build_mode in [BuildModes.all_master, BuildModes.all_slave, BuildModes.some_master, BuildModes.some_slave]:
                 # refresh implies _write_entries
@@ -336,7 +289,7 @@ class BuildProcess(
                 cur_gc.write_entries()
                 # start syncing
                 self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
-            del _bc
+            del gbc
             if build_dv:
                 build_dv.delete()
         if self.build_mode == BuildModes.all_master:
@@ -353,16 +306,6 @@ class BuildProcess(
             )
             self.srv_com["result"] = res_node
             self.send_pool_message("remote_call_async_result", unicode(self.srv_com))
-        if self.gc["DEBUG"]:
-            tot_query_count = len(connection.queries) - cur_query_count
-            self.log("queries issued: {:d}".format(tot_query_count))
-            for q_idx, act_sql in enumerate(connection.queries[cur_query_count:], 1):
-                self.log(
-                    "{:5d} {}".format(
-                        q_idx,
-                        act_sql["sql"][:180]
-                    )
-                )
         self._exit_process()
 
     def _create_general_config(self, mode, write_entries=None):
@@ -403,23 +346,278 @@ class BuildProcess(
         cur_gc.add_config(MonAllHostDependencies(cur_gc))
         cur_gc.dump_logs()
 
+    def _create_host_config_files(self, gbc):
+        start_time = time.time()
+        # get contacts with access to all devices
+        _uo = user.objects
+        all_access = list(
+            [
+                cur_u.login for cur_u in _uo.filter(
+                    Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)
+                ) if cur_u.has_perm("backbone.device.all_devices")
+            ]
+        )
+        self.log("users with access to all devices: {}".format(", ".join(sorted(all_access))))
+        cur_gc = gbc.global_config
+        # get ext_hosts stuff
+        ng_ext_hosts = self.IM_get_mon_ext_hosts()
+        # check_hosts
+        if gbc.host_list:
+            # not beautiful but working
+            pk_list = []
+            for full_h_name in gbc.host_list:
+                try:
+                    if full_h_name.count("."):
+                        found_dev = device.objects.get(Q(name=full_h_name.split(".")[0]) & Q(domain_tree_node__full_name=full_h_name.split(".", 1)[1]))
+                    else:
+                        found_dev = device.objects.get(Q(name=full_h_name))
+                except device.DoesNotExist:
+                    pass
+                else:
+                    pk_list.append(found_dev.pk)
+            h_filter = Q(pk__in=pk_list)
+        else:
+            h_filter = Q()
+        # filter for all configs, wider than the h_filter
+        ac_filter = Q()
+        # add master/slave related filters
+        if cur_gc.master:
+            # need all devices for master
+            pass
+        else:
+            h_filter &= Q(monitor_server=cur_gc.monitor_server)
+            ac_filter &= Q(monitor_server=cur_gc.monitor_server)
+        if not gbc.single_build:
+            h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
+            ac_filter &= Q(enabled=True) & Q(device_group__enabled=True)
+        # dictionary with all parent / slave relations
+        ps_dict = {}
+        gbc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(
+            h_filter
+        ).values_list(
+            "pk", flat=True)
+        )
+        meta_devices = {
+            md.device_group.pk: md for md in device.objects.filter(
+                Q(is_meta_device=True)
+            ).prefetch_related(
+                "device_config_set",
+                "device_config_set__config"
+            ).select_related("device_group")
+        }
+        all_configs = {}
+        for cur_dev in device.objects.filter(
+            ac_filter
+        ).select_related(
+            "domain_tree_node"
+        ).prefetch_related(
+            "device_config_set",
+            "device_config_set__config"
+        ):
+            loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
+            if cur_dev.device_group_id in meta_devices:
+                loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
+            # expand with parent
+            while True:
+                new_confs = set([ps_dict[cur_name] for cur_name in loc_config if cur_name in ps_dict]) - set(loc_config)
+                if new_confs:
+                    loc_config.extend(list(new_confs))
+                else:
+                    break
+            all_configs[cur_dev.full_name] = loc_config
+        # get config variables
+        if not cur_gc["contactgroup"].keys():
+            self.log(
+                "no contact group defined",
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            return
+        first_contactgroup_name = cur_gc["contactgroup"][cur_gc["contactgroup"].keys()[0]].name
+        contact_group_dict = {}
+        # get contact groups
+        if gbc.host_list:
+            host_info_str = logging_tools.get_plural("host", len(gbc.host_list))
+            ct_groups = mon_contactgroup.objects.filter(Q(device_groups__device__name__in=gbc.host_list))
+        else:
+            host_info_str = "all"
+            ct_groups = mon_contactgroup.objects.all()
+        for ct_group in ct_groups.prefetch_related("device_groups", "device_groups__device"):
+            if ct_group.pk in cur_gc["contactgroup"]:
+                pass  # cg_name = cur_gc["contactgroup"][ct_group.pk].name
+            else:
+                self.log(
+                    "contagroup_idx {} for device {} not found, using first from contactgroups ({})".format(
+                        unicode(ct_group),
+                        ct_group.name,
+                        first_contactgroup_name,
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                # cg_name = first_contactgroup_name
+            for g_devg in ct_group.device_groups.all().prefetch_related("device_group", "device_group__domain_tree_node"):
+                for g_dev in g_devg.device_group.all():
+                    contact_group_dict.setdefault(g_dev.full_name, []).append(ct_group.name)
+        # get valid and invalid network types
+        valid_nwt_list = set(network_type.objects.filter(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
+        _invalid_nwt_list = set(network_type.objects.exclude(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
+        for n_i in net_ip.objects.all().select_related("network__network_type", "netdevice", "domain_tree_node"):
+            n_t = n_i.network.network_type.identifier
+            n_d = n_i.netdevice.pk
+            d_pk = n_i.netdevice.device_id
+            if n_i.domain_tree_node_id:
+                dom_name = n_i.domain_tree_node.full_name
+            else:
+                dom_name = ""
+            # print n_i, n_t, n_d, d_pk, dom_name
+            if d_pk in gbc.host_pks:
+                cur_host = gbc.get_host(d_pk)
+                # populate valid_ips and invalid_ips
+                getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append((n_i, dom_name))
+        host_nc = cur_gc["device"]
+        # delete host if already present in host_table
+        host_names = []
+        for host_pk in gbc.host_pks:
+            host = gbc.get_host(host_pk)  # , host in check_hosts.iteritems():
+            host_names.append((host.full_name, host))
+            if host.full_name in host_nc:
+                # now very simple
+                del host_nc[host.full_name]
+        # caching object
+        # build lookup-table
+        self.send_pool_message("build_info", "device_count", cur_gc.monitor_server.full_name, len(host_names), target="syncer")
+        nagvis_maps = set()
+        for host_name, host in sorted(host_names):
+            if gbc.build_dv:
+                gbc.build_dv.count()
+
+            self._create_single_host_config(
+                gbc,
+                host,
+                all_access,
+                contact_group_dict,
+                ng_ext_hosts,
+                all_configs,
+                nagvis_maps,
+            )
+        host_names = host_nc.keys()
+        self.log("start parenting run")
+        p_dict = {}
+        # host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
+        _p_ok, _p_failed = (0, 0)
+        d_map = gbc.cur_dmap
+        for host_name in sorted(host_names):
+            host = host_nc[host_name].object_list[0]
+            if "possible_parents" in host and not gbc.single_build:
+                # parent list
+                parent_list = set()
+                # check for nagvis_maps
+                local_nagvis_maps = []
+                p_parents = host["possible_parents"]
+                for _p_val, _nd_val, p_list in p_parents:
+                    # skip first host (is self)
+                    host_pk = p_list[0]
+                    for parent_idx in p_list[1:]:
+                        if parent_idx in d_map:
+                            if d_map[host_pk] > d_map[parent_idx]:
+                                parent = gbc.get_host(parent_idx).full_name
+                                if parent in host_names and parent != host.name:
+                                    parent_list.add(parent)
+                                    # exit inner loop
+                                    break
+                            else:
+                                # exit inner loop
+                                break
+                        else:
+                            self.log("parent_idx {:d} not in distance map, routing cache too old?".format(parent_idx), logging_tools.LOG_LEVEL_ERROR)
+                    if "_nagvis_map" not in host:
+                        # loop again to scan for nagvis_map
+                        for parent_idx in p_list[1:]:
+                            if parent_idx in d_map:
+                                if d_map[host_pk] > d_map[parent_idx]:
+                                    parent = gbc.get_host(parent_idx).full_name
+                                    if parent in host_names and parent != host.name:
+                                        if "_nagvis_map" in host_nc[parent].object_list[0]:
+                                            local_nagvis_maps.append(host_nc[parent].object_list[0]["_nagvis_map"])
+                            else:
+                                self.log("parent_idx {:d} not in distance map, routing cache too old?".format(parent_idx), logging_tools.LOG_LEVEL_ERROR)
+                if "_nagvis_map" not in host and local_nagvis_maps:
+                    host["_nagvis_map"] = local_nagvis_maps[0]
+                if parent_list:
+                    host["parents"] = list(parent_list)
+                    for cur_parent in parent_list:
+                        p_dict.setdefault(cur_parent, []).append(host_name)
+                    _p_ok += 1
+                    if gbc.debug:
+                        self.log("Setting parent of '{}' to {}".format(host_name, ", ".join(parent_list)), logging_tools.LOG_LEVEL_OK)
+                else:
+                    _p_failed += 1
+                    self.log("Parenting problem for '{}', {:d} traces found".format(host_name, len(p_parents)), logging_tools.LOG_LEVEL_WARN)
+                    if gbc.debug:
+                        p_parents = host["possible_parents"]
+                        for t_num, (_p_val, _nd_val, p_list) in enumerate(p_parents):
+                            host_pk = p_list[0]
+                            self.log(
+                                "  trace {:3d}, distance is {:3d}, {}".format(
+                                    t_num + 1,
+                                    d_map[host_pk],
+                                    logging_tools.get_plural("entry", len(p_list) - 1),
+                                )
+                            )
+                            for parent_idx in p_list[1:]:
+                                parent = gbc.get_host(parent_idx).full_name
+                                self.log(
+                                    "    {:>30s} (distance is {:3d}, in config: {})".format(
+                                        unicode(parent),
+                                        d_map[parent_idx],
+                                        parent in host_names,
+                                    )
+                                )
+            if "possible_parents" in host:
+                del host["possible_parents"]
+        self.log("end parenting run, {:d} ok, {:d} failed".format(_p_ok, _p_failed))
+        if cur_gc.master and not gbc.single_build:
+            if gbc.hdep_from_topo:
+                # import pprint
+                # pprint.pprint(p_dict)
+                for parent, clients in p_dict.iteritems():
+                    new_hd = StructuredMonBaseConfig("hostdependency", "")
+                    new_hd["dependent_host_name"] = clients
+                    new_hd["host_name"] = parent
+                    new_hd["dependency_period"] = self.mon_host_dep.dependency_period.name
+                    new_hd["execution_failure_criteria"] = self.mon_host_dep.execution_failure_criteria
+                    new_hd["notification_failure_criteria"] = self.mon_host_dep.notification_failure_criteria
+                    new_hd["inherits_parent"] = "1" if self.mon_host_dep.inherits_parent else "0"
+                    cur_gc["hostdependency"].add_object(new_hd)
+            self.log("created {}".format(logging_tools.get_plural("nagvis map", len(nagvis_maps))))
+            # nagvis handling
+            nagvis_map_dir = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps")
+            if os.path.isdir(nagvis_map_dir):
+                self.NV_store_nagvis_maps(nagvis_map_dir, nagvis_maps)
+            cache_dir = os.path.join(self.gc["NAGVIS_DIR"], "var")
+            if os.path.isdir(cache_dir):
+                self.NV_clear_cache_dirs(cache_dir)
+        end_time = time.time()
+        self.log(
+            "created configs for {} hosts in {}".format(
+                host_info_str,
+                logging_tools.get_diff_time_str(end_time - start_time),
+            )
+        )
+
     def _create_single_host_config(
         self,
-        _bc,
-        cur_gc,
+        gbc,
         host,
-        d_map,
-        my_net_idxs,
         all_access,
         contact_group_dict,
         ng_ext_hosts,
         all_configs,
         nagvis_maps,
-        mccs_dict,
     ):
-        # optimize
+        hbc = HostBuildCache(host)
+        cur_gc = gbc.global_config
+        # build safe names
         self.__safe_cc_name = global_config["SAFE_CC_NAME"]
-        start_time = time.time()
         # set some vars
         host_nc = cur_gc["device"]
         if cur_gc.master:
@@ -429,28 +627,16 @@ class BuildProcess(
                 host_is_actively_checked = True
         else:
             host_is_actively_checked = True
-        # h_filter &= (Q(monitor_server=cur_gc.monitor_server) | Q(monitor_server=None))
-        self.__cached_mach_name = host.full_name
-        # cache logs
-        _write_logs = False
-        self.mach_log(
+        hbc.log(
             "-------- {} ---------".format(
                 "master" if cur_gc.master else "slave {}".format(cur_gc.slave_name)
             ),
-            single_build=_bc.single_build
         )
-        glob_log_str = "device {:<48s}{} ({}), d={:>3s}".format(
-            host.full_name[:48],
-            "*" if len(host.name) > 48 else " ",
-            "a" if host_is_actively_checked else "p",
-            "{:3d}".format(d_map[host.pk]) if d_map.get(host.pk) >= 0 else "---",
-        )
-        self.mach_log("Starting build of config", logging_tools.LOG_LEVEL_OK, host.full_name)
-        _counter = SimpleCounter()
+        hbc.log("Starting build of config", logging_tools.LOG_LEVEL_OK)
         if host.valid_ips:
             net_devices = host.valid_ips
         elif host.invalid_ips:
-            self.mach_log(
+            hbc.log(
                 "Device {} has no valid netdevices associated, using invalid ones...".format(
                     host.full_name
                 ),
@@ -458,13 +644,12 @@ class BuildProcess(
             )
             net_devices = host.invalid_ips
         else:
-            self.mach_log(
+            hbc.log(
                 "Device {} has no netdevices associated, skipping...".format(
                     host.full_name
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-            _counter.error()
             net_devices = {}
         use_host_deps, use_service_deps = (
             self.gc["USE_HOST_DEPENDENCIES"],
@@ -473,17 +658,15 @@ class BuildProcess(
         if net_devices:
             # print mni_str_s, mni_str_d, dev_str_s, dev_str_d
             # get correct netdevice for host
-            valid_ips, traces = self._get_target_ip_info(_bc, my_net_idxs, net_devices, _bc.get_host(host.pk))
-            if not valid_ips:
-                _counter.error()
-            act_def_dev = _bc.dev_templates[host.mon_device_templ_id or 0]
-            if _bc.single_build:
+            valid_ips, traces = self._get_target_ip_info(gbc, hbc, net_devices, gbc.get_host(host.pk))
+            act_def_dev = gbc.dev_templates[host.mon_device_templ_id or 0]
+            if gbc.single_build:
                 if not valid_ips:
                     valid_ips = [(net_ip(ip="0.0.0.0"), host.full_name)]
-                    self.mach_log("no ips found using {} as dummy IP".format(str(valid_ips)))
+                    hbc.log("no ips found using {} as dummy IP".format(str(valid_ips)))
             else:
                 if (len(valid_ips) > 0) != host.reachable:
-                    self.log(
+                    hbc.log(
                         "reachable flag {} for host {} differs from valid_ips {}".format(
                             str(host.reachable),
                             unicode(host),
@@ -495,7 +678,7 @@ class BuildProcess(
                 host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
                 valid_ip = valid_ips[0][0]
                 host.valid_ip = valid_ip
-                self.mach_log(
+                hbc.log(
                     "Found {} for host {} : {}, mon_resolve_name is {}, using {}".format(
                         logging_tools.get_plural("target ip", len(valid_ips)),
                         host.full_name,
@@ -504,12 +687,12 @@ class BuildProcess(
                         unicode(host.valid_ip)
                     )
                 )
-                if act_def_dev.mon_service_templ_id not in _bc.serv_templates:
+                if act_def_dev.mon_service_templ_id not in gbc.serv_templates:
                     self.log("Default service_template not found in service_templates", logging_tools.LOG_LEVEL_WARN)
                 else:
-                    act_def_serv = _bc.serv_templates[act_def_dev.mon_service_templ_id]
+                    act_def_serv = gbc.serv_templates[act_def_dev.mon_service_templ_id]
                     # tricky part: check the actual service_template for the various services
-                    self.mach_log(
+                    hbc.log(
                         "Using default device_template '{}' and service_template '{}' for host {}".format(
                             act_def_dev.name,
                             act_def_serv.name,
@@ -517,10 +700,10 @@ class BuildProcess(
                         )
                     )
                     # get device variables
-                    dev_variables, var_info = _bc.get_vars(host)
+                    dev_variables, var_info = gbc.get_vars(host)
                     # store
                     host.dev_variables = dev_variables
-                    self.mach_log(
+                    hbc.log(
                         "device has {} ({})".format(
                             logging_tools.get_plural("device_variable", len(host.dev_variables.keys())),
                             ", ".join(
@@ -534,6 +717,7 @@ class BuildProcess(
                     # list of all MonBaseConfigs for given host, first one is always the host part
                     host_config_list = MonFileContainer(host.full_name)
                     act_host = StructuredMonBaseConfig("host", host.full_name)
+                    hbc.device_file = act_host
                     host_config_list.append(act_host)
                     act_host["host_name"] = host.full_name
                     act_host["display_name"] = host.full_name
@@ -606,24 +790,26 @@ class BuildProcess(
                         act_host["obsess_over_host"] = 1
                     host_groups = set(contact_group_dict.get(host.full_name, []))
                     act_host["contact_groups"] = list(host_groups) if host_groups else self.gc["NONE_CONTACT_GROUP"]
-                    c_list = [entry for entry in all_access] + _bc.get_device_group_users(host.device_group_id)
+                    c_list = [entry for entry in all_access] + gbc.get_device_group_users(host.device_group_id)
                     if c_list:
                         act_host["contacts"] = c_list
-                    self.mach_log(
+                    hbc.log(
                         "contact groups for host: {}".format(
                             ", ".join(sorted(host_groups)) or "none"
                         )
                     )
-                    if host.monitor_checks or _bc.single_build:
+                    if host.monitor_checks or gbc.single_build:
                         if host.valid_ip.ip == "0.0.0.0":
-                            self.mach_log("IP address is '{}', host is assumed to be always up".format(unicode(host.valid_ip)))
+                            hbc.log(
+                                "IP address is '{}', host is assumed to be always up".format(unicode(host.valid_ip))
+                            )
                             act_host["check_command"] = "check-host-ok"
                         else:
                             if act_def_dev.host_check_command:
                                 if host_is_actively_checked:
                                     act_host["check_command"] = act_def_dev.host_check_command.name
                                 else:
-                                    self.mach_log("disabling host check_command (passive)")
+                                    hbc.log("disabling host check_command (passive)")
                             else:
                                 self.log("dev_template has no host_check_command set", logging_tools.LOG_LEVEL_ERROR)
                         # check for nagvis map
@@ -653,7 +839,7 @@ class BuildProcess(
                         # get check_commands and templates
                         conf_names = set(all_configs.get(host.full_name, []))
                         # cluster config names
-                        cconf_names = set([_sc.mon_check_command.name for _sc in _bc.get_cluster("sc", host.pk)])
+                        cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster("sc", host.pk)])
                         # build lut
                         conf_names = sorted(
                             [
@@ -667,30 +853,35 @@ class BuildProcess(
                         # list of already used checks
                         used_checks = set()
                         # print "*", conf_names
-                        # print _bc.get_vars(host)
+                        # print gbc.get_vars(host)
                         for conf_name in conf_names:
                             self._add_config(
-                                host, act_host, conf_name, used_checks, _counter, _bc,
-                                mccs_dict, cur_gc, act_def_serv, host_groups, host_is_actively_checked, host_config_list
+                                gbc, hbc,
+                                host, conf_name, used_checks,
+                                act_def_serv, host_groups, host_is_actively_checked, host_config_list
                             )
                         # add cluster checks
-                        mhc_checks = _bc.get_cluster("hc", host.pk)
+                        mhc_checks = gbc.get_cluster("hc", host.pk)
                         if len(mhc_checks):
-                            self.mach_log("adding {}".format(logging_tools.get_plural("host_cluster check", len(mhc_checks))))
+                            hbc.log(
+                                "adding {}".format(
+                                    logging_tools.get_plural("host_cluster check", len(mhc_checks))
+                                )
+                            )
                             for mhc_check in mhc_checks:
-                                dev_names = [_bc.get_host(cur_dev).full_name for cur_dev in mhc_check.devices_list]
+                                dev_names = [gbc.get_host(cur_dev).full_name for cur_dev in mhc_check.devices_list]
                                 if len(dev_names):
                                     s_check = cur_gc["command"]["check_host_cluster"]
-                                    serv_temp = _bc.serv_templates[mhc_check.mon_service_templ_id]
+                                    serv_temp = gbc.serv_templates[mhc_check.mon_service_templ_id]
                                     serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
                                     sub_list = self.get_service(
-                                        host,
-                                        act_host,
+                                        gbc,
+                                        hbc,
                                         s_check,
                                         [
                                             special_commands.ArgTemplate(
                                                 s_check,
-                                                self._get_cc_name("{}{}{}".format(s_check.get_description(), _bc.join_char, mhc_check.description)),
+                                                self._get_cc_name("{}{}{}".format(s_check.get_description(), gbc.join_char, mhc_check.description)),
                                                 arg1=mhc_check.description,
                                                 arg2=mhc_check.warn_value,
                                                 arg3=mhc_check.error_value,
@@ -702,27 +893,30 @@ class BuildProcess(
                                         serv_cgs,
                                         host_is_actively_checked,
                                         serv_temp,
-                                        cur_gc
                                     )
                                     host_config_list.extend(sub_list)
-                                    _counter.ok(len(sub_list))
+                                    hbc.add_checks(len(sub_list))
                                 else:
-                                    self.mach_log("ignoring empty host_cluster", logging_tools.LOG_LEVEL_WARN)
+                                    hbc.log("ignoring empty host_cluster", logging_tools.LOG_LEVEL_WARN)
                         # add cluster service checks
-                        msc_checks = _bc.get_cluster("sc", host.pk)
+                        msc_checks = gbc.get_cluster("sc", host.pk)
                         if len(msc_checks):
-                            self.mach_log("adding {}".format(logging_tools.get_plural("service_cluster check", len(msc_checks))))
+                            hbc.log(
+                                "adding {}".format(
+                                    logging_tools.get_plural("service_cluster check", len(msc_checks))
+                                )
+                            )
                             for msc_check in msc_checks:
                                 if msc_check.mon_check_command.name in cur_gc["command"]:
                                     c_com = cur_gc["command"][msc_check.mon_check_command.name]
-                                    dev_names = [(_bc.get_host(cur_dev).full_name, c_com.get_description()) for cur_dev in msc_check.devices_list]
+                                    dev_names = [(gbc.get_host(cur_dev).full_name, c_com.get_description()) for cur_dev in msc_check.devices_list]
                                     if len(dev_names):
                                         s_check = cur_gc["command"]["check_service_cluster"]
-                                        serv_temp = _bc.serv_templates[msc_check.mon_service_templ_id]
+                                        serv_temp = gbc.serv_templates[msc_check.mon_service_templ_id]
                                         serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
                                         sub_list = self.get_service(
-                                            host,
-                                            act_host,
+                                            gbc,
+                                            hbc,
                                             s_check,
                                             [
                                                 special_commands.ArgTemplate(
@@ -743,7 +937,7 @@ class BuildProcess(
                                                     arg5=",".join(
                                                         [
                                                             "{}{}{}".format(
-                                                                _dev_name, _bc.join_char, _srv_name
+                                                                _dev_name, gbc.join_char, _srv_name
                                                             ).replace(",", " ") for _dev_name, _srv_name in dev_names
                                                         ]
                                                     ),
@@ -753,14 +947,13 @@ class BuildProcess(
                                             serv_cgs,
                                             host_is_actively_checked,
                                             serv_temp,
-                                            cur_gc,
                                         )
                                         host_config_list.extend(sub_list)
-                                        _counter.ok(len(sub_list))
+                                        hbc.add_checks(len(sub_list))
                                     else:
-                                        self.mach_log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
+                                        hbc.log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
                                 else:
-                                    self.mach_log(
+                                    hbc.log(
                                         "check command '{}' not present in list of commands {}".format(
                                             msc_check.mon_check_command.name,
                                             ", ".join(sorted(cur_gc["command"].keys()))
@@ -769,13 +962,13 @@ class BuildProcess(
                                     )
                         # add host dependencies
                         if use_host_deps:
-                            for h_dep in _bc.get_dependencies("hd", host.pk):
+                            for h_dep in gbc.get_dependencies("hd", host.pk):
                                 # check reachability
                                 _unreachable = [
-                                    _bc.get_host(_dev_pk) for _dev_pk in h_dep.devices_list + h_dep.master_list if not _bc.get_host(_dev_pk).reachable
+                                    gbc.get_host(_dev_pk) for _dev_pk in h_dep.devices_list + h_dep.master_list if not gbc.get_host(_dev_pk).reachable
                                 ]
                                 if _unreachable:
-                                    self.mach_log(
+                                    hbc.log(
                                         "cannot create host dependency, {} unreachable: {}".format(
                                             logging_tools.get_plural("device", len(_unreachable)),
                                             ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
@@ -784,11 +977,11 @@ class BuildProcess(
                                     )
                                 else:
                                     act_host_dep = StructuredMonBaseConfig("hostdependency", "")
-                                    _list = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.devices_list]
-                                    _dep_list = [_bc.get_host(dev_pk).full_name for dev_pk in h_dep.master_list]
+                                    _list = [gbc.get_host(dev_pk).full_name for dev_pk in h_dep.devices_list]
+                                    _dep_list = [gbc.get_host(dev_pk).full_name for dev_pk in h_dep.master_list]
                                     if _list and _dep_list:
                                         if set(_list) & set(_dep_list):
-                                            self.mach_log(
+                                            hbc.log(
                                                 "host_name and dependent_host_name share some hosts: {}".format(
                                                     ", ".join(sorted(list(set(_list) & set(_dep_list))))
                                                 ),
@@ -800,19 +993,19 @@ class BuildProcess(
                                             h_dep.feed_config(act_host_dep)
                                             host_config_list.append(act_host_dep)
                                     else:
-                                        self.mach_log(
+                                        hbc.log(
                                             "empty list or dependency_list for hostdependency.(host_name|dependency_name)",
                                             logging_tools.LOG_LEVEL_ERROR
                                         )
                         # add service dependencies
                         if use_service_deps:
-                            for s_dep in _bc.get_dependencies("sd", host.pk):
+                            for s_dep in gbc.get_dependencies("sd", host.pk):
                                 act_service_dep = StructuredMonBaseConfig("servicedependency", "")
                                 if s_dep.mon_service_cluster_id:
                                     # check reachability
-                                    _unreachable = [_bc.get_host(_dev_pk) for _dev_pk in s_dep.master_list if not _bc.get_host(_dev_pk).reachable]
+                                    _unreachable = [gbc.get_host(_dev_pk) for _dev_pk in s_dep.master_list if not gbc.get_host(_dev_pk).reachable]
                                     if _unreachable:
-                                        self.mach_log(
+                                        hbc.log(
                                             "cannot create host dependency, {} unreachable: {}".format(
                                                 logging_tools.get_plural("device", len(_unreachable)),
                                                 ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
@@ -823,38 +1016,39 @@ class BuildProcess(
                                         all_ok = True
                                         for d_host in s_dep.master_list:
                                             all_ok &= self._check_for_config(
+                                                hbc,
                                                 "child",
                                                 all_configs,
-                                                _bc.mcc_lut,
-                                                _bc.mcc_lut_2,
-                                                _bc.get_host(d_host),
+                                                gbc.mcc_lut,
+                                                gbc.mcc_lut_2,
+                                                gbc.get_host(d_host),
                                                 s_dep.dependent_mon_check_command_id
                                             )
                                         if all_ok:
                                             act_service_dep["dependent_service_description"] = host_service_id_util.create_host_service_description(
                                                 dev_pk,
-                                                _bc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
-                                                _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
+                                                gbc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
+                                                gbc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
                                             )
                                             sc_check = cur_gc["command"]["check_service_cluster"]
                                             # FIXME, my_co.mcc_lut[...][1] should be mapped to check_command().get_description()
                                             act_service_dep["service_description"] = "{} / {}".format(
                                                 sc_check.get_description(),
-                                                _bc.mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1]
+                                                gbc.mcc_lut[s_dep.mon_service_cluster.mon_check_command_id][1]
                                             )
-                                            act_service_dep["host_name"] = _bc.get_host(s_dep.mon_service_cluster.main_device_id).full_name
-                                            act_service_dep["dependent_host_name"] = [_bc.get_host(dev_pk).full_name for cur_dev in s_dep.master_list]
+                                            act_service_dep["host_name"] = gbc.get_host(s_dep.mon_service_cluster.main_device_id).full_name
+                                            act_service_dep["dependent_host_name"] = [gbc.get_host(dev_pk).full_name for cur_dev in s_dep.master_list]
                                             s_dep.feed_config(act_service_dep)
                                             host_config_list.append(act_service_dep)
                                         else:
-                                            self.mach_log("cannot add cluster_service_dependency", logging_tools.LOG_LEVEL_ERROR)
+                                            hbc.log("cannot add cluster_service_dependency", logging_tools.LOG_LEVEL_ERROR)
                                 else:
                                     # check reachability
                                     _unreachable = [
-                                        _bc.get_host(_dev_pk) for _dev_pk in s_dep.master_list + s_dep.devices_list if not _bc.get_host(_dev_pk).reachable
+                                        gbc.get_host(_dev_pk) for _dev_pk in s_dep.master_list + s_dep.devices_list if not gbc.get_host(_dev_pk).reachable
                                     ]
                                     if _unreachable:
-                                        self.mach_log(
+                                        hbc.log(
                                             "cannot create host dependency, {} unrechable: {}".format(
                                                 logging_tools.get_plural("device", len(_unreachable)),
                                                 ", ".join(sorted([unicode(_dev) for _dev in _unreachable])),
@@ -865,166 +1059,178 @@ class BuildProcess(
                                         all_ok = True
                                         for p_host in s_dep.devices_list:
                                             all_ok &= self._check_for_config(
+                                                hbc,
                                                 "parent",
                                                 all_configs,
-                                                _bc.mcc_lut,
-                                                _bc.mcc_lut_2,
-                                                _bc.get_host(p_host),
+                                                gbc.mcc_lut,
+                                                gbc.mcc_lut_2,
+                                                gbc.get_host(p_host),
                                                 s_dep.mon_check_command_id
                                             )
                                         for d_host in s_dep.master_list:
                                             all_ok &= self._check_for_config(
+                                                hbc,
                                                 "child",
                                                 all_configs,
-                                                _bc.mcc_lut,
-                                                _bc.mcc_lut_2,
-                                                _bc.get_host(d_host),
+                                                gbc.mcc_lut,
+                                                gbc.mcc_lut_2,
+                                                gbc.get_host(d_host),
                                                 s_dep.dependent_mon_check_command_id
                                             )
                                         if all_ok:
                                             # FIXME, TODO, must unroll loops
-                                            # act_service_dep["dependent_service_description"] = _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
+                                            # act_service_dep["dependent_service_description"] = gbc.mcc_lut[s_dep.dependent_mon_check_command_id][1]
                                             act_service_dep["dependent_service_description"] = [
                                                 host_service_id_util.create_host_service_description(
                                                     dev_pk,
-                                                    _bc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
-                                                    _bc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
+                                                    gbc.mcc_lut_3[s_dep.dependent_mon_check_command_id],
+                                                    gbc.mcc_lut[s_dep.dependent_mon_check_command_id][1],
                                                 ) for dev_pk in s_dep.master_list
                                             ]
-                                            # act_service_dep["service_description"] = _bc.mcc_lut[s_dep.mon_check_command_id][1]
+                                            # act_service_dep["service_description"] = gbc.mcc_lut[s_dep.mon_check_command_id][1]
                                             act_service_dep["service_description"] = [
                                                 host_service_id_util.create_host_service_description(
                                                     dev_pk,
-                                                    _bc.mcc_lut_3[s_dep.mon_check_command_id],
-                                                    _bc.mcc_lut[s_dep.mon_check_command_id][1],
+                                                    gbc.mcc_lut_3[s_dep.mon_check_command_id],
+                                                    gbc.mcc_lut[s_dep.mon_check_command_id][1],
                                                 ) for dev_pk in s_dep.devices_list
                                             ]
-                                            act_service_dep["host_name"] = [_bc.get_host(dev_pk).full_name for dev_pk in s_dep.devices_list]
-                                            act_service_dep["dependent_host_name"] = [_bc.get_host(dev_pk).full_name for dev_pk in s_dep.master_list]
+                                            act_service_dep["host_name"] = [gbc.get_host(dev_pk).full_name for dev_pk in s_dep.devices_list]
+                                            act_service_dep["dependent_host_name"] = [gbc.get_host(dev_pk).full_name for dev_pk in s_dep.master_list]
                                             s_dep.feed_config(act_service_dep)
                                             host_config_list.append(act_service_dep)
                                         else:
-                                            self.mach_log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
+                                            hbc.log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
                         host_nc.add_entry(host_config_list, host)
                     else:
-                        self.mach_log("Host {} is disabled".format(host.full_name))
+                        hbc.log("Host {} is disabled".format(host.full_name))
             else:
-                self.mach_log(
+                hbc.log(
                     "No valid IPs found or no default_device_template found",
                     logging_tools.LOG_LEVEL_ERROR
                 )
-        info_str = "{:3d} ok, {:3d} w, {:3d} e ({:3d} {}) in {}".format(
-            _counter.num_ok,
-            _counter.num_warning,
-            _counter.num_error,
-            self.get_num_mach_logs(),
-            "l " if _counter.num_error == 0 else "lw",
-            logging_tools.get_diff_time_str(time.time() - start_time)
+
+        hbc.build_finished()
+        info_str = hbc.info_str
+        hbc.log(info_str)
+        glob_log_str = "device {:<48s}{} ({}), d={:>3s}, {}".format(
+            host.full_name[:48],
+            "*" if len(host.name) > 48 else " ",
+            "a" if host_is_actively_checked else "p",
+            "{:3d}".format(gbc.cur_dmap[host.pk]) if gbc.cur_dmap.get(host.pk) >= 0 else "---",
+            info_str,
         )
-        glob_log_str = "{}, {}".format(glob_log_str, info_str)
         self.log(glob_log_str)
-        self.mach_log(info_str)
-        if _counter.num_error > 0 or self.gc["DEBUG"]:
-            _write_logs = True
-        self.close_mach_log(write_logs=_write_logs)
+        if hbc.write_logs or self.gc["DEBUG"]:
+            _mach_logger = self.get_mach_logger(hbc.device.full_name)
+            hbc.flush_logs(_mach_logger)
+            _mach_logger.close()
+            del _mach_logger
+        # print("close", os.getpid())
+        hbc.close()
 
     def _add_config(
-        self, host, act_host, conf_name, used_checks, _counter, _bc, mccs_dict, cur_gc,
+        self, gbc, hbc, host, conf_name, used_checks,
         act_def_serv, host_groups, host_is_actively_checked, host_config_list
     ):
+        cur_gc = gbc.global_config
         s_check = cur_gc["command"][conf_name]
         if s_check.name in used_checks:
-            self.mach_log(
+            hbc.log(
                 "{} ({}) already used, ignoring .... (CHECK CONFIG !)".format(
                     s_check.get_description(),
                     s_check["command_name"],
                 ),
                 logging_tools.LOG_LEVEL_WARN
             )
-            _counter.warning()
         else:
             used_checks.add(s_check.name)
             # s_check: instance of check_command
             if s_check.mccs_id:
                 # map to mccs (mon_check_command_special instance from backbone)
-                mccs = mccs_dict[s_check.mccs_id]  #
+                mccs = gbc.mccs_dict[s_check.mccs_id]
                 # store name of mccs (for parenting)
                 mccs_name = mccs.name
                 if mccs.parent_id:
                     # to get the correct command_line
                     com_mccs = mccs
                     # link to parent
-                    mccs = mccs_dict[mccs.parent_id]
+                    mccs = gbc.mccs_dict[mccs.parent_id]
                 else:
                     com_mccs = mccs
                 # create lut entry to rewrite command name to mccs
                 _rewrite_lut = {"check_command": mccs.md_name}
+                # print("***", _rewrite_lut)
                 sc_array = []
-                try:
-                    cur_special = special_commands.SPECIAL_DICT["special_{}".format(mccs.name)](
-                        self.mach_log,
-                        self,
-                        # get mon_check_command (we need arg_ll)
-                        s_check=cur_gc["command"][com_mccs.md_name],
-                        parent_check=s_check,
-                        host=host,
-                        global_config=self.gc,
-                        build_cache=_bc,
-                    )
-                except:
-                    self.log(
-                        "unable to initialize special '{}': {}".format(
-                            mccs.name,
-                            process_tools.get_except_info()
-                        ),
-                        logging_tools.LOG_LEVEL_CRITICAL
-                    )
-                else:
-                    # calling handle to return a list of checks with format
-                    # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
+                hbc.add_dynamic_check(s_check)
+                # hbc.dynamic_checks = True
+                if False:
                     try:
-                        if mccs_name != mccs.name:
-                            # for meta specials
-                            sc_array = cur_special(instance=mccs_name)
-                        else:
-                            sc_array = cur_special()
+                        cur_special = special_commands.SPECIAL_DICT["special_{}".format(mccs.name)](
+                            hbc.log,
+                            self,
+                            # get mon_check_command (we need arg_ll)
+                            s_check=cur_gc["command"][com_mccs.md_name],
+                            parent_check=s_check,
+                            host=host,
+                            global_config=self.gc,
+                            build_cache=gbc,
+                        )
                     except:
-                        exc_info = process_tools.exception_info()
                         self.log(
-                            "error calling special {}:".format(mccs.name),
+                            "unable to initialize special '{}': {}".format(
+                                mccs.name,
+                                process_tools.get_except_info()
+                            ),
                             logging_tools.LOG_LEVEL_CRITICAL
                         )
-                        for line in exc_info.log_lines:
-                            self.log(" - {}".format(line), logging_tools.LOG_LEVEL_CRITICAL)
-                        sc_array = []
-                    finally:
-                        cur_special.cleanup()
-                    if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
-                        # dive in subcommands, for instance 'all SNMP checks'
-                        # check for configs not really configured
-                        _dead_coms = [_entry for _entry in sc_array if not hasattr(mccs_dict[_entry], "check_command_name")]
-                        if _dead_coms:
-                            self.log("unconfigured checks: {}".format(", ".join(sorted(_dead_coms))), logging_tools.LOG_LEVEL_CRITICAL)
-                        _com_names = [mccs_dict[_entry].check_command_name for _entry in sc_array if _entry not in _dead_coms]
-                        for _com_name in _com_names:
-                            self._add_config(
-                                host, act_host, _com_name, used_checks, _counter, _bc,
-                                mccs_dict, cur_gc, act_def_serv, host_groups, host_is_actively_checked, host_config_list
+                    else:
+                        # calling handle to return a list of checks with format
+                        # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
+                        try:
+                            if mccs_name != mccs.name:
+                                # for meta specials
+                                sc_array = cur_special(instance=mccs_name)
+                            else:
+                                sc_array = cur_special()
+                        except:
+                            exc_info = process_tools.exception_info()
+                            self.log(
+                                "error calling special {}:".format(mccs.name),
+                                logging_tools.LOG_LEVEL_CRITICAL
                             )
-                        sc_array = []
+                            for line in exc_info.log_lines:
+                                self.log(" - {}".format(line), logging_tools.LOG_LEVEL_CRITICAL)
+                            sc_array = []
+                        finally:
+                            cur_special.cleanup()
+                        if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
+                            # dive in subcommands, for instance 'all SNMP checks'
+                            # check for configs not really configured
+                            _dead_coms = [_entry for _entry in sc_array if not hasattr(gbc.mccs_dict[_entry], "check_command_name")]
+                            if _dead_coms:
+                                self.log("unconfigured checks: {}".format(", ".join(sorted(_dead_coms))), logging_tools.LOG_LEVEL_CRITICAL)
+                            _com_names = [gbc.mccs_dict[_entry].check_command_name for _entry in sc_array if _entry not in _dead_coms]
+                            for _com_name in _com_names:
+                                self._add_config(
+                                    gbc, hbc,
+                                    host, _com_name, used_checks,
+                                    act_def_serv, host_groups, host_is_actively_checked, host_config_list
+                                )
+                            sc_array = []
             else:
                 # no special command, empty rewrite_lut, simple templating
                 _rewrite_lut = {}
                 sc_array = [special_commands.ArgTemplate(s_check, s_check.get_description(), check_active=False if not s_check.is_active else None)]
                 # contact_group is only written if contact_group is responsible for the host and the service_template
             if sc_array:
-                serv_temp = _bc.serv_templates[s_check.get_template(act_def_serv.name)]
+                serv_temp = gbc.serv_templates[s_check.get_template(act_def_serv.name)]
                 serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
                 sc_list = self.get_service(
-                    host, act_host, s_check, sc_array, act_def_serv, serv_cgs, host_is_actively_checked, serv_temp, cur_gc, **_rewrite_lut
+                    gbc, hbc, s_check, sc_array, act_def_serv, serv_cgs, host_is_actively_checked, serv_temp, **_rewrite_lut
                 )
                 host_config_list.extend(sc_list)
-                _counter.ok(len(sc_list))
+                hbc.add_checks(len(sc_list))
 
     def _get_cc_name(self, in_str):
         if self.__safe_cc_name:
@@ -1032,7 +1238,7 @@ class BuildProcess(
         else:
             return in_str
 
-    def _check_for_config(self, c_type, all_configs, mcc_lut, mcc_lut_2, device, moncc_id):
+    def _check_for_config(self, hbc, c_type, all_configs, mcc_lut, mcc_lut_2, device, moncc_id):
         # configure mon check commands
         # import pprint
         # pprint.pprint(all_configs.get(device.full_name, []))
@@ -1042,7 +1248,7 @@ class BuildProcess(
         if nccom[0] in ccoms:
             return True
         else:
-            self.mach_log(
+            hbc.log(
                 "Checkcommand '{}' config ({}) not found in configs ({}) for {} '{}'".format(
                     nccom[0],
                     nccom[2],
@@ -1063,281 +1269,10 @@ class BuildProcess(
             _q = _q.filter(Q(monitor_server=self.__gen_config.monitor_server))
         return _q.count()
 
-    def _create_host_config_files(self, _bc, cur_gc, d_map, hdep_from_topo):
-        """
-        d_map : distance map
-        """
-        start_time = time.time()
-        # get contacts with access to all devices
-        _uo = user.objects  # @UndefinedVariable
-        all_access = list(
-            [
-                cur_u.login for cur_u in _uo.filter(
-                    Q(active=True) & Q(group__active=True) & Q(mon_contact__pk__gt=0)
-                ) if cur_u.has_perm("backbone.device.all_devices")
-            ]
-        )
-        self.log("users with access to all devices: {}".format(", ".join(sorted(all_access))))
-        server_idxs = [cur_gc.monitor_server.pk]
-        # get netip-idxs of own host
-        my_net_idxs = set(netdevice.objects.filter(Q(device__in=server_idxs)).filter(Q(enabled=True)).values_list("pk", flat=True))
-        # get ext_hosts stuff
-        ng_ext_hosts = self.IM_get_mon_ext_hosts()
-        # check_hosts
-        if _bc.host_list:
-            # not beautiful but working
-            pk_list = []
-            for full_h_name in _bc.host_list:
-                try:
-                    if full_h_name.count("."):
-                        found_dev = device.objects.get(Q(name=full_h_name.split(".")[0]) & Q(domain_tree_node__full_name=full_h_name.split(".", 1)[1]))
-                    else:
-                        found_dev = device.objects.get(Q(name=full_h_name))
-                except device.DoesNotExist:
-                    pass
-                else:
-                    pk_list.append(found_dev.pk)
-            h_filter = Q(pk__in=pk_list)
-        else:
-            h_filter = Q()
-        # filter for all configs, wider than the h_filter
-        ac_filter = Q()
-        # add master/slave related filters
-        if cur_gc.master:
-            # need all devices for master
-            pass
-        else:
-            h_filter &= Q(monitor_server=cur_gc.monitor_server)
-            ac_filter &= Q(monitor_server=cur_gc.monitor_server)
-        if not _bc.single_build:
-            h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
-            ac_filter &= Q(enabled=True) & Q(device_group__enabled=True)
-        # dictionary with all parent / slave relations
-        ps_dict = {}
-        _bc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(h_filter).values_list("pk", flat=True))
-        meta_devices = {
-            md.device_group.pk: md for md in device.objects.filter(
-                Q(is_meta_device=True)
-            ).prefetch_related(
-                "device_config_set",
-                "device_config_set__config"
-            ).select_related("device_group")
-        }
-        all_configs = {}
-        for cur_dev in device.objects.filter(
-            ac_filter
-        ).select_related(
-            "domain_tree_node"
-        ).prefetch_related(
-            "device_config_set",
-            "device_config_set__config"
-        ):
-            loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
-            if cur_dev.device_group_id in meta_devices:
-                loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
-            # expand with parent
-            while True:
-                new_confs = set([ps_dict[cur_name] for cur_name in loc_config if cur_name in ps_dict]) - set(loc_config)
-                if new_confs:
-                    loc_config.extend(list(new_confs))
-                else:
-                    break
-            all_configs[cur_dev.full_name] = loc_config
-        # get config variables
-        if not cur_gc["contactgroup"].keys():
-            self.log(
-                "no contact group defined",
-                logging_tools.LOG_LEVEL_ERROR
-            )
-            return
-        first_contactgroup_name = cur_gc["contactgroup"][cur_gc["contactgroup"].keys()[0]].name
-        contact_group_dict = {}
-        # get contact groups
-        if _bc.host_list:
-            host_info_str = logging_tools.get_plural("host", len(_bc.host_list))
-            ct_groups = mon_contactgroup.objects.filter(Q(device_groups__device__name__in=_bc.host_list))
-        else:
-            host_info_str = "all"
-            ct_groups = mon_contactgroup.objects.all()
-        for ct_group in ct_groups.prefetch_related("device_groups", "device_groups__device"):
-            if ct_group.pk in cur_gc["contactgroup"]:
-                pass  # cg_name = cur_gc["contactgroup"][ct_group.pk].name
-            else:
-                self.log(
-                    "contagroup_idx {} for device {} not found, using first from contactgroups ({})".format(
-                        unicode(ct_group),
-                        ct_group.name,
-                        first_contactgroup_name,
-                    ),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-                # cg_name = first_contactgroup_name
-            for g_devg in ct_group.device_groups.all().prefetch_related("device_group", "device_group__domain_tree_node"):
-                for g_dev in g_devg.device_group.all():
-                    contact_group_dict.setdefault(g_dev.full_name, []).append(ct_group.name)
-        # get valid and invalid network types
-        valid_nwt_list = set(network_type.objects.filter(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
-        _invalid_nwt_list = set(network_type.objects.exclude(Q(identifier__in=["p", "o"])).values_list("identifier", flat=True))
-        for n_i in net_ip.objects.all().select_related("network__network_type", "netdevice", "domain_tree_node"):
-            n_t = n_i.network.network_type.identifier
-            n_d = n_i.netdevice.pk
-            d_pk = n_i.netdevice.device_id
-            if n_i.domain_tree_node_id:
-                dom_name = n_i.domain_tree_node.full_name
-            else:
-                dom_name = ""
-            # print n_i, n_t, n_d, d_pk, dom_name
-            if d_pk in _bc.host_pks:
-                cur_host = _bc.get_host(d_pk)
-                # populate valid_ips and invalid_ips
-                getattr(cur_host, "valid_ips" if n_t in valid_nwt_list else "invalid_ips").setdefault(n_d, []).append((n_i, dom_name))
-        host_nc = cur_gc["device"]
-        # delete host if already present in host_table
-        host_names = []
-        for host_pk in _bc.host_pks:
-            host = _bc.get_host(host_pk)  # , host in check_hosts.iteritems():
-            host_names.append((host.full_name, host))
-            if host.full_name in host_nc:
-                # now very simple
-                del host_nc[host.full_name]
-        # mccs dict
-        mccs_dict = {mccs.pk: mccs for mccs in mon_check_command_special.objects.all()}
-        for _value in list(mccs_dict.values()):
-            mccs_dict[_value.name] = _value
-        for value in cur_gc["command"].values():
-            if value.mccs_id:
-                # add links back to check_command_names
-                mccs_dict[value.mccs_id].check_command_name = value.name
-        # caching object
-        # build lookup-table
-        self.send_pool_message("build_info", "device_count", cur_gc.monitor_server.full_name, len(host_names), target="syncer")
-        nagvis_maps = set()
-        for host_name, host in sorted(host_names):
-            if _bc.build_dv:
-                _bc.build_dv.count()
-            self._create_single_host_config(
-                _bc,
-                cur_gc,
-                host,
-                d_map,
-                my_net_idxs,
-                all_access,
-                # all_ms_connections,
-                # all_ib_connections,
-                # all_dev_relationships,
-                contact_group_dict,
-                ng_ext_hosts,
-                all_configs,
-                nagvis_maps,
-                mccs_dict,
-            )
-        host_names = host_nc.keys()
-        self.log("start parenting run")
-        p_dict = {}
-        # host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
-        _p_ok, _p_failed = (0, 0)
-        for host_name in sorted(host_names):
-            host = host_nc[host_name].object_list[0]
-            if "possible_parents" in host and not _bc.single_build:
-                # parent list
-                parent_list = set()
-                # check for nagvis_maps
-                local_nagvis_maps = []
-                p_parents = host["possible_parents"]
-                for _p_val, _nd_val, p_list in p_parents:
-                    # skip first host (is self)
-                    host_pk = p_list[0]
-                    for parent_idx in p_list[1:]:
-                        if parent_idx in d_map:
-                            if d_map[host_pk] > d_map[parent_idx]:
-                                parent = _bc.get_host(parent_idx).full_name
-                                if parent in host_names and parent != host.name:
-                                    parent_list.add(parent)
-                                    # exit inner loop
-                                    break
-                            else:
-                                # exit inner loop
-                                break
-                        else:
-                            self.log("parent_idx {:d} not in distance map, routing cache too old?".format(parent_idx), logging_tools.LOG_LEVEL_ERROR)
-                    if "_nagvis_map" not in host:
-                        # loop again to scan for nagvis_map
-                        for parent_idx in p_list[1:]:
-                            if parent_idx in d_map:
-                                if d_map[host_pk] > d_map[parent_idx]:
-                                    parent = _bc.get_host(parent_idx).full_name
-                                    if parent in host_names and parent != host.name:
-                                        if "_nagvis_map" in host_nc[parent].object_list[0]:
-                                            local_nagvis_maps.append(host_nc[parent].object_list[0]["_nagvis_map"])
-                            else:
-                                self.log("parent_idx {:d} not in distance map, routing cache too old?".format(parent_idx), logging_tools.LOG_LEVEL_ERROR)
-                if "_nagvis_map" not in host and local_nagvis_maps:
-                    host["_nagvis_map"] = local_nagvis_maps[0]
-                if parent_list:
-                    host["parents"] = list(parent_list)
-                    for cur_parent in parent_list:
-                        p_dict.setdefault(cur_parent, []).append(host_name)
-                    _p_ok += 1
-                    if _bc.debug:
-                        self.log("Setting parent of '{}' to {}".format(host_name, ", ".join(parent_list)), logging_tools.LOG_LEVEL_OK)
-                else:
-                    _p_failed += 1
-                    self.log("Parenting problem for '{}', {:d} traces found".format(host_name, len(p_parents)), logging_tools.LOG_LEVEL_WARN)
-                    if _bc.debug:
-                        p_parents = host["possible_parents"]
-                        for t_num, (_p_val, _nd_val, p_list) in enumerate(p_parents):
-                            host_pk = p_list[0]
-                            self.log(
-                                "  trace {:3d}, distance is {:3d}, {}".format(
-                                    t_num + 1,
-                                    d_map[host_pk],
-                                    logging_tools.get_plural("entry", len(p_list) - 1),
-                                )
-                            )
-                            for parent_idx in p_list[1:]:
-                                parent = _bc.get_host(parent_idx).full_name
-                                self.log(
-                                    "    {:>30s} (distance is {:3d}, in config: {})".format(
-                                        unicode(parent),
-                                        d_map[parent_idx],
-                                        parent in host_names,
-                                    )
-                                )
-            if "possible_parents" in host:
-                del host["possible_parents"]
-        self.log("end parenting run, {:d} ok, {:d} failed".format(_p_ok, _p_failed))
-        if cur_gc.master and not _bc.single_build:
-            if hdep_from_topo:
-                # import pprint
-                # pprint.pprint(p_dict)
-                for parent, clients in p_dict.iteritems():
-                    new_hd = StructuredMonBaseConfig("hostdependency", "")
-                    new_hd["dependent_host_name"] = clients
-                    new_hd["host_name"] = parent
-                    new_hd["dependency_period"] = self.mon_host_dep.dependency_period.name
-                    new_hd["execution_failure_criteria"] = self.mon_host_dep.execution_failure_criteria
-                    new_hd["notification_failure_criteria"] = self.mon_host_dep.notification_failure_criteria
-                    new_hd["inherits_parent"] = "1" if self.mon_host_dep.inherits_parent else "0"
-                    cur_gc["hostdependency"].add_object(new_hd)
-            self.log("created {}".format(logging_tools.get_plural("nagvis map", len(nagvis_maps))))
-            # nagvis handling
-            nagvis_map_dir = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps")
-            if os.path.isdir(nagvis_map_dir):
-                self.NV_store_nagvis_maps(nagvis_map_dir, nagvis_maps)
-            cache_dir = os.path.join(self.gc["NAGVIS_DIR"], "var")
-            if os.path.isdir(cache_dir):
-                self.NV_clear_cache_dirs(cache_dir)
-        end_time = time.time()
-        self.log(
-            "created configs for {} hosts in {}".format(
-                host_info_str,
-                logging_tools.get_diff_time_str(end_time - start_time),
-            )
-        )
-
-    def get_service(self, host, act_host, s_check, sc_array, act_def_serv, serv_cgs, host_is_actively_checked, serv_temp, cur_gc, **kwargs):
+    def get_service(self, gbc, hbc, s_check, sc_array, act_def_serv, serv_cgs, host_is_actively_checked, serv_temp, **kwargs):
+        host = hbc.device
         ev_defined = True if s_check.event_handler else False
-        self.mach_log(
+        hbc.log(
             "  adding check {:<30s} ({:2d} p), template {}, {}, {}".format(
                 s_check["command_name"],
                 len(sc_array),
@@ -1378,6 +1313,7 @@ class BuildProcess(
             act_serv["host_name"] = host.full_name
             # volatile
             act_serv["is_volatile"] = "1" if serv_temp.volatile else "0"
+            cur_gc = gbc.global_config
             act_serv["check_period"] = cur_gc["timeperiod"][serv_temp.nsc_period_id].name
             act_serv["max_check_attempts"] = serv_temp.max_attempts
             act_serv["check_interval"] = serv_temp.check_interval
@@ -1416,7 +1352,7 @@ class BuildProcess(
                 cur_gc["servicegroup"].add_host(host.name, act_serv["servicegroups"])
             # command_name may be altered when using a special-command
             _com_parts = [
-                             kwargs.get("command_name", s_check["command_name"])
+                kwargs.get("command_name", s_check["command_name"])
             ] + s_check.correct_argument_list(arg_temp, host.dev_variables)
             if any([_part is None for _part in _com_parts]) and self.gc["DEBUG"]:
                 self.log("none found: {}".format(str(_com_parts)), logging_tools.LOG_LEVEL_CRITICAL)
@@ -1428,8 +1364,9 @@ class BuildProcess(
             ret_field.append(act_serv)
         return ret_field
 
-    def _get_target_ip_info(self, _bc, srv_net_idxs, net_devices, host):
-        traces = _bc.get_mon_host_trace(host, net_devices, srv_net_idxs)
+    def _get_target_ip_info(self, gbc, hbc, net_devices, host):
+        srv_net_idxs = gbc.server_net_idxs
+        traces = gbc.get_mon_host_trace(host, net_devices, srv_net_idxs)
         if not traces:
             pathes = self.router_obj.get_ndl_ndl_pathes(srv_net_idxs, net_devices.keys(), add_penalty=True)
             traces = []
@@ -1439,9 +1376,9 @@ class BuildProcess(
                     dev_path.reverse()
                     traces.append((penalty, cur_path[-1], dev_path))
             traces = sorted(traces)
-            _bc.set_mon_host_trace(host, net_devices, srv_net_idxs, traces)
+            gbc.set_mon_host_trace(host, net_devices, srv_net_idxs, traces)
         if not traces:
-            self.mach_log(
+            hbc.log(
                 "Cannot reach device {} (check peer_information)".format(
                     host.full_name
                 ),

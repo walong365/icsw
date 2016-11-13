@@ -17,7 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" special tasks for md-config-server, should be split into submodules, FIXME """
+""" special (dynamic) tasks for md-config-server """
 
 from __future__ import unicode_literals, print_function
 
@@ -32,8 +32,8 @@ from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools
 
 __all__ = [
-    "SpecialBase",
-    "ArgTemplate",
+    b"SpecialBase",
+    b"ArgTemplate",
 ]
 
 

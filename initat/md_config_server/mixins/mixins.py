@@ -40,9 +40,9 @@ from initat.tools import logging_tools, process_tools
 from ..config.global_config import global_config
 
 __all__ = [
-    "ImageMapMixin",
-    "DistanceMapMixin",
-    "NagVisMixin",
+    b"ImageMapMixin",
+    b"DistanceMapMixin",
+    b"NagVisMixin",
 ]
 
 

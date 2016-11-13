@@ -249,6 +249,8 @@ class device(models.Model):
     snmp_schemes = models.ManyToManyField("backbone.snmp_scheme")
     # device class
     device_class = models.ForeignKey("backbone.DeviceClass", null=True)
+    # dynamic checks added
+    dynamic_checks = models.BooleanField(default=False)
 
     @classmethod
     def get_com_caps_for_lock(cls, lock_type):
