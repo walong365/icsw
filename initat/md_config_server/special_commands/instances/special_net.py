@@ -30,14 +30,14 @@ from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import logging_tools
 
 
-class special_net(SpecialBase):
+class SpecialNet(SpecialBase):
     class Meta:
         info = "configured netdevices via collserver"
         group = SpecialGroupsEnum.system_net
         command_line = "$USER2$ -m $HOSTADDRESS$ net --duplex $ARG1$ -s $ARG2$ -w $ARG3$ -c $ARG4$ $ARG5$"
         description = "queries all configured network devices"
 
-    def _call(self):
+    def call(self):
         sc_array = []
         virt_check = re.compile("^.*:\S+$")
         # never check duplex and stuff for a loopback-device

@@ -27,7 +27,7 @@ from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import logging_tools
 
 
-class special_syslog_rate(SpecialBase):
+class SpecialSyslogRate(SpecialBase):
     class Meta:
         server_contact = False
         info = "Syslog rate"
@@ -36,8 +36,9 @@ class special_syslog_rate(SpecialBase):
             "-c ${ARG4:DEVICE_SYSLOG_RATE_CRITICAL:2.0} --pk $ARG5$"
         description = "return the current syslog rate of the given device"
 
-    def _call(self):
+    def call(self):
         sc_array = []
+        # todo, FIXME
         SRV_TYPE = "logcheck-server"
         _router = self.build_cache.router
         if SRV_TYPE in _router:
@@ -59,7 +60,7 @@ class special_syslog_rate(SpecialBase):
         return sc_array
 
 
-class special_syslog_general(SpecialBase):
+class SpecialSyslogGeneral(SpecialBase):
     class Meta:
         server_contact = False
         info = "all configured Syslog checks"
@@ -67,9 +68,10 @@ class special_syslog_general(SpecialBase):
         command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_check_mon " \
             "--pk $ARG3$ --key $ARG4$ --checks $ARG5$"
 
-    def _call(self, instance=None):
+    def call(self, instance=None):
         _checks = SyslogCheck.all_enabled.all()
         sc_array = []
+        # todo, FIXME
         SRV_TYPE = "logcheck-server"
         _router = self.build_cache.router
         if SRV_TYPE in _router:

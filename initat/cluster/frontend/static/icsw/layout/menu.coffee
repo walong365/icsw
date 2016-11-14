@@ -390,10 +390,10 @@ menu_module = angular.module(
             else
                 _a_classes.push("icswMenuDeact")
                 a_attrs.pointerEvents = "none"
-                a_attrs.title = "not available: missing #{data.$$missing_info}"
+                a_attrs.title = "Not available: Missing #{data.$$missing_info}"
                 _mis_span = span(
                     {
-                        className: "label label-danger"
+                        className: "label label-default"
                         key: "mis"
                     }
                     data.$$missing_short.join("")

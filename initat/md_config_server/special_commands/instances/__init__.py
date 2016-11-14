@@ -20,18 +20,41 @@
 from __future__ import unicode_literals, print_function
 
 import inspect
+import inflection
 import os
 
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import process_tools
 
 __all__ = [
-    b"IMPORT_ERRORS",
-    b"SPECIAL_DICT",
+    b"dynamic_checks",
 ]
 
-IMPORT_ERRORS = []
-SPECIAL_DICT = {}
+
+class DynamicCheckDict(object):
+    def __init__(self):
+        # list of classes
+        self._class_list = []
+        self._class_dict = {}
+        self.import_errors = []
+
+    def feed(self, key, obj):
+        self._class_list.append(obj)
+        self._class_dict[key] = obj
+
+    @staticmethod
+    def meta_to_class_name(name):
+        return "Special{}".format(name)
+
+    @property
+    def class_dict(self):
+        return self._class_dict
+
+    def __getitem__(self, key):
+        _key = DynamicCheckDict.meta_to_class_name(inflection.camelize(key))
+        return self._class_dict[_key]
+
+dynamic_checks = DynamicCheckDict()
 
 
 _inst_list = [
@@ -52,9 +75,9 @@ for mod_name in _inst_list:
         for _key in dir(new_mod):
             _obj = getattr(new_mod, _key)
             if inspect.isclass(_obj) and not _obj == SpecialBase and issubclass(_obj, SpecialBase):
-                SPECIAL_DICT[_key] = _obj
+                # print(_obj.Meta)
+                dynamic_checks.feed(_key, _obj)
     except:
         exc_info = process_tools.exception_info()
         for log_line in exc_info.log_lines:
-            IMPORT_ERRORS.append((mod_name, "import", log_line))
-
+            dynamic_checks.import_errors.append((mod_name, "import", log_line))
