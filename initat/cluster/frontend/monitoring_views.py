@@ -100,6 +100,18 @@ class create_config(View):
             request.xml_response["result"] = E.devices()
 
 
+class fetch_dyn_config(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        srv_com = server_command.srv_command(
+            command="fetch_dyn_config",
+        )
+        result = contact_server(request, icswServiceEnum.monitor_server, srv_com, connection_id="wf_mdrc")
+        if result:
+            request.xml_response["result"] = E.devices()
+
+
 class call_icinga(View):
     @method_decorator(login_required)
     def post(self, request):

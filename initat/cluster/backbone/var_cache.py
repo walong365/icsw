@@ -37,7 +37,9 @@ class VarCache(dict):
         self.__cdg = device.objects.get(Q(device_group__cluster_device_group=True))
         self.__prefill = prefill
         self.__def_dict = def_dict or {}
-        if prefill:
+        # for future configure options
+        self.__new_var_type = "private"
+        if self.__prefill:
             self._prefill()
 
     # key functions
@@ -68,11 +70,27 @@ class VarCache(dict):
 
     def set_variable(self, dev, var_name, var_value):
         # update db
-        dev_variable = device_variable.objects.get(Q(name=var_name) & Q(device=dev))
-        dev_variable.value = var_value
-        dev_variable.save()
-        # update dict
-        self[self._device_key(dev)][var_name] = (var_value, dev_variable.inherit)
+        _d_key = self._device_key(dev)
+        if _d_key not in self or var_name not in self.get(_d_key, {}):
+            if not self.__prefill:
+                self.get_vars(dev)
+        if _d_key not in self or var_name not in self.get(_d_key, {}):
+            # set variable
+            _new_var = device_variable.get_private_variable(
+                name=var_name,
+                device=dev,
+            )
+            _new_var.set_value(var_value)
+            _new_var.save()
+            self.setdefault(_d_key, {})[var_name] = (var_value, _new_var.inherit)
+        else:
+            if self[_d_key][var_name][0] != var_value:
+                # update
+                dev_variable = device_variable.objects.get(Q(name=var_name) & Q(device=dev))
+                dev_variable.value = var_value
+                dev_variable.save()
+                # update dict
+                self[_d_key][var_name] = (var_value, dev_variable.inherit)
 
     def _fetch_vars(self, key, ref_dev):
         self[key] = {

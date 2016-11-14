@@ -50,6 +50,9 @@ def check_special_commands(log_com):
             pks_found.add(cur_mccs.pk)
             if cur_mccs.meta:
                 for _sub_com in _inst.get_commands():
+                    if not hasattr(_sub_com.Meta, "db_name"):
+                        # set db_name attribute
+                        _sub_com.Meta.db_name = _sub_com.Meta.name
                     sub_mccs = check_mccs(log_com, _sub_com.Meta, parent=cur_mccs)
                     mccs_dict[sub_mccs.name] = sub_mccs
                     pks_found.add(sub_mccs.pk)
@@ -84,8 +87,6 @@ def check_mccs(log_com, meta, parent=None):
     try:
         cur_mccs = mon_check_command_special.objects.get(Q(name=meta.db_name))
     except mon_check_command_special.DoesNotExist:
-        print(meta.db_name)
-        sys.exit(-1)
         cur_mccs = mon_check_command_special(name=meta.db_name)
     # also used in snmp/struct.py and generic_net_handler.py
     for attr_name in {"command_line", "info", "description", "is_active", "meta", "identifier"}:

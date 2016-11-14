@@ -35,6 +35,8 @@ class BuildModes(Enum):
     some_master = "some_master"
     # build some and redistribute, slave process
     some_slave = "some_slave"
+    # dynamic update run
+    dyn_master = "dyn_master"
 
 
 # icinga constants

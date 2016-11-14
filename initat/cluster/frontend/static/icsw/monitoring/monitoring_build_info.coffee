@@ -252,9 +252,19 @@ monitoring_build_info_module = angular.module(
         blockUI.start()
         icswSimpleAjaxCall(
             url: ICSW_URLS.MON_CREATE_CONFIG
-            data:
-                cache_mode: "DYNAMIC"
             title: "create config"
+        ).then(
+            (data) ->
+                blockUI.stop()
+            (error) ->
+                blockUI.stop()
+        )
+
+    $scope.fetch_dyn_config = ($event) ->
+        blockUI.start()
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.MON_FETCH_DYN_CONFIG
+            title: "starting dynamic config fetch"
         ).then(
             (data) ->
                 blockUI.stop()

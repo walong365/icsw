@@ -281,6 +281,7 @@ network_patterns = [
 
 monitoring_patterns = [
     url("^create_config$", monitoring_views.create_config.as_view(), name="create_config"),
+    url("^fetch_dyn_config$", monitoring_views.fetch_dyn_config.as_view(), name="fetch_dyn_config"),
     # url("^setup$", monitoring_views.setup.as_view(), name="setup"),
     # url("^extsetupc$", monitoring_views.setup_cluster.as_view(), name="setup_cluster"),
     # url("^extsetupe$", monitoring_views.setup_escalation.as_view(), name="setup_escalation"),

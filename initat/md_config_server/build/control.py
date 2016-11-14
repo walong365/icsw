@@ -39,11 +39,14 @@ class BuildControl(object):
         self.log("init BuildControl")
         # store pending commands
         self.__pending_commands = []
-        self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         # ready (check_for_slaves called)
         self.__ready = False
         self.version = int(time.time())
         self.__initial_reload_checked = False
+        # dyn process is running
+        self.__dc_running = False
+        # dyn run is requested
+        self.__dc_run_queue = []
         self.log("initial config_version is {:d}".format(self.version))
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
@@ -98,22 +101,22 @@ class BuildControl(object):
                 self.handle_command(server_command.srv_command(source=self.__pending_commands.pop(0)))
 
     def handle_command(self, srv_com):
-        if self.__ready:
-            _func_name = srv_com["*command"]
-            if hasattr(self, _func_name):
+        _func_name = srv_com["*command"]
+        if _func_name in {"sync_http_users", "build_host_config", "fetch_dyn_config"}:
+            if self.__ready:
                 getattr(self, _func_name)(srv_com)
             else:
-                self.log("unknown function '{}'".format(_func_name), logging_tools.LOG_LEVEL_CRITICAL)
+                self.log("buffering command {}".format(srv_com["*command"]), logging_tools.LOG_LEVEL_WARN)
+                self.__pending_commands.append(unicode(srv_com))
         else:
-            self.log("buffering command {}".format(srv_com["*command"]), logging_tools.LOG_LEVEL_WARN)
-            self.__pending_commands.append(unicode(srv_com))
+            self.log("unknown function '{}'".format(_func_name), logging_tools.LOG_LEVEL_CRITICAL)
 
     def get_host_config(self, srv_com):
         # dummy call, should be build_host_config, name needed
         # to distinguish call in server.py
         return self.build_host_config(srv_com)
 
-    def _sync_http_users(self, *args, **kwargs):
+    def sync_http_users(self, *args, **kwargs):
         self.log("syncing http-users")
         print("not handled correctly right now, triggering error")
         self.__gen_config._create_access_entries()
@@ -127,7 +130,7 @@ class BuildControl(object):
                 self.__process.send_to_process(
                     _p_name,
                     "routing_fingerprint",
-                    _fp
+                    _fp,
                 )
         else:
             self.log("Unknown build_step action '{}'".format(_action), logging_tools.LOG_LEVEL_ERROR)
@@ -188,3 +191,27 @@ class BuildControl(object):
                 BuildModes.some_master: BuildModes.some_slave,
                 BuildModes.all_master: BuildModes.all_slave,
             }.get(_mode, _mode)
+
+    def process_action(self, proc_name, ss_flag):
+        if proc_name in {"DynConfig"}:
+            self.__dc_running = ss_flag
+            if not self.__dc_running and len(self.__dc_run_queue):
+                self.log("fetching srv_com from dc_run_queue")
+                srv_com = self.__dc_run_queue.pop(0)
+                self.fetch_dyn_config(self, srv_com)
+
+    def fetch_dyn_config(self, srv_com, *args, **kwargs):
+        if self.__dc_running:
+            self.log("DynConfigProcess is already running, registering re-run")
+            self.__dc_run_queue.append(srv_com)
+        else:
+            _p_name = "DynConfig"
+            self.__process.add_process(BuildProcess(_p_name), start=True)
+            self.__process.send_to_process(
+                _p_name,
+                "fetch_dyn_config",
+                BuildModes.dyn_master,
+                self.__master_config.serialize(),
+                unicode(srv_com),
+            )
+            self.__dc_running = True

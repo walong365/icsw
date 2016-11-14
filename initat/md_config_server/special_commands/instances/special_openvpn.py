@@ -25,7 +25,7 @@ from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 
 
-class special_openvpn(SpecialBase):
+class SpecialOpenvpn(SpecialBase):
     class Meta:
         server_contact = True
         info = "OpenVPN check"
@@ -51,7 +51,7 @@ class special_openvpn(SpecialBase):
                         )
         return _hints
 
-    def _call(self):
+    def call(self):
         sc_array = []
         # no expected_dict found, try to get the actual config from the server
         hint_list = self.collrelay("openvpn_status")

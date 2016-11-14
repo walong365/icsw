@@ -18,6 +18,7 @@
                 </icsw-monitoring-sys-info-node>
                 <div style="margin-top:10px;"></div>
                 <icsw-tools-button size="sm" type="create" value="Create Configuration" ng-click="create_config($event)"></icsw-tools-button>
+                <icsw-tools-button size="sm" type="create" value="Fetch Dynamic Config" ng-click="fetch_dyn_config($event)"></icsw-tools-button>
                 <icsw-tools-button
                     size="sm"
                     ng-show="acl_read(null, 'backbone.mon_check_command.redirect_to_icinga')"
