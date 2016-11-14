@@ -28,18 +28,18 @@ from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import logging_tools
 
 
-class special_disc(SpecialBase):
+class SpecialDisc(SpecialBase):
     class Meta:
         info = "Discs via collserver"
         group = SpecialGroupsEnum.system_disc
         command_line = "$USER2$ -m $HOSTADDRESS$ df -w ${ARG1:85} -c ${ARG2:95} $ARG3$"
         description = "queries the partition on the target system via collserver"
 
-    def _call(self):
+    def call(self):
         part_dev = self.host.partdev
         first_disc = None
         part_list = []
-        _po = partition.objects  # @UndefinedVariable
+        _po = partition.objects
         for part_p in _po.filter(
             Q(partition_disc__partition_table=self.host.act_partition_table)
         ).select_related(
@@ -97,7 +97,9 @@ class special_disc(SpecialBase):
                         logging_tools.LOG_LEVEL_WARN
                     )
         # LVM-partitions
-        for lvm_part in lvm_lv.objects.filter(Q(lvm_vg__partition_table=self.host.act_partition_table)).select_related("lvm_vg").order_by("name"):
+        for lvm_part in lvm_lv.objects.filter(
+            Q(lvm_vg__partition_table=self.host.act_partition_table)
+        ).select_related("lvm_vg").order_by("name"):
             if lvm_part.mountpoint:
                 warn_level, crit_level = (
                     lvm_part.warn_threshold or 0,

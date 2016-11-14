@@ -34,8 +34,7 @@ from initat.cluster.backbone.models import device, device_variable, mon_contactg
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
-    MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, MonFileContainer, \
-    StructuredMonBaseConfig
+    MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, StructuredMonBaseConfig
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, logging_tools, process_tools, server_mixins, server_command
@@ -360,7 +359,7 @@ class BuildProcess(
         self.log("users with access to all devices: {}".format(", ".join(sorted(all_access))))
         cur_gc = gbc.global_config
         # get ext_hosts stuff
-        ng_ext_hosts = self.IM_get_mon_ext_hosts()
+        gbc.ng_ext_hosts = self.IM_get_mon_ext_hosts()
         # check_hosts
         if gbc.host_list:
             # not beautiful but working
@@ -495,16 +494,49 @@ class BuildProcess(
                 host,
                 all_access,
                 contact_group_dict,
-                ng_ext_hosts,
                 all_configs,
                 nagvis_maps,
             )
-        host_names = host_nc.keys()
+        p_dict = self.parenting_run(gbc)
+        if cur_gc.master and not gbc.single_build:
+            if gbc.hdep_from_topo:
+                # import pprint
+                # pprint.pprint(p_dict)
+                for parent, clients in p_dict.iteritems():
+                    new_hd = StructuredMonBaseConfig("hostdependency", "")
+                    new_hd["dependent_host_name"] = clients
+                    new_hd["host_name"] = parent
+                    new_hd["dependency_period"] = self.mon_host_dep.dependency_period.name
+                    new_hd["execution_failure_criteria"] = self.mon_host_dep.execution_failure_criteria
+                    new_hd["notification_failure_criteria"] = self.mon_host_dep.notification_failure_criteria
+                    new_hd["inherits_parent"] = "1" if self.mon_host_dep.inherits_parent else "0"
+                    cur_gc["hostdependency"].add_object(new_hd)
+            self.log("created {}".format(logging_tools.get_plural("nagvis map", len(nagvis_maps))))
+            # nagvis handling
+            nagvis_map_dir = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps")
+            if os.path.isdir(nagvis_map_dir):
+                self.NV_store_nagvis_maps(nagvis_map_dir, nagvis_maps)
+            cache_dir = os.path.join(self.gc["NAGVIS_DIR"], "var")
+            if os.path.isdir(cache_dir):
+                self.NV_clear_cache_dirs(cache_dir)
+        end_time = time.time()
+        self.log(
+            "created configs for {} hosts in {}".format(
+                host_info_str,
+                logging_tools.get_diff_time_str(end_time - start_time),
+            )
+        )
+
+    def parenting_run(self, gbc):
+        s_time = time.time()
+        cur_gc = gbc.global_config
         self.log("start parenting run")
+        host_nc = cur_gc["device"]
         p_dict = {}
         # host_uuids = set([host_val.uuid for host_val in all_hosts_dict.itervalues() if host_val.full_name in host_names])
         _p_ok, _p_failed = (0, 0)
         d_map = gbc.cur_dmap
+        host_names = host_nc.keys()
         for host_name in sorted(host_names):
             host = host_nc[host_name].object_list[0]
             if "possible_parents" in host and not gbc.single_build:
@@ -574,35 +606,15 @@ class BuildProcess(
                                 )
             if "possible_parents" in host:
                 del host["possible_parents"]
-        self.log("end parenting run, {:d} ok, {:d} failed".format(_p_ok, _p_failed))
-        if cur_gc.master and not gbc.single_build:
-            if gbc.hdep_from_topo:
-                # import pprint
-                # pprint.pprint(p_dict)
-                for parent, clients in p_dict.iteritems():
-                    new_hd = StructuredMonBaseConfig("hostdependency", "")
-                    new_hd["dependent_host_name"] = clients
-                    new_hd["host_name"] = parent
-                    new_hd["dependency_period"] = self.mon_host_dep.dependency_period.name
-                    new_hd["execution_failure_criteria"] = self.mon_host_dep.execution_failure_criteria
-                    new_hd["notification_failure_criteria"] = self.mon_host_dep.notification_failure_criteria
-                    new_hd["inherits_parent"] = "1" if self.mon_host_dep.inherits_parent else "0"
-                    cur_gc["hostdependency"].add_object(new_hd)
-            self.log("created {}".format(logging_tools.get_plural("nagvis map", len(nagvis_maps))))
-            # nagvis handling
-            nagvis_map_dir = os.path.join(self.gc["NAGVIS_DIR"], "etc", "maps")
-            if os.path.isdir(nagvis_map_dir):
-                self.NV_store_nagvis_maps(nagvis_map_dir, nagvis_maps)
-            cache_dir = os.path.join(self.gc["NAGVIS_DIR"], "var")
-            if os.path.isdir(cache_dir):
-                self.NV_clear_cache_dirs(cache_dir)
-        end_time = time.time()
+        e_time = time.time()
         self.log(
-            "created configs for {} hosts in {}".format(
-                host_info_str,
-                logging_tools.get_diff_time_str(end_time - start_time),
+            "end parenting run in {}, {:d} ok, {:d} failed".format(
+                logging_tools.get_diff_time_str(e_time - s_time),
+                _p_ok,
+                _p_failed,
             )
         )
+        return p_dict
 
     def create_single_host_config(
         self,
@@ -610,7 +622,6 @@ class BuildProcess(
         host,
         all_access,
         contact_group_dict,
-        ng_ext_hosts,
         all_configs,
         nagvis_maps,
     ):
@@ -619,7 +630,6 @@ class BuildProcess(
         # build safe names
         self.__safe_cc_name = global_config["SAFE_CC_NAME"]
         # set some vars
-        host_nc = cur_gc["device"]
         if cur_gc.master:
             if host.monitor_server_id and host.monitor_server_id != cur_gc.monitor_server.pk:
                 hbc.host_is_actively_checked = False
@@ -715,10 +725,9 @@ class BuildProcess(
                     )
                     # now we have the device- and service template
                     # list of all MonBaseConfigs for given host, first one is always the host part
-                    host_config_list = MonFileContainer(host.full_name)
+                    # host_config_list = MonFileContainer(host.full_name)
                     act_host = StructuredMonBaseConfig("host", host.full_name)
-                    hbc.device_file = act_host
-                    host_config_list.append(act_host)
+                    hbc.set_device_file(act_host)
                     act_host["host_name"] = host.full_name
                     act_host["display_name"] = host.full_name
                     # action url
@@ -785,17 +794,15 @@ class BuildProcess(
                         act_host["flap_detection_options"] = n_field
                     # if checks_are_active and not cur_gc.master:
                     #    # trace changes
-                    # always enable obsess_over_host
-                    if True:
-                        act_host["obsess_over_host"] = 1
-                    host_groups = set(contact_group_dict.get(host.full_name, []))
-                    act_host["contact_groups"] = list(host_groups) if host_groups else self.gc["NONE_CONTACT_GROUP"]
+                    act_host["obsess_over_host"] = 1
+                    hbc.contact_groups = set(contact_group_dict.get(host.full_name, []))
+                    act_host["contact_groups"] = list(hbc.contact_groups) if hbc.contact_groups else self.gc["NONE_CONTACT_GROUP"]
                     c_list = [entry for entry in all_access] + gbc.get_device_group_users(host.device_group_id)
                     if c_list:
                         act_host["contacts"] = c_list
                     hbc.log(
                         "contact groups for host: {}".format(
-                            ", ".join(sorted(host_groups)) or "none"
+                            ", ".join(sorted(hbc.contact_groups)) or "none"
                         )
                     )
                     if host.monitor_checks or gbc.single_build:
@@ -831,9 +838,9 @@ class BuildProcess(
                             not_a.append("n")
                         act_host["notification_options"] = not_a
                         # check for hostextinfo
-                        if host.mon_ext_host_id and host.mon_ext_host_id in ng_ext_hosts:
+                        if host.mon_ext_host_id and host.mon_ext_host_id in gbc.ng_ext_hosts:
                             for key in ["icon_image", "statusmap_image"]:
-                                act_host[key] = getattr(ng_ext_hosts[host.mon_ext_host_id], key)
+                                act_host[key] = getattr(gbc.ng_ext_hosts[host.mon_ext_host_id], key)
                         # clear host from servicegroups
                         cur_gc["servicegroup"].clear_host(host.full_name)
                         # get check_commands and templates
@@ -858,106 +865,16 @@ class BuildProcess(
                             self.add_host_config(
                                 gbc, hbc,
                                 host, conf_name, used_checks,
-                                act_def_serv, host_groups, host_config_list
+                                act_def_serv,
                             )
                         # add cluster checks
                         mhc_checks = gbc.get_cluster("hc", host.pk)
                         if len(mhc_checks):
-                            hbc.log(
-                                "adding {}".format(
-                                    logging_tools.get_plural("host_cluster check", len(mhc_checks))
-                                )
-                            )
-                            for mhc_check in mhc_checks:
-                                dev_names = [gbc.get_host(cur_dev).full_name for cur_dev in mhc_check.devices_list]
-                                if len(dev_names):
-                                    s_check = cur_gc["command"]["check_host_cluster"]
-                                    serv_temp = gbc.serv_templates[mhc_check.mon_service_templ_id]
-                                    serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
-                                    sub_list = self.get_service(
-                                        gbc,
-                                        hbc,
-                                        s_check,
-                                        [
-                                            special_commands.ArgTemplate(
-                                                s_check,
-                                                self._get_cc_name("{}{}{}".format(s_check.get_description(), gbc.join_char, mhc_check.description)),
-                                                arg1=mhc_check.description,
-                                                arg2=mhc_check.warn_value,
-                                                arg3=mhc_check.error_value,
-                                                arg4=",".join(["$HOSTSTATEID:{}$".format(_dev_name) for _dev_name in dev_names]),
-                                                arg5=",".join(dev_names),
-                                            )
-                                        ],
-                                        act_def_serv,
-                                        serv_cgs,
-                                        serv_temp,
-                                    )
-                                    host_config_list.extend(sub_list)
-                                    hbc.add_checks(len(sub_list))
-                                else:
-                                    hbc.log("ignoring empty host_cluster", logging_tools.LOG_LEVEL_WARN)
+                            hbc.host_config_list.extend(self.add_host_cluster_checks(gbc, hbc, mhc_checks, act_def_serv))
                         # add cluster service checks
                         msc_checks = gbc.get_cluster("sc", host.pk)
                         if len(msc_checks):
-                            hbc.log(
-                                "adding {}".format(
-                                    logging_tools.get_plural("service_cluster check", len(msc_checks))
-                                )
-                            )
-                            for msc_check in msc_checks:
-                                if msc_check.mon_check_command.name in cur_gc["command"]:
-                                    c_com = cur_gc["command"][msc_check.mon_check_command.name]
-                                    dev_names = [(gbc.get_host(cur_dev).full_name, c_com.get_description()) for cur_dev in msc_check.devices_list]
-                                    if len(dev_names):
-                                        s_check = cur_gc["command"]["check_service_cluster"]
-                                        serv_temp = gbc.serv_templates[msc_check.mon_service_templ_id]
-                                        serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
-                                        sub_list = self.get_service(
-                                            gbc,
-                                            hbc,
-                                            s_check,
-                                            [
-                                                special_commands.ArgTemplate(
-                                                    s_check,
-                                                    self._get_cc_name("{} / {}".format(s_check.get_description(), c_com.get_description())),
-                                                    arg1=msc_check.description,
-                                                    # arg2="@{:d}:".format(msc_check.warn_value),
-                                                    # arg3="@{:d}:".format(msc_check.error_value),
-                                                    arg2=msc_check.warn_value,
-                                                    arg3=msc_check.error_value,
-                                                    arg4=",".join(
-                                                        [
-                                                            "$SERVICESTATEID:{}:{}$".format(
-                                                                _dev_name, _srv_name
-                                                            ) for _dev_name, _srv_name in dev_names
-                                                        ]
-                                                    ),
-                                                    arg5=",".join(
-                                                        [
-                                                            "{}{}{}".format(
-                                                                _dev_name, gbc.join_char, _srv_name
-                                                            ).replace(",", " ") for _dev_name, _srv_name in dev_names
-                                                        ]
-                                                    ),
-                                                )
-                                            ],
-                                            act_def_serv,
-                                            serv_cgs,
-                                            serv_temp,
-                                        )
-                                        host_config_list.extend(sub_list)
-                                        hbc.add_checks(len(sub_list))
-                                    else:
-                                        hbc.log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
-                                else:
-                                    hbc.log(
-                                        "check command '{}' not present in list of commands {}".format(
-                                            msc_check.mon_check_command.name,
-                                            ", ".join(sorted(cur_gc["command"].keys()))
-                                        ),
-                                        logging_tools.LOG_LEVEL_ERROR,
-                                    )
+                            hbc.host_config_list.extend(self.add_service_cluster_checks(gbc, hbc, msc_checks, act_def_serv))
                         # add host dependencies
                         if use_host_deps:
                             for h_dep in gbc.get_dependencies("hd", host.pk):
@@ -989,7 +906,7 @@ class BuildProcess(
                                             act_host_dep["host_name"] = _list
                                             act_host_dep["dependent_host_name"] = _dep_list
                                             h_dep.feed_config(act_host_dep)
-                                            host_config_list.append(act_host_dep)
+                                            hbc.host_config_list.append(act_host_dep)
                                     else:
                                         hbc.log(
                                             "empty list or dependency_list for hostdependency.(host_name|dependency_name)",
@@ -1037,7 +954,7 @@ class BuildProcess(
                                             act_service_dep["host_name"] = gbc.get_host(s_dep.mon_service_cluster.main_device_id).full_name
                                             act_service_dep["dependent_host_name"] = [gbc.get_host(dev_pk).full_name for cur_dev in s_dep.master_list]
                                             s_dep.feed_config(act_service_dep)
-                                            host_config_list.append(act_service_dep)
+                                            hbc.host_config_list.append(act_service_dep)
                                         else:
                                             hbc.log("cannot add cluster_service_dependency", logging_tools.LOG_LEVEL_ERROR)
                                 else:
@@ -1096,10 +1013,10 @@ class BuildProcess(
                                             act_service_dep["host_name"] = [gbc.get_host(dev_pk).full_name for dev_pk in s_dep.devices_list]
                                             act_service_dep["dependent_host_name"] = [gbc.get_host(dev_pk).full_name for dev_pk in s_dep.master_list]
                                             s_dep.feed_config(act_service_dep)
-                                            host_config_list.append(act_service_dep)
+                                            hbc.host_config_list.append(act_service_dep)
                                         else:
                                             hbc.log("cannot add service_dependency", logging_tools.LOG_LEVEL_ERROR)
-                        host_nc.add_entry(host_config_list, host)
+                        cur_gc["device"].add_entry(hbc.host_config_list, host)
                     else:
                         hbc.log("Host {} is disabled".format(host.full_name))
             else:
@@ -1127,9 +1044,111 @@ class BuildProcess(
         # print("close", os.getpid())
         hbc.close()
 
+    def add_host_cluster_checks(self, gbc, hbc, mhc_checks, act_def_serv):
+        cur_gc = gbc.global_config
+        ret_list = []
+        hbc.log(
+            "adding {}".format(
+                logging_tools.get_plural("host_cluster check", len(mhc_checks))
+            )
+        )
+        for mhc_check in mhc_checks:
+            dev_names = [gbc.get_host(cur_dev).full_name for cur_dev in mhc_check.devices_list]
+            if len(dev_names):
+                s_check = cur_gc["command"]["check_host_cluster"]
+                serv_temp = gbc.serv_templates[mhc_check.mon_service_templ_id]
+                serv_cgs = list(set(serv_temp.contact_groups).intersection(hbc.contact_groups))
+                sub_list = self.get_service(
+                    gbc,
+                    hbc,
+                    s_check,
+                    [
+                        special_commands.ArgTemplate(
+                            s_check,
+                            self._get_cc_name("{}{}{}".format(s_check.get_description(), gbc.join_char, mhc_check.description)),
+                            arg1=mhc_check.description,
+                            arg2=mhc_check.warn_value,
+                            arg3=mhc_check.error_value,
+                            arg4=",".join(["$HOSTSTATEID:{}$".format(_dev_name) for _dev_name in dev_names]),
+                            arg5=",".join(dev_names),
+                        )
+                    ],
+                    act_def_serv,
+                    serv_cgs,
+                    serv_temp,
+                )
+                ret_list.extend(sub_list)
+                hbc.add_checks(len(sub_list))
+            else:
+                hbc.log("ignoring empty host_cluster", logging_tools.LOG_LEVEL_WARN)
+        return ret_list
+
+    def add_service_cluster_checks(self, gbc, hbc, msc_checks, act_def_serv):
+        cur_gc = gbc.global_config
+        hbc.log(
+            "adding {}".format(
+                logging_tools.get_plural("service_cluster check", len(msc_checks))
+            )
+        )
+        ret_list = []
+        for msc_check in msc_checks:
+            if msc_check.mon_check_command.name in cur_gc["command"]:
+                c_com = cur_gc["command"][msc_check.mon_check_command.name]
+                dev_names = [(gbc.get_host(cur_dev).full_name, c_com.get_description()) for cur_dev in msc_check.devices_list]
+                if len(dev_names):
+                    s_check = cur_gc["command"]["check_service_cluster"]
+                    serv_temp = gbc.serv_templates[msc_check.mon_service_templ_id]
+                    serv_cgs = list(set(serv_temp.contact_groups).intersection(hbc.contact_groups))
+                    sub_list = self.get_service(
+                        gbc,
+                        hbc,
+                        s_check,
+                        [
+                            special_commands.ArgTemplate(
+                                s_check,
+                                self._get_cc_name("{} / {}".format(s_check.get_description(), c_com.get_description())),
+                                arg1=msc_check.description,
+                                # arg2="@{:d}:".format(msc_check.warn_value),
+                                # arg3="@{:d}:".format(msc_check.error_value),
+                                arg2=msc_check.warn_value,
+                                arg3=msc_check.error_value,
+                                arg4=",".join(
+                                    [
+                                        "$SERVICESTATEID:{}:{}$".format(
+                                            _dev_name, _srv_name
+                                        ) for _dev_name, _srv_name in dev_names
+                                        ]
+                                ),
+                                arg5=",".join(
+                                    [
+                                        "{}{}{}".format(
+                                            _dev_name, gbc.join_char, _srv_name
+                                        ).replace(",", " ") for _dev_name, _srv_name in dev_names
+                                        ]
+                                ),
+                            )
+                        ],
+                        act_def_serv,
+                        serv_cgs,
+                        serv_temp,
+                    )
+                    ret_list.extend(sub_list)
+                    hbc.add_checks(len(sub_list))
+                else:
+                    hbc.log("ignoring empty service_cluster", logging_tools.LOG_LEVEL_WARN)
+            else:
+                hbc.log(
+                    "check command '{}' not present in list of commands {}".format(
+                        msc_check.mon_check_command.name,
+                        ", ".join(sorted(cur_gc["command"].keys()))
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR,
+                )
+        return ret_list
+
     def add_host_config(
         self, gbc, hbc, host, conf_name, used_checks,
-        act_def_serv, host_groups, host_config_list
+        act_def_serv,
     ):
         cur_gc = gbc.global_config
         s_check = cur_gc["command"][conf_name]
@@ -1161,61 +1180,59 @@ class BuildProcess(
                 # print("***", _rewrite_lut)
                 sc_array = []
                 hbc.add_dynamic_check(s_check)
-                # hbc.dynamic_checks = True
-                if False:
+                try:
+                    cur_special = special_commands.dynamic_checks[mccs.name](
+                        hbc.log,
+                        self,
+                        # get mon_check_command (we need arg_ll)
+                        s_check=cur_gc["command"][com_mccs.md_name],
+                        parent_check=s_check,
+                        host=host,
+                        global_config=self.gc,
+                        build_cache=gbc,
+                    )
+                except:
+                    self.log(
+                        "unable to initialize special '{}': {}".format(
+                            mccs.name,
+                            process_tools.get_except_info()
+                        ),
+                        logging_tools.LOG_LEVEL_CRITICAL
+                    )
+                else:
+                    # calling handle to return a list of checks with format
+                    # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
                     try:
-                        cur_special = special_commands.SPECIAL_DICT["special_{}".format(mccs.name)](
-                            hbc.log,
-                            self,
-                            # get mon_check_command (we need arg_ll)
-                            s_check=cur_gc["command"][com_mccs.md_name],
-                            parent_check=s_check,
-                            host=host,
-                            global_config=self.gc,
-                            build_cache=gbc,
-                        )
+                        if mccs_name != mccs.name:
+                            # for meta specials
+                            sc_array = cur_special(instance=mccs_name)
+                        else:
+                            sc_array = cur_special()
                     except:
+                        exc_info = process_tools.exception_info()
                         self.log(
-                            "unable to initialize special '{}': {}".format(
-                                mccs.name,
-                                process_tools.get_except_info()
-                            ),
+                            "error calling special {}:".format(mccs.name),
                             logging_tools.LOG_LEVEL_CRITICAL
                         )
-                    else:
-                        # calling handle to return a list of checks with format
-                        # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
-                        try:
-                            if mccs_name != mccs.name:
-                                # for meta specials
-                                sc_array = cur_special(instance=mccs_name)
-                            else:
-                                sc_array = cur_special()
-                        except:
-                            exc_info = process_tools.exception_info()
-                            self.log(
-                                "error calling special {}:".format(mccs.name),
-                                logging_tools.LOG_LEVEL_CRITICAL
+                        for line in exc_info.log_lines:
+                            self.log(" - {}".format(line), logging_tools.LOG_LEVEL_CRITICAL)
+                        sc_array = []
+                    finally:
+                        cur_special.cleanup()
+                    if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
+                        # dive in subcommands, for instance 'all SNMP checks'
+                        # check for configs not really configured
+                        _dead_coms = [_entry for _entry in sc_array if not hasattr(gbc.mccs_dict[_entry], "check_command_name")]
+                        if _dead_coms:
+                            self.log("unconfigured checks: {}".format(", ".join(sorted(_dead_coms))), logging_tools.LOG_LEVEL_CRITICAL)
+                        _com_names = [gbc.mccs_dict[_entry].check_command_name for _entry in sc_array if _entry not in _dead_coms]
+                        for _com_name in _com_names:
+                            self.add_host_config(
+                                gbc, hbc,
+                                host, _com_name, used_checks,
+                                act_def_serv,
                             )
-                            for line in exc_info.log_lines:
-                                self.log(" - {}".format(line), logging_tools.LOG_LEVEL_CRITICAL)
-                            sc_array = []
-                        finally:
-                            cur_special.cleanup()
-                        if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
-                            # dive in subcommands, for instance 'all SNMP checks'
-                            # check for configs not really configured
-                            _dead_coms = [_entry for _entry in sc_array if not hasattr(gbc.mccs_dict[_entry], "check_command_name")]
-                            if _dead_coms:
-                                self.log("unconfigured checks: {}".format(", ".join(sorted(_dead_coms))), logging_tools.LOG_LEVEL_CRITICAL)
-                            _com_names = [gbc.mccs_dict[_entry].check_command_name for _entry in sc_array if _entry not in _dead_coms]
-                            for _com_name in _com_names:
-                                self.add_host_config(
-                                    gbc, hbc,
-                                    host, _com_name, used_checks,
-                                    act_def_serv, host_groups, host_config_list
-                                )
-                            sc_array = []
+                        sc_array = []
             else:
                 # no special command, empty rewrite_lut, simple templating
                 _rewrite_lut = {}
@@ -1223,11 +1240,11 @@ class BuildProcess(
                 # contact_group is only written if contact_group is responsible for the host and the service_template
             if sc_array:
                 serv_temp = gbc.serv_templates[s_check.get_template(act_def_serv.name)]
-                serv_cgs = list(set(serv_temp.contact_groups).intersection(host_groups))
+                serv_cgs = list(set(serv_temp.contact_groups).intersection(hbc.contact_groups))
                 sc_list = self.get_service(
                     gbc, hbc, s_check, sc_array, act_def_serv, serv_cgs, serv_temp, **_rewrite_lut
                 )
-                host_config_list.extend(sc_list)
+                hbc.host_config_list.extend(sc_list)
                 hbc.add_checks(len(sc_list))
 
     def _get_cc_name(self, in_str):

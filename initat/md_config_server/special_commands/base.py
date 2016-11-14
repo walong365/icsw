@@ -21,6 +21,7 @@
 
 from __future__ import unicode_literals, print_function
 
+import inflection
 import datetime
 import time
 
@@ -59,14 +60,22 @@ class SpecialBase(object):
         meta = False
         # identifier
         identifier = ""
+        # name in database
+        db_name = ""
 
-    def __init__(self, log_com, build_proc=None, s_check=None, host=None, global_config=None, build_cache=None, parent_check=None, **kwargs):
+    def __init__(self, log_com, build_proc=None, s_check=None, host=None, build_cache=None, parent_check=None, **kwargs):
         self.__log_com = log_com
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         for key in dir(SpecialBase.Meta):
             if not key.startswith("__") and not hasattr(self.Meta, key):
                 setattr(self.Meta, key, getattr(SpecialBase.Meta, key))
-        self.Meta.name = self.__class__.__name__.split("_", 1)[1]
+        _name = self.__class__.__name__
+        if _name.count("_"):
+            _name = _name.split("_", 1)[1]
+        elif _name.startswith("Special"):
+            _name = _name[7:]
+        self.Meta.name = _name
+        self.Meta.db_name = inflection.underscore(self.Meta.name)
         self.ds_name = self.Meta.name
         # print "ds_name=", self.ds_name
         self.build_process = build_proc
@@ -302,7 +311,7 @@ class SpecialBase(object):
         return hint_list
 
     def __call__(self, **kwargs):
-        s_name = self.__class__.__name__.split("_", 1)[1]
+        s_name = self.Meta.name
         self.log(
             "starting {} for {}".format(
                 s_name,
@@ -323,28 +332,33 @@ class SpecialBase(object):
             self.__server_contact_ok, self.__server_contacts = (True, 0)
             # init result list and number of server calls
             self.__hint_list, self.__call_idx = ([], 0)
-        cur_ret = self._call(**kwargs)
-        e_time = time.time()
-        if self.Meta.server_contact and not self.__use_cache:
-            self.log(
-                "took {}, ({:d} ok, {:d} server contacts [{}], {})".format(
-                    logging_tools.get_diff_time_str(e_time - s_time),
-                    self.__call_idx,
-                    self.__server_contacts,
-                    "ok" if self.__server_contact_ok else "failed",
-                    logging_tools.get_plural("hint", len(self.__hint_list)),
+        if hasattr(self, "call"):
+            cur_ret = self.call(**kwargs)
+            # cur_ret = self._call(**kwargs)
+            e_time = time.time()
+            if self.Meta.server_contact and not self.__use_cache:
+                self.log(
+                    "took {}, ({:d} ok, {:d} server contacts [{}], {})".format(
+                        logging_tools.get_diff_time_str(e_time - s_time),
+                        self.__call_idx,
+                        self.__server_contacts,
+                        "ok" if self.__server_contact_ok else "failed",
+                        logging_tools.get_plural("hint", len(self.__hint_list)),
+                    )
                 )
-            )
-            # anything set (from cache or direct) and all server contacts ok (a little bit redundant)
-            if (self.__server_contacts == self.__call_idx and self.__call_idx) or self.__force_store_cache:
-                if (self.__server_contacts and self.__server_contact_ok) or self.__force_store_cache:
-                    self._store_cache()
+                # anything set (from cache or direct) and all server contacts ok (a little bit redundant)
+                if (self.__server_contacts == self.__call_idx and self.__call_idx) or self.__force_store_cache:
+                    if (self.__server_contacts and self.__server_contact_ok) or self.__force_store_cache:
+                        self._store_cache()
+            else:
+                self.log(
+                    "took {}".format(
+                        logging_tools.get_diff_time_str(e_time - s_time),
+                    )
+                )
         else:
-            self.log(
-                "took {}".format(
-                    logging_tools.get_diff_time_str(e_time - s_time),
-                )
-            )
+            self.log("old special, please fix", logging_tools.LOG_LEVEL_CRITICAL)
+            cur_ret = []
         return cur_ret
 
     def get_arg_template(self, *args, **kwargs):

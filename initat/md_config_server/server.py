@@ -28,8 +28,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
-    mon_check_command_special, mon_check_command, SpecialGroupsEnum, device
-from initat.cluster.backbone.models.functions import get_related_models
+    device
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.md_config_server.build import BuildControl
 from initat.md_config_server.config import global_config
@@ -40,6 +39,7 @@ from initat.md_config_server.syncer import SyncerProcess, RemoteServer
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile, server_command
 from initat.tools.server_mixins import RemoteCall
+from .special_commands import check_special_commands
 
 
 @server_mixins.RemoteCallProcess
@@ -111,7 +111,7 @@ class ServerProcess(
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
         self._check_notification()
-        self._check_special_commands()
+        check_special_commands(self.log)
         # sync master uuid
         self.__sync_master_uuid = None
         # from mixins
@@ -151,69 +151,6 @@ class ServerProcess(
     def _set_sync_master_uuid(self, src_proc, src_id, master_uuid, **kwargs):
         self.log("set sync_master uuid to {}".format(master_uuid))
         self.__sync_master_uuid = master_uuid
-
-    def _check_special_commands(self):
-        from initat.md_config_server.special_commands import SPECIAL_DICT
-        pks_found = set()
-        mccs_dict = {}
-        for _name, _entry in SPECIAL_DICT.iteritems():
-            _inst = _entry(self.log)
-            if "special_{}".format(_inst.Meta.name) != _name:
-                self.log(
-                    "special {} has illegal name {}".format(
-                        _name,
-                        _inst.Meta.name
-                    ),
-                    logging_tools.LOG_LEVEL_CRITICAL
-                )
-            else:
-                self.log("found special {}".format(_name))
-                cur_mccs = self._check_mccs(_inst.Meta)
-                mccs_dict[cur_mccs.name] = cur_mccs
-                pks_found.add(cur_mccs.pk)
-                if cur_mccs.meta:
-                    for _sub_com in _inst.get_commands():
-                        sub_mccs = self._check_mccs(_sub_com.Meta, parent=cur_mccs)
-                        mccs_dict[sub_mccs.name] = sub_mccs
-                        pks_found.add(sub_mccs.pk)
-        # delete stale
-        del_mccs = mon_check_command_special.objects.exclude(pk__in=pks_found)
-        if del_mccs:
-            for _del_mcc in del_mccs:
-                self.log(
-                    "trying to removing stale {}...".format(
-                        unicode(_del_mcc),
-                    )
-                )
-                _refs = get_related_models(_del_mcc)
-                if _refs:
-                    self.log("  unable to remove because referenced {}".format(logging_tools.get_plural("time", _refs)), logging_tools.LOG_LEVEL_ERROR)
-                else:
-                    _del_mcc.delete()
-                    self.log("  ...done")
-        # rewrite
-        for to_rewrite in mon_check_command.objects.filter(Q(name__startswith="@")):
-            self.log("rewriting {} to new format... ".format(unicode(to_rewrite)))
-            _key = to_rewrite.name.split("@")[1].lower()
-            if _key in mccs_dict:
-                to_rewrite.name = to_rewrite.name.split("@")[2]
-                to_rewrite.mon_check_command_special = mccs_dict[_key]
-                to_rewrite.save()
-            else:
-                self.log("key {} not found in dict".format(_key), logging_tools.LOG_LEVEL_ERROR)
-
-    def _check_mccs(self, mdef, parent=None):
-        try:
-            cur_mccs = mon_check_command_special.objects.get(Q(name=mdef.name))
-        except mon_check_command_special.DoesNotExist:
-            cur_mccs = mon_check_command_special(name=mdef.name)
-        # also used in snmp/struct.py and generic_net_handler.py
-        for attr_name in {"command_line", "info", "description", "is_active", "meta", "identifier"}:
-            setattr(cur_mccs, attr_name, getattr(mdef, attr_name, ""))
-        cur_mccs.group = getattr(mdef, "group", SpecialGroupsEnum.unspec).value
-        cur_mccs.parent = parent
-        cur_mccs.save()
-        return cur_mccs
 
     def _check_notification(self):
         cur_not = mon_notification.objects.all().count()

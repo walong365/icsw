@@ -34,7 +34,7 @@ from initat.icsw.service.instance import InstanceXML
 from initat.snmp.sink import SNMPSink
 from initat.tools import logging_tools, process_tools
 from .global_config import global_config
-from ..config import SimpleCounter
+from ..config import SimpleCounter, MonFileContainer
 
 __all__ = [
     b"BuildCache",
@@ -57,8 +57,12 @@ class HostBuildCache(object):
         self.log_cache = []
         self.counter = SimpleCounter()
         self.num_checks = 0
+        # contact groups for this host
+        # self.contact_groups = None
         # dont set a default value (has to be set in build process)
         # self.host_is_actively_checked = None
+        # host config list
+        self.host_config_list = MonFileContainer(self.device.full_name)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_cache.append((what, log_level))
@@ -113,6 +117,11 @@ class HostBuildCache(object):
             logging_tools.get_diff_time_str(self.end_time - self.start_time),
         )
         return info_str
+
+    # set device (== host config) file
+    def set_device_file(self, d_file):
+        self.device_file = d_file
+        self.host_config_list.append(d_file)
 
 
 class BuildCache(object):
