@@ -1268,7 +1268,12 @@ class SystemCompletionIgnoreToggle(View):
 
 
 class DeviceLogEntryViewSet(viewsets.ViewSet):
+    @method_decorator(login_required)
     def list(self, request):
+        high_idx = 0
+        if "high_idx" in request.query_params:
+            high_idx = int(request.query_params["high_idx"])
+            print(high_idx)
         prefetch_list = [
             "source",
             "level"
@@ -1276,7 +1281,7 @@ class DeviceLogEntryViewSet(viewsets.ViewSet):
 
         if "device_pks" in request.query_params:
             queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).filter(
-                Q(device__in=json.loads(request.query_params.getlist("device_pks")[0]))
+                Q(device__in=json.loads(request.query_params.getlist("device_pks")[0]), idx__gt=high_idx)
             )
         else:
             queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).all()
@@ -1284,3 +1289,22 @@ class DeviceLogEntryViewSet(viewsets.ViewSet):
         serializer = DeviceLogEntrySerializer(queryset, many=True)
 
         return Response(serializer.data)
+
+class DeviceLogEntryCount(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
+
+        device_log_entries = DeviceLogEntry.objects.filter(Q(device__in=device_pks)).values()
+
+        pk_count_dict = {}
+        for device_pk in device_pks:
+            pk_count_dict[device_pk] = 0
+
+        for device_log_entry in device_log_entries:
+            pk_count_dict[device_log_entry['device_id']] += 1
+
+
+        return HttpResponse(
+            json.dumps(pk_count_dict)
+        )
