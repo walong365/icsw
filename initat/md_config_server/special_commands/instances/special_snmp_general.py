@@ -27,7 +27,7 @@ from initat.md_config_server.special_commands.base import SpecialBase
 from initat.snmp.sink import SNMPSink
 
 
-class special_snmp_general(SpecialBase):
+class SpecialSnmpGeneral(SpecialBase):
     class Meta:
         info = "all configured SNMP checks"
         description = "Enable all checks related to found SNMP schemes"

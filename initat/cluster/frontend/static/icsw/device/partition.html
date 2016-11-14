@@ -70,8 +70,8 @@
 <script type="text/ng-template" id="icsw.device.partition.edit.overview">
     <div uib-alert class="alert-warning" ng-show="struct.loading">Loading Data from Server ...</div>
     <div class="container-fluid">
-        <uib-tabset>
-            <uib-tab heading="Partitions">
+        <uib-tabset active="struct.activetab">
+            <uib-tab heading="Partitions" index="0">
                 <h3>
                     Partition Tables ({{ struct.partition_tree.list.length }} Entries)
                 </h3>
@@ -122,7 +122,7 @@
                     </tbody>
                 </table>
             </uib-tab>
-            <uib-tab ng-repeat="layout in struct.edit_layouts" active="layout.$$tab_active">
+            <uib-tab ng-repeat="layout in struct.edit_layouts" index="layout.tabindex">
                 <uib-tab-heading>
                     {{ layout.name }}
                     <icsw-tools-button type="close" size="xs" value="" ng-click="close($event, layout)"></icsw-tools-button>

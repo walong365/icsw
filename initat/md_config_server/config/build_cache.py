@@ -92,7 +92,7 @@ class HostBuildCache(object):
         for what, level in self.log_cache:
             logger.log(level, what)
 
-    def close(self):
+    def store_to_db(self):
         # check for changed flags / fields
         upd_fields = []
         _has_dyn_checks = True if len(self.dynamic_checks) else False
@@ -107,8 +107,9 @@ class HostBuildCache(object):
     def info_str(self):
         _counter = self.counter
         # info string for logging
-        info_str = "{:3d} mcs, logs: {:3d} / {:3d} / {:3d} ({:3d} total) [{}] in {}".format(
+        info_str = "{:3d} / {:3d}, logs: {:3d} / {:3d} / {:3d} ({:3d} total) [{}] in {}".format(
             self.num_checks,
+            len(self.dynamic_checks),
             _counter.num_ok,
             _counter.num_warning,
             _counter.num_error,

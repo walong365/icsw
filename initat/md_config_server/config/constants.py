@@ -17,17 +17,12 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" config part of md-config-server """
+""" constants for md-config-server """
 
-# do NOT optimize the imports
+from __future__ import unicode_literals, print_function
 
-from .global_config import global_config
+__all__ = [
+    b"MON_VAR_IP_NAME",
+]
 
-from initat.md_config_server.config.constants import *
-from initat.md_config_server.config.check_command import CheckCommand
-from initat.md_config_server.config.mon_base_config import *
-from initat.md_config_server.config.mon_config_containers import MonFileContainer, MonDirContainer
-from initat.md_config_server.config.objects import *
-from initat.md_config_server.config.sync_config import SyncConfig
-from initat.md_config_server.config.templates import *
-from initat.md_config_server.config.main_config import MainConfig, MainConfigContainer
+MON_VAR_IP_NAME = "__$$ICSW$$__MON_VAR_IP"

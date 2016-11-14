@@ -321,6 +321,8 @@ partition_table_module = angular.module(
         partition_tree: undefined
         # edit partition layout
         edit_layouts: []
+        activetab: 0
+        tabmaxid: 0
     }
 
     $scope.reload = () ->
@@ -392,7 +394,15 @@ partition_table_module = angular.module(
         if !layout.$$tab_open
             layout.$$tab_active = true
             layout.$$tab_open = true
+            $scope.struct.tabmaxid += 1
+            layout.tabindex = $scope.struct.tabmaxid + 1
             $scope.struct.edit_layouts.push(layout)
+        if !$event.ctrlKey
+            $timeout(
+                () ->
+                    $scope.struct.activetab = layout.tabindex
+                0
+            )
 
     $scope.close = ($event, layout) ->
         if layout.$$tab_open

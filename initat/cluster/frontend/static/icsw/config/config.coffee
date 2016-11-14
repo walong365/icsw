@@ -229,7 +229,8 @@ config_module = angular.module(
         # open configs
         open_configs: []
         # active tab
-        active_tab: 0
+        activetab: 0
+        tabmaxid: 0
         # show server configs
         with_server: 0
         # show service configs
@@ -310,7 +311,7 @@ config_module = angular.module(
 
         _fetch()
 
-    $scope.modify_config = ($event, config, jump_to) =>
+    $scope.modify_config = ($event, config, prevent_jump) =>
         $event.stopPropagation()
         _used_idxs = (entry.idx for entry in $scope.struct.open_configs)
         if config.idx not in _used_idxs
@@ -321,18 +322,20 @@ config_module = angular.module(
             bu_obj = new icswConfigBackup()
             bu_obj.create_backup(config)
             config.$$_shown_in_tabs = true
+            $scope.struct.tabmaxid += 1
+            config.tabindex = $scope.struct.tabmaxid + 1
             $scope.struct.open_configs.push(config)
-            if jump_to
+            if !$event.ctrlKey and !prevent_jump
                 $timeout(
                     () ->
-                        $scope.struct.active_tab = $scope.struct.open_configs.length
-                    100
+                        $scope.struct.activetab = config.tabindex
+                    0
                 )
 
     $scope.create_config = ($event) =>
         new_config = {
             $$changed: true
-            name: "new config"
+            name: "New Configuration"
             description: ""
             priority: 0
             mon_check_command_set: []
@@ -377,9 +380,11 @@ config_module = angular.module(
         $scope.struct.config_tree.link()
 
     $scope.modify_selection = ($event, config) ->
-        for config in $scope.struct.config_tree.list
-            if config.$selected
-                $scope.modify_config($event, config)
+        editlist = []
+        for config in $scope.struct.config_tree.list when config.$selected
+            editlist.push(config)
+        for config in editlist
+            $scope.modify_config($event, config, editlist.length > 1)
 
     $scope.delete_selected_objects = () ->
         if confirm("really delete #{$scope.struct.selected_objects.length} objects ?")

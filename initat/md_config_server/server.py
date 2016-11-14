@@ -283,9 +283,11 @@ class ServerProcess(
         db_tools.close_connection()
         if src_process == "syncer":
             self.send_to_process("syncer", "check_for_slaves")
+        self.BC.process_action(src_process, True)
         self.CC.process_added(src_process, src_pid)
 
     def process_exit(self, src_process, src_pid):
+        self.BC.process_action(src_process, False)
         self.CC.process_removed(src_pid)
 
     def handle_mon_command(self, srv_com):
@@ -404,6 +406,13 @@ class ServerProcess(
         # pretend to be synchronous call such that reply is sent right away
         self.BC.handle_command(srv_com)
         srv_com.set_result("ok processed command build_host_config")
+        return srv_com
+
+    @RemoteCall()
+    def fetch_dyn_config(self, srv_com, **kwargs):
+        # pretend to be synchronous call such that reply is sent right away
+        self.BC.handle_command(srv_com)
+        srv_com.set_result("ok started fetching of dynamic configs")
         return srv_com
 
     @RemoteCall()

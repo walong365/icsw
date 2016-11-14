@@ -34,7 +34,8 @@ from initat.cluster.backbone.models import device, device_variable, mon_contactg
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
-    MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, StructuredMonBaseConfig
+    MonDeviceTemplates, MonServiceTemplates, MonAllHostDependencies, build_safe_name, StructuredMonBaseConfig, \
+    MON_VAR_IP_NAME
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import config_tools, logging_tools, process_tools, server_mixins, server_command
@@ -58,6 +59,7 @@ class BuildProcess(
         # self.version = int(time.time())
         # self.log("initial config_version is {:d}".format(self.version))
         self.register_func("start_build", self._start_build)
+        self.register_func("fetch_dyn_config", self._fetch_dyn_config)
         self.register_func("routing_fingerprint", self._routing_fingerprint)
 
     def loop_post(self):
@@ -114,7 +116,9 @@ class BuildProcess(
         }
         _new = set(
             [
-                "snmp {}".format(_com.Meta.name) for _com in special_commands.special_snmp_general.special_snmp_general(self.log).get_commands()
+                "snmp {}".format(_com.Meta.name) for _com in special_commands.special_snmp_general.SpecialSnmpGeneral(
+                    self.log
+                ).get_commands()
             ]
         )
         _to_create = set(_specials.keys()) & (_new - _present_coms)
@@ -141,12 +145,80 @@ class BuildProcess(
                 ),
                 logging_tools.LOG_LEVEL_ERROR
             )
-        self.build_cache = BuildCache(
+        build_cache = BuildCache(
             self.log,
             full_build=not self.single_build,
             routing_fingerprint=self.routing_fingerprint,
         )
-        self.fingerprint_set()
+        self.fingerprint_set(build_cache)
+
+    def _fetch_dyn_config(self, *args, **kwargs):
+        args = list(args)
+        self.build_mode = args.pop(0)
+        self.__gen_config = MainConfig(self, args.pop(0))
+        self.srv_com = server_command.srv_command(source=args.pop(0))
+        self.log("received fetch_dyn_config")
+        self.router_obj = config_tools.RouterObject(self.log)
+        build_cache = BuildCache(
+            self.log,
+            full_build=True,
+            router_obj=self.router_obj,
+        )
+        self.gc = global_config
+        gbc = build_cache
+        self.fetch_dyn_configs(gbc)
+        self._exit_process()
+
+    def fetch_dyn_configs(self, gbc):
+        start_time = time.time()
+        cur_gc = self.__gen_config
+        cur_gc.add_config(MonAllCommands(cur_gc))
+        ac_filter = Q(dynamic_checks=True) & Q(enabled=True) & Q(device_group__enabled=True)
+        gbc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(
+            ac_filter
+        ).values_list(
+            "pk", flat=True)
+        )
+        all_configs = self.get_all_configs(ac_filter)
+        # import pprint
+        # pprint.pprint(all_configs)
+        for host_pk in gbc.host_pks:
+            host = gbc.get_host(host_pk)
+            dev_variables, var_info = gbc.get_vars(host)
+            hbc = HostBuildCache(host)
+            if MON_VAR_IP_NAME not in dev_variables:
+                hbc.log("No IP found for dyn reconfig", logging_tools.LOG_LEVEL_ERROR)
+            else:
+                ip = dev_variables[MON_VAR_IP_NAME]
+
+            # get config names
+            conf_names = set(all_configs.get(host.full_name, []))
+            # cluster config names
+            cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster("sc", host.pk)])
+            # build lut
+            conf_names = sorted(
+                [
+                    cur_c["command_name"] for cur_c in cur_gc["command"].values() if not cur_c.is_event_handler and (
+                        (
+                            (cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)
+                        ) or cur_c["command_name"] in cconf_names
+                    )
+                ]
+            )
+            for conf_name in conf_names:
+                s_check = cur_gc["command"][conf_name]
+                if s_check.mccs_id:
+                    print("*")
+            hbc.build_finished()
+            info_str = hbc.info_str
+            glob_log_str = "df, device {:<48s}{}".format(
+                host.full_name[:48],
+                "*" if len(host.name) > 48 else " ",
+            )
+            self.flush_hbc_logs(hbc, glob_log_str)
+            # print("*", host, dev_variables)
+        end_time = time.time()
+        self.log("dyn_config run took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
 
     def _start_build(self, *args, **kwargs):
         args = list(args)
@@ -160,7 +232,7 @@ class BuildProcess(
             self.router_obj = config_tools.RouterObject(self.log)
             self.send_pool_message("build_step", "routing_ok", self.router_obj.fingerprint)
             self.routing_fingerprint = self.router_obj.fingerprint
-            self.build_cache = BuildCache(
+            build_cache = BuildCache(
                 self.log,
                 full_build=not self.single_build,
                 router_obj=self.router_obj,
@@ -172,9 +244,9 @@ class BuildProcess(
                 self._cleanup_db()
                 # check for SNMP container config
                 self._check_for_snmp_container()
-            self.fingerprint_set()
+            self.fingerprint_set(build_cache)
 
-    def fingerprint_set(self):
+    def fingerprint_set(self, build_cache):
         # fingerprint valid (either called directly or via routing_fingerprint command from control)
         # copy global_config
         self.gc = global_config
@@ -261,7 +333,7 @@ class BuildProcess(
                 if unreachable_pks:
                     for _urd in device.objects.filter(Q(pk__in=unreachable_pks)).select_related("domain_tree_node"):
                         self.send_pool_message("build_info", "unreachable_device", _urd.pk, unicode(_urd), unicode(_urd.device_group), target="syncer")
-                    self.build_cache.feed_unreachable_pks(unreachable_pks)
+                    build_cache.feed_unreachable_pks(unreachable_pks)
             else:
                 cur_dmap = {}
             cur_gc = self.__gen_config
@@ -269,7 +341,8 @@ class BuildProcess(
                 # recreate access files
                 cur_gc._create_access_entries()
 
-            gbc = self.build_cache
+            # global build cache
+            gbc = build_cache
             gbc.build_dv = build_dv
             gbc.host_list = self.host_list
             gbc.dev_templates = dev_templates
@@ -389,41 +462,12 @@ class BuildProcess(
         if not gbc.single_build:
             h_filter &= Q(enabled=True) & Q(device_group__enabled=True)
             ac_filter &= Q(enabled=True) & Q(device_group__enabled=True)
-        # dictionary with all parent / slave relations
-        ps_dict = {}
         gbc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(
             h_filter
         ).values_list(
             "pk", flat=True)
         )
-        meta_devices = {
-            md.device_group.pk: md for md in device.objects.filter(
-                Q(is_meta_device=True)
-            ).prefetch_related(
-                "device_config_set",
-                "device_config_set__config"
-            ).select_related("device_group")
-        }
-        all_configs = {}
-        for cur_dev in device.objects.filter(
-            ac_filter
-        ).select_related(
-            "domain_tree_node"
-        ).prefetch_related(
-            "device_config_set",
-            "device_config_set__config"
-        ):
-            loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
-            if cur_dev.device_group_id in meta_devices:
-                loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
-            # expand with parent
-            while True:
-                new_confs = set([ps_dict[cur_name] for cur_name in loc_config if cur_name in ps_dict]) - set(loc_config)
-                if new_confs:
-                    loc_config.extend(list(new_confs))
-                else:
-                    break
-            all_configs[cur_dev.full_name] = loc_config
+        all_configs = self.get_all_configs(ac_filter)
         # get config variables
         if not cur_gc["contactgroup"].keys():
             self.log(
@@ -476,7 +520,7 @@ class BuildProcess(
         # delete host if already present in host_table
         host_names = []
         for host_pk in gbc.host_pks:
-            host = gbc.get_host(host_pk)  # , host in check_hosts.iteritems():
+            host = gbc.get_host(host_pk)
             host_names.append((host.full_name, host))
             if host.full_name in host_nc:
                 # now very simple
@@ -526,6 +570,31 @@ class BuildProcess(
                 logging_tools.get_diff_time_str(end_time - start_time),
             )
         )
+
+    def get_all_configs(self, ac_filter):
+        all_configs = {}
+        meta_devices = {
+            md.device_group.pk: md for md in device.objects.filter(
+                Q(is_meta_device=True)
+            ).prefetch_related(
+                "device_config_set",
+                "device_config_set__config"
+            ).select_related("device_group")
+        }
+        all_configs = {}
+        for cur_dev in device.objects.filter(
+            ac_filter
+        ).select_related(
+            "domain_tree_node"
+        ).prefetch_related(
+            "device_config_set",
+            "device_config_set__config"
+        ):
+            loc_config = [cur_dc.config.name for cur_dc in cur_dev.device_config_set.all()]
+            if cur_dev.device_group_id in meta_devices:
+                loc_config.extend([cur_dc.config.name for cur_dc in meta_devices[cur_dev.device_group_id].device_config_set.all()])
+            all_configs[cur_dev.full_name] = loc_config
+        return all_configs
 
     def parenting_run(self, gbc):
         s_time = time.time()
@@ -668,7 +737,7 @@ class BuildProcess(
         if net_devices:
             # print mni_str_s, mni_str_d, dev_str_s, dev_str_d
             # get correct netdevice for host
-            valid_ips, traces = self._get_target_ip_info(gbc, hbc, net_devices, gbc.get_host(host.pk))
+            valid_ips, traces = self._get_target_ip_info(gbc, hbc, net_devices)
             act_def_dev = gbc.dev_templates[host.mon_device_templ_id or 0]
             if gbc.single_build:
                 if not valid_ips:
@@ -688,6 +757,9 @@ class BuildProcess(
                 host.domain_names = [cur_ip[1] for cur_ip in valid_ips if cur_ip[1]]
                 valid_ip = valid_ips[0][0]
                 host.valid_ip = valid_ip
+                if cur_gc.master:
+                    # only store IP on master (needed for dyn reconfig)
+                    gbc.set_variable(hbc.device, MON_VAR_IP_NAME, host.valid_ip.ip)
                 hbc.log(
                     "Found {} for host {} : {}, mon_resolve_name is {}, using {}".format(
                         logging_tools.get_plural("target ip", len(valid_ips)),
@@ -864,7 +936,7 @@ class BuildProcess(
                         for conf_name in conf_names:
                             self.add_host_config(
                                 gbc, hbc,
-                                host, conf_name, used_checks,
+                                conf_name, used_checks,
                                 act_def_serv,
                             )
                         # add cluster checks
@@ -1026,23 +1098,24 @@ class BuildProcess(
                 )
 
         hbc.build_finished()
-        info_str = hbc.info_str
-        hbc.log(info_str)
-        glob_log_str = "device {:<48s}{} ({}), d={:>3s}, {}".format(
+        glob_log_str = "cb, device {:<48s}{} ({}), d={:>3s}".format(
             host.full_name[:48],
             "*" if len(host.name) > 48 else " ",
             "a" if hbc.host_is_actively_checked else "p",
             "{:3d}".format(gbc.cur_dmap[host.pk]) if gbc.cur_dmap.get(host.pk) >= 0 else "---",
-            info_str,
         )
-        self.log(glob_log_str)
+        self.flush_hbc_logs(hbc, glob_log_str)
+        hbc.store_to_db()
+
+    def flush_hbc_logs(self, hbc, glob_log_str):
+        info_str = hbc.info_str
+        hbc.log(info_str)
+        self.log("{}, {}".format(glob_log_str, info_str))
         if hbc.write_logs or self.gc["DEBUG"]:
             _mach_logger = self.get_mach_logger(hbc.device.full_name)
             hbc.flush_logs(_mach_logger)
             _mach_logger.close()
             del _mach_logger
-        # print("close", os.getpid())
-        hbc.close()
 
     def add_host_cluster_checks(self, gbc, hbc, mhc_checks, act_def_serv):
         cur_gc = gbc.global_config
@@ -1147,7 +1220,7 @@ class BuildProcess(
         return ret_list
 
     def add_host_config(
-        self, gbc, hbc, host, conf_name, used_checks,
+        self, gbc, hbc, conf_name, used_checks,
         act_def_serv,
     ):
         cur_gc = gbc.global_config
@@ -1164,79 +1237,31 @@ class BuildProcess(
             used_checks.add(s_check.name)
             # s_check: instance of check_command
             if s_check.mccs_id:
-                # map to mccs (mon_check_command_special instance from backbone)
-                mccs = gbc.mccs_dict[s_check.mccs_id]
-                # store name of mccs (for parenting)
-                mccs_name = mccs.name
-                if mccs.parent_id:
-                    # to get the correct command_line
-                    com_mccs = mccs
-                    # link to parent
-                    mccs = gbc.mccs_dict[mccs.parent_id]
-                else:
-                    com_mccs = mccs
-                # create lut entry to rewrite command name to mccs
-                _rewrite_lut = {"check_command": mccs.md_name}
-                # print("***", _rewrite_lut)
-                sc_array = []
                 hbc.add_dynamic_check(s_check)
-                try:
-                    cur_special = special_commands.dynamic_checks[mccs.name](
-                        hbc.log,
-                        self,
-                        # get mon_check_command (we need arg_ll)
-                        s_check=cur_gc["command"][com_mccs.md_name],
-                        parent_check=s_check,
-                        host=host,
-                        global_config=self.gc,
-                        build_cache=gbc,
-                    )
-                except:
-                    self.log(
-                        "unable to initialize special '{}': {}".format(
-                            mccs.name,
-                            process_tools.get_except_info()
-                        ),
-                        logging_tools.LOG_LEVEL_CRITICAL
-                    )
-                else:
-                    # calling handle to return a list of checks with format
-                    # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
-                    try:
-                        if mccs_name != mccs.name:
-                            # for meta specials
-                            sc_array = cur_special(instance=mccs_name)
-                        else:
-                            sc_array = cur_special()
-                    except:
-                        exc_info = process_tools.exception_info()
-                        self.log(
-                            "error calling special {}:".format(mccs.name),
-                            logging_tools.LOG_LEVEL_CRITICAL
+                dc_rv = special_commands.dynamic_checks.handle(gbc, hbc, cur_gc, s_check)
+                dc_rv.dump_errors(self.log)
+                if dc_rv.r_type == "none":
+                    # an error occured, do nothing
+                    sc_array = []
+                elif dc_rv.r_type == "config":
+                    # iterate into add_host_config again
+                    for _com_name in dc_rv.config_list:
+                        self.add_host_config(
+                            gbc, hbc,
+                            _com_name, used_checks,
+                            act_def_serv,
                         )
-                        for line in exc_info.log_lines:
-                            self.log(" - {}".format(line), logging_tools.LOG_LEVEL_CRITICAL)
-                        sc_array = []
-                    finally:
-                        cur_special.cleanup()
-                    if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
-                        # dive in subcommands, for instance 'all SNMP checks'
-                        # check for configs not really configured
-                        _dead_coms = [_entry for _entry in sc_array if not hasattr(gbc.mccs_dict[_entry], "check_command_name")]
-                        if _dead_coms:
-                            self.log("unconfigured checks: {}".format(", ".join(sorted(_dead_coms))), logging_tools.LOG_LEVEL_CRITICAL)
-                        _com_names = [gbc.mccs_dict[_entry].check_command_name for _entry in sc_array if _entry not in _dead_coms]
-                        for _com_name in _com_names:
-                            self.add_host_config(
-                                gbc, hbc,
-                                host, _com_name, used_checks,
-                                act_def_serv,
-                            )
-                        sc_array = []
+                    sc_array = []
+                else:
+                    # we got a valid list of sc_array
+                    sc_array = dc_rv.check_list
+                _rewrite_lut = dc_rv.rewrite_lut
             else:
                 # no special command, empty rewrite_lut, simple templating
                 _rewrite_lut = {}
-                sc_array = [special_commands.ArgTemplate(s_check, s_check.get_description(), check_active=False if not s_check.is_active else None)]
+                sc_array = [
+                    special_commands.ArgTemplate(s_check, s_check.get_description(), check_active=False if not s_check.is_active else None)
+                ]
                 # contact_group is only written if contact_group is responsible for the host and the service_template
             if sc_array:
                 serv_temp = gbc.serv_templates[s_check.get_template(act_def_serv.name)]
@@ -1379,8 +1404,9 @@ class BuildProcess(
             ret_field.append(act_serv)
         return ret_field
 
-    def _get_target_ip_info(self, gbc, hbc, net_devices, host):
+    def _get_target_ip_info(self, gbc, hbc, net_devices):
         srv_net_idxs = gbc.server_net_idxs
+        host = hbc.device
         traces = gbc.get_mon_host_trace(host, net_devices, srv_net_idxs)
         if not traces:
             pathes = self.router_obj.get_ndl_ndl_pathes(srv_net_idxs, net_devices.keys(), add_penalty=True)
