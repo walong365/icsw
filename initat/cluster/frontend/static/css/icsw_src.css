@@ -513,3 +513,9 @@ li.animateTab > a:after {
     animation-iteration-count: 3;
     animation-timing-function: ease-out;
 }
+icsw-tools-button-static.fa:before {
+    margin-right:3px;
+}
+.force-left {
+    text-align:left!important;
+}
