@@ -122,28 +122,28 @@
 
 <script type="text/ng-template" id="icsw.config.config.table">
     <div uib-alert class="alert-warning" ng-if="!struct.data_valid">
-        Loading data ...
+        Loading Data ...
     </div>
     <div ng-if="struct.data_valid">
         <h3>
             {{ struct.config_tree.list.length }} Configurations, {{ struct.config_tree.filtered_list.length }} shown, {{ struct.config_tree.$selected }} selected
             <icsw-tools-button-static
                 type="create"
-                value="create new config"
+                value="create new Configuration"
                 ng-click="create_config($event)"
                 size="xs"
             ></icsw-tools-button-static>
             <icsw-tools-button-static
                 ng-show="struct.config_tree.$selected"
                 type="clear"
-                value="clear selection"
+                value="clear Selection"
                 ng-click="clear_selection($event)"
                 size="xs"
             ></icsw-tools-button-static>
             <icsw-tools-button-static
                 ng-show="struct.config_tree.$selected"
                 type="modify"
-                value="modify selection"
+                value="modify Selection"
                 ng-click="modify_selection($event)"
                 size="xs"
             ></icsw-tools-button-static>
@@ -151,7 +151,7 @@
             <icsw-config-download config-tree="config_tree"></icsw-config-download>
             -->
         </h3>
-        <uib-tabset active="struct.active_tab">
+        <uib-tabset active="struct.activetab">
             <uib-tab index="0">
                 <uib-tab-heading>
                     Configuration List
@@ -219,7 +219,7 @@
                     </tbody>
                 </table>
             </uib-tab>
-            <uib-tab ng-repeat="config in struct.open_configs" index="$index + 1">
+            <uib-tab ng-repeat="config in struct.open_configs" index="config.tabindex">
                 <uib-tab-heading>
                     {{ config.name }}
                     <span class="label label-danger" ng-show="changed(config)">Changed</span>
@@ -236,14 +236,14 @@
 
 <script type="text/ng-template" id="icsw.config.moncheck.table">
     <div uib-alert class="alert-warning" ng-if="!struct.data_valid">
-        Loading data ...
+        Loading Data ...
     </div>
     <div ng-if="struct.data_valid">
         <h3>
             {{ struct.config_tree.mcc_list.length }} Monitoringchecks, {{ struct.config_tree.filtered_mcc_list.length }} shown, {{ struct.config_tree.$mcc_selected }} selected
             <icsw-tools-button-static
                 type="create"
-                value="create new monitoring check"
+                value="create new Monitoring Check"
                 ng-click="create_mon_check($event)"
                 size="xs"
             ></icsw-tools-button-static>
@@ -568,7 +568,7 @@
     </td>
     <td>{{ config.$$cat_info_str }}</td>
     <td>
-        <icsw-tools-button-static type="modify" value="modify" ng-click="modify_config($event, config, true)" size="xs"/>
+        <icsw-tools-button-static type="modify" value="modify" ng-click="modify_config($event, config, false)" size="xs"/>
     </td>
     <td class="text-center">
         <span ng-if="config.$$usecount" class="text-warning">
