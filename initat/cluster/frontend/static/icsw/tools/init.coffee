@@ -512,18 +512,18 @@ angular.module(
                                         # console.log data.rights
                                         _add = icswAccessLevelService.has_all_menu_permissions(data.rights)
                                     if not _add
-                                        _missing_info.push("user rights")
+                                        _missing_info.push("User Rights")
                                         _missing_short.push("R")
                                     if data.licenses? and _add
                                         _add = icswAccessLevelService.has_all_valid_licenses(data.licenses)
                                         if not _add
-                                            _missing_info.push("license")
+                                            _missing_info.push("License")
                                             _missing_short.push("L")
                                             # console.warn "license(s) #{data.licenses} missing"
                                     if data.serviceTypes? and _add
                                         _add = icswAccessLevelService.has_all_service_types(data.serviceTypes)
                                         if not _add
-                                            _missing_info.push("service type")
+                                            _missing_info.push("Service Type")
                                             _missing_short.push("S")
                                             # console.warn "service_type(s) #{data.serviceTypes} missing"
                                 else

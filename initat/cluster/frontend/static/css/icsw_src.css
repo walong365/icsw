@@ -402,6 +402,9 @@ div.yamm hr {
     /* menu searchfield */
     margin-top: 22px;
 }
+.navbar .label {
+    padding: 1px 3px;
+}
 .navbar-nav.condensed > li > a > span.fa {
     /* add extra space to the icons in the menubar */
     padding-right: 3px;
