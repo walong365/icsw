@@ -539,6 +539,13 @@ class SimpleService(Service):
     # Service backup up by an init-RC script
     def _check(self, result, act_proc_dict):
         init_script_name = self.init_script_name
+        pid_file_name = self.attrib["pid_file_name"]
+        if not pid_file_name.startswith("/"):
+            pid_file_name = os.path.join("/", "var", "run", pid_file_name)
+        if os.path.isfile(pid_file_name):
+            start_time = os.stat(pid_file_name)[stat.ST_MTIME]
+        else:
+            start_time = 0
         if os.path.isfile(init_script_name):
             if os.getuid() != 0:
                 self.log(
@@ -558,6 +565,7 @@ class SimpleService(Service):
                 check_source="simple",
                 state="{:d}".format(act_state),
                 proc_info_str=act_str,
+                start_time="{:d}".format(start_time),
             ),
         )
         if "pid_file_name" in self.attrib:
@@ -594,6 +602,7 @@ class PIDService(Service):
             pid_file_name = os.path.join("/", "var", "run", pid_file_name)
         if os.path.isfile(pid_file_name):
             start_time = os.stat(pid_file_name)[stat.ST_CTIME]
+            # print("*", start_time, pid_file_name)
             act_pids = [int(line.strip()) for line in file(pid_file_name, "r").read().split("\n") if line.strip().isdigit()]
             act_state, num_started, num_found = self._check_processes(act_pids, act_proc_dict)
             unique_pids = set(act_pids)
