@@ -47,12 +47,10 @@ device_logs = angular.module(
 ) ->
     $scope.struct = {
         data_loaded: false
-
         log_entries: []
-
         devices: []
-
         tabs: []
+        activetab: 0
     }
 
     info_not_available_class = "alert-danger"
@@ -87,19 +85,26 @@ device_logs = angular.module(
     $scope.show_device = ($event, dev) ->
         DeviceOverviewService($event, [dev])
 
-    $scope.open_in_new_tab = (device) ->
+    $scope.open_in_new_tab = (device, $event) ->
         if device.$$device_log_entries_count == 0
             return
 
         o = {
             device: device
-        }
+            tabindex: device.idx
+            }
+        device_in_tablist = false
+        for tab in $scope.struct.tabs when tab.device == o.device
+            device_in_tablist = true
+        if !device_in_tablist
+            $scope.struct.tabs.push(o)
+        if !$event.ctrlKey
+            $timeout(
+                () ->
+                    $scope.struct.activetab = o.tabindex
+                0
+            )
 
-        for tab in $scope.struct.tabs
-            if tab.device == o.device
-                return
-
-        $scope.struct.tabs.push(o)
 
     $scope.close_tab = (to_be_closed_tab) ->
         $timeout(
