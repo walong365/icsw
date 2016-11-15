@@ -43,6 +43,9 @@ class Webdriver(webdriver.Remote):
         return WebDriverWait(self, self.timeout).until(
             find_any(elements))
 
+    def get_(self, url):
+        return self.get(self.base_url + url)
+
     def log_in(self, user, password):
         self.get(self.base_url)
         time.sleep(2)
@@ -50,6 +53,7 @@ class Webdriver(webdriver.Remote):
         self.find_element_by_name('password').send_keys(password)
         self.find_element_by_name('button').click()
         self.wait_loading()
+        # confirm the warning about a concurrent login
         xpath_logged_in = '//a[@href="#/main/dashboard"]'
         find_elements = [
             ('concurrent', '//div[@class="bootstrap-dialog-message" and '
@@ -87,6 +91,7 @@ class Webdriver(webdriver.Remote):
             )
 
     def select_device(self, expression):
+        self.wait_loading()
         visible(
             self.find_elements_by_xpath(
                 '//span[@ng-click="device_selection($event)"]'
@@ -98,5 +103,10 @@ class Webdriver(webdriver.Remote):
             '//input[@placeholder="search by name, IP or MAC"]'
             )
         e.send_keys(expression)
-        time.sleep(2)
+        time.sleep(3)
         self.find_element_by_xpath('//button[@class="close"]').click()
+
+    def clear_toaster_messages(self):
+        xpath = '//div[@id="toast-container"]/div[@ng-class="toaster.type"]'
+        for element in self.find_elements(By.XPATH, xpath):
+            element.click()
