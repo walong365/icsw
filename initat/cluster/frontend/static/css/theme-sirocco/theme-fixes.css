@@ -256,10 +256,16 @@ body.condensed .submenu-bar{
 .navbar-right.condensed .task-wizard {
     padding: 17px 0 0 0!important;
 }
-.wizardbutton{
+.navbar-right .menu-openissues {
+    margin: 39px 5px 0 0!important;
+}
+.navbar-right.condensed .menu-openissues {
+    margin: 12px 5px 0 0!important;
+}
+.wizardbutton, .menu-openissues {
     background-color: #f0f0f0!important;
     border: 1px solid #dddddd!important;
-    color: #777777!important;
+    ccolor: #777777!important;
 }
 .ova-statusbutton {
     margin: 30px 0 0 5px;

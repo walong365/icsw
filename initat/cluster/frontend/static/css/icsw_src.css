@@ -452,6 +452,13 @@ div.yamm hr {
 .navbar-right.condensed .task-wizard {
     padding: 14px 0 0 0!important;
 }
+.navbar-right .menu-openissues {
+    margin: 24px 5px 0 0!important;
+    padding: 1px!important;
+}
+.navbar-right.condensed .menu-openissues {
+    margin: 13px 5px 0 0!important;
+}
 .navbar-right .task-wizard .wizardbutton{
     padding: 4px;
     font-size: 17px;
