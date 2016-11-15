@@ -53,6 +53,10 @@ device_logs = angular.module(
         devices: []
 
         tabs: []
+
+        device_lut: {}
+
+        log_lut: {}
     }
 
     info_not_available_class = "alert-danger"
@@ -72,6 +76,8 @@ device_logs = angular.module(
 
             for device in devices
                 if !device.is_meta_device
+                    $scope.struct.device_lut[device.idx] = device
+
                     device.$$device_log_entries_count = 0
                     device.$$device_log_entries_bg_color_class = info_warning_class
                     if result[device.idx] != undefined && result[device.idx] > 0
@@ -79,6 +85,20 @@ device_logs = angular.module(
                         device.$$device_log_entries_bg_color_class = info_available_class
 
                     $scope.struct.devices.push(device)
+
+                    device.$$device_log_entries_count_ws = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8081" + "/device_log_entries/")
+                    device.$$device_log_entries_count_ws.onmessage = (data) ->
+                        console.log(data)
+                        json_dict = JSON.parse(data.data)
+                        if $scope.struct.device_lut[json_dict.device] != undefined && $scope.struct.log_lut[json_dict.idx] == undefined
+                            $scope.struct.log_lut[json_dict.idx] = true
+
+                            $timeout(
+                                () ->
+                                    $scope.struct.device_lut[json_dict.device].$$device_log_entries_count += 1
+                                0
+                            )
+
 
 
             $scope.struct.data_loaded = true
@@ -145,6 +165,7 @@ device_logs = angular.module(
 
         if device.$$device_log_entries_list == undefined
             device.$$device_log_entries_list = []
+            device.$$device_log_entries_lut = {}
             high_idx = 0
         else
             high_idx = device.$$device_log_entries_high_idx
@@ -170,30 +191,36 @@ device_logs = angular.module(
                     if log_entry.idx > high_idx
                         high_idx = log_entry.idx
 
+                    device.$$device_log_entries_lut[log_entry.idx] = log_entry
+
                 device.$$device_log_entries_high_idx = high_idx
 
-                device.$$device_log_entries_count = device.$$device_log_entries_list.length
-                start_timer()
+                device.$$device_log_entries_ws = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8081" + "/device_log_entries/")
+
+                device.$$device_log_entries_ws.onmessage = (data) ->
+                    json_dict = JSON.parse(data.data)
+                    if json_dict.device == device.idx && device.$$device_log_entries_lut[json_dict.idx] == undefined
+                        new_log_entry = {}
+
+                        new_log_entry.idx = json_dict.idx
+                        new_log_entry.pretty_date = moment(json_dict.date).format("YYYY-MM-DD HH:mm:ss")
+                        new_log_entry.user_resolved = "N/A"
+                        if json_dict.user != null
+                            log_entry.user_resolved = result[1].user_lut[json_dict.user].$$long_name
+
+                        new_log_entry.source = {}
+                        new_log_entry.source.identifier = json_dict.source
+                        new_log_entry.level = {}
+                        new_log_entry.level.name = json_dict.level
+                        new_log_entry.text = json_dict.text
+
+                        device.$$device_log_entries_lut[new_log_entry.idx] = new_log_entry
+
+                        $timeout(
+                            () ->
+                                device.$$device_log_entries_list.push(new_log_entry)
+                            0
+                        )
             )
-
-    start_timer = () ->
-        stop_timer()
-        $scope.struct.reload_timer = $timeout(
-            () ->
-                perform_refresh()
-            5000
-        )
-
-    stop_timer = () ->
-        # check if present and stop timer
-        if $scope.struct.reload_timer?
-            $timeout.cancel($scope.struct.reload_timer)
-            $scope.struct.reload_timer = undefined
-
-
     perform_refresh()
-
-    $scope.$on("$destroy", () ->
-        stop_timer()
-    )
 ])

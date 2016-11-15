@@ -345,6 +345,7 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     "django_extensions",
     "reversion",
+    "channels"
 )
 
 ICSW_WEBCACHE = os.path.join(CLUSTER_DIR, "share", "webcache")
@@ -579,4 +580,14 @@ LOGGING = {
             'level': 'INFO' if DEBUG else "WARN",
         },
     }
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "asgi_ipc.IPCChannelLayer",
+        "CONFIG": {
+            "prefix": "INITAT",
+        },
+        "ROUTING": "initat.cluster.urls.channel_routing.channel_routing",
+    },
 }

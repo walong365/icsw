@@ -23,7 +23,7 @@ import zmq
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device, DeviceScanLock
+from initat.cluster.backbone.models import device, DeviceScanLock, DeviceLogEntry, LogSource, LogLevel
 from initat.cluster.backbone.models.asset.dynamic_asset import AssetRun, \
     AssetBatch
 from initat.cluster.backbone.models.asset.asset_functions import RunResult, \
@@ -39,6 +39,10 @@ from initat.tools import configfile, logging_tools, process_tools, \
 from initat.tools.server_mixins import RemoteCall
 from .config import global_config, IPC_SOCK_SNMP
 from .discovery import DiscoveryProcess
+
+
+DEVICE_LOG_LEVEL_OK = LogLevel.objects.get(identifier="o")
+DEVICE_LOG_SOURCE = LogSource.objects.get(identifier=icswServiceEnum.discovery_server.name)
 
 
 @server_mixins.RemoteCallProcess
@@ -246,3 +250,12 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         asset_batch.state_finished()
         asset_batch.save()
         self.log("Finished asset batch {}.".format(asset_batch.idx))
+
+        log_entry = DeviceLogEntry(
+            device=asset_batch.device,
+            source=DEVICE_LOG_SOURCE,
+            level=DEVICE_LOG_LEVEL_OK,
+            text="AssetScan with BatchId:[{}] completed".format(asset_batch.idx),
+            user=asset_batch.user
+        )
+        log_entry.save()
