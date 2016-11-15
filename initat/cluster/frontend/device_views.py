@@ -1290,6 +1290,7 @@ class DeviceLogEntryViewSet(viewsets.ViewSet):
 
         return Response(serializer.data)
 
+
 class DeviceLogEntryCount(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -1303,7 +1304,6 @@ class DeviceLogEntryCount(View):
 
         for device_log_entry in device_log_entries:
             pk_count_dict[device_log_entry['device_id']] += 1
-
 
         return HttpResponse(
             json.dumps(pk_count_dict)

@@ -174,7 +174,7 @@ setup_patterns = [
 ]
 
 config_patterns = [
-    url("^set_config_cb$", config_views.alter_config_cb.as_view(), name="alter_config_cb"),
+    url("^set_config$", config_views.alter_config.as_view(), name="alter_config"),
     url("^generate_config$", config_views.generate_config.as_view(), name="generate_config"),
     url("^download_config/(?P<hash>.*)$", config_views.download_configs.as_view(), name="download_configs"),
     url("^upload_config$", config_views.upload_config.as_view(), name="upload_config"),

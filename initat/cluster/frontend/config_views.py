@@ -87,23 +87,52 @@ def delete_object(request, del_obj, **kwargs):
             )
 
 
-class alter_config_cb(View):
+def toggle_exclude_mon_device(request, mc_obj, device_obj, **kwargs):
+    if device_obj in mc_obj.exclude_devices.all():
+        mc_obj.exclude_devices.remove(device_obj)
+        request.xml_response.info(
+            "removed device '{}' from exclude_list of {}".format(
+                unicode(device_obj),
+                unicode(mc_obj),
+            )
+        )
+    else:
+        mc_obj.exclude_devices.add(device_obj)
+        request.xml_response.info(
+            "added device '{}' to exclude_list of {}".format(
+                unicode(device_obj),
+                unicode(mc_obj),
+            )
+        )
+
+
+class alter_config(View):
     @method_decorator(login_required)
     @method_decorator(xml_wrapper)
     def post(self, request):
         _stream_data = json.loads(request.POST["stream_data"])
+        _mode = request.POST["mode"]
         # import pprint
         # pprint.pprint(_stream_data)
         logger.info(
-            "handling config stream with {}".format(
+            "handling '{}' config stream with {}".format(
+                _mode,
                 logging_tools.get_plural("entry", len(_stream_data)),
             )
         )
+        # config pks changed
         config_pks = set()
+        # mon check command pks changes
+        mc_pks = set()
         for _data in _stream_data:
             dev_pk = _data["dev_pk"]
             meta_pk = _data["meta_pk"]
             conf_pk = _data["conf_pk"]
+            mc_pk = _data["element_pk"]
+            if _mode == "mon":
+                mc_obj = mon_check_command.objects.get(Q(pk=mc_pk))
+            else:
+                mc_obj = None
             config_pks.add(conf_pk)
             # checked = bool(int(_post["value"]))
             config_obj = config.objects.get(Q(pk=conf_pk))
@@ -140,13 +169,14 @@ class alter_config_cb(View):
                 else:
                     meta_checked = True
             logger.info(
-                u"device {}{} / config {}: {} / {}, {} in device_group".format(
+                u"device {}{} / config {}: {} / {}, {} in device_group{}".format(
                     unicode(device_obj),
                     " [MD]" if is_meta else "",
                     unicode(config_obj),
                     "local set" if local_checked else "local unset",
                     "meta set" if local_checked else "meta unset",
                     logging_tools.get_plural("device", devs_in_group),
+                    "mc is {}".format(unicode(mc_obj)) if mc_obj else "",
                 )
             )
             if is_meta:
@@ -190,26 +220,34 @@ class alter_config_cb(View):
                 elif local_checked:
                     # delete local config
                     # check if we can safely remove the config
-                    delete_object(request, local_dc, xml_log=False)
-                    request.xml_response.info("removed config {}".format(unicode(config_obj)), logger)
+                    if _mode == "mon":
+                        mc_pks.add(mc_obj.idx)
+                        toggle_exclude_mon_device(request, mc_obj, device_obj)
+                    else:
+                        delete_object(request, local_dc, xml_log=False)
+                        request.xml_response.info("removed config {}".format(unicode(config_obj)), logger)
                 elif meta_checked and not local_checked:
                     # create local config, remove meta config, set all other device configs
-                    if get_related_models(meta_dc):
-                        request.xml_response.error("meta config {} is in use".format(unicode(config_obj)), logger)
+                    if _mode == "mon":
+                        mc_pks.add(mc_obj.idx)
+                        toggle_exclude_mon_device(request, mc_obj, device_obj)
                     else:
-                        delete_object(request, meta_dc, xml_log=False)
-                        for set_dev in meta_obj.device_group.device_group.all().exclude(Q(pk__in=[meta_obj.pk, device_obj.pk])):
-                            device_config(
-                                device=set_dev,
-                                config=config_obj,
-                            ).save()
-                        request.xml_response.warn(
-                            "removed meta config {} and added {}".format(
-                                unicode(config_obj),
-                                logging_tools.get_plural("device", devs_in_group - 1)
-                            ),
-                            logger
-                        )
+                        if get_related_models(meta_dc):
+                            request.xml_response.error("meta config {} is in use".format(unicode(config_obj)), logger)
+                        else:
+                            delete_object(request, meta_dc, xml_log=False)
+                            for set_dev in meta_obj.device_group.device_group.all().exclude(Q(pk__in=[meta_obj.pk, device_obj.pk])):
+                                device_config(
+                                    device=set_dev,
+                                    config=config_obj,
+                                ).save()
+                            request.xml_response.warn(
+                                "removed meta config {} and added {}".format(
+                                    unicode(config_obj),
+                                    logging_tools.get_plural("device", devs_in_group - 1)
+                                ),
+                                logger
+                            )
                 else:
                     # meta and local checked, should never happen ...
                     request.xml_response.warn(
@@ -218,20 +256,37 @@ class alter_config_cb(View):
                     )
                     local_dc.remove()
 
-        request.xml_response["response"] = E.changeset(
-            *[
+        # check exclusion lists
+        changeset = E.changeset()
+        for mc in mon_check_command.objects.filter(
+            Q(config__in=config_pks) | Q(idx__in=mc_pks)
+        ).prefetch_related("exclude_devices"):
+            changeset.append(
+                E.mon_check_command(
+                    *[
+                        E.exclude(
+                            dev_idx="{:d}".format(dev_idx)
+                        ) for dev_idx in mc.exclude_devices.all().values_list("idx", flat=True)
+                    ],
+                    pk="{:d}".format(mc.idx)
+                )
+            )
+        for pk in config_pks:
+            changeset.append(
                 E.config(
                     *[
                         E.entry(
                             **{k: str(v) for k, v in result.iteritems()}
                         ) for result in device_config.objects.filter(
-                            Q(config=_pk)
-                        ).values("device", "config", "pk", "date") for _pk in config_pks
+                            Q(config=pk)
+                        ).values("device", "config", "pk", "date")
                     ],
-                    pk="{:d}".format(_pk)
-                ) for _pk in config_pks
-            ]
-        )
+                    pk="{:d}".format(pk)
+                )
+            )
+        # print(etree.tostring(changeset, pretty_print=True))
+
+        request.xml_response["response"] = changeset
 
 
 class ConfigTreeStruct(object):
