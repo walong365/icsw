@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 """ special call for disc monitoring """
 
 from __future__ import unicode_literals, print_function
@@ -78,7 +79,8 @@ class SpecialDisc(SpecialBase):
                         part_p.crit_threshold)
                     warn_level_str, crit_level_str = (
                         "{:d}".format(warn_level if warn_level else 85),
-                        "{:d}".format(crit_level if crit_level else 95))
+                        "{:d}".format(crit_level if crit_level else 95),
+                    )
                     if part_p.mountpoint.strip():
                         part_list.append(
                             (

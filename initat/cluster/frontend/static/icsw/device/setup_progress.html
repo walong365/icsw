@@ -39,13 +39,13 @@
                                 <th style="width: 10px" class="lead">Task</th>
                                 <th style="width: 500px" class="lead">Description</th>
                                 <th style="width: 10px" class="lead text-center">Status</th>
-                                <th style="width: 10px" class="lead text-center">Action</th>
+                                <th style="width: 10px" class="lead text-center" colspan="2">Action</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr ng-repeat="task in struct.tasks" class="lead">
                                 <td class="vertical-align">
-                                    {{ task.number }}.
+                                    <span class="label label-primary">{{ task.number }}</span>
                                 </td>
                                 <td class="vertical-align">
                                     {{ task.description }}
@@ -60,8 +60,11 @@
                                         size="sm"
                                         value="Handle Issue"
                                     ></icsw-tools-button>
+                                </td>
+                                <td class="text-center vertical-align">
                                     <icsw-tools-button
                                         type="enable"
+                                        ng-show="!task.fulfilled"
                                         ng-click="ignore_issue(task)"
                                         is-enable="task.ignore"
                                         size="sm"
