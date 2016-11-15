@@ -301,13 +301,13 @@ angular.module(
         icswComplexModalService(
             {
                 message: $compile($templateCache.get(template_name))(sub_scope)
-                title: if is_group then "Devicegroup setup" else "Device setup"
+                title: if is_group then "Device Group Setup" else "Device Setup"
                 closable: true
                 ok_label: if create_mode then "Create" else "Modify"
                 ok_callback: (modal) ->
                     d = $q.defer()
                     if sub_scope.form_data.$invalid
-                        toaster.pop("warning", "form validation problem", "")
+                        toaster.pop("warning", "Form validation problem", "")
                         d.reject("form not valid")
                     else
                         if create_mode
@@ -464,11 +464,8 @@ angular.module(
                     new_el = $compile($templateCache.get("icsw.device.tree.meta.row"))
             else
                 new_el = $compile($templateCache.get("icsw.device.tree.row"))
-            scope.get_dev_sel_class = () ->
-                if sel.device_is_selected(device)
-                    return "btn btn-xs btn-success"
-                else
-                    return "btn btn-xs btn-default"
+            scope.get_dev_selected = () ->
+                sel.device_is_selected(device)
             scope.toggle_dev_sel = () ->
                 sel.toggle_selection(device)
             scope.change_dg_sel = (flag) ->

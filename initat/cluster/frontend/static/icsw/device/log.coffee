@@ -40,10 +40,10 @@ device_logs = angular.module(
 ]).controller("icswDeviceLogCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI", "DeviceOverviewService"
-    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "Restangular", "icswDeviceTreeService"
+    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, DeviceOverviewService
-    icswTools, icswSimpleAjaxCall, ICSW_URLS, Restangular, icswDeviceTreeService
+    icswTools, icswSimpleAjaxCall, ICSW_URLS, $timeout
 ) ->
     $scope.struct = {
         data_loaded: false
@@ -59,47 +59,27 @@ device_logs = angular.module(
     info_available_class = "alert-success"
     info_warning_class = "alert-warning"
 
-    $scope.new_devsel = (devs) ->
-        $q.all(
-            [
-                Restangular.all(ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LIST.slice(1)).getList(
-                    {
-                        device_pks: angular.toJson((dev.idx for dev in devs))
-                    }
-                )
-                icswDeviceTreeService.load($scope.$id)
-            ]
+    $scope.new_devsel = (devices) ->
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_COUNT
+                data:
+                    device_pks: (dev.idx for dev in devices)
+                dataType: "json"
+            }
         ).then((result) ->
             $scope.struct.devices.length = 0
-            $scope.struct.log_entries.length = 0
 
-            dev_lut = {}
+            for device in devices
+                if !device.is_meta_device
+                    device.$$device_log_entries_count = 0
+                    device.$$device_log_entries_bg_color_class = info_warning_class
+                    if result[device.idx] != undefined && result[device.idx] > 0
+                        device.$$device_log_entries_count = result[device.idx]
+                        device.$$device_log_entries_bg_color_class = info_available_class
 
-            for dev in devs
-                if dev.$$device_log_entries_list != undefined
-                    dev.$$device_log_entries_list.length = 0
-                else
-                    dev.$$device_log_entries_list = []
+                    $scope.struct.devices.push(device)
 
-                dev_lut[dev.idx] = dev
-
-            log_entries_per_device = {}
-
-            for log_entry in result[0]
-                if log_entries_per_device[log_entry.device] == undefined
-                    log_entries_per_device[log_entry.device] = 0
-                log_entries_per_device[log_entry.device] += 1
-
-                dev_lut[log_entry.device].$$device_log_entries_list.push(log_entry)
-
-            for dev in devs
-                if !dev.is_meta_device
-                    $scope.struct.devices.push(dev)
-                    dev.$$device_log_entries_count = 0
-                    dev.$$device_log_entries_bg_color_class = info_warning_class
-                    if log_entries_per_device[dev.idx] != undefined
-                        dev.$$device_log_entries_count = log_entries_per_device[dev.idx]
-                        dev.$$device_log_entries_bg_color_class = info_available_class
 
             $scope.struct.data_loaded = true
         )
@@ -112,12 +92,108 @@ device_logs = angular.module(
             return
 
         o = {
-            name: device.full_name
+            device: device
         }
 
         for tab in $scope.struct.tabs
-            if tab.name == o.name
+            if tab.device == o.device
                 return
 
         $scope.struct.tabs.push(o)
+
+    $scope.close_tab = (to_be_closed_tab) ->
+        $timeout(
+            () ->
+                tabs_tmp = []
+
+                for tab in $scope.struct.tabs
+                    if tab != to_be_closed_tab
+                        tabs_tmp.push(tab)
+                $scope.struct.tabs.length = 0
+                for tab in tabs_tmp
+                    $scope.struct.tabs.push(tab)
+            0
+        )
+
+]).directive("icswDeviceLogTable",
+[
+    "$q", "$templateCache"
+(
+    $q, $templateCache
+) ->
+    return {
+        restrict: "E"
+        template: $templateCache.get("icsw.device.log.table")
+        controller: "icswDeviceLogTableCtrl"
+        scope: {
+            device: "=icswDevice"
+        }
+    }
+]).controller("icswDeviceLogTableCtrl",
+[
+    "$q", "Restangular", "ICSW_URLS", "$scope", "icswUserGroupRoleTreeService", "$timeout"
+(
+    $q, Restangular, ICSW_URLS, $scope, icswUserGroupRoleTreeService, $timeout
+) ->
+
+    $scope.struct = {
+        reload_timer: undefined
+    }
+
+    perform_refresh = () ->
+        device = $scope.device
+
+        if device.$$device_log_entries_list == undefined
+            device.$$device_log_entries_list = []
+            high_idx = 0
+        else
+            high_idx = device.$$device_log_entries_high_idx
+
+        $q.all(
+            [
+                Restangular.all(ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LIST.slice(1)).getList(
+                    {
+                        device_pks: angular.toJson([device.idx])
+                        high_idx: high_idx
+                    }
+                )
+                icswUserGroupRoleTreeService.load($scope.$id)
+            ]
+            ).then((result) ->
+                for log_entry in result[0]
+                    log_entry.pretty_date = moment(log_entry.date).format("YYYY-MM-DD HH:mm:ss")
+                    log_entry.user_resolved = "N/A"
+                    if log_entry.user != null
+                        log_entry.user_resolved = result[1].user_lut[log_entry.user].$$long_name
+
+                    device.$$device_log_entries_list.push(log_entry)
+                    if log_entry.idx > high_idx
+                        high_idx = log_entry.idx
+
+                device.$$device_log_entries_high_idx = high_idx
+
+                device.$$device_log_entries_count = device.$$device_log_entries_list.length
+                start_timer()
+            )
+
+    start_timer = () ->
+        stop_timer()
+        $scope.struct.reload_timer = $timeout(
+            () ->
+                perform_refresh()
+            5000
+        )
+
+    stop_timer = () ->
+        # check if present and stop timer
+        if $scope.struct.reload_timer?
+            $timeout.cancel($scope.struct.reload_timer)
+            $scope.struct.reload_timer = undefined
+
+
+    perform_refresh()
+
+    $scope.$on("$destroy", () ->
+        stop_timer()
+    )
 ])

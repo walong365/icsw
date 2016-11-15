@@ -81,9 +81,11 @@
 </script> 
 
 <script type="text/ng-template" id="icsw.device.tree.meta.row">
-    <td colspan="2">
+    <td>
         <strong>{{ group.name }}</strong>
-        <div class="btn-group btn-group-xs pull-right" ng-show="group.num_devices">
+    </td>
+    <td class="text-center">
+        <div class="btn-group btn-group-xs" ng-show="group.num_devices">
             <input type="button" class="btn btn-success" ng-click="change_dg_sel(1)" value="S"/>
             <input type="button" class="btn btn-primary" ng-click="change_dg_sel(0)" value="T"/>
             <input type="button" class="btn btn-warning" ng-click="change_dg_sel(-1)" value="C"/>
@@ -112,7 +114,9 @@
         <button type="button" class="btn btn-xs btn-primary" ng-click="show_device($event, obj)">{{ obj.name }}</button>
     </td>
     <td class="text-center">
-        <input type="button" ng-class="get_dev_sel_class()" ng-click="toggle_dev_sel()" value="sel"/>
+        <button type="button" class="btn btn-xs" ng-class="get_dev_selected() && 'btn-success' || 'btn-default'" ng-click="toggle_dev_sel()" value="sel">
+            <span class="glyphicon" ng-class="get_dev_selected() && 'glyphicon-ok' || 'glyphicon-minus'"></span>
+        </button>
     </td>
     <td>{{ struct.device_tree.device_class_tree.lut[obj.device_class].name }}</td>
     <td>{{ obj.comment }}</td>
@@ -207,11 +211,11 @@
 
 <script type="text/ng-template" id="icsw.device.tree.many.form">
     <form class="form-horizontal" name="form_data">
-        <h3>Change settings of {{ num_selected() }} devices</h3>
+        <h3 style="margin-top:0px;">Change Settings of {{ num_selected() }} Devices</h3>
         <fieldset>
             <legend>Basic Settings</legend>
             <div class="row">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
@@ -223,13 +227,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-9">
                     <div class="form-group" ng_show="edit_obj.change_device_group">
-                        <label class="control-label col-sm-3 requiredField">
-                            Device group<span class="asteriskField">*</span>
+                        <label class="control-label col-sm-3 requiredField force-left">
+                            Device Group<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select ng-model="edit_obj.device_group" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                            <ui-select ng-model="edit_obj.device_group" class="maxwidth500" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="Select the device group">
                                     {{ $select.selected.name }}
                                 </ui-select-match>
@@ -242,7 +246,7 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
@@ -254,13 +258,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-9">
                     <div class="form-group" ng_show="edit_obj.change_device_class">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField force-left">
                             Device Class<span class="asteriskField">*</span>
                         </label>
-                        <div class="controls col-sm-7">
-                            <ui-select ng-model="edit_obj.device_class" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                        <div class="controls col-sm-8">
+                            <ui-select ng-model="edit_obj.device_class" class="maxwidth500" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="Select the DeviceClass">
                                     {{ $select.selected.name }}
                                 </ui-select-match>
@@ -276,7 +280,7 @@
         <fieldset>
             <legend>Additional Settings</legend>
             <div class="row">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
@@ -288,13 +292,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-9">
                     <div class="form-group" ng_show="edit_obj.change_domain_tree_node">
-                        <label class="control-label col-sm-3 requiredField">
+                        <label class="control-label col-sm-3 requiredField force-left">
                             Domain Tree Node<span class="asteriskField">*</span>
                         </label>
                         <div class="controls col-sm-8">
-                            <ui-select ng-model="edit_obj.domain_tree_node" style="max-width:400px; min-width:240px;" ng-disabled="false">
+                            <ui-select ng-model="edit_obj.domain_tree_node" class="maxwidth500" ng-disabled="false">
                                 <ui-select-match class="ui-select-match" placeholder="Select the domain tree node (for FQDN)">
                                     {{ $select.selected.tree_info }}
                                 </ui-select-match>
@@ -307,7 +311,7 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
@@ -319,14 +323,14 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-9">
                     <div class="form-group" ng_show="edit_obj.change_bootserver">
-                        <label class="control-label col-sm-3">
+                        <label class="control-label col-sm-3 force-left">
                             Bootserver
                         </label>
 
                         <div class="controls col-sm-8">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                            <div class="input-group maxwidth500">
                                 <ui-select ng-model="edit_obj.bootserver" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="Select the bootserver">
                                         {{ $select.selected.full_name }}
@@ -346,7 +350,7 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
@@ -358,13 +362,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-9">
                     <div class="form-group" ng_show="edit_obj.change_monitor_server">
-                        <label class="control-label col-sm-3">
-                            Monitor server
+                        <label class="control-label col-sm-3 force-left">
+                            Monitor Server
                         </label>
                         <div class="controls col-sm-8">
-                            <div class="input-group" style="max-width:400px; min-width:240px;">
+                            <div class="input-group maxwidth500">
                                 <ui-select ng-model="edit_obj.monitor_server" ng-disabled="false">
                                     <ui-select-match class="ui-select-match" placeholder="Select the monitor server">
                                         {{ $select.selected.$$full_name_with_type }}
@@ -387,7 +391,7 @@
         <fieldset>
             <legend>Security</legend>
             <div class="row">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
@@ -399,13 +403,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-9">
                     <div class="form-group" ng_show="edit_obj.change_root_passwd">
-                        <label class="control-label col-sm-3">
-                            Root passwd
+                        <label class="control-label col-sm-3 force-left">
+                            Root Password
                         </label>
                         <div class="controls col-sm-8">
-                            <input class="textinput textInput form-control" ng-model="edit_obj.root_passwd" type="password"/>
+                            <input class="textinput textInput form-control maxwidth500" ng-model="edit_obj.root_passwd" type="password"/>
                         </div>
                     </div>
                 </div>
@@ -414,7 +418,7 @@
         <fieldset>
             <legend>Flags</legend>
             <div class="row">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
@@ -426,7 +430,7 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-9">
                     <div class="form-group">
                         <div class="checkbox" ng_show="edit_obj.change_enabled">
                             <div class="controls col-lg-offset-0 col-sm-8">
@@ -440,25 +444,25 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.change_enable_perfdata" type="checkbox"/>
-                                    PerfDataFlag
+                                    PerfData Flag
                                 </label>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-9">
                     <div class="form-group">
                         <div class="checkbox" ng_show="edit_obj.change_enable_perfdata">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.enable_perfdata" type="checkbox"/>
-                                    Enable perfdata, check IPMI and SNMP
+                                    Enable FerfData, check IPMI and SNMP
                                 </label>
                             </div>
                         </div>
@@ -466,7 +470,7 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
@@ -478,13 +482,13 @@
                         </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-9">
                     <div class="form-group">
                         <div class="checkbox" ng_show="edit_obj.change_store_rrd_data">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input checked="checked" class="checkboxinput checkbox" ng-model="edit_obj.store_rrd_data" type="checkbox"/>
-                                    Store rrd data
+                                    Store RRD Data
                                 </label>
                             </div>
                         </div>
@@ -492,19 +496,19 @@
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-2">
+                <div class="col-md-3">
                     <div class="form-group">
                         <div class="checkbox">
                             <div class="controls col-lg-offset-0 col-sm-8">
                                 <label>
                                     <input class="checkboxinput checkbox" ng-model="edit_obj.change_flap_detection_enabled" type="checkbox"/>
-                                    Flapdetection Flag
+                                    Flap Detection
                                 </label>
                             </div>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-10">
+                <div class="col-md-9">
                     <div class="form-group">
                         <div class="checkbox" ng_show="edit_obj.change_flap_detection_enabled">
                             <div class="controls col-lg-offset-0 col-sm-8">
