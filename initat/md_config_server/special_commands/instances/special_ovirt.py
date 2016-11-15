@@ -30,7 +30,7 @@ from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import process_tools
 
 OVIRT_USER_NAME = "OVIRT_USER_NAME"
-OVIRT_PASSWORD = "OVRT_PASSWORD"
+OVIRT_PASSWORD = "OVIRT_PASSWORD"
 
 
 class special_ovirt_domains(SpecialBase):
