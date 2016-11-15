@@ -22,13 +22,22 @@ from __future__ import unicode_literals, print_function
 import inspect
 import inflection
 import os
+from enum import Enum
 
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import process_tools, logging_tools
 
 __all__ = [
     b"dynamic_checks",
+    b"DynamicCheckMode",
 ]
+
+
+class DynamicCheckMode(Enum):
+    # create config
+    create = "create"
+    # fetch dynamic updates
+    fetch = "fetch"
 
 
 class DynamicCheckResult(object):
@@ -79,7 +88,8 @@ class DynamicCheckDict(object):
         _key = DynamicCheckDict.meta_to_class_name(inflection.camelize(key))
         return self._class_dict[_key]
 
-    def handle(self, gbc, hbc, cur_gc, s_check):
+    def handle(self, gbc, hbc, cur_gc, s_check, mode):
+        #
         rv = DynamicCheckResult()
         # mccs .... mon_check_command_special
         mccs = gbc.mccs_dict[s_check.mccs_id]
@@ -118,9 +128,9 @@ class DynamicCheckDict(object):
             try:
                 if mccs_name != mccs.name:
                     # for meta specials
-                    sc_array = cur_special(instance=mccs_name)
+                    sc_array = cur_special(mode, instance=mccs_name)
                 else:
-                    sc_array = cur_special()
+                    sc_array = cur_special(mode)
             except:
                 exc_info = process_tools.exception_info()
                 rv.feed_error(

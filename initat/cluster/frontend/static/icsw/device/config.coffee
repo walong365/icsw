@@ -60,6 +60,7 @@ angular.module(
         set_devices: (dev_list) =>
             # create a group dict
             _group_lut = {}
+            @dev_group_lut = {}
             @groups = []
             for dev in dev_list
                 dg_idx = dev.device_group
@@ -73,11 +74,16 @@ angular.module(
                     }
                     _group_lut[dg_idx] = _new_struct
                     @groups.push(_new_struct)
+                # lookup table from device to group structure
+                @dev_group_lut[dev.idx] = _group_lut[dg_idx]
                 if @mode == "srv" and dev.is_meta_device
                     # do not add meta-devices to srv-mode view
                     true
                 else
-                    _group_lut[dg_idx]["devices"].push(dev)
+                    if dev.is_meta_device
+                        _group_lut[dg_idx]["devices"].splice(0, 0, dev)
+                    else
+                        _group_lut[dg_idx]["devices"].push(dev)
                 if not dev.is_meta_device
                     _group_lut[dg_idx]["nmd_count"]++
 
@@ -90,6 +96,7 @@ angular.module(
             # the necessary helper objects ($local_selected)
             @devices.length = 0
             for dev in dev_list
+                # meta-devices will be filtered out in srv-view
                 if dev.device_group in _group_ids
                     @devices.push(dev)
             @link()
@@ -199,25 +206,65 @@ angular.module(
             else
                 return true
 
-        get_td_class_and_icon: (dev, conf) =>
+        get_td_class_and_icon: (row_el, conf, dev) =>
+            # check shadow focus state
+            _shadow = false
+            _foc = false
+            if dev.idx of @focus_dict
+                if conf.idx of @focus_dict[dev.idx]
+                    if @focus_dict[dev.idx][conf.idx]
+                        _shadow = true
+                        if @focus_element and @focus_element[0].idx == row_el.idx and @focus_element[1].idx == dev.idx
+                            _foc = true
             if dev.is_meta_device and conf.server_config
                 # check if config is a server config and therefore not selectable for
                 # a meta device (== group)
                 _cls = "danger"
-                _icon = "glyphicon glyphicon-remove-sign"
+                _icon = "fa fa-times-circle"
             else if conf.idx in dev.$local_selected
                 # config is locally selected
-                _cls = "success"
-                _icon = "glyphicon glyphicon-ok"
+                if _foc
+                    _cls = "danger"
+                    _icon = "fa fa-minus"
+                else
+                    _cls = "success"
+                    _icon = "fa fa-check"
             else if conf.idx in @md_lut[dev.idx].$local_selected and not dev.is_meta_device
                 # config is selected via meta-device (== group)
-                _cls = "warn"
-                _icon = "glyphicon glyphicon-ok-circle"
+                _cls = "warning"
+                _icon = "fa fa-check-square-o"
             else
                 # config is not selected
-                _cls = ""
-                _icon = "glyphicon glyphicon-minus"
+                if _foc
+                    _icon = "fa fa-check"
+                    _cls = "danger"
+                else
+                    _icon = "fa fa-minus"
+                    if _shadow
+                        _cls = "warning"
+                    else
+                        _cls = ""
             return [_cls, _icon]
+
+        set_focus: (row_el, conf, device) =>
+            @clear_focus()
+            @focus_element = [row_el, device]
+            _set_list = [device.idx]
+            _group = @dev_group_lut[device.idx]
+            if device.idx == _group.meta.idx
+                for _dev in _group.devices
+                    _set_list.push(_dev.idx)
+            for _dev_idx in _set_list
+                @focus_set_list.push([conf.idx, _dev_idx])
+                @focus_dict[_dev_idx][conf.idx] = true
+                @linedraw_dict[_dev_idx]++
+
+        clear_focus: () =>
+            for [_conf, _dev] in @focus_set_list
+                @focus_dict[_dev][_conf] = false
+                @linedraw_dict[_dev]++
+            @focus_set_list.length = 0
+            @focus_element = null
 
         update_active_rows: (name_re, only_selected, with_server, with_service) =>
             @active_rows.length = 0
@@ -262,6 +309,20 @@ angular.module(
                         @num_rows++
                     else
                         @num_rows += entry.mon_check_command_set.length
+
+            # setup focus helper structurs
+            @focus_dict = {}
+            # indices of focus element
+            @focus_element = null
+            # list of indices of shadow selections (config, devicegroup)
+            @focus_set_list = []
+            @linedraw_dict = {}
+            for group in @groups
+                for dev in group.devices
+                    @focus_dict[dev.idx] = {}
+                    @linedraw_dict[dev.idx] = 0
+                    for row in @active_rows
+                        @focus_dict[dev.idx][row.idx] = false
             @render_count++
             $rootScope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"))
 
@@ -704,7 +765,7 @@ angular.module(
                 else
                     _conf = _el.$$config
                     _info_str = "#{_el.description} (#{_el.name})"
-                [_class, _icon] = @props.configHelper.get_td_class_and_icon(@props.device, _conf)
+                [_class, _icon] = @props.configHelper.get_td_class_and_icon(_el, _conf, @props.device)
                 if @state.focus
                     _class = "#{_class} bg-primary"
                 return td(
@@ -719,10 +780,10 @@ angular.module(
                                 )
                         onMouseEnter: (event) =>
                             @setState({focus: true})
-                            @props.focusCallback(_conf, true)
+                            @props.focusCallback(_el, _conf, @props.device, true)
                         onMouseLeave: (event) =>
                             @setState({focus: false})
-                            @props.focusCallback(_conf, false)
+                            @props.focusCallback(_el, _conf, @props.device, false)
                         title: _info_str
                     }
                     span(
@@ -744,8 +805,13 @@ angular.module(
             shouldComponentUpdate: (next_props, next_state) ->
                 # very simple update cache, compare local render count with counter from config
                 _doit = false
-                if @props.configHelper.render_count != @state.counter
-                    @setState({counter: @props.configHelper.render_count})
+                if @props.configHelper.render_count != @state.counter or @props.configHelper.linedraw_dict[@props.device.idx] != @state.line_counter
+                    @setState(
+                        {
+                            counter: @props.configHelper.render_count
+                            line_counter: @props.configHelper.linedraw_dict[@props.device.idx]
+                        }
+                    )
                     _doit = true
                 return _doit
 
@@ -828,11 +894,14 @@ angular.module(
             @setState({counter: @state.counter + 1})
 
         render: () ->
-            focus_cb = (el, state) =>
+            focus_cb = (row_el, conf, device, state) =>
+                # @state.configHelper.clear_
                 if state
-                    @setState({focus_el: el.idx})
+                    @props.configHelper.set_focus(row_el, conf, device)
+                    @setState({focus_el: conf.idx})
                 else
                     if @state.focus_el
+                        @props.configHelper.clear_focus()
                         @setState({focus_el: 0})
 
             if not @props.configHelper.devices.length
