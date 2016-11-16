@@ -1,4 +1,4 @@
-# Copyright (C) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -19,12 +19,14 @@
 #
 """ db-syncer for the NESTOR / CORVUS / NOCTUA graphing solution """
 
+from __future__ import print_function, unicode_literals
+
 from django.db.models import Q
+from initat.tools import logging_tools, server_mixins, threading_tools, process_tools
 from lxml import etree
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, MachineVector, MVStructEntry, MVValueEntry
-from initat.tools import logging_tools, server_mixins, threading_tools, process_tools
 from .config import global_config
 
 

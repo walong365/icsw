@@ -741,7 +741,7 @@ menu_module = angular.module(
     $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
     $state, ICSW_URLS, SetupProgressHelper
 ) ->
-    {ul, li, div, a, button, p, strong, span} = React.DOM
+    {ul, li, div, a, button, p, strong, span, img} = React.DOM
     return React.createClass(
         displayName: "icswOpenIssuesInfo"
 
@@ -763,25 +763,26 @@ menu_module = angular.module(
             }
 
         render: () ->
-            if @state.num_unfulfilled > -2
+            if @state.num_unfulfilled > -2  # DEBUG set value 0
                 return li(
                     {}
-                    a(
+                    button(
                         {
-                            href: null
+                            type: button
                             key: "p"
+                            className: "btn btn-default btn-xs menu-openissues"
                             onClick: (event) ->
                                 $state.go("main.setupprogress")
                                 event.preventDefault()
                         }
-                        "Open Issues"
-                    )
-                    span(
-                        {
-                            className: "setupsteps__badge"
-                            key: "setupsteps__badge__key"
-                        }
-                        @state.num_unfulfilled
+                        img(
+                            {
+                            src: ICSW_URLS.STATIC_URL + "/openissues-danger.svg"
+                            title: "Open Issues: #{@state.num_unfulfilled}"
+                            height: 23
+                            }
+                        )
+
                     )
                 )
             else

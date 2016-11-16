@@ -50,7 +50,10 @@ angular.module(
             @render_count = 0
             # pending changes
             @pending = {
+                # clicked
                 clicked: []
+                # removed (for monitoring checks to be removed selectively)
+                removed: []
             }
             # config stream (for changes)
             @pc_stream = {}
@@ -60,6 +63,7 @@ angular.module(
         set_devices: (dev_list) =>
             # create a group dict
             _group_lut = {}
+            @dev_group_lut = {}
             @groups = []
             for dev in dev_list
                 dg_idx = dev.device_group
@@ -73,11 +77,16 @@ angular.module(
                     }
                     _group_lut[dg_idx] = _new_struct
                     @groups.push(_new_struct)
+                # lookup table from device to group structure
+                @dev_group_lut[dev.idx] = _group_lut[dg_idx]
                 if @mode == "srv" and dev.is_meta_device
                     # do not add meta-devices to srv-mode view
                     true
                 else
-                    _group_lut[dg_idx]["devices"].push(dev)
+                    if dev.is_meta_device
+                        _group_lut[dg_idx]["devices"].splice(0, 0, dev)
+                    else
+                        _group_lut[dg_idx]["devices"].push(dev)
                 if not dev.is_meta_device
                     _group_lut[dg_idx]["nmd_count"]++
 
@@ -90,6 +99,7 @@ angular.module(
             # the necessary helper objects ($local_selected)
             @devices.length = 0
             for dev in dev_list
+                # meta-devices will be filtered out in srv-view
                 if dev.device_group in _group_ids
                     @devices.push(dev)
             @link()
@@ -104,7 +114,10 @@ angular.module(
             @md_lut = {}
 
             for dev in @devices
+                # configs local selected
                 dev.$local_selected = []
+                # configs -> mon_checks local removed
+                dev.$local_removed = {}
                 dev.$num_meta_selected = 0
                 if dev.is_meta_device
                     md_list.push(dev)
@@ -114,12 +127,23 @@ angular.module(
                     md = @device_tree.get_meta_device(dev)
                     # the md_list + non_md_list may be longer than the @devices
                     md.$local_selected = []
+                    md.$local_removed = {}
                     md.$num_meta_selected = 0
                     if md not in md_list
                         md_list.push(md)
                     @md_lut[dev.idx] = md
             @md_list = md_list
             @non_md_list = non_md_list
+
+            # step 1b: add exclude devices from mon_check_command
+
+            for mc in @config_tree.mon_basic_tree.mon_check_command_list
+                for dev in @devices
+                    if dev.idx in mc.exclude_devices
+                        if mc.config not of dev.$local_removed
+                            dev.$local_removed[mc.config] = []
+                        dev.$local_removed[mc.config].push(mc.idx)
+
 
             # step 2: set configs for all meta-devices
 
@@ -131,57 +155,76 @@ angular.module(
                     conf.$$_dc_name = ("#{_v.name} #{_v.description}" for _v in conf.mon_check_command_set).join(" ")
                 for dev in @md_list
                     # build name value to match against
-                    _id = "#{dev.idx}::#{conf.idx}"
                     for dc in conf.device_config_set
                         if dc.device == dev.idx
                             dev.$local_selected.push(conf.idx)
-                    # if _id in @pending.added
-                    #    dev.$local_selected.push(conf.idx)
 
-                # step 3: set configs for all non-meta-devices
+                # step 3a: set configs for all non-meta-devices
 
                 for dev in @non_md_list
-                    _id = "#{dev.idx}::#{conf.idx}"
                     for dc in conf.device_config_set
                         if dc.device == dev.idx
                             dev.$local_selected.push(conf.idx)
 
                 # step 4: apply changes
 
+                # helper functions
+
+                _toggle_mon_check = (dev, conf_idx, mc_idx) ->
+                    if conf_idx of dev.$local_removed and mc_idx in dev.$local_removed[conf_idx]
+                        # remove entry when set
+                        _.remove(dev.$local_removed[conf_idx], (entry) -> return entry == mc_idx)
+                        if not dev.$local_removed[conf_idx].length
+                            delete dev.$local_removed[conf_idx]
+                    else
+                        # add entry when not set
+                        if conf_idx not of dev.$local_removed
+                            dev.$local_removed[conf_idx] = []
+                        dev.$local_removed[conf_idx].push(mc_idx)
+
                 if conf.idx of @pc_stream
                     _pcs = @pc_stream[conf.idx]
-                    _meta = @md_lut
                     for _token in _pcs
-                        if _token < 0
+                        if _token.type == "m"
                             # click on meta device
-                            md = @md_lut[-_token]
-                            if conf.idx in md.$local_selected
+                            meta_dev = @md_lut[_token.idx]
+                            if conf.idx in meta_dev.$local_selected
                                 # deselect
-                                _.remove(md.$local_selected, (entry) -> return entry == conf.idx)
+                                _.remove(meta_dev.$local_selected, (entry) -> return entry == conf.idx)
+
                             else
                                 # select
-                                md.$local_selected.push(conf.idx)
+                                meta_dev.$local_selected.push(conf.idx)
                                 # deselect all local selections
-                                for dev_idx in md.$$group.devices
-                                    if dev_idx != md.idx
+                                for dev_idx in meta_dev.$$group.devices
+                                    if dev_idx != meta_dev.idx
                                         dev = @device_tree.all_lut[dev_idx]
                                         if dev.$local_selected?
                                             _.remove(dev.$local_selected, (entry) -> return entry == conf.idx)
                         else
-                            dev = @device_tree.all_lut[_token]
-                            md = @md_lut[_token]
-                            if conf.idx in md.$local_selected
-                                # handle meta device
-                                # deselect from meta device
-                                _.remove(md.$local_selected, (entry) -> return entry == conf.idx)
-                                # select all other devices
-                                for dev_idx in md.$$group.devices
-                                    if dev_idx != md.idx and dev_idx != dev.idx
-                                        @device_tree.all_lut[dev_idx].$local_selected.push(conf.idx)
+                            # click on device
+                            dev = @device_tree.all_lut[_token.idx]
+                            meta_dev = @md_lut[_token.idx]
+                            if conf.idx in meta_dev.$local_selected
+                                if @mode == "mon"
+                                    _toggle_mon_check(dev, conf.idx, _token.element)
+                                else
+                                    # handle meta device
+                                    # deselect from meta device
+                                    _.remove(meta_dev.$local_selected, (entry) -> return entry == conf.idx)
+                                    # select all other devices
+                                    for dev_idx in meta_dev.$$group.devices
+                                        if dev_idx != meta_dev.idx and dev_idx != dev.idx
+                                            _loc_dev = @device_tree.all_lut[dev_idx]
+                                            if _loc_dev.$local_selected?
+                                                @device_tree.all_lut[dev_idx].$local_selected.push(conf.idx)
                             else
                                 if conf.idx in dev.$local_selected
-                                    # deselect local
-                                    _.remove(dev.$local_selected, (entry) -> return entry == conf.idx)
+                                    if @mode == "mon"
+                                        _toggle_mon_check(dev, conf.idx, _token.element)
+                                    else
+                                        # deselect local
+                                        _.remove(dev.$local_selected, (entry) -> return entry == conf.idx)
                                 else
                                     # select local
                                     dev.$local_selected.push(conf.idx)
@@ -199,25 +242,74 @@ angular.module(
             else
                 return true
 
-        get_td_class_and_icon: (dev, conf) =>
+        get_td_class_and_icon: (row_el, conf, dev) =>
+            # check shadow focus state
+            _shadow = false
+            _foc = false
+            if dev.idx of @focus_dict
+                if conf.idx of @focus_dict[dev.idx]
+                    if @focus_dict[dev.idx][conf.idx]
+                        _shadow = true
+                        if @focus_element and @focus_element[0].idx == row_el.idx and @focus_element[1].idx == dev.idx
+                            _foc = true
             if dev.is_meta_device and conf.server_config
                 # check if config is a server config and therefore not selectable for
                 # a meta device (== group)
                 _cls = "danger"
-                _icon = "glyphicon glyphicon-remove-sign"
+                _icon = "fa fa-times-circle"
             else if conf.idx in dev.$local_selected
                 # config is locally selected
-                _cls = "success"
-                _icon = "glyphicon glyphicon-ok"
+                if conf.idx of dev.$local_removed and row_el.idx in dev.$local_removed[conf.idx]
+                    # is locally removed
+                    _cls = "danger"
+                    _icon = "fa fa-times-rectangle-o"
+                else
+                    if _foc
+                        _cls = "primary"
+                        _icon = "fa fa-minus"
+                    else
+                        _cls = "success"
+                        _icon = "fa fa-check"
             else if conf.idx in @md_lut[dev.idx].$local_selected and not dev.is_meta_device
                 # config is selected via meta-device (== group)
-                _cls = "warn"
-                _icon = "glyphicon glyphicon-ok-circle"
+                if conf.idx of dev.$local_removed and row_el.idx in dev.$local_removed[conf.idx]
+                    _cls = "danger"
+                    _icon = "fa fa-times-rectangle-o"
+                else
+                    _cls = "warning"
+                    _icon = "fa fa-check-square-o"
             else
                 # config is not selected
-                _cls = ""
-                _icon = "glyphicon glyphicon-minus"
+                if _foc
+                    _icon = "fa fa-check"
+                    _cls = "primary"
+                else
+                    _icon = "fa fa-minus"
+                    if _shadow
+                        _cls = "warning"
+                    else
+                        _cls = ""
             return [_cls, _icon]
+
+        set_focus: (row_el, conf, device) =>
+            @clear_focus()
+            @focus_element = [row_el, device]
+            _set_list = [device.idx]
+            _group = @dev_group_lut[device.idx]
+            if device.idx == _group.meta.idx
+                for _dev in _group.devices
+                    _set_list.push(_dev.idx)
+            for _dev_idx in _set_list
+                @focus_set_list.push([conf.idx, _dev_idx])
+                @focus_dict[_dev_idx][conf.idx] = true
+                @linedraw_dict[_dev_idx]++
+
+        clear_focus: () =>
+            for [_conf, _dev] in @focus_set_list
+                @focus_dict[_dev][_conf] = false
+                @linedraw_dict[_dev]++
+            @focus_set_list.length = 0
+            @focus_element = null
 
         update_active_rows: (name_re, only_selected, with_server, with_service) =>
             @active_rows.length = 0
@@ -262,30 +354,40 @@ angular.module(
                         @num_rows++
                     else
                         @num_rows += entry.mon_check_command_set.length
+
+            # setup focus helper structurs
+            @focus_dict = {}
+            # indices of focus element
+            @focus_element = null
+            # list of indices of shadow selections (config, devicegroup)
+            @focus_set_list = []
+            @linedraw_dict = {}
+            for group in @groups
+                for dev in group.devices
+                    @focus_dict[dev.idx] = {}
+                    @linedraw_dict[dev.idx] = 0
+                    for row in @active_rows
+                        @focus_dict[dev.idx][row.idx] = false
             @render_count++
             $rootScope.$emit(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"))
 
-        click: (device, config) =>
+        click: (device, config, row_el) =>
+            # row_el is the monitoring check for mon-mode views
             defer = $q.defer()
-            [_dev_idx, _conf_idx, _meta_idx] = [device.idx, config.idx, @md_lut[device.idx].idx]
-            _id = "#{_dev_idx}::#{_conf_idx}::#{_meta_idx}"
-            @pending.clicked.push(_id)
+            meta_device = @md_lut[device.idx]
+            @pending.clicked.push([device.idx, meta_device.idx, config.idx, row_el.idx])
             # interpret
             # build config streams, key is config idx
             conf_stream = {}
-            for _id in @pending.clicked
-                _parts = _id.split("::")
-                _dev_idx = parseInt(_parts[0])
-                _conf_idx = parseInt(_parts[1])
-                _meta_idx = parseInt(_parts[2])
+            for _entry in @pending.clicked
+                [_dev_idx, _meta_idx, _conf_idx, _el_idx] = _entry
                 if _conf_idx not of conf_stream
                     conf_stream[_conf_idx] = []
                 _cs = conf_stream[_conf_idx]
                 if _dev_idx == _meta_idx
-                    _token = -_meta_idx
+                    _cs.push({type: "m", idx: _meta_idx})
                 else
-                    _token = _dev_idx
-                _cs.push(_token)
+                    _cs.push({type: "d", idx: _dev_idx, element: _el_idx})
 
             @pc_stream = conf_stream
             # console.log @pc_stream
@@ -295,13 +397,14 @@ angular.module(
             return defer.promise
 
         check_pending: () =>
-            if @pending.clicked.length
+            if @pending.clicked.length or @pending.removed.length
                 @any_pending = true
             else
                 @any_pending = false
 
         remove_pending: () =>
             @pending.clicked.length = 0
+            @pending.removed.length = 0
             @pc_stream = {}
             @check_pending()
             @link()
@@ -310,16 +413,18 @@ angular.module(
             defer = $q.defer()
             icswSimpleAjaxCall(
                 {
-                    url: ICSW_URLS.CONFIG_ALTER_CONFIG_CB
+                    url: ICSW_URLS.CONFIG_ALTER_CONFIG
                     data: {
+                        mode: @mode
                         stream_data: angular.toJson(
                             (
                                 {
-                                    meta_pk: parseInt(_id.split("::")[2])
-                                    dev_pk: parseInt(_id.split("::")[0])
-                                    conf_pk: parseInt(_id.split("::")[1])
+                                    meta_pk: _meta_idx
+                                    dev_pk: _dev_idx
+                                    conf_pk: _conf_idx
+                                    element_pk: _element_idx
                                 }
-                            ) for _id in @pending.clicked
+                            ) for [_dev_idx, _meta_idx, _conf_idx, _element_idx] in @pending.clicked
                         )
                     }
                 }
@@ -340,6 +445,14 @@ angular.module(
                                     idx: parseInt(add_entry.attr("pk"))
                                 }
                             )
+                    $(xml).find("changeset > mon_check_command").each (idx, mc_entry) =>
+                        _idx = parseInt($(mc_entry).attr("pk"))
+                        mc = @config_tree.mon_basic_tree.mon_check_command_lut[_idx]
+                        mc.exclude_devices.length = 0
+                        $(mc_entry).find("exclude").each (idx, exc_entry) =>
+                            # add exclude entries
+                            exc_entry = $(exc_entry)
+                            mc.exclude_devices.push(parseInt(exc_entry.attr("dev_idx")))
                     @remove_pending()
                     defer.resolve("changed")
 
@@ -426,6 +539,7 @@ angular.module(
     }
 
     _mode_wait = $q.defer()
+
     $scope.set_mode = (mode) ->
         _mode_wait.resolve(mode)
 
@@ -704,7 +818,7 @@ angular.module(
                 else
                     _conf = _el.$$config
                     _info_str = "#{_el.description} (#{_el.name})"
-                [_class, _icon] = @props.configHelper.get_td_class_and_icon(@props.device, _conf)
+                [_class, _icon] = @props.configHelper.get_td_class_and_icon(_el, _conf, @props.device)
                 if @state.focus
                     _class = "#{_class} bg-primary"
                 return td(
@@ -713,16 +827,16 @@ angular.module(
                         onClick: (event) =>
                             if @props.configHelper.click_allowed(@props.device, _conf)
                                 blockUI.start()
-                                @props.configHelper.click(@props.device, _conf).then(
+                                @props.configHelper.click(@props.device, _conf, _el).then(
                                     (ok) ->
                                         blockUI.stop()
                                 )
                         onMouseEnter: (event) =>
                             @setState({focus: true})
-                            @props.focusCallback(_conf, true)
+                            @props.focusCallback(_el, _conf, @props.device, true)
                         onMouseLeave: (event) =>
                             @setState({focus: false})
-                            @props.focusCallback(_conf, false)
+                            @props.focusCallback(_el, _conf, @props.device, false)
                         title: _info_str
                     }
                     span(
@@ -744,8 +858,13 @@ angular.module(
             shouldComponentUpdate: (next_props, next_state) ->
                 # very simple update cache, compare local render count with counter from config
                 _doit = false
-                if @props.configHelper.render_count != @state.counter
-                    @setState({counter: @props.configHelper.render_count})
+                if @props.configHelper.render_count != @state.counter or @props.configHelper.linedraw_dict[@props.device.idx] != @state.line_counter
+                    @setState(
+                        {
+                            counter: @props.configHelper.render_count
+                            line_counter: @props.configHelper.linedraw_dict[@props.device.idx]
+                        }
+                    )
                     _doit = true
                 return _doit
 
@@ -828,11 +947,14 @@ angular.module(
             @setState({counter: @state.counter + 1})
 
         render: () ->
-            focus_cb = (el, state) =>
+            focus_cb = (row_el, conf, device, state) =>
+                # @state.configHelper.clear_
                 if state
-                    @setState({focus_el: el.idx})
+                    @props.configHelper.set_focus(row_el, conf, device)
+                    @setState({focus_el: conf.idx})
                 else
                     if @state.focus_el
+                        @props.configHelper.clear_focus()
                         @setState({focus_el: 0})
 
             if not @props.configHelper.devices.length

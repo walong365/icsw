@@ -21,11 +21,11 @@
 /* domain tree node styles */
 
 ul.dynatree-container span.intermediate {
-    font-style : italic;
+    font-style: italic;
 }
 
 ul.dynatree-container span.ip_ok {
-    font-weight : bold;
+    font-weight: bold;
 }
 
 .popover {
@@ -34,11 +34,11 @@ ul.dynatree-container span.ip_ok {
 
 /* for sidebar */
 .noborder {
-    border : none;
-    padding : 0;
+    border: none;
+    padding: 0;
 }
 .noborder.ui-tabs .ui-tabs-panel {
-    padding: 0 0 0 0 ;
+    padding: 0 0 0 0;
 }
 
 /* css for timepicker */
@@ -98,13 +98,13 @@ th.icsw-config-rotate div:before {
 
 /* modal changes */
 .modal.modal-wide .modal-dialog {
-  width: 90% !important ;
+  width: 90% !important;
 }
 .modal-wide .modal-body {
-    overflow-y: auto !important ;
+    overflow-y: auto !important;
 }
 .modal-tall .modal-body {
-    overflow-y: auto !important ;
+    overflow-y: auto !important;
 }
 
 /* use for striping tables where every odd row is a regular row
@@ -452,6 +452,13 @@ div.yamm hr {
 .navbar-right.condensed .task-wizard {
     padding: 14px 0 0 0!important;
 }
+.navbar-right .menu-openissues {
+    margin: 24px 5px 0 0!important;
+    padding: 1px!important;
+}
+.navbar-right.condensed .menu-openissues {
+    margin: 13px 5px 0 0!important;
+}
 .navbar-right .task-wizard .wizardbutton{
     padding: 4px;
     font-size: 17px;
@@ -491,7 +498,6 @@ a.bttn-bgjobs button{
   top: 14px;
   right: 8px;
 }
-
 /* MENU END */
 
 /* SUBMENU START */
@@ -506,6 +512,7 @@ a.bttn-bgjobs button{
     text-decoration: none;
 }
 /* SUBMENU END */
+
 li.animateTab > a,
 li.animateTab > a:after {
     animation-name: newTabAnim;
@@ -514,8 +521,8 @@ li.animateTab > a:after {
     animation-timing-function: ease-out;
 }
 icsw-tools-button-static.fa:before {
-    margin-right:3px;
+    margin-right: 3px;
 }
 .force-left {
-    text-align:left!important;
+    text-align: left!important;
 }

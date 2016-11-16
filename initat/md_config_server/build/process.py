@@ -173,6 +173,7 @@ class BuildProcess(
         start_time = time.time()
         cur_gc = self.__gen_config
         cur_gc.add_config(MonAllCommands(cur_gc))
+        gbc.set_global_config(cur_gc, {}, False)
         ac_filter = Q(dynamic_checks=True) & Q(enabled=True) & Q(device_group__enabled=True)
         gbc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(
             ac_filter
@@ -208,9 +209,14 @@ class BuildProcess(
             for conf_name in conf_names:
                 s_check = cur_gc["command"][conf_name]
                 if s_check.mccs_id:
-                    print("*")
+                    special_commands.dynamic_checks.handle(
+                        gbc,
+                        hbc,
+                        cur_gc,
+                        s_check,
+                        special_commands.DynamicCheckMode.fetch,
+                    )
             hbc.build_finished()
-            info_str = hbc.info_str
             glob_log_str = "df, device {:<48s}{}".format(
                 host.full_name[:48],
                 "*" if len(host.name) > 48 else " ",
@@ -1238,7 +1244,13 @@ class BuildProcess(
             # s_check: instance of check_command
             if s_check.mccs_id:
                 hbc.add_dynamic_check(s_check)
-                dc_rv = special_commands.dynamic_checks.handle(gbc, hbc, cur_gc, s_check)
+                dc_rv = special_commands.dynamic_checks.handle(
+                    gbc,
+                    hbc,
+                    cur_gc,
+                    s_check,
+                    special_commands.DynamicCheckMode.create,
+                )
                 dc_rv.dump_errors(self.log)
                 if dc_rv.r_type == "none":
                     # an error occured, do nothing

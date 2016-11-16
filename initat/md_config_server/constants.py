@@ -45,7 +45,7 @@ MON_HOST_UP = 0
 MON_HOST_DOWN = 1
 MON_HOST_UNREACHABLE = 2
 
-# default port
+# default template name
 TEMPLATE_NAME = "t"
 
 # maps to transfer for single_build

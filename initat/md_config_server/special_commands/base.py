@@ -310,11 +310,12 @@ class SpecialBase(object):
         self.__call_idx += 1
         return hint_list
 
-    def __call__(self, **kwargs):
+    def __call__(self, mode, **kwargs):
         s_name = self.Meta.name
         self.log(
-            "starting {} for {}".format(
+            "starting {}@{} for {}".format(
                 s_name,
+                mode.name,
                 self.host.name,
             )
         )

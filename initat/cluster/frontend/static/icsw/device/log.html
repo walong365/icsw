@@ -13,24 +13,24 @@
         <div
             uib-alert
             class="alert-warning"
-            ng-show="!struct.data_loaded">Fetching data from server ...
+            ng-show="!struct.data_loaded">Fetching Data from Server ...
         </div>
         <div ng-if="struct.data_loaded">
-            </br>
-            <uib-tabset ng-click="setup_tasks_tab_clicked()" active="struct.active_tab_index">
-                <uib-tab>
+            <uib-tabset active="struct.activetab">
+                <uib-tab index="0">
                     <uib-tab-heading>
                         <span>Overview</span>
                     </uib-tab-heading>
-                    </br>
+                    <h3>Device Logs Overview</h3>
                     <table
                         st-table="entries_displayed"
                         st-safe-src="struct.devices"
-                        class="table table-condensed table-striped table-hover simple-border"
+                        class="table table-condensed table-striped table-hover"
+                        style="width:auto;"
                     >
                         <thead>
                             <tr>
-                                <td colspan="99">
+                                <td colspan="4">
                                     <span
                                         icsw-tools-pagination
                                         st-items-by-page="20"
@@ -48,10 +48,10 @@
                             </tr>
                             <tr>
                                 <th>
-                                    <input st-search="name" placeholder="filter by device name" class="input-sm form-control" type="search"/>
+                                    <input st-search="name" placeholder="Filter by Device Name" class="input-sm form-control" type="search"/>
                                 </th>
                                 <th>
-                                    <input st-search="device_group_name" placeholder="filter by group" class="input-sm form-control" type="search"/>
+                                    <input st-search="device_group_name" placeholder="Filter by Group" class="input-sm form-control" type="search"/>
                                 </th>
                                 <th></th>
                                 <th></th>
@@ -59,7 +59,7 @@
                         </thead>
 
                         <tbody>
-                            <tr ng-repeat="obj in entries_displayed" ng-click="open_in_new_tab(obj)">
+                            <tr ng-repeat="obj in entries_displayed" ng-click="open_in_new_tab(obj, $event)">
                                 <td class="vertical-align">
                                     <button type="button" class="btn btn-xs btn-success" ng-click="show_device($event, obj)">{{ obj.full_name }}</button>
                                 </td>
@@ -77,7 +77,7 @@
                         </tbody>
                     </table>
                 </uib-tab>
-                <uib-tab ng-repeat="tab in struct.tabs">
+                <uib-tab ng-repeat="tab in struct.tabs"  index="tab.tabindex">
                     <uib-tab-heading>
                         <span>{{ tab.device.full_name }}</span>
                         <icsw-tools-button size="xs" type="close" value="" ng-click="close_tab(tab)"></icsw-tools-button>

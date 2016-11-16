@@ -107,7 +107,7 @@ class HostBuildCache(object):
     def info_str(self):
         _counter = self.counter
         # info string for logging
-        info_str = "{:3d} / {:3d}, logs: {:3d} / {:3d} / {:3d} ({:3d} total) [{}] in {}".format(
+        info_str = "{:3d} / {:3d}, logs: {:3d} / {:3d} / {:3d} ({:3d} total) [{}] in {:>16s}".format(
             self.num_checks,
             len(self.dynamic_checks),
             _counter.num_ok,

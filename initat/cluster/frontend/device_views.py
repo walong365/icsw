@@ -1092,16 +1092,16 @@ class SystemTask(object):
         if in_dict["fulfilled"] or in_dict["ignore"]:
             in_dict.update(
                 {
-                    "bg_color_class": "success",
-                    "icon_class": "fa fa-check fa-2x",
+                    "bg_color_class": "",
+                    "icon_class": "fa fa-check-circle-o fa-2x text-success",
                     "panel_class": "panel-success",
                 }
             )
         else:
             in_dict.update(
                 {
-                    "bg_color_class": "danger",
-                    "icon_class": "fa fa-times fa-2x",
+                    "bg_color_class": "",
+                    "icon_class": "fa fa-times-circle-o fa-2x text-danger",
                     "panel_class": "panel-danger",
                 }
             )
@@ -1289,6 +1289,7 @@ class DeviceLogEntryViewSet(viewsets.ViewSet):
 
         return Response(serializer.data)
 
+
 class DeviceLogEntryCount(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -1302,7 +1303,6 @@ class DeviceLogEntryCount(View):
 
         for device_log_entry in device_log_entries:
             pk_count_dict[device_log_entry['device_id']] += 1
-
 
         return HttpResponse(
             json.dumps(pk_count_dict)

@@ -1,19 +1,12 @@
-import os
 import time
-from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
 from common import Webdriver, visible
 
 
-BASE_URL = 'http://192.168.1.75/icsw/main.html#'
-
 d = Webdriver(
-    base_url=BASE_URL,
+    base_url='http://192.168.1.75/icsw/main.html#',
     command_executor='http://127.0.0.1:4444/wd/hub',
     desired_capabilities=DesiredCapabilities.CHROME,
     )
@@ -42,12 +35,12 @@ d.find_element_by_xpath('//button[@class="close"]').click()
 d.select_device('server|centos7-test')
 
 # device tree
-d.get(BASE_URL + '/main/devtree')
+d.get_('/main/devtree')
 d.find_element_by_xpath('//thead/tr/th[text()="Name"]')
 d.save_shot('device_tree', '//table[@st-table="entries_displayed"]/..')
 
 # configuration assignment
-d.get(BASE_URL + '/main/deviceconfig')
+d.get_('/main/deviceconfig')
 d.find_element_by_xpath('//thead/tr/th[text()="Type"]')  # wait to be loaded
 d.save_shot(
     'assign_server_config',
@@ -55,7 +48,7 @@ d.save_shot(
     )
 
 # network setup
-d.get(BASE_URL + '/main/network')
+d.get_('/main/network')
 # wait to be loaded
 d.find_element_by_xpath('//tbody/tr/td[text()="centos7-test"]')
 # un-collapse "IP Addresses"
@@ -65,7 +58,7 @@ d.find_element_by_xpath(
 d.save_shot('network_configuration', '//div[@class="tab-content"]')
 
 # create device dialog
-d.get(BASE_URL + '/main/devicecreate')
+d.get_('/main/devicecreate')
 d.find_element_by_name('full_name').send_keys('bahlon')
 ActionChains(d).send_keys(Keys.TAB).perform()
 d.save_shot('create_device', '//div[@heading="Base Data"]')
@@ -74,7 +67,7 @@ d.save_shot('create_device', '//div[@heading="Base Data"]')
 d.select_device('client-test')
 
 # monitoring checks
-d.get(BASE_URL + '/main/devicemonconfig')
+d.get_('/main/devicemonconfig')
 # select config
 d.find_element_by_xpath('//td[@title=" (check_ping)"]').click()
 # wait for the check-mark
@@ -84,7 +77,7 @@ d.find_element_by_xpath(
 d.save_shot('assign_monitoring_checks', '//div[@class="panel-body"]')
 
 # client peering
-d.get(BASE_URL + '/main/network')
+d.get_('/main/network')
 # wait to be loaded
 d.find_element_by_xpath('//tbody/tr/td[text()="centos7-test"]')
 # un-collapse "Peer Connections"
