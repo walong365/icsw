@@ -176,7 +176,7 @@ class DynamicCheckDict(object):
                     if cur_special.Meta.meta:
                         self.log("mode {} not supported for meta checks".format(mode), logging_tools.LOG_LEVEL_CRITICAL)
                     else:
-                        if cur_special.Meta.server_contact:
+                        if hasattr(cur_special, "dynamic_update_calls"):
                             rv.set_server_contact(cur_special)
                         else:
                             pass

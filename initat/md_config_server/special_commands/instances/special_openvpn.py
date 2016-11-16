@@ -28,7 +28,6 @@ from ..struct import DynamicCheckServer, DynamicCheckAction
 
 class SpecialOpenvpn(SpecialBase):
     class Meta:
-        server_contact = True
         info = "OpenVPN check"
         group = SpecialGroupsEnum.system
         command_line = "$USER2$ -m $HOSTADDRESS$ openvpn_status -i $ARG1$ -p $ARG2$"

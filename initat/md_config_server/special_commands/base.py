@@ -48,8 +48,6 @@ class SpecialBase(object):
         cache_timeout = 7 * 24 * 3600
         # wait time in case of connection error
         error_wait = 5
-        # contact server
-        server_contact = False
         # is active ?
         is_active = True
         # command line
