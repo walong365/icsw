@@ -998,6 +998,7 @@ class RemoteServerAddressBase(object):
                 self._first_send = True
 
     def send(self, send_obj):
+        _success = False
         cur_time = time.time()
         if self._last_error and abs(self._last_error - cur_time) < 10:
             # last send error only 10 seconds ago, fail silently
@@ -1025,17 +1026,22 @@ class RemoteServerAddressBase(object):
                     self._last_error = cur_time
                 else:
                     self._last_error = None
-                    _error = False
+                    _success = True
                     break
 
             if _idx > 1 or self._first_send:
                 _rf = []
+                if _success:
+                    _rf.append("sent")
+                else:
+                    _rf.append("unable to send")
                 if _idx > 1:
                     _rf.append("after {:d} tries".format(_idx))
                 if self._first_send:
-                    _rf.append("for the first time")
-                self.log("sent {}".format(", ".join(_rf)), logging_tools.LOG_LEVEL_WARN)
+                    _rf.append("first send")
+                self.log(", ".join(_rf), logging_tools.LOG_LEVEL_WARN if _success else logging_tools.LOG_LEVEL_ERROR)
             self._first_send = False
+        return _success
 
 
 class RemoteServerAddress(RemoteServerAddressBase):
@@ -1150,11 +1156,13 @@ class SendToRemoteServerMixin(threading_tools.ICSWAutoInit):
         if rsa.valid:
             rsa.connect()
             if rsa.connected:
-                rsa.send(send_obj)
+                return rsa.send(send_obj)
             else:
                 self.log("unable to send, not connected", logging_tools.LOG_LEVEL_WARN)
+                return False
         else:
             self.log("unable to send, not valid", logging_tools.LOG_LEVEL_WARN)
+            return False
 
 
 class RemoteCall(object):
