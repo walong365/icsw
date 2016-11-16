@@ -118,8 +118,8 @@ class BuildControl(object):
 
     def sync_http_users(self, *args, **kwargs):
         self.log("syncing http-users")
-        print("not handled correctly right now, triggering error")
-        self.__gen_config._create_access_entries()
+        self.log("not handled correctly right now, please fixme", logging_tools.LOG_LEVEL_CRITICAL)
+        # self.__gen_config._create_access_entries()
 
     def build_step(self, *args, **kwargs):
         _action = args[2]

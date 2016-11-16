@@ -42,11 +42,13 @@ class DynamicCheckMode(Enum):
 
 class DynamicCheckResult(object):
     def __init__(self):
+        # none, config, check or fetch
         self.r_type = "none"
         self.errors = []
         self.check_list = []
         self.config_list = []
         self.rewrite_lut = {}
+        self.special_instance = None
 
     def feed_error(self, line):
         self.errors.append(line)
@@ -63,6 +65,13 @@ class DynamicCheckResult(object):
         if self.errors:
             for _line in self.errors:
                 log_com(_line, logging_tools.LOG_LEVEL_CRITICAL)
+
+    def set_server_contact(self, s_instance):
+        self.r_type = "fetch"
+        self.special_instance = s_instance
+
+    def __unicode__(self):
+        return "DynamicCheckResult {}".format(self.r_type)
 
 
 class DynamicCheckDict(object):
@@ -126,11 +135,21 @@ class DynamicCheckDict(object):
             # calling handle to return a list of checks with format
             # [(description, [ARG1, ARG2, ARG3, ...]), (...)]
             try:
-                if mccs_name != mccs.name:
-                    # for meta specials
-                    sc_array = cur_special(mode, instance=mccs_name)
+                if mode == DynamicCheckMode.create:
+                    if mccs_name != mccs.name:
+                        # for meta specials
+                        sc_array = cur_special(mode, instance=mccs_name)
+                    else:
+                        sc_array = cur_special(mode)
                 else:
-                    sc_array = cur_special(mode)
+                    # fetch mode, currently not supported for meta checks
+                    if cur_special.Meta.meta:
+                        self.log("mode {} not supported for meta checks".format(mode), logging_tools.LOG_LEVEL_CRITICAL)
+                    else:
+                        if cur_special.Meta.server_contact:
+                            rv.set_server_contact(cur_special)
+                        else:
+                            pass
             except:
                 exc_info = process_tools.exception_info()
                 rv.feed_error(
@@ -141,25 +160,26 @@ class DynamicCheckDict(object):
                 sc_array = []
             finally:
                 cur_special.cleanup()
-            if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
-                # dive in subcommands, for instance 'all SNMP checks'
-                # check for configs not really configured
-                _dead_coms = [_entry for _entry in sc_array if not hasattr(gbc.mccs_dict[_entry], "check_command_name")]
-                if _dead_coms:
-                    rv.feed_error(
-                        "unconfigured checks: {}".format(
-                            ", ".join(sorted(_dead_coms))
-                        ),
+            if mode == DynamicCheckMode.create:
+                if cur_special.Meta.meta and sc_array and mccs_name == mccs.name:
+                    # dive in subcommands, for instance 'all SNMP checks'
+                    # check for configs not really configured
+                    _dead_coms = [_entry for _entry in sc_array if not hasattr(gbc.mccs_dict[_entry], "check_command_name")]
+                    if _dead_coms:
+                        rv.feed_error(
+                            "unconfigured checks: {}".format(
+                                ", ".join(sorted(_dead_coms))
+                            ),
+                        )
+                    # we return a list of config (to be iterated again)
+                    rv.set_configs(
+                        [
+                            gbc.mccs_dict[_entry].check_command_name for _entry in sc_array if _entry not in _dead_coms
+                        ]
                     )
-                # we return a list of config (to be iterated again)
-                rv.set_configs(
-                    [
-                        gbc.mccs_dict[_entry].check_command_name for _entry in sc_array if _entry not in _dead_coms
-                    ]
-                )
-            else:
-                # we return a list of checks
-                rv.set_checks(sc_array)
+                else:
+                    # we return a list of checks
+                    rv.set_checks(sc_array)
         return rv
 
 

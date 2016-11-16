@@ -23,6 +23,7 @@ from __future__ import unicode_literals, print_function
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
+from ..struct import DynamicCheckServer, DynamicCheckAction
 
 
 class SpecialOpenvpn(SpecialBase):
@@ -51,12 +52,20 @@ class SpecialOpenvpn(SpecialBase):
                         )
         return _hints
 
+    def dynamic_update_calls(self):
+        yield DynamicCheckAction(DynamicCheckServer.collrelay, "openvpn_status")
+
+    def feed_result(self, dc_action, srv_reply):
+        print("*", dc_action, srv_reply)
+        yield None
+        # yield DynamicCheckAction(DynamicCheckServer.collrelay, "openvpn_status")
+
     def call(self):
         sc_array = []
         # no expected_dict found, try to get the actual config from the server
-        hint_list = self.collrelay("openvpn_status")
+        # hint_list = self.collrelay("openvpn_status")
         ip_dict = {}
-        for hint in hint_list:
+        for hint in self.hint_list:
             if hint.enabled:
                 inst_name, peer_name = hint.key.split("|")
                 ip_dict.setdefault(inst_name, []).append(peer_name)

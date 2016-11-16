@@ -235,12 +235,19 @@ def get_socket(context, r_type, **kwargs):
     return _sock
 
 
-def zmq_identity_str(id_string):
-    return "{}:{}:{:d}".format(
-        get_machine_name(),
-        id_string,
-        os.getpid()
-    )
+def zmq_identity_str(id_string, short=False):
+    if short:
+        # without pid
+        return "{}:{}".format(
+            get_machine_name(),
+            id_string,
+        )
+    else:
+        return "{}:{}:{:d}".format(
+            get_machine_name(),
+            id_string,
+            os.getpid()
+        )
 
 
 def remove_zmq_dirs(dir_name):

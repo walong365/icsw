@@ -26,6 +26,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import mon_check_command_special, mon_check_command, SpecialGroupsEnum
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.md_config_server.special_commands.base import SpecialBase, ArgTemplate
+from .struct import DynamicCheckServer, DynamicCheckAction
 from initat.md_config_server.special_commands.instances import *
 from initat.tools import logging_tools
 

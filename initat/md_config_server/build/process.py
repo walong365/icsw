@@ -28,9 +28,10 @@ from django.db.models import Q
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device, device_variable, mon_contactgroup, network_type, user, \
+from initat.cluster.backbone.models import device, mon_contactgroup, network_type, user, \
     config, config_catalog, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
     mon_check_command_special, mon_check_command, BackgroundJobState
+from initat.host_monitoring.ipc_comtools import IPCClientHandler
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
@@ -38,11 +39,11 @@ from initat.md_config_server.config import global_config, MainConfig, MonAllComm
     MON_VAR_IP_NAME
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
-from initat.tools import config_tools, logging_tools, process_tools, server_mixins, server_command
+from initat.tools import config_tools, logging_tools, server_mixins, server_command
+from initat.tools.bgnotify import create_bg_job
 from ..config.build_cache import BuildCache, HostBuildCache
 from ..constants import BuildModes
 from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
-from initat.tools.bgnotify import create_bg_job
 
 
 class BuildProcess(
@@ -166,8 +167,21 @@ class BuildProcess(
             router_obj=self.router_obj,
         )
         self.gc = global_config
+        _bgj = create_bg_job(
+            global_config["SERVER_IDX"],
+            None,
+            "fetch dynamic config",
+            "manualk start",
+            None,
+            state=BackgroundJobState.pending,
+            # set timeout to 30 minutes for big installs
+            timeout=30 * 60
+        )
+
         gbc = build_cache
+        gbc.background_job = _bgj
         self.fetch_dyn_configs(gbc)
+        _bgj.set_state(BackgroundJobState.done)
         self._exit_process()
 
     def fetch_dyn_configs(self, gbc):
@@ -184,46 +198,78 @@ class BuildProcess(
         all_configs = self.get_all_configs(ac_filter)
         # import pprint
         # pprint.pprint(all_configs)
+        fetch_list = []
         for host_pk in gbc.host_pks:
             host = gbc.get_host(host_pk)
             dev_variables, var_info = gbc.get_vars(host)
-            hbc = HostBuildCache(host)
+            hbc = None
             if MON_VAR_IP_NAME not in dev_variables:
-                hbc.log("No IP found for dyn reconfig", logging_tools.LOG_LEVEL_ERROR)
+                self.log("No IP found for dyn reconfig of {}".format(unicode(host)), logging_tools.LOG_LEVEL_ERROR)
             else:
-                ip = dev_variables[MON_VAR_IP_NAME]
 
-            # get config names
-            conf_names = set(all_configs.get(host.full_name, []))
-            # cluster config names
-            cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster("sc", host.pk)])
-            # build lut
-            conf_names = sorted(
-                [
-                    cur_c["command_name"] for cur_c in cur_gc["command"].values() if not cur_c.is_event_handler and (
-                        (
-                            (cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)
-                        ) or cur_c["command_name"] in cconf_names
-                    )
-                ]
-            )
-            for conf_name in conf_names:
-                s_check = cur_gc["command"][conf_name]
-                if s_check.mccs_id:
-                    special_commands.dynamic_checks.handle(
-                        gbc,
-                        hbc,
-                        cur_gc,
-                        s_check,
-                        special_commands.DynamicCheckMode.fetch,
-                    )
-            hbc.build_finished()
-            glob_log_str = "df, device {:<48s}{}".format(
-                host.full_name[:48],
-                "*" if len(host.name) > 48 else " ",
-            )
-            self.flush_hbc_logs(hbc, glob_log_str)
+                # get config names
+                conf_names = set(all_configs.get(host.full_name, []))
+                # cluster config names
+                cconf_names = set([_sc.mon_check_command.name for _sc in gbc.get_cluster("sc", host.pk)])
+                # build lut
+                conf_names = sorted(
+                    [
+                        cur_c["command_name"] for cur_c in cur_gc["command"].values() if not cur_c.is_event_handler and (
+                            (
+                                (cur_c.get_config() in conf_names) and (host.pk not in cur_c.exclude_devices)
+                            ) or cur_c["command_name"] in cconf_names
+                        )
+                    ]
+                )
+                _added = False
+                for conf_name in conf_names:
+                    s_check = cur_gc["command"][conf_name]
+                    if s_check.mccs_id:
+                        if hbc is None:
+                            hbc = HostBuildCache(host)
+                            # set IP for updates
+                            hbc.ip = dev_variables[MON_VAR_IP_NAME]
+                        _res = special_commands.dynamic_checks.handle(
+                            gbc,
+                            hbc,
+                            cur_gc,
+                            s_check,
+                            special_commands.DynamicCheckMode.fetch,
+                        )
+                        if _res.r_type == "fetch":
+                            if not _added:
+                                fetch_list.append(hbc)
+                                _added = True
+                            hbc.add_pending_fetch(_res.special_instance)
+                            # print(unicode(_res))
+            if hbc and not hbc.pending_fetch_calls:
+                hbc.build_finished()
+                glob_log_str = "df, device {:<48s}{}".format(
+                    host.full_name[:48],
+                    "*" if len(host.name) > 48 else " ",
+                )
+                self.flush_hbc_logs(hbc, glob_log_str)
             # print("*", host, dev_variables)
+        if fetch_list:
+            self.log(
+                "{} in fetch_list for dynamic checks".format(
+                    logging_tools.get_plural("device", len(fetch_list))
+                )
+            )
+            client = IPCClientHandler(self)
+            client.add_server(special_commands.DynamicCheckServer.collrelay)
+            client.add_server(special_commands.DynamicCheckServer.snmp_relay)
+            for hbc in fetch_list:
+                client.register_hbc(hbc)
+            client.loop()
+            client.close()
+            for hbc in fetch_list:
+                hbc.build_finished()
+                glob_log_str = "df, device {:<48s}{}".format(
+                    host.full_name[:48],
+                    "*" if len(host.name) > 48 else " ",
+                )
+                self.flush_hbc_logs(hbc, glob_log_str)
         end_time = time.time()
         self.log("dyn_config run took {}".format(logging_tools.get_diff_time_str(end_time - start_time)))
 
