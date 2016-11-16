@@ -582,7 +582,7 @@ class PollerBase(object):
                 time.sleep(0.5)
 
 
-class process_base(object):
+class icswProcessBase(object):
     def set_stack_size(self, s_size):
         try:
             threading.stack_size(s_size)
@@ -689,7 +689,7 @@ class ExceptionHandlingMixin(object):
         return _handled
 
 
-class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, ExceptionHandlingMixin, ICSWAutoInit):
+class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixin, ICSWAutoInit):
     def __init__(self, name, **kwargs):
         # early init of name
         self._name = name
@@ -728,6 +728,8 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
         # init stdout / stderr targets
         self.stdout_target = None
         self.stderr_target = None
+        # internal log cache
+        self.__log_cache = []
 
     @property
     def global_config(self):
@@ -789,13 +791,17 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
                     }
                 )
             except zmq.error.ZMQError:
-                logging_tools.my_syslog("error sending to 'main' ({:d}, iter {:d})".format(os.getpid(), _iter))
+                self.__log_cache.append(
+                    ("error sending to 'main' ({:d}, iter {:d})".format(os.getpid(), _iter), logging_tools.LOG_LEVEL_ERROR)
+                )
                 if _iter > 10:
                     raise
                 time.sleep(0.1)
             else:
                 if _iter > 1:
-                    logging_tools.my_syslog("sent to 'main' ({:d} after {:d} iterations)".format(os.getpid(), _iter))
+                    self.__log_cache.append(
+                        ("sent to 'main' ({:d} after {:d} iterations)".format(os.getpid(), _iter), logging_tools.LOG_LEVEL_WARN)
+                    )
                 _debug("sent pool message {}".format(str(args)))
                 break
 
@@ -940,6 +946,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
         self.process_init()
         # now we should have a vaild log command
         self.set_stack_size(self.__stack_size)
+        self.flush_log_cache()
         self.show_exception_handlers()
         self.process_running()
         self.loop_start()
@@ -957,6 +964,12 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
 
     def loop_post(self):
         pass
+
+    def flush_log_cache(self):
+        if self.__log_cache:
+            for what, level in self.__log_cache:
+                self.log(what, level)
+        self.__log_cache = []
 
     def zmq_finish(self):
         if self.stdout_target:
@@ -1072,7 +1085,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
                     raise
 
 
-class process_pool(TimerBase, PollerBase, process_base, ExceptionHandlingMixin, ICSWAutoInit):
+class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixin, ICSWAutoInit):
     def __init__(self, name, **kwargs):
         threading.currentThread().setName(kwargs.get("name", "main"))
         self.name = name
