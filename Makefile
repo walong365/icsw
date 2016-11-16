@@ -79,6 +79,12 @@ else
 endif
 
 ###############################################################################
+# uwsgi ini files
+###############################################################################
+DAPHNE_INI:=daphne.wsgi.ini
+DAPHNE_WORKERS_INI:=daphne-workers.wsgi.ini
+
+###############################################################################
 # Various settings
 ###############################################################################
 VERSION_SYSLINUX=6.03
@@ -232,6 +238,8 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend-common.include ${DESTDIR}${ICSW_ETC}/uwsgi/
 	${INSTALL} ${INSTALL_OPTS} nginx/${WSGI_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/webfrontend.wsgi.ini
+	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/${DAPHNE_INI}
+	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_WORKERS_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/${DAPHNE_WORKERS_INI}
 	# nginx
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${NGINX_CONF}
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend.conf ${DESTDIR}/${NGINX_CONF}

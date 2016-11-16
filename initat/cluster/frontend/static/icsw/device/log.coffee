@@ -65,7 +65,7 @@ device_logs = angular.module(
     $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8081" + "/device_log_entries/")
     # @endif
     # @ifdef !DEBUG
-    $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split + "/device_log_entries/")
+    $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8443" + "/device_log_entries/")
     # @endif
 
     $scope.struct.websocket.onmessage = (data) ->
@@ -210,7 +210,7 @@ device_logs = angular.module(
                 $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8081" + "/device_log_entries/")
                 # @endif
                 # @ifdef !DEBUG
-                $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split + "/device_log_entries/")
+                $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8443" + "/device_log_entries/")
                 # @endif
 
                 $scope.struct.websocket.onmessage = (data) ->

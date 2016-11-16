@@ -596,7 +596,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "asgi_ipc.IPCChannelLayer",
         "CONFIG": {
-            "prefix": "INITAT",
+            "prefix": "GRBUHPWHRD",
         },
         "ROUTING": "initat.cluster.urls.channel_routing.channel_routing",
     },
