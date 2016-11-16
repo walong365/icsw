@@ -26,6 +26,8 @@ from __future__ import unicode_literals, print_function
 
 import logging
 
+from enum import Enum
+
 from django.db import models
 
 from initat.tools import server_command
@@ -35,7 +37,21 @@ logger = logging.getLogger(__name__)
 __all__ = [
     b"background_job",
     b"background_job_run",
+    b"BackgroundJobState",
 ]
+
+
+class BackgroundJobState(Enum):
+    # not handled, ready for pick-up by cluster server
+    pre_init = "pre-init"
+    # timeout
+    timeout = "timeout"
+    # finished
+    done = "done"
+    # used for running, waiting for completion
+    pending = "pending"
+    # merged ???
+    merged = "merged"
 
 
 class background_job(models.Model):
@@ -48,13 +64,14 @@ class background_job(models.Model):
     options = models.CharField(default="", max_length=256)
     # state
     state = models.CharField(
-        max_length=128, default="pre-init",
+        max_length=128,
+        default=BackgroundJobState.pre_init.value,
         choices=[
-            ("pre-init", "before cluster-server detection"),
-            ("pending", "init and awaiting processing"),
-            ("done", "job finished"),
-            ("timeout", "timeout"),
-            ("merged", "merged with other job"),
+            (BackgroundJobState.pre_init.value, "before cluster-server detection"),
+            (BackgroundJobState.pending.value, "init and awaiting processing"),
+            (BackgroundJobState.done.value, "job finished"),
+            (BackgroundJobState.timeout.value, "timeout"),
+            (BackgroundJobState.merged.value, "merged with other job"),
         ]
     )
     # command as XML
@@ -86,12 +103,12 @@ class background_job(models.Model):
         return unicode(self.user) if self.user_id else "---"
 
     def set_state(self, state, result=None):
-        self.state = state
-        if self.state in ["timeout"]:
+        self.state = state.value
+        if state in [BackgroundJobState.timeout]:
             self.result = server_command.SRV_REPLY_STATE_ERROR
-        elif self.state in ["ended", "done"]:
+        elif state in [BackgroundJobState.done]:
             self.result = server_command.SRV_REPLY_STATE_OK
-        elif self.state in ["pending"]:
+        elif state in [BackgroundJobState.pending]:
             self.result = server_command.SRV_REPLY_STATE_WARN
         if result is not None:
             # override automatic decision

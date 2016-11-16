@@ -1,4 +1,4 @@
-# Copyright (C) 2014-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2014-2016 Andreas Lang-Nevyjel
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -17,4 +17,7 @@
 #
 """ cluster-server, background inotify import script """
 
-pass
+
+from __future__ import print_function, unicode_literals
+
+from .create import create_bg_job

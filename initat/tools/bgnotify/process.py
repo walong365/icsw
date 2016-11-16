@@ -26,7 +26,7 @@ import zmq
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import background_job, background_job_run, cluster_timezone
+from initat.cluster.backbone.models import background_job, background_job_run, cluster_timezone, BackgroundJobState
 from initat.cluster.backbone.routing import SrvTypeRouting, get_server_uuid
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, process_tools, server_command
@@ -60,18 +60,18 @@ class ServerBackgroundNotifyMixin(object):
         # step 1: delete pending jobs which are too old
         _timeout = background_job.objects.filter(
             Q(initiator=self.srv_routing.local_device.pk) &
-            Q(state__in=["pre-init", "pending"]) &
+            Q(state__in=[BackgroundJobState.pre_init.value, BackgroundJobState.pending.value]) &
             Q(valid_until__lte=cluster_timezone.localize(datetime.datetime.now()))
         )
         if _timeout.count():
             self.log("{} timeout".format(logging_tools.get_plural("background job", _timeout.count())), logging_tools.LOG_LEVEL_WARN)
             for _to in _timeout:
-                _to.set_state("timeout")
+                _to.set_state(BackgroundJobState.timeout)
         # print background_job.objects.filter(Q(initiator=self.srv_routing.local_device.pk) & Q(state="pre-init") & Q(valid_until_lt=datetime.datetime.now()))
         try:
             _pending = background_job.objects.filter(
                 Q(initiator=self.srv_routing.local_device.pk) &
-                Q(state="pre-init")
+                Q(state=BackgroundJobState.pre_init.value)
             ).order_by("pk")
             # force evaluation
             _pc = _pending.count()
@@ -93,11 +93,11 @@ class ServerBackgroundNotifyMixin(object):
     def _handle_bgj(self, cur_bg):
         if cur_bg.command not in self.__tasks:
             self.log("unknown background-command '{}', ending".format(cur_bg.command), logging_tools.LOG_LEVEL_ERROR)
-            cur_bg.set_state("ended", server_command.SRV_REPLY_STATE_ERROR)
+            cur_bg.set_state(BackgroundJobState.ended, server_command.SRV_REPLY_STATE_ERROR)
             cur_bg.valid_until = None
             cur_bg.save()
         else:
-            cur_bg.set_state("pending")
+            cur_bg.set_state(BackgroundJobState.pending)
             self.log("handling {}".format(cur_bg.command))
             to_run = self.__tasks[cur_bg.command].run(cur_bg)
             self._run_bg_jobs(cur_bg, to_run)
@@ -139,13 +139,13 @@ class ServerBackgroundNotifyMixin(object):
                 # all results set
                 _states = cur_bg.background_job_run_set.all().values_list("state", flat=True)
                 if len(_states):
-                    cur_bg.set_state("done", result=max(_states))
+                    cur_bg.set_state(BackgroundJobState.done, result=max(_states))
                 else:
-                    cur_bg.set_state("done", result=server_command.SRV_REPLY_STATE_UNSET)
+                    cur_bg.set_state(BackgroundJobState.done, result=server_command.SRV_REPLY_STATE_UNSET)
                 self.log("{} finished".format(unicode(cur_bg)))
         else:
             # no subcommands, mark as done
-            cur_bg.set_state("done")
+            cur_bg.set_state(BackgroundJobState.done)
 
     def _run_bg_jobs(self, cur_bg, to_run):
         if to_run:

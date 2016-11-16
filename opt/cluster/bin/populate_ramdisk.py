@@ -22,6 +22,8 @@
 
 """ generates the inital ramdisk for clusterboot """
 
+from __future__ import unicode_literals, print_function
+
 import os
 import sys
 
@@ -168,7 +170,7 @@ def which(file_name, sp):
             if not _next.startswith("/"):
                 _next = os.path.normpath("{}/{}".format(os.path.dirname(act), _next))
             if verbose > 1:
-                print "  following link from {} to {}".format(act, _next)
+                print("  following link from {} to {}".format(act, _next))
             act = _next
             full += [act]
     if full:
@@ -283,17 +285,17 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     else:
         err_sev = "E"
     if verbose:
-        print "checking availability of {:d} directories ...".format(len(dir_dict.keys()))
+        print("checking availability of {:d} directories ...".format(len(dir_dict.keys())))
     # check availability of directories
     for _dir, severity in [(os.path.normpath("/{}".format(x)), {
         0: "W",
         1: "E"
     }[y]) for x, y in dir_dict.iteritems()]:
         if not os.path.isdir(_dir):
-            print " {} dir '{}' not found".format(severity, _dir)
+            print(" {} dir '{}' not found".format(severity, _dir))
             sev_dict[severity] += 1
     if verbose:
-        print "checking availability of {:d} files ...".format(len(file_dict.keys()))
+        print("checking availability of {:d} files ...".format(len(file_dict.keys())))
     new_file_dict = {}
     path = [x for x in os.environ["PATH"].split(":")] + ["/lib/mkinitrd/bin"]
     for f_name, severity in [(x, {0: "W", 1: err_sev}[y]) for x, y in file_dict.iteritems()]:
@@ -302,13 +304,13 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             if f_name in choice_dict.keys():
                 pass
             else:
-                print " {} file '{}' not found".format(severity, os.path.basename(f_name))
+                print(" {} file '{}' not found".format(severity, os.path.basename(f_name)))
                 sev_dict[severity] += 1
         else:
             for full in full_path:
                 if full not in new_file_dict.keys():
                     if f_name != os.path.basename(full) and verbose:
-                        print "  adding file '{}' (triggered by '{}')".format(full, f_name)
+                        print("  adding file '{}' (triggered by '{}')".format(full, f_name))
                     new_file_dict[full] = severity
                     if f_name in choice_dict.keys():
                         choices_found[f_name] = choice_dict[f_name]
@@ -318,17 +320,31 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             c_found = [p_cn for p_cn in p_cns if p_cn in choices_found.keys()]
             c_found.sort()
             if c_found:
-                print "  for choice_idx {:d} ({}) we found {:d} of {:d}: {}".format(c_idx, ", ".join(p_cns), len(c_found), len(p_cns), ", ".join(c_found))
+                print(
+                    "  for choice_idx {:d} ({}) we found {:d} of {:d}: {}".format(
+                        c_idx,
+                        ", ".join(p_cns),
+                        len(c_found),
+                        len(p_cns),
+                        ", ".join(c_found)
+                    )
+                )
             else:
                 # better error handling, fixme
-                print "  for choice_idx {:d} ({}) we found nothing of {:d}".format(c_idx, ", ".join(p_cns), len(p_cns))
+                print(
+                    "  for choice_idx {:d} ({}) we found nothing of {:d}".format(
+                        c_idx,
+                        ", ".join(p_cns),
+                        len(p_cns)
+                    )
+                )
                 sev_dict[{0: "W", 1: err_sev}[file_dict[p_cns[0]]]] += 1
     pam_lib_list = []
     if stage_num == 2:
         # init simple pam-stack
         pam_lib_list = ["pam_permit.so"]
     if verbose:
-        print "Resolving libraries ..."
+        print("Resolving libraries ...")
     pam_lib_list = [norm_path("/{}/{}".format(pam_dir, _lib)) for _lib in pam_lib_list]
     for rsyslog_dir in rsyslog_dirs:
         if os.path.isdir(rsyslog_dir):
@@ -341,22 +357,26 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     new_libs = get_lib_list(new_file_dict.keys() + pam_lib_list) + pam_lib_list
     lib_dict = {}
     if verbose:
-        print "  ... found {:d} distinct libraries".format(len(new_libs))
+        print("  ... found {:d} distinct libraries".format(len(new_libs)))
     for new_lib in new_libs:
         lib_dict[new_lib] = "E"
     if verbose:
-        print "resolving directories of {:d} files and libraries ...".format(len(lib_dict.keys()) + len(new_file_dict.keys()))
+        print(
+            "resolving directories of {:d} files and libraries ...".format(
+                len(lib_dict.keys()) + len(new_file_dict.keys())
+            )
+        )
     dir_list = dir_dict.keys()
     for nd in [os.path.dirname(x) for x in lib_dict.keys() + new_file_dict.keys()]:
         if nd not in dir_list:
             dir_list += [nd]
     if verbose:
-        print " ... found {:d} distinct directories".format(len(dir_list))
+        print(" ... found {:d} distinct directories".format(len(dir_list)))
     # create missing entries
     for dir_name, dir_mode in [("/dev/pts", 0755)]:
         if not os.path.isdir(dir_name):
             if verbose > 1:
-                print "created directory {} (mode {:o})".format(dir_name, dir_mode)
+                print("created directory {} (mode {:o})".format(dir_name, dir_mode))
             os.mkdir(dir_name)
             os.chmod(dir_name, dir_mode)
     for file_name, file_type, file_mode, major, minor, file_owner, file_group in [
@@ -372,14 +392,16 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                 os.mknod(file_name, file_mode | stat.S_IFCHR, os.makedev(major, minor))
             os.chown(file_name, file_owner, file_group)
             os.chmod(file_name, file_mode)
-            print "created {} device {} (mode {:o}, major.minor {:d}.{:d}, owner.group {:d}.{:d})".format(
-                "block" if file_type == "b" else "char",
-                file_name,
-                file_mode,
-                major,
-                minor,
-                file_owner,
-                file_group
+            print(
+                "created {} device {} (mode {:o}, major.minor {:d}.{:d}, owner.group {:d}.{:d})".format(
+                    "block" if file_type == "b" else "char",
+                    file_name,
+                    file_mode,
+                    major,
+                    minor,
+                    file_owner,
+                    file_group
+                )
             )
             # check for block file
 
@@ -394,7 +416,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             len(new_libs)
         )
     )
-    print "starting creation of directorytree under '{}' ...".format(temp_dir)
+    print("starting creation of directorytree under '{}' ...".format(temp_dir))
     for orig_dir in [norm_path("/{}".format(x)) for x in dir_list if x]:
         path_parts = [_part for _part in orig_dir.split("/") if _part]
         path_walk = [
@@ -407,9 +429,11 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             # do NOT use os.path.join here
             target_dir = norm_path("{}/{}".format(temp_dir, orig_path))
             if verbose > 2:
-                print "checking directory {} (after eliminate_symlinks: {})".format(
-                    orig_path,
-                    eliminate_symlinks(temp_dir, target_dir)
+                print(
+                    "checking directory {} (after eliminate_symlinks: {})".format(
+                        orig_path,
+                        eliminate_symlinks(temp_dir, target_dir)
+                    )
                 )
             if not os.path.isdir(eliminate_symlinks(temp_dir, target_dir)):
                 if os.path.islink(orig_path):
@@ -417,19 +441,19 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                     if os.path.islink(target_dir):
                         # fixme, check target
                         if verbose > 1:
-                            print "link from {} to {} already exists".format(orig_path, link_target)
+                            print("link from {} to {} already exists".format(orig_path, link_target))
                     else:
                         # create a link
                         if verbose > 1:
-                            print "generating link from {} to {}".format(orig_path, link_target)
+                            print("generating link from {} to {}".format(orig_path, link_target))
                         os.symlink(link_target, target_dir)
                     if not os.path.isdir(os.path.join(temp_dir, link_target)):
                         if verbose > 1:
-                            print "creating directory {}".format(link_target)
+                            print("creating directory {}".format(link_target))
                         os.makedirs(os.path.join(temp_dir, link_target))
                 else:
                     if verbose > 1:
-                        print "creating directory {}".format(orig_path)
+                        print("creating directory {}".format(orig_path))
                     os.makedirs(eliminate_symlinks(temp_dir, target_dir))
     os.chmod("{}/tmp".format(temp_dir), 01777)
     file_list = []
@@ -439,14 +463,14 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     new_files.sort()
     act_file, num_files = (0, len(new_files))
     if verbose:
-        print "Copying files ..."
+        print("Copying files ...")
     for file_name in new_files:
         act_file += 1
         dest_file = "{}/{}".format(temp_dir, file_name)
         if os.path.islink(file_name):
             os.symlink(os.readlink(file_name), eliminate_symlinks(temp_dir, dest_file))
             if verbose > 1:
-                print "{:4d} linking from {} to {}".format(act_file, os.readlink(file_name), file_name)
+                print("{:4d} linking from {} to {}".format(act_file, os.readlink(file_name), file_name))
         elif os.path.isfile(file_name):
             if verbose > 1:
                 f_size = os.stat(file_name)[stat.ST_SIZE]
@@ -468,30 +492,40 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
             file_stat = os.stat(file_name)
             if stat.S_ISCHR(file_stat.st_mode):
                 if verbose > 1:
-                    print "{:4d} character device {}".format(act_file, file_name)
+                    print("{:4d} character device {}".format(act_file, file_name))
                 # character device
                 os.mknod(dest_file, 0600 | stat.S_IFCHR,
                          os.makedev(os.major(file_stat.st_rdev),
                                     os.minor(file_stat.st_rdev)))
             elif stat.S_ISBLK(file_stat.st_mode):
                 if verbose > 1:
-                    print "{:4d} block device {}".format(act_file, file_name)
+                    print("{:4d} block device {}".format(act_file, file_name))
                 # block device
-                os.mknod(dest_file, 0600 | stat.S_IFBLK,
-                         os.makedev(os.major(file_stat.st_rdev),
-                                    os.minor(file_stat.st_rdev)))
+                os.mknod(
+                    dest_file,
+                    0600 | stat.S_IFBLK,
+                    os.makedev(
+                        os.major(file_stat.st_rdev),
+                        os.minor(file_stat.st_rdev)
+                    )
+                )
             else:
                 if verbose > 1:
-                    print "{:4d} unknown file {} (possibly Unix Domain Socket?)".format(act_file, file_name)
+                    print(
+                        "{:4d} unknown file {} (possibly Unix Domain Socket?)".format(
+                            act_file,
+                            file_name
+                        )
+                    )
         else:
             if verbose > 1:
-                print "{:4d} *** file not found: {}".format(act_file, file_name)
+                print("{:4d} *** file not found: {}".format(act_file, file_name))
     # stage1 links for bash->ash, sh->ash
     new_libs = lib_dict.keys()
     new_libs.sort()
     num_libs = len(new_libs)
     if verbose:
-        print "Copying libraries ..."
+        print("Copying libraries ...")
     for act_lib, lib_name in enumerate(new_libs, start=1):
         if os.path.isfile(lib_name):
             if lib_name.startswith("/opt/cluster"):
@@ -527,7 +561,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
                     strip_files += [dest_file]
         else:
             if verbose > 1:
-                print "{:4d} unknown library {}".format(act_lib, lib_name)
+                print("{:4d} unknown library {}".format(act_lib, lib_name))
     if strip_files:
         free_stat = os.statvfs(temp_dir)
         free_before = free_stat[statvfs.F_BFREE] * free_stat[statvfs.F_BSIZE]
@@ -713,7 +747,7 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     if ld_stat:
         ld_stat, _out = commands.getstatusoutput("chroot {} /usr/sbin/ldconfig".format(temp_dir))
         if ld_stat:
-            print "Error calling {{/usr}}/sbin/ldconfig: {}".format(_out)
+            print("Error calling {{/usr}}/sbin/ldconfig: {}".format(_out))
             sev_dict["E"] += 1
         else:
             os.unlink("{}/usr/sbin/ldconfig".format(temp_dir))
@@ -722,14 +756,14 @@ def populate_it(stage_num, temp_dir, in_dir_dict, in_file_dict, stage_add_dict, 
     # check size (not really needed, therefore commented out)
     # blks_total, blks_used, blks_free = commands.getstatusoutput("df --sync -k %s" % (temp_dir))[1].split("\n")[1].strip().split()[1:4]
     # blks_initrd = commands.getstatusoutput("du -ks %s" % (temp_dir))[1].split("\n")[0].strip().split()[0]
-    # print blks_total, blks_used, blks_free, blks_initrd
+    # print(blks_total, blks_used, blks_free, blks_initrd)
     if not sev_dict["E"]:
-        print "INITDIR {}".format(temp_dir)
+        print("INITDIR {}".format(temp_dir))
     if show_content:
         file_list.sort()
         dir_list.sort()
-        print "\n".join(["cd {}".format(x) for x in dir_list])
-        print "\n".join(["cf {}".format(x) for x in file_list])
+        print("\n".join(["cd {}".format(x) for x in dir_list]))
+        print("\n".join(["cf {}".format(x) for x in file_list]))
     # shutil.rmtree(temp_dir)
     return 1
 
@@ -748,18 +782,18 @@ def find_free_loopdevice():
 def get_system_bitcount(root_dir):
     init_file = norm_path("{}/sbin/init".format(root_dir))
     while os.path.islink(init_file):
-        print "following link {} ...".format(init_file)
+        print("following link {} ...".format(init_file))
         init_file = os.path.join(os.path.dirname(init_file), os.readlink(init_file))
     if not os.path.isfile(init_file):
-        print "'{}' is not the root of a valid system (/sbin/init not found), exiting...".format(root_dir)
+        print("'{}' is not the root of a valid system (/sbin/init not found), exiting...".format(root_dir))
         sys.exit(1)
     stat, out = commands.getstatusoutput("file {}".format(init_file))
     if stat:
-        print "error determining the filetype of {} ({:d}): {}".format(init_file, stat, out)
+        print("error determining the filetype of {} ({:d}): {}".format(init_file, stat, out))
         sys.exit(1)
     elf_str, elf_bit = out.split(":")[1].strip().split()[0:2]
     if elf_str.lower() != "elf":
-        print "error binary type '{}' unknown, exiting...".format(elf_str)
+        print("error binary type '{}' unknown, exiting...".format(elf_str))
         sys.exit(1)
     if elf_bit.lower().startswith("32"):
         sys_64bit = 0
@@ -802,7 +836,7 @@ class copy_arg_parser(argparse.ArgumentParser, base_arg_mixin):
         argparse.ArgumentParser.__init__(self, epilog="searching kernels in '{}' (root directory can be changed by setting IMAGE_ROOT)".format(kern_dir))
         local_kernels = [entry for entry in os.listdir(kern_dir) if os.path.isdir(os.path.join(kern_dir, entry, "kernel"))]
         if not local_kernels:
-            print "No kernels found beneath {}, exiting ...".format(kern_dir)
+            print("No kernels found beneath {}, exiting ...".format(kern_dir))
             sys.exit(1)
         self.add_argument("--target-dir", type=str, default="/opt/cluster/system/tftpboot/kernels", help="set target directory [%(default)s]")
         self.add_argument("kernel", nargs="?", choices=local_kernels, type=str, default=local_kernels[0], help="kernel to copy [%(default)s]")
@@ -853,27 +887,29 @@ def main_copy():
         if copy_args.init:
             os.makedirs(copy_args.target_dir)
         else:
-            print "system target directory {} does not exist".format(
-                copy_args.target_dir,
+            print(
+                "system target directory {} does not exist".format(
+                    copy_args.target_dir,
+                )
             )
             do_it = False
     if not os.path.isdir(lib_dir):
-        print "source directory {} missing".format(lib_dir)
+        print("source directory {} missing".format(lib_dir))
         do_it = False
     if os.path.isdir(target_dir):
         if copy_args.clean:
             shutil.rmtree(target_dir)
         else:
-            print "target directory {} already exists".format(target_dir)
+            print("target directory {} already exists".format(target_dir))
             do_it = False
     system_map_file = os.path.join(copy_args.image_root, "boot", "System.map-{}".format(copy_args.kernel))
     vmlinuz_file = os.path.join(copy_args.image_root, "boot", "vmlinuz-{}".format(copy_args.kernel))
     config_file = os.path.join(copy_args.image_root, "boot", "config-{}".format(copy_args.kernel))
     if not os.path.isfile(system_map_file):
-        print "system.map file {} does not exist".format(system_map_file)
+        print("system.map file {} does not exist".format(system_map_file))
         do_it = False
     if not os.path.isfile(vmlinuz_file):
-        print "vmlinuz file {} does not exist".format(vmlinuz_file)
+        print("vmlinuz file {} does not exist".format(vmlinuz_file))
         do_it = False
     # print "*", copy_args
     if not do_it:
@@ -885,31 +921,31 @@ def main_copy():
                 target_dir,
             )
         )
-        print "  system.map : {}".format(system_map_file)
-        print "  vmlinuz    : {}".format(vmlinuz_file)
-        print "  config     : {}".format(config_file)
+        print("  system.map : {}".format(system_map_file))
+        print("  vmlinuz    : {}".format(vmlinuz_file))
+        print("  config     : {}".format(config_file))
         # previous source / build link
         build_lt = get_link_target(lib_dir, "build")
         source_lt = get_link_target(lib_dir, "source")
         os.makedirs(target_dir)
-        print "\nCopying system.map and vmlinuz"
+        print("\nCopying system.map and vmlinuz")
         shutil.copy(system_map_file, os.path.join(target_dir, "System.map"))
         shutil.copy(vmlinuz_file, os.path.join(target_dir, "bzImage"))
         if os.path.isfile(config_file):
-            print "\ncopying config file"
+            print("\ncopying config file")
             shutil.copy(config_file, os.path.join(target_dir, ".config"))
         # modules
         t_lib_dir = os.path.join(target_dir, "lib", "modules", copy_args.kernel)
-        print "\nCopying modules {} -> {}".format(lib_dir, t_lib_dir)
+        print("\nCopying modules {} -> {}".format(lib_dir, t_lib_dir))
         shutil.copytree(lib_dir, t_lib_dir, symlinks=True)
         # firmware
         t_firm_dir = os.path.join(target_dir, "lib", "firmware")
-        print "\nCopying firmware {} -> {}".format(firm_dir, t_firm_dir)
+        print("\nCopying firmware {} -> {}".format(firm_dir, t_firm_dir))
         shutil.copytree(firm_dir, t_firm_dir, symlinks=True)
         # local firmware
-        # print "\nCopying local firmware {} -> {}".format(firm_dir_local, t_firm_dir)
+        # print("\nCopying local firmware {} -> {}".format(firm_dir_local, t_firm_dir))
         # shutil.copytree(firm_dir_local, t_firm_dir)
-        print "\nGenerating dummy initrd_lo.gz"
+        print("\nGenerating dummy initrd_lo.gz")
         file(os.path.join(target_dir, "initrd_lo.gz"), "w").close()
         # print build_lt, source_lt
         if build_lt:
@@ -943,7 +979,7 @@ def rescan_kernels():
         )
     else:
         res_str, res_state = result.get_log_tuple()
-    print "[{}] {}".format(logging_tools.map_log_level_to_log_status(res_state), res_str)
+    print("[{}] {}".format(logging_tools.map_log_level_to_log_status(res_state), res_str))
 
 
 def get_link_target(lib_dir, link_name):
@@ -966,10 +1002,10 @@ def main_local():
         2: []
     }
     if not local_args.temp_dir:
-        print "Error, need temp_dir ..."
+        print("Error, need temp_dir ...")
         sys.exit(1)
     verbose = local_args.verbose
-    print "Generating stage{:d} initrd, verbosity level is {:d} ...".format(local_args.stage_num, local_args.verbose)
+    print("Generating stage{:d} initrd, verbosity level is {:d} ...".format(local_args.stage_num, local_args.verbose))
     if local_args.stage_num == 1:
         stage_ok = populate_it(
             local_args.stage_num,
@@ -1035,14 +1071,14 @@ def do_show_kernels(dev_assoc):
                 ]
             )
     if len(out_list):
-        print out_list
+        print(out_list)
     else:
-        print "Empty list"
+        print("Empty list")
     sys.exit(0)
 
 
 def log_it(what):
-    print " - {}".format(what)
+    print(" - {}".format(what))
 
 
 class arg_parser(argparse.ArgumentParser):
@@ -1081,7 +1117,7 @@ class arg_parser(argparse.ArgumentParser):
         cur_args = self.parse_args()
         if cur_args.root_dir:
             if not os.path.isdir(cur_args.root_dir):
-                print "root_dir '{}' is no directory".format(cur_args.root_dir)
+                print("root_dir '{}' is no directory".format(cur_args.root_dir))
                 sys.exit(0)
             _files_needed = set()
             _files_found = set()
@@ -1106,7 +1142,7 @@ class arg_parser(argparse.ArgumentParser):
                     )
                 )
                 for _mis_file in sorted(missing_files):
-                    print "    {}".format(_mis_file)
+                    print("    {}".format(_mis_file))
                 print()
                 print("maybe a more recent version of icsw-server has to be installed in {}".format(cur_args.root_dir))
                 sys.exit(-1)
@@ -1150,38 +1186,57 @@ def main_normal():
         sys.exit(1)
     my_args.kernel_dir = os.path.join("/tftpboot", "kernels", my_args.kernel_name)
     if not os.path.isfile(os.path.join(my_args.kernel_dir, "bzImage")):
-        print "Found no kernel (bzImage) under {}, exiting".format(my_args.kernel_dir)
+        print("Found no kernel (bzImage) under {}, exiting".format(my_args.kernel_dir))
         sys.exit(1)
     _long_host_name, short_host_name = process_tools.get_fqdn()
     # kernel_server idx
     kernel_server_idx = 0
     # check for kernel_server
-    mother_configs = config_tools.device_with_config("kernel_server")
+    mother_configs = config_tools.device_with_config(service_type_enum=icswServiceEnum.kernel_server)
     ks_check = config_tools.server_check(service_type_enum=icswServiceEnum.kernel_server)
     if not ks_check.effective_device:
-        print "Host '{}' is not a kernel_server, exiting ...".format(short_host_name)
+        print("Host '{}' is not a kernel_server, exiting ...".format(short_host_name))
         sys.exit(1)
     else:
         kernel_server_idx = ks_check.effective_device.pk
         mother_list = mother_configs["kernel_server"]
-        print "Host '{}' is a kernel_server (device_idx {:d}), found {}: {}".format(
-            short_host_name,
-            ks_check.effective_device.pk,
-            logging_tools.get_plural("mother_server", len(mother_list)),
-            ", ".join(["{} [{}]".format(
-                unicode(cur_entry.effective_device),
-                ", ".join(cur_entry.simple_ip_list)) for cur_entry in mother_list]))
+        print(
+            "Host '{}' is a kernel_server (device_idx {:d}), found {}: {}".format(
+                short_host_name,
+                ks_check.effective_device.pk,
+                logging_tools.get_plural("mother_server", len(mother_list)),
+                ", ".join(
+                    [
+                        "{} [{}]".format(
+                            unicode(cur_entry.effective_device),
+                            ", ".join(cur_entry.simple_ip_list)) for cur_entry in mother_list
+                    ]
+                )
+            )
+        )
     target_path = os.path.normpath(my_args.kernel_dir)
     kernel_name = my_args.kernel_name
     try:
         my_kernel = kernel.objects.get(Q(display_name=kernel_name))
     except kernel.DoesNotExist:
         if my_args.insert_kernel:
-            print "+++ kernel at path '{}' ({} at {}) not found in database, creating".format(my_args.kernel_dir, kernel_name, target_path)
+            print(
+                "+++ kernel at path '{}' ({} at {}) not found in database, creating".format(
+                    my_args.kernel_dir,
+                    kernel_name,
+                    target_path
+                )
+            )
             my_kernel = kernel(name=kernel_name, master_server=ks_check.effective_device.pk)
             my_kernel.save()
         else:
-            print "*** Cannot find a kernel at path '{}' ({} at {}) in database".format(my_args.kernel_dir, kernel_name, target_path)
+            print(
+                "*** Cannot find a kernel at path '{}' ({} at {}) in database".format(
+                    my_args.kernel_dir,
+                    kernel_name,
+                    target_path
+                )
+            )
         my_kernel = None
     if my_kernel:
         my_build = initrd_build(
@@ -1201,15 +1256,22 @@ def main_normal():
             machine=process_tools.get_machine_name(),
             cmdline=" ".join(sys.argv),
         )
-        print "Found kernel at path '{}' ({} at {}) in database (kernel_idx is {:d})".format(my_args.kernel_dir, kernel_name, target_path, my_kernel.pk)
+        print(
+            "Found kernel at path '{}' ({} at {}) in database (kernel_idx is {:d})".format(
+                my_args.kernel_dir,
+                kernel_name,
+                target_path,
+                my_kernel.pk
+            )
+        )
         if my_kernel.xen_host_kernel:
-            print " - kernel for Xen-hosts"
+            print(" - kernel for Xen-hosts")
         if my_kernel.xen_guest_kernel:
-            print " - kernel for Xen-guests"
+            print(" - kernel for Xen-guests")
         if kernel_server_idx:
             if kernel_server_idx != my_kernel.master_server:
                 if my_args.set_master_server:
-                    print "setting master_server of kernel to local kernel_server_idx"
+                    print("setting master_server of kernel to local kernel_server_idx")
                     my_kernel.master_server = kernel_server_idx
                     my_kernel.save()
                 else:
@@ -1240,14 +1302,14 @@ def main_normal():
     build_arch_64bit = get_system_bitcount(my_args.root_dir or "/")
     local_arch_64bit = get_system_bitcount("/")
     if build_arch_64bit > local_arch_64bit:
-        print "don't known how to build 64bit initrds on a 32bit System, exiting..."
+        print("don't known how to build 64bit initrds on a 32bit System, exiting...")
         sys.exit(1)
     # try to get kernel config
     wrong_config_name = os.path.join(my_args.kernel_dir, "config")
     if os.path.isfile(wrong_config_name):
-        print
-        print " *** Found {}, please move to .config".format(wrong_config_name)
-        print
+        print()
+        print(" *** Found {}, please move to .config".format(wrong_config_name))
+        print()
     if os.path.isfile(os.path.join(my_args.kernel_dir, ".config")):
         conf_lines = [
             y for y in [
@@ -1256,7 +1318,7 @@ def main_normal():
         ]
         conf_dict = dict([x.split("=", 1) for x in conf_lines])
     else:
-        print "Warning, no kernel_config {}/.config found".format(my_args.kernel_dir)
+        print("Warning, no kernel_config {}/.config found".format(my_args.kernel_dir))
         conf_dict = {}
     # set initsize if not already set
     if not my_args.init_size:
@@ -1267,10 +1329,10 @@ def main_normal():
         my_args.kernel_64_bit = "CONFIG_X86_64" in conf_dict
     print("using initrd RAM-Disk size of {:d} ({})".format(my_args.init_size, logging_tools.get_size_str(my_args.init_size * 1024, long_format=True)))
     if not local_arch_64bit and my_args.kernel_64_bit:
-        print "/ is 32bit and Kernel 64 bit, exiting"
+        print("/ is 32bit and Kernel 64 bit, exiting")
         sys.exit(1)
     if build_arch_64bit and not my_args.kernel_64_bit:
-        print "build_architecture under {} is 64bit and Kernel 32 bit, exiting".format(my_args.root_dir or "/")
+        print("build_architecture under {} is 64bit and Kernel 32 bit, exiting".format(my_args.root_dir or "/"))
         sys.exit(1)
     # modules.tar.bz2 present ?
     mod_bz2_file = os.path.join(my_args.kernel_dir, "modules.tar.bz2")
@@ -1291,7 +1353,7 @@ def main_normal():
                 )
             )
         elif len(kverdirs) == 0:
-            print "No KernelVersionDirectory found below '{}/lib/modules'".format(my_args.kernel_dir)
+            print("No KernelVersionDirectory found below '{}/lib/modules'".format(my_args.kernel_dir))
             sys.exit(1)
         kverdir = my_kernel.name
         print("kernel version dir name is '{}'".format(kverdir))
@@ -1308,28 +1370,28 @@ def main_normal():
                 else:
                     pre_content = ""
                 depmod_call = "depmod -aeb {} {}".format(my_args.kernel_dir, kverdir)
-                print "Doing depmod_call '{}' ...".format(depmod_call)
+                print("Doing depmod_call '{}' ...".format(depmod_call))
                 c_stat, out = commands.getstatusoutput(depmod_call)
                 if c_stat:
-                    print " - some error occured ({:d}): {}".format(c_stat, out)
+                    print(" - some error occured ({:d}): {}".format(c_stat, out))
                     sys.exit(1)
                 if os.path.isfile(mdep_file):
                     post_content = file(mdep_file, "r").read()
                     if pre_content != post_content:
                         mod_bz2_present = False
-                        print "modules.dep file '{}' has changed, rebuilding {}".format(mdep_file, mod_bz2_file)
+                        print("modules.dep file '{}' has changed, rebuilding {}".format(mdep_file, mod_bz2_file))
                 else:
-                    print "no modules.dep file '{}' found, exiting".format(mdep_file)
+                    print("no modules.dep file '{}' found, exiting".format(mdep_file))
                     sys.exit(1)
     else:
         kverdir = os.path.basename(os.path.normpath(my_args.kernel_dir))
-        print "No lib/modules directory found under '{}', setting kernel_version to {}".format(my_args.kernel_dir, kverdir)
+        print("No lib/modules directory found under '{}', setting kernel_version to {}".format(my_args.kernel_dir, kverdir))
     if not mod_bz2_present:
-        print "(re)creating {}".format(mod_bz2_file)
+        print("(re)creating {}".format(mod_bz2_file))
         if os.path.exists(mod_bz2_file):
             os.unlink(mod_bz2_file)
         t_stat, t_out = commands.getstatusoutput("cd {} ; tar -cpjf modules.tar.bz2 lib".format(my_args.kernel_dir))
-        print "... gave ({:d}) {}".format(t_stat, t_out)
+        print("... gave ({:d}) {}".format(t_stat, t_out))
         if t_stat:
             sys.exit(t_stat)
     bit_dict = {
@@ -1340,30 +1402,32 @@ def main_normal():
     for stage in ["1", "2", "3"]:
         fname = "/{}/stage{}".format(my_args.stage_source_dir, stage)
         if not os.path.isfile(fname):
-            print "Cannot find stage {} file {} in stage_dir {}".format(stage, fname, my_args.stage_source_dir)
+            print("Cannot find stage {} file {} in stage_dir {}".format(stage, fname, my_args.stage_source_dir))
             sys.exit(1)
     free_lo_dev = find_free_loopdevice()
     if free_lo_dev == -1:
-        print "Cannot find free loopdevice, exiting..."
+        print("Cannot find free loopdevice, exiting...")
         sys.exit(1)
     loop_dev = "/dev/loop{:d}".format(free_lo_dev)
     # read uuid
     my_uuid = uuid_tools.get_uuid()
-    print "cluster_device_uuid is {}".format(my_uuid.get_urn())
-    print "Kernel directory is '{}', initsize is {:s}".format(
-        my_args.kernel_dir,
-        logging_tools.get_size_str(my_args.init_size * 1024, long_format=True),
+    print("cluster_device_uuid is {}".format(my_uuid.get_urn()))
+    print(
+        "Kernel directory is '{}', initsize is {:s}".format(
+            my_args.kernel_dir,
+            logging_tools.get_size_str(my_args.init_size * 1024, long_format=True),
+        )
     )
-    print "  using loopdevice %s" % (loop_dev)
-    print "  kernel_version is %s, %s-bit kernel" % (kverdir, bit_dict[my_args.kernel_64_bit])
-    print "  build_dir is '%s', %s-bit linux" % (my_args.root_dir or "/", bit_dict[build_arch_64bit])
-    print "  local_system is a %s-bit linux" % (bit_dict[local_arch_64bit])
-    print "  stage source directory is %s" % (my_args.stage_source_dir)
-    print "  stage target directory is %s" % (my_args.stage_target_dir and my_args.stage_target_dir or my_args.kernel_dir)
-    print "  will create three flavours:"
-    print "    - use mkfs.cramfs to build stage1 initrd"
-    print "    - create a cpio-archive for stage1 initrd"
-    print "    - use loopdevice {} to build stage1 initrd".format(loop_dev)
+    print("  using loopdevice %s" % (loop_dev))
+    print("  kernel_version is %s, %s-bit kernel" % (kverdir, bit_dict[my_args.kernel_64_bit]))
+    print("  build_dir is '%s', %s-bit linux" % (my_args.root_dir or "/", bit_dict[build_arch_64bit]))
+    print("  local_system is a %s-bit linux" % (bit_dict[local_arch_64bit]))
+    print("  stage source directory is %s" % (my_args.stage_source_dir))
+    print("  stage target directory is %s" % (my_args.stage_target_dir and my_args.stage_target_dir or my_args.kernel_dir))
+    print("  will create three flavours:")
+    print("    - use mkfs.cramfs to build stage1 initrd")
+    print("    - create a cpio-archive for stage1 initrd")
+    print("    - use loopdevice {} to build stage1 initrd".format(loop_dev))
     stage_add_dict[1][0].append("run-init")
     stage_add_dict[3][0].append("run-init")
     # get kernel-module dependencies
@@ -1373,14 +1437,19 @@ def main_normal():
                 act_mods = [line.strip() for line in my_kernel.target_module_list.split(",") if line.strip()]
             else:
                 act_mods = []
-            print "Using module_list from database: {}, {}".format(
-                logging_tools.get_plural("module", len(act_mods)),
-                ", ".join(act_mods)
+            print(
+                "Using module_list from database: {}, {}".format(
+                    logging_tools.get_plural("module", len(act_mods)),
+                    ", ".join(act_mods)
+                )
             )
         else:
-            print "Saving module_list to database: {}, {}".format(
-                logging_tools.get_plural("module", len(act_mods)),
-                ", ".join(act_mods))
+            print(
+                "Saving module_list to database: {}, {}".format(
+                    logging_tools.get_plural("module", len(act_mods)),
+                    ", ".join(act_mods)
+                )
+            )
             my_kernel.target_module_list = ",".join(act_mods)
             my_kernel.save()
     if act_mods:
@@ -1405,12 +1474,12 @@ def main_normal():
         )
         if my_args.verbose:
             for mod in del_mods:
-                print " - (not found) : %s" % (mod)
+                print(" - (not found) : %s" % (mod))
             for mod in all_mods:
-                print " + (found) : %s" % (mod)
+                print(" + (found) : %s" % (mod))
     else:
         all_mods, fw_files = ([], [])
-        print "  no kernel-modules given"
+        print("  no kernel-modules given")
     if my_kernel:
         base_mods = [".".join(os.path.basename(x).split(".")[0:-1]) for x in all_mods]
         base_mods.sort()
@@ -1419,18 +1488,22 @@ def main_normal():
         else:
             last_base_mods = []
         if last_base_mods == base_mods:
-            print "Updating database (modules are the same)...",
+            print("Updating database (modules are the same)...")
         else:
-            print "Updating database (modules changed from %s to %s)..." % (
-                last_base_mods and ", ".join(last_base_mods) or "<None>",
-                base_mods and ", ".join(base_mods) or "<None>"),
+            print(
+                "Updating database (modules changed from %s to %s)..." % (
+                    last_base_mods and ", ".join(last_base_mods) or "<None>",
+                    base_mods and ", ".join(base_mods) or "<None>"
+                )
+            )
+
         my_kernel.module_list = ",".join(base_mods)
         my_kernel.initrd_build = datetime.datetime.now()
         my_kernel.save()
-        print "ok"
+        print("ok")
     if my_args.root_dir:
         loc_src, loc_dst = (script, os.path.normpath(os.path.join(my_args.root_dir, os.path.basename(local_script))))
-        print "  copying {} to {}".format(loc_src, loc_dst)
+        print("  copying {} to {}".format(loc_src, loc_dst))
         shutil.copy(loc_src, loc_dst)
     # setting up loopdevice for stage1
     stage1_lo_file = os.path.normpath("/%s/initrd_lo" % (my_args.stage_target_dir and my_args.stage_target_dir or my_args.kernel_dir))
@@ -1451,9 +1524,9 @@ def main_normal():
     stat_out += [("mkfs.ext2", commands.getstatusoutput("mkfs.ext2 -F -v -m 0 -b 1024 %s %d" % (stage1_lo_file, my_args.init_size)))]
     stat_out += [("mount", commands.getstatusoutput("mount -o loop -t ext2 %s %s" % (stage1_lo_file, stage1_dir)))]
     if len([err_name for name, (err_name, line) in stat_out if err_name]):
-        print "Something went wrong during setup of stage1:"
+        print("Something went wrong during setup of stage1:")
         for name, (err_name, line) in stat_out:
-            print "%s (%d) : \n%s" % (name, err_name, "\n".join([" - %s" % (part) for part in line.split("\n")]))
+            print("%s (%d) : \n%s" % (name, err_name, "\n".join([" - %s" % (part) for part in line.split("\n")])))
         sys.exit(-1)
     stage_targ_dirs = [stage1_dir, stage2_dir]
     stage_dirs, del_dirs = ([], [])
@@ -1483,16 +1556,16 @@ def main_normal():
         )
         if my_args.add_modules and stage in [1, 3]:
             gen_com = "%s --modules %s" % (gen_com, ",".join(["%s:%s" % (mod_name, mod_option) for mod_name, mod_option in my_args.add_modules]))
-        print gen_com
+        print(gen_com)
         c_stat, out = commands.getstatusoutput(gen_com)
         if my_args.verbose:
-            print "\n".join([" - %s" % (x) for x in out.split("\n")])
+            print("\n".join([" - %s" % (x) for x in out.split("\n")]))
         act_stage_dir = [y.split()[1].strip() for y in [x.strip() for x in out.strip().split("\n")] if y.startswith("INITDIR")]
         if act_stage_dir:
             stage_dirs += [os.path.join(my_args.root_dir or "/", act_stage_dir[0])]
         else:
             print("Error generating stage{:d} dir".format(stage))
-            print "\n".join(["  - %s" % (x) for x in out.split("\n") if x.strip().startswith("E ")])
+            print("\n".join(["  - %s" % (x) for x in out.split("\n") if x.strip().startswith("E ")]))
         del_dirs += [os.path.normpath(os.path.join(my_args.root_dir or "/", loc_root_dir))]
     stage_dirs_ok = len(stage_dirs) == len(stage_targ_dirs)
     if stage_dirs_ok:
@@ -1534,7 +1607,7 @@ def main_normal():
                             found = True
                             break
                     if not found:
-                        print "*** cannot read firmware-file (one of {})".format(", ".join(fw_src_files))
+                        print("*** cannot read firmware-file (one of {})".format(", ".join(fw_src_files)))
     # umount stage1_dir
     act_dir = os.getcwd()
     stat_out = [
@@ -1556,16 +1629,16 @@ def main_normal():
         ),
     ]
     if [x for name, (x, y) in stat_out if x]:
-        print "Something went wrong during finish of stage1:"
+        print("Something went wrong during finish of stage1:")
         for name, (err_name, y) in stat_out:
-            print "%s (%d) : \n%s" % (name, err_name, "\n".join([" - %s" % (z) for z in y.split("\n")]))
+            print("%s (%d) : \n%s" % (name, err_name, "\n".join([" - %s" % (z) for z in y.split("\n")])))
     if stage_dirs_ok:
         for s1_type, s1_file in [
             ("lo", stage1_lo_file),
             ("cramfs", stage1_cramfs_file),
             ("cpio", stage1_cpio_file)
         ]:
-            print "Compressing stage1 ({:7s}) ... ".format(s1_type),
+            print("Compressing stage1 ({:7s}) ... ".format(s1_type),)
             s_time = time.time()
             o_s1_size = os.stat(s1_file)[stat.ST_SIZE]
             # zip stage1
@@ -1581,7 +1654,7 @@ def main_normal():
                     logging_tools.get_diff_time_str(e_time - s_time)
                 )
             )
-        print "Compressing stage2 ............. ",
+        print("Compressing stage2 ............. ",)
         s_time = time.time()
         o_s2_size = 0
         for dir_name, _dir_list, file_list in os.walk(stage_targ_dirs[1]):
@@ -1612,7 +1685,7 @@ def main_normal():
     if my_args.root_dir:
         os.unlink(loc_dst)
     if not stage_dirs_ok:
-        print "Stage directories not OK, exiting..."
+        print("Stage directories not OK, exiting...")
         sys.exit(-1)
     if not my_args.keep_dirs:
         for del_dir in del_dirs:

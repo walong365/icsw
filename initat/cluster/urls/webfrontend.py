@@ -148,7 +148,6 @@ lic_patterns = [
 
 
 base_patterns = [
-    url("^get_gauge_info$", base_views.get_gauge_info.as_view(), name="get_gauge_info"),
     url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
     url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(),
         name="location_gfx_icon"),

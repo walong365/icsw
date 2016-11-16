@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2009,2012-2016 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #
@@ -19,11 +19,14 @@
 #
 """ package server """
 
+from __future__ import unicode_literals, print_function
+
 import os
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "initat.cluster.settings")
 
 import django
+
 django.setup()
 
 from .config import global_config
@@ -36,7 +39,6 @@ def run_code():
 
 
 def main():
-    prog_name = global_config.name()
     global_config.add_config_entries(
         [
             ("DEBUG", configfile.bool_c_var(False, help_string="enable debug mode [%(default)s]", short_options="d", only_commandline=True)),
