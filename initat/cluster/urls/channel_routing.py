@@ -26,10 +26,10 @@ from channels.routing import route
 from channels import Group
 
 def ws_add(message):
-    Group("device_log_entries").add(message.reply_channel)
+    Group(message['path'].replace("/", "")).add(message.reply_channel)
 
 def ws_disconnect(message):
-    Group("device_log_entries").discard(message.reply_channel)
+    Group(message['path'].replace("/", "")).discard(message.reply_channel)
 
 channel_routing = [
     route("websocket.connect", ws_add, path=r"^/device_log_entries/$"),

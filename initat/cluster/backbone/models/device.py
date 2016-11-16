@@ -46,6 +46,7 @@ from initat.cluster.backbone.models.functions import check_empty_string, \
 from initat.cluster.backbone.signals import BootsettingsChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store, logging_tools, server_command
+from initat.tools.net_tools import propagate_channel_message
 
 logger = logging.getLogger(__name__)
 
@@ -949,20 +950,11 @@ class DeviceLogEntry(models.Model):
             self.level.level,
         )
 
-import json
-import subprocess
-from initat.cluster.settings import DEBUG
 
 @receiver(signals.post_save, sender=DeviceLogEntry)
 def device_log_entry_post_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-
-        base_params = ["curl",
-                       "-s",
-                       "-H", "Content-Type: application/json",
-                       "-X", "POST",
-                       "-d"]
 
         info_obj = {
             "idx": cur_inst.idx,
@@ -974,26 +966,6 @@ def device_log_entry_post_save(sender, **kwargs):
             "source": cur_inst.source.identifier
         }
 
-        send_dict = {
-            "data": info_obj,
-            "group": "device_log_entries"
-        }
+        propagate_channel_message("device_log_entries", info_obj)
 
-        base_params.append(json.dumps(send_dict))
-
-        # todo fixme via proper routing
-        from initat.cluster.backbone.server_enums import icswServiceEnum
-        from initat.tools import config_tools
-        ip = config_tools.server_check(service_type_enum=icswServiceEnum.cluster_server).ip_list[0]
-
-        port = "80"
-        if DEBUG:
-            port = "8080"
-
-        base_params.append("http://{}:{}/icsw/api/v2/base/propagate_channel_message".format(ip, port))
-
-        print("http://{}:{}/icsw/api/v2/base/propagate_channel_message".format(ip, port))
-
-        subprocess.check_call(base_params)
-
-        print("[{}] pushed into channel... {}".format(datetime.datetime.now().ctime(),  cur_inst.text))
+        #print("[{}] pushed into channel... {}".format(datetime.datetime.now().ctime(),  cur_inst.text))

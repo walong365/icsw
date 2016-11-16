@@ -27,8 +27,9 @@ import argparse
 import operator
 import os
 import time
-
 import zmq
+import json
+import requests
 
 from initat.tools import process_tools, server_command, logging_tools
 
@@ -446,6 +447,27 @@ class SendCommand(object):
                 print("no result node found in reply")
                 self.ret_state = 2
         return srv_reply
+
+
+PROPAGATE_URL_TEMPLATE = "http://{}:{}/icsw/api/v2/base/propagate_channel_message"
+PROPAGATE_URL_HEADERS = {'Content-type': 'application/json', 'Accept': 'text/plain'}
+def propagate_channel_message(group, _dict):
+    # todo fixme via proper routing
+    from initat.tools import config_tools
+    from initat.cluster.settings import DEBUG
+    from initat.cluster.backbone.server_enums import icswServiceEnum
+    ip = config_tools.server_check(service_type_enum=icswServiceEnum.cluster_server).ip_list[0]
+
+    port = "80"
+    if DEBUG:
+        port = "8080"
+
+    send_dict = {
+        "group": group,
+        "data": _dict
+    }
+
+    requests.post(PROPAGATE_URL_TEMPLATE.format(ip, port), data=json.dumps(send_dict), headers=PROPAGATE_URL_HEADERS)
 
 # old compat layer for proepilogue.py
 zmq_connection = ZMQConnection

@@ -53,11 +53,33 @@ device_logs = angular.module(
         activetab: 0
         device_lut: {}
         log_lut: {}
+
+        websocket: undefined
     }
 
     info_not_available_class = "alert-danger"
     info_available_class = "alert-success"
     info_warning_class = "alert-warning"
+
+    # @ifdef DEBUG
+    $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8081" + "/device_log_entries/")
+    # @endif
+    # @ifdef !DEBUG
+    $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split + "/device_log_entries/")
+    # @endif
+
+    $scope.struct.websocket.onmessage = (data) ->
+        console.log(data)
+        json_dict = JSON.parse(data.data)
+        if $scope.struct.device_lut[json_dict.device] != undefined && $scope.struct.log_lut[json_dict.idx] == undefined
+            $scope.struct.log_lut[json_dict.idx] = true
+
+            $timeout(
+                () ->
+                    $scope.struct.device_lut[json_dict.device].$$device_log_entries_count += 1
+                    $scope.struct.device_lut[json_dict.device].$$device_log_entries_bg_color_class = info_available_class
+                0
+            )
 
     $scope.new_devsel = (devices) ->
         icswSimpleAjaxCall(
@@ -81,21 +103,6 @@ device_logs = angular.module(
                         device.$$device_log_entries_bg_color_class = info_available_class
 
                     $scope.struct.devices.push(device)
-
-                    device.$$device_log_entries_count_ws = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8081" + "/device_log_entries/")
-                    device.$$device_log_entries_count_ws.onmessage = (data) ->
-                        console.log(data)
-                        json_dict = JSON.parse(data.data)
-                        if $scope.struct.device_lut[json_dict.device] != undefined && $scope.struct.log_lut[json_dict.idx] == undefined
-                            $scope.struct.log_lut[json_dict.idx] = true
-
-                            $timeout(
-                                () ->
-                                    $scope.struct.device_lut[json_dict.device].$$device_log_entries_count += 1
-                                0
-                            )
-
-
 
             $scope.struct.data_loaded = true
         )
@@ -138,6 +145,11 @@ device_logs = angular.module(
             0
         )
 
+    $scope.$on("$destroy", () ->
+        $scope.struct.websocket.close()
+        $scope.struct.websocket = undefined
+    )
+
 ]).directive("icswDeviceLogTable",
 [
     "$q", "$templateCache"
@@ -160,30 +172,28 @@ device_logs = angular.module(
 ) ->
 
     $scope.struct = {
-        reload_timer: undefined
+        user_tree: undefined
+        websocket: undefined
     }
 
+    device = $scope.device
+
+    device.$$device_log_entries_list = []
+    device.$$device_log_entries_lut = {}
+
     perform_refresh = () ->
-        device = $scope.device
-
-        if device.$$device_log_entries_list == undefined
-            device.$$device_log_entries_list = []
-            device.$$device_log_entries_lut = {}
-            high_idx = 0
-        else
-            high_idx = device.$$device_log_entries_high_idx
-
         $q.all(
             [
                 Restangular.all(ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LIST.slice(1)).getList(
                     {
                         device_pks: angular.toJson([device.idx])
-                        high_idx: high_idx
+                        high_idx: 0
                     }
                 )
                 icswUserGroupRoleTreeService.load($scope.$id)
             ]
             ).then((result) ->
+                $scope.struct.user_tree = result[1]
                 for log_entry in result[0]
                     log_entry.pretty_date = moment(log_entry.date).format("YYYY-MM-DD HH:mm:ss")
                     log_entry.user_resolved = "N/A"
@@ -196,11 +206,14 @@ device_logs = angular.module(
 
                     device.$$device_log_entries_lut[log_entry.idx] = log_entry
 
-                device.$$device_log_entries_high_idx = high_idx
+                # @ifdef DEBUG
+                $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8081" + "/device_log_entries/")
+                # @endif
+                # @ifdef !DEBUG
+                $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split + "/device_log_entries/")
+                # @endif
 
-                device.$$device_log_entries_ws = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8081" + "/device_log_entries/")
-
-                device.$$device_log_entries_ws.onmessage = (data) ->
+                $scope.struct.websocket.onmessage = (data) ->
                     json_dict = JSON.parse(data.data)
                     if json_dict.device == device.idx && device.$$device_log_entries_lut[json_dict.idx] == undefined
                         new_log_entry = {}
@@ -209,7 +222,7 @@ device_logs = angular.module(
                         new_log_entry.pretty_date = moment(json_dict.date).format("YYYY-MM-DD HH:mm:ss")
                         new_log_entry.user_resolved = "N/A"
                         if json_dict.user != null
-                            log_entry.user_resolved = result[1].user_lut[json_dict.user].$$long_name
+                            log_entry.user_resolved = $scope.struct.user_tree.user_lut[json_dict.user].$$long_name
 
                         new_log_entry.source = {}
                         new_log_entry.source.identifier = json_dict.source
@@ -226,4 +239,9 @@ device_logs = angular.module(
                         )
             )
     perform_refresh()
+
+    $scope.$on("$destroy", () ->
+        $scope.struct.websocket.close()
+        $scope.struct.websocket = undefined
+    )
 ])
