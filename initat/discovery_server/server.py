@@ -74,6 +74,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self._process_batch_assets_finished,
         )
         self.register_func("send_msg", self.send_msg)
+        self.register_func("timeout_handler", self.timeout_handler)
         db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
         self.__snmp_running = True
@@ -155,6 +156,14 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         # dict for external connections
         self.__ext_con_dict = {}
 
+    def timeout_handler(self, *args, **kwargs):
+        _from_name, _from_pid, run_idx = args
+
+        if run_idx in self.__ext_con_dict:
+            self.__ext_con_dict[run_idx].close()
+            del self.__ext_con_dict[run_idx]
+
+
     def send_msg(self, *args, **kwargs):
         _from_name, _from_pid, run_idx, conn_str, srv_com = args
         srv_com = server_command.srv_command(source=srv_com)
@@ -171,7 +180,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
     def _ext_receive(self, *args):
         srv_reply = args[0]
         run_idx = int(srv_reply["*discovery_run_idx"])
-        del self.__ext_con_dict[run_idx]
+        if run_idx in self.__ext_con_dict:
+            del self.__ext_con_dict[run_idx]
         self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
 
     @RemoteCall()
