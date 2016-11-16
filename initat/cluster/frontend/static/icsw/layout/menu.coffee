@@ -639,7 +639,7 @@ menu_module = angular.module(
     $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
     $state, ICSW_URLS, icswMenuSettings,
 ) ->
-    {ul, li, div, a, button} = React.DOM
+    {ul, li, div, a, button, span} = React.DOM
     return React.createClass(
         displayName: "icswBackgroundJobInfo"
 
@@ -671,21 +671,22 @@ menu_module = angular.module(
             @backg_timer = null
 
         render: () ->
-            if @state.num_jobs == 0
-                return null
+            # if @state.num_jobs == 0
+            #     return null
             if @state.num_jobs > 4
-                _class = "btn btn-xs btn-danger"
+                _class = "label label-danger cursorpointer fa wizardbutton"
             else
-                _class = "btn btn-xs btn-warning"
+                _class = "label label-warning cursorpointer fa wizardbutton"
+                # _class = "btn btn-xs btn-warning"
             return li(
                 {}
                 a(
                     {
-                        className: "bttn-bgjobs"
+                        className: "task-wizard"
                     }
-                    button(
+                    span(
                         {
-                            type: "button"
+                            # type: "button"
                             title: "Number of Background Jobs"
                             className: _class
                             # style: {paddingTop: "0px"}
@@ -733,7 +734,7 @@ menu_module = angular.module(
                     {}
                     button(
                         {
-                            type: button
+                            type: "button"
                             key: "p"
                             className: "btn btn-default btn-xs menu-openissues"
                             onClick: (event) ->
@@ -742,9 +743,9 @@ menu_module = angular.module(
                         }
                         img(
                             {
-                            src: ICSW_URLS.STATIC_URL + "/openissues-danger.svg"
-                            title: "Open Issues: #{@state.num_unfulfilled}"
-                            height: 23
+                                src: ICSW_URLS.STATIC_URL + "/openissues-danger.svg"
+                                title: "Open Issues: #{@state.num_unfulfilled}"
+                                height: 23
                             }
                         )
 
@@ -797,17 +798,16 @@ menu_module = angular.module(
                             key: "process"
                         }
                     )
-
-                    React.createElement(
-                        icswReactOvaDisplayFactory
-                        {
-                            key: "ova"
-                        }
-                    )
                     React.createElement(
                         icswReactBackgroundJobInfoFactory
                         {
                             key: "bg"
+                        }
+                    )
+                    React.createElement(
+                        icswReactOvaDisplayFactory
+                        {
+                            key: "ova"
                         }
                     )
                     (
