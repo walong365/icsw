@@ -34,7 +34,10 @@ class SpecialOpenvpn(SpecialBase):
         command_line = "$USER2$ -m $HOSTADDRESS$ openvpn_status -i $ARG1$ -p $ARG2$"
         description = "checks for running OpenVPN instances"
 
-    def to_hint(self, srv_reply):
+    def dynamic_update_calls(self):
+        yield DynamicCheckAction(DynamicCheckServer.collrelay, "openvpn_status")
+
+    def feed_result(self, dc_action, srv_reply):
         _hints = []
         if "openvpn_instances" in srv_reply:
             ovpn_dict = srv_reply["openvpn_instances"]
@@ -50,15 +53,8 @@ class SpecialOpenvpn(SpecialBase):
                                 persistent=True,
                             )
                         )
-        return _hints
-
-    def dynamic_update_calls(self):
-        yield DynamicCheckAction(DynamicCheckServer.collrelay, "openvpn_status")
-
-    def feed_result(self, dc_action, srv_reply):
-        print("*", dc_action, srv_reply)
+        self.store_hints(_hints)
         yield None
-        # yield DynamicCheckAction(DynamicCheckServer.collrelay, "openvpn_status")
 
     def call(self):
         sc_array = []

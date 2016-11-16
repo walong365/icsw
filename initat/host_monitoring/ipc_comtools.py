@@ -15,6 +15,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 """ ipc communication tools, now using 0MQ as communication layer """
 
 from __future__ import unicode_literals, print_function
@@ -169,6 +170,60 @@ class IPCClientHandler(threading_tools.PollerBase):
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.__process.log("[IPCH] {}".format(what), log_level)
 
+    def call(self, dc_action):
+        self.__msg_id += 1
+        _msg_id = process_tools.zmq_identity_str("{}_{:04d}".format(self.__msg_prefix, self.__msg_id), short=True)
+        dc_action.start_time = time.time()
+        self.__pending_messages[_msg_id] = dc_action
+        srv_com = server_command.srv_command(command=dc_action.command, identity=_msg_id)
+        # destination
+        srv_com["host"] = dc_action.hbc.ip
+        srv_com["port"] = self.__hm_port
+        # special raw mode
+        srv_com["raw"] = "True"
+        srv_com["arg_list"] = ""
+        dc_action.log(
+            "calling server '{}' for {}, command is '{}', {}, {}".format(
+                dc_action.srv_enum.name,
+                dc_action.hbc.ip,
+                dc_action.command,
+                "args is '{}'".format(
+                    ", ".join(
+                        [
+                            str(value) for value in dc_action.args
+                        ]
+                    )
+                ) if dc_action.args else "no arguments",
+                ", ".join(
+                    [
+                        "{}='{}'".format(
+                            key,
+                            str(value)
+                        ) for key, value in dc_action.kwargs.iteritems()
+                    ]
+                ) if dc_action.kwargs else "no kwargs",
+            )
+        )
+        try:
+            self.__sock_lut[dc_action.srv_enum][0].send_unicode(unicode(srv_com))
+        except:
+            dc_action.log(
+                "unable to send: {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
+            self.feed_result(_msg_id, None)
+
+    def loop(self):
+        while self.__pending_messages:
+            self.log(
+                "{}".format(
+                    logging_tools.get_plural("pending message", len(self.__pending_messages))
+                )
+            )
+            self._do_select(1000)
+
     def _handle_message(self, zmq_socket):
         id_str = zmq_socket.recv()
         if id_str and zmq_socket.getsockopt(zmq.RCVMORE):
@@ -182,37 +237,17 @@ class IPCClientHandler(threading_tools.PollerBase):
                 self.log("error decoding data {}".format(data), logging_tools.LOG_LEVEL_ERROR)
                 id_str = None
         if id_str:
-            if id_str in self.__pending_messages:
-                dc_action = self.__pending_messages[id_str]
-                for _action in dc_action.special_instance.feed_result(dc_action, srv_reply):
-                    if _action:
-                        self.call(_action.salt(dc_action.hbc, dc_action.special_instance))
-                del self.__pending_messages[id_str]
-            else:
-                self.log("Got unknown id_str {}".format(id_str))
+            self.feed_result(id_str, srv_reply)
 
-    def call(self, dc_action):
-        self.__msg_id += 1
-        _msg_id = process_tools.zmq_identity_str("{}_{:04d}".format(self.__msg_prefix, self.__msg_id), short=True)
-        dc_action.start_time = time.time()
-        self.__pending_messages[_msg_id] = dc_action
-        srv_com = server_command.srv_command(command=dc_action.command, identity=_msg_id)
-        # destination
-        srv_com["host"] = dc_action.hbc.ip
-        srv_com["port"] = self.__hm_port
-        # special raw mode
-        srv_com["raw"] = "True"
-        srv_com["arg_list"] = ""
-        self.__sock_lut[dc_action.srv_enum][0].send_unicode(unicode(srv_com))
-
-    def loop(self):
-        while self.__pending_messages:
-            self.log(
-                "{}".format(
-                    logging_tools.get_plural("pending message", len(self.__pending_messages))
-                )
-            )
-            self._do_select(1000)
+    def feed_result(self, id_str, srv_reply):
+        if id_str in self.__pending_messages:
+            dc_action = self.__pending_messages[id_str]
+            for _action in dc_action.special_instance.feed_result(dc_action, srv_reply):
+                if _action:
+                    self.call(_action.salt(dc_action.hbc, dc_action.special_instance))
+            del self.__pending_messages[id_str]
+        else:
+            self.log("Got unknown id_str {}".format(id_str))
 
 
 def send_and_receive_zmq(target_host, command, *args, **kwargs):

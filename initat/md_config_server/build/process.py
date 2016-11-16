@@ -39,6 +39,7 @@ from initat.md_config_server.config import global_config, MainConfig, MonAllComm
     MON_VAR_IP_NAME
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_sync_server.mixins import VersionCheckMixin
+from ..special_commands.struct import DynamicCheckMode
 from initat.tools import config_tools, logging_tools, server_mixins, server_command
 from initat.tools.bgnotify import create_bg_job
 from ..config.build_cache import BuildCache, HostBuildCache
@@ -234,7 +235,7 @@ class BuildProcess(
                             hbc,
                             cur_gc,
                             s_check,
-                            special_commands.DynamicCheckMode.fetch,
+                            DynamicCheckMode.fetch,
                         )
                         if _res.r_type == "fetch":
                             if not _added:
@@ -616,7 +617,6 @@ class BuildProcess(
         )
 
     def get_all_configs(self, ac_filter):
-        all_configs = {}
         meta_devices = {
             md.device_group.pk: md for md in device.objects.filter(
                 Q(is_meta_device=True)
@@ -1287,7 +1287,7 @@ class BuildProcess(
                     hbc,
                     cur_gc,
                     s_check,
-                    special_commands.DynamicCheckMode.create,
+                    DynamicCheckMode.create,
                 )
                 dc_rv.dump_errors(self.log)
                 if dc_rv.r_type == "none":

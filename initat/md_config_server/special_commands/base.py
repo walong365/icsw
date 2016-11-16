@@ -83,6 +83,9 @@ class SpecialBase(object):
         self.parent_check = parent_check
         self.host = host
         self.build_cache = build_cache
+        self.__hints_loaded = False
+        # init with default
+        self.__call_idx = 0
 
     def add_variable(self, new_var):
         # helper function: add device variable
@@ -94,13 +97,18 @@ class SpecialBase(object):
     def set_variable(self, var_name, var_value):
         self.build_cache.set_variable(self.host, var_name, var_value)
 
-    def _store_cache(self):
-        self.log("storing cache ({})".format(logging_tools.get_plural("entry", len(self.__hint_list))))
+    def store_hints(self, hint_list):
+        self.log(
+            "storing cache ({})".format(
+                logging_tools.get_plural("entry", len(hint_list))
+            )
+        )
         monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name)).delete()
-        for ch in self.__hint_list:
+        for ch in self._salt_hints(hint_list, self.call_idx):
             ch.save()
 
     def _load_cache(self):
+        self.__hints_loaded = True
         self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
         # set datasource to cache
         for _entry in self.__cache:
@@ -116,20 +124,9 @@ class SpecialBase(object):
 
     @property
     def hint_list(self):
+        if not self.__hints_loaded:
+            self._load_cache()
         return self.__cache
-
-    def _show_cache_info(self):
-        if self.__cache:
-            self.log(
-                "cache is present ({}, age is {}, timeout {}, {})".format(
-                    logging_tools.get_plural("entry", len(self.__cache)),
-                    logging_tools.get_diff_time_str(self.__cache_age),
-                    logging_tools.get_diff_time_str(self.Meta.cache_timeout),
-                    "valid" if self.__cache_valid else "invalid",
-                )
-            )
-        else:
-            self.log("no cache set")
 
     def remove_cache_entries(self):
         # remove all cached entries, cached entries are always local (with m_type set as ds_name)
@@ -216,22 +213,22 @@ class SpecialBase(object):
             # not beautifull but working
             self.log("not allowed to make an external call", logging_tools.LOG_LEVEL_CRITICAL)
             return None
-        self.log(
-            "calling server '{}' for {}, command is '{}', {}, {}".format(
-                server_name,
-                self.host.valid_ip.ip,
-                command,
-                "args is '{}'".format(", ".join([str(value) for value in args])) if args else "no arguments",
-                ", ".join(
-                    [
-                        "{}='{}'".format(
-                            key,
-                            str(value)
-                        ) for key, value in kwargs.iteritems()
-                    ]
-                ) if kwargs else "no kwargs",
-            )
-        )
+        # self.log(
+        #     "calling server '{}' for {}, command is '{}', {}, {}".format(
+        #         server_name,
+        #         self.host.valid_ip.ip,
+        #         command,
+        #         "args is '{}'".format(", ".join([str(value) for value in args])) if args else "no arguments",
+        #         ", ".join(
+        #             [
+        #                 "{}='{}'".format(
+        #                     key,
+        #                     str(value)
+        #                 ) for key, value in kwargs.iteritems()
+        #             ]
+        #         ) if kwargs else "no kwargs",
+        #     )
+        # )
         connect_to_localhost = kwargs.pop("connect_to_localhost", False)
         conn_ip = "127.0.0.1" if connect_to_localhost else self.host.valid_ip.ip
         if not self.__use_cache:
@@ -320,44 +317,16 @@ class SpecialBase(object):
             )
         )
         s_time = time.time()
-        self._load_cache()
-        # if self.Meta.server_contact:
-        #    # at first we load the current cache
-        #    self._load_cache()
-        #    # show information
-        #    self._show_cache_info()
-        #    # use cache flag, dependent on the cache mode
-        #    self.__use_cache = True
-        #    # anything got from a direct all
-        #    self.__server_contact_ok, self.__server_contacts = (True, 0)
-        #    # init result list and number of server calls
-        #    self.__hint_list, self.__call_idx = ([], 0)
         if hasattr(self, "call"):
             cur_ret = self.call(**kwargs)
         else:
             cur_ret = []
-        # cur_ret = self._call(**kwargs)
         e_time = time.time()
         self.log(
             "took {}".format(
                 logging_tools.get_diff_time_str(e_time - s_time),
             )
         )
-        # if self.Meta.server_contact and not self.__use_cache:
-        #    self.log(
-        #        "took {}, ({:d} ok, {:d} server contacts [{}], {})".format(
-        #            logging_tools.get_diff_time_str(e_time - s_time),
-        #            self.__call_idx,
-        #            self.__server_contacts,
-        #            "ok" if self.__server_contact_ok else "failed",
-        #            logging_tools.get_plural("hint", len(self.__hint_list)),
-        #        )
-        #    )
-        #    # anything set (from cache or direct) and all server contacts ok (a little bit redundant)
-        #    if (self.__server_contacts == self.__call_idx and self.__call_idx):
-        #        if (self.__server_contacts and self.__server_contact_ok):
-        #            self._store_cache()
-        # else:
         return cur_ret
 
     def get_arg_template(self, *args, **kwargs):
