@@ -25,7 +25,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import background_job, background_job_run, cluster_timezone, BackgroundJobState
-from initat.cluster.backbone.routing import SrvTypeRouting, get_server_uuid
+from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, process_tools, server_command
 from .tasks import BG_TASKS
@@ -160,9 +160,21 @@ class ServerBackgroundNotifyMixin(object):
                 if _is_local:
                     self._execute_command(_send_xml)
                     self.bg_notify_handle_result(_send_xml)
+                    self.log("handled command {} locally".format(*_send_xml["*command"]))
+                    _ok = True
                 else:
-                    _ok = self.send_to_remote_server(_srv_type, _send_xml)
-                    if not _ok:
+                    # returns False or rsa with error flags set
+                    _rsa = self.send_to_remote_server(_srv_type, _send_xml)
+                    if _rsa.success:
+                        self.log(
+                            u"command {} to remote {} on {} {}".format(
+                                _send_xml["*command"],
+                                _srv_type.name,
+                                unicode(_run_job.server),
+                                _rsa.connection_string,
+                            )
+                        )
+                    else:
                         _send_xml.set_result(
                             "error sending to {}, please check logs".format(
                                 _srv_type.name,
@@ -170,49 +182,47 @@ class ServerBackgroundNotifyMixin(object):
                             server_command.SRV_REPLY_STATE_CRITICAL
                         )
                         self.bg_notify_handle_result(_send_xml)
-                if False:
-                    # old code
-                    _conn_str = "???"
-                    if not _conn_str:
-                        self.log(
-                            u"got empty connection_string for {} ({})".format(
-                                _srv_type.name,
-                                _send_xml["*command"],
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
-                        # set result
-                        _send_xml.set_result(
-                            "empty connection string",
-                            server_command.SRV_REPLY_STATE_CRITICAL,
-                        )
-                        self.bg_notify_handle_result(_send_xml)
-                    else:
-                        _srv_uuid = get_server_uuid(_srv_type, _run_job.server.uuid)
-                        self.log(
-                            u"command to {} on {} {} ({}, command {}, {})".format(
-                                _srv_type.name,
-                                unicode(_run_job.server),
-                                _conn_str,
-                                _srv_uuid,
-                                _send_xml["*command"],
-                                "local" if _is_local else "remote",
-                            )
-                        )
-                        _ok = self.bg_send_to_server(
-                            _conn_str,
-                            _srv_uuid,
-                            _send_xml,
-                            local=_is_local,
-                        )
-                        if not _ok:
-                            _send_xml.set_result(
-                                "error sending to {} via {}".format(
-                                    _srv_type.name,
-                                    _conn_str
-                                ),
-                                server_command.SRV_REPLY_STATE_CRITICAL
-                            )
-                            self.bg_notify_handle_result(_send_xml)
+                # # old code
+                # if not _conn_str:
+                #     self.log(
+                #         u"got empty connection_string for {} ({})".format(
+                #             _srv_type.name,
+                #             _send_xml["*command"],
+                #         ),
+                #         logging_tools.LOG_LEVEL_ERROR
+                #     )
+                #     # set result
+                #     _send_xml.set_result(
+                #         "empty connection string",
+                #         server_command.SRV_REPLY_STATE_CRITICAL,
+                #     )
+                #     self.bg_notify_handle_result(_send_xml)
+                # else:
+                #     _srv_uuid = get_server_uuid(_srv_type, _run_job.server.uuid)
+                #     self.log(
+                #         u"command to {} on {} {} ({}, command {}, {})".format(
+                #             _srv_type.name,
+                #             unicode(_run_job.server),
+                #             _conn_str,
+                #             _srv_uuid,
+                #             _send_xml["*command"],
+                #             "local" if _is_local else "remote",
+                #         )
+                #     )
+                #     _ok = self.bg_send_to_server(
+                #         _conn_str,
+                #         _srv_uuid,
+                #         _send_xml,
+                #         local=_is_local,
+                #     )
+                #     if not _ok:
+                #         _send_xml.set_result(
+                #             "error sending to {} via {}".format(
+                #                 _srv_type.name,
+                #                 _conn_str
+                #             ),
+                #             server_command.SRV_REPLY_STATE_CRITICAL
+                #         )
+                #         self.bg_notify_handle_result(_send_xml)
         else:
             self.bg_notify_check_for_bgj_finish(cur_bg)
