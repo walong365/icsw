@@ -960,6 +960,8 @@ class RemoteServerAddressBase(object):
         self._connected = False
         self.__latest_router_error = None
         self._address = None
+        # sane state
+        self._last_error = None
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.mixin.log("[RSAb {}] {}".format(self.srv_type_enum.name, what), log_level)
@@ -997,6 +999,10 @@ class RemoteServerAddressBase(object):
                 self._last_error = None
                 self._first_send = True
 
+    @property
+    def success(self):
+        return True if (not self._last_error and self.valid) else False
+
     def send(self, send_obj):
         cur_time = time.time()
         if self._last_error and abs(self._last_error - cur_time) < 10:
@@ -1025,17 +1031,24 @@ class RemoteServerAddressBase(object):
                     self._last_error = cur_time
                 else:
                     self._last_error = None
-                    _error = False
                     break
 
             if _idx > 1 or self._first_send:
                 _rf = []
+                if self._last_error:
+                    _rf.append("unable to send")
+                else:
+                    _rf.append("sent ok")
                 if _idx > 1:
                     _rf.append("after {:d} tries".format(_idx))
                 if self._first_send:
-                    _rf.append("for the first time")
-                self.log("sent {}".format(", ".join(_rf)), logging_tools.LOG_LEVEL_WARN)
+                    _rf.append("first call to send")
+                self.log(
+                    ", ".join(_rf),
+                    logging_tools.LOG_LEVEL_WARN if not self._last_error else logging_tools.LOG_LEVEL_ERROR
+                )
             self._first_send = False
+        return self
 
 
 class RemoteServerAddress(RemoteServerAddressBase):
@@ -1150,11 +1163,13 @@ class SendToRemoteServerMixin(threading_tools.ICSWAutoInit):
         if rsa.valid:
             rsa.connect()
             if rsa.connected:
-                rsa.send(send_obj)
+                return rsa.send(send_obj)
             else:
                 self.log("unable to send, not connected", logging_tools.LOG_LEVEL_WARN)
+                return rsa
         else:
             self.log("unable to send, not valid", logging_tools.LOG_LEVEL_WARN)
+            return rsa
 
 
 class RemoteCall(object):

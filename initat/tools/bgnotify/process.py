@@ -20,27 +20,24 @@
 from __future__ import unicode_literals, print_function
 
 import datetime
-import time
 
-import zmq
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import background_job, background_job_run, cluster_timezone, BackgroundJobState
-from initat.cluster.backbone.routing import SrvTypeRouting, get_server_uuid
+from initat.cluster.backbone.routing import SrvTypeRouting
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.tools import logging_tools, process_tools, server_command
 from .tasks import BG_TASKS
 
 
 class ServerBackgroundNotifyMixin(object):
+    # requires to SendToRemoteServerMixin
     def init_notify_framework(self, global_config):
         self.__gc = global_config
         self.__server_idx = global_config["SERVER_IDX"]
         self.__waiting_ids = []
         self.__tasks = {_task.Meta.name: _task(self) for _task in BG_TASKS}
-        # connections to other servers
-        self.__other_server_dict = {}
         self.srv_routing = SrvTypeRouting(force=True, logger=self.log_template)
         if self.srv_routing.local_device.pk != self.__server_idx:
             self.log(
@@ -158,99 +155,74 @@ class ServerBackgroundNotifyMixin(object):
                 _send_xml["bgjrid"] = "{:d}".format(_run_job.pk)
                 # add to waiting list
                 _is_local = _run_job.server_id == self.__server_idx and _srv_type == icswServiceEnum.cluster_server
-                _conn_str = self.srv_routing.get_connection_string(_srv_type, _run_job.server_id)
+                # _conn_str = self.srv_routing.get_connection_string(_srv_type, _run_job.server_id)
                 self.__waiting_ids.append(_run_job.pk)
-                if not _conn_str:
-                    self.log(
-                        u"got empty connection_string for {} ({})".format(
-                            _srv_type.name,
-                            _send_xml["*command"],
-                        ),
-                        logging_tools.LOG_LEVEL_ERROR
-                    )
-                    # set result
-                    _send_xml.set_result(
-                        "empty connection string",
-                        server_command.SRV_REPLY_STATE_CRITICAL,
-                    )
+                if _is_local:
+                    self._execute_command(_send_xml)
                     self.bg_notify_handle_result(_send_xml)
+                    self.log("handled command {} locally".format(*_send_xml["*command"]))
+                    _ok = True
                 else:
-                    _srv_uuid = get_server_uuid(_srv_type, _run_job.server.uuid)
-                    self.log(
-                        u"command to {} on {} {} ({}, command {}, {})".format(
-                            _srv_type.name,
-                            unicode(_run_job.server),
-                            _conn_str,
-                            _srv_uuid,
-                            _send_xml["*command"],
-                            "local" if _is_local else "remote",
-                        )
-                    )
-                    _ok = self.bg_send_to_server(
-                        _conn_str,
-                        _srv_uuid,
-                        _send_xml,
-                        local=_is_local,
-                    )
-                    if not _ok:
-                        _send_xml.set_result(
-                            "error sending to {} via {}".format(
+                    # returns False or rsa with error flags set
+                    _rsa = self.send_to_remote_server(_srv_type, _send_xml)
+                    if _rsa.success:
+                        self.log(
+                            u"command {} to remote {} on {} {}".format(
+                                _send_xml["*command"],
                                 _srv_type.name,
-                                _conn_str
+                                unicode(_run_job.server),
+                                _rsa.connection_string,
+                            )
+                        )
+                    else:
+                        _send_xml.set_result(
+                            "error sending to {}, please check logs".format(
+                                _srv_type.name,
                             ),
                             server_command.SRV_REPLY_STATE_CRITICAL
                         )
                         self.bg_notify_handle_result(_send_xml)
+                # # old code
+                # if not _conn_str:
+                #     self.log(
+                #         u"got empty connection_string for {} ({})".format(
+                #             _srv_type.name,
+                #             _send_xml["*command"],
+                #         ),
+                #         logging_tools.LOG_LEVEL_ERROR
+                #     )
+                #     # set result
+                #     _send_xml.set_result(
+                #         "empty connection string",
+                #         server_command.SRV_REPLY_STATE_CRITICAL,
+                #     )
+                #     self.bg_notify_handle_result(_send_xml)
+                # else:
+                #     _srv_uuid = get_server_uuid(_srv_type, _run_job.server.uuid)
+                #     self.log(
+                #         u"command to {} on {} {} ({}, command {}, {})".format(
+                #             _srv_type.name,
+                #             unicode(_run_job.server),
+                #             _conn_str,
+                #             _srv_uuid,
+                #             _send_xml["*command"],
+                #             "local" if _is_local else "remote",
+                #         )
+                #     )
+                #     _ok = self.bg_send_to_server(
+                #         _conn_str,
+                #         _srv_uuid,
+                #         _send_xml,
+                #         local=_is_local,
+                #     )
+                #     if not _ok:
+                #         _send_xml.set_result(
+                #             "error sending to {} via {}".format(
+                #                 _srv_type.name,
+                #                 _conn_str
+                #             ),
+                #             server_command.SRV_REPLY_STATE_CRITICAL
+                #         )
+                #         self.bg_notify_handle_result(_send_xml)
         else:
             self.bg_notify_check_for_bgj_finish(cur_bg)
-
-    def bg_send_to_server(self, conn_str, srv_uuid, srv_com, **kwargs):
-        _success = True
-        # only for local calls
-        local = kwargs.get("local", False)
-        if local:
-            self._execute_command(srv_com)
-            self.bg_notify_handle_result(srv_com)
-        else:
-            if conn_str not in self.__other_server_dict:
-                self.log("connecting to {} (uuid {})".format(conn_str, srv_uuid))
-                self.__other_server_dict = srv_uuid
-                self.main_socket.connect(conn_str)
-                num_iters = 10
-            else:
-                num_iters = 1
-            _cur_iter = 0
-            while True:
-                _cur_iter += 1
-                try:
-                    self.main_socket.send_unicode(srv_uuid, zmq.SNDMORE)  # @UndefinedVariable
-                    self.main_socket.send_unicode(unicode(srv_com))
-                except:
-                    self.log(
-                        "cannot send to {} [{:d}/{:d}]: {}".format(
-                            conn_str,
-                            _cur_iter,
-                            num_iters,
-                            process_tools.get_except_info()
-                        ),
-                        logging_tools.LOG_LEVEL_CRITICAL
-                    )
-                    _success = False
-                else:
-                    _success = True
-                if _success:
-                    self.log(
-                        "send {} to {} [{:d}/{:d}]".format(
-                            logging_tools.get_size_str(len(unicode(srv_com))),
-                            conn_str,
-                            _cur_iter,
-                            num_iters,
-                        )
-                    )
-                    break
-                else:
-                    if _cur_iter < num_iters:
-                        time.sleep(0.2)
-                    else:
-                        break
-        return _success

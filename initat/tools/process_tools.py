@@ -943,7 +943,9 @@ def remove_pids(name, pid=None):
     if name.startswith("/"):
         fname = name
     else:
-        fname = "{}.pid".format(os.path.join(RUN_DIR, name))
+        if not name.endswith(".pid"):
+            name = "{}.pid".format(name)
+        fname = os.path.join(RUN_DIR, name)
     if os.path.isfile(fname):
         try:
             pid_lines = [entry.strip() for entry in open(fname, "r").read().split("\n")]

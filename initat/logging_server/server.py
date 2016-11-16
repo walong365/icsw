@@ -154,15 +154,15 @@ class main_process(ICSWBasePool):
         _log_base = "/var/lib/logging-server"
         _handle_names = [os.path.join(_log_base, "py_{}".format(_type)) for _type in ["out", "err", "log"]]
         self.__open_handles = [
-            io_stream_helper.zmq_socket_name(h_name) for h_name in _handle_names
+            io_stream_helper.icswIOStream.zmq_socket_name(h_name) for h_name in _handle_names
         ] + [
             h_name for h_name in _handle_names
         ]
         self._remove_handles()
         client = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
         for h_name in _handle_names:
-            client.bind(io_stream_helper.zmq_socket_name(h_name, check_ipc_prefix=True))
-            os.chmod(io_stream_helper.zmq_socket_name(h_name), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
+            client.bind(io_stream_helper.icswIOStream.zmq_socket_name(h_name, check_ipc_prefix=True))
+            os.chmod(io_stream_helper.icswIOStream.zmq_socket_name(h_name), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
         self.network_bind(
             bind_port=global_config["COMMAND_PORT"],
             bind_to_localhost=True,

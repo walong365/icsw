@@ -165,7 +165,7 @@ class icswCSComInstance(object):
                     server_command.SRV_REPLY_STATE_CRITICAL
                 )
                 # write to logging-server
-                err_h = io_stream_helper.io_stream(
+                err_h = io_stream_helper.icswIOStream(
                     "/var/lib/logging-server/py_err_zmq",
                     zmq_context=self.zmq_context
                 )

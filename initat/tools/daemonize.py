@@ -119,9 +119,9 @@ def main():
     main_module = importlib.import_module(opts.modname)
     if opts.daemonize:
         # redirect IO-streams
-        from initat.tools.io_stream_helper import io_stream
-        sys.stdout = io_stream("/var/lib/logging-server/py_log_zmq")
-        sys.stderr = io_stream("/var/lib/logging-server/py_err_zmq")
+        from initat.tools.io_stream_helper import icswIOStream
+        sys.stdout = icswIOStream("/var/lib/logging-server/py_log_zmq")
+        sys.stderr = icswIOStream("/var/lib/logging-server/py_err_zmq")
     main_module.main()
 
 

@@ -111,7 +111,7 @@ def main():
     if options.use_log_com:
         my_thread_pool(options).loop()
     else:
-        io_stream_helper.io_stream(options.dst, zmq=True).write(" ".join(options.args))
+        io_stream_helper.icswIOStream(options.dst, zmq=True).write(" ".join(options.args))
 
 
 if __name__ == "__main__":
