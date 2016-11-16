@@ -52,9 +52,9 @@ class icswIOStream(object):
         if self.__zmq_sock is None:
             if self.__zmq_context is None:
                 self.__zmq_context = zmq.Context()
-            self.__zmq_sock = self.__zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+            self.__zmq_sock = self.__zmq_context.socket(zmq.PUSH)
             self.__zmq_sock.connect(self.__sock_name)
-            self.__zmq_sock.setsockopt(zmq.LINGER, 60)  # @UndefinedVariable
+            self.__zmq_sock.setsockopt(zmq.LINGER, 60)
 
     @property
     def stream_target(self):
@@ -81,7 +81,9 @@ class icswIOStream(object):
         if os.path.isdir("/proc/{:d}".format(pid)):
             try:
                 stat_lines = [
-                    (entry.split() + ["", ""])[0:2] for entry in file("/proc/{:d}/status".format(pid), "r").read().split("\n")
+                    (
+                        entry.split() + ["", ""]
+                    )[0:2] for entry in file("/proc/{:d}/status".format(pid), "r").read().split("\n")
                 ]
             except:
                 pass
@@ -99,7 +101,7 @@ class icswIOStream(object):
     def fileno(self):
         # dangerous, do not use
         self.open()
-        return self.__zmq_sock.getsockopt(zmq.FD)  # @UndefinedVariable
+        return self.__zmq_sock.getsockopt(zmq.FD)
 
     def close(self):
         if self.__zmq_sock:
