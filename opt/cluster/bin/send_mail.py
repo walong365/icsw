@@ -2,7 +2,7 @@
 #
 # -*- encoding: utf-8 -*-
 #
-# Copyright (c) 2015 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2015-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #

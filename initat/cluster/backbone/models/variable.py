@@ -263,24 +263,6 @@ class device_variable(models.Model):
             str(self.get_value())
         )
 
-    def init_as_gauge(self, max_value, start=0):
-        self.__max, self.__cur = (max_value, start)
-        self._update_gauge()
-
-    def count(self, num=1):
-        self.__cur += num
-        self._update_gauge()
-
-    def _update_gauge(self):
-        new_val = min(100, int(float(100 * self.__cur) / float(max(1, self.__max))))
-        if self.pk:
-            if self.val_int != new_val:
-                self.val_int = new_val
-                device_variable.objects.filter(Q(pk=self.pk)).update(val_int=new_val)
-        else:
-            self.val_int = new_val
-            self.save()
-
     class Meta:
         db_table = u'device_variable'
         unique_together = ("name", "device", "device_variable_scope",)

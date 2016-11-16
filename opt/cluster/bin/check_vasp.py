@@ -21,9 +21,12 @@
 #
 """ parses and improves VASP xml files """
 
-from lxml import etree  # @UnresolvedImport
-from lxml.builder import E  # @UnresolvedImport
+from __future__ import print_function, unicode_literals
+
 import os
+
+from lxml import etree
+from lxml.builder import E
 
 outcar_name = "OUTCAR"
 vasprun_name = "vasprun.xml"
@@ -66,7 +69,7 @@ class Outcar(TargetFile):
                 elif s_parts[0] == "LOOP+:":
                     loopp_nodes.append(E.timing(cpu=line[21:29].strip(), real=line[40:].strip()))
         t_name = self.get_file_name("vasp_info")
-        print "saving to %s" % (t_name)
+        print("saving to {}".format(t_name))
         file(t_name, "w").write(etree.tostring(res, pretty_print=True))
 
 

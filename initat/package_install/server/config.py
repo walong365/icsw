@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2001-2009,2012-2015 Andreas Lang-Nevyjel
+# Copyright (C) 2001-2009,2012-2016 Andreas Lang-Nevyjel
 #
 # this file is part of package-server
 #
@@ -19,6 +19,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ package server, configuration """
+
+from __future__ import unicode_literals, print_function
 
 from initat.tools import configfile, process_tools
 

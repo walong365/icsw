@@ -20,15 +20,17 @@
 #
 """ package server """
 
+from __future__ import print_function, unicode_literals
+
 import os
 
 import zmq
 
 from initat.cluster.backbone import db_tools
-from initat.icsw.service.instance import InstanceXML
-from initat.tools import cluster_location, configfile, logging_tools, \
-    config_tools, process_tools, server_command, server_mixins, threading_tools
 from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.icsw.service.instance import InstanceXML
+from initat.tools import logging_tools, \
+    config_tools, process_tools, server_command, server_mixins, threading_tools
 from initat.tools.server_mixins import RemoteCall
 from .config import global_config
 from .repository_process import RepoProcess
@@ -149,11 +151,11 @@ class server_process(
     def reconnect_to_clients(self):
         router_obj = config_tools.RouterObject(self.log)
         self.log("reconnecting to {}".format(logging_tools.get_plural("client", len(Client.name_set))))
-        all_servers = config_tools.device_with_config("package_server")
-        if "package_server" not in all_servers:
+        all_servers = config_tools.device_with_config(service_type_enum=icswServiceEnum.package_server)
+        if icswServiceEnum.package_server not in all_servers:
             self.log("no package_server defined, strange...", logging_tools.LOG_LEVEL_ERROR)
         else:
-            _pserver = all_servers["package_server"][0]
+            _pserver = all_servers[icswServiceEnum.package_server][0]
             if _pserver.effective_device.pk != global_config["SERVER_IDX"]:
                 self.log(
                     "effective_device pk differs from SERVER_IDX: {:d} != {:d}".format(

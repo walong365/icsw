@@ -939,6 +939,7 @@ class Dispatcher(object):
             if diff_time > planned_run_state.timeout:
                 planned_run_state.cancel("timeout")
                 _to_remove.add(key)
+                self.discovery_process.send_pool_message("timeout_handler", planned_run_state.run_idx)
 
         for _key in _to_remove:
             del self.__ext_con_lut[_key]

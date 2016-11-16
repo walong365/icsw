@@ -253,7 +253,7 @@ ul.fancytree-container {
     cursor: pointer;
 }
 .modal-form .modal-dialog {
-    max-width:700px!important;
+    max-width:700px !important;
 }
 .table-paging-tools .form-group {
     margin:0px;
@@ -281,7 +281,7 @@ icsw-connect-element-display .panel[layout_unlocked="false"] h4 {
 /* FORM STYLES START */
 .icsw-formlabel {
     width: 250px;
-    text-align: left!important;
+    text-align: left !important;
 }
 .maxwidth500 {
     max-width: 500px;
@@ -447,17 +447,17 @@ div.yamm hr {
     margin-top: 5px;
 }
 .navbar-right .task-wizard {
-    padding: 25px 0 0 0!important;
+    padding: 25px 0 0 0 !important;
 }
 .navbar-right.condensed .task-wizard {
-    padding: 14px 0 0 0!important;
+    padding: 14px 0 0 0 !important;
 }
 .navbar-right .menu-openissues {
-    margin: 24px 5px 0 0!important;
-    padding: 1px!important;
+    margin: 24px 5px 0 0 !important;
+    padding: 1px !important;
 }
 .navbar-right.condensed .menu-openissues {
-    margin: 13px 5px 0 0!important;
+    margin: 13px 5px 0 0 !important;
 }
 .navbar-right .task-wizard .wizardbutton{
     padding: 4px;
@@ -474,17 +474,6 @@ div.yamm hr {
 body.condensed .ova-statusbutton {
     margin: 5px 0 0 5px;
 }
-a.bttn-bgjobs {
-    padding: 23px 0 0 5px!important;
-}
-.navbar-right.condensed a.bttn-bgjobs {
-    padding: 14px 0 0 5px!important;
-}
-a.bttn-bgjobs button{
-    font-size: 14px;
-    font-weight: bold;
-}
-
 .setupsteps__badge {
   margin: 0 0 0 0;
   background-color: #fa3e3e;
@@ -520,9 +509,11 @@ li.animateTab > a:after {
     animation-iteration-count: 3;
     animation-timing-function: ease-out;
 }
+
 icsw-tools-button-static.fa:before {
     margin-right: 3px;
 }
+
 .force-left {
-    text-align: left!important;
+    text-align: left !important;
 }

@@ -30,7 +30,7 @@ from lxml.builder import E
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, device_variable, mon_contactgroup, network_type, user, \
     config, config_catalog, mon_host_dependency_templ, mon_host_dependency, mon_service_dependency, net_ip, \
-    mon_check_command_special, mon_check_command
+    mon_check_command_special, mon_check_command, BackgroundJobState
 from initat.md_config_server import special_commands, constants
 from initat.md_config_server.config import global_config, MainConfig, MonAllCommands, \
     MonAllServiceGroups, MonAllTimePeriods, MonAllContacts, MonAllContactGroups, MonAllHostGroups, MonDirContainer, \
@@ -42,6 +42,7 @@ from initat.tools import config_tools, logging_tools, process_tools, server_mixi
 from ..config.build_cache import BuildCache, HostBuildCache
 from ..constants import BuildModes
 from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
+from initat.tools.bgnotify import create_bg_job
 
 
 class BuildProcess(
@@ -271,21 +272,18 @@ class BuildProcess(
                 "enabled" if hdep_from_topo else "disabled",
             )
         )
-        cdg = device.objects.get(Q(device_group__cluster_device_group=True))
         if self.build_mode in [BuildModes.all_master, BuildModes.some_master]:
-            # delete old gauge variables
-            device_variable.objects.filter(Q(name="_SYS_GAUGE_") & Q(is_public=False) & Q(device=cdg)).delete()
-            # init build variable
-            build_dv = device_variable(
-                device=cdg,
-                is_public=False,
-                name="_SYS_GAUGE_",
-                description="mon config rebuild on {}".format(
-                    self.__gen_config.monitor_server.full_name if self.__gen_config else "unknown"
-                ),
-                var_type="i"
+            _bgj = create_bg_job(
+                global_config["SERVER_IDX"],
+                None,
+                "build config",
+                "config rebuild",
+                None,
+                state=BackgroundJobState.pending,
+                # set timeout to 30 minutes for big installs
+                timeout=30 * 60
             )
-            # bump version
+
             if int(time.time()) > self.version:
                 self.version = int(time.time())
             else:
@@ -293,7 +291,7 @@ class BuildProcess(
             self.log("config_version for full build is {:d}".format(self.version))
             self.send_pool_message("build_info", "start_build", self.version, self.build_mode == BuildModes.all_master, target="syncer")
         else:
-            build_dv = None
+            _bgj = None
 
         # fetch SNMP-stuff from cluster and initialise var cache
         self._create_general_config(self.build_mode, write_entries=self.build_mode not in [BuildModes.some_check])
@@ -319,9 +317,6 @@ class BuildProcess(
                         self.__gen_config[key].refresh(self.__gen_config)
             # hosts to build
             total_hosts = self._get_number_of_hosts()
-            if build_dv:
-                self.log("init gauge with max={:d}".format(total_hosts))
-                build_dv.init_as_gauge(total_hosts)
             if self.build_mode in [BuildModes.all_master, BuildModes.all_slave]:
                 # build distance map
                 cur_dmap, unreachable_pks, unreachable_names = self.DM_build_distance_map(
@@ -349,7 +344,7 @@ class BuildProcess(
 
             # global build cache
             gbc = build_cache
-            gbc.build_dv = build_dv
+            gbc.background_job = _bgj
             gbc.host_list = self.host_list
             gbc.dev_templates = dev_templates
             gbc.serv_templates = serv_templates
@@ -368,8 +363,8 @@ class BuildProcess(
                 # start syncing
                 self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
             del gbc
-            if build_dv:
-                build_dv.delete()
+            if _bgj:
+                _bgj.set_state(BackgroundJobState.done)
         if self.build_mode == BuildModes.all_master:
             self.send_pool_message("build_info", "end_build", self.version, target="syncer")
         if self.build_mode in [BuildModes.some_check, BuildModes.some_master]:
@@ -536,9 +531,6 @@ class BuildProcess(
         self.send_pool_message("build_info", "device_count", cur_gc.monitor_server.full_name, len(host_names), target="syncer")
         nagvis_maps = set()
         for host_name, host in sorted(host_names):
-            if gbc.build_dv:
-                gbc.build_dv.count()
-
             self.create_single_host_config(
                 gbc,
                 host,
