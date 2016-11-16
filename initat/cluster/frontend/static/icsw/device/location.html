@@ -11,35 +11,58 @@
     <div uib-alert class="alert-warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Manage Locations'.</div>
 
     <div class="row" ng-if="struct.device_list_ready">
-        <div class="col-md-6">
+        <div class="col-md-3">
             <h3>Location Tree</h3>
             <icsw-tools-ensure-device-selection dev-list="struct.devices" list-ready="struct.device_list_ready">
                 <icsw-react-tree icsw-tree-config="struct.loc_tree"></icsw-react-tree>
             </icsw-tools-ensure-device-selection>
         </div>
-        <div class="col-md-6">
-            <icsw-config-category-tree-google-map
-                locations="struct.locations"
-                icsw-google-maps-fn="struct.google_maps_fn"
-                icsw-google-maps-cb-fn="google_maps_cb_fn"
-                icsw-map-mode="show"
-            ></icsw-config-category-tree-google-map>
-        </div>
-    </div>
-    <h3 ng-show="struct.active_loc">
-        Location {{ struct.active_loc.full_name }},
-        <ng-pluralize count="struct.active_loc.$gfx_list.length" when="{'0': 'no Location maps', 'one': 'one Location map', 'other': '{} location maps'}"></ng-pluralize>
-        <!-- <span ng-show="extra_dml_list.length">, {{ extra_dml_list.length }} extra</span>, zoom is {{ cur_scale | number:2 }}-->
-    </h3>
-    <div class="row" ng-show="struct.active_gfx || struct.active_loc">
-        <div class="col-xs-12" ng-if="struct.active_loc">
-            <icsw-device-location-list icsw-location="struct.active_loc" icsw-active-gfx="struct.active_gfx" icsw-devices="struct.devices"></icsw-device-location-list>
-        </div>
-        <div class="col-xs-3">
-            <icsw-device-monitoring-location-list icsw-active-gfx="struct.active_gfx" icsw-devices="struct.devices"></icsw-device-monitoring-location-list>
-        </div>
-        <div class="col-xs-9">
-            <icsw-device-location-map icsw-active-gfx="struct.active_gfx" icsw-devices="struct.devices"></icsw-device-location-map>
+        <div class="col-md-9">
+            <uib-tabset active="struct.active_loc.activetab">
+                <uib-tab heading="Geolocation - Map" index="1">
+                    <icsw-config-category-tree-google-map
+                        locations="struct.locations"
+                        icsw-google-maps-fn="struct.google_maps_fn"
+                        icsw-google-maps-cb-fn="google_maps_cb_fn"
+                        icsw-map-mode="show"
+                    ></icsw-config-category-tree-google-map>
+                </uib-tab>
+                <uib-tab heading="Location Images" index="2">
+                    <div uib-alert class="alert-warning" style="" ng-show="!struct.active_loc.idx">
+                        Please select a Location at the Location Tree.
+                    </div>
+
+                    <h3 ng-if="struct.active_loc.idx">
+                        <ng-pluralize count="struct.active_loc.$gfx_list.length" when="{'0': 'No Location Image', 'one': 'One Location Image', 'other': '{} Location Images'}"></ng-pluralize>
+                        for {{ struct.active_loc.full_name }}
+                    </h3>
+                    <div class="row">
+                        <div class="col-xs-12" ng-if="struct.active_loc.idx">
+                            <icsw-device-location-list icsw-location="struct.active_loc"
+                                                       icsw-active-gfx="struct.active_gfx"
+                                                       icsw-devices="struct.devices"
+                                                       icsw-gfx-tabs="struct.gfx_tabs"></icsw-device-location-list>
+                        </div>
+                    </div>
+
+                </uib-tab>
+                <uib-tab ng-repeat="gfx_tab in struct.gfx_tabs" index="gfx_tab.tabindex">
+                    <uib-tab-heading>
+                        {{ gfx_tab.active_gfx.name }}
+                        <icsw-tools-button size="xs" type="close" value="" ng-click="close_gfx_tab(gfx_tab, $event)"></icsw-tools-button>
+                    </uib-tab-heading>
+                    <div class="row">
+                        <div class="col-xs-3">
+                            <icsw-device-monitoring-location-list icsw-active-gfx="gfx_tab.active_gfx" icsw-devices="gfx_tab.devices"></icsw-device-monitoring-location-list>
+                        </div>
+                        <div class="col-xs-9">
+                            <icsw-device-location-map icsw-active-gfx="gfx_tab.active_gfx" icsw-devices="gfx_tab.devices"></icsw-device-location-map>
+                        </div>
+                    </div>
+                </uib-tab>
+
+            </uib-tabset>
+
         </div>
     </div>
 </script>
@@ -87,6 +110,7 @@
 
 <script type="text/ng-template" id="icsw.device.monitoring.location.list">
     <div ng-if="struct.data_valid">
+        <h3>Devices</h3>
         <table
             st-table="struct.active_gfx.$dml_list"
             ng-if="struct.active_gfx.$dml_list.length || struct.active_gfx.$unset_devices.length"

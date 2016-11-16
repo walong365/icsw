@@ -168,12 +168,12 @@ angular.module(
     "$scope", "$q", "icswAccessLevelService", "icswDeviceTreeService",
     "icswCategoryTreeService", "$rootScope", "ICSW_SIGNALS", "blockUI",
     "icswDeviceLocationTreeService", "ICSW_URLS", "icswSimpleAjaxCall",
-    "icswToolsSimpleModalService", "icswCategoryLocationHelper",
+    "icswToolsSimpleModalService", "icswCategoryLocationHelper", "$timeout",
 (
     $scope, $q, icswAccessLevelService, icswDeviceTreeService,
     icswCategoryTreeService, $rootScope, ICSW_SIGNALS, blockUI,
     icswDeviceLocationTreeService, ICSW_URLS, icswSimpleAjaxCall,
-    icswToolsSimpleModalService, icswCategoryLocationHelper,
+    icswToolsSimpleModalService, icswCategoryLocationHelper, $timeout
 ) ->
     icswAccessLevelService.install($scope)
     my_proxy = icswCategoryLocationHelper.get_location_proxy()
@@ -198,11 +198,20 @@ angular.module(
         active_gfx: null
         # google maps callback
         google_maps_fn: null
+        gfx_tabs: []
     }
 
     $scope.$on("$destroy", () ->
         $scope.struct.device_list_ready = false
     )
+    $scope.close_gfx_tab = (tab, $event) ->
+        for tab_list in $scope.struct.gfx_tabs when tab_list.tabindex == tab.tabindex
+            index = $scope.struct.gfx_tabs.indexOf tab_list
+            $timeout(
+                () ->
+                    $scope.struct.gfx_tabs.splice index, 1
+                100
+            )
 
     $scope.google_maps_cb_fn = (fn_name, args) ->
         if fn_name == "marker_clicked"
@@ -351,10 +360,25 @@ angular.module(
         # _ct.show_selected(false)
 
     $scope.set_active_location = (loc, center_map=true) ->
+        if $scope.struct.active_loc.activetab in [1, 2]
+            activetab = $scope.struct.active_loc.activetab
+        else
+            activetab = 1
         $scope.struct.active_loc = loc
+        $timeout(
+            () ->
+                $scope.struct.active_loc.activetab = activetab
+            0
+        )
+        $scope.struct.active_loc.tabmaxidx = 2
+        $scope.struct.gfx_tabs = []
         if loc.useable and $scope.struct.google_maps_fn and center_map
-            $scope.struct.google_maps_fn("refresh", [loc.latitude, loc.longitude])
-            $scope.struct.google_maps_fn("zoom", 11)
+             $timeout(
+                () ->
+                    $scope.struct.google_maps_fn("refresh", [loc.latitude, loc.longitude])
+                    $scope.struct.google_maps_fn("zoom", 11)
+                50
+        )
             
     $scope.is_any_location_defined = () ->
         if ! $scope.loc_tree_lut
@@ -461,8 +485,14 @@ angular.module(
                         )
                 # set active gfx
                 if t_entry.selected
-                    if t_entry.obj != $scope.struct.active_loc
+                    if t_entry.obj.idx != $scope.struct.active_loc.idx
                         $scope.struct.active_loc = t_entry.obj
+                        $timeout(
+                            () ->
+                                $scope.struct.active_loc.activetab = 1
+                            0
+                        )
+                        $scope.struct.active_loc.tabmaxidx = 2
                         $scope.struct.active_gfx = null
                 # deselect non-selected physical structure entries
                 $scope.struct.loc_tree.do_loc_selection(t_entry)
@@ -488,11 +518,11 @@ angular.module(
 [
     "$templateCache", "$compile", "$uibModal", "Restangular", "ICSW_URLS",
     "icswCategoryTreeService", "$q", "icswDeviceTreeService", "$rootScope",
-    "ICSW_SIGNALS",
+    "ICSW_SIGNALS", "$timeout",
 (
     $templateCache, $compile, $uibModal, Restangular, ICSW_URLS,
     icswCategoryTreeService, $q, icswDeviceTreeService, $rootScope,
-    ICSW_SIGNALS,
+    ICSW_SIGNALS, $timeout
 ) ->
     return {
         restrict : "EA"
@@ -504,13 +534,13 @@ angular.module(
             active_gfx: "=icswActiveGfx"
             # selected devics
             devices: "=icswDevices"
+            gfx_tabs: "=icswGfxTabs"
 
         link: (scope, el, attrs) ->
             _tree_loaded = false
             scope.cat_tree = null
             scope.device_tree = null
             scope.active_gfx = null
-
             update = () ->
                 # truncate list
                 loc_defer = $q.defer()
@@ -552,6 +582,25 @@ angular.module(
 
             scope.activate_loc_gfx = ($event, loc_gfx) ->
                 scope.active_gfx = loc_gfx
+                o = {
+                    devices: scope.devices
+                    active_gfx: loc_gfx
+                    tabindex : scope.location.tabmaxidx + 1
+                }
+                new_tab_already_loaded = false
+                for tab in scope.gfx_tabs when tab.active_gfx.idx == loc_gfx.idx
+                    new_tab_already_loaded = true
+                    o.tabindex = tab.tabindex
+                if !new_tab_already_loaded
+                    scope.gfx_tabs.push(o)
+                    scope.location.tabmaxidx += 1
+                if !$event.ctrlKey
+                    $timeout(
+                        () ->
+                            scope.location.activetab = o.tabindex
+                        0
+                    )
+
     }
 ]).directive("icswDeviceMonitoringLocationList",
 [
@@ -791,20 +840,24 @@ angular.module(
             _header = _gfx.name
             if _gfx.comment
                 _header = "#{_header} (#{_gfx.comment})"
-            _header = "#{_header} (Size: #{width} x #{height}, scale: #{_.round(@state.zoom, 3)}"
+            _header = "#{_header} (Size: #{width} x #{height}, Scale: #{_.round(@state.zoom, 3)}"
 
             # count
-            _count = {locked: 0, unlocked: 0, unset: 0}
+            _count = {Locked: 0, Unlocked: 0, Unset: 0}
             for dml in _gfx.$dml_list
                 # build node
                 if dml.$$selected
                     if dml.locked
-                        _count.locked++
+                        _count.Locked++
                     else
-                        _count.unlocked++
+                        _count.Unlocked++
                 else
-                    _count.unset++
-            _header = "#{_header}, " + ("#{value} #{key}" for key, value of _count when value).join(", ") + ")"
+                    _count.Unset++
+            _lock_data = ("#{value} #{key}" for key, value of _count when value).join(", ")
+            if _lock_data
+                _header = "#{_header}, #{_lock_data})"
+            else
+                _header = "#{_header})"
             _dml_list = [
                 image(
                     {
