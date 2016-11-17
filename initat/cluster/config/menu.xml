@@ -232,7 +232,7 @@
             <route name="main.monitorlocation">
                 <stateData type="dict" url_str="/monitorlocation"
                            templateUrl_str="icsw/device/location/monitoring"/>
-                <icswData type="dict" pageTitle_str="Location Service">
+                <icswData type="dict" pageTitle_str="Location Service" hasDevselFunc_bool="yes">
                     <menuEntry type="dict" icon_str="fa-map-marker" name_str="Location Service"/>
                 </icswData>
             </route>

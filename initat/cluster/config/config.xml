@@ -294,7 +294,7 @@
         </route>
         <route name="main.monitorlocation">
             <stateData url="/monitorlocation" templateUrl="icsw/device/location/monitoring"/>
-            <icswData pageTitle="Location Service">
+            <icswData pageTitle="Location Service" hasDevselFunc_bool="yes">
                 <description>
                     <infoText language="en">TODO: Show monitoring data at Google maps and with location images</infoText>
                 </description>
