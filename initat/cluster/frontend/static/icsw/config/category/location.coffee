@@ -25,7 +25,7 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.devlocation")
-    icswRouteExtensionProvider.add_route("main.locationtest")
+    icswRouteExtensionProvider.add_route("main.monitorlocation")
 ]).directive("icswConfigCategoryLocationMapEdit",
 [
     "$templateCache", "$timeout",

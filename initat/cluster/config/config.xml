@@ -292,11 +292,11 @@
                 </description>
             </icswData>
         </route>
-        <route name="main.locationtest">
-            <stateData url="/devlocationtest" templateUrl="icsw/device/location/overview"/>
+        <route name="main.monitorlocation">
+            <stateData url="/monitorlocation" templateUrl="icsw/device/location/monitoring"/>
             <icswData pageTitle="Location Service">
                 <description>
-                    <infoText language="en">TODO: Should be removed</infoText>
+                    <infoText language="en">TODO: Show monitoring data at Google maps and with location images</infoText>
                 </description>
             </icswData>
         </route>
@@ -695,7 +695,7 @@
                 <menuEntry icon="fa-pie-chart" routeName="main.statushistory" name="Device Availability"/>
                 <menuEntry icon="fa-list-alt" name="Event Logs" routeName="main.eventlog"/>
                 <menuEntry icon="fa-info-circle" name="Control and Info" routeName="main.monitorbuildinfo"/>
-                <menuEntry icon="fa-map-marker" name="Location Service" routeName="main.locationtest"/>
+                <menuEntry icon="fa-map-marker" name="Location Service" routeName="main.monitorlocation"/>
                 <menuEntry icon="fa-code-fork" name="Key Performance Indicators" routeName="main.kpievaluation"/>
             </routeSubGroup>
             <routeSubGroup name="Settings">
