@@ -386,7 +386,10 @@ menu_module = angular.module(
             a_attrs.className = _a_classes.join(" ")
             if icswMenuSettings.get_menu_help()
                 help_p = p(
-                    {key: "descr"} # , className: "menu-help-text"}
+                    {
+                        key: "descr"
+                        className: "menu-help-text"
+                    }
                     _info_text
                     if data.$$allowed then "ok" else "not ok"
                 )
