@@ -1,0 +1,12 @@
+[uwsgi]
+uid=apache
+gid=apache
+processes=1
+workers=1
+threads=1
+limit-nproc=1
+no-default-app=true
+no-site=true
+daemonize=/tmp/daphne.log
+pidfile=/tmp/daphne.pid
+exec-as-user=/opt/python-init/bin/daphne initat.cluster.asgi:channel_layer --port 8443 --bind 0.0.0.0 &
