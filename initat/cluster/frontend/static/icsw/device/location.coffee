@@ -995,4 +995,16 @@ angular.module(
         template: $templateCache.get("icsw.config.location")
         scope: true
     }
+]).directive("icswDeviceLocationMonitoring",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict : "EA"
+        template: $templateCache.get("icsw.device.location.monitoring")
+        scope: true
+
+    }
 ])

@@ -3,12 +3,13 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.location.overview">
-    <h3>
-        Device Location for
-        <ng-pluralize count="struct.devices.length" when="{'one':'1 Device', 'other':'{} Devices'}"></ng-pluralize>
+    <h3 style="margin-bottom:0px;">
+        Assign Location to
+        <ng-pluralize count="struct.devices.length" when="{'one':'1 selected Device', 'other':'{} selected Devices'}"></ng-pluralize>
     </h3>
 
-    <div uib-alert class="alert-warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Manage Locations'.</div>
+    <span>NOTE: Changes will be saved immediately.</span>
+    <div uib-alert class="alert-warning" style="max-width: 500px" ng-if="!is_any_location_defined()">Please create locations in the tab 'Configure Locations'.</div>
 
     <div class="row" ng-if="struct.device_list_ready">
         <div class="col-md-3">
@@ -164,5 +165,31 @@
                 </tr>
             </tbody>
         </table>
+    </div>
+</script>
+
+<script type="text/ng-template" id="icsw/device/location/monitoring">
+    <icsw-device-location-monitoring icsw-sel-man="0"></icsw-device-location-monitoring>
+</script>
+<script type="text/ng-template" id="icsw.device.location.monitoring">
+    <div class="container-fluid">
+        <h3>TODO</h3>
+        <h4>Hey happy location tree friends!</h4>
+        <span>Would you be so kind to fill me up with location-monitoring data?</span>
+        <pre style="width:auto; border:none;">
+                __ _.--..--._ _
+             .-' _/   _/\_   \_'-.
+            |__ /   _/\__/\_   \__|
+               |___/\_\__/  \___|
+                      \__/
+                      \__/
+                       \__/
+                        \__/
+                     ____\__/___
+               . - '             ' -.
+              /                      \
+        ~~~~~~~  ~~~~~ ~~~~~  ~~~ ~~~  ~~~~~
+          ~~~   ~~~~~   ~!~~   ~~ ~  ~ ~ ~
+        </pre>
     </div>
 </script>
