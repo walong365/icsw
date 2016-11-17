@@ -41,9 +41,9 @@ angular.module(
             super("icswLivestatusLocationMap", true, false)
             @set_template(
                 '<icsw-show-livestatus-location-map icsw-connect-element="con_element"></icsw-show-livestatus-location-map>'
-                "LocationDisplay"
+                "Location Images"
                 10
-                16
+                8
             )
             @new_data_notifier = $q.defer()
             #  @new_data_notifier = $q.defer()
@@ -228,8 +228,8 @@ angular.module(
             super("icswLivestatusGeoLocationDisplay", true, false)
             @set_template(
                 '<icsw-device-livestatus-geo-location-display icsw-connect-element="con_element"></icsw-device-livestatus-geo-location-display>'
-                "GeoLocationDisplay"
-                12
+                "Geo Location"
+                10
                 8
             )
             @new_data_notifier = $q.defer()

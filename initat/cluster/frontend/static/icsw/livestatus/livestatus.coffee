@@ -115,6 +115,22 @@ angular.module(
                 }]
             }]
         }
+        "location": {
+            "icswLivestatusSelDevices": [{
+                "icswLivestatusDataSource": [{
+                    "icswLivestatusFilterService": [{
+                        "icswLivestatusMonCategoryFilter": [{
+                            "icswLivestatusDeviceCategoryFilter": [{
+                                "icswLivestatusGeoLocationDisplay": []
+                            }
+                            {
+                                "icswLivestatusLocationMap":  []
+                            }]
+                        }]
+                    }]
+                }]
+            }]
+        }
     }
 
     $scope.struct = {

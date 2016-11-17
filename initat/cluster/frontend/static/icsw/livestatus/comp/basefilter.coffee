@@ -52,8 +52,8 @@ angular.module(
             @set_template(
                 '<icsw-livestatus-filter-display icsw-livestatus-filter="con_element"></icsw-livestatus-filter-display>'
                 "BaseFilter"
-                4
-                1
+                3
+                2
             )
             running_id++
             @id = running_id
