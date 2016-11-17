@@ -61,6 +61,7 @@ ifneq ($(wildcard /etc/debian_version), )
     WSGI_INI:=webfrontend.wsgi.ini-deb
     DAPHNE_INI:=daphne.wsgi.ini-deb
     DAPHNE_WORKERS_INI:=daphne-workers.wsgi.ini-deb
+    REDIS_INI:=redis.wsgi.ini-deb
 else
     ifeq ($(findstring SuSE-release, $(wildcard /etc/*)), )
         WWW_USER=apache
@@ -70,6 +71,7 @@ else
         WSGI_INI:=webfrontend.wsgi.ini-centos
         DAPHNE_INI:=daphne.wsgi.ini-centos
         DAPHNE_WORKERS_INI:=daphne-workers.wsgi.ini-centos
+        REDIS_INI:=redis.wsgi.ini-centos
     else
          WWW_USER=wwwrun
          WWW_GROUP=www
@@ -81,13 +83,9 @@ else
          WSGI_INI:=webfrontend.wsgi.ini-suse
          DAPHNE_INI:=daphne.wsgi.ini-suse
          DAPHNE_WORKERS_INI:=daphne-workers.wsgi.ini-suse
+         REDIS_INI:=redis.wsgi.ini-suse
     endif
 endif
-
-###############################################################################
-# uwsgi ini files
-###############################################################################
-REDIS_INI:=redis.wsgi.ini
 
 ###############################################################################
 # Various settings
