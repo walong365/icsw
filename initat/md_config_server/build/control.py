@@ -26,7 +26,6 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device
-from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server.config import MainConfigContainer, global_config
 from initat.tools import logging_tools, server_command
 from .process import BuildProcess

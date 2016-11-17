@@ -33,6 +33,9 @@ angular.module(
     _theme_lut = {}
     _theme_set = false
     _pending_sets = []
+    # set in main.html
+    active_theme = "default"
+    theme_valid_emitted = false
     Restangular.all(ICSW_URLS.SESSION_GET_THEME_SETUP.slice(1)).getList().then(
         (data) ->
             $timeout(
@@ -75,21 +78,29 @@ angular.module(
                 default_theme = $window.sessionStorage.getItem('default_theme')
                 console.warn("theme '#{theme}' does not exist, setting default theme '#{default_theme}'")
                 theme = default_theme
-            maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
-            # console.log "theme=", theme
-            maintheme_tag.setAttribute("href", "static/theme_#{theme}.css")
-            $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then(
-                (response) ->
-                    svgstyle_tag = angular.element.find("style[icsw-layout-svg-style]")[0]
-                    data = if response.data? then response.data else response
-                    svgstyle_tag.innerHTML = data
-                    # theme is now valid
-                    $timeout(
-                        () ->
-                            icswMenuSettings.set_themes_valid()
-                        0
+            if active_theme != theme
+                console.warn "switch theme from #{active_theme} to #{theme}"
+                active_theme = theme
+                maintheme_tag = angular.element.find("link[icsw-layout-main-theme]")[0]
+                # console.log "theme=", theme
+                maintheme_tag.setAttribute("href", "static/theme_#{theme}.css")
+                $http.get("#{ICSW_URLS.STATIC_URL}/svgstyle_#{theme}.css").then(
+                    (response) ->
+                        svgstyle_tag = angular.element.find("style[icsw-layout-svg-style]")[0]
+                        data = if response.data? then response.data else response
+                        svgstyle_tag.innerHTML = data
+                        # theme is now valid
+                        $timeout(
+                            () ->
+                                theme_valid_emitted = true
+                                icswMenuSettings.set_themes_valid()
+                            0
+                        )
                     )
-                )
+            else
+                if not theme_valid_emitted
+                    theme_valid_emitted = true
+                    icswMenuSettings.set_themes_valid()
 
     setdefault = (default_theme) =>
         $window.sessionStorage.setItem('default_theme', default_theme)

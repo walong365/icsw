@@ -221,9 +221,17 @@ angular.module(
     # init tasks
     _init_tasks()
     # update keys
-    update_keys()
+    # update_keys()
     # signal after init
     _signal()
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () ->
+        _add_keys()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
+        _remove_keys()
+    )
 
     # task control
     step_forward = (task) ->

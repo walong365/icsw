@@ -361,7 +361,7 @@ user_module = angular.module(
             # called from icswTreeBase
             result = @get_result()
             # send theme to themeservice
-            console.log "***", result.user.ui_theme_selection
+            # console.log "usertheme", result.user.ui_theme_selection
             icswThemeService.setcurrent(result.user.ui_theme_selection)
 
     return new icswUserService(

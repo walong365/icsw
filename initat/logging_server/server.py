@@ -22,6 +22,8 @@
 
 """ logging server, central logging facility, server-part """
 
+from __future__ import print_function, unicode_literals
+
 import grp
 import logging
 import os
@@ -41,7 +43,7 @@ from initat.tools import io_stream_helper, logging_tools, mail_tools, process_to
 from initat.tools.server_mixins import ICSWBasePool
 
 
-class main_process(ICSWBasePool):
+class MainProcess(ICSWBasePool):
     def __init__(self, options):
         self.__options = options
         # log structures
@@ -159,7 +161,7 @@ class main_process(ICSWBasePool):
             h_name for h_name in _handle_names
         ]
         self._remove_handles()
-        client = self.zmq_context.socket(zmq.PULL)  # @UndefinedVariable
+        client = self.zmq_context.socket(zmq.PULL)
         for h_name in _handle_names:
             client.bind(io_stream_helper.icswIOStream.zmq_socket_name(h_name, check_ipc_prefix=True))
             os.chmod(io_stream_helper.icswIOStream.zmq_socket_name(h_name), stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)
@@ -183,7 +185,7 @@ class main_process(ICSWBasePool):
         else:
             _forward = None
         self.net_forwarder = _forward
-        self.register_poller(client, zmq.POLLIN, self._recv_data)  # @UndefinedVariable
+        self.register_poller(client, zmq.POLLIN, self._recv_data)
         self.std_client = client
 
     def loop_end(self):
@@ -540,7 +542,7 @@ class main_process(ICSWBasePool):
         if self.net_forwarder:
             # hooray for 0MQ
             try:
-                self.net_forwarder.send(in_str, zmq.DONTWAIT)  # @UndefinedVariable
+                self.net_forwarder.send(in_str, zmq.DONTWAIT)
             except:
                 self.__num_forward_error += 1
             else:

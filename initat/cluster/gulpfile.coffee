@@ -109,21 +109,21 @@ sources = {
     css_theme_default: new SourceMap(
         "css_theme_default"
         "theme_default.css"
-        themes["default"]
+        themes.default
         "css"
         true
     )
     css_theme_cora: new SourceMap(
         "css_theme_cora"
         "theme_cora.css"
-        themes["cora"]
+        themes.cora
         "css"
         true
     )
     css_theme_sirocco: new SourceMap(
         "css_theme_sirocco"
         "theme_sirocco.css"
-        themes["sirocco"]
+        themes.sirocco
         "css"
         true
     )

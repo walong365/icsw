@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2009-2015 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
+# Copyright (C) 2009-2016 Andreas Lang-Nevyjel (lang-nevyjel@init.at)
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -21,9 +21,11 @@
 #
 """ logging server, central logging facility, main part """
 
+from __future__ import unicode_literals, print_function
+
 from initat.client_version import VERSION_STRING
 from initat.logging_server.config import global_config
-from initat.logging_server.server import main_process
+from initat.logging_server.server import MainProcess
 from initat.tools import configfile
 
 
@@ -36,5 +38,5 @@ def main():
     options = global_config.handle_commandline(
         description="logging server, version is {}".format(VERSION_STRING),
     )
-    main_process(options).loop()
+    MainProcess(options).loop()
     return 0
