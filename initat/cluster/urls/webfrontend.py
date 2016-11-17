@@ -148,6 +148,7 @@ lic_patterns = [
 
 
 base_patterns = [
+    url("^propagate_channel_message$", base_views.propagate_channel_message, name="propagate_channel_message"),
     url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
     url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(),
         name="location_gfx_icon"),

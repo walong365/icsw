@@ -1273,7 +1273,6 @@ class DeviceLogEntryViewSet(viewsets.ViewSet):
         high_idx = 0
         if "high_idx" in request.query_params:
             high_idx = int(request.query_params["high_idx"])
-            print(high_idx)
         prefetch_list = [
             "source",
             "level"

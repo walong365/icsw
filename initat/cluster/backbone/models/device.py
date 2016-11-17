@@ -46,6 +46,7 @@ from initat.cluster.backbone.models.functions import check_empty_string, \
 from initat.cluster.backbone.signals import BootsettingsChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store, logging_tools, server_command
+from initat.tools.net_tools import propagate_channel_message
 
 logger = logging.getLogger(__name__)
 
@@ -948,3 +949,23 @@ class DeviceLogEntry(models.Model):
             self.level.identifier,
             self.level.level,
         )
+
+
+@receiver(signals.post_save, sender=DeviceLogEntry)
+def device_log_entry_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+
+        info_obj = {
+            "idx": cur_inst.idx,
+            "text": cur_inst.text,
+            "date": str(cur_inst.date),
+            "device": cur_inst.device.idx,
+            "user": cur_inst.user.idx if cur_inst.user else None,
+            "level": cur_inst.level.name,
+            "source": cur_inst.source.identifier
+        }
+
+        propagate_channel_message("device_log_entries", info_obj)
+
+        #print("[{}] pushed into channel... {}".format(datetime.datetime.now().ctime(),  cur_inst.text))

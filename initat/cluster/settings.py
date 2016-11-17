@@ -355,6 +355,7 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     "django_extensions",
     "reversion",
+    "channels"
 )
 
 ICSW_WEBCACHE = os.path.join(CLUSTER_DIR, "share", "webcache")
@@ -589,4 +590,14 @@ LOGGING = {
             'level': 'INFO' if DEBUG else "WARN",
         },
     }
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "asgi_redis.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+        "ROUTING": "initat.cluster.urls.channel_routing.channel_routing",
+    },
 }
