@@ -594,9 +594,9 @@ LOGGING = {
 
 CHANNEL_LAYERS = {
     "default": {
-        "BACKEND": "asgi_ipc.IPCChannelLayer",
+        "BACKEND": "asgi_redis.RedisChannelLayer",
         "CONFIG": {
-            "prefix": "BRZUFPWHRD",
+            "hosts": [("127.0.0.1", 6379)],
         },
         "ROUTING": "initat.cluster.urls.channel_routing.channel_routing",
     },

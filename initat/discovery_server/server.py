@@ -183,7 +183,9 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     def _ext_receive(self, *args):
         srv_reply = args[0]
-        run_idx = int(srv_reply["*discovery_run_idx"])
+        run_idx = None
+        if srv_reply:
+            run_idx = int(srv_reply["*discovery_run_idx"])
         if run_idx in self.__ext_con_dict:
             del self.__ext_con_dict[run_idx]
         self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
