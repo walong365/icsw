@@ -4,6 +4,8 @@ from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import StaleElementReferenceException
+from lxml.html import soupparser
 from PIL import Image
 import base64
 import os
@@ -25,7 +27,20 @@ def visible(elements):
             return element
 
 
+class Toast(object):
+    def __init__(self, element, title, text):
+        self.element = element
+        self.title = title
+        self.text = text
+
+    def matches(self, text):
+        if text in self.title or text in self.text:
+            return True
+        return False
+
+
 class Webdriver(webdriver.Remote):
+    XPATH_TOAST_CONTAINER = '//div[@id="toast-container"]/div'
 
     def __init__(self, base_url, timeout=10, *args, **kw_args):
         super(Webdriver, self).__init__(*args, **kw_args)
@@ -42,6 +57,14 @@ class Webdriver(webdriver.Remote):
         """
         return WebDriverWait(self, self.timeout).until(
             find_any(elements))
+
+    def find_toast(self, text):
+        def find_toast_(driver):
+            for toast in driver.get_toasts():
+                if toast.matches(text):
+                    return toast
+
+        return WebDriverWait(self, self.timeout).until(find_toast_)
 
     def get_(self, url):
         return self.get(self.base_url + url)
@@ -106,7 +129,33 @@ class Webdriver(webdriver.Remote):
         time.sleep(3)
         self.find_element_by_xpath('//button[@class="close"]').click()
 
-    def clear_toaster_messages(self):
-        xpath = '//div[@id="toast-container"]/div[@ng-class="toaster.type"]'
-        for element in self.find_elements(By.XPATH, xpath):
-            element.click()
+    def get_toasts(self):
+        elements = self.find_elements_by_xpath(self.XPATH_TOAST_CONTAINER)
+        res = []
+        for element in elements:
+            tree = soupparser.fromstring(element.get_attribute('outerHTML'))
+            title = tree.xpath(
+                './div/div[@ng-class="config.title"]/text()'
+                )
+            title = title[0] if title else ''
+            text = tree.xpath(
+                './div/div[@ng-class="config.message"]/div/text()'
+                )
+            text = text[0] if text else ''
+            res.append(Toast(element, title, text))
+        return res
+
+    def clear_toaster(self, no_wait=True):
+        # it seems that find_elements_by_xpath entails some waiting even with
+        # .implicitly_wait(0), so look if we have a toaster element by
+        # inspecting the HTML with lxml
+        if no_wait:
+            tree = soupparser.fromstring(self.page_source)
+            toasts = tree.xpath(self.XPATH_TOAST_CONTAINER)
+        if not no_wait or toasts:
+            for toaster in self.get_toasts():
+                try:
+                    toaster.element.click()
+                except StaleElementReferenceException:
+                    # the element has vanished in the meantime
+                    pass
