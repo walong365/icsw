@@ -241,9 +241,9 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend-common.include ${DESTDIR}${ICSW_ETC}/uwsgi/
 	${INSTALL} ${INSTALL_OPTS} nginx/${WSGI_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/webfrontend.wsgi.ini
-	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/${DAPHNE_INI}
-	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_WORKERS_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/${DAPHNE_WORKERS_INI}
-	${INSTALL} ${INSTALL_OPTS} nginx/${REDIS_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/${REDIS_INI}
+	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/daphne.wsgi.ini
+	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_WORKERS_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/daphne-workers.wsgi.ini
+	${INSTALL} ${INSTALL_OPTS} nginx/${REDIS_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/redis.wsgi.ini
 	# nginx
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${NGINX_CONF}
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend.conf ${DESTDIR}/${NGINX_CONF}
