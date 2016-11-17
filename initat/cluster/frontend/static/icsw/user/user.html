@@ -834,14 +834,17 @@
             </uib-tab>
         </uib-tabset>
         <div class="form-actions text-right">
-            <icsw-tools-button type="modify" ng-show="!create_mode && changed() && modify_ok" ng-click="modify()"></icsw-tools-button>
-            <icsw-tools-button type="create" ng-show="create_mode && modify_ok" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="modify" value="Modify" ng-show="!create_mode && changed() && modify_ok" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="modify" value="Modify" title="Nothing to save!" disabled="true" ng-show="!create_mode && !changed()" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="create" value="Create" ng-show="create_mode && modify_ok" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="create" value="Create" title="Create a password first!" disabled="true" ng-show="create_mode && !modify_ok" ng-click="modify()"></icsw-tools-button>
             &nbsp;
-            <icsw-tools-button type="close" ng-click="close()"></icsw-tools-button>
+            <icsw-tools-button type="close" value="Close" ng-click="close()"></icsw-tools-button>
             &nbsp;
-            <icsw-tools-button type="delete" ng-click="delete()"></icsw-tools-button>
+            <icsw-tools-button type="delete" value="Delete" ng-click="delete()"></icsw-tools-button>
             &nbsp;
-            <icsw-tools-button type="modify" value="change password" ng-click="change_password()"></icsw-tools-button>
+            <icsw-tools-button type="modify" ng-show="create_mode" value="Create Password" ng-click="change_password()"></icsw-tools-button>
+            <icsw-tools-button type="modify" ng-show="!create_mode" value="Change Password" ng-click="change_password()"></icsw-tools-button>
         </div>
     </form>
 </script>
