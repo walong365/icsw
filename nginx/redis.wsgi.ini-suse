@@ -1,4 +1,5 @@
 [uwsgi]
+chdir=/tmp/
 uid=wwwrun
 gid=www
 processes=1
@@ -9,4 +10,4 @@ no-default-app=true
 no-site=true
 daemonize=/tmp/redis.log
 pidfile=/tmp/redis.pid
-exec-as-user=/usr/sbin/redis-server &
+exec-as-user=cd /tmp/; /usr/sbin/redis-server &
