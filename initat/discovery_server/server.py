@@ -188,7 +188,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             run_idx = int(srv_reply["*discovery_run_idx"])
         if run_idx in self.__ext_con_dict:
             del self.__ext_con_dict[run_idx]
-        self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
+        if srv_reply and run_idx:
+            self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):

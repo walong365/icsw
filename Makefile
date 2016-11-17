@@ -241,7 +241,7 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} nginx/${WSGI_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/webfrontend.wsgi.ini
 	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/${DAPHNE_INI}
 	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_WORKERS_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/${DAPHNE_WORKERS_INI}
-	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/${REDIS_INI}
+	${INSTALL} ${INSTALL_OPTS} nginx/${REDIS_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/${REDIS_INI}
 	# nginx
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}/${NGINX_CONF}
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend.conf ${DESTDIR}/${NGINX_CONF}
