@@ -52,7 +52,7 @@ for mod_name in _inst_list:
         for _key in dir(new_mod):
             _obj = getattr(new_mod, _key)
             if inspect.isclass(_obj) and not _obj == SpecialBase and issubclass(_obj, SpecialBase):
-                # print(_obj.Meta)
+                # print("***", _key, _obj, _obj.Meta)
                 dynamic_checks.feed(_key, _obj)
     except:
         exc_info = process_tools.exception_info()

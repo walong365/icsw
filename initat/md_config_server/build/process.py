@@ -269,6 +269,7 @@ class BuildProcess(
             client.close()
             for hbc in fetch_list:
                 hbc.build_finished()
+                host = hbc.device
                 glob_log_str = "df, device {:<48s}{}".format(
                     host.full_name[:48],
                     "*" if len(host.name) > 48 else " ",

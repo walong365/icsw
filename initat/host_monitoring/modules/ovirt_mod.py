@@ -17,6 +17,8 @@
 #
 """ monitor ovirt instances, also used from md-config-server """
 
+from __future__ import print_function, unicode_literals
+
 import copy
 
 import requests

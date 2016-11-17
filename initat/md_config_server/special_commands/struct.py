@@ -30,6 +30,7 @@ from initat.tools import logging_tools, process_tools
 __all__ = [
     b"DynamicCheckServer",
     b"DynamicCheckAction",
+    b"DynamicCheckActionCopyIp",
     b"DynamicCheckDict",
     b"DynamicCheckMode",
     b"DynamicCheckResult",
@@ -61,6 +62,13 @@ class DynamicCheckAction(object):
 
     def __repr__(self):
         return unicode(self)
+
+
+class DynamicCheckActionCopyIp(DynamicCheckAction):
+    def salt(self, hbc, special_instance):
+        DynamicCheckAction.salt(self, hbc, special_instance)
+        self.kwargs["address"] = hbc.ip
+        return self
 
 
 class DynamicCheckMode(Enum):
@@ -191,11 +199,11 @@ class DynamicCheckDict(object):
                         self.log("mode {} not supported for meta checks".format(mode), logging_tools.LOG_LEVEL_CRITICAL)
                     else:
                         if cur_special.Meta.server_contact:
-                            if hasattr(cur_special, "dynamic_update_calls"):
+                            if hasattr(cur_special, "dynamic_update_calls") and hasattr(cur_special, "feed_result"):
                                 rv.set_server_contact(cur_special)
                             else:
                                 self.log(
-                                    "specialcheck {} has no dynamic_update_calls() function".format(
+                                    "specialcheck {} has no dynamic_update_calls() or feed_result() function".format(
                                         mccs_name,
                                     ),
                                     logging_tools.LOG_LEVEL_ERROR

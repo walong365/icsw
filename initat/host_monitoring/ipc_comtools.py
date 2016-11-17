@@ -176,16 +176,26 @@ class IPCClientHandler(threading_tools.PollerBase):
         dc_action.start_time = time.time()
         self.__pending_messages[_msg_id] = dc_action
         srv_com = server_command.srv_command(command=dc_action.command, identity=_msg_id)
+        _to_localhost = dc_action.kwargs.pop("connect_to_localhost", False)
         # destination
-        srv_com["host"] = dc_action.hbc.ip
+        _target_ip = "127.0.0.1" if _to_localhost else dc_action.hbc.ip
+        srv_com["host"] = _target_ip
         srv_com["port"] = self.__hm_port
         # special raw mode
         srv_com["raw"] = "True"
-        srv_com["arg_list"] = ""
+        # add arguments and keys
+        srv_com["arg_list"] = " ".join(
+            list(dc_action.args) + [
+                "--{}={}".format(_key, _value) for _key, _value in dc_action.kwargs.iteritems()
+            ]
+        )
+        # add additional keys
+        # for key, value in dc_action.kwargs.iteritems():
+        #    srv_com[key] = "{:d}".format(value) if type(value) in [int, long] else value
         dc_action.log(
             "calling server '{}' for {}, command is '{}', {}, {}".format(
                 dc_action.srv_enum.name,
-                dc_action.hbc.ip,
+                _target_ip,
                 dc_action.command,
                 "args is '{}'".format(
                     ", ".join(
