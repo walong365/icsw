@@ -234,10 +234,9 @@ body.condensed .submenu-bar{
 .navbar.condensed {
     min-height: 50px;
 }
-.menu-help-text{
+.menu-help-text {
     font-size: 12px!important;
     margin: 0 -1.6em 0.4em 1.6em!important;
-    display: none;
 }
 .ova-statusbutton{
     padding: 1px 5px;

@@ -29,7 +29,6 @@ from initat.tools import logging_tools
 
 class SpecialSyslogRate(SpecialBase):
     class Meta:
-        server_contact = False
         info = "Syslog rate"
         group = SpecialGroupsEnum.system
         command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_rate_mon -w ${ARG3:DEVICE_SYSLOG_RATE_WARNING:1} " \
@@ -62,7 +61,6 @@ class SpecialSyslogRate(SpecialBase):
 
 class SpecialSyslogGeneral(SpecialBase):
     class Meta:
-        server_contact = False
         info = "all configured Syslog checks"
         description = "Enable all syslog checks"
         command_line = "$USER2$ -m $ARG1$ -p $ARG2$ syslog_check_mon " \

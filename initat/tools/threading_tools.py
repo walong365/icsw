@@ -519,6 +519,10 @@ class PollerBase(object):
     # def get_num_po_waiting(self):
     #    return self.__waiting
     def _handle_select_list(self, in_list):
+        if hasattr("self", "_db_debug"):
+            _db_debug = self._db_debug
+        else:
+            _db_debug = None
         # import select
         # print "**", in_list, zmq.POLLIN, zmq.POLLOUT, select.POLLIN, select.POLLOUT
         # self.__waiting = len(in_list)
@@ -528,17 +532,19 @@ class PollerBase(object):
             if sock in self._socket_lut:
                 sock = self._socket_lut[sock]
             if sock in self.poller_handler:
-                for r_type in {zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR}:  # @UndefinedVariable
+                for r_type in {zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR}:
                     if c_type & r_type:
                         # the socket could vanish
                         if r_type in self.poller_handler.get(sock, []):
                             try:
-                                self._db_debug.start_call("socket")
+                                if _db_debug:
+                                    _db_debug.start_call("socket")
                                 if self.poller_kwargs[sock][r_type].get("ext_call"):
                                     self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock), **self.poller_kwargs[sock][r_type])
                                 else:
                                     self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock))
-                                self._db_debug.end_call()
+                                if _db_debug:
+                                    _db_debug.end_call()
                             except:
                                 exc_info = process_tools.exception_info()
                                 self.log(
@@ -565,9 +571,9 @@ class PollerBase(object):
                                 "polled event {:d} ({}) not found for socket '{}' (fd_info: {}{})".format(
                                     r_type,
                                     {
-                                        zmq.POLLIN: "POLLIN",  # @UndefinedVariable
-                                        zmq.POLLOUT: "POLLOUT",  # @UndefinedVariable
-                                        zmq.POLLERR: "POLLERR",  # @UndefinedVariable
+                                        zmq.POLLIN: "POLLIN",
+                                        zmq.POLLOUT: "POLLOUT",
+                                        zmq.POLLERR: "POLLERR",
                                     }[r_type],
                                     str(sock),
                                     _fd_info,
@@ -780,7 +786,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
         while True:
             _iter += 1
             try:
-                self.__com_socket.send_unicode(target_process, zmq.SNDMORE)  # @UndefinedVariable
+                self.__com_socket.send_unicode(target_process, zmq.SNDMORE)
                 self.__com_socket.send_pyobj(
                     {
                         "pid": self.pid,
@@ -1018,7 +1024,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBas
                 r_list = [(src_process, cur_mes)]
                 while True:
                     try:
-                        src_process = zmq_socket.recv_unicode(zmq.NOBLOCK)  # @UndefinedVariable
+                        src_process = zmq_socket.recv_unicode(zmq.NOBLOCK)
                     except:
                         break
                     else:
@@ -1285,7 +1291,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
         sent = False
         if self._flush_process_buffers(t_process):
             try:
-                self.__com_socket.send_unicode(t_process, zmq.SNDMORE)  # @UndefinedVariable
+                self.__com_socket.send_unicode(t_process, zmq.SNDMORE)
                 self.__com_socket.send_pyobj(
                     {
                         "pid": self.pid,
@@ -1310,7 +1316,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
             while send_list:
                 b_m_type, b_args, b_kwargs = send_list[0]
                 try:
-                    self.__com_socket.send_unicode(t_process, zmq.SNDMORE)  # @UndefinedVariable
+                    self.__com_socket.send_unicode(t_process, zmq.SNDMORE)
                     self.__com_socket.send_pyobj(
                         {
                             "pid": self.pid,
@@ -1497,7 +1503,7 @@ class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixi
                 self.log("SRM: received message {}".format(mes))
 
     def _tp_message_received(self, zmq_socket):
-        src_process = zmq_socket.recv_unicode(zmq.SNDMORE)  # @UndefinedVariable
+        src_process = zmq_socket.recv_unicode(zmq.SNDMORE)
         mes_parts = zmq_socket.recv_pyobj()
         if mes_parts["target"] != "main":
             # redirect

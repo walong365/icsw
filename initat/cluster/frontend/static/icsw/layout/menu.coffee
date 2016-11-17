@@ -192,6 +192,10 @@ menu_module = angular.module(
         _redraw()
     )
 
+    $rootScope.$on(ICSW_SIGNALS("ICSW_STATE_CHANGED"), () ->
+        _redraw()
+    )
+
     return {
         set_menu_help: (state) ->
             return _set_menu_help(state)
@@ -339,18 +343,22 @@ menu_module = angular.module(
         displayName: "icswMenuEntry"
 
         render: () ->
+            cur_state = $state.current
             state = @props.state
             data = state.icswData
             a_attrs = {
                 key: "a"
             }
             _a_classes = []
+            active_state = false
             if data.$$allowed
                 _a_classes.push("icswMenuColor")
                 if data.$$menuEntry.href?
                     a_attrs.href = data.$$menuEntry.href
                 else
                     a_attrs.href = data.$$menuEntry.sref
+                if data.$$menuEntry.routeName == cur_state.name
+                    active_state = true
                 _mis_span = null
             else
                 _a_classes.push("icswMenuDeact")
@@ -363,6 +371,10 @@ menu_module = angular.module(
                     }
                     data.$$missing_short.join("")
                 )
+            if active_state
+                as_str = "(*) "
+            else
+                as_str = null
             if data.$$menuEntry.entryClass?
                 _a_classes.push(data.$$menuEntry.entryClass)
             if data.$$menuEntry.title?
@@ -374,7 +386,10 @@ menu_module = angular.module(
             a_attrs.className = _a_classes.join(" ")
             if icswMenuSettings.get_menu_help()
                 help_p = p(
-                    {key: "descr"} # , className: "menu-help-text"}
+                    {
+                        key: "descr"
+                        className: "menu-help-text"
+                    }
                     _info_text
                     if data.$$allowed then "ok" else "not ok"
                 )
@@ -388,6 +403,7 @@ menu_module = angular.module(
                         {className: "fa #{data.$$menuEntry.icon} fa_icsw", key: "span"}
                     )
                     " #{data.$$menuEntry.name} "
+                    as_str
                     _mis_span
                 )
                 help_p
