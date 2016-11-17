@@ -106,18 +106,19 @@ class SpecialBase(object):
             ch.save()
 
     def _load_cache(self):
-        self.__hints_loaded = True
-        self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
-        # set datasource to cache
-        for _entry in self.__cache:
-            if _entry.datasource not in ["c", "p"]:
-                _entry.datasource = "c"
-                _entry.save(update_fields=["datasource"])
-        self.log(
-            "loaded hints ({}) from db".format(
-                logging_tools.get_plural("entry", len(self.__cache))
+        if not self.__hints_loaded:
+            self.__hints_loaded = True
+            self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
+            # set datasource to cache
+            for _entry in self.__cache:
+                if _entry.datasource not in ["c", "p"]:
+                    _entry.datasource = "c"
+                    _entry.save(update_fields=["datasource"])
+            self.log(
+                "loaded hints ({}) from db".format(
+                    logging_tools.get_plural("entry", len(self.__cache))
+                )
             )
-        )
         # hint_list = [_entry for _entry in self.__cache if _entry.call_idx == self.__call_idx]
 
     @property
@@ -126,9 +127,10 @@ class SpecialBase(object):
             self._load_cache()
         return self.__cache
 
-    def remove_cache_entries(self):
+    def remove_hints(self):
+        self._load_cache()
         # remove all cached entries, cached entries are always local (with m_type set as ds_name)
-        self.log("removing all {:d} cached entries".format(len(self.__cache)))
+        self.log("removing all {}".format(logging_tools.get_plural("cached entry", len(self.__cache))))
         [_entry.delete() for _entry in self.__cache]
         self.__cache = []
 

@@ -20,6 +20,8 @@
 
 """ IPMI sensor readings """
 
+from __future__ import print_function, unicode_literals
+
 import commands
 import subprocess
 import time
@@ -88,6 +90,12 @@ class _general(hm_classes.hm_module):
             self.check_ipmi_settings()
             self.popen = None
             self.main_proc.register_timer(self._update_ipmi, 20, instant=True)
+        else:
+            if hasattr(self.main_proc, "register_vector_receiver"):
+                self.log(
+                    "hm.track.ipmi is False, not tracking local IPMI",
+                    logging_tools.LOG_LEVEL_WARN
+                )
 
     def _update_ipmi(self):
         if self.it_command:
@@ -185,7 +193,7 @@ class _ipmi_sensor(object):
 
     def process(self, bgp):
         for line in bgp.read().split("\n"):
-            print line
+            print(line)
             pass
 
 

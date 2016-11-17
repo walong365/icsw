@@ -64,6 +64,7 @@ class BuildProcess(
         self.register_func("start_build", self._start_build)
         self.register_func("fetch_dyn_config", self._fetch_dyn_config)
         self.register_func("routing_fingerprint", self._routing_fingerprint)
+        special_commands.dynamic_checks.link(self)
 
     def loop_post(self):
         self.log("build {} process exiting".format(self.name))
@@ -203,11 +204,12 @@ class BuildProcess(
         for host_pk in gbc.host_pks:
             host = gbc.get_host(host_pk)
             dev_variables, var_info = gbc.get_vars(host)
+            # store
+            host.dev_variables = dev_variables
             hbc = None
             if MON_VAR_IP_NAME not in dev_variables:
                 self.log("No IP found for dyn reconfig of {}".format(unicode(host)), logging_tools.LOG_LEVEL_ERROR)
             else:
-
                 # get config names
                 conf_names = set(all_configs.get(host.full_name, []))
                 # cluster config names
@@ -227,6 +229,7 @@ class BuildProcess(
                     s_check = cur_gc["command"][conf_name]
                     if s_check.mccs_id:
                         if hbc is None:
+                            # init
                             hbc = HostBuildCache(host)
                             # set IP for updates
                             hbc.ip = dev_variables[MON_VAR_IP_NAME]

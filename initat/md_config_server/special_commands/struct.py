@@ -110,6 +110,20 @@ class DynamicCheckDict(object):
         self._class_list = []
         self._class_dict = {}
         self.import_errors = []
+        self.__log_cache = []
+        self.__process = None
+
+    def link(self, process):
+        self.__process = process
+        for what, level in self.__log_cache:
+            self.log(what, level)
+        self.__log_cache = []
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        if self.__process:
+            self.__process.log("[DCD] {}".format(what), log_level)
+        else:
+            self.__log_cache.append((what, log_level))
 
     def feed(self, key, obj):
         self._class_list.append(obj)
@@ -176,10 +190,16 @@ class DynamicCheckDict(object):
                     if cur_special.Meta.meta:
                         self.log("mode {} not supported for meta checks".format(mode), logging_tools.LOG_LEVEL_CRITICAL)
                     else:
-                        if hasattr(cur_special, "dynamic_update_calls"):
-                            rv.set_server_contact(cur_special)
-                        else:
-                            pass
+                        if cur_special.Meta.server_contact:
+                            if hasattr(cur_special, "dynamic_update_calls"):
+                                rv.set_server_contact(cur_special)
+                            else:
+                                self.log(
+                                    "specialcheck {} has no dynamic_update_calls() function".format(
+                                        mccs_name,
+                                    ),
+                                    logging_tools.LOG_LEVEL_ERROR
+                                )
             except:
                 exc_info = process_tools.exception_info()
                 rv.feed_error(

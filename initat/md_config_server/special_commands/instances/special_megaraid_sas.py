@@ -27,13 +27,14 @@ from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.host_monitoring.modules.raidcontrollers.all import AllRAIDCtrl
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_config_server.special_commands.base import SpecialBase
+from ..struct import DynamicCheckServer, DynamicCheckAction
 
 SHORT_OUTPUT_NAME = "MEGARAID_SAS_SHORT_OUTPUT"
 IGNORE_BBU_NAME = "MEGARAID_SAS_IGNORE_MISSING_BBU"
 IGNORE_KEYS_NAME = "MEGARAID_SAS_IGNORE_KEYS"
 
 
-class special_megaraid_sas(SpecialBase):
+class SpecialMegaraidSas(SpecialBase):
     class Meta:
         retries = 2
         server_contact = True
@@ -48,10 +49,10 @@ class special_megaraid_sas(SpecialBase):
             )
         description = "detailed checks for MegaRaid SAS controllers"
 
-    def RCClass(self):
-        return AllRAIDCtrl.ctrl_class("megaraid_sas")
+    def dynamic_update_calls(self):
+        yield DynamicCheckAction(DynamicCheckServer.collrelay, "megaraid_sas_status")
 
-    def to_hint(self, srv_reply):
+    def feed_result(self, dc_action, srv_reply):
         _short_output = self.host.dev_variables.get(SHORT_OUTPUT_NAME, 0)
         _ignore_missing_bbu = self.host.dev_variables.get(IGNORE_BBU_NAME, 0)
         _ignore_keys = self.host.dev_variables.get(IGNORE_KEYS_NAME, "N")
@@ -65,10 +66,13 @@ class special_megaraid_sas(SpecialBase):
         ctrl_dict = {}
         for res in srv_reply["result"]:
             ctrl_dict[int(res.tag.split("}")[1].split("_")[-1])] = srv_reply._interpret_el(res)
+        # import pprint
+        # pprint.pprint(ctrl_dict)
         _res = self.RCClass()._interpret(ctrl_dict, cur_ns)
         if len(_res):
-            self.remove_cache_entries()
-        return [self._transform_to_hint(entry) for entry in _res]
+            self.remove_hints()
+        self.store_hints([self._transform_to_hint(entry) for entry in _res])
+        yield None
 
     def _transform_to_hint(self, entry):
         key, check, info, _active = entry
@@ -81,12 +85,13 @@ class special_megaraid_sas(SpecialBase):
             is_active=_active,
         )
 
-    def _call(self):
+    def RCClass(self):
+        return AllRAIDCtrl.ctrl_class("megaraid_sas")
+
+    def call(self):
         # print self.host, self.s_check
         _passive_check_prefix = host_service_id_util.create_host_service_description(self.host.pk, self.parent_check, "")
-        hints = self.collrelay(
-            "megaraid_sas_status",
-        )
+        hints = self.hint_list
         if not hints:
             hints = [self._transform_to_hint(entry) for entry in self.RCClass()._dummy_hints()]
         sc_array = []

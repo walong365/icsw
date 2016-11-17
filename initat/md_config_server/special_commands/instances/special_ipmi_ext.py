@@ -27,7 +27,7 @@ from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
 
 
-class special_ipmi_ext(SpecialBase):
+class SpecialIpmiExt(SpecialBase):
     class Meta:
         command_line = "/bin/true"
         is_active = False
@@ -36,7 +36,7 @@ class special_ipmi_ext(SpecialBase):
         description = "queries the IPMI sensors of the IPMI interface directly (not via the target host)"
         identifier = "ipmi_passive_checks"
 
-    def _call(self):
+    def call(self):
         sc_array = []
         for ipmi_ext in monitoring_hint.all_enabled.filter(
             Q(device=self.host) & Q(m_type="ipmi")
