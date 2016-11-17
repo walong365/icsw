@@ -99,6 +99,7 @@ angular.module(
                 "device_list"
                 (new_list) ->
                     scope.struct.is_loading = true
+                    scope.struct.header = "#{scope.device_list.length} devices"
                     icswSimpleAjaxCall(
                         url: ICSW_URLS.DEVICE_DEVICE_LIST_INFO
                         data:

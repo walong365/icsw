@@ -101,7 +101,7 @@ class BuildControl(object):
 
     def handle_command(self, srv_com):
         _func_name = srv_com["*command"]
-        if _func_name in {"sync_http_users", "build_host_config", "fetch_dyn_config"}:
+        if _func_name in {"sync_http_users", "build_host_config", "fetch_dyn_config", "get_host_config"}:
             if self.__ready:
                 getattr(self, _func_name)(srv_com)
             else:
@@ -113,7 +113,10 @@ class BuildControl(object):
     def get_host_config(self, srv_com):
         # dummy call, should be build_host_config, name needed
         # to distinguish call in server.py
-        return self.build_host_config(srv_com)
+        if srv_com["*mode"] == "config":
+            return self.build_host_config(srv_com)
+        else:
+            return self.fetch_dyn_config(srv_com)
 
     def sync_http_users(self, *args, **kwargs):
         self.log("syncing http-users")
@@ -138,10 +141,15 @@ class BuildControl(object):
         # all builds are handled via this call
         dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
         if dev_pks:
-            dev_names = [cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=dev_pks)).select_related("domain_tree_node")]
+            dev_names = [
+                cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=dev_pks)).select_related("domain_tree_node")
+            ]
+            # check if only the config should be built
+            only_build = True if len(srv_com.xpath(".//device_list/device/@only_build")) else False
             self.log(
-                "starting single build with {}: {}".format(
+                "starting single build with {} ({}): {}".format(
                     logging_tools.get_plural("device", len(dev_names)),
+                    "only build config" if only_build else "build config and redistribute",
                     ", ".join(sorted(dev_names))
                 )
             )
@@ -161,7 +169,10 @@ class BuildControl(object):
         # how many processes to add
         _b_list = [self.__master_config.serialize()]
         if len(args):
-            _mode = BuildModes.some_master  # some_check
+            if kwargs.get("only_build", False):
+                _mode = BuildModes.some_master
+            else:
+                _mode = BuildModes.some_check
         else:
             _mode = BuildModes.all_master
         if _mode not in [BuildModes.some_check]:
@@ -204,6 +215,9 @@ class BuildControl(object):
             self.log("DynConfigProcess is already running, registering re-run")
             self.__dc_run_queue.append(srv_com)
         else:
+            dev_pks = [
+                int(_pk) for _pk in srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
+            ]
             _p_name = "DynConfig"
             self.__process.add_process(BuildProcess(_p_name), start=True)
             self.__process.send_to_process(
@@ -212,5 +226,6 @@ class BuildControl(object):
                 BuildModes.dyn_master,
                 self.__master_config.serialize(),
                 unicode(srv_com),
+                *dev_pks
             )
             self.__dc_running = True

@@ -66,10 +66,18 @@ class SpecialOvirtDomains(SpecialBase):
             info_dict = {key: 0 for key in VALID_STATES}
             info_dict["run_ids"] = []
             info_dict["run_names"] = []
+            # print("-" * 20)
+            # print(srv_reply.pretty_print())
+            # print("+" * 20)
             if "vms" in srv_reply:
                 for vm in srv_reply.xpath(".//ns:vms")[0]:
                     _xml = etree.fromstring(process_tools.decompress_struct(vm.text))
-                    _state = _xml.xpath(".//status/state/text()")[0]
+                    # print(etree.tostring(_xml, pretty_print=True))
+                    # try state paths
+                    _state = _xml.xpath(".//status/state/text()")
+                    if not len(_state):
+                        _state = _xml.xpath(".//status/text()")
+                    _state = _state[0]
                     if _state in VALID_STATES:
                         info_dict[_state] += 1
                     if _state == "up":

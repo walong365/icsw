@@ -177,6 +177,7 @@ class IPCClientHandler(threading_tools.PollerBase):
         self.__pending_messages[_msg_id] = dc_action
         srv_com = server_command.srv_command(command=dc_action.command, identity=_msg_id)
         _to_localhost = dc_action.kwargs.pop("connect_to_localhost", False)
+        # print("+++", _msg_id, id(dc_action), dc_action.special_instance.Meta.name)
         # destination
         _target_ip = "127.0.0.1" if _to_localhost else dc_action.hbc.ip
         srv_com["host"] = _target_ip
@@ -252,6 +253,7 @@ class IPCClientHandler(threading_tools.PollerBase):
     def feed_result(self, id_str, srv_reply):
         if id_str in self.__pending_messages:
             dc_action = self.__pending_messages[id_str]
+            # print("----", id_str, id(dc_action), dc_action.special_instance.Meta.name)
             for _action in dc_action.special_instance.feed_result(dc_action, srv_reply):
                 if _action:
                     self.call(_action.salt(dc_action.hbc, dc_action.special_instance))

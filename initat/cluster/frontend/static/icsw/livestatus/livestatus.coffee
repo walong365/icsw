@@ -68,35 +68,35 @@ angular.module(
                     "icswLivestatusFilterService": [{
                         "icswLivestatusLocationDisplay": []
                     }
-                        {
-                            "icswLivestatusMonCategoryFilter": [{
-                                "icswLivestatusMapDisplay": []
-                            }]
-                        }
-                        {
-                            "icswLivestatusFilterService": [{
-                                "icswLivestatusMonTabularDisplay": []
-                            }
-                                {
-                                    "icswLivestatusMonTabularDisplay": []
-                                }]
-                        }]
-                }
                     {
-                        "icswLivestatusFilterService": [{
-                            "icswLivestatusFullBurst": [{
-                                "icswLivestatusMonTabularDisplay": []
-                            }
-                                {
-                                    "icswLivestatusFullBurst": []
-                                }]
+                        "icswLivestatusMonCategoryFilter": [{
+                            "icswLivestatusMapDisplay": []
                         }]
                     }
                     {
                         "icswLivestatusFilterService": [{
-                            "icswLivestatusLocationDisplay": []
-                        }]
+                            "icswLivestatusMonTabularDisplay": []
+                        }
+                            {
+                                "icswLivestatusMonTabularDisplay": []
+                            }]
                     }]
+                }
+                {
+                    "icswLivestatusFilterService": [{
+                        "icswLivestatusFullBurst": [{
+                            "icswLivestatusMonTabularDisplay": []
+                        }
+                            {
+                                "icswLivestatusFullBurst": []
+                            }]
+                    }]
+                }
+                {
+                    "icswLivestatusFilterService": [{
+                        "icswLivestatusLocationDisplay": []
+                    }]
+                }]
             }]
         }
         "nettop": {

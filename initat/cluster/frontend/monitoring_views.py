@@ -188,15 +188,17 @@ class get_node_config(View):
         else:
             pk_list = request.POST.getlist("pks[]")
         srv_com = server_command.srv_command(command="get_host_config")
+        srv_com["mode"] = _post["mode"]
         srv_com["device_list"] = E.device_list(
             *[
                 E.device(
                     pk="{:d}".format(int(cur_pk)),
-                    mode=request.POST["mode"]
+                    only_build="1",
                 ) for cur_pk in pk_list
             ]
         )
         result = contact_server(request, icswServiceEnum.monitor_server, srv_com, timeout=30)
+        print("R")
         if result:
             node_results = result.xpath(".//config", smart_strings=False)
             if len(node_results):

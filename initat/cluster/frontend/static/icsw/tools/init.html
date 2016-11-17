@@ -4,3 +4,16 @@
         ng-class="{'glyphicon-chevron-down': flag, 'glyphicon-chevron-right': !flag}"
     ></i>
 </script>
+
+<script type="text/ng-template" id="icsw.device.list.info">
+    <span>
+        <button
+            ladda="struct.is_loading"
+            class="btn btn-warning ladda-button"
+            data-style="expand-right"
+            data-spinner-size="20"
+            ng-show="struct.is_loading"
+        >{{ struct.header }})</button>
+        <span ng-show="!struct.is_loading">{{ struct.header }}</span>
+    </span>
+</script>

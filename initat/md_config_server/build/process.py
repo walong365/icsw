@@ -162,6 +162,8 @@ class BuildProcess(
         self.__gen_config = MainConfig(self, args.pop(0))
         self.srv_com = server_command.srv_command(source=args.pop(0))
         self.log("received fetch_dyn_config")
+        self.single_build = True if len(args) > 0 else False
+        # print("*", self.single_build, args)
         self.router_obj = config_tools.RouterObject(self.log)
         build_cache = BuildCache(
             self.log,
@@ -182,16 +184,18 @@ class BuildProcess(
 
         gbc = build_cache
         gbc.background_job = _bgj
-        self.fetch_dyn_configs(gbc)
+        self.fetch_dyn_configs(gbc, args)
         _bgj.set_state(BackgroundJobState.done)
         self._exit_process()
 
-    def fetch_dyn_configs(self, gbc):
+    def fetch_dyn_configs(self, gbc, pk_list):
         start_time = time.time()
         cur_gc = self.__gen_config
         cur_gc.add_config(MonAllCommands(cur_gc))
         gbc.set_global_config(cur_gc, {}, False)
         ac_filter = Q(dynamic_checks=True) & Q(enabled=True) & Q(device_group__enabled=True)
+        if pk_list:
+            ac_filter &= Q(pk__in=pk_list)
         gbc.set_host_list(device.objects.exclude(Q(is_meta_device=True)).filter(
             ac_filter
         ).values_list(
@@ -1245,7 +1249,7 @@ class BuildProcess(
                                         "{}{}{}".format(
                                             _dev_name, gbc.join_char, _srv_name
                                         ).replace(",", " ") for _dev_name, _srv_name in dev_names
-                                        ]
+                                    ]
                                 ),
                             )
                         ],

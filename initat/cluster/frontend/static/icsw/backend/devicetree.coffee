@@ -1146,6 +1146,8 @@ angular.module(
                         ).then(
                             (result) =>
                                 all_reqs.feed_result(@enricher, result)
+                            (error) ->
+                                console.error "enrich error"
                         )
                 0
             )

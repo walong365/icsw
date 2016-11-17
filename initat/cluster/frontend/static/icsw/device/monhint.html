@@ -1,115 +1,129 @@
 <script type="text/ng-template" id="icsw.device.livestatus.monconfig">
     <h3 ng-show="struct.devices.length">
-        Monitoring Hints for {{ struct.devices.length }} devices
-        <span class="text-danger" ng-show="struct.fetching">Fetching MonitoringData from server</span>
-        <div class="btn-group btn-xs">
-            <button type="button" ladda="struct.fetching" class="btn btn-success btn-xs dropdown-toggle" data-spinner-size="12" data-toggle="dropdown">
-                reload config <span class="caret"></span>
-            </button>
-            <ul class="dropdown-menu">
-                <li ng-click="load_data('ALWAYS')"><a>cached (fast)</a></li>
-                <li ng-click="load_data('REFRESH')"><a>refresh (contact device if necessary)</a></li>
-            </ul>
-        </div>
+        Monitoring config and hints for
+        <icsw-device-list-info icsw-device-list="struct.devices"></icsw-device-list-info>
+
     </h3>
     <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from server ...</div>
-    <icsw-tools-ensure-device-selection dev-list="struct.devices"> <!-- don't need list-ready since it's handled in the page below -->
-        <uib-accordion close-others="no">
-            <div uib-accordion-group class="panel-default" is-open="struct.monconfig_open" ng-show="!struct.fetching">
-                <uib-accordion-heading>
-                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.monconfig_open, 'glyphicon-chevron-right': !struct.monconfig_open}"></i>
-                    Monitoring config, {{ struct.mc_tables.length }} tables shown
-                </uib-accordion-heading>
-                <uib-tabset>
-                    <uib-tab ng-repeat="table in struct.mc_tables" heading="{{ table.name }} ({{ table.entries.length }})">
-                        <h3>{{ table.entries.length }} entries for {{ table.short_name }}</h3>
-                        <table
-                            st-table="table.entries_displayed"
-                            st-safe-src="table.entries"
-                            class="table table-condensed table-hover table-striped"
-                            style="width:auto;"
-                        >
-                            <thead>
-                                <tr>
-                                    <td colspan="99">
-                                        <div
-                                            icsw-tools-pagination
-                                            st-items-by-page="10"
-                                            st-displayed-pages="11"
-                                            possible-items-by-page="10,20,50,100,200,500,1000">
-                                        </div>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <th colspan="99">
-                                        <div class="btn-group btn-group-xs">
-                                            <button
-                                                type="button"
-                                                ng-repeat="attr in table.attr_list"
-                                                class="btn btn-xs btn-default"
-                                                ng-click="table.toggle_column(attr)"
-                                                ng-class="table.columns_enabled[attr] && 'btn-success' || 'btn-default'"
-                                                title="{{ table.attr_dict[attr].long }}"
-                                                value="{{ table.attr_dict[attr].short }}"
-                                            >
-                                                {{ table.attr_dict[attr].short }}
-                                            </button>
-                                        </div>
-                                    </th>
-                                </tr>
-                                <tr>
-                                    <th
-                                        ng-repeat="attr in table.attr_list"
-                                        title="{{ table.attr_dict[attr].long }}"
-                                        ng-show="table.columns_enabled[attr]"
-                                        ng-click="table.toggle_order(attr)"
-                                    >
-                                        {{ table.attr_dict[attr].short }}
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr ng-repeat="entry in table.entries_displayed">
-                                    <td ng-repeat="attr in table.attr_list" ng-show="table.columns_enabled[attr]">
-                                        {{ entry[attr] }}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </uib-tab>
-                </uib-tabset>
-            </div>
-            <div uib-accordion-group class="panel-default" is-open="struct.monhint_open">
-                <uib-accordion-heading>
-                    <i class="glyphicon" ng-class="{'glyphicon-chevron-down': struct.monhint_open, 'glyphicon-chevron-right': !struct.monhint_open}"></i>
-                    Monitoring hint for {{ struct.devices.length }} devices
-                </uib-accordion-heading>
-                <table
-                    ng-show="struct.devices.length"
-                    class="table table-condensed table-hover"
-                    style="width:auto;"
-                >
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>Device</th>
-                            <th>Group</th>
-                            <th>Comment</th>
-                            <th>Info</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr icsw-monitoring-hint-device-row ng-repeat-start="device in struct.devices" ng-class="get_tr_class(device)"></tr>
-                        <tr ng-repeat-end ng-if="device.$$hints_expanded && device.monitoring_hint_set.length && !struct.fetching">
-                            <td colspan="9">
-                                <icsw-monitoring-hint-table icsw-device="device"></icsw-monitoring-hint-table>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </uib-accordion>
-    </icsw-tools-ensure-device-selection>
+    <uib-accordion close-others="no" ng-if="struct.devices.length">
+        <div uib-accordion-group class="panel-default" is-open="struct.monconfig_open" ng-show="!struct.fetching">
+            <uib-accordion-heading>
+                <icsw-tools-accordion-chevron icsw-flag="struct.monconfig_open"></icsw-tools-accordion-chevron>
+                Monitoring config, {{ struct.mc_tables.length }} tables shown,
+                <span class="text-danger" ng-show="struct.fetching_mon">Fetching MonitoringData from server</span>
+                <icsw-tools-button
+                    type="create"
+                    size="sm"
+                    ng-click="load_mon_data($event)"
+                    ng-show="!struct.fetching_mon"
+                ></icsw-tools-button>
+            </uib-accordion-heading>
+            <uib-tabset active="struct.active_table">
+                <uib-tab ng-repeat="table in struct.mc_tables" index="table.name">
+                    <uib-tab-heading>
+                        {{ table.name }} ({{ table.entries.length }})
+                    </uib-tab-heading>
+                    <h3>{{ table.entries.length }} entries for {{ table.short_name }}</h3>
+                    <table
+                        st-table="table.entries_displayed"
+                        st-safe-src="table.entries"
+                        class="table table-condensed table-hover table-striped"
+                        style="width:auto;"
+                    >
+                        <thead>
+                            <tr>
+                                <td colspan="99">
+                                    <div
+                                        icsw-tools-pagination
+                                        st-items-by-page="10"
+                                        st-displayed-pages="11"
+                                        possible-items-by-page="10,20,50,100,200,500,1000">
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th colspan="99">
+                                    <div class="btn-group btn-group-xs">
+                                        <button
+                                            type="button"
+                                            ng-repeat="attr in table.attr_list"
+                                            class="btn btn-xs btn-default"
+                                            ng-click="table.toggle_column(attr)"
+                                            ng-class="table.columns_enabled[attr] && 'btn-success' || 'btn-default'"
+                                            title="{{ table.attr_dict[attr].long }}"
+                                            value="{{ table.attr_dict[attr].short }}"
+                                        >
+                                            {{ table.attr_dict[attr].short }}
+                                        </button>
+                                    </div>
+                                </th>
+                            </tr>
+                            <tr>
+                                <th
+                                    ng-repeat="attr in table.attr_list"
+                                    title="{{ table.attr_dict[attr].long }}"
+                                    ng-show="table.columns_enabled[attr]"
+                                    ng-click="table.toggle_order(attr)"
+                                >
+                                    {{ table.attr_dict[attr].short }}
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr ng-repeat="entry in table.entries_displayed">
+                                <td ng-repeat="attr in table.attr_list" ng-show="table.columns_enabled[attr]">
+                                    {{ entry[attr] }}
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </uib-tab>
+            </uib-tabset>
+        </div>
+        <div uib-accordion-group class="panel-default" is-open="struct.monhint_open">
+            <uib-accordion-heading>
+                <icsw-tools-accordion-chevron icsw-flag="struct.monhint_open"></icsw-tools-accordion-chevron>
+                Monitoring hint
+                <span class="text-danger" ng-show="struct.fetching_hint">Fetching Monitoringhints from server</span>
+                <icsw-tools-button
+                    type="reload"
+                    size="sm"
+                    ng-click="load_hint_data($event)"
+                    ng-show="!struct.fetching_hint"
+                ></icsw-tools-button>
+                <icsw-tools-button
+                    type="create"
+                    size="sm"
+                    ng-click="trigger_fetch_run($event)"
+                    ng-show="!struct.trigger_fetch"
+                ></icsw-tools-button>
+            </uib-accordion-heading>
+            <table
+                ng-show="struct.devices.length"
+                class="table table-condensed table-hover"
+                style="width:auto;"
+            >
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>Device</th>
+                        <th>Group</th>
+                        <th>Comment</th>
+                        <th>#hints</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr icsw-monitoring-hint-device-row ng-repeat-start="device in struct.devices" ng-class="get_tr_class(device)"></tr>
+                    <tr ng-repeat-end ng-if="device.$$hints_expanded && device.monitoring_hint_set.length && !struct.fetching">
+                        <td colspan="9">
+                            <icsw-monitoring-hint-table icsw-device="device"></icsw-monitoring-hint-table>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </uib-accordion>
 </script>
 
 <script type="text/ng-template" id="icsw.monitoring.hint.device.row">
@@ -117,11 +131,11 @@
         <button class="btn btn-primary btn-xs" ng-click="expand_vt(device)" ng-show="device.monitoring_hint_set.length">
             <span ng_class="get_expand_class(device)"/>
         </button>
-    <td/>
+    </td>
     <td>{{ device.full_name }}</td>
     <td>{{ device.device_group_name }}</td>
     <td>{{ device.comment }}</td>
-    <td>hints : {{ device.monitoring_hint_set.length }}</td>
+    <td class="text-center">{{ device.monitoring_hint_set.length }}</td>
     <td>
         <icsw-tools-button type="delete" size="xs" value="delete selected hints" ng-click="delete_multiple_hints($event, device)"></icsw-tools-button>
     </td>

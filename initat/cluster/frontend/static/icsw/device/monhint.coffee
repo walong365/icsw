@@ -19,7 +19,7 @@
 #
 
 angular.module(
-    "icsw.device.monconfig",
+    "icsw.device.monhint",
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular"
     ]
@@ -83,7 +83,11 @@ angular.module(
         # loading flag (devices)
         loading: false
         # loading flag (monconfig)
-        fetching: false
+        fetching_mon: false
+        # loading flag (hints
+        fetching_hint: false
+        # trigger fetch run
+        trigger_fetch: false
         # devices
         devices: []
         # device tree
@@ -94,32 +98,65 @@ angular.module(
         monhint_open: true
         # monconfig tables
         mc_tables: []
+        # active table
+        active_table: 0
     }
 
-    fetch_mon_config = (mode) ->
-        $scope.struct.fetching = true
+    fetch_mon_config = () ->
+        $scope.struct.fetching_mon = true
+        $scope.struct.mc_tables.length = 0
         icswSimpleAjaxCall(
             url: ICSW_URLS.MON_GET_NODE_CONFIG
             data: {
                 pk_list: angular.toJson((dev.idx for dev in $scope.struct.devices))
-                mode: mode
-            },
+                mode: "config"
+            }
         ).then(
             (xml) ->
-                $scope.struct.mc_tables.length = 0
                 $(xml).find("config > *").each (idx, node) =>
                     new_table = new icswMonConfigTable($(node))
                     $scope.struct.mc_tables.push(new_table)
                 # now (re)-enrich the devices
-                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
-                $scope.struct.device_tree.enrich_devices(hs, ["monitoring_hint_info"], force=true).then(
-                    (done) ->
-                        console.log "done"
-                        $scope.struct.fetching = false
+                # hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                $scope.struct.fetching_mon = false
+                $timeout(
+                    () ->
+                        if $scope.struct.mc_tables.length
+                            $scope.struct.active_table = $scope.struct.mc_tables[0].name
+                        else
+                            $scope.struct.active_table = ""
+                    0
                 )
+                # $scope.struct.device_tree.enrich_devices(hs, ["monitoring_hint_info"], force=true).then(
+                #    (done) ->
+                #        # console.log "done"
+                # )
             (error) ->
                 $scope.struct.mc_tables.length = 0
-                $scope.struct.fetching = false
+                $scope.struct.fetching_mon = false
+        )
+
+    trigger_fetch_run = () ->
+        $scope.struct.trigger_fetch = true
+        icswSimpleAjaxCall(
+            url: ICSW_URLS.MON_GET_NODE_CONFIG
+            data: {
+                pk_list: angular.toJson((dev.idx for dev in $scope.struct.devices))
+                mode: "fetch"
+            }
+        ).then(
+            (done) ->
+                $scope.struct.trigger_fetch = false
+            (error) ->
+                $scope.struct.trigger_fetch = false
+        )
+
+    fetch_hint_config = () ->
+        $scope.struct.fetching_hint = true
+        hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+        $scope.struct.device_tree.enrich_devices(hs, ["monitoring_hint_info"], force=true).then(
+            (done) ->
+                $scope.struct.fetching_hint = false
         )
 
     $scope.new_devsel = (_dev_sel) ->
@@ -140,12 +177,24 @@ angular.module(
                             _dev.$$hints_expanded = false
                 $scope.struct.device_tree = data[0]
                 $scope.struct.loading = false
-                fetch_mon_config("ALWAYS")
+                fetch_mon_config()
+                fetch_hint_config()
         )
 
+    $scope.load_mon_data = ($event) ->
+        fetch_mon_config()
+        $event.preventDefault()
+        $event.stopPropagation()
 
-    $scope.load_data = (mode) ->
-        fetch_mon_config(mode)
+    $scope.load_hint_data = ($event) ->
+        fetch_hint_config()
+        $event.preventDefault()
+        $event.stopPropagation()
+
+    $scope.trigger_fetch_run = ($event) ->
+        trigger_fetch_run()
+        $event.preventDefault()
+        $event.stopPropagation()
 
     $scope.get_tr_class = (obj) ->
         if obj.is_meta_device
@@ -166,7 +215,9 @@ angular.module(
                         Restangular.restangularizeElement(null, hint, ICSW_URLS.REST_MONITORING_HINT_DETAIL.slice(1).slice(0, -2)) for hint in _to_del
                     )
                     $q.all(
-                        (hint.remove() for hint in _to_del)
+                        (
+                            hint.remove() for hint in _to_del
+                        )
                     ).then(
                         (done) ->
                             _keys = (hint.key for hint in _to_del)

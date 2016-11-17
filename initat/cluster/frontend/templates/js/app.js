@@ -108,7 +108,7 @@ icsw_app = angular.module(
         "icsw.device.config",
         "icsw.device.connection",
         "icsw.device.category",
-        "icsw.device.monconfig",
+        "icsw.device.monhint",
         "icsw.device.location",
         "icsw.device.status_history",
         "icsw.device.partition",
