@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (c) 2009-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (c) 2009-2016 Andreas Lang-Nevyjel, init.at
 #
 # this file is part of python-modules-base
 #
@@ -28,18 +28,9 @@ import pickle
 import zmq
 
 
-def zmq_socket_name(sock_name, **kwargs):
-    if not sock_name.endswith("_zmq"):
-        sock_name = "{}_zmq".format(sock_name)
-    if kwargs.get("check_ipc_prefix", False):
-        if not sock_name.startswith("ipc://"):
-            sock_name = "ipc://{}".format(sock_name)
-    return sock_name
-
-
-class io_stream(object):
+class icswIOStream(object):
     def __init__(self, sock_name="/var/lib/logging_server/py_err_zmq", **kwargs):
-        self.__sock_name = zmq_socket_name(sock_name, check_ipc_prefix=True)
+        self.__sock_name = self.zmq_socket_name(sock_name, check_ipc_prefix=True)
         self.__buffered = kwargs.get("buffered", False)
         # late init of context and socket to reduce threads
         self.__zmq_context = kwargs.get("zmq_context", None)
@@ -48,13 +39,22 @@ class io_stream(object):
         if kwargs.get("register_atexit", True):
             atexit.register(self.close)
 
+    @staticmethod
+    def zmq_socket_name(sock_name, **kwargs):
+        if not sock_name.endswith("_zmq"):
+            sock_name = "{}_zmq".format(sock_name)
+        if kwargs.get("check_ipc_prefix", False):
+            if not sock_name.startswith("ipc://"):
+                sock_name = "ipc://{}".format(sock_name)
+        return sock_name
+
     def open(self):
         if self.__zmq_sock is None:
             if self.__zmq_context is None:
                 self.__zmq_context = zmq.Context()
-            self.__zmq_sock = self.__zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
+            self.__zmq_sock = self.__zmq_context.socket(zmq.PUSH)
             self.__zmq_sock.connect(self.__sock_name)
-            self.__zmq_sock.setsockopt(zmq.LINGER, 60)  # @UndefinedVariable
+            self.__zmq_sock.setsockopt(zmq.LINGER, 60)
 
     @property
     def stream_target(self):
@@ -81,7 +81,9 @@ class io_stream(object):
         if os.path.isdir("/proc/{:d}".format(pid)):
             try:
                 stat_lines = [
-                    (entry.split() + ["", ""])[0:2] for entry in file("/proc/{:d}/status".format(pid), "r").read().split("\n")
+                    (
+                        entry.split() + ["", ""]
+                    )[0:2] for entry in file("/proc/{:d}/status".format(pid), "r").read().split("\n")
                 ]
             except:
                 pass
@@ -99,7 +101,7 @@ class io_stream(object):
     def fileno(self):
         # dangerous, do not use
         self.open()
-        return self.__zmq_sock.getsockopt(zmq.FD)  # @UndefinedVariable
+        return self.__zmq_sock.getsockopt(zmq.FD)
 
     def close(self):
         if self.__zmq_sock:

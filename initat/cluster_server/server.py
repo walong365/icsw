@@ -40,7 +40,7 @@ from .config import global_config
 from .license_checker import LicenseChecker
 
 
-class ServerProcess(server_mixins.ICSWBasePool, ServerBackgroundNotifyMixin):
+class ServerProcess(server_mixins.ICSWBasePool, server_mixins.SendToRemoteServerMixin, ServerBackgroundNotifyMixin):
     def __init__(self, options):
         threading_tools.process_pool.__init__(self, "main", zmq=True)
         long_host_name, mach_name = process_tools.get_fqdn()

@@ -42,8 +42,8 @@ from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 
 import initat.cluster.backbone.models
-from initat.cluster.backbone.models import device_variable, category, \
-    category_tree, location_gfx, DeleteRequest, device_mon_location
+from initat.cluster.backbone.models import category, category_tree, location_gfx, \
+    DeleteRequest, device_mon_location
 from initat.cluster.backbone.models.functions import can_delete_obj, get_related_models
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.server_enums import icswServiceEnum
@@ -53,35 +53,7 @@ from initat.tools import logging_tools, process_tools, server_command
 
 logger = logging.getLogger("cluster.base")
 
-HIDDEN_FIELDS = set(["password", ])
-
-
-class get_gauge_info(View):
-    @method_decorator(xml_wrapper)
-    def post(self, request):
-        gauge_info = E.gauge_info()
-        for gauge_dv in device_variable.objects.filter(Q(name="_SYS_GAUGE_") & Q(is_public=False)).order_by("description"):
-            gauge_info.append(
-                E.gauge_element(
-                    gauge_dv.description,
-                    value="{:d}".format(gauge_dv.val_int),
-                    idx="{:d}".format(gauge_dv.pk),
-                )
-            )
-        # for testing
-        # gauge_info.append(E.gauge_element("test", value="40", idx="50"))
-        request.xml_response["response"] = gauge_info
-
-
-# class DeviceLocation(permission_required_mixin, View):
-#    all_required_permissions = ["backbone.user.modify_category_tree"]
-#    @method_decorator(login_required)
-#    def get(self, request):
-#        return render_me(
-#            request,
-#            "device_location.html",
-#            {}
-#        )()
+HIDDEN_FIELDS = {"password"}
 
 
 class prune_category_tree(permission_required_mixin, View):
@@ -501,3 +473,17 @@ class CategoryReferences(ListAPIView):
             ):
                 contents.append((rel.name, cat_id, remote_id))
         return Response(contents)
+
+from channels import Group
+from django.views.decorators.csrf import csrf_exempt
+import json
+
+@csrf_exempt
+def propagate_channel_message(request):
+    data = json.loads(request.body)
+
+    Group(data["group"]).send({
+        "text": json.dumps(data["data"])
+    })
+
+    return HttpResponse("ok")

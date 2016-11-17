@@ -242,11 +242,11 @@ angular.module(
                     {}
                     button(
                         {
-                        type: "button"
-                        className: "ova-statusbutton cursorpointer btn btn-xs btn-default"
-                        onClick: (event) ->
-                            $state.go("main.syslicenseoverview")
-                        title: "Ova usage counter"
+                            type: "button"
+                            className: "ova-statusbutton cursorpointer btn btn-xs btn-default"
+                            onClick: (event) ->
+                                $state.go("main.syslicenseoverview")
+                            title: "Ova usage counter (#{@struct.ocs.system_cradle.available} available, #{@struct.ocs.system_cradle.installed} installed)"
                         }
                         table(
                             {
@@ -258,21 +258,21 @@ angular.module(
                                     {}
                                     td(
                                         {
-                                        rowSpan: 2
+                                            rowSpan: 2
                                         }
                                         img(
                                             {
-                                            key: "ova"
-                                            src: "#{ICSW_URLS.STATIC_URL}/egg_#{@struct.ocs.status_class}.svg"
-                                            height: "30"
-                                            className: "pull-left"
-                                            style: { marginRight: 5}
+                                                key: "ova"
+                                                src: "#{ICSW_URLS.STATIC_URL}/egg_#{@struct.ocs.status_class}.svg"
+                                                height: "30"
+                                                className: "pull-left"
+                                                style: { marginRight: 5}
                                             }
                                         )
                                     )
                                     td(
                                         {
-                                        className: "text-right"
+                                            className: "text-right"
                                         }
                                         @struct.ocs.system_cradle.available
                                     )
@@ -281,11 +281,11 @@ angular.module(
                                     {}
                                     td(
                                         {
-                                        className: "text-right"
-                                        style: { borderTop: "1px solid #666666" }
+                                            className: "text-right"
+                                            style: { borderTop: "1px solid #666666" }
                                         }
                                         @struct.ocs.system_cradle.installed
-                                        )
+                                    )
                                 )
                             )
                         )
@@ -296,18 +296,18 @@ angular.module(
                     {}
                     a(
                         {
-                        style: { paddingBottom: 0 }
-                        className: "ovabutton-na"
+                            style: { paddingBottom: 0 }
+                            className: "ovabutton-na"
                         }
                         img(
                             {
-                            key: "ova"
-                            src: "#{ICSW_URLS.STATIC_URL}/egg.svg"
-                            height: "25"
-                            className: "pull-left"
-                            style: {
-                                marginRight: 5
-                                marginTop: -5
+                                key: "ova"
+                                src: "#{ICSW_URLS.STATIC_URL}/egg.svg"
+                                height: "25"
+                                className: "pull-left"
+                                style: {
+                                    marginRight: 5
+                                    marginTop: -5
                                 }
                             }
                         )

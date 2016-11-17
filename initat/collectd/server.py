@@ -20,27 +20,32 @@
 #
 """ collectd, server part """
 
+from __future__ import print_function, unicode_literals
+
+import datetime
 import os
 import re
 import socket
 import time
-import zmq
-import pytz
-import datetime
 
+import pytz
+import zmq
 from django.conf import settings
 from django.db.models import Q
+from initat.tools import config_tools, configfile, logging_tools, process_tools, \
+    server_command, server_mixins, threading_tools, uuid_tools, net_tools
 from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.var_cache import VarCache
-from initat.cluster.backbone.models import device, snmp_scheme, net_ip
+from initat.cluster.backbone.models import DeviceFlagsAndSettings
+from initat.cluster.backbone.models import device, snmp_scheme
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.cluster.backbone.server_enums import icswServiceEnum
+from initat.cluster.backbone.var_cache import VarCache
+from initat.discovery_server.discovery import GetRouteToDevicesMixin
+from initat.icsw.service.instance import InstanceXML
 from initat.snmp.process import SNMPProcessContainer
-from initat.tools import config_tools, configfile, logging_tools, process_tools, \
-    server_command, server_mixins, threading_tools, uuid_tools, net_tools
 from .aggregate import aggregate_process
 from .background import SNMPJob, BackgroundJob, IPMIBuilder
 from .collectd_struct import CollectdHostInfo, ext_com, HostMatcher, FileCreator
@@ -49,10 +54,6 @@ from .dbsync import SyncProcess
 from .resize import resize_process
 from .rsync import RSyncMixin
 from .sensor_threshold import ThresholdContainer
-
-from initat.discovery_server.discovery import GetRouteToDevicesMixin
-from initat.icsw.service.instance import InstanceXML
-from initat.cluster.backbone.models import config, DeviceFlagsAndSettings, mon_check_command, MachineVector, AssetBatch
 
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
@@ -72,7 +73,7 @@ class server_process(GetRouteToDevicesMixin, server_mixins.ICSWBasePool, RSyncMi
             ]
         )
         # close connection (daemonizing)
-        db_tools.close_connection()
+        # db_tools.close_connection()
         self.CC.read_config_from_db(
             [
                 (
@@ -125,7 +126,6 @@ class server_process(GetRouteToDevicesMixin, server_mixins.ICSWBasePool, RSyncMi
         self.fc = FileCreator(self.log)
         self.__last_sent = {}
         self.__snmp_running = True
-        self._init_snmp()
         self._init_perfdata()
         self._init_vars()
         self._init_hosts()
@@ -138,19 +138,25 @@ class server_process(GetRouteToDevicesMixin, server_mixins.ICSWBasePool, RSyncMi
         self.register_timer(self._check_background, 2, instant=True)
         self.__cached_stats, self.__cached_time = (None, time.time())
         self.register_timer(self._check_cached_stats, 30, first_timeout=5)
+        db_tools.close_connection()
         self.log("starting processes")
+        self._init_snmp()
         # stop resize-process at the end
         self.add_process(resize_process("resize", priority=20), start=True)
         self.add_process(aggregate_process("aggregate"), start=True)
         self.add_process(SyncProcess("dbsync"), start=True)
-        db_tools.close_connection()
         # self.init_notify_framework(global_config)
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
 
     def _init_perfdata(self):
         from initat.collectd.collectd_types import IMPORT_ERRORS, ALL_PERFDATA
         if IMPORT_ERRORS:
-            self.log("errors while importing perfdata structures: {:d}".format(len(IMPORT_ERRORS)), logging_tools.LOG_LEVEL_ERROR)
+            self.log(
+                "errors while importing perfdata structures: {:d}".format(
+                    len(IMPORT_ERRORS)
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             for _num, _line in enumerate(IMPORT_ERRORS):
                 self.log("    {}".format(_line), logging_tools.LOG_LEVEL_ERROR)
         self.log("valid perfdata structures: {:d}".format(len(ALL_PERFDATA.keys())))
@@ -1133,4 +1139,3 @@ class server_process(GetRouteToDevicesMixin, server_mixins.ICSWBasePool, RSyncMi
             srv_com.set_result(0)
 
         return srv_com
-

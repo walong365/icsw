@@ -37,7 +37,7 @@ def main():
     print("Sending '{}' to {} (repeat: {:d})".format(s_str, opts.target, opts.repeat))
     _ctx = zmq.Context()
     for _rep in xrange(opts.repeat):
-        err_h = io_stream_helper.io_stream(opts.target, zmq_context=_ctx)
+        err_h = io_stream_helper.icswIOStream(opts.target, zmq_context=_ctx)
         err_h.write(s_str)
         err_h.close()
     _ctx.term()

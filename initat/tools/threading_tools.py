@@ -519,6 +519,10 @@ class PollerBase(object):
     # def get_num_po_waiting(self):
     #    return self.__waiting
     def _handle_select_list(self, in_list):
+        if hasattr("self", "_db_debug"):
+            _db_debug = self._db_debug
+        else:
+            _db_debug = None
         # import select
         # print "**", in_list, zmq.POLLIN, zmq.POLLOUT, select.POLLIN, select.POLLOUT
         # self.__waiting = len(in_list)
@@ -528,17 +532,19 @@ class PollerBase(object):
             if sock in self._socket_lut:
                 sock = self._socket_lut[sock]
             if sock in self.poller_handler:
-                for r_type in {zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR}:  # @UndefinedVariable
+                for r_type in {zmq.POLLIN, zmq.POLLOUT, zmq.POLLERR}:
                     if c_type & r_type:
                         # the socket could vanish
                         if r_type in self.poller_handler.get(sock, []):
                             try:
-                                self._db_debug.start_call("socket")
+                                if _db_debug:
+                                    _db_debug.start_call("socket")
                                 if self.poller_kwargs[sock][r_type].get("ext_call"):
                                     self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock), **self.poller_kwargs[sock][r_type])
                                 else:
                                     self.poller_handler[sock][r_type](self._socket_lut.get(sock, sock))
-                                self._db_debug.end_call()
+                                if _db_debug:
+                                    _db_debug.end_call()
                             except:
                                 exc_info = process_tools.exception_info()
                                 self.log(
@@ -565,9 +571,9 @@ class PollerBase(object):
                                 "polled event {:d} ({}) not found for socket '{}' (fd_info: {}{})".format(
                                     r_type,
                                     {
-                                        zmq.POLLIN: "POLLIN",  # @UndefinedVariable
-                                        zmq.POLLOUT: "POLLOUT",  # @UndefinedVariable
-                                        zmq.POLLERR: "POLLERR",  # @UndefinedVariable
+                                        zmq.POLLIN: "POLLIN",
+                                        zmq.POLLOUT: "POLLOUT",
+                                        zmq.POLLERR: "POLLERR",
                                     }[r_type],
                                     str(sock),
                                     _fd_info,
@@ -582,7 +588,7 @@ class PollerBase(object):
                 time.sleep(0.5)
 
 
-class process_base(object):
+class icswProcessBase(object):
     def set_stack_size(self, s_size):
         try:
             threading.stack_size(s_size)
@@ -678,7 +684,7 @@ class ExceptionHandlingMixin(object):
                     )
             out_lines.append(except_info)
             # write to logging-server
-            err_h = io_stream_helper.io_stream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
+            err_h = io_stream_helper.icswIOStream("/var/lib/logging-server/py_err_zmq", zmq_context=self.zmq_context)
             err_h.write("\n".join(out_lines))
             err_h.close()
             self.log(
@@ -689,7 +695,7 @@ class ExceptionHandlingMixin(object):
         return _handled
 
 
-class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, ExceptionHandlingMixin, ICSWAutoInit):
+class process_obj(multiprocessing.Process, TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixin, ICSWAutoInit):
     def __init__(self, name, **kwargs):
         # early init of name
         self._name = name
@@ -728,6 +734,8 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
         # init stdout / stderr targets
         self.stdout_target = None
         self.stderr_target = None
+        # internal log cache
+        self.__log_cache = []
 
     @property
     def global_config(self):
@@ -778,7 +786,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
         while True:
             _iter += 1
             try:
-                self.__com_socket.send_unicode(target_process, zmq.SNDMORE)  # @UndefinedVariable
+                self.__com_socket.send_unicode(target_process, zmq.SNDMORE)
                 self.__com_socket.send_pyobj(
                     {
                         "pid": self.pid,
@@ -789,13 +797,17 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
                     }
                 )
             except zmq.error.ZMQError:
-                logging_tools.my_syslog("error sending to 'main' ({:d}, iter {:d})".format(os.getpid(), _iter))
+                self.__log_cache.append(
+                    ("error sending to 'main' ({:d}, iter {:d})".format(os.getpid(), _iter), logging_tools.LOG_LEVEL_ERROR)
+                )
                 if _iter > 10:
                     raise
                 time.sleep(0.1)
             else:
                 if _iter > 1:
-                    logging_tools.my_syslog("sent to 'main' ({:d} after {:d} iterations)".format(os.getpid(), _iter))
+                    self.__log_cache.append(
+                        ("sent to 'main' ({:d} after {:d} iterations)".format(os.getpid(), _iter), logging_tools.LOG_LEVEL_WARN)
+                    )
                 _debug("sent pool message {}".format(str(args)))
                 break
 
@@ -932,14 +944,15 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
         # redirect stdout / stderr ?
         if self.stdout_target:
             self.orig_stdout = sys.stdout
-            sys.stdout = io_stream_helper.io_stream(self.stdout_target, zmq_context=self.zmq_context, register_atexit=False)
+            sys.stdout = io_stream_helper.icswIOStream(self.stdout_target, zmq_context=self.zmq_context, register_atexit=False)
         if self.stderr_target:
             self.orig_stderr = sys.stderr
-            sys.stderr = io_stream_helper.io_stream(self.stderr_target, zmq_context=self.zmq_context, register_atexit=False)
+            sys.stderr = io_stream_helper.icswIOStream(self.stderr_target, zmq_context=self.zmq_context, register_atexit=False)
         # call process_init (set pid and stuff)
         self.process_init()
         # now we should have a vaild log command
         self.set_stack_size(self.__stack_size)
+        self.flush_log_cache()
         self.show_exception_handlers()
         self.process_running()
         self.loop_start()
@@ -957,6 +970,12 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
 
     def loop_post(self):
         pass
+
+    def flush_log_cache(self):
+        if self.__log_cache:
+            for what, level in self.__log_cache:
+                self.log(what, level)
+        self.__log_cache = []
 
     def zmq_finish(self):
         if self.stdout_target:
@@ -1005,7 +1024,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
                 r_list = [(src_process, cur_mes)]
                 while True:
                     try:
-                        src_process = zmq_socket.recv_unicode(zmq.NOBLOCK)  # @UndefinedVariable
+                        src_process = zmq_socket.recv_unicode(zmq.NOBLOCK)
                     except:
                         break
                     else:
@@ -1072,7 +1091,7 @@ class process_obj(multiprocessing.Process, TimerBase, PollerBase, process_base, 
                     raise
 
 
-class process_pool(TimerBase, PollerBase, process_base, ExceptionHandlingMixin, ICSWAutoInit):
+class process_pool(TimerBase, PollerBase, icswProcessBase, ExceptionHandlingMixin, ICSWAutoInit):
     def __init__(self, name, **kwargs):
         threading.currentThread().setName(kwargs.get("name", "main"))
         self.name = name
@@ -1256,9 +1275,9 @@ class process_pool(TimerBase, PollerBase, process_base, ExceptionHandlingMixin, 
             for key in [sub_key for sub_key in sorted(kwargs.keys()) if sub_key not in ["start"]]:
                 self.log("setting attribute '{}' for {}".format(key, t_obj.getName()))
                 setattr(t_obj, key, kwargs[key])
-            if isinstance(sys.stdout, io_stream_helper.io_stream):
+            if isinstance(sys.stdout, io_stream_helper.icswIOStream):
                 setattr(t_obj, "stdout_target", sys.stdout.stream_target)
-            if isinstance(sys.stderr, io_stream_helper.io_stream):
+            if isinstance(sys.stderr, io_stream_helper.icswIOStream):
                 setattr(t_obj, "stderr_target", sys.stderr.stream_target)
             # copy debug_zmq flag to child process
             t_obj.debug_zmq = self.debug_zmq
@@ -1272,7 +1291,7 @@ class process_pool(TimerBase, PollerBase, process_base, ExceptionHandlingMixin, 
         sent = False
         if self._flush_process_buffers(t_process):
             try:
-                self.__com_socket.send_unicode(t_process, zmq.SNDMORE)  # @UndefinedVariable
+                self.__com_socket.send_unicode(t_process, zmq.SNDMORE)
                 self.__com_socket.send_pyobj(
                     {
                         "pid": self.pid,
@@ -1297,7 +1316,7 @@ class process_pool(TimerBase, PollerBase, process_base, ExceptionHandlingMixin, 
             while send_list:
                 b_m_type, b_args, b_kwargs = send_list[0]
                 try:
-                    self.__com_socket.send_unicode(t_process, zmq.SNDMORE)  # @UndefinedVariable
+                    self.__com_socket.send_unicode(t_process, zmq.SNDMORE)
                     self.__com_socket.send_pyobj(
                         {
                             "pid": self.pid,
@@ -1484,7 +1503,7 @@ class process_pool(TimerBase, PollerBase, process_base, ExceptionHandlingMixin, 
                 self.log("SRM: received message {}".format(mes))
 
     def _tp_message_received(self, zmq_socket):
-        src_process = zmq_socket.recv_unicode(zmq.SNDMORE)  # @UndefinedVariable
+        src_process = zmq_socket.recv_unicode(zmq.SNDMORE)
         mes_parts = zmq_socket.recv_pyobj()
         if mes_parts["target"] != "main":
             # redirect

@@ -146,7 +146,7 @@ class srv_command(object):
         self.__builder = ElementMaker(namespace=XML_NS)
         if "source" in kwargs:
             if isinstance(kwargs["source"], basestring):
-                self.__tree = etree.fromstring(kwargs["source"])  # @UndefinedVariable
+                self.__tree = etree.fromstring(kwargs["source"])
             else:
                 self.__tree = kwargs["source"]
         else:
@@ -322,7 +322,7 @@ class srv_command(object):
             cur_element = self._create_element(key)
         else:
             cur_element = self.__tree
-        if etree.iselement(value):  # @UndefinedVariable
+        if etree.iselement(value):
             cur_element.append(value)
         else:
             self._element(value, cur_element)
@@ -380,7 +380,7 @@ class srv_command(object):
             for sub_value in value:
                 sub_el = self._element(sub_value)
                 cur_element.append(sub_el)
-        elif etree.iselement(value):  # @UndefinedVariable
+        elif etree.iselement(value):
             cur_element = value
         else:
             raise ValueError("_element: unknown value type '{}'".format(type(value)))
@@ -488,13 +488,13 @@ class srv_command(object):
             return int(_source[0].attrib.get("sendcounter", 0))
 
     def pretty_print(self):
-        return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)  # @UndefinedVariable
+        return etree.tostring(self.__tree, encoding=unicode, pretty_print=True)
 
     def __unicode__(self):
-        return etree.tostring(self.__tree, encoding=unicode)  # @UndefinedVariable
+        return etree.tostring(self.__tree, encoding=unicode)
 
     def tostring(self, **kwargs):
-        return etree.tostring(self.__tree, **kwargs)  # @UndefinedVariable
+        return etree.tostring(self.__tree, **kwargs)
 
     def get_log_tuple(self, swap=False, map_to_log_level=True):
         # returns the reply / state attribute, mapped to logging_tool levels
@@ -518,4 +518,4 @@ class srv_command(object):
         # print "del", srv_command.srvc_open
 
     def __len__(self):
-        return len(etree.tostring(self.tree))  # @UndefinedVariable
+        return len(etree.tostring(self.tree))

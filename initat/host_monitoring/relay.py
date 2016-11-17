@@ -271,7 +271,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             self.log("cannot send to local syncer: {}".format(process_tools.get_except_info()), logging_tools.LOG_LEVEL_ERROR)
 
     def send_result(self, src_id, ret_str):
-        self.sender_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
+        self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
         self.sender_socket.send_unicode(ret_str)
 
     def _init_ipc_sockets(self):
@@ -287,8 +287,8 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         self.__nhm_connections = set()
         # also used in md-sync-server/server, ToDo: Refactor
         sock_list = [
-            ("ipc", "receiver", zmq.PULL, 2),  # @UndefinedVariable
-            ("ipc", "sender", zmq.PUB, 1024),  # @UndefinedVariable
+            ("ipc", "receiver", zmq.PULL, 2),
+            ("ipc", "sender", zmq.PUB, 1024),
         ]
         [setattr(self, "{}_socket".format(short_sock_name), None) for _sock_proto, short_sock_name, _a0, _b0 in sock_list]
         for _sock_proto, short_sock_name, sock_type, hwm_size in sock_list:
@@ -450,7 +450,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
 
     def _recv_command(self, zmq_sock, src):
         data = zmq_sock.recv()
-        if zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
+        if zmq_sock.getsockopt(zmq.RCVMORE):
             src_id = data
             data = zmq_sock.recv()
         else:
@@ -463,6 +463,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 src_id = srv_com["identity"].text
             else:
                 srv_com["identity"] = src_id
+            # print("src_id=", src_id)
         else:
             src_id, srv_com = self.ICH.handle(data)
         if srv_com is not None:
@@ -484,7 +485,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                         "resolve error for '{}'".format(t_host),
                         logging_tools.LOG_LEVEL_ERROR
                     )
-                    self.sender_socket.send_unicode(src_id, zmq.SNDMORE)  # @UndefinedVariable
+                    self.sender_socket.send_unicode(src_id, zmq.SNDMORE)
                     self.sender_socket.send_unicode("{:d}\0resolve error".format(limits.mon_STATE_CRITICAL))
                 else:
                     _e = srv_com.builder()
@@ -681,11 +682,11 @@ class RelayCode(ICSWBasePool, HMHRMixin):
             if connected:
                 try:
                     if int(srv_com.get("raw_connect", "0")):
-                        self.client_socket.send_unicode(ZMQDiscovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)  # @UndefinedVariable
-                        self.client_socket.send_unicode(srv_com["command"].text, zmq.DONTWAIT)  # @UndefinedVariable
+                        self.client_socket.send_unicode(ZMQDiscovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
+                        self.client_socket.send_unicode(srv_com["command"].text, zmq.DONTWAIT)
                     else:
-                        self.client_socket.send_unicode(ZMQDiscovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)  # @UndefinedVariable
-                        self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)  # @UndefinedVariable
+                        self.client_socket.send_unicode(ZMQDiscovery.get_mapping(conn_str), zmq.SNDMORE | zmq.DONTWAIT)
+                        self.client_socket.send_unicode(unicode(srv_com), zmq.DONTWAIT)
                 except:
                     self._send_result(
                         src_id,
@@ -715,7 +716,7 @@ class RelayCode(ICSWBasePool, HMHRMixin):
                 logging_tools.LOG_LEVEL_ERROR
             )
         else:
-            self.sender_socket.send_unicode(identity, zmq.SNDMORE)  # @UndefinedVariable
+            self.sender_socket.send_unicode(identity, zmq.SNDMORE)
             self.sender_socket.send_unicode(
                 "{:d}\0{}".format(
                     reply_state,
@@ -727,11 +728,11 @@ class RelayCode(ICSWBasePool, HMHRMixin):
         data = []
         while True:
             data.append(zmq_sock.recv())
-            if not zmq_sock.getsockopt(zmq.RCVMORE):  # @UndefinedVariable
+            if not zmq_sock.getsockopt(zmq.RCVMORE):
                 break
         if len(data) == 2:
             if data[0] in self.__raw_nhm_dict:
-                srv_result = etree.fromstring(data[1])  # @UndefinedVariable
+                srv_result = etree.fromstring(data[1])
                 srv_com = self.__raw_nhm_dict[data[0]][1]
                 cur_id = srv_com["identity"].text
                 self._send_result(cur_id, srv_result.findtext("nodestatus"), limits.mon_STATE_OK)
@@ -848,12 +849,12 @@ class RelayCode(ICSWBasePool, HMHRMixin):
 
     def _close_ipc_sockets(self):
         if self.receiver_socket is not None:
-            self.unregister_poller(self.receiver_socket, zmq.POLLIN)  # @UndefinedVariable
+            self.unregister_poller(self.receiver_socket, zmq.POLLIN)
             self.receiver_socket.close()
         if self.sender_socket is not None:
             self.sender_socket.close()
         if self.client_socket is not None:
-            self.unregister_poller(self.client_socket, zmq.POLLIN)  # @UndefinedVariable
+            self.unregister_poller(self.client_socket, zmq.POLLIN)
             self.client_socket.close()
         HostConnection.global_close()
 

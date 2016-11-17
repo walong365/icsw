@@ -28,12 +28,13 @@ from initat.host_monitoring.modules import ovirt_mod
 from initat.md_config_server.icinga_log_reader.log_reader import host_service_id_util
 from initat.md_config_server.special_commands.base import SpecialBase
 from initat.tools import process_tools
+from ..struct import DynamicCheckServer, DynamicCheckAction, DynamicCheckActionCopyIp
 
 OVIRT_USER_NAME = "OVIRT_USER_NAME"
-OVIRT_PASSWORD = "OVRT_PASSWORD"
+OVIRT_PASSWORD = "OVIRT_PASSWORD"
 
 
-class special_ovirt_domains(SpecialBase):
+class SpecialOvirtDomains(SpecialBase):
     class Meta:
         server_contact = True
         info = "ovirt Virtual Machines (Virtualisation)"
@@ -46,7 +47,18 @@ class special_ovirt_domains(SpecialBase):
             " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks running virtual machines via API-calls to the engine"
 
-    def to_hint(self, srv_reply):
+    def dynamic_update_calls(self):
+        _user_name = self.host.dev_variables.get(OVIRT_USER_NAME, "notset")
+        _password = self.host.dev_variables.get(OVIRT_PASSWORD, "notset")
+        yield DynamicCheckActionCopyIp(
+            DynamicCheckServer.collrelay,
+            "ovirt_overview",
+            username=_user_name,
+            password=_password,
+            connect_to_localhost=True,
+        )
+
+    def feed_result(self, dc_action, srv_reply):
         _hints = []
         VALID_STATES = {"up", "down"}
         if srv_reply is not None:
@@ -85,20 +97,15 @@ class special_ovirt_domains(SpecialBase):
                     is_active=True,
                 )
             )
-        return _hints
+            self.store_hints(_hints)
+        yield None
 
-    def _call(self):
+    def call(self):
         _passive_check_prefix = host_service_id_util.create_host_service_description(self.host.pk, self.parent_check, "")
         _user_name = self.host.dev_variables.get(OVIRT_USER_NAME, "notset")
         _password = self.host.dev_variables.get(OVIRT_PASSWORD, "notset")
         sc_array = []
-        for hint in self.collrelay(
-            "ovirt_overview",
-            "--address={}".format(self.host.valid_ip.ip),
-            "--username={}".format(_user_name),
-            "--password={}".format(_password),
-            connect_to_localhost=True,
-        ):
+        for hint in self.hint_list:
             _trigger_passive = hint.key.startswith("overview")
             sc_array.append(
                 self.get_arg_template(
@@ -114,7 +121,7 @@ class special_ovirt_domains(SpecialBase):
         return sc_array
 
 
-class special_ovirt_storage_domains(SpecialBase):
+class SpecialOvirtStorageDomains(SpecialBase):
     class Meta:
         server_contact = True
         info = "ovirt Storage domains (Virtualisation)"
@@ -127,9 +134,19 @@ class special_ovirt_storage_domains(SpecialBase):
             " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks storage domains via API-calls to the engine"
 
-    def to_hint(self, srv_reply):
+    def dynamic_update_calls(self):
+        _user_name = self.host.dev_variables.get(OVIRT_USER_NAME, "notset")
+        _password = self.host.dev_variables.get(OVIRT_PASSWORD, "notset")
+        yield DynamicCheckActionCopyIp(
+            DynamicCheckServer.collrelay,
+            "ovirt_storagedomains",
+            username=_user_name,
+            password=_password,
+            connect_to_localhost=True,
+        )
+
+    def feed_result(self, dc_action, srv_reply):
         _hints = []
-        VALID_STATES = {"up", "down"}
         if srv_reply is not None:
             # print srv_reply.pretty_print()
             info_dict = {
@@ -162,20 +179,15 @@ class special_ovirt_storage_domains(SpecialBase):
                     is_active=True,
                 )
             )
-        return _hints
+            self.store_hints(_hints)
+        yield None
 
-    def _call(self):
+    def call(self):
         _passive_check_prefix = host_service_id_util.create_host_service_description(self.host.pk, self.parent_check, "")
         _user_name = self.host.dev_variables.get(OVIRT_USER_NAME, "notset")
         _password = self.host.dev_variables.get(OVIRT_PASSWORD, "notset")
         sc_array = []
-        for hint in self.collrelay(
-            "ovirt_storagedomains",
-            "--address={}".format(self.host.valid_ip.ip),
-            "--username={}".format(_user_name),
-            "--password={}".format(_password),
-            connect_to_localhost=True,
-        ):
+        for hint in self.hint_list:
             _trigger_passive = hint.key.startswith("overview")
             sc_array.append(
                 self.get_arg_template(
@@ -191,7 +203,7 @@ class special_ovirt_storage_domains(SpecialBase):
         return sc_array
 
 
-class special_ovirt_hosts(SpecialBase):
+class SpecialOvirtHosts(SpecialBase):
     class Meta:
         server_contact = True
         info = "ovirt Hosts (Virtualisation)"
@@ -204,7 +216,18 @@ class special_ovirt_hosts(SpecialBase):
             " --passive-check-prefix $ARG4$ --reference $ARG5$"
         description = "checks hosts via API-calls to the engine"
 
-    def to_hint(self, srv_reply):
+    def dynamic_update_calls(self):
+        _user_name = self.host.dev_variables.get(OVIRT_USER_NAME, "notset")
+        _password = self.host.dev_variables.get(OVIRT_PASSWORD, "notset")
+        yield DynamicCheckActionCopyIp(
+            DynamicCheckServer.collrelay,
+            "ovirt_hosts",
+            username=_user_name,
+            password=_password,
+            connect_to_localhost=True,
+        )
+
+    def feed_result(self, dc_action, srv_reply):
         _hints = []
         if srv_reply is not None:
             # print srv_reply.pretty_print()
@@ -238,20 +261,15 @@ class special_ovirt_hosts(SpecialBase):
                     is_active=True,
                 )
             )
-        return _hints
+            self.store_hints(_hints)
+        yield None
 
     def _call(self):
         _passive_check_prefix = host_service_id_util.create_host_service_description(self.host.pk, self.parent_check, "")
         _user_name = self.host.dev_variables.get(OVIRT_USER_NAME, "notset")
         _password = self.host.dev_variables.get(OVIRT_PASSWORD, "notset")
         sc_array = []
-        for hint in self.collrelay(
-            "ovirt_hosts",
-            "--address={}".format(self.host.valid_ip.ip),
-            "--username={}".format(_user_name),
-            "--password={}".format(_password),
-            connect_to_localhost=True,
-        ):
+        for hint in self.hint_list:
             _trigger_passive = hint.key.startswith("overview")
             sc_array.append(
                 self.get_arg_template(

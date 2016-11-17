@@ -192,6 +192,10 @@ menu_module = angular.module(
         _redraw()
     )
 
+    $rootScope.$on(ICSW_SIGNALS("ICSW_STATE_CHANGED"), () ->
+        _redraw()
+    )
+
     return {
         set_menu_help: (state) ->
             return _set_menu_help(state)
@@ -250,53 +254,18 @@ menu_module = angular.module(
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.layout.menubar.progress")
-        scope: {}
+        scope: true
         link: (scope, el, attrs) ->
             scope.initProduct = initProduct
             scope.overall_style = icswOverallStyle.get()
-            scope.num_gauges = 0
-            scope.progress_iters = 0
-            scope.cur_gauges = {}
-            $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_PROGRESS_BAR_CHANGED"), (event, settings) ->
-                scope.update_progress_bar()
-            )
 
             $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
                 scope.overall_style = icswOverallStyle.get()
             )
+
             scope.go_mainboard = ($event)->
                 $state.go("main.dashboard")
 
-            scope.update_progress_bar = () ->
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.BASE_GET_GAUGE_INFO
-                        hidden: true
-                    }
-                ).then(
-                    (xml) =>
-                        cur_pb = []
-                        $(xml).find("gauge_info gauge_element").each (idx, cur_g) ->
-                            cur_g = $(cur_g)
-                            idx = cur_g.attr("idx")
-                            if idx of scope.cur_gauges
-                                scope.cur_gauges[idx].info = cur_g.text()
-                                scope.cur_gauges[idx].value = parseInt(cur_g.attr("value"))
-                            else
-                                scope.cur_gauges[idx] = {info : cur_g.text(), value : parseInt(cur_g.attr("value"))}
-                            cur_pb.push(idx)
-                        del_pbs = (cur_idx for cur_idx of scope.cur_gauges when cur_idx not in cur_pb)
-                        for del_pb in del_pbs
-                            delete scope.cur_gauges[del_pb]
-                        #for cur_idx, value of $scope.cur_gauges
-                        scope.num_gauges = cur_pb.length
-                        if cur_pb.length or scope.progress_iters
-                            if scope.progress_iters
-                                scope.progress_iters--
-                            $timeout(scope.update_progress_bar, 1000)
-                        if not cur_pb.length
-                            icswMenuProgressService.set_rebuilding(0)
-                )
     }
 ]).factory("icswReactMenuBarFactory",
 [
@@ -374,18 +343,22 @@ menu_module = angular.module(
         displayName: "icswMenuEntry"
 
         render: () ->
+            cur_state = $state.current
             state = @props.state
             data = state.icswData
             a_attrs = {
                 key: "a"
             }
             _a_classes = []
+            active_state = false
             if data.$$allowed
                 _a_classes.push("icswMenuColor")
                 if data.$$menuEntry.href?
                     a_attrs.href = data.$$menuEntry.href
                 else
                     a_attrs.href = data.$$menuEntry.sref
+                if data.$$menuEntry.routeName == cur_state.name
+                    active_state = true
                 _mis_span = null
             else
                 _a_classes.push("icswMenuDeact")
@@ -398,6 +371,10 @@ menu_module = angular.module(
                     }
                     data.$$missing_short.join("")
                 )
+            if active_state
+                as_str = "(*) "
+            else
+                as_str = null
             if data.$$menuEntry.entryClass?
                 _a_classes.push(data.$$menuEntry.entryClass)
             if data.$$menuEntry.title?
@@ -409,7 +386,10 @@ menu_module = angular.module(
             a_attrs.className = _a_classes.join(" ")
             if icswMenuSettings.get_menu_help()
                 help_p = p(
-                    {key: "descr"} # , className: "menu-help-text"}
+                    {
+                        key: "descr"
+                        className: "menu-help-text"
+                    }
                     _info_text
                     if data.$$allowed then "ok" else "not ok"
                 )
@@ -423,6 +403,7 @@ menu_module = angular.module(
                         {className: "fa #{data.$$menuEntry.icon} fa_icsw", key: "span"}
                     )
                     " #{data.$$menuEntry.name} "
+                    as_str
                     _mis_span
                 )
                 help_p
@@ -674,7 +655,7 @@ menu_module = angular.module(
     $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
     $state, ICSW_URLS, icswMenuSettings,
 ) ->
-    {ul, li, div, a, button} = React.DOM
+    {ul, li, div, a, button, span} = React.DOM
     return React.createClass(
         displayName: "icswBackgroundJobInfo"
 
@@ -706,21 +687,22 @@ menu_module = angular.module(
             @backg_timer = null
 
         render: () ->
-            if @state.num_jobs == 0
-                return null
+            # if @state.num_jobs == 0
+            #     return null
             if @state.num_jobs > 4
-                _class = "btn btn-xs btn-danger"
+                _class = "label label-danger cursorpointer fa wizardbutton"
             else
-                _class = "btn btn-xs btn-warning"
+                _class = "label label-warning cursorpointer fa wizardbutton"
+                # _class = "btn btn-xs btn-warning"
             return li(
                 {}
                 a(
                     {
-                        className: "bttn-bgjobs"
+                        className: "task-wizard"
                     }
-                    button(
+                    span(
                         {
-                            type: "button"
+                            # type: "button"
                             title: "Number of Background Jobs"
                             className: _class
                             # style: {paddingTop: "0px"}
@@ -741,7 +723,7 @@ menu_module = angular.module(
     $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
     $state, ICSW_URLS, SetupProgressHelper
 ) ->
-    {ul, li, div, a, button, p, strong, span} = React.DOM
+    {ul, li, div, a, button, p, strong, span, img} = React.DOM
     return React.createClass(
         displayName: "icswOpenIssuesInfo"
 
@@ -763,25 +745,26 @@ menu_module = angular.module(
             }
 
         render: () ->
-            if @state.num_unfulfilled > -2
+            if @state.num_unfulfilled > -2  # DEBUG set value 0
                 return li(
                     {}
-                    a(
+                    button(
                         {
-                            href: null
+                            type: "button"
                             key: "p"
+                            className: "btn btn-default btn-xs menu-openissues"
                             onClick: (event) ->
                                 $state.go("main.setupprogress")
                                 event.preventDefault()
                         }
-                        "Open Issues"
-                    )
-                    span(
-                        {
-                            className: "setupsteps__badge"
-                            key: "setupsteps__badge__key"
-                        }
-                        @state.num_unfulfilled
+                        img(
+                            {
+                                src: ICSW_URLS.STATIC_URL + "/openissues-danger.svg"
+                                title: "Open Issues: #{@state.num_unfulfilled}"
+                                height: 23
+                            }
+                        )
+
                     )
                 )
             else
@@ -831,17 +814,16 @@ menu_module = angular.module(
                             key: "process"
                         }
                     )
-
-                    React.createElement(
-                        icswReactOvaDisplayFactory
-                        {
-                            key: "ova"
-                        }
-                    )
                     React.createElement(
                         icswReactBackgroundJobInfoFactory
                         {
                             key: "bg"
+                        }
+                    )
+                    React.createElement(
+                        icswReactOvaDisplayFactory
+                        {
+                            key: "ova"
                         }
                     )
                     (

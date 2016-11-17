@@ -1,0 +1,12 @@
+[uwsgi]
+uid=wwwrun
+gid=www
+processes=1
+workers=1
+threads=1
+limit-nproc=1
+no-default-app=true
+no-site=true
+daemonize=/tmp/daphne-workers.log
+pidfile=/tmp/daphne-workers.pid
+exec-as-user=if [ `ps wuax | grep "clustermanage.py runworker" | wc -l` -lt 4 ]; then /opt/cluster/sbin/clustermanage.py runworker & fi;

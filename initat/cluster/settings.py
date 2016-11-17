@@ -138,12 +138,15 @@ else:
 def _read_db_settings(store, key):
     if key is None:
         _r_dict = store.get_dict()
-        _r_dict["idx"] = "0"
+        if len(_r_dict):
+            _r_dict["idx"] = "0"
     else:
         _r_dict = store[key]
-        _r_dict["idx"] = key
-    if "db.info" not in _r_dict:
-        _r_dict["db.info"] = "Database {}".format(_r_dict["idx"])
+        if len(_r_dict):
+            _r_dict["idx"] = key
+    if len(_r_dict):
+        if "db.info" not in _r_dict:
+            _r_dict["db.info"] = "Database {}".format(_r_dict["idx"])
     return _r_dict
 
 _multi_db_prefix = "db"
@@ -175,10 +178,7 @@ else:
         "0": _read_db_settings(_ps, None)
     }
 
-ICSW_ACTIVE_DATABASE_IDX = _db_idx
-
-_database_dict = ICSW_DATABASE_DICT[_db_idx]
-
+# default values
 DATABASES = {
     "default": {
         "ENGINE": "",
@@ -190,30 +190,40 @@ DATABASES = {
     }
 }
 
-for src_key, dst_key, _add_to_cache_key, _default in [
-    ("db.database", "NAME", True, None),
-    ("db.user", "USER", True, None),
-    ("db.passwd", "PASSWORD", True, None),
-    # to make cache_key the same on different machines
-    ("db.host", "HOST", False, None),
-    ("db.engine", "ENGINE", True, None),
-    ("db.info", "ICSW_INFO", False, "Default database"),
-]:
-    if src_key in _database_dict:
-        if _add_to_cache_key:
-            _c_key.update(src_key)
-            _c_key.update(_database_dict[src_key])
-        DATABASES["default"][dst_key] = _database_dict[src_key]
-    elif _default:
-        DATABASES["default"][dst_key] = _default
-    else:
-        raise ImproperlyConfigured(
-            "key {} -> {} not found in db_access_cs '{}'".format(
-                src_key,
-                dst_key,
-                DB_ACCESS_CS_NAME,
+# filter out empty settings
+ICSW_DATABASE_DICT = {key: value for key, value in ICSW_DATABASE_DICT.iteritems() if len(value)}
+
+ICSW_ACTIVE_DATABASE_IDX = _db_idx
+
+if _db_idx in ICSW_DATABASE_DICT:
+    _database_dict = ICSW_DATABASE_DICT[_db_idx]
+
+    for src_key, dst_key, _add_to_cache_key, _default in [
+        ("db.database", "NAME", True, None),
+        ("db.user", "USER", True, None),
+        ("db.passwd", "PASSWORD", True, None),
+        # to make cache_key the same on different machines
+        ("db.host", "HOST", False, None),
+        ("db.engine", "ENGINE", True, None),
+        ("db.info", "ICSW_INFO", False, "Default database"),
+    ]:
+        if src_key in _database_dict:
+            if _add_to_cache_key:
+                _c_key.update(src_key)
+                _c_key.update(_database_dict[src_key])
+            DATABASES["default"][dst_key] = _database_dict[src_key]
+        elif _default:
+            DATABASES["default"][dst_key] = _default
+        else:
+            raise ImproperlyConfigured(
+                "key {} -> {} not found in db_access_cs '{}'".format(
+                    src_key,
+                    dst_key,
+                    DB_ACCESS_CS_NAME,
+                )
             )
-        )
+else:
+    print("No valid database found")
 
 # print("*", DATABASES)
 
@@ -345,6 +355,7 @@ INSTALLED_APPS = (
     # Uncomment the next line to enable admin documentation:
     "django_extensions",
     "reversion",
+    "channels"
 )
 
 ICSW_WEBCACHE = os.path.join(CLUSTER_DIR, "share", "webcache")
@@ -579,4 +590,14 @@ LOGGING = {
             'level': 'INFO' if DEBUG else "WARN",
         },
     }
+}
+
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "asgi_redis.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("127.0.0.1", 6379)],
+        },
+        "ROUTING": "initat.cluster.urls.channel_routing.channel_routing",
+    },
 }

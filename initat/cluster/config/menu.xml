@@ -229,9 +229,9 @@
                     </rights>
                 </icswData>
             </route>
-            <route name="main.locationtest">
-                <stateData type="dict" url_str="/devlocationtest"
-                           templateUrl_str="icsw/device/location/overview"/>
+            <route name="main.monitorlocation">
+                <stateData type="dict" url_str="/monitorlocation"
+                           templateUrl_str="icsw/device/location/monitoring"/>
                 <icswData type="dict" pageTitle_str="Location Service">
                     <menuEntry type="dict" icon_str="fa-map-marker" name_str="Location Service"/>
                 </icswData>

@@ -48,8 +48,6 @@ class SpecialBase(object):
         cache_timeout = 7 * 24 * 3600
         # wait time in case of connection error
         error_wait = 5
-        # contact server
-        server_contact = False
         # is active ?
         is_active = True
         # command line
@@ -83,6 +81,9 @@ class SpecialBase(object):
         self.parent_check = parent_check
         self.host = host
         self.build_cache = build_cache
+        self.__hints_loaded = False
+        # init with default
+        self.__call_idx = 0
 
     def add_variable(self, new_var):
         # helper function: add device variable
@@ -94,46 +95,42 @@ class SpecialBase(object):
     def set_variable(self, var_name, var_value):
         self.build_cache.set_variable(self.host, var_name, var_value)
 
-    def _store_cache(self):
-        self.log("storing cache ({})".format(logging_tools.get_plural("entry", len(self.__hint_list))))
+    def store_hints(self, hint_list):
+        self.log(
+            "storing cache ({})".format(
+                logging_tools.get_plural("entry", len(hint_list))
+            )
+        )
         monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name)).delete()
-        for ch in self.__hint_list:
+        for ch in self._salt_hints(hint_list, self.call_idx):
             ch.save()
 
     def _load_cache(self):
-        self.__cache_created, self.__cache_age, self.__cache_valid = (0, 0, False)
-        self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
-        # set datasource to cache
-        for _entry in self.__cache:
-            if _entry.datasource not in ["c", "p"]:
-                _entry.datasource = "c"
-                _entry.save(update_fields=["datasource"])
-        self.log(
-            "loaded hints ({}) from db".format(
-                logging_tools.get_plural("entry", len(self.__cache))
-            )
-        )
-        if self.__cache:
-            _now = cluster_timezone.localize(datetime.datetime.now())
-            self.__cache_age = max([abs(_now - _entry.changed).total_seconds() for _entry in self.__cache])
-            self.__cache_valid = self.__cache_age < self.Meta.cache_timeout
-
-    def _show_cache_info(self):
-        if self.__cache:
+        if not self.__hints_loaded:
+            self.__hints_loaded = True
+            self.__cache = monitoring_hint.objects.filter(Q(device=self.host) & Q(m_type=self.ds_name))
+            # set datasource to cache
+            for _entry in self.__cache:
+                if _entry.datasource not in ["c", "p"]:
+                    _entry.datasource = "c"
+                    _entry.save(update_fields=["datasource"])
             self.log(
-                "cache is present ({}, age is {}, timeout {}, {})".format(
-                    logging_tools.get_plural("entry", len(self.__cache)),
-                    logging_tools.get_diff_time_str(self.__cache_age),
-                    logging_tools.get_diff_time_str(self.Meta.cache_timeout),
-                    "valid" if self.__cache_valid else "invalid",
+                "loaded hints ({}) from db".format(
+                    logging_tools.get_plural("entry", len(self.__cache))
                 )
             )
-        else:
-            self.log("no cache set")
+        # hint_list = [_entry for _entry in self.__cache if _entry.call_idx == self.__call_idx]
 
-    def remove_cache_entries(self):
+    @property
+    def hint_list(self):
+        if not self.__hints_loaded:
+            self._load_cache()
+        return self.__cache
+
+    def remove_hints(self):
+        self._load_cache()
         # remove all cached entries, cached entries are always local (with m_type set as ds_name)
-        self.log("removing all {:d} cached entries".format(len(self.__cache)))
+        self.log("removing all {}".format(logging_tools.get_plural("cached entry", len(self.__cache))))
         [_entry.delete() for _entry in self.__cache]
         self.__cache = []
 
@@ -216,22 +213,22 @@ class SpecialBase(object):
             # not beautifull but working
             self.log("not allowed to make an external call", logging_tools.LOG_LEVEL_CRITICAL)
             return None
-        self.log(
-            "calling server '{}' for {}, command is '{}', {}, {}".format(
-                server_name,
-                self.host.valid_ip.ip,
-                command,
-                "args is '{}'".format(", ".join([str(value) for value in args])) if args else "no arguments",
-                ", ".join(
-                    [
-                        "{}='{}'".format(
-                            key,
-                            str(value)
-                        ) for key, value in kwargs.iteritems()
-                    ]
-                ) if kwargs else "no kwargs",
-            )
-        )
+        # self.log(
+        #     "calling server '{}' for {}, command is '{}', {}, {}".format(
+        #         server_name,
+        #         self.host.valid_ip.ip,
+        #         command,
+        #         "args is '{}'".format(", ".join([str(value) for value in args])) if args else "no arguments",
+        #         ", ".join(
+        #             [
+        #                 "{}='{}'".format(
+        #                     key,
+        #                     str(value)
+        #                 ) for key, value in kwargs.iteritems()
+        #             ]
+        #         ) if kwargs else "no kwargs",
+        #     )
+        # )
         connect_to_localhost = kwargs.pop("connect_to_localhost", False)
         conn_ip = "127.0.0.1" if connect_to_localhost else self.host.valid_ip.ip
         if not self.__use_cache:
@@ -314,52 +311,22 @@ class SpecialBase(object):
         s_name = self.Meta.name
         self.log(
             "starting {}@{} for {}".format(
-                s_name,
                 mode.name,
+                s_name,
                 self.host.name,
             )
         )
         s_time = time.time()
-        # flag to force store the cache (in case of migration of cache entries from FS to DB), only used internally
-        self.__force_store_cache = False
-        if self.Meta.server_contact:
-            # at first we load the current cache
-            self._load_cache()
-            # show information
-            self._show_cache_info()
-            # use cache flag, dependent on the cache mode
-            self.__use_cache = True
-            # anything got from a direct all
-            self.__server_contact_ok, self.__server_contacts = (True, 0)
-            # init result list and number of server calls
-            self.__hint_list, self.__call_idx = ([], 0)
         if hasattr(self, "call"):
             cur_ret = self.call(**kwargs)
-            # cur_ret = self._call(**kwargs)
-            e_time = time.time()
-            if self.Meta.server_contact and not self.__use_cache:
-                self.log(
-                    "took {}, ({:d} ok, {:d} server contacts [{}], {})".format(
-                        logging_tools.get_diff_time_str(e_time - s_time),
-                        self.__call_idx,
-                        self.__server_contacts,
-                        "ok" if self.__server_contact_ok else "failed",
-                        logging_tools.get_plural("hint", len(self.__hint_list)),
-                    )
-                )
-                # anything set (from cache or direct) and all server contacts ok (a little bit redundant)
-                if (self.__server_contacts == self.__call_idx and self.__call_idx) or self.__force_store_cache:
-                    if (self.__server_contacts and self.__server_contact_ok) or self.__force_store_cache:
-                        self._store_cache()
-            else:
-                self.log(
-                    "took {}".format(
-                        logging_tools.get_diff_time_str(e_time - s_time),
-                    )
-                )
         else:
-            self.log("old special, please fix", logging_tools.LOG_LEVEL_CRITICAL)
             cur_ret = []
+        e_time = time.time()
+        self.log(
+            "took {}".format(
+                logging_tools.get_diff_time_str(e_time - s_time),
+            )
+        )
         return cur_ret
 
     def get_arg_template(self, *args, **kwargs):

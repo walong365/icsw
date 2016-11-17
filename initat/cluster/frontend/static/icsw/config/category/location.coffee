@@ -25,12 +25,12 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.devlocation")
-    icswRouteExtensionProvider.add_route("main.locationtest")
+    icswRouteExtensionProvider.add_route("main.monitorlocation")
 ]).directive("icswConfigCategoryLocationMapEdit",
 [
-    "$templateCache",
+    "$templateCache", "$timeout",
 (
-    $templateCache,
+    $templateCache, $timeout
 ) ->
     return {
         restrict: "EA"
@@ -44,6 +44,14 @@ angular.module(
         controller: "icswConfigCategoryLocationCtrl"
         link: (scope, element, attrs) ->
             scope.set_mode("edit")
+            scope.remove_gfx = ($event, obj) ->
+                for tab_list in scope.enhance_list when tab_list.tabindex == obj.tabindex
+                    index = scope.enhance_list.indexOf tab_list
+                    $timeout(
+                        () ->
+                            scope.enhance_list.splice index, 1
+                        100
+                    )
     }
 ]).directive("icswConfigCategoryLocationListEdit",
 [
@@ -155,6 +163,7 @@ angular.module(
         mode: undefined
         # monitoring data
         monitoring_data: undefined
+        tabmaxid : 1
     }
 
     filter_list = () ->
@@ -440,15 +449,18 @@ angular.module(
                 )
         )
 
-    $scope.show_gfx_preview = (gfx) ->
-        # console.log $scope.enhance_list.length
+    $scope.show_gfx_preview = (gfx, $event) ->
         if gfx not in $scope.enhance_list
+            $scope.struct.tabmaxid += 1
+            gfx.tabindex = $scope.struct.tabmaxid
             $scope.enhance_list.push(gfx)
-        # console.log $scope.enhance_list.length
-        # console.log (entry.name for entry in $scope.enhance_list)
+        if !$event.ctrlKey
+            $timeout(
+                () ->
+                    $scope.struct.activetab = gfx.tabindex
+                0
+            )
 
-    # $scope.preview_close = () ->
-    #     $scope.preview_gfx = undefined
     
 ]).directive("icswConfigCategoryTreeMapEnhance",
 [

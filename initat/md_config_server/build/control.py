@@ -26,7 +26,6 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone.models import device
-from initat.icsw.service.instance import InstanceXML
 from initat.md_config_server.config import MainConfigContainer, global_config
 from initat.tools import logging_tools, server_command
 from .process import BuildProcess
@@ -118,8 +117,8 @@ class BuildControl(object):
 
     def sync_http_users(self, *args, **kwargs):
         self.log("syncing http-users")
-        print("not handled correctly right now, triggering error")
-        self.__gen_config._create_access_entries()
+        self.log("not handled correctly right now, please fixme", logging_tools.LOG_LEVEL_CRITICAL)
+        # self.__gen_config._create_access_entries()
 
     def build_step(self, *args, **kwargs):
         _action = args[2]

@@ -65,13 +65,21 @@ def is_reachable():
         return True
 
 
+# keep track of all connecitions already closed
+
+CLOSED_CONNECTIONS = set()
+
+
 def close_connection():
     from django.db import connection, reset_queries
-    if is_oracle():
-        try:
+    _c_id = id(connection)
+    if _c_id not in CLOSED_CONNECTIONS:
+        # CLOSED_CONNECTIONS.add(_c_id)
+        if is_oracle():
+            try:
+                connection.close()
+            except OperationalError:
+                pass
+        else:
             connection.close()
-        except OperationalError:
-            pass
-    else:
-        connection.close()
-    reset_queries()
+        reset_queries()

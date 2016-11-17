@@ -939,6 +939,7 @@ class Dispatcher(object):
             if diff_time > planned_run_state.timeout:
                 planned_run_state.cancel("timeout")
                 _to_remove.add(key)
+                self.discovery_process.send_pool_message("timeout_handler", planned_run_state.run_idx)
 
         for _key in _to_remove:
             del self.__ext_con_lut[_key]
@@ -958,16 +959,7 @@ class Dispatcher(object):
         for _dev_idx, pdrf_list in self.__device_planned_runs.iteritems():
             _keep = []
             for entry in pdrf_list:
-                if entry.to_delete:
-                    log_entry = DeviceLogEntry(
-                        device=entry.asset_batch.device,
-                        source=DEVICE_LOG_SOURCE,
-                        level=DEVICE_LOG_LEVEL_OK,
-                        text="AssetScan with BatchId:[{}] completed".format(entry.asset_batch.idx),
-                        user=entry.asset_batch.user
-                    )
-                    log_entry.save()
-                else:
+                if not entry.to_delete:
                     _keep.append(entry)
 
             _removed += len(pdrf_list) - len(_keep)

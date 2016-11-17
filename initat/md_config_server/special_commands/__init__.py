@@ -17,6 +17,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
+
 """ special tasks for md-config-server, load from submodule instances """
 
 from __future__ import unicode_literals, print_function
@@ -26,6 +27,7 @@ from django.db.models import Q
 from initat.cluster.backbone.models import mon_check_command_special, mon_check_command, SpecialGroupsEnum
 from initat.cluster.backbone.models.functions import get_related_models
 from initat.md_config_server.special_commands.base import SpecialBase, ArgTemplate
+from .struct import DynamicCheckServer, DynamicCheckAction
 from initat.md_config_server.special_commands.instances import *
 from initat.tools import logging_tools
 

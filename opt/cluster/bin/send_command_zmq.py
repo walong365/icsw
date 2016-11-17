@@ -20,6 +20,8 @@
 
 """ sends a command to one of the python-servers, 0MQ version"""
 
+from __future__ import print_function, unicode_literals
+
 import argparse
 import sys
 

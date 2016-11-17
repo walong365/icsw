@@ -24,43 +24,50 @@ import datetime
 from django.db.models import Q
 
 from initat.cluster.backbone.models.functions import cluster_timezone
-from initat.tools import server_command
+from initat.tools import server_command, logging_tools
 
 
 def create_bg_job(server_pk, user_obj, cmd, cause, obj, **kwargs):
     # late import to break import loop
-    from initat.cluster.backbone.models import background_job, device
+    from initat.cluster.backbone.models import background_job, device, BackgroundJobState
     srv_com = server_command.srv_command(
         command=cmd,
     )
+    timeout = kwargs.get("timeout", 60 * 5)
     _bld = srv_com.builder()
-    if type(obj) == list:
+    if obj is None:
+        obj_list = None
+    elif isinstance(obj, list):
         obj_list = obj
+        cause = "{} of {}".format(cause, logging_tools.get_plural("object", len(obj_list)))
     else:
         obj_list = [obj]
-    srv_com[None] = _bld.objects(
-        *[
-            _bld.object(
-                unicode(obj),
-                model=obj._meta.model_name,
-                app=obj._meta.app_label,
-                pk="{:d}".format(obj.pk),
-            ) for obj in obj_list
-        ]
-    )
+        cause = "{} of {}".format(cause, unicode(obj))
+
+    if obj_list is not None:
+        srv_com[None] = _bld.objects(
+            *[
+                _bld.object(
+                    unicode(obj),
+                    model=obj._meta.model_name,
+                    app=obj._meta.app_label,
+                    pk="{:d}".format(obj.pk),
+                ) for obj in obj_list
+            ]
+        )
     # print "***", server_pk
-    _new_job = background_job.objects.create(
+    _new_job = background_job(
         command=cmd,
-        cause=u"{} of '{}'".format(cause, unicode(obj))[:255],
-        state="pre-init",
+        cause=cause[:255],
         options=kwargs.get("options", ""),
         initiator=device.objects.get(Q(pk=server_pk)),
         user=user_obj,
         command_xml=unicode(srv_com),
-        num_objects=len(obj_list),
+        num_objects=len(obj_list) if obj_list else 0,
         # valid for 4 hours
-        valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=60 * 5)),  # 3600 * 4)),
+        valid_until=cluster_timezone.localize(datetime.datetime.now() + datetime.timedelta(seconds=timeout)),
     )
+    _new_job.set_state(kwargs.get("state", BackgroundJobState.pre_init))
     # print srv_com.pretty_print()
     return _new_job
 

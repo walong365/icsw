@@ -63,6 +63,12 @@ class HostBuildCache(object):
         # self.host_is_actively_checked = None
         # host config list
         self.host_config_list = MonFileContainer(self.device.full_name)
+        # pending fetches, for dyn_fetch call
+        self.pending_fetch_calls = []
+
+    def add_pending_fetch(self, s_instance):
+        s_instance.hbc = self
+        self.pending_fetch_calls.append(s_instance)
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.log_cache.append((what, log_level))

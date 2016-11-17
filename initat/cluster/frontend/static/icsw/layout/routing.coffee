@@ -206,6 +206,7 @@ menu_module = angular.module(
                 # reduce flicker
                 $(document.body).hide()
                 $window.location.reload()
+
         if to_main
             if to_params.icswRegister? and not to_params.icswRegister
                 # to not register statechange from breadcrumb line

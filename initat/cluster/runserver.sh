@@ -28,4 +28,4 @@ export ICSW_DEBUG_SOFTWARE=1
 
 [ ! -z $EXTRA_OPTIONS ] && echo "settings: EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 
-./manage.py runserver --traceback ${EXTRA_OPTIONS} 0.0.0.0:8081
+./manage.py runserver --noasgi --noworker --traceback ${EXTRA_OPTIONS} 0.0.0.0:8081

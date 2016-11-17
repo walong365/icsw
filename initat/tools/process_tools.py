@@ -235,12 +235,19 @@ def get_socket(context, r_type, **kwargs):
     return _sock
 
 
-def zmq_identity_str(id_string):
-    return "{}:{}:{:d}".format(
-        get_machine_name(),
-        id_string,
-        os.getpid()
-    )
+def zmq_identity_str(id_string, short=False):
+    if short:
+        # without pid
+        return "{}:{}".format(
+            get_machine_name(),
+            id_string,
+        )
+    else:
+        return "{}:{}:{:d}".format(
+            get_machine_name(),
+            id_string,
+            os.getpid()
+        )
 
 
 def remove_zmq_dirs(dir_name):
@@ -943,7 +950,9 @@ def remove_pids(name, pid=None):
     if name.startswith("/"):
         fname = name
     else:
-        fname = "{}.pid".format(os.path.join(RUN_DIR, name))
+        if not name.endswith(".pid"):
+            name = "{}.pid".format(name)
+        fname = os.path.join(RUN_DIR, name)
     if os.path.isfile(fname):
         try:
             pid_lines = [entry.strip() for entry in open(fname, "r").read().split("\n")]

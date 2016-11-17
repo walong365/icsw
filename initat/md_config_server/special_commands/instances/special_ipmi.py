@@ -23,9 +23,10 @@ from __future__ import unicode_literals, print_function
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
+from ..struct import DynamicCheckServer, DynamicCheckAction
 
 
-class special_ipmi(SpecialBase):
+class SpecialIpmi(SpecialBase):
     class Meta:
         server_contact = True
         info = "IPMI checks via collserver (deprecated)"
@@ -34,7 +35,10 @@ class special_ipmi(SpecialBase):
             "--lowerw=${ARG3:na} --upperw=${ARG4:na} --upperc=${ARG5:na} --uppern=${ARG6:na} $ARG7$"
         description = "queries the IPMI sensors of the underlying IPMI interface of the target device"
 
-    def to_hint(self, srv_reply):
+    def dynamic_update_calls(self):
+        yield DynamicCheckAction(DynamicCheckServer.collrelay, "ipmi_sensor")
+
+    def feed_result(self, dc_action, srv_reply):
         _hints = []
         if srv_reply is not None:
             if "list:sensor_list" in srv_reply:
@@ -54,11 +58,12 @@ class special_ipmi(SpecialBase):
                     )
                     new_hint.update_limits(0.0, lim_dict)
                     _hints.append(new_hint)
-        return _hints
+        self.store_hints(_hints)
+        yield None
 
     def _call(self):
         sc_array = []
-        for hint in self.collrelay("ipmi_sensor"):
+        for hint in self.hint_list:
             sc_array.append(
                 self.get_arg_template(
                     hint.info,

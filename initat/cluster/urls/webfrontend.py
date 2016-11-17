@@ -148,7 +148,7 @@ lic_patterns = [
 
 
 base_patterns = [
-    url("^get_gauge_info$", base_views.get_gauge_info.as_view(), name="get_gauge_info"),
+    url("^propagate_channel_message$", base_views.propagate_channel_message, name="propagate_channel_message"),
     url("^upload_loc_gfx$", base_views.upload_location_gfx.as_view(), name="upload_location_gfx"),
     url("^loc_gfx_thumbnail/(?P<id>\d+)/(?P<image_count>\d+)$", base_views.location_gfx_icon.as_view(),
         name="location_gfx_icon"),
@@ -174,7 +174,7 @@ setup_patterns = [
 ]
 
 config_patterns = [
-    url("^set_config_cb$", config_views.alter_config_cb.as_view(), name="alter_config_cb"),
+    url("^set_config$", config_views.alter_config.as_view(), name="alter_config"),
     url("^generate_config$", config_views.generate_config.as_view(), name="generate_config"),
     url("^download_config/(?P<hash>.*)$", config_views.download_configs.as_view(), name="download_configs"),
     url("^upload_config$", config_views.upload_config.as_view(), name="upload_config"),

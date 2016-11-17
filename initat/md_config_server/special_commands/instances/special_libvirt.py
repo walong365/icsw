@@ -23,21 +23,27 @@ from __future__ import unicode_literals, print_function
 
 from initat.cluster.backbone.models import monitoring_hint, SpecialGroupsEnum
 from initat.md_config_server.special_commands.base import SpecialBase
+from ..struct import DynamicCheckServer, DynamicCheckAction
 
 
-class special_libvirt(SpecialBase):
+class SpecialLibvirt(SpecialBase):
     class Meta:
-        server_contact = True
         info = "libvirt (Virtualisation)"
         group = SpecialGroupsEnum.system
         command_line = "$USER2$ -m $HOSTADDRESS$ domain_status $ARG1$"
         description = "checks running virtual machines on the target host via libvirt"
 
-    def to_hint(self, srv_reply):
+    def dynamic_update_calls(self):
+        yield DynamicCheckAction(DynamicCheckServer.collrelay, "domain_overview")
+
+    def feed_result(self, dc_action, srv_reply):
         _hints = []
+        # print(srv_reply.pretty_print())
         if srv_reply is not None:
+            # print("domain_overview" in srv_reply)
             if "domain_overview" in srv_reply:
                 domain_info = srv_reply["domain_overview"]
+                # print("***", domain_info)
                 if "running" in domain_info and "defined" in domain_info:
                     domain_info = domain_info["running"]
                 for _d_idx, d_dict in domain_info.iteritems():
@@ -48,11 +54,12 @@ class special_libvirt(SpecialBase):
                         value_string="running",
                     )
                     _hints.append(new_hint)
-        return _hints
+        self.store_hints(_hints)
+        yield None
 
-    def _call(self):
+    def call(self):
         sc_array = []
-        for hint in self.collrelay("domain_overview"):
+        for hint in self.hint_list:
             sc_array.append(
                 self.get_arg_template(
                     hint.info,

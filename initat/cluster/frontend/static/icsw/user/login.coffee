@@ -151,7 +151,7 @@ angular.module(
                     _do_login = $q.defer()
                     if dup_sessions
                         blockUI.stop()
-                        icswToolsSimpleModalService("Another user is already using this account, continue ?").then(
+                        icswToolsSimpleModalService("Another user is already using this account and will be logged off, continue ?").then(
                             (doit) ->
                                 blockUI.start("expelling other users")
                                 icswSimpleAjaxCall(

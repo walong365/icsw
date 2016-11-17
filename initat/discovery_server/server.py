@@ -23,7 +23,7 @@ import zmq
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device, DeviceScanLock
+from initat.cluster.backbone.models import device, DeviceScanLock, DeviceLogEntry, LogSource, LogLevel
 from initat.cluster.backbone.models.asset.dynamic_asset import AssetRun, \
     AssetBatch
 from initat.cluster.backbone.models.asset.asset_functions import RunResult, \
@@ -39,6 +39,10 @@ from initat.tools import configfile, logging_tools, process_tools, \
 from initat.tools.server_mixins import RemoteCall
 from .config import global_config, IPC_SOCK_SNMP
 from .discovery import DiscoveryProcess
+
+
+DEVICE_LOG_LEVEL_OK = LogLevel.objects.get(identifier="o")
+DEVICE_LOG_SOURCE = LogSource.objects.get(identifier=icswServiceEnum.discovery_server.name)
 
 
 @server_mixins.RemoteCallProcess
@@ -74,6 +78,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self._process_batch_assets_finished,
         )
         self.register_func("send_msg", self.send_msg)
+        self.register_func("timeout_handler", self.timeout_handler)
         db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
         self.__snmp_running = True
@@ -155,6 +160,14 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         # dict for external connections
         self.__ext_con_dict = {}
 
+    def timeout_handler(self, *args, **kwargs):
+        _from_name, _from_pid, run_idx = args
+
+        if run_idx in self.__ext_con_dict:
+            self.__ext_con_dict[run_idx].close()
+            del self.__ext_con_dict[run_idx]
+
+
     def send_msg(self, *args, **kwargs):
         _from_name, _from_pid, run_idx, conn_str, srv_com = args
         srv_com = server_command.srv_command(source=srv_com)
@@ -170,9 +183,13 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
 
     def _ext_receive(self, *args):
         srv_reply = args[0]
-        run_idx = int(srv_reply["*discovery_run_idx"])
-        del self.__ext_con_dict[run_idx]
-        self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
+        run_idx = None
+        if srv_reply:
+            run_idx = int(srv_reply["*discovery_run_idx"])
+        if run_idx in self.__ext_con_dict:
+            del self.__ext_con_dict[run_idx]
+        if srv_reply and run_idx:
+            self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):
@@ -246,3 +263,12 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         asset_batch.state_finished()
         asset_batch.save()
         self.log("Finished asset batch {}.".format(asset_batch.idx))
+
+        log_entry = DeviceLogEntry(
+            device=asset_batch.device,
+            source=DEVICE_LOG_SOURCE,
+            level=DEVICE_LOG_LEVEL_OK,
+            text="AssetScan with BatchId:[{}] completed".format(asset_batch.idx),
+            user=asset_batch.user
+        )
+        log_entry.save()
