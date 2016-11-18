@@ -47,6 +47,8 @@ from lxml import etree
 
 from initat.tools import logging_tools
 
+from initat.constants import META_SERVER_DIR
+
 try:
     import psutil
 except (NotImplementedError, ImportError, IOError):
@@ -500,11 +502,9 @@ class MSIBlock(object):
         else:
             parsed = False
         if parsed:
-            self.__meta_server_dir = os.path.dirname(name)
+            pass
         else:
             self.__start_time = time.time()
-            self.__file_name = None
-            self.set_meta_server_dir("/var/lib/meta-server")
             self.__name = name
         self.parsed = parsed
         self.file_init_time = time.time()
@@ -523,7 +523,6 @@ class MSIBlock(object):
         self.__start_time = {}
 
     def _parse_file(self, name):
-        self.__file_name = name
         # try to read complete info from file
         self.__name = None
         try:
@@ -552,9 +551,13 @@ class MSIBlock(object):
             parsed = True
         return parsed
 
+    @staticmethod
+    def path_name(name):
+        return os.path.join(META_SERVER_DIR, name)
+
     @property
     def file_name(self):
-        return self.__file_name
+        return self.path_name(self.__name)
 
     @property
     def name(self):
@@ -563,9 +566,6 @@ class MSIBlock(object):
     @property
     def start_time(self):
         return self.__start_time
-
-    def set_meta_server_dir(self, msd):
-        self.__meta_server_dir = msd
 
     def file_init_time_get(self):
         return self.__file_init_time
@@ -669,15 +669,14 @@ class MSIBlock(object):
             E.start_time("{:d}".format(int(self.__start_time))),
             pid_list,
         )
-        file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)  # @UndefinedVariable
-        if not self.__file_name:
-            self.__file_name = os.path.join(self.__meta_server_dir, self.__name)
+        file_content = etree.tostring(xml_struct, pretty_print=True, encoding=unicode)
+        path_name = self.path_name(self.__name)
         try:
-            open(self.__file_name, "w").write(file_content)
+            open(path_name, "w").write(file_content)
         except:
             self.log(
                 "error writing file {} (MSIBlock for {})".format(
-                    self.__file_name,
+                    path_name,
                     self.__name
                 ),
                 logging_tools.LOG_LEVEL_ERROR
@@ -693,14 +692,13 @@ class MSIBlock(object):
         return self.remove()
 
     def remove(self):
-        if not self.__file_name:
-            self.__file_name = os.path.join(self.__meta_server_dir, self.__name)
+        path_name = self.path_name(self.__name)
         try:
-            os.unlink(self.__file_name)
+            os.unlink(path_name)
         except:
             self.log(
                 "error removing file {} (MSIBlock for {}): {}".format(
-                    self.__file_name,
+                    path_name,
                     self.__name,
                     get_except_info()
                 ),
