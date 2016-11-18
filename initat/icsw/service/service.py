@@ -563,7 +563,7 @@ class SimpleService(Service):
                 if _status == 0:
                     act_state, act_str = (SERVICE_OK, "running")
                 else:
-                act_state, act_str = (SERVICE_DEAD, "not running")
+                    act_state, act_str = (SERVICE_DEAD, "not running")
 
         else:
             act_state, act_str = (SERVICE_NOT_INSTALLED, "not installed")
