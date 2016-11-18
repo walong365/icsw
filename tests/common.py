@@ -75,7 +75,7 @@ class Webdriver(webdriver.Remote):
         self.find_element_by_name('username').send_keys(user)
         self.find_element_by_name('password').send_keys(password)
         self.find_element_by_name('button').click()
-        self.wait_loading()
+        self.wait_overlay()
         # confirm the warning about a concurrent login
         xpath_logged_in = '//a[@href="#/main/dashboard"]'
         find_elements = [
@@ -92,7 +92,7 @@ class Webdriver(webdriver.Remote):
     def save_shot(self, name, xpath=None, element=None):
         assert name not in self.shot_names
         self.shot_names.add(name)
-        self.wait_loading()
+        self.wait_overlay()
         image = Image.open(
             StringIO(base64.decodestring(self.get_screenshot_as_base64()))
             )
@@ -108,13 +108,13 @@ class Webdriver(webdriver.Remote):
         with open(os.path.join(self.screenshot_dir, file_name), 'wb') as file_:
             image.save(file_, 'png', quality=90)
 
-    def wait_loading(self):
+    def wait_overlay(self):
         WebDriverWait(self, self.timeout).until(
             EC.invisibility_of_element_located((By.XPATH, '/html/body/div[1]'))
             )
 
     def select_device(self, expression):
-        self.wait_loading()
+        self.wait_overlay()
         visible(
             self.find_elements_by_xpath(
                 '//span[@ng-click="device_selection($event)"]'
