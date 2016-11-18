@@ -22,14 +22,19 @@
 Channel settings
 """
 
+from __future__ import print_function, unicode_literals
+
 from channels.routing import route
 from channels import Group
+
 
 def ws_add(message):
     Group(message['path'].replace("/", "")).add(message.reply_channel)
 
+
 def ws_disconnect(message):
     Group(message['path'].replace("/", "")).discard(message.reply_channel)
+
 
 channel_routing = [
     route("websocket.connect", ws_add, path=r"^/device_log_entries/$"),

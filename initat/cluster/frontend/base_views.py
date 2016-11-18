@@ -30,12 +30,14 @@ import logging
 
 import PIL
 from PIL import Image
+from channels import Group
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import csrf_exempt
 from django.views.generic import View
 from lxml.builder import E
 from rest_framework.generics import ListAPIView
@@ -474,16 +476,14 @@ class CategoryReferences(ListAPIView):
                 contents.append((rel.name, cat_id, remote_id))
         return Response(contents)
 
-from channels import Group
-from django.views.decorators.csrf import csrf_exempt
-import json
 
 @csrf_exempt
 def propagate_channel_message(request):
     data = json.loads(request.body)
 
-    Group(data["group"]).send({
-        "text": json.dumps(data["data"])
-    })
-
+    Group(data["group"]).send(
+        {
+            "text": json.dumps(data["data"])
+        }
+    )
     return HttpResponse("ok")

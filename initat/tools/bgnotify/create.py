@@ -15,16 +15,62 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
-""" various servers, create background jobs """
+"""
+for various servers
+  o create background jobs
+  o send to websocket channels
+"""
 
 from __future__ import unicode_literals, print_function
 
 import datetime
+import json
 
+import requests
 from django.db.models import Q
 
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.tools import server_command, logging_tools
+
+
+__all__ = [
+    b"create_bg_job",
+    b"notify_command",
+    b"propagate_channel_message",
+]
+
+
+PROPAGATE_URL_TEMPLATE = "http://{}:{}/icsw/api/v2/base/propagate_channel_message"
+PROPAGATE_URL_HEADERS = {
+    'Content-type': 'application/json',
+    'Accept': 'text/plain'
+}
+
+
+class WebServerTarget(object):
+    def __init__(self):
+        self.port = None
+        self.ip = None
+
+    @property
+    def address(self):
+        if not self.port:
+            self.resolve()
+        return PROPAGATE_URL_TEMPLATE.format(self.ip, self.port),
+
+    def resolve(self):
+        from initat.tools import config_tools
+        from initat.cluster.backbone.server_enums import icswServiceEnum
+        from initat.cluster.settings import DEBUG
+        # todo fixme via proper routing
+        if DEBUG:
+            self.port = "8080"
+        else:
+            self.port = "80"
+        self.ip = config_tools.server_check(service_type_enum=icswServiceEnum.cluster_server).ip_list[0]
+
+
+web_target = WebServerTarget()
 
 
 def create_bg_job(server_pk, user_obj, cmd, cause, obj, **kwargs):
@@ -74,3 +120,16 @@ def create_bg_job(server_pk, user_obj, cmd, cause, obj, **kwargs):
 
 def notify_command():
     return server_command.srv_command(command="wf_notify")
+
+
+def propagate_channel_message(group, _dict):
+    send_dict = {
+        "group": group,
+        "data": _dict
+    }
+
+    requests.post(
+        web_target.address,
+        data=json.dumps(send_dict),
+        headers=PROPAGATE_URL_HEADERS
+    )

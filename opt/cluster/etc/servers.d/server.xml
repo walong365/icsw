@@ -101,6 +101,14 @@
     >
     </instance>
     <instance
+        name="redis-init"
+        check_type="simple"
+        pid_file_name="redis_6379.pid"
+        any_threads_ok="1"
+        runs_on="system"
+    >
+    </instance>
+    <instance
         name="icinga-init"
         check_type="pid_file"
         pid_file_name="/opt/cluster/icinga/var/icinga.lock"

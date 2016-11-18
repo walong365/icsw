@@ -66,9 +66,8 @@ device_logs = angular.module(
     $scope.struct.websocket.onmessage = (data) ->
         console.log(data)
         json_dict = JSON.parse(data.data)
-        if $scope.struct.device_lut[json_dict.device] != undefined && $scope.struct.log_lut[json_dict.idx] == undefined
+        if $scope.struct.device_lut[json_dict.device]? and not $scope.struct.log_lut[json_dict.idx]?
             $scope.struct.log_lut[json_dict.idx] = true
-
             $timeout(
                 () ->
                     $scope.struct.device_lut[json_dict.device].$$device_log_entries_count += 1

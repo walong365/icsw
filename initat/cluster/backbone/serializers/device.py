@@ -22,6 +22,8 @@
 
 """ model serializers for device """
 
+from __future__ import print_function, unicode_literals
+
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import device, device_config, device_group, \
@@ -29,16 +31,16 @@ from initat.cluster.backbone.models import device, device_config, device_group, 
 
 
 __all__ = [
-    "DeviceScanLockSerializer",
-    "device_config_help_serializer",
-    "device_group_serializer",
-    "cd_connection_serializer",
-    "cd_connection_serializer_boot",
-    "device_serializer",
-    "device_serializer_boot",
-    "DeviceSNMPInfoSerializer",
-    "DeviceClassSerializer",
-    "DeviceLogEntrySerializer"
+    b"DeviceScanLockSerializer",
+    b"device_config_help_serializer",
+    b"device_group_serializer",
+    b"cd_connection_serializer",
+    b"cd_connection_serializer_boot",
+    b"device_serializer",
+    b"device_serializer_boot",
+    b"DeviceSNMPInfoSerializer",
+    b"DeviceClassSerializer",
+    b"DeviceLogEntrySerializer"
 ]
 
 
@@ -94,8 +96,6 @@ class device_serializer(serializers.ModelSerializer):
     device_group_name = serializers.CharField(read_only=True)
     access_levels = serializers.SerializerMethodField()
     root_passwd_set = serializers.BooleanField(read_only=True)
-    # monitor_type = serializers.CharField(source="get_monitor_type")
-    # is_cd_device = serializers.SerializerMethodField()
 
     def get_access_levels(self, obj):
         return self.context["request"].user.get_object_access_levels(obj)
@@ -254,15 +254,18 @@ class DeviceClassSerializer(serializers.ModelSerializer):
         fields = "__all__"
         model = DeviceClass
 
+
 class LogLevelSerializer(serializers.ModelSerializer):
     class Meta:
         model = LogLevel
         fields = ("idx", "identifier", "level", "name", "date")
 
+
 class LogSourceSerializer(serializers.ModelSerializer):
     class Meta:
         model = LogSource
         fields = ("idx", "identifier", "device", "description", "date")
+
 
 class DeviceLogEntrySerializer(serializers.ModelSerializer):
     source = LogSourceSerializer()
