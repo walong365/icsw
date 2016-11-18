@@ -30,45 +30,57 @@ class TestIcsw(unittest.TestCase):
             )
         cls.driver.maximize_window()
 
-    def test_001_login(self):
+    def test_010_login(self):
         self.driver.log_in('admin', 'abc123')
         self.assertEqual(self.driver.title, 'Dashboard')
 
-    def test_002_add_new_device(self):
+    def test_020_add_new_device(self):
         TestIcsw.device = 'device' + unique_str()
         self._add_device(TestIcsw.device)
         self.assert_toast('created new device')
-        # this is necessary to clear toaster message about a
-        self.driver.clear_toaster(no_wait=False)
-        self.driver.select_device(TestIcsw.device)
 
-    def test_003_duplicate_device(self):
+    def test_021_duplicate_device(self):
         self._add_device(TestIcsw.device)
         self.assert_toast('already exists')
 
-    def test_004_device_information(self):
+    def test_022_select_device(self):
+        self.driver.select_device(self.device)
+
+    def test_030_device_information(self):
         self.driver.get_('/main/deviceinfo')
         self.assert_element('//div[label[contains(.,"FQDN")]]'
             '/div[contains(., "{}")]'.format(TestIcsw.device))
 
-    def test_005_device_tree(self):
+    def test_040_device_tree(self):
         self.driver.get_('/main/devtree')
-        self.assert_element(
+        self.driver.wait_overlay()
+        device_button = self.driver.find_element_by_xpath(
             '//button[contains(., "{}")]'.format(TestIcsw.device)
             )
+        self.driver.wait_overlay()
 
-    def test_006_device_tree_create_device(self):
+        # modify device
+        device_button.click()
+        modal = self.get_modal()
+        self.click_button(ng_click='modify()', base_element=modal)
+        modal = self.get_modal()
+        self.fill_form({'comment': 'test'}, modal)
+        time.sleep(1)
+        self.click_button('Modify', base_element=modal)
+        self.assert_toast('comment : changed from')
+
+        # create device
         self.driver.get_('/main/devtree')
         # wait to be loaded
         self.driver.find_element_by_xpath('//th[text()="Name"]')
-        self.driver.wait_loading()
+        self.driver.wait_overlay()
         self.click_button(ng_click='create_device( $event)')
         device_name = 'device' + unique_str()
         self.fill_form({'name': device_name})
-        self.click_button("Create")
+        self.click_button('Create')
         self.assert_toast("created 'device'")
 
-    def test_007_assign_configuration(self):
+    def test_050_assign_configuration(self):
         self.driver.get_('main/deviceconfig')
         # wait to be loaded
         self.driver.find_element_by_xpath('//th[text()="Type"]')
@@ -86,11 +98,15 @@ class TestIcsw(unittest.TestCase):
             '//tr[th[text()="{}"]]'
             '/td[@title="check_ping"]/span'.format(self.device)
             )
-        self.assertIn('glyphicon-minus', e.get_attribute('class'))
         e.click()
-        self.assertIn('glyphicon-ok', e.get_attribute('class'))
+        self.click_button('Modify')
+        self.assert_toast('added config check_ping')
+        self.driver.wait_overlay()
+        e.click()
+        self.click_button('Modify')
+        self.assert_toast('removed config check_ping')
 
-    def test_008_network(self):
+    def test_060_network(self):
         def get_network_accordion(header):
             return self.driver.find_element_by_xpath(
                 '//div[@uib-accordion-group and '
@@ -111,11 +127,11 @@ class TestIcsw(unittest.TestCase):
         modal = self.get_modal()
         netdevice_name = 'netdevice' + unique_str()
         self.fill_form({'devname': netdevice_name}, modal)
-        self.click_button("Create", base_element=modal)
+        self.click_button('Create', base_element=modal)
         self.assert_toast('created new netdevice')
         # For whatever reason the dialog doesn't close automatically, so close
         # it by pressing "Cancel".
-        self.click_button("Cancel", base_element=modal)
+        self.click_button('Cancel', base_element=modal)
 
         # create an IP address
         button.click()
@@ -124,7 +140,7 @@ class TestIcsw(unittest.TestCase):
         self.click_button('Create', base_element=modal)
         self.assert_toast('created new net_ip')
 
-    def test_009_categories(self):
+    def test_070_categories(self):
         self.driver.get_('/main/categorytree')
 
         # create a new category
@@ -146,50 +162,67 @@ class TestIcsw(unittest.TestCase):
         checkbox.click()
         self.assert_toast('added to 1 device')
 
-    def test_010_locations(self):
+    def test_080_locations(self):
         # create a new location
         self.driver.get_('/main/devlocation')
+        self.driver.find_element_by_xpath(
+            '//li[@heading="Manage Locations"]'
+            ).click()
         self.click_button('create')
         modal = self.get_modal()
         location_name = 'location' + unique_str()
         self.fill_form({'name': location_name}, modal)
-        self.click_button("Create", base_element=modal)
+        self.click_button('Create', base_element=modal)
         self.assert_toast('created new category')
 
-        self.driver.get_('/main/devlocationtest')
-        # TODO: assign the location
+        # assign the location
+        self.driver.find_element_by_xpath(
+            '//li[@heading="Assign Locations"]'
+            ).click()
+        checkbox_xpath = '//span[contains(.,"{}")]/../input'.format(
+            location_name
+            )
+        self.driver.find_element_by_xpath(checkbox_xpath).click()
+        self.assert_toast('added to 1 device')
+        # the checkbox has to be retrieved again as it has been recreated in
+        # the DOM
+        self.driver.wait_overlay()
+        self.driver.find_element_by_xpath(checkbox_xpath).click()
+        self.assert_toast('removed from 1 device')
 
-    def test_011_domain_names(self):
+        # TODO: modify and delete
+
+    def test_090_domain_names(self):
         # create a new domain
         self.driver.get_('/main/domaintree')
         self.click_button('create new')
         modal = self.get_modal()
         domain_name = 'domain' + unique_str()
         self.fill_form({'name': domain_name}, modal)
-        self.click_button("Create", base_element=modal)
+        self.click_button('Create', base_element=modal)
         self.assert_toast('created new domain_tree_node')
 
-    def test_012_setup_progress(self):
+    def test_100_setup_progress(self):
         self.driver.get_('/main/setup/progress')
         self.assert_element(
             '//td[contains(text(), "Add at least one Device to the system")]'
             )
 
-    def test_013_monitoring_overview(self):
+    def test_110_monitoring_overview(self):
         self.driver.get_('/main/monitorov')
 
         self.assert_element(
             '//td[text()="{}"]'.format(TestIcsw.device)
             )
 
-    def test_014_license_overview(self):
+    def test_120_license_overview(self):
         self.driver.get_('/main/syslicenseoverview')
 
         self.assert_element(
             '//span[contains(.,"Your Licenses for this Server")]'
             )
 
-    def test_015_user_tree(self):
+    def test_130_user_tree(self):
         self.driver.get_('/main/usertree')
         self.assert_element(
             '//h3[contains(.,"User / Groups / Roles")]'
@@ -207,11 +240,11 @@ class TestIcsw(unittest.TestCase):
             '//icsw-group-edit'
             )
         self.fill_form({'groupname': group_name}, edit, 'object')
-        self.click_button("create")
-        self.driver.wait_loading()
+        self.click_button('create')
+        self.driver.wait_overlay()
         self.assert_toast('created new group')
 
-    def test_016_account_info(self):
+    def test_140_account_info(self):
         self.driver.get_('/main/useraccount')
         self.assert_element(
             '//h3[text()="Account Information for \'admin\'"]'
@@ -220,13 +253,17 @@ class TestIcsw(unittest.TestCase):
         first_name = 'firstname' + unique_str()
         self.fill_form({'first_name': first_name}, form, 'struct.user')
         self.click_button('submit')
-        self.driver.wait_loading()
+        self.driver.wait_overlay()
         self.assert_toast('first name : changed from')
 
     def get_modal(self):
-        return self.driver.find_element_by_xpath(
+        # note the "s" in elements: find_element_by_xpath does not work
+        # because Selenium always returns the first element, even with "last()"
+        modals = self.driver.find_elements_by_xpath(
             '//div[@class="modal-content"]'
             )
+        self.assert_(modals, 'Modal dialog could not be found.')
+        return modals[-1]
 
     def click_button(self, text=None, ng_click=None, base_element=None):
         if not base_element:
@@ -237,7 +274,8 @@ class TestIcsw(unittest.TestCase):
                 ).click()
         else:
             base_element.find_element_by_xpath(
-                './/button[@ng-click="{}"]'.format(ng_click)
+                '(.//button|.//icsw-tools-button)[@ng-click="{}"]'.format(
+                    ng_click)
                 ).click()
 
     def fill_form(self, values, base_element=None, edit_object='edit_obj'):
@@ -256,7 +294,7 @@ class TestIcsw(unittest.TestCase):
             {'full_name': name, 'ip': '192.168.0.1'},
             edit_object='device_data',
             )
-        self.driver.wait_loading()
+        self.driver.wait_overlay()
         self.click_button('create Device')
 
     def assert_toast(self, text, msg=None):
