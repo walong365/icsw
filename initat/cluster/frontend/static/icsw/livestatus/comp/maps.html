@@ -2,16 +2,16 @@
     <div uib-alert class="alert-warning" ng-show="!struct.data_valid">Loading Data ...</div>
     <div ng-if="struct.data_valid">
         <h3 ng-show="!struct.maps_present">No maps to show</h3>
-        <h3 ng-show="struct.maps_present">
-            {{ struct.loc_gfx_list.length }} Maps,
+        <h4 ng-show="struct.maps_present">
+            {{ struct.loc_gfx_list.length }} Location Images,
             <span ng-show="struct.cur_page_idx">
-                showing map {{ struct.cur_page_idx }},
+                showing Image {{ struct.cur_page_idx }},
             </span>
             <span ng-show="struct.autorotate">
                 <span class="label label-primary">autorotate</span>,
             </span>
             <icsw-tools-button type="modify" size="xs" ng-click="show_settings()"></icsw-tools-button>
-        </h3>
+        </h4>
         <uib-tabset ng-if="struct.maps_present" active="struct.page_idx">
             <uib-tab ng-repeat="loc_gfx in struct.loc_gfx_list track by $index" select="set_page_idx(loc_gfx)" index="$index + 1">
                 <uib-tab-heading>

@@ -374,8 +374,8 @@ angular.module(
                     svg(
                         {
                             key: "svgouter"
-                            width: width
-                            height: height
+                            width: "100%"  # width
+                            height: "100%"  # height
                             preserveAspectRatio: "xMidYMid meet"
                             viewBox: "0 0 #{_gfx_width} #{_gfx_height}"
                         }

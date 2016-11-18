@@ -12,8 +12,8 @@
     <div ng-class="struct.connector.get_panel_class()" ng-if="struct.connector_set && struct.connector.setup_ok">
         <div class="panel-heading">
             <h4>
-                Display Pipeline '{{ struct.connector.name }}',
-                {{ struct.connector.num_display_elements }} ({{ struct.connector.num_total_elements }}) Elements<span ng-show="struct.connector.num_hidden_elements">,
+                Display Pipeline {{ struct.connector.name | capitalize }},
+                {{ struct.connector.num_display_elements }} Elements<span ng-show="struct.connector.num_hidden_elements">,
                 {{ struct.connector.num_hidden_elements }} hidden</span>
                 <div class="form-inline input-group">
                     <span ng-show="struct.connector.num_hidden_elements" class="pull-left" style="margin-right:5px;">

@@ -125,7 +125,7 @@ angular.module(
                     }
                     [
                         " "
-                        if cat.$gfx_list.length then span({key: "gfx", className: "label label-success", title: "Attached Gfxs"}, cat.$gfx_list.length)
+                        if cat.$gfx_list.length then span({key: "gfx", className: "label label-success", title: "Attached Images"}, cat.$gfx_list.length)
                         " "
                         span(
                             {
@@ -425,7 +425,7 @@ angular.module(
                 _lost_f.push("#{_dml_lost_physical} physical")
             if _dml_lost_structural
                 _lost_f.push("#{_dml_lost_structural} structural")
-            _header =  "The outcome of this Modify will be the lost of #{_lost_f.join(' and ')} placements on #{_gfx_lost} maps, continue ?"
+            _header =  "The outcome of this Modify will be the lost of #{_lost_f.join(' and ')} placements on #{_gfx_lost} Location Images, continue?"
             icswToolsSimpleModalService(
                 _header
             ).then(

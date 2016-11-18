@@ -41,7 +41,7 @@ angular.module(
     # top level controller of monitoring dashboard
 
     _cd = {
-        "test": {
+        "liveview": {
             "icswLivestatusSelDevices": [{
                 "icswLivestatusDataSource": [{
                     "icswLivestatusFilterService": [{
@@ -99,7 +99,7 @@ angular.module(
                 }]
             }]
         }
-        "nettop": {
+        "networktopology": {
             "icswLivestatusSelDevices": [{
                 "icswLivestatusDataSource": [{
                     "icswLivestatusFilterService": [{

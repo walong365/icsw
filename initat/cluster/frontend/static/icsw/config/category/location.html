@@ -222,7 +222,7 @@
         st-table="struct.locations"
         ng-if="struct.locations.length"
         class="table table-condensed table-hover table-striped"
-        style="width:auto;"
+        style=""
     >
         <thead>
             <tr>
@@ -282,8 +282,9 @@
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.location.show">
+    <h4>Geo Location</h4>
     <div class="row">
-        <div class="col-md-6">
+        <div class="col-md-7" style="padding-right:0;">
             <icsw-config-category-tree-google-map
                 locations="struct.locations"
                 icsw-google-maps-fn="struct.google_maps_fn"
@@ -291,7 +292,7 @@
                 icsw-map-mode="show"
             ></icsw-config-category-tree-google-map>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-5" style="padding-left:0;">
             <!-- no controller needed -->
             <icsw-config-category-location-list-show></icsw-config-category-location-list-show>
         </div>
@@ -367,7 +368,7 @@
                         <li><a ng-click="modify_image('af_sharpen')">Sharpen</a></li>
                     </ul>
                 </div>
-                Undo / reset:
+                Undo / Reset:
                 <div class="btn-group">
                     <button type="button" ng-class="'btn btn-warning'" ng-click="undo()" title="undo last step">
                         <span class="glyphicon glyphicon-repeat"></span>
