@@ -38,14 +38,19 @@ from .tools import query_local_meta_server
 from .. import icsw_logging
 
 
-def show_form_list(form_list):
+def show_form_list(form_list, run_time):
     # color strings (green / blue / red / normal)
     d_map = {
         "ok": "\033[1;32m{}\033[m\017",
         "warning": "\033[1;34m{}\033[m\017",
         "critical": "\033[1;31m{}\033[m\017",
     }
-    print(datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S"))
+    print(
+        "{} (took {})".format(
+            datetime.datetime.now().strftime("%a, %d. %b %Y %d %H:%M:%S"),
+            logging_tools.get_diff_time_str(run_time),
+        )
+    )
     form_list.display_attribute_map = d_map
     print(unicode(form_list))
 
@@ -135,10 +140,6 @@ def main(opt_ns):
     if opt_ns.childcom == "version":
         version_command(opt_ns)
     elif opt_ns.childcom == "status":
-        if ICSW_DEBUG_MODE:
-            # activatge debug mode
-            from django.conf import settings
-            settings.DEBUG = True
         if opt_ns.interactive:
             from . import console
             console.main(opt_ns, cur_c, inst_xml)
@@ -154,7 +155,12 @@ def main(opt_ns):
                 print("performed {:d} queries in {:.3f}".format(len(connection.queries), _time))
                 print()
             form_list = cur_c.instance_to_form_list(opt_ns, inst_xml.tree)
-            show_form_list(form_list)
+            start_time, end_time = (
+                float(inst_xml.tree.attrib["start_time"]),
+                float(inst_xml.tree.attrib["end_time"])
+            )
+            run_time = end_time - start_time
+            show_form_list(form_list, run_time)
             _res = inst_xml.tree.findall(".//result")
             if len(_res) == 1:
                 # set return state to single-state result
@@ -202,13 +208,13 @@ def main(opt_ns):
         if _result is None:
             log_com("Got no result from meta-server")
             sys.exit(1)
-        if _result.get_log_tuple()[1] > logging_tools.LOG_LEVEL_WARN:
+        elif _result.get_log_tuple()[1] > logging_tools.LOG_LEVEL_WARN:
             log_com(*_result.get_log_tuple())
-            sys.exit(1)
-        if opt_ns.childcom == "overview":
-            _state_overview(opt_ns, _result)
-        elif opt_ns.childcom in ["disable", "enable", "ignore", "monitor"]:
-            log_com(*_result.get_log_tuple())
+        else:
+            if opt_ns.childcom == "overview":
+                _state_overview(opt_ns, _result)
+            elif opt_ns.childcom in ["disable", "enable", "ignore", "monitor"]:
+                log_com(*_result.get_log_tuple())
     else:
         log_com(
             "unknown childcom '{}'".format(

@@ -316,6 +316,7 @@ class InstanceXML(object):
                 ("pid_file_name", "{}.pid".format(name)),
                 ("init_script_name", name),
                 ("startstop", "1"),
+                ("status_from_pid", "0"),
                 ("process_name", name),
                 # default wait time before killing processes
                 ("wait_time", "10"),

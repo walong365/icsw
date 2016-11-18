@@ -68,6 +68,15 @@
                 </attribute>
             </optional>
             <optional>
+                <!-- take status from pidfile (do not call status on init-script) -->
+                <attribute name="status_from_pid">
+                    <choice>
+                        <value>0</value>
+                        <value>1</value>
+                    </choice>
+                </attribute>
+            </optional>
+            <optional>
                 <attribute name="wait_time">
                 </attribute>
             </optional>

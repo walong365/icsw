@@ -268,15 +268,22 @@ class ServiceContainer(object):
         self.update_valid_licenses()
         self.update_version_tuple()
         if opt_ns.meta:
-            meta_result = query_local_meta_server(instance_xml, "overview", services=[_srv.name for _srv in check_list])
-            # check for valid meta-server result
-            if meta_result is not None:
-                if meta_result.get_log_tuple()[1] > logging_tools.LOG_LEVEL_WARN:
-                    meta_result = None
+            from initat.host_monitoring.client_enums import icswServiceEnum
+            if os.path.exists(icswServiceEnum.meta_server.value.msi_block_name):
+                meta_result = query_local_meta_server(instance_xml, "overview", services=[_srv.name for _srv in check_list])
+                # check for valid meta-server result
+                if meta_result is not None:
+                    if meta_result.get_log_tuple()[1] > logging_tools.LOG_LEVEL_WARN:
+                        meta_result = None
+            else:
+                meta_result = None
         else:
             meta_result = None
+        instance_xml.tree.attrib["start_time"] = "{:.3f}".format(time.time())
         for entry in check_list:
             self.check_service(entry, use_cache=True, refresh=True, version_changed=self.model_version_mismatch, meta_result=meta_result)
+        instance_xml.tree.attrib["end_time"] = "{:.3f}".format(time.time())
+
         # if self._config_check_errors:
         #    self.log(
         #        "{} not ok ({}), triggering model check".format(

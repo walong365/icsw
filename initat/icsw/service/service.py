@@ -540,23 +540,31 @@ class SimpleService(Service):
     def _check(self, result, act_proc_dict):
         init_script_name = self.init_script_name
         pid_file_name = self.attrib["pid_file_name"]
+        _status_from_pid = True if int(self.attrib["status_from_pid"]) else False
         if not pid_file_name.startswith("/"):
             pid_file_name = os.path.join("/", "var", "run", pid_file_name)
-        if os.path.isfile(pid_file_name):
-            start_time = os.stat(pid_file_name)[stat.ST_MTIME]
+            if os.path.isfile(pid_file_name):
+                start_time = os.stat(pid_file_name)[stat.ST_MTIME]
         else:
             start_time = 0
         if os.path.isfile(init_script_name):
-            if os.getuid() != 0:
-                self.log(
-                    "Need root permissions to reliably obtain status information.",
-                    logging_tools.LOG_LEVEL_WARN
-                )
-            (_status, _output) = process_tools.getstatusoutput("{} status".format(init_script_name))
-            if _status == 0:
-                act_state, act_str = (SERVICE_OK, "running")
+            if _status_from_pid:
+                if os.path.isfile(pid_file_name):
+                    act_state, act_str = (SERVICE_OK, "running")
+                else:
+                    act_state, act_str = (SERVICE_DEAD, "not running")
             else:
+                if os.getuid() != 0:
+                    self.log(
+                        "Need root permissions to reliably obtain status information.",
+                        logging_tools.LOG_LEVEL_WARN
+                    )
+                (_status, _output) = process_tools.getstatusoutput("{} status".format(init_script_name))
+                if _status == 0:
+                    act_state, act_str = (SERVICE_OK, "running")
+                else:
                 act_state, act_str = (SERVICE_DEAD, "not running")
+
         else:
             act_state, act_str = (SERVICE_NOT_INSTALLED, "not installed")
         result.append(

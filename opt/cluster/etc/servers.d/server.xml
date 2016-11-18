@@ -103,6 +103,7 @@
     <instance
         name="redis-init"
         check_type="simple"
+        status_from_pid="1"
         pid_file_name="redis_6379.pid"
         any_threads_ok="1"
         runs_on="system"
