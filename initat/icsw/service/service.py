@@ -543,8 +543,8 @@ class SimpleService(Service):
         _status_from_pid = True if int(self.attrib["status_from_pid"]) else False
         if not pid_file_name.startswith("/"):
             pid_file_name = os.path.join("/", "var", "run", pid_file_name)
-            if os.path.isfile(pid_file_name):
-                start_time = os.stat(pid_file_name)[stat.ST_MTIME]
+        if os.path.isfile(pid_file_name):
+            start_time = os.stat(pid_file_name)[stat.ST_MTIME]
         else:
             start_time = 0
         if os.path.isfile(init_script_name):
