@@ -27,6 +27,8 @@ import datetime
 import json
 
 import requests
+from channels import Group
+from django.conf import settings
 from django.db.models import Q
 
 from initat.cluster.backbone.models.functions import cluster_timezone
@@ -36,11 +38,11 @@ from initat.tools import server_command, logging_tools
 __all__ = [
     b"create_bg_job",
     b"notify_command",
-    b"propagate_channel_message",
+    b"propagate_channel_object",
 ]
 
 
-PROPAGATE_URL_TEMPLATE = "http://{}:{}/icsw/api/v2/base/propagate_channel_message"
+PROPAGATE_URL_TEMPLATE = "http://{}:{}/icsw/api/v2/base/propagate_channel_message/{{}}"
 PROPAGATE_URL_HEADERS = {
     'Content-type': 'application/json',
     'Accept': 'text/plain'
@@ -56,18 +58,20 @@ class WebServerTarget(object):
     def address(self):
         if not self.port:
             self.resolve()
-        return PROPAGATE_URL_TEMPLATE.format(self.ip, self.port),
+        return PROPAGATE_URL_TEMPLATE.format(self.ip, self.port)
 
     def resolve(self):
         from initat.tools import config_tools
         from initat.cluster.backbone.server_enums import icswServiceEnum
         from initat.cluster.settings import DEBUG
         # todo fixme via proper routing
-        if DEBUG:
-            self.port = "8080"
+        if DEBUG or not __file__.startswith("/opt/"):
+            self.port = 8080
         else:
-            self.port = "80"
+            self.port = 80
+        # print("*", self.port)
         self.ip = config_tools.server_check(service_type_enum=icswServiceEnum.cluster_server).ip_list[0]
+        self.ip = "127.0.0.1"
 
 
 web_target = WebServerTarget()
@@ -122,14 +126,16 @@ def notify_command():
     return server_command.srv_command(command="wf_notify")
 
 
-def propagate_channel_message(group, _dict):
-    send_dict = {
-        "group": group,
-        "data": _dict
-    }
-
-    requests.post(
-        web_target.address,
-        data=json.dumps(send_dict),
-        headers=PROPAGATE_URL_HEADERS
-    )
+def propagate_channel_object(group, dict_obj):
+    # json_obj is an already jsonified object
+    _hosts = settings.CHANNEL_LAYERS["default"]["CONFIG"]["hosts"]
+    # print("G", group, dict_obj)
+    if any([_addr == "127.0.0.1" for _addr, _port in _hosts]):
+        # send to backend, only text is allowed as key
+        Group(group).send({"text": json.dumps(dict_obj)})
+    else:
+        requests.post(
+            web_target.address.format(group),
+            data=json.dumps(dict_obj),
+            headers=PROPAGATE_URL_HEADERS
+        )

@@ -185,11 +185,12 @@ angular.module(
                 for key, value of _dict
                     _dict[key] = false
                 # set referenced
-                for key in _field.split(":")
-                    try
-                        _dict[_lut[key].idx] = true
-                    catch err
-                        console.error err
+                if _field
+                    for key in _field.split(":")
+                        try
+                            _dict[_lut[key].idx] = true
+                        catch err
+                            console.error "settings=#{settings}, key=#{key}, err=#{err}"
 
         toggle_link_state: () =>
             @linked = !@linked

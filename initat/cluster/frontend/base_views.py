@@ -30,7 +30,6 @@ import logging
 
 import PIL
 from PIL import Image
-from channels import Group
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -52,6 +51,7 @@ from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import xml_wrapper, contact_server
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools import logging_tools, process_tools, server_command
+from initat.tools.bgnotify.create import propagate_channel_object
 
 logger = logging.getLogger("cluster.base")
 
@@ -478,12 +478,7 @@ class CategoryReferences(ListAPIView):
 
 
 @csrf_exempt
-def propagate_channel_message(request):
-    data = json.loads(request.body)
-
-    Group(data["group"]).send(
-        {
-            "text": json.dumps(data["data"])
-        }
-    )
+def propagate_channel_message(request, group):
+    # data = json.loads(request.body)
+    propagate_channel_object(group, json.loads(request.body))
     return HttpResponse("ok")

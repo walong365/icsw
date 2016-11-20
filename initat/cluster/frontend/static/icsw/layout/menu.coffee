@@ -650,20 +650,27 @@ menu_module = angular.module(
 ]).service("icswReactBackgroundJobInfoFactory",
 [
     "$q", "$timeout", "$rootScope", "ICSW_SIGNALS", "icswSimpleAjaxCall",
-    "$state", "ICSW_URLS", "icswMenuSettings",
+    "$state", "ICSW_URLS", "icswMenuSettings", "icswWebSocketService",
 (
     $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
-    $state, ICSW_URLS, icswMenuSettings,
+    $state, ICSW_URLS, icswMenuSettings, icswWebSocketService,
 ) ->
     {ul, li, div, a, button, span} = React.DOM
     return React.createClass(
         displayName: "icswBackgroundJobInfo"
 
         getInitialState: () ->
+            # websocket
+            @ws = icswWebSocketService.register_ws("background_jobs")
+            @ws.onmessage = (msg) =>
+                data = angular.fromJson(msg.data)
+                console.log "d=", data
+                @setState({num_jobs: data["background_jobs"]})
+
             _reload = () =>
-                if @backg_timer
-                    $timeout.cancel(@back_timer)
-                @backg_timer = $timeout(_reload, 30000)
+                # if @backg_timer
+                #     $timeout.cancel(@back_timer)
+                # @backg_timer = $timeout(_reload, 30000)
                 icswSimpleAjaxCall(
                     {
                         url: ICSW_URLS.MAIN_GET_NUMBER_OF_BACKGROUND_JOBS

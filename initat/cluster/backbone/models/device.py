@@ -27,6 +27,7 @@ import random
 import time
 import datetime
 import uuid
+import json
 
 from django.db import models
 from django.core.exceptions import ValidationError
@@ -46,7 +47,7 @@ from initat.cluster.backbone.models.functions import check_empty_string, \
 from initat.cluster.backbone.signals import BootsettingsChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import config_store, logging_tools, server_command
-from initat.tools.bgnotify.create import propagate_channel_message
+from initat.tools.bgnotify.create import propagate_channel_object
 
 logger = logging.getLogger(__name__)
 
@@ -966,5 +967,5 @@ def device_log_entry_post_save(sender, **kwargs):
             "source": cur_inst.source.identifier
         }
 
-        propagate_channel_message("device_log_entries", info_obj)
+        propagate_channel_object("device_log_entries", info_obj)
         # print("[{}] pushed into channel... {}".format(datetime.datetime.now().ctime(),  cur_inst.text))

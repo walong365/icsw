@@ -25,21 +25,31 @@ angular.module(
     ]
 ).service("icswSystemOvaCounter",
 [
-    "Restangular", "ICSW_URLS",
+    "Restangular", "ICSW_URLS", "$q", "icswWebSocketService",
 (
-    Restangular, ICSW_URLS,
+    Restangular, ICSW_URLS, $q, icswWebSocketService,
 ) ->
     class icswSystemOvaCounter
         constructor: (c_list) ->
             @counter = 0
             @system_cradle = null
             @basket_list = []
+            @on_update = $q.defer()
             @update(c_list)
+            @ws = icswWebSocketService.register_ws("ova_counter")
+            @ws.onmessage = (msg) =>
+                # console.log "n=", msg
+                data = angular.fromJson(msg.data)
+                @update_plain(data)
+                @on_update.notify(@system_cradle)
 
         update: (c_list) ->
             @counter++
             _c = c_list.plain()[0]
-            @system_cradle = _c
+            @update_plain(_c)
+
+        update_plain: (cradle) =>
+            @system_cradle = cradle
             @build_info_str()
 
         build_info_str: () ->

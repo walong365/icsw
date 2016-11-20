@@ -1,5 +1,7 @@
 #!/bin/bash
 
+base=$(basename $0)
+
 function print_help {
     echo "usage:"
     echo
@@ -26,6 +28,13 @@ done
 
 export ICSW_DEBUG_SOFTWARE=1
 
-[ ! -z $EXTRA_OPTIONS ] && echo "settings: EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
+[ ! -z "${EXTRA_OPTIONS}" ] && echo "settings: EXTRA_OPTIONS='${EXTRA_OPTIONS}'"
 
-./manage.py runserver --noasgi --noworker --traceback ${EXTRA_OPTIONS} 0.0.0.0:8081
+if [ "${base}" = "rundaphne.sh" ] ; then
+    # use local path for asgi layer
+    /opt/python-init/bin/daphne asgi:channel_layer --bind 0.0.0.0 --port 8084
+elif [ "${base}" = "runworker.sh" ] ; then
+    ./manage.py runworker
+else
+    ./manage.py runserver --noworker --noasgi --traceback ${EXTRA_OPTIONS} 0.0.0.0:8081
+fi

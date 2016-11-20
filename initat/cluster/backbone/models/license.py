@@ -41,6 +41,7 @@ from django.dispatch import receiver
 from initat.cluster.backbone.available_licenses import get_available_licenses, LicenseEnum, LicenseParameterTypeEnum
 from initat.cluster.backbone.models.functions import memoize_with_expiry, cluster_timezone
 from initat.tools import logging_tools
+from initat.tools.bgnotify.create import propagate_channel_object
 from .license_xml import ICSW_XML_NS, ICSW_XML_NS_NAME, ICSW_XML_NS_MAP, LIC_FILE_RELAX_NG_DEFINITION
 
 __all__ = [
@@ -366,6 +367,17 @@ class icswEggCradle(models.Model):
         return "EggCradle, {:d} installed, {:d} available".format(
             self.installed,
             self.available,
+        )
+
+
+@receiver(signals.post_save, sender=icswEggCradle)
+def icsw_egg_cradle_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        from initat.cluster.backbone.serializers import icswEggCradleSerializer
+        _inst = kwargs["instance"]
+        propagate_channel_object(
+            "ova_counter",
+            icswEggCradleSerializer(_inst).data,
         )
 
 

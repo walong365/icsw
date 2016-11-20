@@ -38,7 +38,7 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 
 from initat.cluster.backbone import routing
-from initat.cluster.backbone.models import background_job, device_variable
+from initat.cluster.backbone.models import background_job, device_variable, BackgroundJobState
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.tools import server_command
@@ -52,7 +52,13 @@ class get_number_of_background_jobs(View):
         request.session["latest_contact"] = datetime.datetime.now()
         _return = {
             "background_jobs": background_job.objects.exclude(
-                Q(state__in=["done", "timeout", "ended", "merged"])
+                Q(
+                    state__in=[
+                        BackgroundJobState.done.value,
+                        BackgroundJobState.merged.value,
+                        BackgroundJobState.timeout.value,
+                    ]
+                )
             ).count()
         }
         return HttpResponse(json.dumps(_return), content_type="application/json")

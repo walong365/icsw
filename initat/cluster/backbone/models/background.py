@@ -28,7 +28,10 @@ import logging
 
 from enum import Enum
 
+from django.db.models import signals, Q
+from django.dispatch import receiver
 from django.db import models
+from initat.tools.bgnotify.create import propagate_channel_object
 
 from initat.tools import server_command
 
@@ -122,6 +125,26 @@ class background_job(models.Model):
     class CSW_Meta:
         permissions = (
             ("show_background", "Show background jobs", False),
+        )
+
+
+@receiver(signals.post_save, sender=background_job)
+def background_job_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        # from initat.cluster.backbone.serializers import background_job_serializer
+        propagate_channel_object(
+            "background_jobs",
+            {
+                "background_jobs": background_job.objects.exclude(
+                    Q(
+                        state__in=[
+                            BackgroundJobState.done.value,
+                            BackgroundJobState.merged.value,
+                            BackgroundJobState.timeout.value,
+                        ]
+                    )
+                ).count()
+            }
         )
 
 

@@ -61,7 +61,6 @@ ifneq ($(wildcard /etc/debian_version), )
     WSGI_INI:=webfrontend.wsgi.ini-deb
     DAPHNE_INI:=daphne.wsgi.ini-deb
     DAPHNE_WORKERS_INI:=daphne-workers.wsgi.ini-deb
-    REDIS_INI:=redis.wsgi.ini-deb
 else
     ifeq ($(findstring SuSE-release, $(wildcard /etc/*)), )
         WWW_USER=apache
@@ -71,7 +70,6 @@ else
         WSGI_INI:=webfrontend.wsgi.ini-centos
         DAPHNE_INI:=daphne.wsgi.ini-centos
         DAPHNE_WORKERS_INI:=daphne-workers.wsgi.ini-centos
-        REDIS_INI:=redis.wsgi.ini-centos
     else
          WWW_USER=wwwrun
          WWW_GROUP=www
@@ -83,7 +81,6 @@ else
          WSGI_INI:=webfrontend.wsgi.ini-suse
          DAPHNE_INI:=daphne.wsgi.ini-suse
          DAPHNE_WORKERS_INI:=daphne-workers.wsgi.ini-suse
-         REDIS_INI:=redis.wsgi.ini-suse
     endif
 endif
 
@@ -241,7 +238,6 @@ install: install_webcontent
 	${INSTALL} ${INSTALL_OPTS} -d ${DESTDIR}${ICSW_ETC}/uwsgi
 	${INSTALL} ${INSTALL_OPTS} nginx/webfrontend-common.include ${DESTDIR}${ICSW_ETC}/uwsgi/
 	${INSTALL} ${INSTALL_OPTS} nginx/${WSGI_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/webfrontend.wsgi.ini
-	${INSTALL} ${INSTALL_OPTS} nginx/${REDIS_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/redis.wsgi.ini
 	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/daphne.wsgi.ini
 	${INSTALL} ${INSTALL_OPTS} nginx/${DAPHNE_WORKERS_INI} ${DESTDIR}${ICSW_ETC}/uwsgi/daphne-workers.wsgi.ini
 	# nginx
