@@ -33,5 +33,5 @@ channel_routing = [
     #  route_class(icswConsumer, path=r"^/icsw/ws/device_log_entries/$"),
     route("websocket.connect", ws_add, path=r"^/icsw/ws/(?P<model_name>[0-9a-zA-Z_]+)/$"),
     route("websocket.receive", ws_message),
-    route("websocket.disconnect", ws_disconnect, path=r"^/icsw/ws/"),
+    route("websocket.disconnect", ws_disconnect),
 ]
