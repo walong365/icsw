@@ -1,52 +1,12 @@
 [uwsgi]
 
-chdir=%(django_app_dir)
-pythonpath=%(django_app_dir)
-pidfile=/var/run/daphne.%(django_app).pid
-daemonize=/var/log/icsw/daphne-%(django_app).log
-
-env=NODE_PATH=/opt/cluster/lib/node_modules:/opt/cluster/lib/node_modules/npm/node_modules
-env=DJANGO_SETTINGS_MODULE=settings
-; needed for pre-start script
-env=DJANGO_APP_DIR=%(django_app_dir)
-env=PYTHON_EGG_CACHE=/tmp/.uwsgi_icsw_daphne_egg_cache
-env=DJANGO_APP=%(django_app)
-
-py-programname=python-init
-
-module=wsgi:application
-master=True
-vacuum=True
-max-requests=150
-# harakiri=30
-harakiri-verbose=1
 processes=1
-zerg-server=/var/run/daphne_%(django_app)/broodlord.sock
-post-buffering=0
-; be lazy (workers load application, not the master)
-lazy-apps=1
-workers=8
-show-config=1
-; reduce mercy period to speed up reload
-worker-reload-mercy=10
-enable-threads=1
-
-# buffer size
-buffer-size=32768
-
-; use chain reloading (workers are reloaded one after the other)
-; create/touch the files in the reload/ subdir to trigger a reload
-touch-chain-reload=%d/reload/daphne_%(django_app).touch
-; Statistics
-memory-report=1
-
-stats=/var/run/%(django_app)/daphne_stats.sock
-
-[zerg]
-zerg=/var/run/%(django_app)/daphne_broodlord.sock
-master=true
-module=wsgi:application
-processes=1
-idle=30
-die-on-idle=true
-enable-threads=1
+workers=1
+threads=1
+limit-nproc=1
+no-default-app=true
+no-site=true
+daemonize=/var/log/icsw/daphne.log
+pidfile=/var/run/daphne/daphne.pid
+exec-as-user=/opt/cluster/sbin/pis/daphne_start_stop.sh start
+exec-as-user-atexit=/opt/cluster/sbin/pis/daphne_start_stop.sh stop

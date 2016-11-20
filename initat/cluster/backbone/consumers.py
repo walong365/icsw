@@ -49,6 +49,7 @@ def ws_add(message, model_name):
 
 @channel_session
 def ws_disconnect(message, model_name):
+    print("+", dir(message.channel_session))
     print("*", model_name, message.channel_session["model_name"])
     Group(
         message.channel_session["model_name"]
