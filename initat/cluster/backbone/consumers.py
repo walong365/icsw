@@ -43,12 +43,15 @@ class icswConsumer(BaseConsumer):
 
 @channel_session
 def ws_add(message, model_name):
+    print("add", model_name)
     message.channel_session["model_name"] = model_name
+    print("d", message.channel_session["model_name"])
     Group(message.channel_session["model_name"]).add(message.reply_channel)
 
 
 @channel_session
 def ws_disconnect(message):
+    print(message.channel_session.keys())
     model_name = message.channel_session["model_name"]
     Group(
         model_name,
