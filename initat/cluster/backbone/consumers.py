@@ -48,17 +48,16 @@ def ws_add(message, model_name):
 
 
 @channel_session
-def ws_disconnect(message, model_name):
-    print("+", dir(message.channel_session))
-    print("*", model_name, message.channel_session["model_name"])
+def ws_disconnect(message):
+    model_name = message.channel_session["model_name"]
     Group(
-        message.channel_session["model_name"]
+        model_name,
     ).discard(message.reply_channel)
 
 
 @channel_session
 def ws_message(message):
-    print("***", dir(message))
+    # print("***", dir(message))
     message.reply_channel.send(
         {
             "text": message.content['text'],

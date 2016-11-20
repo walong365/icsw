@@ -61,8 +61,8 @@ class WebServerTarget(object):
         return PROPAGATE_URL_TEMPLATE.format(self.ip, self.port)
 
     def resolve(self):
-        from initat.tools import config_tools
-        from initat.cluster.backbone.server_enums import icswServiceEnum
+        # from initat.tools import config_tools
+        # from initat.cluster.backbone.server_enums import icswServiceEnum
         from initat.cluster.settings import DEBUG
         # todo fixme via proper routing
         if DEBUG or not __file__.startswith("/opt/"):
@@ -70,7 +70,7 @@ class WebServerTarget(object):
         else:
             self.port = 80
         # print("*", self.port)
-        self.ip = config_tools.server_check(service_type_enum=icswServiceEnum.cluster_server).ip_list[0]
+        # self.ip = config_tools.server_check(service_type_enum=icswServiceEnum.cluster_server).ip_list[0]
         self.ip = "127.0.0.1"
 
 
@@ -132,6 +132,7 @@ def propagate_channel_object(group, dict_obj):
     # print("G", group, dict_obj)
     if any([_addr == "127.0.0.1" for _addr, _port in _hosts]):
         # send to backend, only text is allowed as key
+        # print("g", group, dict_obj)
         Group(group).send({"text": json.dumps(dict_obj)})
     else:
         requests.post(

@@ -17,10 +17,21 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-if [ "${1}" == "start" ] ; then
-    /opt/python-init/bin/daphne initat.cluster.asgi:channel_layer --port 8085 --bind 0.0.0.0 --access-log=/var/log/icsw/daphne_access.log &
-    /opt/cluster/sbin/clustermanage.py runworker --only-channels=websocket.* --threads=4 &
-else
+function kill_it() {
+    echo "Stopping daphne and workers"
     kill $(ps auxw | grep daphne | grep 8085 | tr -s " " | cut -d " " -f 2)
     kill $(ps auxw | grep clustermanage.py | grep runworker | tr -s " " | cut -d " " -f 2)
+    echo "done"
+}
+
+if [ "${1}" == "start" ] ; then
+    echo "Starting daphne and workers"
+    kill_it
+    /opt/python-init/bin/daphne initat.cluster.asgi:channel_layer --port 8085 --bind 0.0.0.0 --access-log=/var/log/icsw/daphne_access.log &
+    /opt/cluster/sbin/clustermanage.py runworker --only-channels=websocket.* --threads=4 &
+    echo "done"
+else
+    kill_it
 fi
+
+exit 0
