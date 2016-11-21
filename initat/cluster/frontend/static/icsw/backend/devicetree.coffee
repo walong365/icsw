@@ -312,11 +312,13 @@ angular.module(
                                 # var locally set, ignore
                                 dev.$num_vars_shadowed++
                             else
-                                dev.device_variables_filtered.push(d_var)
-                                dev.$num_vars_total++
-                                dev.$num_vars_parent++
+                                if !(d_var in dev.device_variables_filtered)
+                                    dev.device_variables_filtered.push(d_var)
+                                    dev.$num_vars_total++
+                                    dev.$num_vars_parent++
                             # store in local_meta_var_names
-                            dev.$local_meta_var_names.push(d_var.name)
+                            if !(d_var.name in dev.$local_meta_var_names)
+                                dev.$local_meta_var_names.push(d_var.name)
             # step 3: add cdg vars to rest
             cdg_dev = @tree.cluster_device_group_device
             for dev in @devices
@@ -330,9 +332,10 @@ angular.module(
                                     # var already shadowed via meta, ignore
                                     true
                             else
-                                dev.device_variables_filtered.push(d_var)
-                                dev.$num_vars_total++
-                                dev.$num_vars_parent++
+                                if !(d_var in dev.device_variables_filtered)
+                                    dev.device_variables_filtered.push(d_var)
+                                    dev.$num_vars_total++
+                                    dev.$num_vars_parent++
                 dev.$num_vars_filtered = dev.device_variables_filtered.length
             # step 4: sort variables
             for dev in @devices
@@ -608,7 +611,8 @@ angular.module(
                     @device[_attr_name] = result
                 else
                     if @device[_attr_name]?
-                        @device[_attr_name].push(result)
+                        if !(result in @device[_attr_name])
+                            @device[_attr_name].push(result)
                     else
                         # this can happen for device-connections
                         console.warn "device #{@device.full_name} has no attribute #{_attr_name}"
