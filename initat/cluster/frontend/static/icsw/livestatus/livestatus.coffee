@@ -157,6 +157,9 @@ angular.module(
         $scope.struct.connector.gridsterOpts.draggable.enabled = is_unlocked
         $rootScope.$emit(ICSW_SIGNALS("ICSW_TRIGGER_PANEL_LAYOUTCHECK"))
 
+    $scope.modify_layout = ($event) ->
+        $scope.struct.connector.modify_layout($event, $scope)
+
     $scope.new_devsel = (_dev_sel) ->
         # console.log "nds"
         $scope.struct.connector.new_devsel(_dev_sel)
