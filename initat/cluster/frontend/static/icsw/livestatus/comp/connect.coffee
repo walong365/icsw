@@ -632,7 +632,7 @@ angular.module(
             icswComplexModalService(
                 {
                     message: $compile($templateCache.get("icsw.connect.modify.layout"))(sub_scope)
-                    title: "Modify Layout"
+                    title: "Modify Layout (Dendrogram)"
                     ok_label: "Add"
                     closable: true
                     ok_callback: (modal) =>
@@ -666,11 +666,16 @@ angular.module(
             height: React.PropTypes.number
         }
 
+        getInitialState: () ->
+            return {
+                active_node: null
+            }
+
         render: () ->
             _path_idx = 0
             _node_idx = 0
 
-            get_node = (node) ->
+            get_node = (node) =>
                 _node_idx++
                 _el = node.data.node
                 # console.log _el.is_receiver, _el.is_emitter
@@ -678,6 +683,13 @@ angular.module(
                     {
                         key: "node#{_node_idx}"
                         transform: "translate(#{node.y}, #{node.x})"
+                        onClick: (event) =>
+                            console.log "c=", node
+                        onMouseEnter: (event) =>
+                            @setState({active_node: node})
+                        onMouseLeave: (event) =>
+                            @setState({active_node: null})
+
                     }
                     title(
                         {
@@ -703,7 +715,7 @@ angular.module(
                     )
                 )
 
-            get_path = (node) ->
+            get_path = (node) =>
                 if node.parent
                     n = node
                     p = n.parent
@@ -720,6 +732,8 @@ angular.module(
                     return null
 
             _border = 50
+            _act_node = @state.active_node
+            console.log "N=", _act_node
             return svg(
                 {
                     key: "svgouter"
