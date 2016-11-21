@@ -51,13 +51,30 @@ class BackgroundJobState(Enum):
     timeout = "timeout"
     # finished
     done = "done"
+    # an old alias for done, should no longer be used
+    ended = "ended"
     # used for running, waiting for completion
     pending = "pending"
     # merged ???
     merged = "merged"
 
 
+class BackgroundJobManager(models.Manager):
+    def get_number_of_pending_jobs(self):
+        return self.exclude(
+            Q(
+                state__in=[
+                    BackgroundJobState.done.value,
+                    BackgroundJobState.ended.value,
+                    BackgroundJobState.merged.value,
+                    BackgroundJobState.timeout.value,
+                ]
+            )
+        ).count()
+
+
 class background_job(models.Model):
+    objects = BackgroundJobManager()
     idx = models.AutoField(primary_key=True)
     # cause
     cause = models.CharField(max_length=256, default="unknown")
@@ -132,18 +149,11 @@ class background_job(models.Model):
 def background_job_post_save(sender, **kwargs):
     if "instance" in kwargs:
         # from initat.cluster.backbone.serializers import background_job_serializer
+
         propagate_channel_object(
             "background_jobs",
             {
-                "background_jobs": background_job.objects.exclude(
-                    Q(
-                        state__in=[
-                            BackgroundJobState.done.value,
-                            BackgroundJobState.merged.value,
-                            BackgroundJobState.timeout.value,
-                        ]
-                    )
-                ).count()
+                "background_jobs": background_job.objects.get_number_of_pending_jobs()
             }
         )
 

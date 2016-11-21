@@ -34,7 +34,7 @@ if [ "${base}" = "rundaphne.sh" ] ; then
     # use local path for asgi layer
     /opt/python-init/bin/daphne asgi:channel_layer --bind 0.0.0.0 --port 8084
 elif [ "${base}" = "runworker.sh" ] ; then
-    ./manage.py runworker
+    ./manage.py runworker --only-channels=websocket.*
 else
     ./manage.py runserver --noworker --noasgi --traceback ${EXTRA_OPTIONS} 0.0.0.0:8081
 fi

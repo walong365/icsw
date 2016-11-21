@@ -29,6 +29,10 @@ from __future__ import print_function, unicode_literals
 from channels import Group
 from channels.sessions import channel_session
 from channels.generic import BaseConsumer
+from django.conf import settings
+
+
+GROUP_KEY = "model_name"
 
 
 # testcode, not working / needed
@@ -43,19 +47,28 @@ class icswConsumer(BaseConsumer):
 
 @channel_session
 def ws_add(message, model_name):
-    print("add", model_name)
-    message.channel_session["model_name"] = model_name
-    print("d", message.channel_session["model_name"])
-    Group(message.channel_session["model_name"]).add(message.reply_channel)
+    if settings.DEBUG:
+        print("ws_add for group {}".format(model_name))
+    # print("add", model_name)
+    message.channel_session[GROUP_KEY] = model_name
+    # print("d", message.channel_session[GROUP_KEY])
+    Group(message.channel_session[GROUP_KEY]).add(message.reply_channel)
 
 
 @channel_session
 def ws_disconnect(message):
-    print(message.channel_session.keys())
-    model_name = message.channel_session["model_name"]
-    Group(
-        model_name,
-    ).discard(message.reply_channel)
+    if GROUP_KEY not in message.channel_session.keys():
+        print(
+            "GROUP_KEY '{}' missing from channel_session keys(): {}".format(
+                GROUP_KEY,
+                ", ".join(sorted(message.channel_session.keys()))
+            )
+        )
+    else:
+        model_name = message.channel_session[GROUP_KEY]
+        Group(
+            model_name,
+        ).discard(message.reply_channel)
 
 
 @channel_session
