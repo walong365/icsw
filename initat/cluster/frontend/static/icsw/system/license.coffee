@@ -187,7 +187,7 @@ angular.module(
 [
     "$q", "$timeout", "icswSystemOvaCounterService", "$state", "ICSW_URLS",
 (
-    $q, $timeout, icswSystemOvaCounterService, $state, ICSW_URLS
+    $q, $timeout, icswSystemOvaCounterService, $state, ICSW_URLS,
 ) ->
     {ul, li, a, span, div, p, strong, h3, hr, img, button, table, tr, td, tbody} = React.DOM
     return React.createClass(
@@ -207,33 +207,27 @@ angular.module(
                 data_ok: false
                 # ova counter service
                 ocs: null
-                # timeout
-                timeout: null
                 # load id
                 load_id: "ova_react"
             }
             load = () =>
-                if @struct.data_ok
-                    _w_list = [icswSystemOvaCounterService.reload(@struct.load_id)]
-                else
-                    _w_list = [icswSystemOvaCounterService.load(@struct.load_id)]
+                _w_list = [icswSystemOvaCounterService.load(@struct.load_id)]
                 $q.all(_w_list).then(
                     (data) =>
                         @struct.ocs = data[0]
                         @struct.data_ok = true
                         @force_redraw()
-                )
-                @struct.timeout = $timeout(
-                    () =>
-                        load()
-                    20000
+                        @struct.ocs.on_update.promise.then(
+                            () ->
+                            () ->
+                            (new_data) =>
+                                @force_redraw()
+                        )
                 )
 
             load()
 
         componentWillUnmount: () ->
-            if @struct.timeout
-                $timeout.cancel(@struct.timeout)
             console.log "stop ovadisplay"
 
         render: () ->

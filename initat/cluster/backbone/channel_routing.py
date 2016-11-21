@@ -24,19 +24,15 @@ Channel settings
 
 from __future__ import print_function, unicode_literals
 
-from channels.routing import route
-from channels import Group
+from channels.routing import route, route_class
 
-
-def ws_add(message):
-    Group(message['path'].replace("/", "")).add(message.reply_channel)
-
-
-def ws_disconnect(message):
-    Group(message['path'].replace("/", "")).discard(message.reply_channel)
+from initat.cluster.backbone.consumers import ws_add, ws_disconnect, ws_message, icswConsumer
 
 
 channel_routing = [
-    route("websocket.connect", ws_add, path=r"^/device_log_entries/$"),
-    route("websocket.disconnect", ws_disconnect, path=r"^/device_log_entries/$")
+    #  route_class(icswConsumer, path=r"^/icsw/ws/device_log_entries/$"),
+    # route("websocket.connect", ws_add, path=r"^/icsw/ws/(?P<model_name>[0-9a-zA-Z_]+)/$"),
+    route("websocket.connect", ws_add, path=r"^/icsw/ws/(?P<model_name>[0-9a-zA-Z_]+)/$"),
+    route("websocket.receive", ws_message),
+    route("websocket.disconnect", ws_disconnect),
 ]

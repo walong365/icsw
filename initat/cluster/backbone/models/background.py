@@ -28,7 +28,10 @@ import logging
 
 from enum import Enum
 
+from django.db.models import signals, Q
+from django.dispatch import receiver
 from django.db import models
+from initat.tools.bgnotify.create import propagate_channel_object
 
 from initat.tools import server_command
 
@@ -48,13 +51,30 @@ class BackgroundJobState(Enum):
     timeout = "timeout"
     # finished
     done = "done"
+    # an old alias for done, should no longer be used
+    ended = "ended"
     # used for running, waiting for completion
     pending = "pending"
     # merged ???
     merged = "merged"
 
 
+class BackgroundJobManager(models.Manager):
+    def get_number_of_pending_jobs(self):
+        return self.exclude(
+            Q(
+                state__in=[
+                    BackgroundJobState.done.value,
+                    BackgroundJobState.ended.value,
+                    BackgroundJobState.merged.value,
+                    BackgroundJobState.timeout.value,
+                ]
+            )
+        ).count()
+
+
 class background_job(models.Model):
+    objects = BackgroundJobManager()
     idx = models.AutoField(primary_key=True)
     # cause
     cause = models.CharField(max_length=256, default="unknown")
@@ -122,6 +142,19 @@ class background_job(models.Model):
     class CSW_Meta:
         permissions = (
             ("show_background", "Show background jobs", False),
+        )
+
+
+@receiver(signals.post_save, sender=background_job)
+def background_job_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        # from initat.cluster.backbone.serializers import background_job_serializer
+
+        propagate_channel_object(
+            "background_jobs",
+            {
+                "background_jobs": background_job.objects.get_number_of_pending_jobs()
+            }
         )
 
 

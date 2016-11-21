@@ -596,8 +596,10 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "asgi_redis.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [
+                ("127.0.0.1", 6379)
+            ],
         },
-        "ROUTING": "initat.cluster.urls.channel_routing.channel_routing",
+        "ROUTING": "initat.cluster.backbone.channel_routing.channel_routing",
     },
 }

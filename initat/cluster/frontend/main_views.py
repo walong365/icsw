@@ -51,9 +51,7 @@ class get_number_of_background_jobs(View):
     def post(self, request):
         request.session["latest_contact"] = datetime.datetime.now()
         _return = {
-            "background_jobs": background_job.objects.exclude(
-                Q(state__in=["done", "timeout", "ended", "merged"])
-            ).count()
+            "background_jobs": background_job.objects.get_number_of_pending_jobs()
         }
         return HttpResponse(json.dumps(_return), content_type="application/json")
 

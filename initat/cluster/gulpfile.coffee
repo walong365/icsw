@@ -704,6 +704,13 @@ gulp.task("serve-main", (cb) ->
             middleware: (connect, opt) ->
                 return [
                     middleware(
+                        "/icsw/ws/"
+                        {
+                            target: "ws://localhost:8084"
+                            ws: true
+                        }
+                    )
+                    middleware(
                         "/icsw/api/v2/static/icinga/",
                         {
                             pathRewrite: {"/icsw/api/v2/static/icinga/": "/"}

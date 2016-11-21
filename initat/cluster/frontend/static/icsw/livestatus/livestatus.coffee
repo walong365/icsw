@@ -153,7 +153,6 @@ angular.module(
     $scope.toggle_gridster_lock = () ->
         $scope.struct.connector.toggle_global_display_state()
         is_unlocked = $scope.struct.connector.global_display_state == 1
-        $scope.struct.connector.is_unlocked = is_unlocked
         $scope.struct.connector.gridsterOpts.resizable.enabled = is_unlocked
         $scope.struct.connector.gridsterOpts.draggable.enabled = is_unlocked
         $rootScope.$emit(ICSW_SIGNALS("ICSW_TRIGGER_PANEL_LAYOUTCHECK"))

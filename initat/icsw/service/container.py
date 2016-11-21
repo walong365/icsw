@@ -269,7 +269,8 @@ class ServiceContainer(object):
         self.update_version_tuple()
         if opt_ns.meta:
             from initat.host_monitoring.client_enums import icswServiceEnum
-            if os.path.exists(icswServiceEnum.meta_server.value.msi_block_name):
+            # print(icswServiceEnum.meta_server.value.msi_block_name)
+            if os.path.exists(process_tools.MSIBlock.path_name(icswServiceEnum.meta_server.value.msi_block_name)):
                 meta_result = query_local_meta_server(instance_xml, "overview", services=[_srv.name for _srv in check_list])
                 # check for valid meta-server result
                 if meta_result is not None:

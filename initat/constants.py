@@ -50,6 +50,8 @@ __all__ = [
 
     b"INITAT_BASE",
     b"INITAT_BASE_DEBUG",
+    #
+    b"META_SERVER_DIR",
 ]
 
 GEN_CS_NAME = "icsw.general"
@@ -103,3 +105,6 @@ BACKBONE_DIR = os.path.join(ICSW_ROOT, "initat", "cluster", "backbone")
 INITAT_BASE = os.path.join(SITE_PACKAGES_BASE, "initat")
 # local debug base (== same as INITAT_BASE for production)
 INITAT_BASE_DEBUG = os.path.dirname(__file__)
+
+# meta server directory
+META_SERVER_DIR = "/var/lib/meta-server"

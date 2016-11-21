@@ -40,10 +40,10 @@ device_logs = angular.module(
 ]).controller("icswDeviceLogCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI", "DeviceOverviewService"
-    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout"
+    "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout", "icswWebSocketService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, DeviceOverviewService
-    icswTools, icswSimpleAjaxCall, ICSW_URLS, $timeout
+    icswTools, icswSimpleAjaxCall, ICSW_URLS, $timeout, icswWebsocketService,
 ) ->
     $scope.struct = {
         data_loaded: false
@@ -61,7 +61,7 @@ device_logs = angular.module(
     info_available_class = "alert-success"
     info_warning_class = "alert-warning"
 
-    $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8443" + "/device_log_entries/")
+    $scope.struct.websocket = icswWebsocketService.register_ws("device_log_entries")
 
     $scope.struct.websocket.onmessage = (data) ->
         console.log(data)
@@ -140,8 +140,9 @@ device_logs = angular.module(
         )
 
     $scope.$on("$destroy", () ->
-        $scope.struct.websocket.close()
-        $scope.struct.websocket = undefined
+        if $scope.struct.websocket?
+            $scope.struct.websocket.close()
+            $scope.struct.websocket = undefined
     )
 
 ]).directive("icswDeviceLogTable",
@@ -200,7 +201,7 @@ device_logs = angular.module(
 
                     device.$$device_log_entries_lut[log_entry.idx] = log_entry
 
-                $scope.struct.websocket = new WebSocket("ws://" + window.location.host.split(":")[0] + ":8443" + "/device_log_entries/")
+                $scope.struct.websocket = new WebSocket("ws://" + window.location.host + "/icsw/ws/device_log_entries/")
 
                 $scope.struct.websocket.onmessage = (data) ->
                     json_dict = JSON.parse(data.data)

@@ -1917,4 +1917,20 @@ angular.module(
             return check_form(form, wait_defer)
     }
 
+]).service("icswWebSocketService",
+[
+    "$q", "$window",
+(
+    $q, $window,
+) ->
+    get_url = (model_name) ->
+        return "ws://#{$window.location.host}/icsw/ws/#{model_name}/"
+
+    register_ws = (model_name) ->
+        ws = new WebSocket(get_url(model_name))
+        return ws
+
+    return {
+        register_ws: register_ws
+    }
 ])
