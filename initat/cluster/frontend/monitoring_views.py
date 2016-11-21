@@ -295,7 +295,7 @@ class get_node_status(View):
                         else:
                             any_locked = True
             if any_locked:
-                request.xml_response.info(
+                request.xml_response.warn(
                     "Some entries got no ova and are therefore not displayed."
                 )
 

@@ -271,10 +271,10 @@ angular.module(
 ]).service("icswMonLivestatusPipeConnector",
 [
     "$q", "$rootScope", "$injector", "icswToolsSimpleModalService", "$window", "icswComplexModalService",
-    "$templateCache", "$compile", "icswLivestatusPipeRegister",
+    "$templateCache", "$compile", "icswLivestatusPipeRegister", "$timeout",
 (
     $q, $rootScope, $injector, icswToolsSimpleModalService, $window, icswComplexModalService,
-    $templateCache, $compile, icswLivestatusPipeRegister,
+    $templateCache, $compile, icswLivestatusPipeRegister, $timeout,
 ) ->
     # creates a DisplayPipeline
     class icswMonLivestatusPipeConnector
@@ -291,7 +291,7 @@ angular.module(
             # 0 ... only content, no dragNdrop, no resize - DASHBOARD LOCKED
             # 1 ... with header, dragNdrop, resize - DASHBOARD UNLOCKED
             @global_display_state = 0
-            @is_unlocked = false
+            @set_unlocked_flag(false)
             # position dict
             @_pos_str = ""
             @build_structure()
@@ -302,17 +302,25 @@ angular.module(
             @root_element.close()
             console.log "C"
 
-        toggle_running: () =>
-            @running = !@running
-            for el in @all_elements
-                if el.set_running_flag?
-                    el.set_running_flag(@running)
+        set_unlocked_flag: (flag) =>
+            @is_unlocked = flag
+            if @is_unlocked
+                @$$is_unlocked_btn_class = "btn btn-warning"
+                @$$is_unlocked_i_class = "fa fa-unlock"
+                @$$is_unlocked_info_str = "Layout unlocked"
+            else
+                @$$is_unlocked_btn_class = "btn btn-success"
+                @$$is_unlocked_i_class = "fa fa-lock"
+                @$$is_unlocked_info_str = "Layout locked"
+
 
         toggle_global_display_state: () =>
             @global_display_state++
             if @global_display_state > 1
                 @global_display_state = 0
             (_element.set_display_flags() for _element in @all_elements)
+            is_unlocked = @global_display_state == 1
+            @set_unlocked_flag(is_unlocked)
 
         get_panel_class: () =>
             if @running
@@ -378,6 +386,7 @@ angular.module(
                 @settings = angular.fromJson(@user.get_var(@_settings_name).json_value)
             else
                 @settings = {}
+            @__settings_save_pending = false
             # position dict
             if @user.has_var(@_positions_name)
                 @positions = angular.fromJson(@user.get_var(@_positions_name).json_value)
@@ -410,8 +419,31 @@ angular.module(
             # save positions
             @save_positions()
             @init_gridster()
-            @running = true
+            @set_running_flag(true)
             @setup_ok = true
+
+        toggle_running: () =>
+            @set_running_flag(!@running)
+
+        set_running_flag: (flag) =>
+            if @running?
+                _prev = @running
+            else
+                _prev = null
+            @running = flag
+            if @running != _prev
+                if @running
+                    @$$running_btn_class = "btn btn-success"
+                    @$$running_i_class = "fa fa-heartbeat"
+                    @$$running_info_str = "Liveupdates enabled"
+                else
+                    @$$running_btn_class = "btn btn-warning"
+                    @$$running_i_class = "fa fa-ban"
+                    @$$running_info_str = "Liveupdates paused"
+                for el in @all_elements
+                    if el.set_running_flag?
+                        el.set_running_flag(@running)
+            return _prev
 
         hide_element: (hide_el) =>
             @hidden_elements.push(hide_el)
@@ -472,7 +504,15 @@ angular.module(
 
         element_settings_changed: (element, settings_str) =>
             @settings[element.__dp_path_str] = settings_str
-            @user.set_json_var(@_settings_name, angular.toJson(@settings))
+            if not @__settings_save_pending
+                # wait for 500 msecs to avoid redundant update calls
+                $timeout(
+                    () =>
+                        @__settings_save_pending = false
+                        @user.set_json_var(@_settings_name, angular.toJson(@settings))
+                    500
+                )
+                @__settings_save_pending = true
 
         _delete_element: (element) =>
             _.remove(@display_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
@@ -546,6 +586,185 @@ angular.module(
         new_devsel: (devs) =>
             # start loop
             @root_element.new_devsel(devs)
+
+        get_flat_list: () =>
+            # return a flat list of liveview elements
+            _iterate = (name, root_obj) ->
+                # console.log "obj=", name, root_obj
+                _name = _.keys(root_obj)[0]
+                if name
+                    full_name = "#{name}.#{_name}"
+                else
+                    full_name = _name
+                _list.push(full_name)
+                for value in root_obj[_name]
+                    _iterate(full_name, value)
+            _list = []
+            _iterate(null, @spec_json)
+            return ({id: _value} for _value in _list)
+
+        modify_layout: ($event, $scope) =>
+            _prev_running = @set_running_flag(false)
+            sub_scope = $scope.$new(true)
+            sub_scope.connector = @
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("icsw.connect.modify.layout"))(sub_scope)
+                    title: "Modify Layout"
+                    ok_label: "Add"
+                    closable: true
+                    ok_callback: (modal) =>
+                        d = $q.defer()
+                        d.resolve("created")
+                        return d.promise
+                    cancel_callback: (modal) ->
+                        d = $q.defer()
+                        d.resolve("cancel")
+                        return d.promise
+                }
+            ).then(
+                (fin) =>
+                    sub_scope.$destroy()
+                    @set_running_flag(_prev_running)
+            )
+
+
+]).service("icswLivestatusClusterDendrogramReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    {h3, div, span, svg, g, rect, circle, path} = React.DOM
+    return React.createClass(
+        displayName: "icswLivestatusClusterDendrogramReact"
+        propTypes: {
+            struct: React.PropTypes.object
+            width: React.PropTypes.number
+            height: React.PropTypes.number
+        }
+
+        render: () ->
+            _path_idx = 0
+            _node_idx = 0
+
+            get_node = (node) ->
+                _node_idx++
+                return g(
+                    {
+                        key: "node#{_node_idx}"
+                        transform: "translate(#{node.y}, #{node.x})"
+                    }
+                    circle(
+                        {
+                            r: 35
+                            className: "svg-ls-cd-node"
+                        }
+                    )
+                )
+
+            get_path = (node) ->
+                if node.parent
+                    n = node
+                    p = n.parent
+                    _path_idx++
+                    _path = "M#{n.y},#{n.x}C#{p.y + 100},#{n.x} #{p.y + 100},#{p.x} #{p.y},#{p.x}"
+                    return path(
+                        {
+                            key: "p#{_path_idx}"
+                            d: _path
+                            className: "svg-ls-cd-link"
+                        }
+                    )
+                else
+                    return null
+
+            _border = 50
+            return svg(
+                {
+                    key: "svgouter"
+                    width: "800px"  # width
+                    height: "400px"  # height
+                   # preserveAspectRatio: "xMidYMid meet"
+                    viewBox: "-#{_border} -#{_border} #{@props.width + _border} #{@props.height + _border}"
+                }
+                g(
+                    {
+                        key: "gouter"
+                    }
+                    (
+                        get_path(node) for node in @props.struct.descendants()
+                    )
+                    (
+                        get_node(node) for node in @props.struct.descendants()
+                    )
+                )
+            )
+    )
+]).directive("icswLivestatusClusterDendrogram",
+[
+    "$q", "d3_service", "icswLivestatusClusterDendrogramReact",
+(
+    $q, d3_service, icswLivestatusClusterDendrogramReact,
+) ->
+    return {
+        restrict: "E"
+        scope: {
+            connector: "=icswConnector"
+        }
+        controller: "icswLivestatusClusterDendrogramCtrl"
+        link: (scope, element, attrs) ->
+            scope.render_el = (struct, width, height) ->
+                scope.struct.react_element = ReactDOM.render(
+                    React.createElement(
+                        icswLivestatusClusterDendrogramReact
+                        {
+                            struct: struct
+                            width: width
+                            height: height
+                        }
+                    )
+                    element[0]
+                )
+    }
+]).controller("icswLivestatusClusterDendrogramCtrl",
+[
+    "$scope", "d3_service", "$q",
+(
+    $scope, d3_service, $q,
+) ->
+    $scope.struct = {
+        # d3
+        d3: undefined
+        # react element
+        react_element: null
+    }
+    $q.all(
+        [
+            d3_service.d3()
+        ]
+    ).then(
+        (result) ->
+            d3 = result[0]
+            $scope.struct.d3 = d3
+            $scope.struct.connector = $scope.connector
+            # console.log "d3=", $scope.struct
+            # build tree
+            _flat_list = $scope.struct.connector.get_flat_list()
+            tree = d3.cluster().size([1000, 1000])
+            stratify = d3.stratify().parentId(
+                (node) ->
+                    # get parent id
+                    _parts = node.id.split(".")
+                    _parts.pop(-1)
+                    return _parts.join(".")
+            )
+            # get root element
+            root = stratify(_flat_list)
+            # tree layout
+            tree(root)
+            $scope.render_el(root, 1000, 1000)
+    )
 
 ]).directive("icswConnectElementDisplay",
 [

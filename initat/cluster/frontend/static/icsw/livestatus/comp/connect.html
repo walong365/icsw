@@ -11,38 +11,37 @@
     </div>
     <div ng-class="struct.connector.get_panel_class()" ng-if="struct.connector_set && struct.connector.setup_ok">
         <div class="panel-heading">
-            <h4>
+            <div class="form-inline input-group">
                 Display Pipeline {{ struct.connector.name | capitalize }},
                 {{ struct.connector.num_display_elements }} Elements<span ng-show="struct.connector.num_hidden_elements">,
                 {{ struct.connector.num_hidden_elements }} hidden</span>
-                <div class="form-inline input-group">
-                    <span ng-show="struct.connector.num_hidden_elements" class="pull-left" style="margin-right:5px;">
-                        <ui-select
-                            ng-model="struct.connector.reopen_hidden"
-                            style="max-width:400px; min-width:240px;"
-                            title="Choose monitoring service template"
-                            on-select="struct.connector.unhide_element($item)"
-                        >
-                            <ui-select-match class="ui-select-match" placeholder="reopen element">
-                                {{ $select.selected.display_name }}
-                            </ui-select-match>
-                            <ui-select-choices class="ui-select-choices" repeat="value.__dp_element_id as value in struct.connector.hidden_elements | props_filter:{name:$select.search}">
-                                <div ng-bind-html="value.display_name | highlight: $select.search"></div>
-                            </ui-select-choices>
-                        </ui-select>
-                    </span>
-                    <div class="pull-left">
-                        <button name="button" class="btn" ng-click="struct.connector.toggle_running()" ng-class="struct.connector.running && 'btn btn-success' || 'btn btn-warning'" style="margin-right:5px;">
-                            <i class="fa" ng-class="struct.connector.running && 'fa fa-heartbeat' || 'fa fa-ban'" aria-hidden="true"></i>
-                            Liveupdates {{ struct.connector.running ? "enabled" : "paused" }}
-                        </button>
-                        <button name="button" class="btn" ng-click="toggle_gridster_lock()" ng-class="struct.connector.is_unlocked && 'btn btn-warning' || 'btn btn-success'">
-                            <i class="fa" ng-class="struct.connector.is_unlocked && 'fa fa-unlock' || 'fa fa-lock'" aria-hidden="true"></i>
-                            Layout {{ struct.connector.is_unlocked ? "unlocked" : "locked" }}
-                        </button>
-                    </div>
-                </div>
-            </h4>
+                <span ng-show="struct.connector.num_hidden_elements" class="input-group" style="margin-right:5px;">
+                    <ui-select
+                        ng-model="struct.connector.reopen_hidden"
+                        style="max-width:240px; min-width:240px; width:240px;"
+                        title="Choose monitoring service template"
+                        on-select="struct.connector.unhide_element($item)"
+                    >
+                        <ui-select-match class="ui-select-match" placeholder="reopen element">
+                            {{ $select.selected.display_name }}
+                        </ui-select-match>
+                        <ui-select-choices class="ui-select-choices" repeat="value.__dp_element_id as value in struct.connector.hidden_elements | props_filter:{name:$select.search}">
+                            <div ng-bind-html="value.display_name | highlight: $select.search"></div>
+                        </ui-select-choices>
+                    </ui-select>
+                </span>
+                <span>
+                    <button name="button" class="btn" ng-click="struct.connector.toggle_running()" ng-class="struct.connector.$$running_btn_class" style="margin-right:5px;">
+                        <i class="fa" ng-class="struct.connector.$$runnning_i_class" aria-hidden="true"></i>
+                        {{ struct.connector.$$running_info_str }}
+                    </button>
+                    <button name="button" class="btn" ng-click="toggle_gridster_lock()" ng-class="struct.connector.$$is_unlocked_btn_class">
+                        <i class="fa" ng-class="struct.connector.$$is_unlocked_i_class" aria-hidden="true"></i>
+                        {{ struct.connector.$$is_unlocked_info_str }}
+                    </button>
+                </span>
+                <icsw-tools-button type="modify" value="" title="Modify Livestatus Layout" ng-click="modify_layout($event)"></icsw-tools-button>
+            </div>
         </div>
         <div gridster="struct.connector.gridsterOpts" class="panel-body container-fluid">
             <ul>
@@ -100,3 +99,7 @@
     </form>
 </script>
 
+<script type="text/ng-template" id="icsw.connect.modify.layout">
+    <h3>Modify Layout</h3>
+    <icsw-livestatus-cluster-dendrogram icsw-connector="connector"></icsw-livestatus-cluster-dendrogram>
+</script>

@@ -140,6 +140,38 @@ class TestIcsw(unittest.TestCase):
         self.click_button('Create', base_element=modal)
         self.assert_toast('created new net_ip')
 
+        # TODO: create peering
+
+    def test_064_variables(self):
+        self.driver.get_('/main/variables')
+        # wait to be loaded
+        self.driver.find_element_by_xpath(
+            '//th[text()="Info"]'
+        )
+
+        # create a new variable
+        self.click_button('create')
+        variable_name = 'variable' + unique_str()
+        modal = self.get_modal()
+        self.fill_form(
+            {'name': variable_name, 'val_str': 'test value'},
+            modal
+            )
+        self.click_button('Create', base_element=modal)
+        self.driver.wait_staleness_of(modal)
+
+        # modify variable
+        self.click_button(ng_click='config_service.toggle_expand(obj)')
+        self.click_button('modify')
+        modal = self.get_modal()
+        self.fill_form({'val_str': 'new value'}, modal)
+        self.click_button('Modify')
+        self.assert_toast('val str : changed ')
+
+        # delete variable
+        self.click_button('delete')
+        self.click_button('Yes')
+
     def test_070_categories(self):
         self.driver.get_('/main/categorytree')
 
@@ -151,23 +183,23 @@ class TestIcsw(unittest.TestCase):
         name = 'category' + unique_str()
         self.fill_form({'name': name}, modal)
         self.click_button('Create', base_element=modal)
+        self.driver.wait_staleness_of(modal)
         self.assert_toast('created new category')
 
         # assign the category
         self.driver.find_element_by_xpath(
             '//a[text()="Category Assignment"]').click()
-        time.sleep(2)
         checkbox = self.driver.find_element_by_xpath(
             '//span[span/span[text()="{}"]]/input'.format(name))
         checkbox.click()
         self.assert_toast('added to 1 device')
 
     def test_080_locations(self):
+        manage_locations_xpath = '//li[@heading="Manage Locations"]'
+
         # create a new location
         self.driver.get_('/main/devlocation')
-        self.driver.find_element_by_xpath(
-            '//li[@heading="Manage Locations"]'
-            ).click()
+        self.driver.find_element_by_xpath(manage_locations_xpath).click()
         self.click_button('create')
         modal = self.get_modal()
         location_name = 'location' + unique_str()
@@ -190,7 +222,24 @@ class TestIcsw(unittest.TestCase):
         self.driver.find_element_by_xpath(checkbox_xpath).click()
         self.assert_toast('removed from 1 device')
 
-        # TODO: modify and delete
+        self.driver.wait_overlay()
+        self.driver.find_element_by_xpath(manage_locations_xpath).click()
+        table_row = self.driver.find_element_by_xpath(
+            '//td[contains(.,"{}")]/..'.format(location_name)
+            )
+
+        # modify the location
+        self.click_button('modify', base_element=table_row)
+        modal = self.get_modal()
+        self.fill_form({'comment': 'new comment'}, modal)
+        self.click_button('Modify', base_element=modal)
+        self.assert_toast('comment : changed from')
+
+        # delete the location
+        self.click_button('delete', base_element=table_row)
+        self.click_button('Yes')
+        self.driver.refresh()
+        self.assert_(location_name not in self.driver.page_source)
 
     def test_090_domain_names(self):
         # create a new domain
@@ -283,7 +332,8 @@ class TestIcsw(unittest.TestCase):
             base_element = self.driver
         for (key, value) in values.items():
             e = base_element.find_element_by_xpath(
-                './/input[@ng-model="{}.{}"]'.format(edit_object, key)
+                '(.//input|.//textarea)[@ng-model="{}.{}"]'.format(
+                    edit_object, key)
                 )
             e.clear()
             e.send_keys(value)

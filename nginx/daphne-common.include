@@ -6,8 +6,10 @@ threads=1
 limit-nproc=1
 no-default-app=true
 no-site=true
+
 daemonize=/var/log/icsw/daphne.log
-pidfile=/var/run/daphne/daphne.pid
+pidfile2=/var/run/daphne/daphne.pid
+
 exec-as-user=/opt/cluster/sbin/pis/daphne_start_stop.sh start
 # exec-as-user-atexit does not work, strange ...
 exec-as-user-atexit=/opt/cluster/sbin/pis/daphne_start_stop.sh stop

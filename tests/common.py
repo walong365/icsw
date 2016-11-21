@@ -113,6 +113,9 @@ class Webdriver(webdriver.Remote):
             EC.invisibility_of_element_located((By.XPATH, '/html/body/div[1]'))
             )
 
+    def wait_staleness_of(self, element):
+        WebDriverWait(self, self.timeout).until(EC.staleness_of(element))
+
     def select_device(self, expression):
         self.wait_overlay()
         visible(
