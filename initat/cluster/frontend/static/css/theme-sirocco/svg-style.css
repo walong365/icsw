@@ -73,3 +73,14 @@
 .svg-d3circle-selected { stroke-width: 2px; stroke: #888888; fill: #d64f31; }
 .svg-d3text { stroke-width:1px; stroke:#ffffff; paint-order:stroke; text-anchor:middle; alignment-baseline:middle; fill:#111111; }
 
+/* livestatus clusterdendrogram link */
+.svg-ls-cd-link {
+    fill: none;
+    stroke: #333333;
+    stroke-width: 1.5px;
+}
+.svg-ls-cd-node {
+    fill: #92aa00;
+    stroke: #333333;
+    stroke-width: 2px;
+}

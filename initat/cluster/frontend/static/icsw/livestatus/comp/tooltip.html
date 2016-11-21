@@ -1,0 +1,24 @@
+<script type="text/ng-template" id="icsw.livestatus.tooltip">
+    <div class="panel panel-default svg-tooltip">
+        <div class="panel-heading">{{tooltip_content.display_name}}
+        </div>
+        <div class="svg-tooltip-content">
+            <table class="table-condensed" >
+                <tbody>
+                    <tr ng-if="tooltip_content.host_name">
+                        <td><b>Host:</b></td>
+                        <td>{{tooltip_content.host_name}}</td>
+                    </tr>
+                    <tr ng-if="tooltip_content.plugin_output">
+                        <td><b>Output:</b></td>
+                        <td>{{tooltip_content.plugin_output}}</td>
+                    </tr>
+                    <tr ng-if="tooltip_content.last_check">
+                        <td class="text-nowrap"><b>Last Check:</b></td>
+                        <td>{{tooltip_content.last_check*1000 | date : 'yyyy-MM-dd HH:mm'}}</td>
+                    </tr>
+                </tbody>
+           </table>
+        </div>
+    </div>
+</script>

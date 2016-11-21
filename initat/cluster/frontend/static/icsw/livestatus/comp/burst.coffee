@@ -55,6 +55,7 @@ angular.module(
                 #stroke: _path_el.stroke
                 #strokeWidth: _path_el.strokeWidth
                 onMouseEnter: @on_mouse_enter
+                onMouseMove: @props.draw_parameters.tooltip.pos
                 onMouseLeave: @on_mouse_leave
                 onClick: (event) =>
                     if @props.element.$$segment
@@ -64,11 +65,13 @@ angular.module(
 
         on_mouse_enter: (event) ->
             if @props.element.$$segment?
+                @props.draw_parameters.tooltip.show(event, @props.element.$$service)
                 @props.focus_cb("enter", @props.element.$$segment)
 
         on_mouse_leave: (event) ->
             if @props.element.$$segment?
                 @props.focus_cb("leave", @props.element.$$segment)
+                @props.draw_parameters.tooltip.hide()
             # @props.clear_focus()
             # console.log "ml"
             # @setState({focus: false})
@@ -330,12 +333,13 @@ angular.module(
             _svg = svg(
                 {
                     key: "svg.top"
-                    #width: "#{@props.draw_parameters.total_width}px"
+                    # width: "#{@props.draw_parameters.total_width}px"
                     width: "100%"
-                    #height: "#{@props.draw_parameters.total_height}px"
+                    # height: "#{@props.draw_parameters.total_height}px"
                     fontFamily: "'Open-Sans', sans-serif"
                     fontSize: "10pt"
-                    viewBox: "126 25 330 330"
+                    viewBox: "128 32 330 330"
+                    preserveAspectRatio: "xMidYMid meet"
                 }
                 [
                     g(
@@ -452,10 +456,11 @@ angular.module(
         constructor: () ->
             super("icswLivestatusFullBurst", true, true)
             @set_template(
-                '<icsw-device-livestatus-fullburst icsw-element-size="size" icsw-connect-element="con_element"></icsw-device-livestatus-fullburst>'
-                "BurstGraph"
-                6
-                10
+                '<icsw-livestatus-tooltip icsw-connect-element="con_element"></icsw-livestatus-tooltip>
+                <icsw-device-livestatus-fullburst icsw-element-size="size" icsw-connect-element="con_element"></icsw-device-livestatus-fullburst>'
+                "Burst Graph"
+                5
+                5
             )
             @new_data_notifier = $q.defer()
             @__dp_async_emit = true
@@ -488,6 +493,7 @@ angular.module(
                     start_ring: 0
                     is_interactive: true
                     omit_small_segments: true
+                    tooltip: scope.con_element.tooltip
                 }
             )
             scope.con_element.set_async_emit_data(scope.set_notifier(scope.con_element.new_data_notifier, element[0], draw_params))

@@ -91,50 +91,57 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.log.table">
-    <table
-        st-table="entries_displayed"
-        st-safe-src="device.$$device_log_entries_list"
-        class="table table-condensed table-striped table-hover simple-border"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <span
-                        icsw-tools-pagination
-                        st-items-by-page="20"
-                        st-displayed-pages="11"
-                        possible-items-by-page="10,20,50,100"
-                        class="pull-xs-left"
-                    ></span>
-                </td>
-            </tr>
-            <tr>
-                <th st-sort="date" st-sort-default="reverse" style="width: 150px">Time</th>
-                <th st-sort="user" style="width: 150px">User</th>
-                <th st-sort="source.identifier" style="width: 150px">Source</th>
-                <th st-sort="level.level" style="width: 150px">Level</th>
-                <th>Text</th>
-            </tr>
-        </thead>
+    <div
+        uib-alert
+        class="alert-warning"
+        ng-show="!struct.data_loaded">Fetching Data from Server ...
+    </div>
+    <div ng-if="struct.data_loaded">
+        <table
+            st-table="entries_displayed"
+            st-safe-src="device.$$device_log_entries_list"
+            class="table table-condensed table-striped table-hover simple-border"
+        >
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <span
+                            icsw-tools-pagination
+                            st-items-by-page="20"
+                            st-displayed-pages="11"
+                            possible-items-by-page="10,20,50,100"
+                            class="pull-xs-left"
+                        ></span>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="date" st-sort-default="reverse" style="width: 150px">Time</th>
+                    <th st-sort="user" style="width: 150px">User</th>
+                    <th st-sort="source.identifier" style="width: 150px">Source</th>
+                    <th st-sort="level.level" style="width: 150px">Level</th>
+                    <th>Text</th>
+                </tr>
+            </thead>
 
-        <tbody>
-            <tr ng-repeat="obj in entries_displayed">
-                <td>
-                    {{ obj.pretty_date }}
-                </td>
-                <td>
-                    {{ obj.user_resolved }}
-                </td>
-                <td>
-                    {{ obj.source.identifier }}
-                </td>
-                <td>
-                    {{ obj.level.name }}
-                </td>
-                <td>
-                    {{ obj.text }}
-                </td>
-            </tr>
-        </tbody>
-    </table>
+            <tbody>
+                <tr ng-repeat="obj in entries_displayed">
+                    <td>
+                        {{ obj.pretty_date }}
+                    </td>
+                    <td>
+                        {{ obj.user_resolved }}
+                    </td>
+                    <td>
+                        {{ obj.source.identifier }}
+                    </td>
+                    <td>
+                        {{ obj.level.name }}
+                    </td>
+                    <td>
+                        {{ obj.text }}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </script>
