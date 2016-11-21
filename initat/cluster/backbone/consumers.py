@@ -27,10 +27,10 @@ daphne consumers
 from __future__ import print_function, unicode_literals
 
 from channels import Group
-from channels.sessions import channel_session
 from channels.generic import BaseConsumer
 from django.conf import settings
 
+from channels.auth import channel_session_user_from_http
 
 GROUP_KEY = "model_name"
 
@@ -45,17 +45,21 @@ class icswConsumer(BaseConsumer):
         print("X", message, kwargs)
 
 
-@channel_session
+@channel_session_user_from_http
 def ws_add(message, model_name):
     if settings.DEBUG:
         print("ws_add for group {}".format(model_name))
-    # print("add", model_name)
-    message.channel_session[GROUP_KEY] = model_name
-    # print("d", message.channel_session[GROUP_KEY])
-    Group(message.channel_session[GROUP_KEY]).add(message.reply_channel)
+    if message.http_session:
+        # print("add", model_name)
+        message.channel_session[GROUP_KEY] = model_name
+        # print("d", message.channel_session[GROUP_KEY])
+        Group(message.channel_session[GROUP_KEY]).add(message.reply_channel)
+    else:
+        if settings.DEBUG:
+            print("no valid session for {}".format(model_name))
 
 
-@channel_session
+@channel_session_user_from_http
 def ws_disconnect(message):
     if GROUP_KEY not in message.channel_session.keys():
         print(
@@ -71,7 +75,7 @@ def ws_disconnect(message):
         ).discard(message.reply_channel)
 
 
-@channel_session
+@channel_session_user_from_http
 def ws_message(message):
     # print("***", dir(message))
     message.reply_channel.send(

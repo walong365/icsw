@@ -167,6 +167,7 @@ device_logs = angular.module(
 ) ->
 
     $scope.struct = {
+        data_loaded: false
         user_tree: undefined
         websocket: undefined
     }
@@ -176,59 +177,59 @@ device_logs = angular.module(
     device.$$device_log_entries_list = []
     device.$$device_log_entries_lut = {}
 
-    perform_refresh = () ->
-        $q.all(
-            [
-                Restangular.all(ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LIST.slice(1)).getList(
-                    {
-                        device_pks: angular.toJson([device.idx])
-                        high_idx: 0
-                    }
-                )
-                icswUserGroupRoleTreeService.load($scope.$id)
-            ]
-            ).then((result) ->
-                $scope.struct.user_tree = result[1]
-                for log_entry in result[0]
-                    log_entry.pretty_date = moment(log_entry.date).format("YYYY-MM-DD HH:mm:ss")
-                    log_entry.user_resolved = "N/A"
-                    if log_entry.user != null
-                        log_entry.user_resolved = result[1].user_lut[log_entry.user].$$long_name
-
-                    device.$$device_log_entries_list.push(log_entry)
-                    if log_entry.idx > high_idx
-                        high_idx = log_entry.idx
-
-                    device.$$device_log_entries_lut[log_entry.idx] = log_entry
-
-                $scope.struct.websocket = new WebSocket("ws://" + window.location.host + "/icsw/ws/device_log_entries/")
-
-                $scope.struct.websocket.onmessage = (data) ->
-                    json_dict = JSON.parse(data.data)
-                    if json_dict.device == device.idx && device.$$device_log_entries_lut[json_dict.idx] == undefined
-                        new_log_entry = {}
-
-                        new_log_entry.idx = json_dict.idx
-                        new_log_entry.pretty_date = moment(json_dict.date).format("YYYY-MM-DD HH:mm:ss")
-                        new_log_entry.user_resolved = "N/A"
-                        if json_dict.user != null
-                            log_entry.user_resolved = $scope.struct.user_tree.user_lut[json_dict.user].$$long_name
-
-                        new_log_entry.source = {}
-                        new_log_entry.source.identifier = json_dict.source
-                        new_log_entry.level = {}
-                        new_log_entry.level.name = json_dict.level
-                        new_log_entry.text = json_dict.text
-
-                        device.$$device_log_entries_lut[new_log_entry.idx] = new_log_entry
-
-                        $timeout(
-                            () ->
-                                device.$$device_log_entries_list.push(new_log_entry)
-                            0
-                        )
+    $q.all(
+        [
+            Restangular.all(ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LIST.slice(1)).getList(
+                {
+                    device_pks: angular.toJson([device.idx])
+                    high_idx: 0
+                }
             )
-    perform_refresh()
+            icswUserGroupRoleTreeService.load($scope.$id)
+        ]
+        ).then((result) ->
+            $scope.struct.user_tree = result[1]
+            for log_entry in result[0]
+                log_entry.pretty_date = moment(log_entry.date).format("YYYY-MM-DD HH:mm:ss")
+                log_entry.user_resolved = "N/A"
+                if log_entry.user != null
+                    log_entry.user_resolved = result[1].user_lut[log_entry.user].$$long_name
+
+                device.$$device_log_entries_list.push(log_entry)
+                if log_entry.idx > high_idx
+                    high_idx = log_entry.idx
+
+                device.$$device_log_entries_lut[log_entry.idx] = log_entry
+
+            $scope.struct.websocket = new WebSocket("ws://" + window.location.host + "/icsw/ws/device_log_entries/")
+
+            $scope.struct.websocket.onmessage = (data) ->
+                json_dict = JSON.parse(data.data)
+                if json_dict.device == device.idx && device.$$device_log_entries_lut[json_dict.idx] == undefined
+                    new_log_entry = {}
+
+                    new_log_entry.idx = json_dict.idx
+                    new_log_entry.pretty_date = moment(json_dict.date).format("YYYY-MM-DD HH:mm:ss")
+                    new_log_entry.user_resolved = "N/A"
+                    if json_dict.user != null
+                        log_entry.user_resolved = $scope.struct.user_tree.user_lut[json_dict.user].$$long_name
+
+                    new_log_entry.source = {}
+                    new_log_entry.source.identifier = json_dict.source
+                    new_log_entry.level = {}
+                    new_log_entry.level.name = json_dict.level
+                    new_log_entry.text = json_dict.text
+
+                    device.$$device_log_entries_lut[new_log_entry.idx] = new_log_entry
+
+                    $timeout(
+                        () ->
+                            device.$$device_log_entries_list.push(new_log_entry)
+                        0
+                    )
+
+            $scope.struct.data_loaded = true
+        )
 
     $scope.$on("$destroy", () ->
         if $scope.struct.websocket?
