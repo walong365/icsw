@@ -231,7 +231,8 @@ device_logs = angular.module(
     perform_refresh()
 
     $scope.$on("$destroy", () ->
-        $scope.struct.websocket.close()
-        $scope.struct.websocket = undefined
+        if $scope.struct.websocket?
+            $scope.struct.websocket.close()
+            $scope.struct.websocket = undefined
     )
 ])
