@@ -837,4 +837,47 @@ angular.module(
 ) ->
     $scope.close = () ->
         $scope.con_element.close()
+]).directive('icswLivestatusTooltip',
+[
+    "$templateCache", "$window",
+(
+    $templateCache, $window
+) ->
+    return {
+        restrict: "EA"
+        scope: {
+            con_element: "=icswConnectElement"
+        }
+        template: $templateCache.get("icsw.livestatus.tooltip")
+        link: (scope, element, attrs) ->
+            struct =
+                divlayer: element.children().first()
+
+            struct.show = (event, content) ->
+                scope.display = "block"
+                scope.tooltip_content = content
+                return
+
+            struct.pos = (event) ->
+                if scope.display == "block"
+                    t_os = 10  # Tooltip offset
+                    top_scroll = $window.innerHeight - event.clientY - struct.divlayer[0].offsetHeight - t_os > 0
+                    top_offset = if top_scroll then t_os else (struct.divlayer[0].offsetHeight + t_os) * -1
+                    left_scroll = $window.innerWidth - event.clientX - struct.divlayer[0].offsetWidth - t_os > 0
+                    left_offset = if left_scroll then t_os else (struct.divlayer[0].offsetWidth + t_os) * -1
+
+                    struct.divlayer.css('left', "#{event.clientX + left_offset}px")
+                    struct.divlayer.css('top', "#{event.clientY + top_offset}px")
+                return
+
+            struct.hide = () ->
+                struct.divlayer.css('left', "-1000px")
+                struct.divlayer.css('top', "-1000px")
+                scope.display = "none"
+                scope.tooltip_content = ""
+
+             scope.con_element.tooltip = struct
+             struct.hide()
+    }
+
 ])

@@ -53,12 +53,11 @@ angular.module(
             showDetails: React.PropTypes.bool
         }
 
-        handle_mouse_enter: (event, focus_mode) ->
-            # console.log "me", event, focus_mode
+        #handle_mouse_enter: (event, focus_mode) ->
+        #    console.log "me", event, focus_mode
 
         render: () ->
             # check flags
-
             _show_info = false
             if @props.showInfo?
                 _show_info = @props.showInfo

@@ -45,7 +45,7 @@
         </div>
         <div gridster="struct.connector.gridsterOpts" class="panel-body container-fluid">
             <ul>
-                <li gridster-item="item" ng-repeat="item in struct.connector.display_elements track by item.__dp_element_id">
+                <li gridster-item="item" ng-repeat="item in struct.connector.display_elements track by item.__dp_element_id" style="z-index:initial;">
                     <icsw-connect-element-display
                         style="position:absolute; top:0px; left:0px; bottom:0px; right:0px;"
                         icsw-connect-element="item"

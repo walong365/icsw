@@ -49,10 +49,12 @@ angular.module(
             @show_details = false
             # check for too small segments
             @omit_small_segments = false
+            #contains tooltip functions
+            @tooltip = {}
             # segment treshold, arc * outer_radius must be greater than this valu
             @small_segment_threshold = 3
             for _key, _value of args
-                # console.info "BurstDrawParam", _key, _value
+                # console.info "BurstDrawParam", _key, _value, @
                 if not @[_key]?
                     console.error "Unknown icswBurstDrawParameter", _key, _value
                 else
