@@ -64,6 +64,16 @@ angular.module(
                 @__dp_childs = []
             # for internal data
             @show_content = true
+            if @is_receiver
+                if @is_emitter
+                    # filter
+                    @$$type = "F"
+                else
+                    # receiver
+                    @$$type = "R"
+            else
+                # emitter
+                @$$type = "E"
             # for frontend / content
             @$$show_content = true
             # for frontend / header
@@ -184,7 +194,9 @@ angular.module(
             @$$show_header = @__dp_connector.global_display_state == 1
 
         # link with connector
-        link_with_connector: (connector, id, depth, path_str) =>
+        link_with_connector: (struct, connector, id, depth, path_str) =>
+            # structure for connector access
+            @__dp_struct = struct
             @__dp_connector = connector
             @__dp_element_id = id
             @__dp_depth = depth
@@ -332,18 +344,28 @@ angular.module(
             if name not of @element_dict
                 @element_dict[name] = $injector.get(name)
 
-        _create_and_add_element: (parent_el, name) =>
+        _create_and_add_element: (parent_struct, name) =>
             @num_total_elements++
-            if parent_el is null
+            if parent_struct is null
                 path = []
                 depth = 0
             else
-                path = angular.fromJson(parent_el.__dp_path_str)
-                depth = parent_el.__dp_depth + 1
+                path = angular.fromJson(parent_struct.node.__dp_path_str)
+                depth = parent_struct.node.__dp_depth + 1
             _path = _.concat(path, [[depth, @num_total_elements, name]])
             _path_str =  angular.toJson(_path)
             node = new @element_dict[name]()
-            node.link_with_connector(@, @num_total_elements, depth, _path_str)
+            _struct = {
+                id: name
+                name: name
+                parent: parent_struct
+                node: node
+                childs: []
+            }
+            node.link_with_connector(_struct, @, @num_total_elements, depth, _path_str)
+            if parent_struct
+                parent_struct.childs.push(_struct)
+                _struct.id = "#{parent_struct.id}.#{_struct.id}"
             if _path_str of @settings
                 node.restore_settings(@settings[_path_str])
             if _path_str of @positions
@@ -354,7 +376,7 @@ angular.module(
                     @display_elements.push(node)
                 else
                     @hidden_elements.push(node)
-            return node
+            return _struct
 
         build_structure: () =>
             # dict element name -> service
@@ -393,26 +415,31 @@ angular.module(
             else
                 @positions = {}
             # console.log "settings=", @_settings_name, @settings
+
             # build dependencies
-            _build_iter = (in_obj, parent) =>
+            _build_iter = (in_obj, parent_struct) =>
                 for key, value of in_obj
-                    node = @_create_and_add_element(parent, key)
+                    struct = @_create_and_add_element(parent_struct, key)
+                    node = struct.node
                     if node.__dp_depth == 0
                         @root_element = node
                         @root_element.check_for_emitter()
+                        @pipe_structure = struct
                     for _el in value
-                        node.add_child_node(_build_iter(_el, node))
+                        node.add_child_node(_build_iter(_el, struct))
                 return node
 
             # interpret and resolve spec_src
             @spec_json = angular.fromJson(@spec_src)
-            # resolve elements
+            @pipe_structure = null
+            # resolve elements and build pipe_structure
             _resolve_iter(@spec_json)
             # build tree
             _build_iter(@spec_json, null)
             for el in @all_elements
                 if el.__dp_has_template
                     el.build_title()
+            console.log "*", @pipe_structure
             @num_display_elements = @display_elements.length
             @num_hidden_elements = @hidden_elements.length
             (_element.set_display_flags() for _element in @all_elements)
@@ -488,7 +515,8 @@ angular.module(
                         _name = sub_scope.struct.new_element
                         # resolve element name to object
                         @_resolve_element_name(_name)
-                        node = @_create_and_add_element(element, _name)
+                        struct = @_create_and_add_element(element.__dp_struct, _name)
+                        node = struct.node
                         element.add_child_node(node)
                         d.resolve("created")
                         return d.promise
@@ -589,19 +617,13 @@ angular.module(
 
         get_flat_list: () =>
             # return a flat list of liveview elements
-            _iterate = (name, root_obj) ->
-                # console.log "obj=", name, root_obj
-                _name = _.keys(root_obj)[0]
-                if name
-                    full_name = "#{name}.#{_name}"
-                else
-                    full_name = _name
-                _list.push(full_name)
-                for value in root_obj[_name]
-                    _iterate(full_name, value)
+            _iterate = (root_obj) =>
+                _list.push(root_obj)
+                for value in root_obj.childs
+                    _iterate(value)
             _list = []
-            _iterate(null, @spec_json)
-            return ({id: _value} for _value in _list)
+            _iterate(@pipe_structure)
+            return _list
 
         modify_layout: ($event, $scope) =>
             _prev_running = @set_running_flag(false)
@@ -635,7 +657,7 @@ angular.module(
 (
     $q,
 ) ->
-    {h3, div, span, svg, g, rect, circle, path} = React.DOM
+    {h3, div, span, svg, g, rect, circle, path, title, text} = React.DOM
     return React.createClass(
         displayName: "icswLivestatusClusterDendrogramReact"
         propTypes: {
@@ -650,16 +672,34 @@ angular.module(
 
             get_node = (node) ->
                 _node_idx++
+                _el = node.data.node
+                # console.log _el.is_receiver, _el.is_emitter
                 return g(
                     {
                         key: "node#{_node_idx}"
                         transform: "translate(#{node.y}, #{node.x})"
                     }
+                    title(
+                        {
+                            key: "title"
+                        }
+                        _el.name
+                    )
                     circle(
                         {
+                            key: "el"
                             r: 35
                             className: "svg-ls-cd-node"
                         }
+                    )
+                    text(
+                        {
+                            key: "text"
+                            textAnchor: "middle"
+                            fontSize: "30px"
+                            alignmentBaseline: "middle"
+                        }
+                        _el.$$type
                     )
                 )
 
