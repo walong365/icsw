@@ -1040,6 +1040,8 @@ class MonitoringChecksDeviceTask(DeviceTask):
     def handle(self, request, ignore_dict):
         device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
 
+        devices = device.objects.prefetch_related("device_variable_set").filter(idx__in=device_pks)
+
         # build monitoring check information
         device_checks_count = {}
         for check in mon_check_command.objects.all().prefetch_related("config__device_config_set"):
@@ -1049,17 +1051,21 @@ class MonitoringChecksDeviceTask(DeviceTask):
                 device_checks_count[device_idx] += 1
 
         info_dict = {}
-        for device_pk in device_pks:
-            _count = device_checks_count[device_pk] if device_pk in device_checks_count else 0
-            _dict = self.get_base_dict(ignore_dict, device_pk)
+        for _device in devices:
+            _count = 0
+            if _device.idx in device_checks_count:
+                _count += device_checks_count[_device.idx]
+            if _device.device_group.device and _device.device_group.device.idx in device_checks_count:
+                _count += device_checks_count[_device.device_group.device.idx]
+
+            _dict = self.get_base_dict(ignore_dict, _device.idx)
             _dict['count'] = _count
             _dict['fulfilled'] = _count > 0
             _dict['text'] = logging_tools.get_plural("Monitoring check", _count)
 
-            info_dict[device_pk] = _dict
+            info_dict[_device.idx] = _dict
 
         return info_dict
-
 
 
 class LocationsDeviceTask(DeviceTask):
