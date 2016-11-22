@@ -77,13 +77,6 @@ setup_progress = angular.module(
         tasks: []
     }
 
-    info_not_available_class = "alert-danger"
-    info_not_available_text = "Not Available"
-    info_available_class = "alert-success"
-    info_available_text = "Available"
-    info_warning_class = "alert-warning"
-    info_warning_text = "In Progress..."
-
     start_timer = (refresh_time) ->
         stop_timer()
         $scope.struct.reload_timer = $timeout(
@@ -144,9 +137,6 @@ setup_progress = angular.module(
                             $scope.struct.data_loaded = true
                             if $scope.struct.device_ids_needing_refresh.length > 0
                                 start_timer(15000)
-
-                            console.log($scope.struct.device_ids_needing_refresh)
-                            console.log("performing_refresh done")
                     )
                 else
                     $scope.struct.data_loaded = true
@@ -166,64 +156,33 @@ setup_progress = angular.module(
                 console.log(data)
         )
 
-    salt_device = (device, device_hints) ->
+    salt_device = (device, tasks) ->
         device.$$date_created = moment(device.date).format("YYYY-MM-DD HH:mm:ss")
         if device.creator
             device.$$creator = $scope.struct.ugr_tree.user_lut[device.creator].$$long_name
         else
             device.$$creator = "N/A"
 
-        info_list_names = [
-            ["monitoring_checks", 25],
-            ["location_data", 25],
-            ["asset_data", 25]
-            ["graphing_data", 25]
-        ]
+        device.$$device_tasks = tasks
 
         device.$$overview_completion_percentage = 0
 
-        for obj in info_list_names
-            info_list_name = obj[0]
-            weight = obj[1]
+        available_points = 0
+        fulfilled_points = 0
+        for task in tasks
+            available_points += task.points
+            if task.fulfilled == true || task.ignore == true
+                fulfilled_points += task.points
 
-            needs_refresh = false
-
-            device["$$" + info_list_name + "_availability_class"] = info_not_available_class
-            device["$$" + info_list_name + "_availability_text"] = info_not_available_text
-            device["$$" + info_list_name + "_availability_extended_text"] = info_not_available_text
-            device["$$" + info_list_name + "_sort_hint"] = 0
-
-            if device_hints[info_list_name] > 0
-                device["$$" + info_list_name + "_availability_class"] = info_available_class
-                device["$$" + info_list_name + "_availability_text"] = info_available_text
-                device["$$" + info_list_name + "_availability_extended_text"] = info_available_text
-                device["$$" + info_list_name + "_sort_hint"] = device_hints[info_list_name]
-
-                device.$$overview_completion_percentage += weight
-
-            if device_hints[info_list_name + "_warning"] == true
-                device["$$" + info_list_name + "_availability_class"] = info_warning_class
-                device["$$" + info_list_name + "_availability_text"] = info_warning_text
-                device["$$" + info_list_name + "_availability_extended_text"] = info_available_text
-                needs_refresh = true
-
-            if device_hints[info_list_name + "_extended_text"] != undefined
-                device["$$" + info_list_name + "_availability_extended_text"] = device_hints[info_list_name + "_extended_text"]
-
-            if device_hints[info_list_name + "_age_in_seconds"] != undefined
-                device["$$" + info_list_name + "_sort_hint"] = device_hints[info_list_name + "_age_in_seconds"]
-
-                if device_hints[info_list_name + "_age_in_seconds"] > (60 * 60)
-                    if device["$$" + info_list_name + "_availability_class"] != info_warning_class
-                      device["$$" + info_list_name + "_availability_class"] = info_warning_class
-                      device["$$" + info_list_name + "_availability_text"] = "Stale data found..."
-                    needs_refresh = true
-
-            if needs_refresh
+            if task.refresh == true
                 $scope.struct.device_ids_needing_refresh.push(device.idx)
 
+        device.$$overview_completion_percentage = Math.round((fulfilled_points / available_points) * 100)
 
-    $scope.open_in_new_tab_for_devices = (device, setup_type) ->
+    $scope.open_in_new_tab_for_devices = (task, device, force_open) ->
+        if force_open == undefined
+            force_open = false
+        setup_type = task.setup_type
         if setup_type == 0
             heading = "Monitoring Checks"
         else if setup_type == 1
@@ -232,6 +191,36 @@ setup_progress = angular.module(
             heading = "Asset Data"
         else if setup_type == 3
             heading = "Graphing Data"
+            if !force_open
+                f = (_yes) ->
+                    blockUI.start("Please wait...")
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
+                            data:
+                                device_pk: device.idx
+                            dataType: "json"
+                        }
+                    ).then(
+                        (data) ->
+                            $scope.struct.device_ids_needing_refresh.push(device.idx)
+                            perform_refresh_for_device_status(true)
+                            blockUI.stop()
+                    )
+                if task.fulfilled != true
+                    icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
+                        f
+                        (_no) ->
+                            console.log("no")
+                    )
+                    return
+                else if task.rrd_age_in_seconds != undefined && task.rrd_age_in_seconds > (60 * 60)
+                    icswToolsSimpleModalService("Stale/Old Graphing Data Found. Try to re-enable graphing?").then(
+                        f
+                        (_no) ->
+                            $scope.open_in_new_tab_for_devices(task, device, true)
+                    )
+                    return
 
         o = {
             type: setup_type
@@ -315,37 +304,6 @@ setup_progress = angular.module(
     $scope.show_device = ($event, dev) ->
         DeviceOverviewService($event, [dev])
 
-    $scope.setup_graphing = (dev) ->
-        f = (_yes) ->
-                blockUI.start("Please wait...")
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
-                        data:
-                            device_pk: dev.idx
-                        dataType: "json"
-                    }
-                ).then(
-                    (data) ->
-                        $scope.struct.device_ids_needing_refresh.push(dev.idx)
-                        perform_refresh_for_device_status(true)
-                        blockUI.stop()
-                )
-        if dev.$$graphing_data_availability_class == "alert-danger"
-            icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
-                f
-                (_no) ->
-                    console.log("no")
-            )
-        else if dev.$$graphing_data_availability_class == "alert-warning"
-            icswToolsSimpleModalService("Re-enable graphing for this device? [Requires installed host-monitoring]").then(
-                f
-                (_no) ->
-                    $scope.open_in_new_tab_for_devices(dev, 3)
-            )
-        else if dev.$$graphing_data_availability_class == "alert-success"
-          $scope.open_in_new_tab_for_devices(dev, 3)
-
     $scope.system_overview_tab_clicked = () ->
         perform_refresh_for_system_status()
 
@@ -365,6 +323,8 @@ setup_progress = angular.module(
             $scope.struct.show_extended_information_button_value = "Off"
             $scope.struct.show_extended_information_button_class = "btn btn-default"
 
+        for device in $scope.struct.devices
+            device.$$device_status_show_details = $scope.struct.show_extended_information_button_enabled
 
     setup_tasks = () ->
         icswSimpleAjaxCall(
@@ -402,6 +362,30 @@ setup_progress = angular.module(
                 setup_tasks()
                 blockUI.stop()
         )
+
+    $scope.ignore_device_issue = (task, device) ->
+        blockUI.start("Please wait...")
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_DEVICE_TASK_IGNORE_TOGGLE
+                data:
+                    device_component_name: task.name
+                    device_pk: device.idx
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                $scope.struct.device_ids_needing_refresh.push(device.idx)
+                perform_refresh_for_device_status(true)
+                blockUI.stop()
+        )
+
+    $scope.device_status_show_details = (obj) ->
+        if obj.$$device_status_show_details == undefined
+            obj.$$device_status_show_details = true
+        else
+            obj.$$device_status_show_details = !obj.$$device_status_show_details
+
 
 ]).service("SetupProgressHelper",
 [
