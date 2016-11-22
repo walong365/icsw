@@ -24,7 +24,7 @@ class TestIcsw(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.driver = Webdriver(
-            base_url='http://192.168.1.92/icsw/main.html#',
+            base_url='http://192.168.1.92/icsw/main.html',
             command_executor='http://127.0.0.1:4444/wd/hub',
             desired_capabilities=DesiredCapabilities.CHROME,
             )
@@ -64,7 +64,7 @@ class TestIcsw(unittest.TestCase):
         modal = self.get_modal()
         self.click_button(ng_click='modify()', base_element=modal)
         modal = self.get_modal()
-        self.fill_form({'comment': 'test'}, modal)
+        self.fill_form({'comment': 'test' + unique_str()}, modal)
         time.sleep(1)
         self.click_button('Modify', base_element=modal)
         self.assert_toast('comment : changed from')
@@ -75,10 +75,43 @@ class TestIcsw(unittest.TestCase):
         self.driver.find_element_by_xpath('//th[text()="Name"]')
         self.driver.wait_overlay()
         self.click_button(ng_click='create_device( $event)')
+        modal = self.get_modal()
         device_name = 'device' + unique_str()
         self.fill_form({'name': device_name})
         self.click_button('Create')
         self.assert_toast("created 'device'")
+        self.driver.wait_staleness_of(modal)
+
+        # deleting devices doesn't work
+
+        # create a device group
+        device_group_name = 'devicegroup' + unique_str()
+        self.click_button('create Device Group')
+        modal = self.get_modal()
+        self.fill_form({'name': device_group_name})
+        self.click_button('Create')
+        self.driver.wait_staleness_of(modal)
+        self.assert_toast('created new device_group')
+
+        # modify device group
+        row_xpath = '//td/strong[contains(., "{}")]/../..'.format(
+            device_group_name
+            )
+        row = self.driver.find_element_by_xpath(row_xpath)
+        self.click_button('modify', base_element=row)
+        modal = self.get_modal()
+        self.fill_form({'description': 'new' + unique_str()})
+        self.click_button('Modify')
+        self.driver.wait_staleness_of(modal)
+        self.assert_toast('description : changed from')
+
+        # delete the device group
+        row = self.driver.find_element_by_xpath(row_xpath)
+        self.click_button('delete', base_element=row)
+        modal = self.get_modal()
+        self.click_button('delete', base_element=modal)
+        self.assert_toast('Deleting 1 object')
+        self.assert_toast('Finished deleting 1 object')
 
     def test_050_assign_configuration(self):
         self.driver.get_('main/deviceconfig')
@@ -195,7 +228,7 @@ class TestIcsw(unittest.TestCase):
         self.assert_toast('added to 1 device')
 
     def test_080_locations(self):
-        manage_locations_xpath = '//li[@heading="Manage Locations"]'
+        manage_locations_xpath = '//li[@heading="Configure Locations"]'
 
         # create a new location
         self.driver.get_('/main/devlocation')
@@ -206,6 +239,7 @@ class TestIcsw(unittest.TestCase):
         self.fill_form({'name': location_name}, modal)
         self.click_button('Create', base_element=modal)
         self.assert_toast('created new category')
+        self.driver.wait_staleness_of(modal)
 
         # assign the location
         self.driver.find_element_by_xpath(
@@ -252,9 +286,21 @@ class TestIcsw(unittest.TestCase):
         self.assert_toast('created new domain_tree_node')
 
     def test_100_setup_progress(self):
+        row_xpath = '//td[contains(text(), "Add at least one user")]/..'
+
         self.driver.get_('/main/setup/progress')
+        row = self.driver.find_element_by_xpath(row_xpath)
+        self.click_button('Ignore Issue', base_element=row)
+
+        self.driver.refresh()
+        row = self.driver.find_element_by_xpath(row_xpath)
+        self.click_button('Unignore Issue', base_element=row)
+
+        self.driver.refresh()
+        row = self.driver.find_element_by_xpath(row_xpath)
         self.assert_element(
-            '//td[contains(text(), "Add at least one Device to the system")]'
+            '//button[contains(.,"Unignore Issue")]',
+            root=row
             )
 
     def test_110_monitoring_overview(self):
@@ -264,14 +310,39 @@ class TestIcsw(unittest.TestCase):
             '//td[text()="{}"]'.format(TestIcsw.device)
             )
 
-    def test_120_license_overview(self):
+    def test_120_monitoring_setup(self):
+        def select_tab(level_1, level_2):
+            time.sleep(1)
+            print(level_1)
+            self.driver.find_element_by_xpath(
+                '//uib-tab-heading[contains(., "{}")]'.format(level_1)
+                ).click()
+            time.sleep(1)
+            print(level_2)
+            self.driver.find_element_by_xpath(
+                '//div[@class="tab-content"]'
+                '//li/a[contains(text(), "{}")]'.format(level_2)
+                ).click()
+
+        def get_rest_table(service):
+            return self.driver.find_element_by_xpath(
+                '//icsw-tools-rest-table-new[@config-service="{}"]'.format(
+                    service
+                    )
+                )
+
+        name = unique_str()
+
+        self.driver.get_('/main/monitorbasics')
+
+    def test_130_license_overview(self):
         self.driver.get_('/main/syslicenseoverview')
 
         self.assert_element(
             '//span[contains(.,"Your Licenses for this Server")]'
             )
 
-    def test_130_user_tree(self):
+    def test_140_user_tree(self):
         self.driver.get_('/main/usertree')
         self.assert_element(
             '//h3[contains(.,"User / Groups / Roles")]'
@@ -293,7 +364,7 @@ class TestIcsw(unittest.TestCase):
         self.driver.wait_overlay()
         self.assert_toast('created new group')
 
-    def test_140_account_info(self):
+    def test_150_account_info(self):
         self.driver.get_('/main/useraccount')
         self.assert_element(
             '//h3[text()="Account Information for \'admin\'"]'
@@ -370,12 +441,16 @@ class TestIcsw(unittest.TestCase):
                 )
             raise self.failureException(msg)
 
-    def debug_state(self, name=None):
+    def debug_state(self, name=None, element=None):
         file_name = 'debug{}'.format('_' + name if name else '')
         path = '/usr/local/share/home/huymajer/development/icsw/'
         self.driver.save_screenshot(os.path.join(path, file_name + '.png'))
+        if element:
+            source = element.get_attribute('outerHTML')
+        else:
+            source = self.driver.page_source
         with open(os.path.join(path, file_name + '.html'), 'wb') as file_:
-            file_.write(self.driver.page_source.encode('utf-8'))
+            file_.write(source.encode('utf-8'))
 
 
 if __name__ == '__main__':
