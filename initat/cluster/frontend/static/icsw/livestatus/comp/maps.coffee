@@ -328,7 +328,7 @@ angular.module(
                         key: "bgimage"
                         width: _gfx_width
                         height: _gfx_height
-                        href: _gfx.image_url
+                        xlinkHref: _gfx.image_url
                         preserveAspectRatio: "none"
                     }
                 )
