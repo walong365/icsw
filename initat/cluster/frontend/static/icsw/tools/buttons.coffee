@@ -345,10 +345,11 @@ angular.module(
             else
                 scope.additional_class = ""
 
-            if attrs.disabled?
+
+            if attrs.disabled? || attrs.ngDisabled?
                 scope.$watch(
                     () ->
-                        return scope.disabled()
+                        return scope.disabled?() ? attrs.disabled
                     (new_val) ->
                         scope.is_disabled = new_val
                 )
