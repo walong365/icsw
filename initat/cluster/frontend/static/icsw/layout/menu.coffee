@@ -372,9 +372,7 @@ menu_module = angular.module(
                     data.$$missing_short.join("")
                 )
             if active_state
-                as_str = "(*) "
-            else
-                as_str = null
+                _a_classes.push("active")
             if data.$$menuEntry.entryClass?
                 _a_classes.push(data.$$menuEntry.entryClass)
             if data.$$menuEntry.title?
@@ -403,7 +401,6 @@ menu_module = angular.module(
                         {className: "fa #{data.$$menuEntry.icon} fa_icsw", key: "span"}
                     )
                     " #{data.$$menuEntry.name} "
-                    as_str
                     _mis_span
                 )
                 help_p

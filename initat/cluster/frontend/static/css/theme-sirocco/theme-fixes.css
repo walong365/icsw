@@ -225,11 +225,14 @@ body.condensed .submenu-bar{
 }
 .navbar-nav > li > ul.dropdown-menu {
     background-color: #ffffff;
-    color: #818181;
+    color: #666666;
     padding: 20px 20px 20px 17px;
 }
 .navbar-nav > li > ul.dropdown-menu a {
     color: #444444;
+}
+.navbar-nav > li > ul.dropdown-menu a.active {
+    color: #777777;
 }
 .navbar.condensed {
     min-height: 50px;

@@ -430,6 +430,9 @@ div.yamm hr {
 .navbar .disabled {
     color: #bbbbbb;
 }
+.navbar a.active {
+    font-weight:bold;
+}
 .yamm-content li, .yamm-content li > a {
     /* space between links */
     padding: 2px 0px;
