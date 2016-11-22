@@ -8,8 +8,8 @@ from common import Webdriver, visible
 
 def main(args):
     d = Webdriver(
-        base_url='http://192.168.1.75/icsw/main.html#',
-        command_executor='http://127.0.0.1:4444/wd/hub',
+        base_url=args.base,
+        command_executor=args.executor,
         desired_capabilities=DesiredCapabilities.CHROME,
         )
     d.screenshot_dir = args.outdir
@@ -95,7 +95,8 @@ def main(args):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
-        description='Make screenshots of the CORVUS web-frontend.'
+        description='Make screenshots of the CORVUS web-frontend.',
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
         )
     parser.add_argument(
         'outdir',
@@ -103,11 +104,12 @@ if __name__ == '__main__':
         )
     parser.add_argument(
         '--executor',
+        default='http://127.0.0.1:4444/wd/hub',
         help='the URL of the Selenium server'
         )
     parser.add_argument(
         '--base',
-        default='',
+        default='http://192.168.1.75/icsw/main.html',
         help='the base URL of the web-frontend'
         )
     args = parser.parse_args()
