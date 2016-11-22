@@ -774,8 +774,10 @@ angular.module(
         ICSW_TASK_SETTINGS_CHANGED: "icsw.task.settings.changed"
         # icsw menu settings changed
         ICSW_MENU_SETTINGS_CHANGED: "icsw.menu.settings.changed"
-        # open setup tasks cahnged
+        # open setup tasks changed
         ICSW_OPEN_SETUP_TASKS_CHANGED: "icsw.open.setup.tasks.changed"
+        # livestatus pipeline modified
+        ICSW_LIVESTATUS_PIPELINE_MODIFIED: "icsw.livestatus.pipeline.modified"
 
         # local signals (for local $emit / $on)
 

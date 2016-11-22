@@ -198,7 +198,7 @@ class get_node_config(View):
             ]
         )
         result = contact_server(request, icswServiceEnum.monitor_server, srv_com, timeout=30)
-        print("R")
+        # print("R")
         if result:
             node_results = result.xpath(".//config", smart_strings=False)
             if len(node_results):

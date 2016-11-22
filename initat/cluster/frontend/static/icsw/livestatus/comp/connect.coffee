@@ -42,9 +42,9 @@ angular.module(
     }
 ).service("icswMonLivestatusPipeBase",
 [
-    "$q", "$rootScope",
+    "$q", "$rootScope", "icswLivestatusLayoutHelpers",
 (
-    $q, $rootScope
+    $q, $rootScope, icswLivestatusLayoutHelpers,
 ) ->
     class icswMonLivestatusPipeBase
         # use __dp_ as prefix for quasi-private attributes
@@ -128,10 +128,10 @@ angular.module(
             @set_display_flags()
 
         delete_element: ($event) ->
-            @__dp_connector.delete_element(@, $event)
+            icswLivestatusLayoutHelpers.delete_node($event, @__dp_struct)
 
         create_element: ($event) ->
-            @__dp_connector.create_element(@, $event)
+            icswLivestatusLayoutHelpers.create_node($event, @__dp_struct)
 
         # santify checks
         check_for_emitter: () =>
@@ -208,6 +208,7 @@ angular.module(
         remove_child: (child) ->
             @close_child(child)
             _.remove(@__dp_childs, (entry) -> return entry.__dp_element_id == child.__dp_element_id)
+            _.remove(@__dp_struct.childs, (entry) -> return entry.node.__dp_element_id == child.__dp_element_id)
             if not @__dp_childs.length
                 @__dp_is_leaf_node = true
             @build_title()
@@ -283,10 +284,10 @@ angular.module(
 ]).service("icswMonLivestatusPipeConnector",
 [
     "$q", "$rootScope", "$injector", "icswToolsSimpleModalService", "$window", "icswComplexModalService",
-    "$templateCache", "$compile", "icswLivestatusPipeRegister", "$timeout",
+    "$templateCache", "$compile", "icswLivestatusPipeRegister", "$timeout", "ICSW_SIGNALS",
 (
     $q, $rootScope, $injector, icswToolsSimpleModalService, $window, icswComplexModalService,
-    $templateCache, $compile, icswLivestatusPipeRegister, $timeout,
+    $templateCache, $compile, icswLivestatusPipeRegister, $timeout, ICSW_SIGNALS,
 ) ->
     # creates a DisplayPipeline
     class icswMonLivestatusPipeConnector
@@ -356,6 +357,7 @@ angular.module(
             _path_str =  angular.toJson(_path)
             node = new @element_dict[name]()
             _struct = {
+                connector: @
                 id: name
                 name: name
                 parent: parent_struct
@@ -376,6 +378,7 @@ angular.module(
                     @display_elements.push(node)
                 else
                     @hidden_elements.push(node)
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_LIVESTATUS_PIPELINE_MODIFIED"))
             return _struct
 
         build_structure: () =>
@@ -486,50 +489,6 @@ angular.module(
             @num_hidden_elements--
             @layout_changed()
 
-        delete_element: (element, $event) =>
-            # delete element permanently
-            icswToolsSimpleModalService("Really delete DPE #{element.__dp_raw_title} ?").then(
-                (del_it) =>
-                    @_delete_element(element)
-            )
-            
-        create_element: (element, $event) =>
-            # add an element to the current element
-            sub_scope = $rootScope.$new(true)
-            sub_scope.allowed_elements = (
-                {
-                    name: el.name
-                } for el in icswLivestatusPipeRegister when el.dynamic_add
-            )
-            sub_scope.struct = {
-                new_element: sub_scope.allowed_elements[0].name
-            }
-            icswComplexModalService(
-                {
-                    message: $compile($templateCache.get("icsw.connect.create.element"))(sub_scope)
-                    title: "Add DisplayPipe Element"
-                    ok_label: "Add"
-                    closable: true
-                    ok_callback: (modal) =>
-                        d = $q.defer()
-                        _name = sub_scope.struct.new_element
-                        # resolve element name to object
-                        @_resolve_element_name(_name)
-                        struct = @_create_and_add_element(element.__dp_struct, _name)
-                        node = struct.node
-                        element.add_child_node(node)
-                        d.resolve("created")
-                        return d.promise
-                    cancel_callback: (modal) ->
-                        d = $q.defer()
-                        d.resolve("cancel")
-                        return d.promise
-                }
-            ).then(
-                (fin) ->
-                    sub_scope.$destroy()
-            )
-
         element_settings_changed: (element, settings_str) =>
             @settings[element.__dp_path_str] = settings_str
             if not @__settings_save_pending
@@ -542,7 +501,10 @@ angular.module(
                 )
                 @__settings_save_pending = true
 
-        _delete_element: (element) =>
+        delete_element: (struct) =>
+            defer = $q.defer()
+            # display element
+            element = struct.node
             _.remove(@display_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
             _.remove(@hidden_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
             _.remove(@all_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
@@ -550,6 +512,9 @@ angular.module(
             @num_hidden_elements = @hidden_elements.length
             @num_display_elements = @display_elements.length
             element.remove_from_parent()
+            defer.resolve("deleted")
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_LIVESTATUS_PIPELINE_MODIFIED"))
+            return defer.promise
 
         init_gridster: () =>
             NUM_COLUMS = 20
@@ -635,6 +600,7 @@ angular.module(
                     title: "Modify Layout (Dendrogram)"
                     ok_label: "Add"
                     closable: true
+                    css_class: "modal-wide"
                     ok_callback: (modal) =>
                         d = $q.defer()
                         d.resolve("created")
@@ -650,14 +616,81 @@ angular.module(
                     @set_running_flag(_prev_running)
             )
 
+]).service("icswLivestatusLayoutHelpers",
+[
+    "$q", "icswToolsSimpleModalService", "blockUI", "$rootScope", "ICSW_SIGNALS",
+    "icswLivestatusPipeRegister", "icswComplexModalService", "$compile",
+    "$templateCache",
+(
+    $q, icswToolsSimpleModalService, blockUI, $rootScope, ICSW_SIGNALS,
+    icswLivestatusPipeRegister, icswComplexModalService, $compile,
+    $templateCache,
+) ->
+    delete_node = (event, node) ->
+        connector = node.connector
+        defer = $q.defer()
+        icswToolsSimpleModalService("Really delete node #{node.node.name} #{node.node.__dp_title} ?").then(
+            (ok) ->
+                connector.delete_element(node).then(
+                    (done) ->
+                        defer.resolve("ok")
+                )
+            (notok) ->
+                defer.reject("no")
+        )
+        return defer.promise
 
+    create_node = (event, parent_node) ->
+        connector = parent_node.connector
+        defer = $q.defer()
+        sub_scope = $rootScope.$new(true)
+        sub_scope.allowed_elements = (
+            {
+                name: el.name
+            } for el in icswLivestatusPipeRegister when el.dynamic_add
+        )
+        sub_scope.struct = {
+            new_element: sub_scope.allowed_elements[0].name
+        }
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.connect.create.element"))(sub_scope)
+                title: "Add DisplayPipe Element"
+                ok_label: "Add"
+                closable: true
+                ok_callback: (modal) =>
+                    d = $q.defer()
+                    _name = sub_scope.struct.new_element
+                    # resolve element name to object
+                    connector._resolve_element_name(_name)
+                    struct = connector._create_and_add_element(parent_node, _name)
+                    node = struct.node
+                    parent_node.node.add_child_node(node)
+                    d.resolve("created")
+                    return d.promise
+                cancel_callback: (modal) ->
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) ->
+                sub_scope.$destroy()
+                defer.resolve("done")
+        )
+        return defer.promise
+
+    return {
+        delete_node: delete_node
+        create_node: create_node
+    }
 ]).service("icswLivestatusClusterDendrogramReact",
 [
-    "$q",
+    "$q", "icswLivestatusLayoutHelpers",
 (
-    $q,
+    $q, icswLivestatusLayoutHelpers,
 ) ->
-    {h3, div, span, svg, g, rect, circle, path, title, text} = React.DOM
+    {h3, div, span, svg, g, rect, circle, path, title, text, h4, h3, button} = React.DOM
     return React.createClass(
         displayName: "icswLivestatusClusterDendrogramReact"
         propTypes: {
@@ -668,6 +701,7 @@ angular.module(
 
         getInitialState: () ->
             return {
+                focus_node: null
                 active_node: null
             }
 
@@ -678,17 +712,29 @@ angular.module(
             get_node = (node) =>
                 _node_idx++
                 _el = node.data.node
+                if @state.focus_node and @state.focus_node.data.id == node.data.id
+                    _c_r = 40
+                else
+                    _c_r = 35
+                if @state.active_node and @state.active_node.data.id == node.data.id
+                    _c_cls = "svg-ls-cd-node-active"
+                    _c_r = 40
+                else
+                    _c_cls = "svg-ls-cd-node"
                 # console.log _el.is_receiver, _el.is_emitter
                 return g(
                     {
                         key: "node#{_node_idx}"
                         transform: "translate(#{node.y}, #{node.x})"
                         onClick: (event) =>
-                            console.log "c=", node
+                            if @state.active_node and @state.active_node.data.id == node.data.id
+                                @setState({active_node: null, focus_node: null})
+                            else
+                                @setState({active_node: node, focus_node: node})
                         onMouseEnter: (event) =>
-                            @setState({active_node: node})
-                        onMouseLeave: (event) =>
-                            @setState({active_node: null})
+                            @setState({focus_node: node})
+                        # onMouseLeave: (event) =>
+                        #    @setState({focus_node: null})
 
                     }
                     title(
@@ -700,8 +746,8 @@ angular.module(
                     circle(
                         {
                             key: "el"
-                            r: 35
-                            className: "svg-ls-cd-node"
+                            r: _c_r
+                            className: _c_cls
                         }
                     )
                     text(
@@ -733,13 +779,12 @@ angular.module(
 
             _border = 50
             _act_node = @state.active_node
-            console.log "N=", _act_node
-            return svg(
+            _svg = svg(
                 {
                     key: "svgouter"
-                    width: "800px"  # width
-                    height: "400px"  # height
-                   # preserveAspectRatio: "xMidYMid meet"
+                    width: "100%"  # width
+                    # height: "100%"  # height
+                    preserveAspectRatio: "xMidYMid meet"
                     viewBox: "-#{_border} -#{_border} #{@props.width + _border} #{@props.height + _border}"
                 }
                 g(
@@ -751,6 +796,120 @@ angular.module(
                     )
                     (
                         get_node(node) for node in @props.struct.descendants()
+                    )
+                )
+            )
+            an = @state.active_node
+            fn = @state.focus_node
+            _an_rows = []
+            if an
+                _an_rows.push(
+                    div(
+                        {
+                            key: "name"
+                            className: "col-md-12"
+                        }
+                        an.data.node.name
+                    )
+                )
+                if an.data.node.__dp_depth and an.data.node.__dp_is_leaf_node
+                    _an_rows.push(
+                        div(
+                            {
+                                key: "delb"
+                                className: "col-md-12"
+                            }
+                            button(
+                                {
+                                    key: "delb"
+                                    className: "btn btn-xs btn-danger"
+                                    onClick: (event) =>
+                                        icswLivestatusLayoutHelpers.delete_node(event, an.data)
+                                }
+                                "Delete"
+                            )
+                        )
+                    )
+                if an.data.node.is_emitter
+                    _an_rows.push(
+                        div(
+                            {
+                                key: "createb"
+                                className: "col-md-12"
+                            }
+                            button(
+                                {
+                                    key: "crateb"
+                                    className: "btn btn-xs btn-success"
+                                    onClick: (event) =>
+                                        icswLivestatusLayoutHelpers.create_node(event, an.data)
+                                }
+                                "Create"
+                            )
+                        )
+                    )
+            _an_div = div(
+                {
+                    key: "active"
+                    className: "container-fluid"
+                }
+                h3(
+                    {
+                        key: "head"
+                    }
+                    "Active Node"
+                )
+                div(
+                    {
+                        key: "rows"
+                        className: "row"
+                    }
+                    _an_rows
+                )
+            )
+            _fn_div = div(
+                {
+                    key: "focus"
+                    className: "container-fluid"
+                }
+                h3(
+                    {
+                        key: "head"
+                    }
+                    "Focus Node"
+                )
+                if fn then fn.data.node.name else ""
+            )
+            _ctrl = div(
+                {
+                    key: "ctrl"
+                }
+                _an_div
+                _fn_div
+            )
+            return div(
+                {
+                    key: "top"
+                    className: "container-fluid"
+                }
+                div(
+                    {
+                        key: "row"
+                        className: "row"
+                    }
+                    div(
+                        {
+                            key: "svg"
+                            className: "col-md-8"
+                        }
+                        _svg
+                    )
+                    div(
+                        {
+                            key: "ctrl"
+                            className: "col-md-4"
+                        }
+                        _ctrl
                     )
                 )
             )
@@ -783,16 +942,37 @@ angular.module(
     }
 ]).controller("icswLivestatusClusterDendrogramCtrl",
 [
-    "$scope", "d3_service", "$q",
+    "$scope", "d3_service", "$q", "icswLivestatusLayoutHelpers", "$rootScope",
+    "ICSW_SIGNALS",
 (
-    $scope, d3_service, $q,
+    $scope, d3_service, $q, icswLivestatusLayoutHelpers, $rootScope,
+    ICSW_SIGNALS,
 ) ->
     $scope.struct = {
         # d3
         d3: undefined
         # react element
         react_element: null
+        # unregister functions
+        unreg_fn: []
     }
+    _render = () ->
+        d3 = $scope.struct.d3
+        _flat_list = $scope.struct.connector.get_flat_list()
+        tree = d3.cluster().size([1000, 1000])
+        stratify = d3.stratify().parentId(
+            (node) ->
+                # get parent id
+                _parts = node.id.split(".")
+                _parts.pop(-1)
+                return _parts.join(".")
+        )
+        # get root element
+        root = stratify(_flat_list)
+        # tree layout
+        tree(root)
+        $scope.render_el(root, 1000, 1000)
+
     $q.all(
         [
             d3_service.d3()
@@ -802,22 +982,16 @@ angular.module(
             d3 = result[0]
             $scope.struct.d3 = d3
             $scope.struct.connector = $scope.connector
-            # console.log "d3=", $scope.struct
-            # build tree
-            _flat_list = $scope.struct.connector.get_flat_list()
-            tree = d3.cluster().size([1000, 1000])
-            stratify = d3.stratify().parentId(
-                (node) ->
-                    # get parent id
-                    _parts = node.id.split(".")
-                    _parts.pop(-1)
-                    return _parts.join(".")
+            $scope.struct.unreg_fn.push(
+                $rootScope.$on(ICSW_SIGNALS("ICSW_LIVESTATUS_PIPELINE_MODIFIED"), () ->
+                    _render()
+                )
             )
-            # get root element
-            root = stratify(_flat_list)
-            # tree layout
-            tree(root)
-            $scope.render_el(root, 1000, 1000)
+            # build tree
+            _render()
+    )
+    $scope.$on("$destroy", () ->
+        (_fn() for _fn in $scope.struct.unreg_fn)
     )
 
 ]).directive("icswConnectElementDisplay",
