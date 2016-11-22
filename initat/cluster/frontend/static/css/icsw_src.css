@@ -450,16 +450,18 @@ div.yamm hr {
     margin-top: 5px;
 }
 .navbar-right .task-wizard {
-    padding: 25px 0 0 0 !important;
+    padding: 26px 5px 0 0 !important;
 }
 .navbar-right.condensed .task-wizard {
-    padding: 14px 0 0 0 !important;
+    padding: 14px 5px 0 0 !important;
 }
-.navbar-right .menu-openissues {
+.navbar-right .menu-openissues,
+.navbar-right .menu-backgroundjobs {
     margin: 24px 5px 0 0 !important;
     padding: 1px !important;
 }
-.navbar-right.condensed .menu-openissues {
+.navbar-right.condensed .menu-openissues,
+.navbar-right.condensed .menu-backgroundjobs {
     margin: 13px 5px 0 0 !important;
 }
 .navbar-right .task-wizard .wizardbutton{
@@ -472,10 +474,10 @@ div.yamm hr {
     color: #666666;
 }
 .ova-statusbutton {
-    margin: 23px 0 0 5px;
+    margin: 23px 0 0 0;
 }
 body.condensed .ova-statusbutton {
-    margin: 5px 0 0 5px;
+    margin: 5px 0 0 0;
 }
 .setupsteps__badge {
   margin: 0 0 0 0;

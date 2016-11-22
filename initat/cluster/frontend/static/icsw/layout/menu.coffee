@@ -652,7 +652,7 @@ menu_module = angular.module(
     $q, $timeout, $rootScope, ICSW_SIGNALS, icswSimpleAjaxCall,
     $state, ICSW_URLS, icswMenuSettings, icswWebSocketService,
 ) ->
-    {ul, li, div, a, button, span} = React.DOM
+    {ul, li, div, a, button, span, img} = React.DOM
     return React.createClass(
         displayName: "icswBackgroundJobInfo"
 
@@ -695,29 +695,30 @@ menu_module = angular.module(
             # if @state.num_jobs == 0
             #     return null
             if @state.num_jobs > 4
-                _class = "label label-danger cursorpointer fa wizardbutton"
+                _class = "danger"
+            else if @state.num_jobs > 0
+                _class = "warning"
             else
-                _class = "label label-warning cursorpointer fa wizardbutton"
-                # _class = "btn btn-xs btn-warning"
+                _class = "success"
             return li(
                 {}
-                a(
+                button(
                     {
-                        className: "task-wizard"
+                        type: "button"
+                        title: "Number of Background Jobs: #{@state.num_jobs}"
+                        className: "btn btn-default btn-xs menu-backgroundjobs"
+                        onClick: (event) =>
+                            $state.go("main.backgroundinfo")
                     }
-                    span(
+                    img(
                         {
-                            # type: "button"
-                            title: "Number of Background Jobs"
-                            className: _class
-                            # style: {paddingTop: "0px"}
-                            onClick: (event) =>
-                                $state.go("main.backgroundinfo")
+                            src: ICSW_URLS.STATIC_URL + "/bgjobs_#{_class}.svg"  # (danger, warning, success)
+                            title: "Number of Background Jobs: #{@state.num_jobs}"
+                            height: 23
                         }
-                        @state.num_jobs
                     )
                 )
-            )
+        )
 
         setup_web_socket: () ->
             if @ws != undefined
