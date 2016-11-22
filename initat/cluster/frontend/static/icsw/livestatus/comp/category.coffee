@@ -25,7 +25,10 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service('icswLivestatusMonCategoryFilter',
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegisterProvider) ->
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusMonCategoryFilter", true)
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusDeviceCategoryFilter", true)
+]).service('icswLivestatusMonCategoryFilter',
 [
     "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
 (

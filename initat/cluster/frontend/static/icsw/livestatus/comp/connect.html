@@ -60,10 +60,10 @@
     <!-- the margin-bottom entry fixes issues with scrollbars appearing on the right side of panels -->
     <div class="panel panel-success" style="height:100%; margin-bottom:0px !important;" layout_unlocked="{{con_element.$$show_header}}" icsw-panel-scroller no_x_scroll="1">
         <div class="panel-heading icsw-draggable" ng-show="con_element.$$show_header">
-            <span class="badge" uib-tooltip="{{ con_element.__dp_title }}" tooltip-placement="right">
+            <span class="badge" uib-tooltip="{{ con_element.$$dp_title_full }}" tooltip-placement="right">
                 {{ con_element.__dp_element_id }}@{{ con_element.__dp_depth }}
             </span>
-            {{ con_element.__dp_raw_title }}
+            {{ con_element.$$dp_title }}
             <span class="pull-right">
                 <icsw-tools-button size="xs" type="underscore" value="" ng-click="con_element.toggle_element($event)"></icsw-tools-button>
                 <icsw-tools-button size="xs" type="close" value="" ng-click="con_element.hide_element($event)"></icsw-tools-button>
@@ -86,10 +86,10 @@
                 <div class="controls col-sm-8">
                     <ui-select ng-model="struct.new_element" style="max-width:400px; min-width:240px;">
                         <ui-select-match class="ui-select-match" placeholder="Select Element">
-                            {{ $select.selected.name }}
+                            {{ $select.selected.title }}
                         </ui-select-match>
                         <ui-select-choices class="ui-select-choices" repeat="value.name as value in allowed_elements">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                            <div ng-bind-html="value.title | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
@@ -100,6 +100,6 @@
 </script>
 
 <script type="text/ng-template" id="icsw.connect.modify.layout">
-    <h3>Modify Layout</h3>
+    <h3>Modify Layout ({{ connector.$$info_str }})</h3>
     <icsw-livestatus-cluster-dendrogram icsw-connector="connector"></icsw-livestatus-cluster-dendrogram>
 </script>

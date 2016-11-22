@@ -25,7 +25,10 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).service("icswSaltMonitoringResultService", [() ->
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegisterProvider) ->
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusSelDevices", false)
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusDataSource", false)
+]).service("icswSaltMonitoringResultService", [() ->
 
     _get_diff_time = (ts) ->
         if parseInt(ts)
