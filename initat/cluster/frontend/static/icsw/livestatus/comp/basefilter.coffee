@@ -25,8 +25,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegsterProvider) ->
-    icswLivestatusPipeRegsterProvider.add("icswLivestatusFilterService", true)
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegisterProvider) ->
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusFilterService", true)
 ]).service("icswLivestatusFilterService",
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase", "icswMonitoringResult", "$timeout",
@@ -48,7 +48,7 @@ angular.module(
     running_id = 0
     class icswLivestatusFilter extends icswMonLivestatusPipeBase
         constructor: () ->
-            super("icswLivestatusFilter", true, true)
+            super("icswLivestatusFilterService", true, true)
             @set_template(
                 '<icsw-livestatus-filter-display icsw-livestatus-filter="con_element"></icsw-livestatus-filter-display>'
                 "BaseFilter"
@@ -639,7 +639,7 @@ angular.module(
                 )
                 $(element).find("div#svg")[0]
             )
-            console.log new_rel
+            # console.log new_rel
     }
 
 ])

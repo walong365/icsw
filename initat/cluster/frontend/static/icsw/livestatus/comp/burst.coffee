@@ -23,8 +23,8 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegsterProvider) ->
-    icswLivestatusPipeRegsterProvider.add("icswLivestatusFullBurst", true)
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegisterProvider) ->
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusFullBurst", true)
 ]).factory("icswBurstReactSegment",
 [
     "$q",

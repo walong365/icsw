@@ -27,9 +27,9 @@ angular.module(
         "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools", "icsw.tools", "icsw.tools.table",
         "icsw.livestatus.comp.functions", "icsw.panel_tools",
     ]
-).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegsterProvider) ->
-    icswLivestatusPipeRegsterProvider.add("icswLivestatusLocationMap", true)
-    icswLivestatusPipeRegsterProvider.add("icswLivestatusGeoLocationDisplay", true)
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegisterProvider) ->
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusLocationMap", true)
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusGeoLocationDisplay", true)
 ]).service("icswLivestatusLocationMap",
 [
     "$q", "$rootScope", "icswMonLivestatusPipeBase",

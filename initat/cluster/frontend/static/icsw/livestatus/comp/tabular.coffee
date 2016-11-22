@@ -23,9 +23,9 @@ angular.module(
     [
         "ngResource", "ngCookies", "ngSanitize", "ui.bootstrap", "init.csw.filters", "restangular", "ui.router",
     ]
-).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegsterProvider) ->
-    icswLivestatusPipeRegsterProvider.add("icswLivestatusMonTabularDisplay", true)
-    icswLivestatusPipeRegsterProvider.add("icswLivestatusDeviceTabularDisplay", true)
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegisterProvider) ->
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusMonTabularDisplay", true)
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusDeviceTabularDisplay", true)
 ]).service('icswLivestatusMonTabularDisplay',
 [
     "$q", "icswMonLivestatusPipeBase", "icswMonitoringResult",
