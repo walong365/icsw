@@ -198,6 +198,8 @@
                                                         <a href="" ng-click="open_in_new_tab_for_devices(task, obj)">{{ task.text }}</a>
                                                         &nbsp;
                                                         <i ng-class="task.icon_class"></i>
+                                                        &nbsp;
+                                                        <a ng-if="!task.fulfilled" href="" ng-click="ignore_device_issue(task, obj)">{{ task.ignore_text }}</a>
                                                     </strong>
                                                 </div>
                                             </div>

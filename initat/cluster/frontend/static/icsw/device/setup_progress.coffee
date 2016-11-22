@@ -127,8 +127,6 @@ setup_progress = angular.module(
                         }
                     ).then(
                         (data) ->
-                            console.log("device_completion")
-                            console.log(data)
                             $scope.struct.device_ids_needing_refresh.length = 0
 
                             for device_id in device_id_list
@@ -139,9 +137,6 @@ setup_progress = angular.module(
                             $scope.struct.data_loaded = true
                             if $scope.struct.device_ids_needing_refresh.length > 0
                                 start_timer(15000)
-
-                            console.log($scope.struct.device_ids_needing_refresh)
-                            console.log("performing_refresh done")
                     )
                 else
                     $scope.struct.data_loaded = true
@@ -176,12 +171,17 @@ setup_progress = angular.module(
         fulfilled_points = 0
         for task in tasks
             available_points += task.points
-            if task.fulfilled == true
+            if task.fulfilled == true || task.ignore == true
                 fulfilled_points += task.points
+
+            if task.refresh == true
+                $scope.struct.device_ids_needing_refresh.push(device.idx)
 
         device.$$overview_completion_percentage = Math.round((fulfilled_points / available_points) * 100)
 
-    $scope.open_in_new_tab_for_devices = (task, device) ->
+    $scope.open_in_new_tab_for_devices = (task, device, force_open) ->
+        if force_open == undefined
+            force_open = false
         setup_type = task.setup_type
         if setup_type == 0
             heading = "Monitoring Checks"
@@ -191,28 +191,36 @@ setup_progress = angular.module(
             heading = "Asset Data"
         else if setup_type == 3
             heading = "Graphing Data"
-            f = (_yes) ->
-                blockUI.start("Please wait...")
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
-                        data:
-                            device_pk: dev.idx
-                        dataType: "json"
-                    }
-                ).then(
-                    (data) ->
-                        $scope.struct.device_ids_needing_refresh.push(dev.idx)
-                        perform_refresh_for_device_status(true)
-                        blockUI.stop()
-                )
-            if task.fulfilled != true
-                icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
-                    f
-                    (_no) ->
-                        console.log("no")
-                )
-                return
+            if !force_open
+                f = (_yes) ->
+                    blockUI.start("Please wait...")
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
+                            data:
+                                device_pk: device.idx
+                            dataType: "json"
+                        }
+                    ).then(
+                        (data) ->
+                            $scope.struct.device_ids_needing_refresh.push(device.idx)
+                            perform_refresh_for_device_status(true)
+                            blockUI.stop()
+                    )
+                if task.fulfilled != true
+                    icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
+                        f
+                        (_no) ->
+                            console.log("no")
+                    )
+                    return
+                else if task.rrd_age_in_seconds != undefined && task.rrd_age_in_seconds > (60 * 60)
+                    icswToolsSimpleModalService("Stale/Old Graphing Data Found. Try to re-enable graphing?").then(
+                        f
+                        (_no) ->
+                            $scope.open_in_new_tab_for_devices(task, device, true)
+                    )
+                    return
 
         o = {
             type: setup_type
@@ -296,37 +304,6 @@ setup_progress = angular.module(
     $scope.show_device = ($event, dev) ->
         DeviceOverviewService($event, [dev])
 
-    $scope.setup_graphing = (dev) ->
-        f = (_yes) ->
-                blockUI.start("Please wait...")
-                icswSimpleAjaxCall(
-                    {
-                        url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
-                        data:
-                            device_pk: dev.idx
-                        dataType: "json"
-                    }
-                ).then(
-                    (data) ->
-                        $scope.struct.device_ids_needing_refresh.push(dev.idx)
-                        perform_refresh_for_device_status(true)
-                        blockUI.stop()
-                )
-        if dev.$$graphing_data_availability_class == "alert-danger"
-            icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
-                f
-                (_no) ->
-                    console.log("no")
-            )
-        else if dev.$$graphing_data_availability_class == "alert-warning"
-            icswToolsSimpleModalService("Re-enable graphing for this device? [Requires installed host-monitoring]").then(
-                f
-                (_no) ->
-                    $scope.open_in_new_tab_for_devices(dev, 3)
-            )
-        else if dev.$$graphing_data_availability_class == "alert-success"
-          $scope.open_in_new_tab_for_devices(dev, 3)
-
     $scope.system_overview_tab_clicked = () ->
         perform_refresh_for_system_status()
 
@@ -383,6 +360,23 @@ setup_progress = angular.module(
         ).then(
             (data) ->
                 setup_tasks()
+                blockUI.stop()
+        )
+
+    $scope.ignore_device_issue = (task, device) ->
+        blockUI.start("Please wait...")
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_DEVICE_TASK_IGNORE_TOGGLE
+                data:
+                    device_component_name: task.name
+                    device_pk: device.idx
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                $scope.struct.device_ids_needing_refresh.push(device.idx)
+                perform_refresh_for_device_status(true)
                 blockUI.stop()
         )
 
