@@ -38,11 +38,17 @@ from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_s
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
-from initat.tools import logging_tools, process_tools, server_command, ipvx_tools
+from initat.tools import logging_tools, process_tools, server_command, ipvx_tools, config_tools
 from .discovery_struct import ExtCom
 
 DEVICE_LOG_LEVEL_OK = LogLevel.objects.get(identifier="o")
-DEVICE_LOG_SOURCE = LogSource.objects.get(identifier=icswServiceEnum.discovery_server.name)
+
+try:
+    DEVICE_LOG_SOURCE = LogSource.objects.get(identifier=icswServiceEnum.discovery_server.name)
+except LogSource.DoesNotExist:
+    effective_device = config_tools.server_check(service_type_enum=icswServiceEnum.discovery_server).effective_device
+    DEVICE_LOG_SOURCE = LogSource(identifier=icswServiceEnum.discovery_server.name, device=effective_device)
+    DEVICE_LOG_SOURCE.save()
 
 DEFAULT_NRPE_PORT = 5666
 # the mapping between the result of the server command and the result of the
