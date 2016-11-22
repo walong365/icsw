@@ -191,13 +191,13 @@ def create_noctua_fixtures():
     # device_group
     print("Creating device and device group.")
     first_devg = factories.DeviceGroup(name="server_group")
-    first_devg = factories.DeviceGroup(name="client_group")
-    first_devg = factories.DeviceGroup(name="switch_group")
     first_dev = factories.Device(
         name=process_tools.get_machine_name(),
         device_group=first_devg,
         domain_tree_node=_top_level_dtn,
     )
+    factories.DeviceGroup(name="client_group")
+    factories.DeviceGroup(name="switch_group")
 
     print("Creating device configurations.")
     configs = [
