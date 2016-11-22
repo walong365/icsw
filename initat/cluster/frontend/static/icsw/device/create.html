@@ -4,7 +4,7 @@
 
 <script type="text/ng-template" id="icsw.device.create.mask">
     <div class="container-fluid">
-        <h3>Create a new Device</h3>
+        <h3>Add a new Device</h3>
         <form class="form-horizontal" name="form_data" novalidate ng-if="struct.data_ready">
             <uib-accordion ng-cloak close-others="false">
                 <div uib-accordion-group class="panel-default" heading="Base Data" is-open="struct.base_open">
@@ -21,7 +21,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-md-3 icsw-formlabel">Devicegroup</label>
+                        <label class="control-label col-md-3 icsw-formlabel">Device Group</label>
                         <div class="controls col-md-6" ng-class="form_data.device_group.$invalid && 'has-error'">
                             <input
                                 type="text"
@@ -75,7 +75,7 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="control-label col-md-3 icsw-formlabel">is routing capable (switch, firewall)</label>
+                        <label class="control-label col-md-3 icsw-formlabel">Is routing capable (switch, firewall, ...)</label>
                         <div class="controls col-md-6">
                             <div class="btn-group btn-sn">
                                 <icsw-tools-yes-no flag="device_data.routing_capable"></icsw-tools-yes-no>
@@ -85,7 +85,7 @@
                     <div class="form-group" ng-if="struct.peer_tree.peer_list.length">
                         <label class="control-label col-md-3 icsw-formlabel">Connect to</label>
                         <div class="controls col-md-6">
-                            <ui-select ng-model="device_data.peer" class="maxwidth500" style="min-width:240px;">
+                            <ui-select ng-model="device_data.peer" class="maxwidth500">
                                 <ui-select-match class="ui-select-match" placeholder="Please select a valid peer">
                                     {{ $select.selected.full_name }}
                                 </ui-select-match>
@@ -103,14 +103,13 @@
                     </div>
                     <div class="form-group">
                         <div class="controls icsw-buttoncol" ng-class="form_data.comment.$invalid && 'has-error'">
-                            <icsw-tools-button type="create" ng-show="form_data.$valid" value="create Device" ng-click="create_device($event)"/>
-                            <icsw-tools-button type="create" ng-show="form_data.$valid" value="create Device and edit" ng-click="create_device_and_edit($event)"/>
-                            <span ng-show="!form_data.$valid" class="text-danger">Formular data is not valid (some fields missing... ?)</span>
+                            <icsw-tools-button type="create" ng-disabled="form_data.$invalid" value="create Device" ng-click="create_device($event)"/>
+                            <icsw-tools-button type="create" ng-disabled="form_data.$invalid" value="create Device and edit" ng-click="create_device_and_edit($event)"/>
                         </div>
                     </div>
                 </div>
-                <div uib-accordion-group class="panel-default" heading="Optional Data">
-                </div>
+                <!--div uib-accordion-group class="panel-default" heading="Optional Data">
+                </div>-->
             </uib-accordion>
         </form>
     </div>
