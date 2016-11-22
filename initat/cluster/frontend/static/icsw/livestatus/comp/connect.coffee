@@ -27,10 +27,18 @@ angular.module(
         "icsw.panel_tools",
     ]
 ).provider("icswLivestatusPipeRegister", () ->
-    _elements = []
+    _struct = {
+        # list of all elements
+        elements: []
+        # is resolved
+        resolved: false
+        # lut
+        lut: {}
+    }
+
     return {
         add: (name, dynamic_add) ->
-            _elements.push(
+            _struct.elements.push(
                 {
                     name: name
                     dynamic_add: dynamic_add
@@ -38,9 +46,32 @@ angular.module(
             )
 
         $get: () ->
-            return _elements
+            return _struct
     }
-).service("icswMonLivestatusPipeBase",
+).service("icswLivestatusPipeFunctions",
+[
+    "$injector", "icswLivestatusPipeRegister",
+(
+    $injector, icswLivestatusPipeRegister,
+) ->
+    resolve = () ->
+        _struct = icswLivestatusPipeRegister
+        if not _struct.resolved
+            _struct.resolved = true
+            for entry in _struct.elements
+                # set class
+                entry.class = $injector.get(entry.name)
+                # set object
+                entry.object = new entry.class()
+                _struct.lut[entry.name] = entry
+        return _struct
+
+    return {
+        resolve: () ->
+            return resolve()
+    }
+
+]).service("icswMonLivestatusPipeBase",
 [
     "$q", "$rootScope", "icswLivestatusLayoutHelpers",
 (
@@ -78,7 +109,7 @@ angular.module(
             @$$show_content = true
             # for frontend / header
             @$$show_header = false
-            console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
+            # console.log "init #{@name} (recv: #{@is_receiver}, emit: #{@is_emitter})"
 
         close: () =>
             # called on destroy
@@ -105,12 +136,12 @@ angular.module(
             @__dp_has_template = true
             # template content, not URL
             @__dp_template = template
-            @__dp_raw_title = title
+            @$$dp_title = title
             @sizeX = size_x
             @sizeY = size_y
 
         build_title: () =>
-            title = @__dp_raw_title
+            title = @$$dp_title
             if @__dp_parent
                 title = "#{title} from #{@__dp_parent.__dp_element_id}"
             if @is_emitter and @__dp_childs.length
@@ -118,7 +149,7 @@ angular.module(
                 title = "#{title} to " + (entry.__dp_element_id for entry in @__dp_childs).join(", ")
             if @__dp_is_leaf_node
                 title = "#{title}, leafnode"
-            @__dp_title = title
+            @$$dp_title_full = title
 
         hide_element: ($event) =>
             @__dp_connector.hide_element(@)
@@ -198,12 +229,16 @@ angular.module(
             # structure for connector access
             @__dp_struct = struct
             @__dp_connector = connector
+            # id, unique integer in connector
             @__dp_element_id = id
             @__dp_depth = depth
             # path encoded as json-string
             @__dp_path_str = path_str
             @__dp_shown = true
             @display_name = "#{@name} ##{@__dp_element_id}"
+
+        is_same: (other) ->
+            return @__dp_element_id == other.__dp_element_id
 
         remove_child: (child) ->
             @close_child(child)
@@ -283,15 +318,19 @@ angular.module(
 
 ]).service("icswMonLivestatusPipeConnector",
 [
-    "$q", "$rootScope", "$injector", "icswToolsSimpleModalService", "$window", "icswComplexModalService",
+    "$q", "$rootScope", "icswToolsSimpleModalService", "$window", "icswComplexModalService",
     "$templateCache", "$compile", "icswLivestatusPipeRegister", "$timeout", "ICSW_SIGNALS",
+    "icswLivestatusPipeFunctions",
 (
-    $q, $rootScope, $injector, icswToolsSimpleModalService, $window, icswComplexModalService,
+    $q, $rootScope, icswToolsSimpleModalService, $window, icswComplexModalService,
     $templateCache, $compile, icswLivestatusPipeRegister, $timeout, ICSW_SIGNALS,
+    icswLivestatusPipeFunctions,
 ) ->
     # creates a DisplayPipeline
     class icswMonLivestatusPipeConnector
         constructor: (name, user, spec) ->
+            # resolve all elements
+            icswLivestatusPipeFunctions.resolve()
             @setup_ok = false
             # name
             @name = name
@@ -341,21 +380,20 @@ angular.module(
             else
                 return "panel panel-warning"
 
-        _resolve_element_name: (name) =>
-            if name not of @element_dict
-                @element_dict[name] = $injector.get(name)
-
         _create_and_add_element: (parent_struct, name) =>
             @num_total_elements++
+            @running_element_id++
             if parent_struct is null
                 path = []
                 depth = 0
             else
                 path = angular.fromJson(parent_struct.node.__dp_path_str)
                 depth = parent_struct.node.__dp_depth + 1
-            _path = _.concat(path, [[depth, @num_total_elements, name]])
+            _path = _.concat(path, [[depth, @running_element_id, name]])
             _path_str =  angular.toJson(_path)
-            node = new @element_dict[name]()
+            if name not of icswLivestatusPipeRegister.lut
+                console.error "PipeElement '#{name}' not known in lut", icswLivestatusPipeRegister.lut
+            node = new icswLivestatusPipeRegister.lut[name].class()
             _struct = {
                 connector: @
                 id: name
@@ -364,7 +402,7 @@ angular.module(
                 node: node
                 childs: []
             }
-            node.link_with_connector(_struct, @, @num_total_elements, depth, _path_str)
+            node.link_with_connector(_struct, @, @running_element_id, depth, _path_str)
             if parent_struct
                 parent_struct.childs.push(_struct)
                 _struct.id = "#{parent_struct.id}.#{_struct.id}"
@@ -378,12 +416,11 @@ angular.module(
                     @display_elements.push(node)
                 else
                     @hidden_elements.push(node)
+            @build_info_str()
             $rootScope.$emit(ICSW_SIGNALS("ICSW_LIVESTATUS_PIPELINE_MODIFIED"))
             return _struct
 
         build_structure: () =>
-            # dict element name -> service
-            @element_dict = {}
 
             # simple iteratee for resolving
 
@@ -393,7 +430,6 @@ angular.module(
                 else if _.keys(in_obj).length != 1
                     throw new Error("Only one element allowed at any level")
                 for key, value of in_obj
-                    @_resolve_element_name(key)
                     for _el in value
                         _resolve_iter(_el, depth+1)
 
@@ -403,6 +439,8 @@ angular.module(
             # list of hidden elements
             @hidden_elements = []
             @num_total_elements = 0
+            # running element id, gets only increads
+            @running_element_id = 0
             # check for existing settings
             @_settings_name = "$$icswDashboardSettings_#{@name}"
             @_positions_name = "$$icswDashboardPositions_#{@name}"
@@ -447,10 +485,14 @@ angular.module(
             @num_hidden_elements = @hidden_elements.length
             (_element.set_display_flags() for _element in @all_elements)
             # save positions
+            @build_info_str()
             @save_positions()
             @init_gridster()
             @set_running_flag(true)
             @setup_ok = true
+
+        build_info_str: () =>
+            @$$info_str = "#{@name}, #{@num_total_elements} Elements"
 
         toggle_running: () =>
             @set_running_flag(!@running)
@@ -513,6 +555,7 @@ angular.module(
             @num_display_elements = @display_elements.length
             element.remove_from_parent()
             defer.resolve("deleted")
+            @build_info_str()
             $rootScope.$emit(ICSW_SIGNALS("ICSW_LIVESTATUS_PIPELINE_MODIFIED"))
             return defer.promise
 
@@ -629,7 +672,7 @@ angular.module(
     delete_node = (event, node) ->
         connector = node.connector
         defer = $q.defer()
-        icswToolsSimpleModalService("Really delete node #{node.node.name} #{node.node.__dp_title} ?").then(
+        icswToolsSimpleModalService("Really delete node #{node.node.$$dp_title_full} ?").then(
             (ok) ->
                 connector.delete_element(node).then(
                     (done) ->
@@ -644,11 +687,16 @@ angular.module(
         connector = parent_node.connector
         defer = $q.defer()
         sub_scope = $rootScope.$new(true)
-        sub_scope.allowed_elements = (
-            {
-                name: el.name
-            } for el in icswLivestatusPipeRegister when el.dynamic_add
-        )
+        # console.log "Connector = #{connector}"
+        sub_scope.allowed_elements = []
+        for el in icswLivestatusPipeRegister.elements
+            if el.dynamic_add
+                sub_scope.allowed_elements.push(
+                    {
+                        title: el.object.$$dp_title
+                        name: el.object.name
+                    }
+                )
         sub_scope.struct = {
             new_element: sub_scope.allowed_elements[0].name
         }
@@ -662,7 +710,6 @@ angular.module(
                     d = $q.defer()
                     _name = sub_scope.struct.new_element
                     # resolve element name to object
-                    connector._resolve_element_name(_name)
                     struct = connector._create_and_add_element(parent_node, _name)
                     node = struct.node
                     parent_node.node.add_child_node(node)
@@ -712,22 +759,19 @@ angular.module(
             get_node = (node) =>
                 _node_idx++
                 _el = node.data.node
-                if @state.focus_node and @state.focus_node.data.id == node.data.id
-                    _c_r = 40
+                if @state.active_node and @state.active_node.data.node.is_same(node.data.node)
+                    _color = "#e0ffe0"
+                else if @state.focus_node and @state.focus_node.data.node.is_same(node.data.node)
+                    _color = "#ffe0e0"
                 else
-                    _c_r = 35
-                if @state.active_node and @state.active_node.data.id == node.data.id
-                    _c_cls = "svg-ls-cd-node-active"
-                    _c_r = 40
-                else
-                    _c_cls = "svg-ls-cd-node"
+                    _color = "#d0d0d0"
                 # console.log _el.is_receiver, _el.is_emitter
                 return g(
                     {
                         key: "node#{_node_idx}"
                         transform: "translate(#{node.y}, #{node.x})"
                         onClick: (event) =>
-                            if @state.active_node and @state.active_node.data.id == node.data.id
+                            if @state.active_node and @state.active_node.data.node.is_same(node.data.node)
                                 @setState({active_node: null, focus_node: null})
                             else
                                 @setState({active_node: node, focus_node: node})
@@ -741,13 +785,14 @@ angular.module(
                         {
                             key: "title"
                         }
-                        _el.name
+                        _el.$$dp_title_full
                     )
                     circle(
                         {
                             key: "el"
-                            r: _c_r
-                            className: _c_cls
+                            r: 35
+                            className: "svg-ls-cd-node"
+                            style: {fill: _color}
                         }
                     )
                     text(
@@ -809,7 +854,7 @@ angular.module(
                             key: "name"
                             className: "col-md-12"
                         }
-                        an.data.node.name
+                        an.data.node.$$dp_title
                     )
                 )
                 if an.data.node.__dp_depth and an.data.node.__dp_is_leaf_node
@@ -878,7 +923,7 @@ angular.module(
                     }
                     "Focus Node"
                 )
-                if fn then fn.data.node.name else ""
+                if fn then fn.data.node.$$dp_title else ""
             )
             _ctrl = div(
                 {

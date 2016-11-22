@@ -27,9 +27,9 @@ angular.module(
         "angular-ladda", "icsw.dragging", "monospaced.mousewheel", "icsw.svg_tools", "icsw.tools", "icsw.tools.table",
         "icsw.livestatus.comp.functions", "icsw.panel_tools",
     ]
-).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegsterProvider) ->
-    icswLivestatusPipeRegsterProvider.add("icswLivestatusTopologySelector", true)
-    icswLivestatusPipeRegsterProvider.add("icswLivestatusNetworkTopology", true)
+).config(["icswLivestatusPipeRegisterProvider", (icswLivestatusPipeRegisterProvider) ->
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusTopologySelector", true)
+    icswLivestatusPipeRegisterProvider.add("icswLivestatusNetworkTopology", true)
 ]).factory("icswDeviceLivestatusReactBurst",
 [
     "$q", "icswDeviceLivestatusFunctions", "icswBurstDrawParameters",
