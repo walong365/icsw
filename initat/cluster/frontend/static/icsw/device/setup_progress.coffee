@@ -77,13 +77,6 @@ setup_progress = angular.module(
         tasks: []
     }
 
-    info_not_available_class = "alert-danger"
-    info_not_available_text = "Not Available"
-    info_available_class = "alert-success"
-    info_available_text = "Available"
-    info_warning_class = "alert-warning"
-    info_warning_text = "In Progress..."
-
     start_timer = (refresh_time) ->
         stop_timer()
         $scope.struct.reload_timer = $timeout(
@@ -134,6 +127,8 @@ setup_progress = angular.module(
                         }
                     ).then(
                         (data) ->
+                            console.log("device_completion")
+                            console.log(data)
                             $scope.struct.device_ids_needing_refresh.length = 0
 
                             for device_id in device_id_list
@@ -166,64 +161,28 @@ setup_progress = angular.module(
                 console.log(data)
         )
 
-    salt_device = (device, device_hints) ->
+    salt_device = (device, tasks) ->
         device.$$date_created = moment(device.date).format("YYYY-MM-DD HH:mm:ss")
         if device.creator
             device.$$creator = $scope.struct.ugr_tree.user_lut[device.creator].$$long_name
         else
             device.$$creator = "N/A"
 
-        info_list_names = [
-            ["monitoring_checks", 25],
-            ["location_data", 25],
-            ["asset_data", 25]
-            ["graphing_data", 25]
-        ]
+        device.$$device_tasks = tasks
 
         device.$$overview_completion_percentage = 0
 
-        for obj in info_list_names
-            info_list_name = obj[0]
-            weight = obj[1]
+        available_points = 0
+        fulfilled_points = 0
+        for task in tasks
+            available_points += task.points
+            if task.fulfilled == true
+                fulfilled_points += task.points
 
-            needs_refresh = false
+        device.$$overview_completion_percentage = Math.round((fulfilled_points / available_points) * 100)
 
-            device["$$" + info_list_name + "_availability_class"] = info_not_available_class
-            device["$$" + info_list_name + "_availability_text"] = info_not_available_text
-            device["$$" + info_list_name + "_availability_extended_text"] = info_not_available_text
-            device["$$" + info_list_name + "_sort_hint"] = 0
-
-            if device_hints[info_list_name] > 0
-                device["$$" + info_list_name + "_availability_class"] = info_available_class
-                device["$$" + info_list_name + "_availability_text"] = info_available_text
-                device["$$" + info_list_name + "_availability_extended_text"] = info_available_text
-                device["$$" + info_list_name + "_sort_hint"] = device_hints[info_list_name]
-
-                device.$$overview_completion_percentage += weight
-
-            if device_hints[info_list_name + "_warning"] == true
-                device["$$" + info_list_name + "_availability_class"] = info_warning_class
-                device["$$" + info_list_name + "_availability_text"] = info_warning_text
-                device["$$" + info_list_name + "_availability_extended_text"] = info_available_text
-                needs_refresh = true
-
-            if device_hints[info_list_name + "_extended_text"] != undefined
-                device["$$" + info_list_name + "_availability_extended_text"] = device_hints[info_list_name + "_extended_text"]
-
-            if device_hints[info_list_name + "_age_in_seconds"] != undefined
-                device["$$" + info_list_name + "_sort_hint"] = device_hints[info_list_name + "_age_in_seconds"]
-
-                if device_hints[info_list_name + "_age_in_seconds"] > (60 * 60)
-                    if device["$$" + info_list_name + "_availability_class"] != info_warning_class
-                      device["$$" + info_list_name + "_availability_class"] = info_warning_class
-                      device["$$" + info_list_name + "_availability_text"] = "Stale data found..."
-                    needs_refresh = true
-
-            if needs_refresh
-                $scope.struct.device_ids_needing_refresh.push(device.idx)
-
-
-    $scope.open_in_new_tab_for_devices = (device, setup_type) ->
+    $scope.open_in_new_tab_for_devices = (task, device) ->
+        setup_type = task.setup_type
         if setup_type == 0
             heading = "Monitoring Checks"
         else if setup_type == 1
@@ -232,6 +191,28 @@ setup_progress = angular.module(
             heading = "Asset Data"
         else if setup_type == 3
             heading = "Graphing Data"
+            f = (_yes) ->
+                blockUI.start("Please wait...")
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
+                        data:
+                            device_pk: dev.idx
+                        dataType: "json"
+                    }
+                ).then(
+                    (data) ->
+                        $scope.struct.device_ids_needing_refresh.push(dev.idx)
+                        perform_refresh_for_device_status(true)
+                        blockUI.stop()
+                )
+            if task.fulfilled != true
+                icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
+                    f
+                    (_no) ->
+                        console.log("no")
+                )
+                return
 
         o = {
             type: setup_type
@@ -365,6 +346,8 @@ setup_progress = angular.module(
             $scope.struct.show_extended_information_button_value = "Off"
             $scope.struct.show_extended_information_button_class = "btn btn-default"
 
+        for device in $scope.struct.devices
+            device.$$device_status_show_details = $scope.struct.show_extended_information_button_enabled
 
     setup_tasks = () ->
         icswSimpleAjaxCall(
@@ -402,6 +385,13 @@ setup_progress = angular.module(
                 setup_tasks()
                 blockUI.stop()
         )
+
+    $scope.device_status_show_details = (obj) ->
+        if obj.$$device_status_show_details == undefined
+            obj.$$device_status_show_details = true
+        else
+            obj.$$device_status_show_details = !obj.$$device_status_show_details
+
 
 ]).service("SetupProgressHelper",
 [

@@ -132,7 +132,7 @@
                             </tr>
                             <tr>
                                 <td colspan="99">
-                                    Extended Information:
+                                    Show Details (all Devices):
                                     <div class="btn-group btn-group-xs">
                                         <input
                                             type="button"
@@ -149,10 +149,7 @@
                                 <th st-sort="device_group_name">Group</th>
                                 <th st-sort="$$date_created" st-sort-default="reverse">Created at</th>
                                 <th>Creator</th>
-                                <th st-sort="$$monitoring_checks_sort_hint" class="text-center">Monitoring Checks</th>
-                                <th st-sort="$$location_data_sort_hint" class="text-center">Locations</th>
-                                <th st-sort="$$asset_data_sort_hint" class="text-center">Asset Scans</th>
-                                <th st-sort="$$graphing_data_sort_hint" class="text-center">Graphing Data</th>
+                                <th class="text-center">Action</th>
                                 <th st-sort="$$overview_completion_percentage" class="text-center">% Complete</th>
                             </tr>
                             <tr>
@@ -166,28 +163,44 @@
                                 <th></th>
                                 <th></th>
                                 <th></th>
-                                <th></th>
-                                <th></th>
                             </tr>
                         </thead>
 
                         <tbody>
-                            <tr ng-repeat="obj in entries_displayed">
+                            <tr ng-repeat-start="obj in entries_displayed">
                                 <td class="vertical-align">
                                     <button type="button" class="btn btn-xs btn-success" ng-click="show_device($event, obj)">{{ obj.full_name }}</button>
                                 </td>
                                 <td class="vertical-align">{{ obj.device_group_name }}</td>
                                 <td class="vertical-align">{{ obj.$$date_created }}</td>
                                 <td class="vertical-align">{{ obj.$$creator }}</td>
-                                <td class="text-center vertical-align"><div ng-class="obj.$$monitoring_checks_availability_class"><strong><a class="a-inherit" href="" ng-click='open_in_new_tab_for_devices(obj, 0)' style="height:25px;">{{ struct.show_extended_information_button_enabled ? obj.$$monitoring_checks_availability_extended_text : obj.$$monitoring_checks_availability_text}}</a></strong></div></td>
-                                <td class="text-center vertical-align"><div ng-class="obj.$$location_data_availability_class"><strong><a class="a-inherit" href="" ng-click='open_in_new_tab_for_devices(obj, 1)' style="height:25px;">{{ struct.show_extended_information_button_enabled ? obj.$$location_data_availability_extended_text : obj.$$location_data_availability_text }}</a></strong></div></td>
-                                <td class="text-center vertical-align"><div ng-class="obj.$$asset_data_availability_class"><strong><a class="a-inherit" href="" ng-click='open_in_new_tab_for_devices(obj, 2)' style="height:25px;">{{ struct.show_extended_information_button_enabled ? obj.$$asset_data_availability_extended_text : obj.$$asset_data_availability_text }}</a></strong></div></td>
-                                <td class="text-center vertical-align"><div ng-class="obj.$$graphing_data_availability_class"><strong><a class="a-inherit" href="" ng-click='setup_graphing(obj)' style="height:25px;">{{ struct.show_extended_information_button_enabled ? obj.$$graphing_data_availability_extended_text : obj.$$graphing_data_availability_text }}</a></strong></div></td>
+                                <td class="vertical-align text-center"><button type="button" class="btn btn-sm btn-primary" ng-click="device_status_show_details(obj)">Show Details</button></td>
                                 <td class="vertical-align">
                                     <div class="progress" style="margin-bottom: 0px !important;">
                                         <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"
                                             aria-valuemin="0" aria-valuemax="100" ng-style="{width : ( obj.$$overview_completion_percentage + '%' ) }">
                                             <span>{{ obj.$$overview_completion_percentage }}</span>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            <tr ng-repeat-end ng-if="obj.$$device_status_show_details == true">
+                                <td colspan="99">
+                                    <div class="container-fluid">
+                                        <div ng-repeat="task in obj.$$device_tasks" class="col-md-4 col-xs-6">
+                                            <br/>
+                                            <div class="panel" ng-class="task.panel_class">
+                                                <div class="panel-heading">
+                                                    <h3 class="panel-title">{{ task.header }}</h3>
+                                                </div>
+                                                <div class="panel-body">
+                                                    <strong>
+                                                        <a href="" ng-click="open_in_new_tab_for_devices(task, obj)">{{ task.text }}</a>
+                                                        &nbsp;
+                                                        <i ng-class="task.icon_class"></i>
+                                                    </strong>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
                                 </td>

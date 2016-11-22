@@ -909,10 +909,156 @@ from initat.cluster.backbone.models import DeviceFlagsAndSettings, mon_check_com
 import pytz
 import ast
 
+class DeviceTask(object):
+    def __init__(self, name, header, description, setup_type, points):
+        self.name = name
+        self.header = header
+        self.description = description
+        self.setup_type = setup_type
+        self.points = points
+        DeviceTask.add_task(self)
 
-class DeviceCompletion(View):
-    @method_decorator(login_required)
-    def post(self, request):
+    def get_base_dict(self):
+        _dict = {
+            "number": self.number,
+            "header": self.header,
+            "name": self.name,
+            "description": self.description,
+            "setup_type": self.setup_type,
+            "points": self.points,
+        }
+
+        return _dict
+
+    @staticmethod
+    def salt_dict(in_dict):
+        if in_dict["fulfilled"]:
+            in_dict.update(
+                {
+                    "bg_color_class": "",
+                    "icon_class": "fa fa-check-circle-o fa-2x text-success",
+                    "panel_class": "panel-success",
+                }
+            )
+        else:
+            in_dict.update(
+                {
+                    "bg_color_class": "",
+                    "icon_class": "fa fa-times-circle-o fa-2x text-danger",
+                    "panel_class": "panel-danger",
+                }
+            )
+
+        return in_dict
+
+    @staticmethod
+    def setup():
+        DeviceTask.total_points = 0
+        DeviceTask.tasks = []
+        DeviceTask.name_lut = {}
+
+    @staticmethod
+    def add_task(task):
+        DeviceTask.tasks.append(task)
+        task.number = len(DeviceTask.tasks)
+        DeviceTask.name_lut[task.name] = task
+        DeviceTask.total_points += task.points
+
+    @staticmethod
+    def handle_request(request):
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
+
+        tasks_per_device = {}
+
+        for device_pk in device_pks:
+            tasks_per_device[device_pk] = []
+
+        for _task in DeviceTask.tasks:
+            task_info_dict = _task.handle(request)
+            for device_pk in task_info_dict:
+                tasks_per_device[device_pk].append(DeviceTask.salt_dict(task_info_dict[device_pk]))
+
+        return HttpResponse(
+            json.dumps(
+                tasks_per_device
+            )
+        )
+
+
+class MonitoringChecksDeviceTask(DeviceTask):
+    def handle(self, request):
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
+
+        # build monitoring check information
+        device_checks_count = {}
+        for check in mon_check_command.objects.all().prefetch_related("config__device_config_set"):
+            for device_idx in check.get_configured_device_pks():
+                if device_idx not in device_checks_count:
+                    device_checks_count[device_idx] = 0
+                device_checks_count[device_idx] += 1
+
+        info_dict = {}
+        for device_pk in device_pks:
+            _count = device_checks_count[device_pk] if device_pk in device_checks_count else 0
+            _dict = self.get_base_dict()
+            _dict['count'] = _count
+            _dict['fulfilled'] = _count > 0
+            _dict['text'] = logging_tools.get_plural("Monitoring check", _count)
+
+            info_dict[device_pk] = _dict
+
+        return info_dict
+
+
+
+class LocationsDeviceTask(DeviceTask):
+    def handle(self, request):
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
+
+        device_location_count = {}
+        location_categories = category.objects.prefetch_related("device_set").filter(full_name__startswith="/location/")
+        for location_category in location_categories:
+            for _device in location_category.device_set.all():
+                if _device.idx not in device_location_count:
+                    device_location_count[_device.idx] = 0
+                device_location_count[_device.idx] += 1
+
+        info_dict = {}
+        for device_pk in device_pks:
+            _count = device_location_count[device_pk] if device_pk in device_location_count else 0
+            _dict = self.get_base_dict()
+            _dict['count'] = _count
+            _dict['fulfilled'] = _count > 0
+            _dict['text'] = logging_tools.get_plural("Location", _count)
+
+            info_dict[device_pk] = _dict
+
+        return info_dict
+
+class AssetScanDeviceTask(DeviceTask):
+    def handle(self, request):
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
+
+        devices = device.objects.prefetch_related(
+            "assetbatch_set"
+        ).filter(
+            Q(idx__in=device_pks)
+        )
+
+        info_dict = {}
+        for _device in devices:
+            _count = _device.assetbatch_set.count()
+            _dict = self.get_base_dict()
+            _dict['count'] = _count
+            _dict['fulfilled'] = _count > 0
+            _dict['text'] = logging_tools.get_plural("Scan", _count)
+
+            info_dict[_device.idx] = _dict
+
+        return info_dict
+
+class GraphingDataDeviceTask(DeviceTask):
+    def handle(self, request):
         device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
 
         srv_com = server_command.srv_command(command="check_rrd_graph_freshness")
@@ -925,29 +1071,18 @@ class DeviceCompletion(View):
             srv_com
         )
 
+        devices = device.objects.select_related(
+            "flags_and_settings"
+        ).filter(
+            Q(idx__in=device_pks)
+        )
+
         rrd_modification_dict = None
         if result:
             result_str, status = result.get_result()
             if status == 0:
                 rrd_modification_dict = ast.literal_eval(result_str)
 
-        devices = device.objects.prefetch_related(
-            "assetbatch_set"
-        ).select_related(
-            "flags_and_settings"
-        ).filter(
-            Q(idx__in=device_pks)
-        )
-
-        # build monitoring check information
-        device_checks_count = {}
-        for check in mon_check_command.objects.all().prefetch_related("config__device_config_set"):
-            for device_idx in check.get_configured_device_pks():
-                if device_idx not in device_checks_count:
-                    device_checks_count[device_idx] = 0
-                device_checks_count[device_idx] += 1
-
-        # build graphing information
         device_graph_count = {}
         machine_vectors = MachineVector.objects.prefetch_related("device").filter(device__idx__in=device_pks)
         for machine_vector in machine_vectors:
@@ -955,25 +1090,13 @@ class DeviceCompletion(View):
                 device_graph_count[machine_vector.device.idx] = 0
             device_graph_count[machine_vector.device.idx] += 1
 
-        # build location information map
-        device_location_count = {}
-        location_categories = category.objects.prefetch_related("device_set").filter(full_name__startswith="/location/")
-        for location_category in location_categories:
-            for _device in location_category.device_set.all():
-                if _device.idx not in device_location_count:
-                    device_location_count[_device.idx] = 0
-                device_location_count[_device.idx] += 1
-
         info_dict = {}
-
         for _device in devices:
-            info_dict[_device.idx] = {}
-
-            info_dict[_device.idx]["graphing_data"] = 0
-            if _device.idx in device_graph_count:
-                info_dict[_device.idx]["graphing_data"] = device_graph_count[_device.idx]
-
-            info_dict[_device.idx]["graphing_data_warning"] = False
+            _count = device_graph_count[_device.idx] if _device.idx in device_graph_count else 0
+            _dict = self.get_base_dict()
+            _dict['count'] = _count
+            _dict['fulfilled'] = _count > 0
+            _dict['text'] = "Available" if _count > 0 else "Not Available"
 
             try:
                 if _device.flags_and_settings.graph_enslavement_start:
@@ -982,7 +1105,8 @@ class DeviceCompletion(View):
                 else:
                     seconds_since_graph_setup = 0
 
-                info_dict[_device.idx]["graphing_data_warning"] = seconds_since_graph_setup < (60 * 2)
+                if seconds_since_graph_setup < (60 * 2):
+                    _dict['text'] = "In Progress..."
             except DeviceFlagsAndSettings.DoesNotExist:
                 pass
 
@@ -992,45 +1116,34 @@ class DeviceCompletion(View):
 
                 rrd_age_in_seconds = int((_now - modification_time).total_seconds())
 
-                info_dict[_device.idx]["graphing_data_age_in_seconds"] = rrd_age_in_seconds
-                info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} second(s) ago".format(rrd_age_in_seconds)
+                _dict['text'] = "Last update {} second(s) ago".format(rrd_age_in_seconds)
                 if rrd_age_in_seconds > 60:
                     age_in_minutes = round(rrd_age_in_seconds / 60.0, 1)
-                    info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} minute(s) ago".format(
-                        age_in_minutes)
+                    _dict['text'] = "Last update {} minute(s) ago".format(age_in_minutes)
                 if rrd_age_in_seconds > (60 * 60):
                     age_in_hours = round(rrd_age_in_seconds / (60.0 * 60.0), 1)
-                    info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} hour(s) ago".format(
-                        age_in_hours)
+                    _dict['text'] = "Last update {} hour(s) ago".format(age_in_hours)
                 if rrd_age_in_seconds > (60 * 60 * 24):
                     age_in_days = round(rrd_age_in_seconds / (60.0 * 60.0 * 24), 1)
-                    info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} day(s) ago".format(
-                        age_in_days)
+                    _dict['text'] =  "Last update {} day(s) ago".format(age_in_days)
                 if rrd_age_in_seconds > (60 * 60 * 24 * 7):
                     age_in_weeks = round(rrd_age_in_seconds / (60.0 * 60.0 * 24 * 7), 1)
-                    info_dict[_device.idx]["graphing_data_extended_text"] = "Last update {} week(s) ago".format(
-                        age_in_weeks)
+                    _dict['text'] = "Last update {} week(s) ago".format(age_in_weeks)
 
-            info_dict[_device.idx]["monitoring_checks"] = 0
-            if _device.idx in device_checks_count:
-                info_dict[_device.idx]["monitoring_checks"] = device_checks_count[_device.idx]
-                info_dict[_device.idx]["monitoring_checks_extended_text"] = "{}".format(device_checks_count[_device.idx])
+            info_dict[_device.idx] = _dict
 
-            info_dict[_device.idx]["location_data"] = 0
-            if _device.idx in device_location_count:
-                info_dict[_device.idx]["location_data"] = device_location_count[_device.idx]
-                info_dict[_device.idx]["location_data_extended_text"] = "{}".format(device_location_count[_device.idx])
+        return info_dict
 
-            asset_scan_count = _device.assetbatch_set.count()
-            info_dict[_device.idx]["asset_data"] = asset_scan_count
+DeviceTask.setup()
+MonitoringChecksDeviceTask("monitoring_checks", "Monitoring Checks", "Assign at least one monitoring check", 0, 25)
+LocationsDeviceTask("locations", "Locations", "Assign at least one location", 1, 25)
+AssetScanDeviceTask("asset_scans", "Asset Scans", "Perform at least one asset scan", 2, 25)
+GraphingDataDeviceTask("graphing_data", "Graphing Data", "Have graphing information enabled", 3, 25)
 
-            if asset_scan_count:
-                info_dict[_device.idx]["asset_data_extended_text"] = "{}".format(asset_scan_count)
-
-        return HttpResponse(
-            json.dumps(info_dict)
-        )
-
+class DeviceCompletion(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        return DeviceTask.handle_request(request)
 
 class SimpleGraphSetup(View):
     @method_decorator(login_required)
@@ -1225,7 +1338,7 @@ class UserSystemTask(SystemTask):
 
 
 class LocationSystemTask(SystemTask):
-    def handle(self, requets, ignore_dict):
+    def handle(self, request, ignore_dict):
         _c = category.objects.filter(Q(full_name__startswith="/location/")).count()
         return {
             "count": _c,
@@ -1235,7 +1348,7 @@ class LocationSystemTask(SystemTask):
 
 
 class DeviceCategorySystemTask(SystemTask):
-    def handle(self, requets, ignore_dict):
+    def handle(self, request, ignore_dict):
         _c = category.objects.filter(Q(full_name__startswith="/device/")).count()
         return {
             "count": _c,
