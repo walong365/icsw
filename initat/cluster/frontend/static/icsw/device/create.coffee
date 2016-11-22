@@ -62,7 +62,7 @@ angular.module(
     }
 
     $scope.reload = () ->
-        blockUI.start("Fetching data from server")
+        blockUI.start("Fetching Data from Server ...")
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -163,7 +163,7 @@ angular.module(
                                     $scope.struct.device_tree._fetch_device(
                                         _dev_pk
                                         defer
-                                        "new device"
+                                        "New Device"
                                     )
                                 5000
                             )

@@ -82,3 +82,8 @@
     stroke: #aaa;
     stroke-width: 2px;
 }
+.svg-ls-cd-node-active {
+    fill: #bb3d1e;
+    stroke: #92aa00;
+    stroke-width: 2.5px;
+}
