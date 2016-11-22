@@ -4,6 +4,7 @@ import unittest
 import os
 import time
 from common import Webdriver
+from lxml.html import soupparser
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from selenium.webdriver.common.action_chains import ActionChains
@@ -313,12 +314,10 @@ class TestIcsw(unittest.TestCase):
     def test_120_monitoring_setup(self):
         def select_tab(level_1, level_2):
             time.sleep(1)
-            print(level_1)
             self.driver.find_element_by_xpath(
                 '//uib-tab-heading[contains(., "{}")]'.format(level_1)
                 ).click()
             time.sleep(1)
-            print(level_2)
             self.driver.find_element_by_xpath(
                 '//div[@class="tab-content"]'
                 '//li/a[contains(text(), "{}")]'.format(level_2)
@@ -331,9 +330,69 @@ class TestIcsw(unittest.TestCase):
                     )
                 )
 
-        name = unique_str()
+        def get_table_row(tab_content, column_header, search_value):
+            """Returns the row that has ``search_value`` in the column
+            ``column_header``."""
+            table = tab_content.find_element_by_xpath(
+                './/table[@st-table="entries_displayed"]'
+                )
+            tree = soupparser.fromstring(table.get_attribute('outerHTML'))
+            column_headers = tree.xpath('//thead/tr[2]/th/text()')
 
+            row = table.find_element_by_xpath(
+                '//tbody/tr/td[{} and text()="{}"]/..'.format(
+                    column_headers.index(column_header) + 1,
+                    search_value,
+                    )
+                )
+            return row
+
+        def test_monitoring_setup_(tabs, config_service, object_name,
+                                   form_values, column, value):
+            select_tab(*tabs)
+            tab_content = get_rest_table(config_service)
+            self.click_button('create new', base_element=tab_content)
+            modal = self.get_modal()
+            self.fill_form(form_values, modal)
+            self.click_button('Create', base_element=modal)
+            self.assert_toast('created new {}'.format(object_name))
+            row = get_table_row(tab_content, column, value)
+            self.click_button('delete', base_element=row)
+            modal = self.get_modal()
+            self.click_button('Yes', base_element=modal)
+
+        name = unique_str()
         self.driver.get_('/main/monitorbasics')
+
+        # service templates
+        test_monitoring_setup_(
+            ('Basic Setup', 'Service Templates'),
+            'icswMonitoringBasicServiceTemplateService',
+            'mon_service_templ',
+            {'name': name},
+            'Name',
+            name,
+            )
+
+        # device templates
+        test_monitoring_setup_(
+            ('Basic Setup', 'Device Templates'),
+            'icswMonitoringBasicDeviceTemplateService',
+            'mon_device_templ',
+            {'name': name},
+            'Name',
+            name,
+            )
+
+        # host check command
+        test_monitoring_setup_(
+            ('Basic Setup', 'Host Check Commands'),
+            'icswMonitoringBasicHostCheckCommandService',
+            'host_check_command',
+            {'name': name, 'command_line': name},
+            'Name',
+            name,
+            )
 
     def test_130_license_overview(self):
         self.driver.get_('/main/syslicenseoverview')
