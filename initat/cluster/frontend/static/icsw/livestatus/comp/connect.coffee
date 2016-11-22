@@ -131,6 +131,22 @@ angular.module(
         error: (what) ->
             console.error "#{@prefix()}: #{what}"
 
+        # flags for modify layout
+        is_deletable: () ->
+            return if @__dp_depth and @__dp_is_leaf_node and @__dp_has_template then true else false
+
+        get_layout_name: () =>
+            if @__dp_has_template
+                return @$$dp_title
+            else
+                return @name
+
+        get_layout_title: () =>
+            if @__dp_has_template
+                return @$$dp_title_full
+            else
+                return @name
+
         # set template
         set_template: (template, title, size_x=4, size_y=4) =>
             @__dp_has_template = true
@@ -764,7 +780,11 @@ angular.module(
                 else if @state.focus_node and @state.focus_node.data.node.is_same(node.data.node)
                     _color = "#ffe0e0"
                 else
-                    _color = "#d0d0d0"
+                    _color = "#f0f0ff"
+                if _el.__dp_has_template
+                    _dasharray = null
+                else
+                    _dasharray = "5,5"
                 # console.log _el.is_receiver, _el.is_emitter
                 return g(
                     {
@@ -785,14 +805,14 @@ angular.module(
                         {
                             key: "title"
                         }
-                        _el.$$dp_title_full
+                        _el.get_layout_title()
                     )
                     circle(
                         {
                             key: "el"
                             r: 35
                             className: "svg-ls-cd-node"
-                            style: {fill: _color}
+                            style: {fill: _color, strokeDasharray: _dasharray}
                         }
                     )
                     text(
@@ -802,7 +822,7 @@ angular.module(
                             fontSize: "30px"
                             alignmentBaseline: "middle"
                         }
-                        _el.$$type
+                        "#{_el.$$type}"
                     )
                 )
 
@@ -854,10 +874,10 @@ angular.module(
                             key: "name"
                             className: "col-md-12"
                         }
-                        an.data.node.$$dp_title
+                        an.data.node.get_layout_name()
                     )
                 )
-                if an.data.node.__dp_depth and an.data.node.__dp_is_leaf_node
+                if an.data.node.is_deletable()
                     _an_rows.push(
                         div(
                             {
@@ -923,14 +943,14 @@ angular.module(
                     }
                     "Focus Node"
                 )
-                if fn then fn.data.node.$$dp_title else ""
+                if fn then fn.data.node.get_layout_name() else ""
             )
             _ctrl = div(
                 {
                     key: "ctrl"
                 }
-                _an_div
                 _fn_div
+                _an_div
             )
             return div(
                 {

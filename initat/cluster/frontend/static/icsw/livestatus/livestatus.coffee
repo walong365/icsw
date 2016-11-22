@@ -32,11 +32,13 @@ angular.module(
     "$q", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterService",
     "icswDeviceTreeService", "icswMonLivestatusPipeConnector", "$rootScope", "ICSW_SIGNALS",
+    "icswLivestatusPipeSpecTreeService",
 (
     $scope, $compile, $templateCache, Restangular, icswUserService,
     $q, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
     icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterService,
-    icswDeviceTreeService, icswMonLivestatusPipeConnector, $rootScope, ICSW_SIGNALS
+    icswDeviceTreeService, icswMonLivestatusPipeConnector, $rootScope, ICSW_SIGNALS,
+    icswLivestatusPipeSpecTreeService,
 ) ->
     # top level controller of monitoring dashboard
 
@@ -134,35 +136,82 @@ angular.module(
     }
 
     $scope.struct = {
+        # loading
+        loading: true
+        # data valid
+        data_valid: false
+        # active connector
         connector: null
+        # connector name to use
+        connector_name: null
+        # connector is set
         connector_set: false
+        # livestatuspipspectree
+        lsps_tree: undefined
+        # current user
+        user: undefined
     }
+
+    load = () ->
+        $scope.struct.loading = true
+        $q.all(
+            [
+                icswLivestatusPipeSpecTreeService.load($scope.$id)
+                icswUserService.load($scope.$id)
+            ]
+        ).then(
+            (data) ->
+                console.log "*", data
+                $scope.struct.lsps_tree = data[0]
+                $scope.struct.user = data[1]
+                $scope.struct.user.get_or_create("$$frotend_pidpe", "default", "s").then(
+                    (done) ->
+                        console.log "d=", done
+                        $scope.struct.loading = false
+                        $scope.struct.data_valid = true
+                        activate_connector()
+                )
+        )
+
+    activate_connector = (name) ->
+        if $scope.struct.data_valid and not $scope.struct.connector_set and $scope.struct.connector_name
+            if $scope.struct.lsps_tree.spec_name_defined($scope.struct.connector_name)
+                $scope.struct.connector = new icswMonLivestatusPipeConnector($scope.struct.connector_name, $scope.struct.user, angular.toJson(_cd[$scope.struct.connector_name]))
+                $scope.struct.connector_set = true
+            else
+                console.error "pipe with spec name '#{$scope.struct.connector_name}' not defined"
+                $scope.struct.connector_name = null
+
+    load()
 
     $scope.unset_connector = () ->
         if $scope.struct.connector_set
             $scope.struct.connector.close()
             $scope.struct.connector_set = false
+            $scope.struct.connector_name = null
+            $scope.struct.connector = null
 
     $scope.set_connector = (c_name) ->
         $scope.unset_connector()
-        icswUserService.load($scope.$id).then(
-            (user) ->
-                $scope.struct.connector = new icswMonLivestatusPipeConnector(c_name, user, angular.toJson(_cd[c_name]))
-                $scope.struct.connector_set = true
-        )
+        $scope.struct.connector_name = c_name
+        activate_connector()
+
     $scope.toggle_gridster_lock = () ->
-        $scope.struct.connector.toggle_global_display_state()
-        is_unlocked = $scope.struct.connector.global_display_state == 1
-        $scope.struct.connector.gridsterOpts.resizable.enabled = is_unlocked
-        $scope.struct.connector.gridsterOpts.draggable.enabled = is_unlocked
-        $rootScope.$emit(ICSW_SIGNALS("ICSW_TRIGGER_PANEL_LAYOUTCHECK"))
+        if $scope.struct.connector_set
+            $scope.struct.connector.toggle_global_display_state()
+            is_unlocked = $scope.struct.connector.global_display_state == 1
+            $scope.struct.connector.gridsterOpts.resizable.enabled = is_unlocked
+            $scope.struct.connector.gridsterOpts.draggable.enabled = is_unlocked
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_TRIGGER_PANEL_LAYOUTCHECK"))
 
     $scope.modify_layout = ($event) ->
-        $scope.struct.connector.modify_layout($event, $scope)
+        if $scope.struct.connector_set
+            $scope.struct.connector.modify_layout($event, $scope)
 
     $scope.new_devsel = (_dev_sel) ->
-        # console.log "nds"
-        $scope.struct.connector.new_devsel(_dev_sel)
+        if $scope.struct.connector_set
+            # console.log "nds"
+            $scope.struct.connector.new_devsel(_dev_sel)
 
     $scope.$on("$destroy", () ->
         if $scope.struct.connector

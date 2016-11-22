@@ -1254,7 +1254,7 @@ class user_variable(models.Model):
             ("i", "integer"),
             ("b", "boolean"),
             ("j", "json-encoded"),
-            ("n", "none")
+            ("n", "none"),
         ]
     )
     name = models.CharField(max_length=189)

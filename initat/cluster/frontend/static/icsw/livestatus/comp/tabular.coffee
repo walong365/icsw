@@ -184,11 +184,12 @@ angular.module(
         # value for modify button
         modify_value: "N/A"
         # external notifier
+
         external_notifier: $q.defer()
     }
     $scope.link = (con_element, notifier, d_type) ->
         $scope.struct.d_type = d_type
-        console.log $scope.struct.d_type
+        # console.log $scope.struct.d_type
         $scope.struct.con_element = con_element
         if $scope.struct.con_element._settings?
             $scope.struct.settings = angular.fromJson($scope.struct.con_element._settings)

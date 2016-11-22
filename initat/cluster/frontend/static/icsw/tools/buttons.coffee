@@ -318,6 +318,9 @@ angular.module(
             b_type = attrs.type
             angular.extend(scope, icswToolsButtonsConfigService.get_config_for_button_type(b_type))
 
+            # sane starting value
+            scope.is_disabled = false
+
             if attrs.icswHideText?
                 scope.show_text = false
                 scope.button_value = ""
@@ -352,7 +355,6 @@ angular.module(
                     (new_val) ->
                         scope.is_disabled = new_val
                 )
-
             if attrs.type == "show"
                 scope.$watch(
                     scope.isShow

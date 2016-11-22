@@ -74,6 +74,9 @@ __all__ = [
     # syslog check object
 
     b"SyslogCheck",
+
+    # display pipes
+    b"MonDisplayPipeSpec",
 ]
 
 
@@ -1225,3 +1228,20 @@ class SyslogCheck(models.Model):
 
     class Meta:
         ordering = ("name", )
+
+
+class MonDisplayPipeSpec(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # name
+    name = models.CharField(max_length=128, unique=True)
+    # description
+    description = models.CharField(max_length=255, default="", blank=True)
+    # is a system Pipe (not user created)
+    system_pipe = models.BooleanField(default=False)
+    # public pipe, can be used by any user
+    public_pipe = models.BooleanField(default=True)
+    # create user
+    create_user = models.ForeignKey("backbone.user", null=True)
+    # json spec
+    json_spec = models.TextField(default="")
+    date = models.DateTimeField(auto_now_add=True)

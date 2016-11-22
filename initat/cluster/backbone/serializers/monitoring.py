@@ -19,35 +19,38 @@
 #
 """ database definitions for monitoring """
 
+from __future__ import unicode_literals, print_function
+
 from initat.cluster.backbone.models import mon_host_cluster, mon_service_cluster, mon_ext_host, \
     mon_check_command, mon_host_dependency, mon_service_dependency, host_check_command, \
     mon_notification, mon_contact, mon_contactgroup, mon_check_command_special, mon_device_templ, \
     mon_service_templ, mon_period, mon_host_dependency_templ, mon_service_dependency_templ, \
-    mon_device_esc_templ, monitoring_hint, mon_service_esc_templ
+    mon_device_esc_templ, monitoring_hint, mon_service_esc_templ, MonDisplayPipeSpec
 from rest_framework import serializers
 
 __all__ = [
-    "mon_host_cluster_serializer",
-    "mon_service_cluster_serializer",
-    "host_check_command_serializer",
-    "mon_check_command_serializer",
-    "mon_check_command_nat_serializer",
-    "mon_contact_serializer",
-    "mon_notification_serializer",
-    "mon_contactgroup_serializer",
-    "mon_device_templ_serializer",
-    "mon_device_esc_templ_serializer",
-    "mon_host_dependency_templ_serializer",
-    "mon_host_dependency_serializer",
-    "mon_service_dependency_templ_serializer",
-    "mon_service_dependency_serializer",
-    "mon_ext_host_serializer",
-    "mon_period_serializer",
-    "mon_service_templ_serializer",
-    "mon_service_esc_templ_serializer",
+    b"mon_host_cluster_serializer",
+    b"mon_service_cluster_serializer",
+    b"host_check_command_serializer",
+    b"mon_check_command_serializer",
+    b"mon_check_command_nat_serializer",
+    b"mon_contact_serializer",
+    b"mon_notification_serializer",
+    b"mon_contactgroup_serializer",
+    b"mon_device_templ_serializer",
+    b"mon_device_esc_templ_serializer",
+    b"mon_host_dependency_templ_serializer",
+    b"mon_host_dependency_serializer",
+    b"mon_service_dependency_templ_serializer",
+    b"mon_service_dependency_serializer",
+    b"mon_ext_host_serializer",
+    b"mon_period_serializer",
+    b"mon_service_templ_serializer",
+    b"mon_service_esc_templ_serializer",
     # distribution models
-    "monitoring_hint_serializer",
-    "mon_check_command_special_serializer",
+    b"monitoring_hint_serializer",
+    b"mon_check_command_special_serializer",
+    b"MonDisplayPipeSpecSerializer",
 ]
 
 
@@ -187,3 +190,9 @@ class monitoring_hint_serializer(serializers.ModelSerializer):
             "value_float", "value_int", "value_string", "info",
             "check_created", "changed", "persistent", "datasource", "date",
         ]
+
+
+class MonDisplayPipeSpecSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = MonDisplayPipeSpec
+        fields = "__all__"

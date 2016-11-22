@@ -35,7 +35,7 @@ from initat.cluster.backbone.models import netdevice_speed, LogLevel, \
     ComCapability, SensorAction, config_catalog, GraphSettingSize, GraphSettingTimeshift, \
     GraphSettingForecast, GraphTimeFrame, DispatcherSettingSchedule, DispatcherSetting, \
     StaticAssetTemplate, StaticAssetTemplateField, dvs_allowed_name, device_variable_scope, \
-    DeviceClass
+    DeviceClass, MonDisplayPipeSpec
 
 
 class Device(factory.django.DjangoModelFactory):
@@ -670,4 +670,24 @@ class DeviceClassFactory(factory.django.DjangoModelFactory):
         extracted = extracted or False
         if self.system_class != extracted:
             self.system_class = extracted
+            self.save()
+
+
+class MonDisplayPipeSpecFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = MonDisplayPipeSpec
+        django_get_or_create = ("name",)
+
+    @factory.post_generation
+    def system_pipe(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.system_pipe != extracted:
+            self.system_pipe = extracted
+            self.save()
+
+    @factory.post_generation
+    def public_pipe(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.public_pipe != extracted:
+            self.public_pipe = extracted
             self.save()

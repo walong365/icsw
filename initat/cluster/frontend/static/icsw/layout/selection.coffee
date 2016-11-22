@@ -38,6 +38,7 @@ angular.module(
     Restangular, icswSavedSelectionService, ICSW_SIGNALS, icswUserService,
     $timeout,
 ) ->
+    USED_SEL_VAR_NAME = "$$used_dev_selection"
 
     class icswSelection
         # only instantiated once (for now), also handles saved selections
@@ -68,10 +69,10 @@ angular.module(
             @user = icswUserService.get()
             if @user.is_authenticated()
                 @sel_var_name = @user.expand_var(@sel_var_name)
-                if @user.has_var(@user.USED_SEL_VAR_NAME)
+                if @user.has_var(USED_SEL_VAR_NAME)
                     if not @__user_var_used
                         @__user_var_used = true
-                        _used_sel = @user.get_var(@user.USED_SEL_VAR_NAME).value
+                        _used_sel = @user.get_var(USED_SEL_VAR_NAME).value
                         # console.log "used", _used_sel
                         icswSavedSelectionService.load_selections().then(
                             (done) =>
@@ -443,6 +444,10 @@ angular.module(
 (
     Restangular, $q, ICSW_URLS, icswUserService
 ) ->
+    # var name for last used selection, not session local
+    # (can be used to automatically load a saved selection)
+    USED_SEL_VAR_NAME = "$$used_dev_selection"
+
     enrich_selection = (entry) ->
         _created = moment(entry.date)
         info = [entry.name]
@@ -498,12 +503,12 @@ angular.module(
 
     use_selection = (user, sel) ->
         if user.is_authenticated()
-            user.set_var(user.USED_SEL_VAR_NAME, sel.name, "s")
+            user.set_var(USED_SEL_VAR_NAME, sel.name, "s")
         return sel
 
     unuse_selection = (user) ->
         if user.is_authenticated()
-            user.delete_var(user.USED_SEL_VAR_NAME)
+            user.delete_var(USED_SEL_VAR_NAME)
 
     get_selection = (name) ->
         _f_list = (entry for entry in _list when entry.name == name)

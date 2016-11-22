@@ -1,13 +1,12 @@
 <script type="text/ng-template" id="icsw.livestatus.connect.overview">
-    <div class="panel panel-danger" ng-if="!struct.connector.setup_ok && !struct.connector_set">
-        <div class="panel-heading">
-            No Connector defined
-        </div>
+    <div uib-alert ng-if="!struct.data_valid" class="alert-warning">
+        Loading data from server ...
     </div>
-    <div class="panel panel-warning" ng-if="!struct.connector.setup_ok && struct.connector_set">
-        <div class="panel-heading">
-            Display Pipeline, please wait
-        </div>
+    <div uib-alert ng-if="struct.data_valid && !struct.connector_set" class="alert-warning">
+        No Connector defined
+    </div>
+    <div uib-alert ng-if="struct.connector_set && !struct.connector.setup_ok" class="alert-warning">
+        Display Pipeline, please wait
     </div>
     <div ng-class="struct.connector.get_panel_class()" ng-if="struct.connector_set && struct.connector.setup_ok">
         <div class="panel-heading">

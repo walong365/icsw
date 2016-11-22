@@ -91,6 +91,8 @@ icsw_app = angular.module(
         "icsw.backend.network",
         "icsw.backend.config",
         "icsw.backend.variable",
+        "icsw.backend.livestatus",
+        "icsw.backend.user",
         "icsw.rrd.graph",
         "icsw.system.background",
         "icsw.server.info",
