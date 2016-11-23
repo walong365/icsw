@@ -548,7 +548,7 @@ class ConfigKeyError(object):
         try:
             return self._func(*args, **kwargs)
         except KeyError:
-            raise KeyError("Key {} not defined ({})".format(args[0], self.obj.key_info))
+            raise KeyError("Key {} not defined ({})".format(args[0], self.config.key_info))
 
 
 class Configuration(object):

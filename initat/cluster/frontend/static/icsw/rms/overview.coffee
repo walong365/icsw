@@ -47,9 +47,9 @@ rms_module = angular.module(
     }
 ]).service("icswRMSTools",
 [
-    "$q",
+    "$q", "$rootScope", "$templateCache", "$compile", "$timeout",
 (
-    $q,
+    $q, $rootScope, $templateCache, $compile, $timeout,
 ) ->
     failed_lut = {
         0 : [true, "no failure", "ran and exited normally"]
@@ -96,10 +96,62 @@ rms_module = angular.module(
         99 : [0, "rescheduled", "glyphicon-repeat"]
     }
 
+
+    calc_details = (ss) ->
+        # calculate scheduling details
+        # job
+        j = ss.j
+        # info dict
+        d = ss.d
+        # scheduler vars
+        v = ss.s.vars
+        d.raw_rr_contr = d.rr_contr
+        # raw wait time
+        if j.wait_time?
+            d.raw_wt_contr = j.wait_time.raw
+        else
+            d.raw_wt_contr = 0
+        if v.weight_deadline
+            d.raw_dl_contr = d.dl_contr / v.weight_deadline
+        else
+            d.raw_dl_contr = "???"
+        d.total_contr = d.rr_contr + d.wt_contr + d.dl_contr
+        # priority
+        d.eff_norm_pprio = v.weight_priority * d.norm_pprio
+        # urgency
+        d.eff_norm_urg = v.weight_urgency * d.norm_urg
+        # tickets
+        d.eff_norm_tickets = v.weight_ticket * d.norm_tickets
+        # total
+        d.eff_norm = d.eff_norm_pprio + d.eff_norm_urg + d.eff_norm_tickets
+
+    calc_queue_details = (sched_struct, list, open_popups) ->
+        for entry in list
+            # new sub_scope
+            sub_scope = $rootScope.$new(true)
+            sub_scope.j = entry
+            sub_scope.d = entry.queue_details.raw
+            sub_scope.s = sched_struct
+            calc_details(sub_scope)
+            entry.queue_details.$$compiled = $compile($templateCache.get("icsw.rms.detail.popover"))(sub_scope)
+            entry.queue_details.$$sub_scope = sub_scope
+        $timeout(
+            () =>
+                for entry in list
+                    # console.log entry.queue_details.raw
+                    entry.queue_details.popover = (_line.outerHTML for _line in entry.queue_details.$$compiled).join(" ")
+                    entry.queue_details.$$sub_scope.$destroy()
+                    entry.queue_details.$$open = entry.job_id.value in open_popups
+            0
+        )
+
+
     return {
         failed_lut: failed_lut
         exit_status_lut: exit_status_lut
         load_re: /(\d+.\d+).*/
+        calc_queue_details: (sched_struct, list, open_popups) ->
+            return calc_queue_details(sched_struct, list, open_popups)
     }
 
 ]).service("icswRMSJobVarStruct",
@@ -414,7 +466,10 @@ rms_module = angular.module(
     class icswRMSHeaderStruct
         constructor: (@name, h_struct, @struct) ->
             _dict = {}
+            # list of strings
             @headers = []
+            # list of structures for header toggle
+            @$$toggle_headers = []
             @hidden_headers = []
             @attributes = {}
             for entry in h_struct
@@ -426,6 +481,8 @@ rms_module = angular.module(
             # initial info string
             @info = "waiting"
 
+            # display headers (for tr)
+            @$$display_headers = []
             # list of entries
             @list = []
             # for incremental builds
@@ -439,15 +496,47 @@ rms_module = angular.module(
             @build_cache()
 
         build_cache : () =>
-            _c = []
+            @$$toggle_headers.length = 0
+            @$$display_headers.length = 0
             for entry in @headers
-                if @toggle[entry]
-                    _c.push([true, entry])
+                header = (_entry.substr(0, 1).toUpperCase() + _entry.substr(1) for _entry in entry.split("_")).join("")
+                _struct = {
+                    name: entry
+                    enabled: @toggle[entry]
+                    header: header
+                    hidden: entry in @hidden_headers
+                }
+                if _struct.enabled
+                    _struct.btn_class = "btn btn-sm btn-success"
                 else
-                    _c.push([false, entry])
-            @togglec = _c
+                    _struct.btn_class = "btn btn-sm btn-default"
 
-        change_entry : (entry) =>
+                @$$toggle_headers.push(_struct)
+                if _struct.enabled and entry not in @hidden_headers
+                    attr = @attributes[entry]
+                    if attr.span?
+                        _span = attr.span
+                    else
+                        _span = 1
+                    if attr.sort?
+                        _sort = attr.sort
+                        _header_class = "bg-info cursorpointer"
+                    else
+                        _sort = ""
+                        _header_class = "bg-info"
+                    @$$display_headers.push(
+                        {
+                            name: entry
+                            colspan: _span
+                            attribute: attr
+                            header: header
+                            sort: _sort
+                            classname: _header_class
+                        }
+                    )
+                    # console.log "V=", v[0]
+
+        toggle_entry : (entry) =>
             @toggle[entry] = ! @toggle[entry]
             _str = (key for key, value of @toggle when not value).join(",")
             # console.log @toggle, _str
@@ -457,52 +546,6 @@ rms_module = angular.module(
                     # done
             )
             @build_cache()
-
-        display_headers : () =>
-            return (
-                v[0] for v in _.zip.apply(
-                    null
-                    [@headers, @togglec]
-                ) when v[1][0] and v[0] not in @hidden_headers
-            )
-
-        add_headers : (data) =>
-            # get display list
-            return (
-                [v[1][1], v[0]] for v in _.zip.apply(
-                    null
-                    [data, @togglec]
-                )
-            )
-
-        display_data : (data) =>
-            # get display list
-            return (
-                v[0] for v in _.zip.apply(
-                    null
-                    [data, @togglec]
-                ) when v[1][0]
-            )
-
-        get_btn_class : (entry) ->
-            if @toggle[entry]
-                return "btn btn-sm btn-success"
-            else
-                return "btn btn-sm btn-default"
-
-        header_not_hidden : (entry) ->
-            return entry not in @hidden_headers
-
-        get_span: (entry) ->
-            if @attributes[entry].span?
-                return @attributes[entry].span
-            else
-                return 1
-
-        get_header: (h_str) ->
-            # CamelCase
-            h_str = (_entry.substr(0, 1).toUpperCase() + _entry.substr(1) for _entry in h_str.split("_")).join("")
-            return h_str
 
         salt_datetimes: () =>
             DT_FORM = "D. MMM YYYY, HH:mm:ss"
@@ -592,6 +635,7 @@ rms_module = angular.module(
             {user, rms_operator} = @struct
             for entry in @list
                 _alter = rms_operator
+                # console.log rms_operator, entry.owner.value, user.login
                 if entry.owner.value == user.login
                     # check for aliases, FIXME
                     _alter = true
@@ -628,7 +672,6 @@ rms_module = angular.module(
                         entry.$$jv_button_class = "btn btn-xs btn-default"
                 else
                     entry.$$jv_present = false
-
 ]).service("icswRMSRunningStruct",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "icswRMSTools",
@@ -657,6 +700,10 @@ rms_module = angular.module(
 
         feed_list: (simple_list, file_dict) =>
             {io_dict} = @struct
+            if @list?
+                _open_pops = (entry.job_id.value for entry in @list when entry.queue_details.$$open)
+            else
+                _open_pops = []
             @feed_xml_list(simple_list)
             @set_alter_job_flags()
             @set_full_ids()
@@ -702,6 +749,7 @@ rms_module = angular.module(
                 else
                     _running_slots += parseInt(entry.granted_pe.value.split("(")[1].split(")")[0])
             if @list.length
+                icswRMSTools.calc_queue_details(@struct.rms.sched, @list, _open_pops)
                 @info = "running (#{@list.length} jobs, #{_running_slots} slots)"
             else
                 @info = "no running"
@@ -740,58 +788,20 @@ rms_module = angular.module(
             @feed_xml_list(simple_list)
             @set_alter_job_flags()
             @set_full_ids()
-            _waiting_slots = 0
-            for entry in @list
-                if entry.requested_pe.value == "-"
-                    _waiting_slots++
-                else
-                    _waiting_slots += parseInt(entry.requested_pe.value.split("(")[1].split(")")[0])
-                sub_scope = $rootScope.$new(true)
-                sub_scope.j = entry
-                sub_scope.d = entry.queue_details.raw
-                sub_scope.s = @struct.rms.sched
-                @calc_details(sub_scope)
-                entry.queue_details.$$compiled = $compile($templateCache.get("icsw.rms.detail.popover"))(sub_scope)
-                entry.queue_details.$$sub_scope = sub_scope
             if @list.length
+                _waiting_slots = 0
+                for entry in @list
+                    if entry.requested_pe.value == "-"
+                        _waiting_slots++
+                    else
+                        _waiting_slots += parseInt(entry.requested_pe.value.split("(")[1].split(")")[0])
+
+                icswRMSTools.calc_queue_details(@struct.rms.sched, @list, _open_pops)
+
                 @calc_details_global()
-                $timeout(
-                    () =>
-                        for entry in @list
-                            # console.log entry.queue_details.raw
-                            entry.queue_details.popover = (_line.outerHTML for _line in entry.queue_details.$$compiled).join(" ")
-                            entry.queue_details.$$sub_scope.$destroy()
-                            entry.queue_details.$$open = entry.job_id.value in _open_pops
-                    0
-                )
                 @info = "waiting (#{@list.length} jobs, #{_waiting_slots} slots)"
             else
                 @info = "no jobs waiting"
-                
-        calc_details: (ss) =>
-            # calculate scheduling details
-            # job
-            j = ss.j
-            # info dict
-            d = ss.d
-            # scheduler vars
-            v = ss.s.vars
-            d.raw_rr_contr = d.rr_contr
-            # raw wait time
-            d.raw_wt_contr = j.wait_time.raw
-            if v.weight_deadline
-                d.raw_dl_contr = d.dl_contr / v.weight_deadline
-            else
-                d.raw_dl_contr = "???"
-            d.total_contr = d.rr_contr + d.wt_contr + d.dl_contr
-            # priority
-            d.eff_norm_pprio = v.weight_priority * d.norm_pprio
-            # urgency
-            d.eff_norm_urg = v.weight_urgency * d.norm_urg
-            # tickets
-            d.eff_norm_tickets = v.weight_ticket * d.norm_tickets
-            # total
-            d.eff_norm = d.eff_norm_pprio + d.eff_norm_urg + d.eff_norm_tickets
 
         calc_details_global: () =>
             _tot_min = _.min((entry.queue_details.raw.total_contr for entry in @list))
@@ -1299,12 +1309,12 @@ rms_module = angular.module(
 #                        $scope.struct.fetch_current_timeout = $timeout(fetch_current_data, 15000)
         )
 
-    $scope.close_io = (io_struct) ->
+    $scope.close_io = ($event, io_struct) ->
         # delay closing
         $timeout(
             () ->
                 delete $scope.struct.io_dict[io_struct.id]
-            5
+            1
         )
 
 ]).directive("icswRmsJobRunningTable",
