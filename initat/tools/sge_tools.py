@@ -1128,50 +1128,6 @@ class SGEInfo(object):
         return self.__fstree
 
 
-def get_running_headers(options):
-    cur_job = E.job(
-        E.job_id(),
-        E.task_id(),
-        E.name(),
-        E.granted_pe(),
-        E.owner(),
-        E.state()
-    )
-    if options.show_memory:
-        cur_job.extend(
-            [
-                E.memory(),
-            ]
-        )
-    cur_job.extend(
-        [
-            getattr(E, "complex")(),
-            E.queue_name()
-        ]
-    )
-    if not options.suppress_times:
-        cur_job.extend(
-            [
-                E.start_time(),
-                E.run_time(),
-                E.left_time()
-            ]
-        )
-    cur_job.append(E.load())
-    if options.show_stdoutstderr:
-        cur_job.extend(
-            [
-                E.stdout(),
-                E.stderr()
-            ]
-        )
-    cur_job.append(E.files())
-    if not options.suppress_nodelist:
-        cur_job.append(E.nodelist())
-    cur_job.append(E.action())
-    return cur_job
-
-
 def _load_to_float(in_value):
     try:
         cur_load = float(in_value)
@@ -1303,7 +1259,9 @@ def build_running_list(s_info, options, **kwargs):
             E.granted_pe(
                 "{}({})".format(
                     act_job.find("granted_pe").attrib["name"],
-                    act_job.findtext("granted_pe")) if len(act_job.findall("granted_pe")) else "-"),
+                    act_job.findtext("granted_pe")
+                ) if len(act_job.findall("granted_pe")) else "-"
+            ),
             E.owner(act_job.findtext("JB_owner")),
             E.state(act_job.findtext("state")),
         )
@@ -1341,6 +1299,47 @@ def build_running_list(s_info, options, **kwargs):
             else:
                 eff = 0
         cur_job.append(E.load("{:.2f} ({:3d} %)".format(mean_load, eff)))
+        cur_job.append(E.posix_priority(act_job.findtext("JB_priority")))
+        if options.queue_details:
+            # see: http://talby.rcs.manchester.ac.uk/~ri/_notes_sge/scheduling.html
+            # parse
+            _info_dict = {
+                # normalized values
+                "norm_pprio": float(act_job.findtext("JB_nppri")),
+                "norm_urg": float(act_job.findtext("JB_nurg")),
+                "norm_tickets": float(act_job.findtext("JAT_ntix")),
+                # the urgency values contribution that reflects the urgency related to ...
+                # ... resource requirements
+                "rr_contr": float(act_job.findtext("JB_rrcontr")),
+                # ... wait time
+                "wt_contr": float(act_job.findtext("JB_wtcontr")),
+                # ... deadline
+                "dl_contr": float(act_job.findtext("JB_dlcontr")),
+                # override portion of the total number of tickets assigned to the job currently
+                "otickets": float(act_job.findtext("otickets")),
+                # functional portion of the total number of tickets assigned to the job currently
+                "ftickets": float(act_job.findtext("ftickets")),
+                # share portion of the total number of tickets assigned to the job currently
+                "stickets": float(act_job.findtext("stickets")),
+                # total number of tickets
+                "tickets": float(act_job.findtext("tickets")),
+                # share of the total system to which the job is entitled currently
+                "share": float(act_job.findtext("JAT_share")),
+
+            }
+            # import pprint
+            # pprint.pprint(_info_dict)
+            # print _info_dict
+            cur_job.append(
+                E.queue_details(
+                    "{:.4f} / {:.4f} / {:.4f}".format(
+                        _info_dict["norm_pprio"],
+                        _info_dict["norm_urg"],
+                        _info_dict["norm_tickets"],
+                    ),
+                    raw=json.dumps(_info_dict)
+                )
+            )
         if options.show_stdoutstderr:
             cur_job.append(create_stdout_stderr(act_job, "stdout"))
             cur_job.append(create_stdout_stderr(act_job, "stderr"))
@@ -1392,16 +1391,67 @@ def build_running_list(s_info, options, **kwargs):
     return job_list
 
 
+def get_running_headers(options):
+    cur_job = E.job(
+        E.job_id(sort="job_id.value"),
+        E.task_id(),
+        E.name(sort="name.value"),
+        E.granted_pe(sort="granted_pe.value"),
+        E.owner(sort="owner.value"),
+        E.state(sort="state.value")
+    )
+    if options.show_memory:
+        cur_job.extend(
+            [
+                E.memory(),
+            ]
+        )
+    cur_job.extend(
+        [
+            getattr(E, "complex")(sort="complex.value"),
+            E.queue_name(sort="queue.value")
+        ]
+    )
+    if not options.suppress_times:
+        cur_job.extend(
+            [
+                E.start_time(),
+                E.run_time(),
+                E.left_time()
+            ]
+        )
+    cur_job.append(E.load())
+    cur_job.append(E.posix_priority(sort="posix_priority.value"))
+    if options.queue_details:
+        cur_job.extend(
+            [
+                E.queue_details()
+            ]
+        )
+    if options.show_stdoutstderr:
+        cur_job.extend(
+            [
+                E.stdout(),
+                E.stderr()
+            ]
+        )
+    cur_job.append(E.files())
+    if not options.suppress_nodelist:
+        cur_job.append(E.nodelist(sort="$$nodelist"))
+    cur_job.append(E.action())
+    return cur_job
+
+
 def get_waiting_headers(options):
     cur_job = E.job(
-        E.job_id(),
+        E.job_id(sort="job_id.value"),
         E.task_id(),
-        E.name(),
-        E.requested_pe(),
-        E.owner(),
-        E.state(),
-        getattr(E, "complex")(),
-        E.queue()
+        E.name(sort="name.value"),
+        E.requested_pe(sort="requested_pe.value"),
+        E.owner(sort="owner.value"),
+        E.state(sort="state.value"),
+        getattr(E, "complex")(sort="complex.value"),
+        E.queue(sort="queue.value")
     )
     if not options.suppress_times:
         cur_job.extend(
@@ -1412,6 +1462,12 @@ def get_waiting_headers(options):
                 E.exec_time(),
             ]
         )
+    cur_job.extend(
+        [
+            E.priority(sort="prio.value"),
+            E.posix_priority(sort="posix_priority.value"),
+        ]
+    )
     if options.queue_details:
         cur_job.extend(
             [
@@ -1420,8 +1476,6 @@ def get_waiting_headers(options):
         )
     cur_job.extend(
         [
-            E.prio(),
-            E.priority(),
             E.depends()
         ]
     )
@@ -1431,17 +1485,17 @@ def get_waiting_headers(options):
 
 def get_done_headers():
     return E.job(
-        E.job_id(),
+        E.job_id(sort="rms_job.jobid"),
         E.task_id(),
-        E.name(),
+        E.name(sort="rms_job.name"),
         E.granted_pe(),
-        E.owner(),
-        E.queue_time(span="1"),
+        E.owner(sort="rms_job.owner"),
+        E.queue_time(sort="rms_job.$$queue_time"),
         E.start_time(),
         E.end_time(),
         E.wait_time(),
         E.run_time(),
-        E.queue(),
+        E.queue(sort="rms_queue.name"),
         E.exit_status(),
         E.failed(span="2"),
         E.nodelist(),
@@ -1509,6 +1563,12 @@ def build_waiting_list(s_info, options, **kwargs):
         dep_list = sorted(act_job.xpath(".//predecessor_jobs_req/text()", smart_strings=False))
         # print etree.tostring(act_job, pretty_print=True)
         # print "*"
+        cur_job.extend(
+            [
+                E.priority(act_job.findtext("JAT_prio")),
+                E.posix_priority(act_job.findtext("JB_priority")),
+            ]
+        )
         if options.queue_details:
             # see: http://talby.rcs.manchester.ac.uk/~ri/_notes_sge/scheduling.html
             # parse
@@ -1551,8 +1611,6 @@ def build_waiting_list(s_info, options, **kwargs):
             )
         cur_job.extend(
             [
-                E.prio(act_job.findtext("JAT_prio")),
-                E.priority(act_job.findtext("JB_priority")),
                 E.depends(
                     "{:d}: {}".format(
                         len(dep_list),

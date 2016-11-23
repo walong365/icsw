@@ -18,8 +18,9 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-""" rms-server, accounting process """
 """
+
+rms-server, accounting process
 
 Notes regarding qacct: we use (in most cases) accounting_summary=False
 in the PE-config (so we get one line per PE-Slave), hence we use the
