@@ -12,6 +12,9 @@ try:
 except ImportError:
     import configparser as ConfigParser
 
+from common import Webdriver
+from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+
 RESET_PW_SCRIPT = "from initat.cluster.backbone.models import user;" \
                   "u = user.objects.get(login='admin');u.password = 'abc123';u.save()"
 
@@ -137,23 +140,17 @@ def basic_availability_test(host, machine_name):
     sys.stdout.write("Checking availability of icsw interface ... ")
     sys.stdout.flush()
 
-    args = ["curl", "-s", "http://{}/icsw/main.html".format(host)]
-    output = subprocess.check_output(args)
+    driver = Webdriver(
+        base_url='http://{}/icsw/main.html'.format(host),
+        command_executor='http://192.168.1.246:4444/wd/hub',
+        desired_capabilities=DesiredCapabilities.CHROME,
+    )
+    driver.maximize_window()
 
     time.sleep(60)
 
-    args = ["curl", "-s", "http://{}/icsw/api/v2/user/GetInitProduct".format(host)]
-
-    try:
-        output = subprocess.check_output(args)
-    except subprocess.CalledProcessError as e:
-        output = "*** Error connecting to {}".format(host)
-
-    with open("{}.log".format(machine_name), "a", 0) as log_file:
-        log_file.write("*** Command executed: {}\n".format("".join(args)))
-        log_file.write(output)
-
-    if "CORVUS Corax" in output and "CORVUS" in output:
+    driver.log_in('admin', 'abc123')
+    if driver.title == 'Dashboard':
         sys.stdout.write("done\n")
         sys.stdout.flush()
     else:
