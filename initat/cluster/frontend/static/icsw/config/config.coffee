@@ -1087,7 +1087,8 @@ config_module = angular.module(
                             d.reject("form not valid")
                         else
                             if create
-                                config_tree.create_mon_check_command(config, sub_scope.edit_obj).then(
+
+                                config_tree.create_mon_check_command(config_tree.lut[sub_scope.edit_obj.config], sub_scope.edit_obj).then(
                                     (ok) ->
                                         d.resolve("created")
                                     (notok) ->
