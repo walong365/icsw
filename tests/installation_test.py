@@ -137,6 +137,9 @@ def basic_availability_test(host, machine_name):
     sys.stdout.write("Checking availability of icsw interface ... ")
     sys.stdout.flush()
 
+    args = ["curl", "-s", "http://{}/icsw/main.html".format(host)]
+    output = subprocess.check_output(args)
+
     time.sleep(60)
 
     args = ["curl", "-s", "http://{}/icsw/api/v2/user/GetInitProduct".format(host)]

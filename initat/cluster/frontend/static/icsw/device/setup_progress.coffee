@@ -75,6 +75,8 @@ setup_progress = angular.module(
         show_extended_information_button_enabled: false
 
         tasks: []
+
+        device_task_headers: []
     }
 
     start_timer = (refresh_time) ->
@@ -176,6 +178,19 @@ setup_progress = angular.module(
 
             if task.refresh == true
                 $scope.struct.device_ids_needing_refresh.push(device.idx)
+
+            found = false
+            for obj in $scope.struct.device_task_headers
+                header = obj[0]
+                name = obj[1]
+
+                if header == task.header && name == task.name
+                    found = true
+
+            if !found
+                $scope.struct.device_task_headers.push([task.header, task.name])
+
+            device["device_status_sort_hint_" + task.name] = task.fulfilled == true || task.ignore == true
 
         device.$$overview_completion_percentage = Math.round((fulfilled_points / available_points) * 100)
 

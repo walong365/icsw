@@ -944,6 +944,8 @@ class DeviceTask(object):
                     "bg_color_class": "",
                     "icon_class": "fa fa-check-circle-o fa-2x text-success",
                     "panel_class": "panel-success",
+                    "table_div_class": "alert-success",
+                    "table_div_text": "Available"
                 }
             )
         else:
@@ -952,6 +954,8 @@ class DeviceTask(object):
                     "bg_color_class": "",
                     "icon_class": "fa fa-times-circle-o fa-2x text-danger",
                     "panel_class": "panel-danger",
+                    "table_div_class": "alert-danger",
+                    "table_div_text": "Not Available"
                 }
             )
 

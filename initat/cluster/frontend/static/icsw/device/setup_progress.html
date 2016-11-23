@@ -150,6 +150,7 @@
                                 <th st-sort="$$date_created" st-sort-default="reverse">Created at</th>
                                 <th>Creator</th>
                                 <th class="text-center">Action</th>
+                                <th class="text-center" ng-repeat="obj in struct.device_task_headers" st-sort="{{ 'device_status_sort_hint_' + obj[1] }}">{{ obj[0] }}</th>
                                 <th st-sort="$$overview_completion_percentage" class="text-center">% Complete</th>
                             </tr>
                             <tr>
@@ -162,7 +163,19 @@
                                 <th></th>
                                 <th></th>
                                 <th></th>
-                                <th></th>
+                                <th ng-repeat="obj in struct.device_task_headers"></th>
+                                <th>
+                                    <!--
+                                    <select st-search="$$overview_completion_percentage">
+                                        <option value="">All</option>
+                                        <option value="0">0</option>
+                                        <option value="25">25</option>
+                                        <option value="50">50</option>
+                                        <option value="75">75</option>
+                                        <option value="100">100</option>
+                                    </select>
+                                    -->
+                                </th>
                             </tr>
                         </thead>
 
@@ -175,6 +188,7 @@
                                 <td class="vertical-align">{{ obj.$$date_created }}</td>
                                 <td class="vertical-align">{{ obj.$$creator }}</td>
                                 <td class="vertical-align text-center"><button type="button" class="btn btn-sm btn-primary" ng-click="device_status_show_details(obj)">Show Details</button></td>
+                                <td class="text-center" ng-repeat="task in obj.$$device_tasks"><div ng-class="task.table_div_class"><strong><a class="a-inherit" href="" ng-click='open_in_new_tab_for_devices(task, obj)' style="height:25px;">{{ task.table_div_text }}</a></strong></div></td>
                                 <td class="vertical-align">
                                     <div class="progress" style="margin-bottom: 0px !important;">
                                         <div class="progress-bar progress-bar-success" role="progressbar" aria-valuenow="40"
