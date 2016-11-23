@@ -42,7 +42,7 @@ class Toast(object):
 class Webdriver(webdriver.Remote):
     XPATH_TOAST_CONTAINER = '//div[@id="toast-container"]/div'
 
-    def __init__(self, base_url, timeout=10, *args, **kw_args):
+    def __init__(self, base_url, timeout=30, *args, **kw_args):
         super(Webdriver, self).__init__(*args, **kw_args)
         self.shot_names = set()
         self.timeout = timeout

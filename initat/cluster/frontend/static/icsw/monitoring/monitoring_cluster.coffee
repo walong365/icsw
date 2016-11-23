@@ -502,8 +502,12 @@ monitoring_cluster_module = angular.module(
                     dependency_period: cluster_tree.basic_tree.mon_period_list[0].idx
                     efc_up: true
                     efc_down: true
+                    efc_unreachable: false
+                    efc_pending: false
                     nfc_up: true
                     nfc_down: true
+                    nfc_unreachable: false
+                    nfc_pending: false
                 }
             return icswMonitoringUtilService.create_or_edit(
                 cluster_tree
@@ -564,10 +568,18 @@ monitoring_cluster_module = angular.module(
                     description: "New Service Dependency Template"
                     priority: 0
                     dependency_period: cluster_tree.basic_tree.mon_period_list[0].idx
-                    efc_up: true
-                    efc_down: true
-                    nfc_up: true
-                    nfc_down: true
+
+                    efc_ok: false
+                    efc_warn: false
+                    efc_unknown: false
+                    efc_critical: false
+                    efc_pending: false
+
+                    nfc_ok: false
+                    nfc_warn: false
+                    nfc_unknown: false
+                    nfc_critical: false
+                    nfc_pending: false
                 }
             return icswMonitoringUtilService.create_or_edit(
                 cluster_tree
