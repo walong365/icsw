@@ -149,8 +149,14 @@ def basic_availability_test(host, machine_name):
 
     time.sleep(60)
 
-    driver.log_in('admin', 'abc123')
-    if driver.title == 'Dashboard':
+    title = None
+    try:
+        driver.log_in('admin', 'abc123')
+        title = driver.title
+    except:
+        pass
+
+    if title and title == 'Dashboard':
         sys.stdout.write("done\n")
         sys.stdout.flush()
     else:

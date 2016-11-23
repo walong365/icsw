@@ -172,6 +172,7 @@ angular.module(
                     parent: _parent.idx
                     depth: 2
                     full_name: "/#{top_level}/#{_name}"
+                    physical: false
                 }
                 if top_level == "location"
                     r_struct["latitude"] = 48.1
@@ -218,6 +219,8 @@ angular.module(
                 return (obj.depth > 1) and top_level == "device"
 
             ok_label = if create then "Create" else "Modify"
+
+            console.log("oooo")
 
             complex_modal_service_dict =
             {
