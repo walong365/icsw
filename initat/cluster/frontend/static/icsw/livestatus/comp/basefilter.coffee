@@ -51,7 +51,7 @@ angular.module(
             super("icswLivestatusFilterService", true, true)
             @set_template(
                 '<icsw-livestatus-filter-display icsw-livestatus-filter="con_element"></icsw-livestatus-filter-display>'
-                "BaseFilter"
+                "Base Filter"
                 3
                 2
             )

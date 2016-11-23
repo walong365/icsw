@@ -49,15 +49,13 @@ angular.module(
                     "icswLivestatusFilterService": [{
                         "icswLivestatusMonCategoryFilter": [{
                             "icswLivestatusDeviceCategoryFilter": [{
-                                "icswLivestatusMonTabularDisplay": []
-                                # "icswLivestatusLocationMap": []
+                                "icswLivestatusInfoDisplay": []
                             }
                             {
                                 "icswLivestatusDeviceTabularDisplay": []
-                                # "icswLivestatusGeoLocationDisplay": []
                             }
                             {
-                                "icswLivestatusInfoDisplay": []
+                                "icswLivestatusMonTabularDisplay": []
                             }]
                         }]
                     }]
