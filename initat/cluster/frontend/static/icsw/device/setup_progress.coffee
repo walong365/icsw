@@ -44,12 +44,12 @@ setup_progress = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
     "icswDeviceTreeService", "$timeout", "DeviceOverviewService", "icswUserGroupRoleTreeService",
-    "icswToolsSimpleModalService", "SetupProgressHelper", "ICSW_SIGNALS", "$rootScope"
+    "icswToolsSimpleModalService", "SetupProgressHelper", "ICSW_SIGNALS", "$rootScope", "toaster"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
     icswDeviceTreeService, $timeout, DeviceOverviewService, icswUserGroupRoleTreeService,
-    icswToolsSimpleModalService, SetupProgressHelper, ICSW_SIGNALS, $rootScope
+    icswToolsSimpleModalService, SetupProgressHelper, ICSW_SIGNALS, $rootScope, toaster
 ) ->
     $scope.struct = {
         # selected devices
@@ -77,7 +77,31 @@ setup_progress = angular.module(
         tasks: []
 
         device_task_headers: []
+
+        push_graphing_config_device: undefined
     }
+
+    push_graphing_config = (_yes) ->
+        blockUI.start("Please wait...")
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
+                data:
+                    device_pk: $scope.struct.push_graphing_config_device.idx
+                dataType: "json"
+            }
+        ).then(
+            (data) ->
+                $scope.struct.device_ids_needing_refresh.push($scope.struct.push_graphing_config_device.idx)
+                perform_refresh_for_device_status(true)
+                blockUI.stop()
+
+                if data == true
+                    toaster.pop("success", "", "Graphing initialized for [" + $scope.struct.push_graphing_config_device.full_name + "]")
+                else
+                    toaster.pop("error", "", "Failed to initialize graphing for [" + $scope.struct.push_graphing_config_device.full_name + "]")
+
+        )
 
     start_timer = (refresh_time) ->
         stop_timer()
@@ -93,7 +117,6 @@ setup_progress = angular.module(
             $timeout.cancel($scope.struct.reload_timer)
             $scope.struct.reload_timer = undefined
 
-
     $scope.new_devsel = (devs) ->
         $scope.struct.devices.length = 0
         for entry in devs
@@ -103,7 +126,6 @@ setup_progress = angular.module(
         perform_refresh_for_system_status()
 
     perform_refresh_for_device_status = (partial_refresh) ->
-        console.log("performing_refresh:" + partial_refresh)
         $q.all(
             [
                 icswDeviceTreeService.load($scope.$id)
@@ -153,9 +175,6 @@ setup_progress = angular.module(
         ).then(
             (data) ->
                 $scope.struct.system_completion = data.overview.completed
-                console.log $scope.struct.system_completion
-
-                console.log(data)
         )
 
     salt_device = (device, tasks) ->
@@ -207,31 +226,18 @@ setup_progress = angular.module(
         else if setup_type == 3
             heading = "Graphing Data"
             if !force_open
-                f = (_yes) ->
-                    blockUI.start("Please wait...")
-                    icswSimpleAjaxCall(
-                        {
-                            url: ICSW_URLS.DEVICE_SIMPLE_GRAPH_SETUP
-                            data:
-                                device_pk: device.idx
-                            dataType: "json"
-                        }
-                    ).then(
-                        (data) ->
-                            $scope.struct.device_ids_needing_refresh.push(device.idx)
-                            perform_refresh_for_device_status(true)
-                            blockUI.stop()
-                    )
                 if task.fulfilled != true
+                    $scope.struct.push_graphing_config_device = device
                     icswToolsSimpleModalService("Enable graphing for this device? [Requires installed host-monitoring]").then(
-                        f
+                        push_graphing_config
                         (_no) ->
                             console.log("no")
                     )
                     return
                 else if task.rrd_age_in_seconds != undefined && task.rrd_age_in_seconds > (60 * 60)
+                    $scope.struct.push_graphing_config_device = device
                     icswToolsSimpleModalService("Stale/Old Graphing Data Found. Try to re-enable graphing?").then(
-                        f
+                        push_graphing_config
                         (_no) ->
                             $scope.open_in_new_tab_for_devices(task, device, true)
                     )
@@ -254,7 +260,6 @@ setup_progress = angular.module(
             0
         )
 
-
     $scope.open_in_new_tab_for_system = (task) ->
         setup_type = task.setup_type
         if setup_type == 4
@@ -272,8 +277,6 @@ setup_progress = angular.module(
             heading = "Users"
         else if setup_type == 7
             heading = "Locations"
-
-
 
         o = {
             type: setup_type
@@ -310,7 +313,6 @@ setup_progress = angular.module(
                     perform_refresh_for_device_status(true)
             0
         )
-
 
     $scope.mark_unfresh = (tab) ->
         if tab["device_id"] != undefined
@@ -401,6 +403,15 @@ setup_progress = angular.module(
         else
             obj.$$device_status_show_details = !obj.$$device_status_show_details
 
+    # implement special action for tasks here
+    $scope.perform_special_action = (task, device) ->
+        if task.setup_type == 3
+            $scope.struct.push_graphing_config_device = device
+            icswToolsSimpleModalService("Push graphing settings for this device? [Requires installed host-monitoring]").then(
+                push_graphing_config
+                (_no) ->
+                    console.log("no")
+            )
 
 ]).service("SetupProgressHelper",
 [

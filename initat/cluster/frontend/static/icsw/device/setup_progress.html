@@ -214,6 +214,8 @@
                                                         <i ng-class="task.icon_class"></i>
                                                         &nbsp;
                                                         <a ng-if="!task.fulfilled" href="" ng-click="ignore_device_issue(task, obj)">{{ task.ignore_text }}</a>
+                                                        &nbsp;
+                                                        <a ng-if="task.perform_special_action" href="" ng-click="perform_special_action(task, obj)">[{{ task.perform_special_action_text }}]</a>
                                                     </strong>
                                                 </div>
                                             </div>

@@ -1131,10 +1131,14 @@ class server_process(GetRouteToDevicesMixin, server_mixins.ICSWBasePool, RSyncMi
                 device_flags[0].graph_enslavement_start = datetime.datetime.now(tz=pytz.utc)
                 device_flags[0].save()
 
-            srv_com = server_command.srv_command(command="graph_setup", send_name=target_dev.full_name, target_ip=collectd_dev.target_ip)
-            new_con.add_connection(conn_str, srv_com)
+            new_srv_com = server_command.srv_command(command="graph_setup", send_name=target_dev.full_name, target_ip=collectd_dev.target_ip)
+            new_con.add_connection(conn_str, new_srv_com)
+            result = new_con.loop()[0]
 
-            srv_com.set_result(1)
+            if result:
+                srv_com.set_result(1)
+            else:
+                srv_com.set_result(0)
         else:
             srv_com.set_result(0)
 

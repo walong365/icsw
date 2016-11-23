@@ -931,7 +931,8 @@ class DeviceTask(object):
             "points": self.points,
             "ignore": ignore,
             "ignore_text": "Unignore Issue" if ignore else "Ignore Issue",
-            "refresh": False
+            "refresh": False,
+            "perform_special_action": False
         }
 
         return _dict
@@ -1158,6 +1159,8 @@ class GraphingDataDeviceTask(DeviceTask):
             _dict['count'] = _count
             _dict['fulfilled'] = _count > 0
             _dict['text'] = "Available" if _count > 0 else "Not Available"
+            _dict['perform_special_action'] = True
+            _dict['perform_special_action_text'] = "Push graphing config"
 
             if rrd_modification_dict and _device.idx in rrd_modification_dict and rrd_modification_dict[_device.idx] > 0:
                 _now = datetime.datetime.now()
@@ -1225,10 +1228,12 @@ class SimpleGraphSetup(View):
             srv_com,
         )
 
+        _status = False
         if result:
-            _status = bool(result.get_result())
-        else:
-            _status = False
+            try:
+                _status = bool(int(result.get_result()[0]))
+            except Exception as e:
+                logger.info("error when trying to parse result: {}".format(str(e)))
 
         return HttpResponse(
             json.dumps(_status)
