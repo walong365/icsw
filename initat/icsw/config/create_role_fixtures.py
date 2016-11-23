@@ -202,6 +202,9 @@ def create_noctua_fixtures():
     print("Creating device configurations.")
     configs = [
         # (name of the service, should be assigned?, part icswServiceEnum?)
+        ("cluster-server", True, True),
+        ("collectd-server", True, True),
+        ("grapher-server", True, True),
         ("discovery-server", True, True),
         ("monitor-server", True, True),
         ("monitor-slave", True, True),
