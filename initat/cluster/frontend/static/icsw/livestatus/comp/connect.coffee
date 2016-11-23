@@ -659,7 +659,7 @@ angular.module(
                     title: "Modify Layout (Dendrogram)"
                     ok_label: "Add"
                     closable: true
-                    css_class: "modal-wide"
+                    css_class: ""
                     ok_callback: (modal) =>
                         d = $q.defer()
                         d.resolve("created")
@@ -844,13 +844,15 @@ angular.module(
 
             _border = 50
             _act_node = @state.active_node
+
             _svg = svg(
                 {
                     key: "svgouter"
                     width: "100%"  # width
                     # height: "100%"  # height
                     preserveAspectRatio: "xMidYMid meet"
-                    viewBox: "-#{_border} -#{_border} #{@props.width + _border} #{@props.height + _border}"
+                    # viewBox: "-#{_border} -#{_border} #{@props.width + _border} #{@props.height + _border}"
+                    viewBox: "-50 50 1100 900"
                 }
                 g(
                     {
@@ -966,6 +968,7 @@ angular.module(
                         {
                             key: "svg"
                             className: "col-md-8"
+                            style: { paddingLeft: 0 }
                         }
                         _svg
                     )

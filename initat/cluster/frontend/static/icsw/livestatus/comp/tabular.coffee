@@ -39,7 +39,7 @@ angular.module(
                 '<icsw-livestatus-mon-table-view icsw-connect-element="con_element"></icsw-livestatus-mon-table-view>'
                 "Service Tabular Display"
                 10
-                10
+                8
             )
             @new_data_notifier = $q.defer()
 
@@ -93,7 +93,7 @@ angular.module(
                 '<icsw-livestatus-device-table-view icsw-connect-element="con_element"></icsw-livestatus-device-table-view>'
                 "Device Tabular Display"
                 10
-                10
+                8
             )
             @new_data_notifier = $q.defer()
 

@@ -41,7 +41,7 @@ angular.module(
                 '<icsw-livestatus-info-display icsw-connect-element="con_element"></icsw-livestatus-info-display>'
                 "Info"
                 4
-                4
+                2
             )
             @new_data_notifier = $q.defer()
 
