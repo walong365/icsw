@@ -941,11 +941,15 @@ monitoring_device_module = angular.module(
 
         sub_scope = $scope.$new(true)
         sub_scope.edit_obj = obj
-        sub_scope.types = []
-        for static_asset_type in $scope.struct.template_tree.static_asset_type_keys
-            sub_scope.types.push(static_asset_type)
 
         sub_scope.create = create
+
+        sub_scope.get_template_types = (search) ->
+            new_types = $scope.struct.template_tree.static_asset_type_keys.slice()
+            if (search && new_types.indexOf(search) == -1)
+                new_types.unshift(search)
+
+            return new_types
 
         sub_scope.modify_or_create_field = ($event, as_temp, field, create) ->
             modify_or_create_field($event, sub_scope, as_temp, field, create)
@@ -983,6 +987,7 @@ monitoring_device_module = angular.module(
                     else
                         if create
                             blockUI.start("creating new Template ...")
+                            console.log(sub_scope.edit_obj)
                             $scope.struct.template_tree.create_template(sub_scope.edit_obj).then(
                                 (new_obj) ->
                                     blockUI.stop()
@@ -1075,4 +1080,10 @@ monitoring_device_module = angular.module(
         )
 
 
-])
+]).directive("myUiSelect", () ->
+    return {
+        require: 'uiSelect'
+        link: (scope, element, attrs, $select) ->
+            console.log($select)
+    }
+)
