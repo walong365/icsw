@@ -295,6 +295,13 @@ angular.module(
         special_fn: (scope, event, fn_name, obj) ->
             if fn_name == "delete_many"
                 active = scope.dn_tree.get_active()
+
+                # safeguard against deleting the /location category
+                for obj in active
+                    if obj.obj.full_name == "/location"
+                        toaster.pop("error", "", "Deletion of '/location' category not allowed")
+                        return
+
                 icswToolsSimpleModalService("Really delete #{active.length} Categories ?").then(
                     (doit) ->
                         $q.allSettled(
