@@ -1049,11 +1049,14 @@ class MonitoringChecksDeviceTask(DeviceTask):
 
         # build monitoring check information
         device_checks_count = {}
-        for check in mon_check_command.objects.all().prefetch_related("config__device_config_set"):
+        for check in mon_check_command.objects.all().prefetch_related("config__device_config_set", "exclude_devices"):
+            excluded_devices_idx_list = [d.idx for d in check.exclude_devices.all()]
             for device_idx in check.get_configured_device_pks():
                 if device_idx not in device_checks_count:
                     device_checks_count[device_idx] = 0
-                device_checks_count[device_idx] += 1
+
+                if device_idx not in excluded_devices_idx_list:
+                    device_checks_count[device_idx] += 1
 
         info_dict = {}
         for _device in devices:
