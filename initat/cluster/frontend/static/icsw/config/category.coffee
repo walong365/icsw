@@ -220,8 +220,6 @@ angular.module(
 
             ok_label = if create then "Create" else "Modify"
 
-            console.log("oooo")
-
             complex_modal_service_dict =
             {
                 message: $compile($templateCache.get("icsw.category.form"))(sub_scope)

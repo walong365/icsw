@@ -384,12 +384,15 @@
                 <label class="control-label col-sm-3 requiredField icsw-formlabel">
                     Template Type
                 </label>
-                <div class="controls col-xs-7">
-                    <input
-                        class="form-control maxwidth500"
-                        uib-typeahead="value for value in types"
-                        ng-model="edit_obj.type"
-                    />
+                <div class="controls col-sm-7">
+                    <ui-select ng-model="edit_obj.type" class="maxwidth500" ng-change="field_changed()">
+                        <ui-select-match class="ui-select-match" placeholder="please select a type from the list, or enter a new name to create a template type">
+                            {{ $select.selected }}
+                        </ui-select-match>
+                        <ui-select-choices repeat="type in get_template_types($select.search) | filter: $select.search">
+                            <div ng-bind="type"></div>
+                        </ui-select-choices>
+                    </ui-select>
                 </div>
             </div>
         </fieldset>
