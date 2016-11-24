@@ -19,7 +19,7 @@
 #
 """ discovery-server, discovery part """
 
-from __future__ import unicode_literals
+from __future__ import unicode_literals, print_function
 
 import copy
 import time
@@ -36,11 +36,20 @@ from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin, Dispatcher
 from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
 
+
 class GetRouteToDevicesMixin(object):
     def get_route_to_devices(self, dev_list):
         src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         src_nds = src_dev.netdevice_set.all().values_list("pk", flat=True)
-        self.log(u"device list: {}".format(u", ".join([unicode(cur_dev) for cur_dev in dev_list])))
+        self.log(
+            u"device list: {}".format(
+                ", ".join(
+                    [
+                        unicode(cur_dev) for cur_dev in dev_list
+                    ]
+                )
+            )
+        )
         router_obj = config_tools.RouterObject(self.log)
         for cur_dev in dev_list:
             routes = router_obj.get_ndl_ndl_pathes(
