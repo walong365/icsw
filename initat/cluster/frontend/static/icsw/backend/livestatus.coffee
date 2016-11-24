@@ -30,25 +30,45 @@ angular.module(
     ]
 ).service("icswLivestatusPipeSpecTree",
 [
-    "$q",
+    "$q", "icswSimpleAjaxCall", "ICSW_URLS", "Restangular",
 (
-    $q,
+    $q, icswSimpleAjaxCall, ICSW_URLS, Restangular,
 ) ->
     class icswLivestatusPipeSpecTree
         constructor: (list) ->
+            # total list
             @list = []
+            # list valid for user
+            @user_list = []
+            @current_user = null
             @update(list)
 
         update: (list) =>
             @list.length = 0
             for entry in list
+                entry.$$deletable = false
                 @list.push(entry)
+            @build_luts()
+
+        build_luts: () =>
             @lut = _.keyBy(@list, "idx")
             @name_lut = _.keyBy(@list, "name")
+            @salt_list()
+            @apply_user_filter()
 
-        create_user_vars: (user) =>
+        apply_user_filter: () ->
+            @user_list.length = 0
+            if @current_user
+                _user_idx = @current_user.user.idx
+                for entry in @list
+                    if entry.public_pipe or entry.create_user == _user_idx
+                        @user_list.push(entry)
+                    if not entry.system_pipe and entry.create_user == _user_idx
+                        entry.$$deletable = true
+
+        _create_user_vars: () =>
+            user = @current_user
             defer = $q.defer()
-            console.log "u=", user
             _c_list = []
             for entry in @list
                 if entry.def_user_var_name
@@ -69,6 +89,60 @@ angular.module(
 
         get_spec: (name) =>
             return @name_lut[name]
+
+        set_user: (user) =>
+            # set current user
+            @current_user = user
+            @apply_user_filter()
+            return @_create_user_vars()
+
+        salt_list: () =>
+            _count_elements = (el_struct) ->
+                _num = 0
+                _iterate = (in_obj) ->
+                    _num++
+                    for key, value of in_obj
+                        (_iterate(_el) for _el in value)
+                _iterate(el_struct)
+                return _num
+
+            for entry in @list
+                _el = angular.fromJson(entry.json_spec)
+                entry.$$number_of_elements = _count_elements(_el)
+
+        duplicate_spec: (spec) ->
+            q = $q.defer()
+            icswSimpleAjaxCall(
+                url: ICSW_URLS.MON_DUPLICATE_DP_SPEC
+                data:
+                    spec_id: spec.idx
+            ).then(
+                (data) =>
+                    _new_id = parseInt($(data).find("value[name='new_spec']").text())
+                    Restangular.one(ICSW_URLS.REST_MON_DISPLAY_PIPE_SPEC_LIST.slice(1)).get({idx: _new_id}).then(
+                        (new_obj) =>
+                            new_obj = new_obj.plain()[0]
+                            @list.push(new_obj)
+                            @build_luts()
+                            q.resolve("copied")
+                    )
+                (error) ->
+                    q.reject("error")
+            )
+            return q.promise
+
+        delete_spec: (spec) =>
+            q = $q.defer()
+            Restangular.restangularizeElement(null, spec, ICSW_URLS.REST_MON_DISPLAY_PIPE_SPEC_DETAIL.slice(1).slice(0, -2))
+            spec.remove().then(
+                (ok) =>
+                    _.remove(@list, (entry) -> return entry.idx == spec.idx)
+                    @build_luts()
+                    q.resolve("delete")
+                (error) ->
+                    q.reject("not deleted")
+            )
+            return q.promise
 
 ]).service("icswLivestatusPipeSpecTreeService",
 [

@@ -344,16 +344,18 @@ angular.module(
 ) ->
     # creates a DisplayPipeline
     class icswMonLivestatusPipeConnector
-        constructor: (name, user, spec) ->
+        constructor: (pipespec_obj, user) ->
             # resolve all elements
             icswLivestatusPipeFunctions.resolve()
             @setup_ok = false
+            # object
+            @object = pipespec_obj
             # name
-            @name = name
+            @name = pipespec_obj.name
             # user
             @user = user
             # connection specification as text
-            @spec_src = spec
+            @spec_src = angular.fromJson(@object.json_spec)
             console.log "Connector #{@name} (spec #{@spec_src}, user #{@user.user.login})"
             @root_element = undefined
             # 0 ... only content, no dragNdrop, no resize - DASHBOARD LOCKED
@@ -362,6 +364,8 @@ angular.module(
             @set_unlocked_flag(false)
             # position dict
             @_pos_str = ""
+            # dendrogram root
+            @dd_root = undefined
             @build_structure()
 
         close: () =>
@@ -757,7 +761,7 @@ angular.module(
     return React.createClass(
         displayName: "icswLivestatusClusterDendrogramReact"
         propTypes: {
-            struct: React.PropTypes.object
+            connector: React.PropTypes.object
             width: React.PropTypes.number
             height: React.PropTypes.number
         }
@@ -845,6 +849,9 @@ angular.module(
             _border = 50
             _act_node = @state.active_node
 
+            editable = !@props.connector.object.system_pipe
+            console.log "E=", editable
+            dd_root = @props.connector.dd_root
             _svg = svg(
                 {
                     key: "svgouter"
@@ -859,10 +866,10 @@ angular.module(
                         key: "gouter"
                     }
                     (
-                        get_path(node) for node in @props.struct.descendants()
+                        get_path(node) for node in dd_root.descendants()
                     )
                     (
-                        get_node(node) for node in @props.struct.descendants()
+                        get_node(node) for node in dd_root.descendants()
                     )
                 )
             )
@@ -879,7 +886,7 @@ angular.module(
                         an.data.node.get_layout_name()
                     )
                 )
-                if an.data.node.is_deletable()
+                if an.data.node.is_deletable() and editable
                     _an_rows.push(
                         div(
                             {
@@ -897,7 +904,7 @@ angular.module(
                             )
                         )
                     )
-                if an.data.node.is_emitter
+                if an.data.node.is_emitter and editable
                     _an_rows.push(
                         div(
                             {
@@ -995,12 +1002,12 @@ angular.module(
         }
         controller: "icswLivestatusClusterDendrogramCtrl"
         link: (scope, element, attrs) ->
-            scope.render_el = (struct, width, height) ->
+            scope.render_el = (connector, width, height) ->
                 scope.struct.react_element = ReactDOM.render(
                     React.createElement(
                         icswLivestatusClusterDendrogramReact
                         {
-                            struct: struct
+                            connector: connector
                             width: width
                             height: height
                         }
@@ -1039,7 +1046,9 @@ angular.module(
         root = stratify(_flat_list)
         # tree layout
         tree(root)
-        $scope.render_el(root, 1000, 1000)
+        # set dendrogram root
+        $scope.struct.connector.dd_root = root
+        $scope.render_el($scope.struct.connector, 1000, 1000)
 
     $q.all(
         [

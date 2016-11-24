@@ -40,6 +40,7 @@
                     </button>
                 </span>
                 <icsw-tools-button type="modify" value="" title="Modify Livestatus Layout" ng-click="modify_layout($event)"></icsw-tools-button>
+                <icsw-tools-button type="display" value="" title="Show Pipe overview" ng-click="pipe_overview($event)"></icsw-tools-button>
             </div>
         </div>
         <div gridster="struct.connector.gridsterOpts" class="panel-body container-fluid">
@@ -99,6 +100,68 @@
 </script>
 
 <script type="text/ng-template" id="icsw.connect.modify.layout">
-    <h3 style="margin-top:0px;">Modify Layout {{ connector.$$info_str }}</h3>
+    <h3 style="margin-top:0px;">
+        Modify Layout {{ connector.$$info_str }}
+        <span class="label label-warning" ng-show="connector.object.system_pipe">System pipe (not editable)</span>
+        <!-- <icsw-tools-button type="copy" size="xs" ng-click="copy_template($event)"></icsw-tools-button> -->
+    </h3>
     <icsw-livestatus-cluster-dendrogram icsw-connector="connector"></icsw-livestatus-cluster-dendrogram>
 </script>
+
+<script type="text/ng-template" id="icsw.connect.show.pipe.overview">
+    <h3>
+        Pipes defined: {{ lsps_tree.user_list.length }}
+    </h3>
+    <table
+        st-table="entries_displayed"
+        st-safe-src="lsps_tree.user_list"
+        class="table table-condensed table-hover table-striped"
+    >
+        <thead>
+            <tr>
+                <td colspan="99">
+                    <div icsw-tools-pagination st-items-by-page="20"
+                         possible-items-by-page="20,50,100,200,500,1000"
+                         class="pull-left" style="margin:4px 15px 0 0;">
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <th st-sort="name">Name</th>
+                <th>Description</th>
+                <th>SysPipe</th>
+                <th>PubPipe</th>
+                <th>User</th>
+                <th>#Elements</th>
+                <th colspan="2">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr ng-repeat="spec in entries_displayed">
+                <td>
+                    {{ spec.name }}
+                </td>
+                <td>
+                    {{ spec.description }}
+                </td>
+                <td class="text-center">
+                    <span ng-bind-html="spec.system_pipe | yesno3"></span>
+                </td>
+                <td class="text-center">
+                    <span ng-bind-html="spec.public_pipe | yesno4"></span>
+                </td>
+                <td class="text-center">
+                    {{ spec.create_user }}
+                </td>
+                <td class="text-center">{{ spec.$$number_of_elements }}</td>
+                <td>
+                    <icsw-tools-button type="copy" size="xs" ng-click="copy_spec($event, spec)"></icsw-tools-button>
+                </td>
+                <td>
+                    <icsw-tools-button ng-show="spec.$$deletable" type="delete" size="xs" ng-click="delete_spec($event, spec)"></icsw-tools-button>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</script>
+

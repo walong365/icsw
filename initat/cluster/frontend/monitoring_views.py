@@ -43,7 +43,8 @@ from rest_framework.response import Response
 
 from initat.cluster.backbone.available_licenses import LicenseEnum
 from initat.cluster.backbone.models import get_related_models, mon_check_command, \
-    parse_commandline, mon_check_command_special, device, mon_dist_master
+    parse_commandline, mon_check_command_special, device, mon_dist_master, \
+    MonDisplayPipeSpec
 from initat.cluster.backbone.models.functions import duration, cluster_timezone
 from initat.cluster.backbone.models.status_history import mon_icinga_log_aggregated_host_data, \
     mon_icinga_log_aggregated_timespan, mon_icinga_log_aggregated_service_data, \
@@ -54,7 +55,7 @@ from initat.cluster.frontend.common import duration_utils
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
-from initat.tools import server_command, server_mixins, logging_tools
+from initat.tools import server_command, server_mixins, logging_tools, process_tools
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -687,3 +688,25 @@ class SendMonCommand(View):
             contact_server(request, icswServiceEnum.monitor_server, srv_com)
 
         request.xml_response.info("handled {}".format(data["action"]["long"]))
+
+
+class DuplicateDisplayPipe(View):
+    @method_decorator(login_required)
+    @method_decorator(xml_wrapper)
+    def post(self, request):
+        _spec_id = request.POST.get("spec_id")
+        try:
+            cur_spec = MonDisplayPipeSpec.objects.get(Q(pk=_spec_id))
+        except MonDisplayPipeSpec:
+            request.xml_response.error("cannot create new DisplaySpec (src object does not exist)")
+        else:
+            try:
+                new_spec = cur_spec.duplicate(request.user)
+            except:
+                request.xml_response.error(
+                    "cannot create new DisplaySpec: {}".format(
+                        process_tools.get_except_info()
+                    )
+                )
+            else:
+                request.xml_response["new_spec"] = new_spec.idx

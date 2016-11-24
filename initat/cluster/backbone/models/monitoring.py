@@ -1238,7 +1238,7 @@ class MonDisplayPipeSpec(models.Model):
     description = models.CharField(max_length=255, default="", blank=True)
     # is a system Pipe (not user created)
     system_pipe = models.BooleanField(default=False)
-    # public pipe, can be used by any user
+    # public pipe, can be used by any user (is always true for system pipes)
     public_pipe = models.BooleanField(default=True)
     # create user
     create_user = models.ForeignKey("backbone.user", null=True)
@@ -1247,3 +1247,36 @@ class MonDisplayPipeSpec(models.Model):
     # json spec
     json_spec = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
+
+    def duplicate(self, user):
+        _all_names = MonDisplayPipeSpec.objects.all().values_list("name", flat=True)
+        _new_name = "Copy of {}".format(self.name)
+        _idx = 0
+        while True:
+            _nn = "{}{}".format(
+                _new_name,
+                " #{:d}".format(_idx) if _idx else "",
+            )
+            if _nn in _all_names:
+                _idx += 1
+            else:
+                break
+        _spec = MonDisplayPipeSpec(
+            name=_nn,
+            description="{} (duplicate)".format(self.description),
+            system_pipe=False,
+            public_pipe=True,
+            create_user=user,
+            def_user_var_name="",
+            json_spec=self.json_spec,
+        )
+        _spec.save()
+        return _spec
+
+
+@receiver(signals.pre_save, sender=MonDisplayPipeSpec)
+def mon_display_pipe_spec_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+        if cur_inst.system_pipe:
+            cur_inst.public_pipe = True

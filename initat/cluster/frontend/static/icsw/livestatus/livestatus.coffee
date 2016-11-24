@@ -26,19 +26,75 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.livestatus")
+]).service("icswDeviceLivestatusTools",
+[
+    "$q", "$rootScope", "$templateCache", "$compile", "icswComplexModalService",
+    "icswLivestatusPipeSpecTreeService", "icswToolsSimpleModalService", "blockUI",
+(
+    $q, $rootScope, $templateCache, $compile, icswComplexModalService,
+    icswLivestatusPipeSpecTreeService, icswToolsSimpleModalService, blockUI,
+) ->
+    show_overview = (user) ->
+        sub_scope = $rootScope.$new(true)
+        icswLivestatusPipeSpecTreeService.load(sub_scope.$id).then(
+            (lsps_tree) ->
+                lsps_tree.set_user(user)
+                sub_scope.lsps_tree = lsps_tree
+
+                sub_scope.copy_spec = ($event, spec) ->
+                    blockUI.start()
+                    sub_scope.lsps_tree.duplicate_spec(spec).then(
+                        (done) ->
+                            blockUI.stop()
+                        (error) ->
+                            blockUI.stop()
+                    )
+                sub_scope.delete_spec = ($event, spec) ->
+                    icswToolsSimpleModalService("Really delete Spec '#{spec.name}' ?").then(
+                        (ok) ->
+                            blockUI.start()
+                            sub_scope.lsps_tree.delete_spec(spec).then(
+                                (ok) ->
+                                    blockUI.stop()
+                                (error) ->
+                                    blockUI.stop()
+                            )
+                    )
+                icswComplexModalService(
+                    {
+                        message: $compile($templateCache.get("icsw.connect.show.pipe.overview"))(sub_scope)
+                        title: "Pipe Overview"
+                        ok_label: "ok"
+                        closable: true
+                        ok_callback: (modal) =>
+                            d = $q.defer()
+                            d.resolve("created")
+                            return d.promise
+                    }
+                ).then(
+                    (fin) =>
+                        sub_scope.$destroy()
+                )
+        )
+
+    return {
+        show_overview: (user) ->
+            return show_overview(user)
+    }
+
 ]).controller("icswDeviceLiveStatusCtrl",
 [
     "$scope", "$compile", "$templateCache", "Restangular", "icswUserService",
     "$q", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
     "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterService",
     "icswDeviceTreeService", "icswMonLivestatusPipeConnector", "$rootScope", "ICSW_SIGNALS",
-    "icswLivestatusPipeSpecTreeService",
+    "icswLivestatusPipeSpecTreeService", "icswDeviceLivestatusTools",
 (
     $scope, $compile, $templateCache, Restangular, icswUserService,
     $q, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
     icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterService,
     icswDeviceTreeService, icswMonLivestatusPipeConnector, $rootScope, ICSW_SIGNALS,
-    icswLivestatusPipeSpecTreeService,
+    icswLivestatusPipeSpecTreeService, icswDeviceLivestatusTools,
 ) ->
     # top level controller of monitoring dashboard
 
@@ -113,9 +169,8 @@ angular.module(
                 console.log "*", data
                 $scope.struct.lsps_tree = data[0]
                 $scope.struct.user = data[1]
-                $scope.struct.user.get_or_create("$$frotend_pidpe", "default", "s").then(
+                $scope.struct.lsps_tree.set_user($scope.struct.user).then(
                     (done) ->
-                        console.log "d=", done
                         $scope.struct.loading = false
                         $scope.struct.data_valid = true
                         activate_connector()
@@ -126,13 +181,10 @@ angular.module(
         if $scope.struct.data_valid and not $scope.struct.connector_set
             cn_set = $q.defer()
             if $scope.struct.user_var_name
-                $scope.struct.lsps_tree.create_user_vars($scope.struct.user).then(
-                    (done) ->
-                        if $scope.struct.user.has_var($scope.struct.user_var_name)
-                            cn_set.resolve($scope.struct.user.get_var($scope.struct.user_var_name).value)
-                        else
-                            cn_set.reject("no")
-                )
+                if $scope.struct.user.has_var($scope.struct.user_var_name)
+                    cn_set.resolve($scope.struct.user.get_var($scope.struct.user_var_name).value)
+                else
+                    cn_set.reject("no")
             else if $scope.struct.connector_name
                 cn_set.resolve($scope.struct.connector_name)
             else
@@ -140,7 +192,7 @@ angular.module(
             cn_set.promise.then(
                 (c_name) ->
                     if $scope.struct.lsps_tree.spec_name_defined(c_name)
-                        $scope.struct.connector = new icswMonLivestatusPipeConnector(c_name, $scope.struct.user, $scope.struct.lsps_tree.get_spec(c_name).json_spec)
+                        $scope.struct.connector = new icswMonLivestatusPipeConnector($scope.struct.lsps_tree.get_spec(c_name), $scope.struct.user)
                         $scope.struct.connector_set = true
                     else
                         console.error "pipe with spec name '#{c_name}' not defined"
@@ -185,6 +237,9 @@ angular.module(
         if $scope.struct.connector_set
             # console.log "nds"
             $scope.struct.connector.new_devsel(_dev_sel)
+
+    $scope.pipe_overview = ($event) ->
+        icswDeviceLivestatusTools.show_overview($scope.struct.user)
 
     $scope.$on("$destroy", () ->
         if $scope.struct.connector
