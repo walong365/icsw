@@ -18,7 +18,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ discovery-server, base scan functions """
-from __future__ import unicode_literals
+
+from __future__ import unicode_literals, print_function
 
 import collections
 import datetime
@@ -30,27 +31,19 @@ from django.db.models import Q
 from django.utils import timezone
 from lxml import etree
 
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network, \
     device_variable, AssetRun, RunStatus, BatchStatus, AssetType, ScanType, \
     AssetBatch, RunResult, DeviceDispatcherLink, DispatcherSettingScheduleEnum, \
-    ScheduleItem, DeviceLogEntry, LogSource, LogLevel
+    ScheduleItem, DeviceLogEntry
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
-from initat.tools import logging_tools, process_tools, server_command, ipvx_tools, config_tools
+from initat.tools import logging_tools, process_tools, server_command, ipvx_tools
+from .config import global_config
 from .discovery_struct import ExtCom
 
-DEVICE_LOG_LEVEL_OK = LogLevel.objects.get(identifier="o")
-
-try:
-    DEVICE_LOG_SOURCE = LogSource.objects.get(identifier=icswServiceEnum.discovery_server.name)
-except LogSource.DoesNotExist:
-    effective_device = config_tools.server_check(service_type_enum=icswServiceEnum.discovery_server).effective_device
-    DEVICE_LOG_SOURCE = LogSource(identifier=icswServiceEnum.discovery_server.name, device=effective_device)
-    DEVICE_LOG_SOURCE.save()
-
 DEFAULT_NRPE_PORT = 5666
+
 # the mapping between the result of the server command and the result of the
 # asset run
 SERVER_RESULT_RUN_RESULT = {
@@ -602,13 +595,12 @@ class PlannedRunState(object):
             _db_obj.asset_batch.state_start_runs()
             _db_obj.asset_batch.save()
 
-            log_entry = DeviceLogEntry(
+            DeviceLogEntry.new(
                 device=_db_obj.asset_batch.device,
-                source=DEVICE_LOG_SOURCE,
-                level=DEVICE_LOG_LEVEL_OK, text="AssetScan with BatchId:[{}] started".format(_db_obj.asset_batch.idx),
-                user=_db_obj.asset_batch.user
+                source=global_config["LOG_SOURCE_IDX"],
+                user=_db_obj.asset_batch.user,
+                text="AssetScan with BatchId:[{}] started".format(_db_obj.asset_batch.idx),
             )
-            log_entry.save()
 
         self.__pdrf.num_running += 1
 
@@ -728,6 +720,7 @@ class PlannedRunsForDevice(object):
             # no more running, delete
             self.to_delete = True
 
+
 class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
@@ -828,7 +821,10 @@ class Dispatcher(object):
         _pending = 0
 
         for asset_batch in AssetBatch.objects.filter(
-            run_status__in=[BatchStatus.PLANNED, BatchStatus.RUNNING, BatchStatus.FINISHED_RUNS, BatchStatus.GENERATING_ASSETS]):
+            run_status__in=[
+                BatchStatus.PLANNED, BatchStatus.RUNNING, BatchStatus.FINISHED_RUNS, BatchStatus.GENERATING_ASSETS
+            ]
+        ):
             if asset_batch.run_start_time:
                 diff_time = (_now - asset_batch.run_start_time).total_seconds()
                 if diff_time > 86400:
