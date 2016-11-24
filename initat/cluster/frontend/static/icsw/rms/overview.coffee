@@ -148,17 +148,20 @@ rms_module = angular.module(
 
     return {
         failed_lut: failed_lut
+
         exit_status_lut: exit_status_lut
+
         load_re: /(\d+.\d+).*/
+
         calc_queue_details: (sched_struct, list, open_popups) ->
             return calc_queue_details(sched_struct, list, open_popups)
     }
 
 ]).service("icswRMSJobVarStruct",
 [
-    "$q", "icswRMSTools", "icswRMSJobVariable",
+    "$q", "icswRMSJobVariable",
 (
-    $q, icswRMSTools, icswRMSJobVariable,
+    $q, icswRMSJobVariable,
 ) ->
     class icswRMSJobVarStruct
         constructor: () ->
@@ -271,9 +274,9 @@ rms_module = angular.module(
         
 ]).service("icswRMSIOStruct",
 [
-    "$q", "icswRMSTools", "$timeout",
+    "$q", "$timeout",
 (
-    $q, icswRMSTools, $timeout,
+    $q, $timeout,
 ) ->
     class icswRMSIOStruct
         constructor: (@full_job_id, @type) ->

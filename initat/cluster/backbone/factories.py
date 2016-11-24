@@ -691,3 +691,10 @@ class MonDisplayPipeSpecFactory(factory.django.DjangoModelFactory):
         if self.public_pipe != extracted:
             self.public_pipe = extracted
             self.save()
+
+    @factory.post_generation
+    def def_user_var_name(self, create, extracted, **kwargs):
+        extracted = extracted or False
+        if self.def_user_var_name != extracted:
+            self.def_user_var_name = extracted
+            self.save()
