@@ -30,10 +30,73 @@ angular.module(
 [
     "$q", "$rootScope", "$templateCache", "$compile", "icswComplexModalService",
     "icswLivestatusPipeSpecTreeService", "icswToolsSimpleModalService", "blockUI",
+    "icswMonDisplayPipeSpecBackup", "toaster", "icswUserGroupRoleTools",
 (
     $q, $rootScope, $templateCache, $compile, icswComplexModalService,
     icswLivestatusPipeSpecTreeService, icswToolsSimpleModalService, blockUI,
+    icswMonDisplayPipeSpecBackup, toaster, icswUserGroupRoleTools,
 ) ->
+    modify_spec = (lsps_tree, user, spec) ->
+        sub_scope = $rootScope.$new(true)
+        sub_scope.lsps_tree = lsps_tree
+        sub_scope.spec = spec
+        dbu = new icswMonDisplayPipeSpecBackup()
+        dbu.create_backup(spec)
+
+        sub_scope.pipe_spec_var_names = icswUserGroupRoleTools.pipe_spec_var_names()
+        sub_scope.valid_for = {}
+        # console.log "S=", spec.$$default_vars, spec
+        for _vn in sub_scope.pipe_spec_var_names
+            sub_scope.valid_for[_vn] = _vn in spec.$$default_vars
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.connect.show.pipe.modify"))(sub_scope)
+                title: "Edit Pipesetup"
+                ok_label: "ok"
+                closable: true
+                ok_callback: (modal) =>
+                    d = $q.defer()
+                    if sub_scope.form_data.invalid
+                        toaster.pop("warning", "form validation problem", "")
+                        d.reject("form not valid")
+                    else
+                        blockUI.start()
+                        _var_q = $q.defer()
+                        sub_scope.lsps_tree.modify_spec(spec).then(
+                            (done) ->
+                                _var_wait = []
+                                for _vn, _flag of sub_scope.valid_for
+                                    if _flag
+                                        _var_wait.push(user.set_var(_vn, spec.name, "s"))
+                                    else
+                                        _var_wait.push(user.set_var(_vn, lsps_tree.get_default_layout(_vn), "s"))
+                                $q.all(_var_wait).then(
+                                    (done) ->
+                                        lsps_tree.ensure_defaults().then(
+                                            (done) ->
+                                                # console.log "d=", done
+                                                lsps_tree.build_luts()
+                                                blockUI.stop()
+                                                d.resolve("modified")
+                                        )
+                                )
+                            (error) ->
+                                blockUI.stop()
+                                d.resolve("not modified")
+                        )
+                    return d.promise
+                cancel_callback: (modal) =>
+                    console.log "CANCEL"
+                    dbu.restore_backup(spec)
+                    d = $q.defer()
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) =>
+                sub_scope.$destroy()
+        )
+
     show_overview = (user) ->
         sub_scope = $rootScope.$new(true)
         icswLivestatusPipeSpecTreeService.load(sub_scope.$id).then(
@@ -49,6 +112,7 @@ angular.module(
                         (error) ->
                             blockUI.stop()
                     )
+
                 sub_scope.delete_spec = ($event, spec) ->
                     icswToolsSimpleModalService("Really delete Spec '#{spec.name}' ?").then(
                         (ok) ->
@@ -60,6 +124,9 @@ angular.module(
                                     blockUI.stop()
                             )
                     )
+                sub_scope.modify_spec = ($event, spec) ->
+                    modify_spec(sub_scope.lsps_tree, user, spec)
+
                 icswComplexModalService(
                     {
                         message: $compile($templateCache.get("icsw.connect.show.pipe.overview"))(sub_scope)

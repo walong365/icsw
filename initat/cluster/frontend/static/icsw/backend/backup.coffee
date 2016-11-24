@@ -752,5 +752,14 @@ angular.module(
             @simple_attributes = [
                 "name", "description", "prefix", "forced_flags", "priority",
             ]
+]).service("icswMonDisplayPipeSpecBackup", ["icswBackupDefinition", (icswBackupDefinition) ->
+
+    class icswMonDisplayPipeSpecBackup extends icswBackupDefinition
+        constructor: () ->
+            super()
+            @simple_attributes = [
+                "name", "description", "system_pipe", "public_pipe", "create_user",
+                "def_user_var_name", "json_spec",
+            ]
 ])
 

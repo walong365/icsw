@@ -1243,7 +1243,7 @@ class MonDisplayPipeSpec(models.Model):
     # create user
     create_user = models.ForeignKey("backbone.user", null=True)
     # default for the following user var
-    def_user_var_name = models.CharField(default="", max_length=128)
+    def_user_var_name = models.CharField(default="", max_length=128, blank=True)
     # json spec
     json_spec = models.TextField(default="")
     date = models.DateTimeField(auto_now_add=True)
