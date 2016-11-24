@@ -877,6 +877,10 @@ angular.module(
                 )
             ]
             for dml in _gfx.$dml_list
+                if dml.pos_x > width
+                    dml.pos_x = width
+                if dml.pos_y > height
+                    dml.pos_y = height
                 _dml_list.push(
                     React.createElement(
                         icswDeviceLocationMapReactNode

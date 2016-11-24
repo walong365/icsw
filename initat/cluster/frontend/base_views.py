@@ -92,47 +92,55 @@ TARGET_WIDTH, TARGET_HEIGTH = (1920, 1920)
 class upload_location_gfx(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
-        _location = location_gfx.objects.get(Q(pk=request.POST["location_gfx_id"]))
-        if _location.locked:
-            request.xml_response.warn("location_gfx is locked")
-        else:
-            if len(request.FILES) == 1:
-                _file = request.FILES[request.FILES.keys()[0]]
-                if _file.content_type in ["image/png", "image/jpeg"]:
-                    _img = Image.open(_file)
-                    _w, _h = _img.size
-                    _x_fact = float(TARGET_WIDTH) / float(_w)
-                    _y_fact = float(TARGET_HEIGTH) / float(_h)
-                    _fact = min(_x_fact, _y_fact)
-                    _w = int(_w * _fact)
-                    _h = int(_h * _fact)
-                    _img = _img.resize((_w, _h), resample=PIL.Image.BICUBIC)
-                    try:
-                        _location.store_graphic(_img, _file.content_type, _file.name)
-                    except:
-                        request.xml_response.critical(
-                            "error storing image: {}".format(
-                                process_tools.get_except_info()
-                            ),
-                            logger=logger
-                        )
-                    else:
-                        request.xml_response.info(
-                            "uploaded {} (type {}, size {:d} x {:d})".format(
-                                _file.name,
-                                _file.content_type,
-                                _w,
-                                _h,
-                            )
-                        )
+        _location_gfx = location_gfx.objects.get(Q(pk=request.POST["location_gfx_id"]))
+
+        if len(request.FILES) == 1:
+            _file = request.FILES[request.FILES.keys()[0]]
+            if _file.content_type in ["image/png", "image/jpeg"]:
+                _img = Image.open(_file)
+                _w, _h = _img.size
+                _x_fact = float(TARGET_WIDTH) / float(_w)
+                _y_fact = float(TARGET_HEIGTH) / float(_h)
+                _fact = min(_x_fact, _y_fact)
+                _w = int(_w * _fact)
+                _h = int(_h * _fact)
+                _img = _img.resize((_w, _h), resample=PIL.Image.BICUBIC)
+                try:
+                    _location_gfx.store_graphic(_img, _file.content_type, _file.name)
+
+                    for device_mon_location_obj in _location_gfx.device_mon_location_set.all():
+                        if device_mon_location_obj.pos_x > _location_gfx.width:
+                            device_mon_location_obj.pos_x = _location_gfx.width
+
+                        if device_mon_location_obj.pos_y > _location_gfx.height:
+                            device_mon_location_obj.pos_y = _location_gfx.height
+
+                        device_mon_location_obj.save()
+
+                except:
+                    request.xml_response.critical(
+                        "error storing image: {}".format(
+                            process_tools.get_except_info()
+                        ),
+                        logger=logger
+                    )
                 else:
-                    request.xml_response.error(
-                        "wrong content_type '{}'".format(
-                            _file.content_type
+                    request.xml_response.info(
+                        "uploaded {} (type {}, size {:d} x {:d})".format(
+                            _file.name,
+                            _file.content_type,
+                            _w,
+                            _h,
                         )
                     )
             else:
-                request.xml_response.error("need exactly one file")
+                request.xml_response.error(
+                    "wrong content_type '{}'".format(
+                        _file.content_type
+                    )
+                )
+        else:
+            request.xml_response.error("need exactly one file")
 
 
 class location_gfx_icon(View):
