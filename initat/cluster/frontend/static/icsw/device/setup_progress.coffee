@@ -217,14 +217,9 @@ setup_progress = angular.module(
         if force_open == undefined
             force_open = false
         setup_type = task.setup_type
-        if setup_type == 0
-            heading = "Monitoring Checks"
-        else if setup_type == 1
-            heading = "Location Data"
-        else if setup_type == 2
-            heading = "Asset Data"
-        else if setup_type == 3
-            heading = "Graphing Data"
+        heading = task.header
+
+        if setup_type == 3
             if !force_open
                 if task.fulfilled != true
                     $scope.struct.push_graphing_config_device = device
@@ -262,6 +257,7 @@ setup_progress = angular.module(
 
     $scope.open_in_new_tab_for_system = (task) ->
         setup_type = task.setup_type
+        heading = task.header
         if setup_type == 4
             heading = "Device Tree"
             special_flag_name = "devices_available"
@@ -270,13 +266,6 @@ setup_progress = angular.module(
             if not task.fulfilled
                 special_flag_value = false
                 heading = "Create new Device"
-
-        else if setup_type == 5
-            heading = "Monitoring Checks"
-        else if setup_type == 6
-            heading = "Users"
-        else if setup_type == 7
-            heading = "Locations"
 
         o = {
             type: setup_type
