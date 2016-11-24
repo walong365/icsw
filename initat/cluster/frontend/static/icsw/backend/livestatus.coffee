@@ -158,7 +158,7 @@ angular.module(
                     Restangular.one(ICSW_URLS.REST_MON_DISPLAY_PIPE_SPEC_LIST.slice(1)).get({idx: _new_id}).then(
                         (new_obj) =>
                             new_obj = new_obj.plain()[0]
-                            @list.push(new_obj)
+                            @list.push(@seed_entry(new_obj))
                             @build_luts()
                             q.resolve("copied")
                     )
