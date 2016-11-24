@@ -61,6 +61,13 @@ angular.module(
         icon_name: "linux40"
     }
 
+    $scope.get_group_names = (search) ->
+        new_groups = (group.name for group in $scope.struct.device_tree.group_list)
+        if (search && new_groups.indexOf(search) == -1)
+            new_groups.unshift(search)
+
+        return new_groups
+
     $scope.reload = () ->
         blockUI.start("Fetching Data from Server ...")
         $q.all(
