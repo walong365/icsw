@@ -102,7 +102,9 @@ angular.module(
            _si = true
         entry.$$icswShowAttemptInfo = _si
         entry.$$icswLastCheckString = _get_diff_time(entry.last_check)
+        entry.$$icswLastCheckSortHint = entry.last_check
         entry.$$icswLastStateChangeString = _get_diff_time(entry.last_state_change)
+        entry.$$icswLastStateChangeSortHint = entry.last_state_change
 
         # custom variables, already parsed
 
