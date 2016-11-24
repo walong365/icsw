@@ -293,14 +293,16 @@ class TestIcsw(unittest.TestCase):
         row = self.driver.find_element_by_xpath(row_xpath)
         self.click_button('Ignore Issue', base_element=row)
 
+        time.sleep(5)
         self.driver.refresh()
         row = self.driver.find_element_by_xpath(row_xpath)
         self.click_button('Unignore Issue', base_element=row)
 
+        time.sleep(5)
         self.driver.refresh()
         row = self.driver.find_element_by_xpath(row_xpath)
         self.assert_element(
-            '//button[contains(.,"Unignore Issue")]',
+            '//button[contains(.,"Ignore Issue")]',
             root=row
             )
 
@@ -336,7 +338,7 @@ class TestIcsw(unittest.TestCase):
             table = tab_content.find_element_by_xpath(
                 './/table[@st-table="entries_displayed"]'
                 )
-            tree = soupparser.fromstring(table.get_attribute('outerHTML'))
+            tree = soupparser.fromstring(table.get_attribute('outerHTML'), features="html.parser")
             column_headers = tree.xpath('//thead/tr[2]/th/text()')
 
             row = table.find_element_by_xpath(

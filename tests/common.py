@@ -136,7 +136,7 @@ class Webdriver(webdriver.Remote):
         elements = self.find_elements_by_xpath(self.XPATH_TOAST_CONTAINER)
         res = []
         for element in elements:
-            tree = soupparser.fromstring(element.get_attribute('outerHTML'))
+            tree = soupparser.fromstring(element.get_attribute('outerHTML'), features="html.parser")
             title = tree.xpath(
                 './div/div[@ng-class="config.title"]/text()'
                 )
@@ -153,7 +153,7 @@ class Webdriver(webdriver.Remote):
         # .implicitly_wait(0), so look if we have a toaster element by
         # inspecting the HTML with lxml
         if no_wait:
-            tree = soupparser.fromstring(self.page_source)
+            tree = soupparser.fromstring(self.page_source, features="html.parser")
             toasts = tree.xpath(self.XPATH_TOAST_CONTAINER)
         if not no_wait or toasts:
             for toaster in self.get_toasts():
