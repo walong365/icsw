@@ -30,9 +30,9 @@ angular.module(
     ]
 ).service("icswLivestatusPipeSpecTree",
 [
-    "$q", "icswSimpleAjaxCall", "ICSW_URLS", "Restangular",
+    "$q", "icswSimpleAjaxCall", "ICSW_URLS", "Restangular", "icswUserGroupRoleTools",
 (
-    $q, icswSimpleAjaxCall, ICSW_URLS, Restangular,
+    $q, icswSimpleAjaxCall, ICSW_URLS, Restangular, icswUserGroupRoleTools,
 ) ->
     class icswLivestatusPipeSpecTree
         constructor: (list) ->
@@ -46,9 +46,17 @@ angular.module(
         update: (list) =>
             @list.length = 0
             for entry in list
-                entry.$$deletable = false
-                @list.push(entry)
+                @list.push(@seed_entry(entry))
             @build_luts()
+
+        seed_entry: (entry) ->
+            entry.$$deletable = false
+            entry.$$editable = false
+            if not entry.$$default_vars?
+                entry.$$default_vars = []
+            else
+                entry.$$default_vars.length = 0
+            return entry
 
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
@@ -58,6 +66,7 @@ angular.module(
 
         apply_user_filter: () ->
             @user_list.length = 0
+            @current_var_setting = {}
             if @current_user
                 _user_idx = @current_user.user.idx
                 for entry in @list
@@ -65,6 +74,33 @@ angular.module(
                         @user_list.push(entry)
                     if not entry.system_pipe and entry.create_user == _user_idx
                         entry.$$deletable = true
+                        entry.$$editable = true
+                    # just to be sure ...
+                    entry.$$default_vars.length = 0
+                    for _vn in icswUserGroupRoleTools.pipe_spec_var_names()
+                        if @current_user.get_var(_vn).value == entry.name
+                            # console.log "V", _vn, entry
+                            entry.$$default_vars.push(_vn)
+                            @current_var_setting[_vn] = entry.name
+                    if entry.$$default_vars.length
+                        entry.$$default_var_info = entry.$$default_vars.join(", ")
+                    else
+                        entry.$$default_var_info = "no default"
+
+        ensure_defaults: () =>
+            # check user variables for sane defaults
+            _names = (entry.name for entry in @list)
+            q = $q.defer()
+            for entry in @list
+                if entry.def_user_var_name
+                    _var = @current_user.get_var(entry.def_user_var_name)
+                    if _var.value not in _names
+                        console.error entry.def_user_var_name, _var.value
+            q.resolve("done")
+            return q.promise
+
+        get_default_layout: (vn) =>
+            return (entry for entry in @list when entry.def_user_var_name == vn)[0].name
 
         _create_user_vars: () =>
             user = @current_user
@@ -143,6 +179,20 @@ angular.module(
                     q.reject("not deleted")
             )
             return q.promise
+
+        modify_spec: (spec) =>
+            q = $q.defer()
+            Restangular.restangularizeElement(null, spec, ICSW_URLS.REST_MON_DISPLAY_PIPE_SPEC_DETAIL.slice(1).slice(0, -2))
+            spec.put().then(
+                (data) =>
+                    # much better then remove / push
+                    _.assignIn(spec, data.plain())
+                    @seed_entry(spec)
+                    @build_luts()
+                    q.resolve("modify")
+                (error) ->
+                    q.reject("not modified")
+            )
 
 ]).service("icswLivestatusPipeSpecTreeService",
 [

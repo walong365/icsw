@@ -111,6 +111,14 @@ angular.module(
                 return "#{perm.level}-#{perm.user}-#{perm.csw_object_permission.csw_permission}-#{perm.csw_object_permission.object_pk}"
             else
                 return "#{perm.level}-#{perm.user}-#{perm.csw_permission}"
+
+        pipe_spec_var_names: () ->
+            # should be transferred from server, FIXME
+            return [
+                "$$network_topology_pipe"
+                "$$livestatus_dashboard_pipe"
+                "$$device_location_pipe"
+            ]
     }
 ]).service("icswUser",
 [
@@ -287,9 +295,10 @@ angular.module(
                         Restangular.restangularizeElement(null, _var, ICSW_URLS.REST_USER_VARIABLE_DETAIL.slice(1).slice(0, -2))
                         _var.put({"silent": 1}).then(
                             (new_var) =>
-                                if new_var.name not of @var_lut
-                                    @user.user_variable_set.push(new_var)
-                                    @build_luts()
+                                if new_var.name of @var_lut
+                                    _.remove(@user.user_variable_set, (entry) -> return entry.idx == new_var.idx)
+                                @user.user_variable_set.push(new_var)
+                                @build_luts()
                                 _result.resolve(new_var)
                             (not_ok) ->
                                 _result.reject("not modifed")

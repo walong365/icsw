@@ -127,13 +127,15 @@
                 </td>
             </tr>
             <tr>
-                <th st-sort="name">Name</th>
+                <!-- <th st-sort="name" st-sort-default="true">Name</th>-->
+                <th>Name</th>
                 <th>Description</th>
                 <th>SysPipe</th>
                 <th>PubPipe</th>
                 <th>User</th>
                 <th>#Elements</th>
-                <th colspan="2">Action</th>
+                <th>Default</th>
+                <th colspan="3">Action</th>
             </tr>
         </thead>
         <tbody>
@@ -153,9 +155,17 @@
                 <td class="text-center">
                     {{ spec.create_user }}
                 </td>
-                <td class="text-center">{{ spec.$$number_of_elements }}</td>
+                <td class="text-center">
+                    {{ spec.$$number_of_elements }}
+                </td>
+                <td class="text-center">
+                    <span title="{{ spec.$$default_var_info }}">{{ spec.$$default_vars.length || "-" }}</span>
+                </td>
                 <td>
                     <icsw-tools-button type="copy" size="xs" ng-click="copy_spec($event, spec)"></icsw-tools-button>
+                </td>
+                <td>
+                    <icsw-tools-button type="modify" size="xs" ng-click="modify_spec($event, spec)"></icsw-tools-button>
                 </td>
                 <td>
                     <icsw-tools-button ng-show="spec.$$deletable" type="delete" size="xs" ng-click="delete_spec($event, spec)"></icsw-tools-button>
@@ -165,3 +175,56 @@
     </table>
 </script>
 
+<script type="text/ng-template" id="icsw.connect.show.pipe.modify">
+    <form class="form-horizontal" name="form_data">
+        <fieldset ng-show="spec.$$editable">
+            <legend>Basic Settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Name<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control maxwidth500" maxlength="192" ng-model="spec.name" required="True" type="text"/>
+                </div>
+            </div>
+            <div class="form-group">
+                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                    Description<span class="asteriskField">*</span>
+                </label>
+                <div class="controls col-sm-7">
+                    <input class="textinput textInput form-control maxwidth500" maxlength="384" name="description" ng-model="spec.description" type="text"/>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset ng-show="spec.$$editable">
+            <legend>Flags</legend>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <div class="checkbox">
+                            <div class="controls col-lg-offset-0 col-sm-7">
+                                <label>
+                                    <icsw-tools-yes-no flag="spec.public_pipe"></icsw-tools-yes-no>
+                                    Public
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6"/>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>Default for</legend>
+            <div class="form-group" ng-repeat="vn in pipe_spec_var_names">
+                <label class="control-label col-sm-3 icsw-formlabel">
+                    {{ vn }}
+                </label>
+                <div class="controls col-sm-7">
+                    <icsw-tools-yes-no flag="valid_for[vn]"></icsw-tools-yes-no>
+                    (current value: {{ lsps_tree.current_var_setting[vn] }})
+                </div>
+            </div>
+        </fieldset>
+    </form>
+</script>
