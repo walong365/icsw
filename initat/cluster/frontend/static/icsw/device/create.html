@@ -54,7 +54,7 @@
                         <label class="control-label col-md-5 icsw-formlabel">Icon</label>
                         <div class="controls col-md-6">
                             <div class="form-inline">
-                                <img ng-src="{{ get_image_src() }}" width="16"/>
+                                <img ng-src="{{ struct.img_url }}" width="16"/>
                                 <input
                                     type="text"
                                     name="icon"
@@ -63,6 +63,7 @@
                                     uib-typeahead="value as value.name for value in struct.mon_ext_host | filter:{name:$viewValue}"
                                     typeahead-template-url="icsw.device.create.icon.template"
                                     uib-typeahead-append-to-body="true"
+                                    typeahead-on-select="on_icon_select($item, $model, $label)"
                                 />
                             </div>
                         </div>
