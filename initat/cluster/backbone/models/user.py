@@ -33,6 +33,8 @@ import random
 import smbpasswd
 import string
 
+from enum import Enum
+
 import django.core.serializers
 from django.apps import apps
 from django.conf import settings
@@ -79,6 +81,8 @@ __all__ = [
     b"login_history",
     b"UserLogEntry",
     b"RouteTrace",
+    # special var names
+    b"SPECIAL_USER_VAR_NAMES",
 ]
 
 
@@ -100,7 +104,14 @@ AC_CREATE = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE
 AC_FULL = AC_MASK_READ | AC_MASK_MODIFY | AC_MASK_CREATE | AC_MASK_DELETE
 
 
-# RouteChnages
+# special user var names
+class SPECIAL_USER_VAR_NAMES(Enum):
+    network_topology_pipe = "$$network_topology_pipe"
+    livestatus_dashboard_pipe = "$$livestatus_dashboard_pipe"
+    device_location_pipe = "$$device_location_pipe"
+
+
+# RouteChanges
 class RouteTrace(models.Model):
     idx = models.AutoField(primary_key=True)
     session_id = models.CharField(max_length=64, default="")

@@ -342,7 +342,7 @@
 
              <uib-tab heading="Network Topology" select="select_tab()">
                 <div>
-                    <icsw-device-livestatus icsw-livestatus-view="'networktopology'"></icsw-device-livestatus>
+                    <icsw-device-livestatus icsw-var-name="'$$network_topology_pipe'"></icsw-device-livestatus>
                 </div>
             </uib-tab>
             <uib-tab heading="Clusters" ng-if="acl_read(null, 'backbone.network.show_clusters')" select="select_tab('cluster')">

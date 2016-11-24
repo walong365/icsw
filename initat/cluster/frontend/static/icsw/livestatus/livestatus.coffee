@@ -43,25 +43,6 @@ angular.module(
     # top level controller of monitoring dashboard
 
     _cd = {
-        "liveview": {
-            "icswLivestatusSelDevices": [{
-                "icswLivestatusDataSource": [{
-                    "icswLivestatusFilterService": [{
-                        "icswLivestatusMonCategoryFilter": [{
-                            "icswLivestatusDeviceCategoryFilter": [{
-                                "icswLivestatusInfoDisplay": []
-                            }
-                            {
-                                "icswLivestatusDeviceTabularDisplay": []
-                            }
-                            {
-                                "icswLivestatusMonTabularDisplay": []
-                            }]
-                        }]
-                    }]
-                }]
-            }]
-        }
         "btest": {
             "icswLivestatusSelDevices": [{
                 "icswLivestatusDataSource": [{
@@ -99,38 +80,6 @@ angular.module(
                 }]
             }]
         }
-        "networktopology": {
-            "icswLivestatusSelDevices": [{
-                "icswLivestatusDataSource": [{
-                    "icswLivestatusFilterService": [{
-                        "icswLivestatusTopologySelector": [{
-                            "icswLivestatusFilterService": [{
-                                "icswLivestatusNetworkTopology": []
-                            }]
-                        }
-                        {
-                            "icswLivestatusNetworkTopology": []
-                        }]
-                    }]
-                }]
-            }]
-        }
-        "location": {
-            "icswLivestatusSelDevices": [{
-                "icswLivestatusDataSource": [{
-                    "icswLivestatusFilterService": [{
-                        "icswLivestatusMonCategoryFilter": [{
-                            "icswLivestatusDeviceCategoryFilter": [{
-                                "icswLivestatusGeoLocationDisplay": []
-                            }
-                            {
-                                "icswLivestatusLocationMap":  []
-                            }]
-                        }]
-                    }]
-                }]
-            }]
-        }
     }
 
     $scope.struct = {
@@ -142,6 +91,8 @@ angular.module(
         connector: null
         # connector name to use
         connector_name: null
+        # user_var name to use for new connector
+        user_var_name: null
         # connector is set
         connector_set: false
         # livestatuspipspectree
@@ -171,14 +122,31 @@ angular.module(
                 )
         )
 
-    activate_connector = (name) ->
-        if $scope.struct.data_valid and not $scope.struct.connector_set and $scope.struct.connector_name
-            if $scope.struct.lsps_tree.spec_name_defined($scope.struct.connector_name)
-                $scope.struct.connector = new icswMonLivestatusPipeConnector($scope.struct.connector_name, $scope.struct.user, angular.toJson(_cd[$scope.struct.connector_name]))
-                $scope.struct.connector_set = true
+    activate_connector = () ->
+        if $scope.struct.data_valid and not $scope.struct.connector_set
+            cn_set = $q.defer()
+            if $scope.struct.user_var_name
+                $scope.struct.lsps_tree.create_user_vars($scope.struct.user).then(
+                    (done) ->
+                        if $scope.struct.user.has_var($scope.struct.user_var_name)
+                            cn_set.resolve($scope.struct.user.get_var($scope.struct.user_var_name).value)
+                        else
+                            cn_set.reject("no")
+                )
+            else if $scope.struct.connector_name
+                cn_set.resolve($scope.struct.connector_name)
             else
-                console.error "pipe with spec name '#{$scope.struct.connector_name}' not defined"
-                $scope.struct.connector_name = null
+                cn_set.reject("no")
+            cn_set.promise.then(
+                (c_name) ->
+                    if $scope.struct.lsps_tree.spec_name_defined(c_name)
+                        $scope.struct.connector = new icswMonLivestatusPipeConnector(c_name, $scope.struct.user, $scope.struct.lsps_tree.get_spec(c_name).json_spec)
+                        $scope.struct.connector_set = true
+                    else
+                        console.error "pipe with spec name '#{c_name}' not defined"
+                (not_set) ->
+                    console.error "no valid connector name found"
+            )
 
     load()
 
@@ -191,7 +159,14 @@ angular.module(
 
     $scope.set_connector = (c_name) ->
         $scope.unset_connector()
+        $scope.struct.user_var_name = null
         $scope.struct.connector_name = c_name
+        activate_connector()
+
+    $scope.set_connector_via_var = (v_name) ->
+        $scope.unset_connector()
+        $scope.struct.user_var_name = v_name
+        $scope.struct.connector_name = null
         activate_connector()
 
     $scope.toggle_gridster_lock = () ->
@@ -228,14 +203,26 @@ angular.module(
         controller: "icswDeviceLiveStatusCtrl"
         scope:
             active_view: "=icswLivestatusView"
+            var_name: "=icswVarName"
         link: (scope, element, attrs) ->
-            scope.$watch(
-                "active_view"
-                (new_val) ->
-                    if new_val?
-                        scope.set_connector(new_val)
-                    else
-                        scope.unset_connector()
-            )
+            if attrs.icswVarName?
+                scope.$watch(
+                    "var_name"
+                    (new_val) ->
+                        if new_val?
+                            scope.set_connector_via_var(new_val)
+                        else
+                            scope.unset_connector()
+                )
+                true
+            else
+                scope.$watch(
+                    "active_view"
+                    (new_val) ->
+                        if new_val?
+                            scope.set_connector(new_val)
+                        else
+                            scope.unset_connector()
+                )
     }
 ])

@@ -46,8 +46,29 @@ angular.module(
             @lut = _.keyBy(@list, "idx")
             @name_lut = _.keyBy(@list, "name")
 
+        create_user_vars: (user) =>
+            defer = $q.defer()
+            console.log "u=", user
+            _c_list = []
+            for entry in @list
+                if entry.def_user_var_name
+                    _c_list.push(
+                        user.get_or_create(entry.def_user_var_name, entry.name, "s")
+                    )
+            if _c_list.length
+                $q.all(_c_list).then(
+                    (done) ->
+                        defer.resolve("ok")
+                )
+            else
+                defer.resolve("ok")
+            return defer.promise
+
         spec_name_defined: (name) =>
             return if name of @name_lut then true else false
+
+        get_spec: (name) =>
+            return @name_lut[name]
 
 ]).service("icswLivestatusPipeSpecTreeService",
 [

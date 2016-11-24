@@ -32,17 +32,13 @@ import time
 import uuid
 from StringIO import StringIO
 
+import memcache
 import zmq
 from lxml import etree
 from lxml.builder import E
 
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, server_command
-
-try:
-    import memcache
-except:
-    memcache = None
 
 
 def get_empty_job_options(**kwargs):
@@ -285,6 +281,7 @@ class SGEInfo(object):
 
     def _init_cache(self):
         if memcache:
+            # always true
             self._cache_socket = memcache.Client(
                 [
                     "127.0.0.1:{:d}".format(

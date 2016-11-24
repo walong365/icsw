@@ -22,18 +22,17 @@
 from __future__ import unicode_literals, print_function
 
 import json
-from django.conf import settings
-from django.db.models import Q
 
 from initat.cluster.backbone import factories
-from initat.tools import logging_tools
+from initat.cluster.backbone.models import SPECIAL_USER_VAR_NAMES
 
 
 def add_fixtures(**kwargs):
-    for _name, _description, _sys_pipe, _spec in [
+    for _name, _description, _uvn, _sys_pipe, _spec in [
         (
             "testview",
             "Simple Pipe for testing",
+            SPECIAL_USER_VAR_NAMES.livestatus_dashboard_pipe.value,
             True,
             json.dumps(
                 {
@@ -59,11 +58,60 @@ def add_fixtures(**kwargs):
                 }
             )
         ),
+        (
+            "networktopology",
+            "Pipe for network Topology",
+            SPECIAL_USER_VAR_NAMES.network_topology_pipe.value,
+            True,
+            json.dumps(
+                {
+                    "icswLivestatusSelDevices": [{
+                        "icswLivestatusDataSource": [{
+                            "icswLivestatusFilterService": [{
+                                "icswLivestatusTopologySelector": [{
+                                    "icswLivestatusFilterService": [{
+                                        "icswLivestatusNetworkTopology": []
+                                    }]
+                                },
+                                {
+                                    "icswLivestatusNetworkTopology": []
+                                }]
+                            }]
+                        }]
+                    }]
+                }
+            )
+        ),
+        (
+            "devicelocation",
+            "Pipe for device location",
+            SPECIAL_USER_VAR_NAMES.device_location_pipe.value,
+            True,
+            json.dumps(
+                {
+                    "icswLivestatusSelDevices": [{
+                        "icswLivestatusDataSource": [{
+                            "icswLivestatusFilterService": [{
+                                "icswLivestatusMonCategoryFilter": [{
+                                    "icswLivestatusDeviceCategoryFilter": [{
+                                        "icswLivestatusGeoLocationDisplay": []
+                                    },
+                                    {
+                                        "icswLivestatusLocationMap": []
+                                    }]
+                                }]
+                            }]
+                        }]
+                    }]
+                }
+            )
+        ),
     ]:
         factories.MonDisplayPipeSpecFactory(
             name=_name,
             description=_description,
             system_pipe=_sys_pipe,
+            def_user_var_name=_uvn,
             public_pipe=True,
             json_spec=_spec,
         )
