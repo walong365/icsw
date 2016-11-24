@@ -533,3 +533,18 @@ icsw-tools-button-static.fa:before {
 .force-left {
     text-align: left !important;
 }
+
+
+/* fix mouse pointer from editing mode to pointer mode on sortable table columns */
+th[st-sort] {
+    cursor: pointer;
+}
+
+/* default sorting indicator for sortable table columns */
+th[st-sort]:not(.st-sort-ascent):not(.st-sort-descent):before {
+    font-family: FontAwesome;
+    content: '\f0dc';
+    display: inline-block;
+    padding-right: 3px;
+    vertical-align: middle;
+}

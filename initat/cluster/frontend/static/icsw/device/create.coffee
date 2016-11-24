@@ -46,8 +46,8 @@ angular.module(
         resolve_pending: false
         # base is open
         base_open: true
-        # image lut
-        img_lut: {}
+        # image url
+        img_url: "/icsw/api/v2/static/icinga/linux40.png"
     }
     $scope.device_data = {
         # localhost would be plane stupid
@@ -60,6 +60,17 @@ angular.module(
         peer: 0
         icon_name: "linux40"
     }
+
+    $scope.on_icon_select = (item, model, label) ->
+        $scope.struct.img_url = item.data_image
+        $scope.device_data.icon_name = item.name
+
+    $scope.get_group_names = (search) ->
+        new_groups = (group.name for group in $scope.struct.device_tree.group_list)
+        if (search && new_groups.indexOf(search) == -1)
+            new_groups.unshift(search)
+
+        return new_groups
 
     $scope.reload = () ->
         blockUI.start("Fetching Data from Server ...")
@@ -81,22 +92,11 @@ angular.module(
                 if $scope.struct.peer_tree.peer_list.length
                     $scope.device_data.peer = $scope.struct.peer_tree.peer_list[0].idx
 
-                for entry in $scope.struct.mon_ext_host
-                    $scope.struct.img_lut[entry.name] = entry
-                # to speed up testing
-
                 $scope.resolve_name()
                 blockUI.stop()
                 $scope.struct.data_ready = true
         )
     $scope.reload()
-
-    $scope.get_image_src = () ->
-        img_url = ""
-        if $scope.struct.img_lut?
-            if $scope.device_data.icon_name of $scope.struct.img_lut
-                img_url = $scope.struct.img_lut[$scope.device_data.icon_name].data_image
-        return img_url
 
     $scope.device_name_changed = () ->
         if not $scope.struct.resolve_pending and $scope.device_data.full_name and not $scope.device_data.ip
