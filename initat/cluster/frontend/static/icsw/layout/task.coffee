@@ -65,11 +65,11 @@ angular.module(
         link: () =>
             _idx = 0
             for step in @json.taskStep
-                _idx++
                 _state = $state.get(step.routeName)
                 # default value
                 step.$$info_str = "#{step.routeName} N/A"
                 step.$$idx = _idx
+                _idx++
                 if _state.icswData?
                     _data = _state.icswData
                     if _data.description[def_lang]?
@@ -98,6 +98,10 @@ angular.module(
             if @_step_idx
                 @_step_idx--
                 @link()
+
+        set_active_node: (node) =>
+            @_step_idx = node.$$idx
+            @link()
 
         link: () =>
             @$$forward_ok = @_step_idx < @task_def.json.taskStep.length - 1
@@ -211,7 +215,7 @@ angular.module(
             }
         ).then(
             (fin) ->
-                console.log "done"
+                # console.log "done"
                 edit_scope.$destroy()
                 $rootScope.task_modal = undefined
                 G_STRUCT.modal_open = false
@@ -270,11 +274,11 @@ angular.module(
         componentWillMount: () ->
             @setState({struct: icswTaskService.get_struct()})
             @_dereg_handler = $rootScope.$on(ICSW_SIGNALS("ICSW_TASK_SETTINGS_CHANGED"), () =>
-                console.log "ipc"
+                # console.log "ipc"
                 @force_redraw()
             )
 
-        componentWillUmount: () ->
+        componentWillUnmount: () ->
             @_dereg_handler()
 
         force_redraw: () ->
@@ -363,4 +367,160 @@ angular.module(
             )
             return _res
     )
+]).directive("icswTaskProgressOverview",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        restrict: "E"
+        controller: "icswTaskProgressOverviewCtrl",
+        template: $templateCache.get("icsw.task.progress.overview")
+        scope: true
+    }
+]).controller("icswTaskProgressOverviewCtrl",
+[
+    "$scope", "$q", "icswTaskService", "$rootScope", "ICSW_SIGNALS",
+(
+    $scope, $q, icswTaskService, $rootScope, ICSW_SIGNALS,
+) ->
+    $scope.struct = {
+        # display flag
+        display: false
+        # task struct
+        task_struct: null
+        # active task
+        active_task: null
+    }
+    _update = () ->
+        console.log $scope.struct.task_struct
+        if $scope.struct.task_struct.active_task
+            $scope.struct.active_task = $scope.struct.task_struct.active_task
+            $scope.struct.display = true
+        else
+            $scope.struct.display = false
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_TASK_SETTINGS_CHANGED"), () ->
+        $scope.struct.task_struct = icswTaskService.get_struct()
+        _update()
+    )
+
+    $scope.choose_task = ($event) ->
+        return icswTaskService.choose_task()
+]).factory("icswTaskProgressDisplayReact",
+[
+    "icswUserService", "icswOverallStyle", "icswTaskService", "$rootScope",
+    "ICSW_SIGNALS",
+(
+    icswUserService, icswOverallStyle, icswTaskService, $rootScope,
+    ICSW_SIGNALS,
+) ->
+    {div, g, circle, svg, title} = React.DOM
+    return React.createClass(
+        # propTypes:
+        #    side: React.PropTypes.string
+
+        displayName: "TaskProgressDisplay"
+
+        componentWillMount: () ->
+            @dereg_0 = $rootScope.$on(ICSW_SIGNALS("ICSW_TASK_SETTINGS_CHANGED"), () =>
+                @force_redraw()
+            )
+            console.log "mount"
+
+        componentWillUnmount: () ->
+            console.log "unmount"
+            @dereg_0()
+
+        getInitialState: () ->
+            return {
+                counter: 0
+                struct: null
+            }
+
+        force_redraw: () ->
+            @setState({counter: @state.counter + 1})
+
+        render: () ->
+            _struct = icswTaskService.get_struct()
+            height = 30
+            step_x = 40
+
+            draw_circle = (node, active_task) ->
+                _x = step_x * node.$$idx
+                _y = height / 2
+                _done = active_task._step_idx > node.$$idx
+                _current = active_task._step_idx == node.$$idx
+                if _done
+                    _fill = "#ddddff"
+                else if _current
+                    _fill = "#ffbbbb"
+                else
+                    _fill = "#ffffff"
+                return g(
+                    {
+                        key: "node#{node.$$idx}"
+                        transform: "translate(#{_x}, #{_y})"
+                        className: "cursorpointer"
+                        onClick: (event) =>
+                            active_task.set_active_node(node)
+                    }
+                    circle(
+                        {
+                            key: "c"
+                            r: "12"
+                            style: {
+                                fill: _fill
+                                stroke: "#000000"
+                                strokeWidth: "1.5px"
+                            }
+                        }
+                    )
+                    title(
+                        {
+                            key: "title"
+                        }
+                        node.$$info_str
+                    )
+
+                )
+            return div(
+                {
+                    key: "top"
+                }
+                svg(
+                    {
+                        key: "top"
+                        width: "98%"
+                        height: "40"
+                        viewBox: "1 1 200 50"
+                    }
+                    (
+                        draw_circle(node, _struct.active_task) for node in _struct.active_task.task_def.json.taskStep
+                    )
+                )
+            )
+    )
+]).directive("icswTaskProgressDisplay",
+[
+    "$q", "icswTaskProgressDisplayReact",
+(
+    $q, icswTaskProgressDisplayReact,
+) ->
+    return {
+        restrict: "EA"
+        replace: true
+        link: (scope, el, attrs) ->
+            _element = ReactDOM.render(
+                React.createElement(
+                    icswTaskProgressDisplayReact
+                    {}
+                )
+                el[0]
+            )
+            scope.$on("$destroy", () ->
+                ReactDOM.unmountComponentAtNode(el[0])
+            )
+    }
 ])

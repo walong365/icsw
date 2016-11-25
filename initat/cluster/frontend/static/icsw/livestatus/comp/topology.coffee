@@ -939,7 +939,7 @@ angular.module(
                 monitoring_data: undefined
             }
 
-        componentWillUmount: () ->
+        componentWillUnmount: () ->
             @stop_update()
 
         render: () ->

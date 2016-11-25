@@ -434,6 +434,7 @@ angular.module(
             )
             _width = 220
             _height = 140
+            # console.log "RENDER"
             return div(
                 {
                     key: "top"
