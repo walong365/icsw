@@ -80,6 +80,7 @@ angular.module(
     class icswTask
         # actual task, adds state control
         constructor: (tdef) ->
+            @$$step_valid = false
             @task_def = tdef
             @start()
 
@@ -108,9 +109,25 @@ angular.module(
             @$$backward_ok = @_step_idx > 0
             @active_step = @task_def.json.taskStep[@_step_idx]
             # console.log @active_step
-            $state.go(@active_step.routeName)
             @$$info_str = " #{@_step_idx + 1} / #{@task_def.json.taskStep.length} "
+            # valid (current route matches)
+            @$$step_valid = true
+            # console.log "S", @active_step
+            if @active_step.routeParams
+                _params = @active_step.routeParams
+            else
+                _params = {}
+            $state.go(@active_step.routeName, _params)
             _signal()
+
+        check_validity: () =>
+            if $state.current.name == @active_step.routeName
+                _valid = true
+            else
+                _valid = false
+            if _valid != @$$step_valid
+                @$$step_valid = false
+                _signal()
 
     struct = {
         # contains an icswTask definition or null
@@ -237,6 +254,10 @@ angular.module(
         _remove_keys()
     )
 
+    $rootScope.$on(ICSW_SIGNALS("ICSW_STATE_CHANGED"), () ->
+        if struct.active_task
+            struct.active_task.check_validity()
+    )
     # task control
     step_forward = (task) ->
         task.step_forward()
@@ -394,7 +415,6 @@ angular.module(
         active_task: null
     }
     _update = () ->
-        console.log $scope.struct.task_struct
         if $scope.struct.task_struct.active_task
             $scope.struct.active_task = $scope.struct.task_struct.active_task
             $scope.struct.display = true
@@ -455,7 +475,10 @@ angular.module(
                 if _done
                     _fill = "#ddddff"
                 else if _current
-                    _fill = "#ffbbbb"
+                    if active_task.$$step_valid
+                        _fill = "#ffbbbb"
+                    else
+                        _fill = "#ff6666"
                 else
                     _fill = "#ffffff"
                 return g(

@@ -389,6 +389,11 @@ angular.module(
         _ext = new icswRouteExtension(_data.icswData)
         _struct.entries.push(_ext)
         _state_data = angular.copy(_data.stateData)
+        if not _state_data.params?
+            _state_data.params = {
+                tab: null
+            }
+
         if resolve_map?
             _state_data.resolve = resolve_map
         _state_data.icswData = _ext

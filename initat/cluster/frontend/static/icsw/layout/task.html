@@ -32,7 +32,7 @@
             <legen>{{ active_task.json.taskStep.length }} Steps defined</legen>
             <ul class="list-group">
                 <li class="list-group-item" ng-repeat="step in active_task.json.taskStep">
-                    <h4>Step {{ step.$$idx }} of {{ active_task.json.taskStep.length }}:</h4>
+                    <h4>Step {{ step.$$idx + 1 }} of {{ active_task.json.taskStep.length }}:</h4>
                     {{ step.$$info_str }}
                 </li>
             </ul>

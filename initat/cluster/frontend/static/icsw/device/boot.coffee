@@ -433,6 +433,7 @@ angular.module(
             @fetch_timeout = undefined
             # connection problem counter
             @connection_problem_counter = 0
+            @$$closed = false
             @update(devices)
 
         update: (devices) =>
@@ -447,15 +448,18 @@ angular.module(
 
         stop_timeout: () =>
             if @fetch_timeout
+                console.log "ftc"
                 $timeout.cancel(@fetch_timeout)
                 @fetch_timeout = undefined
 
         close: () =>
+            @$$closed = true
             @stop_timeout()
 
         fetch: () =>
             new_timeout = () =>
-                @fetch_timeout = $timeout(@fetch, 10000)
+                if not @$$closed
+                    @fetch_timeout = $timeout(@fetch, 10000)
 
             defer = $q.defer()
             @stop_timeout()

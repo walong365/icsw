@@ -153,6 +153,8 @@ class FileModify(object):
                     r_v[_name] = True if el.attrib[_attr_name] in ["yes"] else False
                 elif _type == "int":
                     r_v[_name] = int(el.attrib[_attr_name])
+                elif _type == "json":
+                    r_v[_name] = eval(el.attrib[_attr_name])
                 else:
                     r_v[_name] = el.attrib[_attr_name]
             if el.text and el.text.strip():

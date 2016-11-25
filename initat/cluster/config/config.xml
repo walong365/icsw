@@ -748,7 +748,7 @@
             <description>
                 <infoText language="en">Add a new device and configure it</infoText>
             </description>
-            <taskStep routeName="main.devicecreate"></taskStep>
+            <taskStep routeName="main.devicecreate" routeParams_json="{'tab':'bla'}"></taskStep>
             <taskStep routeName="main.deployboot"></taskStep>
             <taskStep routeName="main.useraccount"></taskStep>
         </task>

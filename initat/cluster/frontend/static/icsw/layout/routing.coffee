@@ -158,6 +158,7 @@ menu_module = angular.module(
         )
 
     $scope.$on("$stateChangeStart", (event, to_state, to_params, from_state, from_params, options) ->
+        console.log "tp", to_params
         if options.icswRegister?
             # copy to to_params
             to_params.icswRegister = options.icswRegister

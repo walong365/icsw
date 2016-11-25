@@ -28,13 +28,15 @@ angular.module(
 ]).controller("icswDeviceCreateCtrl",
 [
     "$scope", "$timeout", "$window", "$templateCache", "$q", "blockUI", "ICSW_URLS",
-    "icswSimpleAjaxCall", "Restangular",
+    "icswSimpleAjaxCall", "Restangular", "$state", "$stateParams",
     "icswDeviceTreeService", "icswPeerInformationService", "DeviceOverviewService",
 (
     $scope, $timeout, $window, $templateCache, $q, blockUI, ICSW_URLS,
-    icswSimpleAjaxCall, Restangular,
+    icswSimpleAjaxCall, Restangular, $state, $stateParams,
     icswDeviceTreeService, icswPeerInformationService, DeviceOverviewService,
 ) ->
+
+    console.log "state=", $state.current, $stateParams
     $scope.struct = {
         # device tree
         device_tree: undefined
@@ -185,13 +187,15 @@ angular.module(
         )
 ]).directive("icswDeviceCreateMask",
 [
-    "$templateCache",
+    "$templateCache", "$stateParams"
 (
-    $templateCache
+    $templateCache, $stateParams,
 ) ->
     return {
         restrict: "EA"
         template: $templateCache.get("icsw.device.create.mask")
         controller: "icswDeviceCreateCtrl"
+        link: (scope, element, attrs) ->
+            console.log "sp=", $stateParams
     }
 ])
