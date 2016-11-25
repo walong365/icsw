@@ -141,28 +141,28 @@ angular.module(
             for entry in @service_state_list
                 @service_state_lut[entry.idx] = entry
                 @service_state_lut[entry.short_code] = entry
-                @service_states[entry.idx] = entry.default
+                @service_states[entry.idx] = entry.default_sel
 
             # default values for host states
             @host_states = {}
             for entry in @host_state_list
                 @host_state_lut[entry.idx] = entry
                 @host_state_lut[entry.short_code] = entry
-                @host_states[entry.idx] = entry.default
+                @host_states[entry.idx] = entry.default_sel
                 
             # default values for service types
             @service_types = {}
             for entry in @service_type_list
                 @service_type_lut[entry.idx] = entry
                 @service_type_lut[entry.short_code] = entry
-                @service_types[entry.idx] = entry.default
+                @service_types[entry.idx] = entry.default_sel
 
             # default values for service types
             @host_types = {}
             for entry in @host_type_list
                 @host_type_lut[entry.idx] = entry
                 @host_type_lut[entry.short_code] = entry
-                @host_types[entry.idx] = entry.default
+                @host_types[entry.idx] = entry.default_sel
 
             @react_notifier = $q.defer()
             @change_notifier = $q.defer()
@@ -170,6 +170,7 @@ angular.module(
             @cat_filter_installed = false
 
         restore_settings: (settings) =>
+            # console.log "RS", settings
             # restore settings
             [_ss, _hs, _st, _ht, _linked] = settings.split(";")
             @linked = if _linked == "l" then true else false
@@ -242,6 +243,7 @@ angular.module(
             ].join(";")
 
         _settings_changed: () ->
+            # console.log "SC", @get_filter_state_str()
             @pipeline_settings_changed(@get_filter_state_str())
 
         stop_notifying: () ->
@@ -290,6 +292,7 @@ angular.module(
 
         filter_set: () ->
             @setState({display_iter: @state.display_iter + 1})
+            @props.livestatus_filter._settings_changed()
             @props.livestatus_filter.filter_changed()
 
         render: () ->
@@ -624,7 +627,7 @@ angular.module(
                 cur_filter: scope.filter_list[0]
             }
 
-            scope.changed = () ->
+            scope.filter_settings_changed = () ->
                 if scope.struct.cur_filter.filter_str
                     scope.filter.restore_settings(scope.struct.cur_filter.filter_str)
                     new_rel.filter_set()

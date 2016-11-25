@@ -233,7 +233,6 @@ angular.module(
             ]
         ).then(
             (data) ->
-                console.log "*", data
                 $scope.struct.lsps_tree = data[0]
                 $scope.struct.user = data[1]
                 $scope.struct.lsps_tree.set_user($scope.struct.user).then(

@@ -356,7 +356,7 @@ angular.module(
             @user = user
             # connection specification as text
             @spec_src = angular.fromJson(@object.json_spec)
-            console.log "Connector #{@name} (spec #{@spec_src}, user #{@user.user.login})"
+            console.log "Connector '#{@name}' (spec #{@object}, user #{@user.user.login})"
             @root_element = undefined
             # 0 ... only content, no dragNdrop, no resize - DASHBOARD LOCKED
             # 1 ... with header, dragNdrop, resize - DASHBOARD UNLOCKED
