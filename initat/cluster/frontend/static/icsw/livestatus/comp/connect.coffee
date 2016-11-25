@@ -1118,9 +1118,10 @@ angular.module(
             struct =
                 divlayer: element.children().first()
 
-            struct.show = (event, content) ->
+            struct.show = (content) ->
                 scope.display = "block"
                 scope.tooltip_content = content
+                scope.$apply()
                 return
 
             struct.pos = (event) ->

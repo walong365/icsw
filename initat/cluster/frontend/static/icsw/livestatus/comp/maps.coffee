@@ -40,7 +40,8 @@ angular.module(
         constructor: () ->
             super("icswLivestatusLocationMap", true, false)
             @set_template(
-                '<icsw-show-livestatus-location-map icsw-connect-element="con_element"></icsw-show-livestatus-location-map>'
+                '<icsw-livestatus-tooltip icsw-connect-element="con_element"></icsw-livestatus-tooltip>
+                <icsw-show-livestatus-location-map icsw-connect-element="con_element"></icsw-show-livestatus-location-map>'
                 "Location Images"
                 10
                 8
@@ -320,7 +321,7 @@ angular.module(
             if _gfx.comment
                 _header = "#{_header} (#{_gfx.comment})"
             _header = "#{_header} (#{_gfx_width} x #{_gfx_height}) * scale (#{_.round(_scale, 3)}) = (#{_.round(_gfx_width * _scale, 3)} x #{_.round(_gfx_height * _scale, 3)})"
-            _header = "#{_header}, #{_gfx.$$filtered_dml_list.length} devices"
+            _header = "#{_header}, #{_gfx.$$filtered_dml_list.length} Devices"
 
             _dml_list = [
                 image(
@@ -410,11 +411,13 @@ angular.module(
             gfx_size: "=icswGfxSize"
             # to notify when the data changes
             notifier: "=icswNotifier"
+            con_element: "=icswConnectElement"
         link : (scope, element, attrs) ->
             draw_params = new icswBurstDrawParameters(
                 {
                     inner_radius: 0
                     outer_radius: 90
+                    tooltip: scope.con_element.tooltip
                 }
             )
             $q.all(
