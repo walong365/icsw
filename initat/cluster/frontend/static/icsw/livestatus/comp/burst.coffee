@@ -65,7 +65,7 @@ angular.module(
 
         on_mouse_enter: (event) ->
             if @props.element.$$segment?
-                @props.draw_parameters.tooltip.show(event, @props.element.$$service)
+                @props.draw_parameters.tooltip.show(@props.element.$$service)
                 @props.focus_cb("enter", @props.element.$$segment)
 
         on_mouse_leave: (event) ->

@@ -64,7 +64,7 @@ angular.module(
             )
 
             @props.draw_parameters.device_idx_filter = undefined
-
+            tooltip_obj = @props.draw_parameters.tooltip
             return g(
                 {
                     key: "node.#{node.id}"
@@ -73,9 +73,19 @@ angular.module(
                     transform: "translate(#{node.x}, #{node.y})"
                 }
                 (
-                    path(_.pickBy(_path, (value, key) -> return not key.match(/\$/))) for _path in root_node.element_list
+                    for _path in root_node.element_list
+                        path(gen_path_dict(_path, tooltip_obj))
                 )
             )
+
+        gen_path_dict = (_path, tooltip_obj) ->
+            path_data = _.pickBy(_path, (value, key) -> return not key.match(/\$/))
+            path_data.onMouseEnter = (e) ->
+                tooltip_obj.show(_path.$$service)
+            path_data.onMouseMove = tooltip_obj.pos
+            path_data.onMouseLeave = (event) -> tooltip_obj.hide()
+            path_data
+
     )
 ]).service("icswD3DeviceLivestatiReactBurst",
 [
@@ -96,7 +106,11 @@ angular.module(
         }
 
         render: () ->
-            _draw_params = new icswBurstDrawParameters({inner_radius: 20, outer_radius: 30})
+            _draw_params = new icswBurstDrawParameters(
+                inner_radius: 20
+                outer_radius: 30
+                tooltip: @props.tooltip
+            )
             _bursts = []
             if @props.show_livestatus
                 idx = 0
@@ -457,6 +471,7 @@ angular.module(
         _draw_livestatus: () =>
             # select g
             g = @d3_element.select(".d3-livestati").nodes()
+
             ReactDOM.render(
                 React.createElement(
                     icswD3DeviceLivestatiReactBurst
@@ -464,6 +479,7 @@ angular.module(
                         nodes: @state.graph.nodes
                         show_livestatus: @livestatus_state
                         monitoring_data: @props.monitoring_data
+                        tooltip: @props.tooltip
                     }
                 )
                 g[0]
@@ -580,6 +596,7 @@ angular.module(
                     with_livestatus: @props.with_livestatus
                     graph_command_cb: @props.graph_command_cb
                     monitoring_data: @props.monitoring_data
+                    tooltip: @props.tooltip
                 }
                 {
                     graph: @props.graph
@@ -717,6 +734,7 @@ angular.module(
                     _list
                 )
             ]
+
             if @state.data_present
                 graph_id = @state.graph_id
                 _top_list.push(
@@ -730,6 +748,7 @@ angular.module(
                             with_livestatus: @state.with_livestatus
                             graph_command_cb: @graph_command_cb
                             monitoring_data: @props.monitoring_data
+                            tooltip: @props.tooltip
                         }
                     )
                 )
@@ -805,9 +824,10 @@ angular.module(
         constructor: () ->
             super("icswLivestatusNetworkTopology", true, false)
             @set_template(
-                '<icsw-device-network-topology icsw-connect-element="con_element" icsw-sub-max-height></icsw-device-network-topology>'
+                '<icsw-livestatus-tooltip icsw-connect-element="con_element"></icsw-livestatus-tooltip>
+                <icsw-device-network-topology icsw-connect-element="con_element" icsw-sub-max-height></icsw-device-network-topology>'
                 "Network Topology"
-                8
+                10
                 8
             )
 
@@ -849,6 +869,7 @@ angular.module(
                                 {
                                     device_tree: struct.device_tree
                                     monitoring_data: struct.mon_data
+                                    tooltip: scope.con_element.tooltip
                                 }
                             )
                             element[0]
