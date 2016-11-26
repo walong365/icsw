@@ -7,13 +7,13 @@
                 <label class="control-label col-sm-4 icsw-formlabel">Task</label>
                 <div class="controls col-sm-8">
                     <div class='input-group maxwidth500'>
-                        <ui-select ng-model="edit_obj.task" ng-change="task_changed()">
+                        <ui-select ng-model="edit_obj.task_def" ng-change="task_changed()">
                             <ui-select-match class="ui-select-match" placeholder="Select a Task">
                                 {{ $select.selected.info }}
                             </ui-select-match>
                             <ui-select-choices
                                 class="ui-select-choices"
-                                repeat="entry.idx as entry in task_container.list | props_filter:{info:$select.search}"
+                                repeat="entry.task_def_id as entry in task_container.list | props_filter:{info:$select.search}"
                             >
                                 <div ng-bind-html="entry.info | highlight: $select.search"></div>
                             </ui-select-choices>
@@ -29,10 +29,21 @@
             </div>
         </fieldset>
         <fieldset>
-            <legen>{{ active_task.json.taskStep.length }} Steps defined</legen>
+            <legend>Settings</legend>
+            <div class="form-group">
+                <label class="control-label col-sm-4 icsw-formlabel">
+                    Show guide
+                </label>
+                <div class="controls col-sm-8">
+                    <icsw-tools-yes-no flag="settings.show_guide"></icsw-tools-yes-no>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset>
+            <legend>{{ new_task_def.json.taskStep.length }} Steps defined</legend>
             <ul class="list-group">
-                <li class="list-group-item" ng-repeat="step in active_task.json.taskStep">
-                    <h4>Step {{ step.$$idx + 1 }} of {{ active_task.json.taskStep.length }}:</h4>
+                <li class="list-group-item" ng-repeat="step in new_task_def.json.taskStep">
+                    <h4>Step {{ step.$$idx + 1 }} of {{ new_task_def.json.taskStep.length }}:</h4>
                     {{ step.$$info_str }}
                 </li>
             </ul>
@@ -49,6 +60,12 @@
                     size="xs"
                     type="modify"
                     ng-click="choose_task($event)"
+                ></icsw-tools-button>
+                <icsw-tools-button
+                    type="show"
+                    size="xs"
+                    ng-click="hide_guide($event)"
+                    icsw-value="'hide'"
                 ></icsw-tools-button>
                 Active Task: {{ struct.active_task.task_def.name }}
                 <icsw-task-progress-display></icsw-task-progress-display>

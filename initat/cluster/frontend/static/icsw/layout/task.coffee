@@ -42,21 +42,21 @@ angular.module(
 
     class icswContainer
         constructor: (@id_path) ->
-            @idx = 0
             @list = []
             @lut = {}
 
         feed: (el) =>
-            el.idx = @idx
             @list.push(el)
             if @id_path? and @id_path
                 @lut[_.get(el, @id_path)] = el
-            @idx++
+                @lut[el.task_def_id] = el
             # console.log @lut, @list
 
     class icswTaskDef
         # taskdefinition, container for Defined Tasks
         constructor: (@json) ->
+            struct.task_def_id++
+            @task_def_id = struct.task_def_id
             # simple settings
             @name = @json.name
             @info = "#{@json.name} (#{@json.app})"
@@ -79,10 +79,19 @@ angular.module(
 
     class icswTask
         # actual task, adds state control
-        constructor: (tdef) ->
+        constructor: (tdef, settings) ->
+            struct.task_id++
+            @task_id = struct.task_id
             @$$step_valid = false
             @task_def = tdef
+            @settings = {}
+            _.assignIn(@settings, settings)
+            console.log "s=", @settings
             @start()
+
+        hide_guide: () =>
+            @settings.show_guide = false
+            _signal()
 
         start: () =>
             # start task
@@ -136,6 +145,10 @@ angular.module(
         task_container: new icswContainer("json[name]")
         # keyboard shortcuts defined
         keys_defined: false
+        # task definition id
+        task_def_id: 0
+        # running task id
+        task_id: 0
     }
 
     # key helper functions
@@ -195,16 +208,25 @@ angular.module(
         edit_scope.task_container = struct.task_container
         # need object for ui-select to work properly
         if struct.active_task
-            edit_scope.edit_obj = {task: struct.active_task.task_def.idx}
+            console.log "*", struct.active_task
+            edit_scope.edit_obj = {
+                task_def: struct.active_task.task_def.task_def_id
+            }
             edit_scope.running_task = struct.active_task
+            edit_scope.settings = edit_scope.running_task.settings
             cancel_label = "Cancel Task"
         else
-            edit_scope.edit_obj = {task: 0}
+            edit_scope.settings = {
+                show_guide: true
+            }
+            edit_scope.edit_obj = {
+                task_def: edit_scope.task_container.list[0].task_def_id
+            }
             edit_scope.running_task = null
             cancel_label = "Cancel"
 
         edit_scope.task_changed = () ->
-            edit_scope.active_task = edit_scope.task_container.list[edit_scope.edit_obj.task]
+            edit_scope.new_task_def = edit_scope.task_container.lut[edit_scope.edit_obj.task_def]
 
         edit_scope.task_changed()
 
@@ -217,7 +239,12 @@ angular.module(
                 cancel_label: cancel_label
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    struct.active_task = new icswTask(edit_scope.active_task)
+                    if struct.active_task and edit_scope.new_task_def.task_def_id == edit_scope.running_task.task_def.task_def_id
+                        # modify current task
+                        true
+                    else
+                        # create new task
+                        struct.active_task = new icswTask(edit_scope.new_task_def, edit_scope.settings)
                     update_keys()
                     _signal()
                     d.resolve("done")
@@ -258,10 +285,6 @@ angular.module(
         if struct.active_task
             struct.active_task.check_validity()
     )
-    # task control
-    step_forward = (task) ->
-        task.step_forward()
-        _signal()
 
     return {
         get_struct: () ->
@@ -417,7 +440,7 @@ angular.module(
     _update = () ->
         if $scope.struct.task_struct.active_task
             $scope.struct.active_task = $scope.struct.task_struct.active_task
-            $scope.struct.display = true
+            $scope.struct.display = $scope.struct.active_task.settings.show_guide
         else
             $scope.struct.display = false
 
@@ -425,6 +448,10 @@ angular.module(
         $scope.struct.task_struct = icswTaskService.get_struct()
         _update()
     )
+
+    $scope.hide_guide = ($event) ->
+        if $scope.struct.active_task
+            $scope.struct.active_task.hide_guide()
 
     $scope.choose_task = ($event) ->
         return icswTaskService.choose_task()
