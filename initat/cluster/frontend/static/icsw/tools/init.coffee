@@ -391,7 +391,7 @@ angular.module(
         _state_data = angular.copy(_data.stateData)
         if not _state_data.params?
             _state_data.params = {
-                tab: null
+                targetTab: null
             }
 
         if resolve_map?

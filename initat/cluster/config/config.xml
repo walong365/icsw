@@ -748,7 +748,8 @@
             <description>
                 <infoText language="en">Add a new device and configure it</infoText>
             </description>
-            <taskStep routeName="main.devicecreate" routeParams_json="{'tab':'bla'}"></taskStep>
+            <taskStep routeName="main.devicecreate" routeParams_json="{'targetTab':'bla'}"></taskStep>
+            <taskStep routeName="main.categorytree" routeParams_json="{'targetTab':'manage'}"></taskStep>
             <taskStep routeName="main.deployboot"></taskStep>
             <taskStep routeName="main.useraccount"></taskStep>
         </task>

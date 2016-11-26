@@ -3,13 +3,13 @@
 </script>
 
 <script type="text/ng-template" id="icsw/main/category/tree.html">
-    <div class="container-fluid">
-        <uib-tabset>
-            <uib-tab heading="Category Assignment">
+    <div class="container-fluid" ng-controller="icswMainCategoryTreeCtrl">
+        <uib-tabset active="struct.active_tab">
+            <uib-tab heading="Category Assignment" index="'assign'">
                 <icsw-device-category-overview icsw-sel-man="0">
                 </icsw-device-category-overview>
             </uib-tab>
-            <uib-tab heading="Manage Categories">
+            <uib-tab heading="Manage Categories" index="'manage'">
                 <icsw-config-category-tree-edit mode="device"></icsw-config-category-tree-edit>
             </uib-tab>
         </uib-tabset>

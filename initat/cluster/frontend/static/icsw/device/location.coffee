@@ -999,6 +999,17 @@ angular.module(
         template: $templateCache.get("icsw.config.location")
         scope: true
     }
+]).controller("icswMainCategoryTreeCtrl",
+[
+    "$scope", "$stateParams",
+(
+    $scope, $stateParams,
+) ->
+    $scope.struct = {
+        active_tab: "assign"
+    }
+    if $stateParams.targetTab
+        $scope.struct.active_tab = $stateParams.targetTab
 ]).directive("icswDeviceLocationMonitoring",
 [
     "$templateCache",

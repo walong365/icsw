@@ -448,7 +448,6 @@ angular.module(
 
         stop_timeout: () =>
             if @fetch_timeout
-                console.log "ftc"
                 $timeout.cancel(@fetch_timeout)
                 @fetch_timeout = undefined
 
@@ -635,6 +634,8 @@ angular.module(
     icswAccessLevelService.install($scope)
 
     $scope.struct = {
+        # flag if scope is already closed (== received the destroy signal)
+        closed: false
         # tree is valid
         tree_valid: false
         # device tree
@@ -688,6 +689,7 @@ angular.module(
     }
 
     $scope.$on("$destroy", () ->
+        $scope.struct.closed = true
         if $scope.struct.boot_helper?
             $scope.struct.boot_helper.close()
     )
@@ -732,23 +734,25 @@ angular.module(
                 $scope.struct.boot_options.read_user_var($scope.struct.user)
                 $scope.struct.mother_server_list = ($scope.struct.device_tree.all_lut[_dev] for _dev in _mother_list)
                 $scope.struct.mother_server_lut = _.keyBy($scope.struct.mother_server_list, "idx")
-                if $scope.struct.boot_helper?
-                    $scope.struct.boot_helper.update($scope.struct.devices)
-                else
-                    $scope.struct.boot_helper = new icswGlobalBootHelper($scope.struct, $scope.struct.devices, salt_devices)
-                salt_devices()
-                # init boot_helper and fetch device network
-                hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
-                $q.allSettled(
-                    [
-                        $scope.struct.device_tree.enrich_devices(hs, ["network_info"])
-                        $scope.struct.boot_helper.fetch()
-                    ]
-                ).then(
-                    (result) ->
-                        # console.log result
-                        $scope.struct.tree_valid = true
-                )
+                if not $scope.struct.closed
+                    # do not initiated the boot_helper if the scope is already closed
+                    if $scope.struct.boot_helper?
+                        $scope.struct.boot_helper.update($scope.struct.devices)
+                    else
+                        $scope.struct.boot_helper = new icswGlobalBootHelper($scope.struct, $scope.struct.devices, salt_devices)
+                    salt_devices()
+                    # init boot_helper and fetch device network
+                    hs = icswDeviceTreeHelperService.create($scope.struct.device_tree, $scope.struct.devices)
+                    $q.allSettled(
+                        [
+                            $scope.struct.device_tree.enrich_devices(hs, ["network_info"])
+                            $scope.struct.boot_helper.fetch()
+                        ]
+                    ).then(
+                        (result) ->
+                            # console.log result
+                            $scope.struct.tree_valid = true
+                    )
         )
 
     # helper functions
