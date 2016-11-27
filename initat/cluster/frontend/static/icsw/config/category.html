@@ -1,34 +1,3 @@
-<script type="text/ng-template" id="icsw.config.category.tree.row">
-    <td style="font-family:monospace;">
-        <span ng-bind-html="get_space(obj.depth )"></span>
-        {{ obj.name || '[TLN]' }}
-    </td>
-    <td>
-        <span ng-show="obj.depth">{{ obj.full_name }}</span>
-    </td>
-    <td>{{ obj.comment }}</td>
-    <td>
-        <span ng-show="obj.depth > 1">{{ obj.num_refs || '---' }}</span>
-    </td>
-    <td class="text-center">
-        <span ng-bind-html="obj.useable | yesno3"></span>
-    </td>
-    <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.latitude | number:3 }}</td>
-    <td ng-if="is_location(obj) && !obj.useable"></td>
-    <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.longitude | number:3 }}</td>
-    <td ng-if="is_location(obj) && !obj.useable"></td>
-    <td ng-if="is_location(obj)" class="text-center">{{ obj.locked && 'locked' || 'unlocked' }}</td>
-    <td ng-if="is_location(obj)" class="text-center">{{ obj.physical && 'physical' || 'structural' }}</td>
-    <td ng-if="is_location(obj)" class="text-center">{{ obj.$gfx_list.length }}</td>
-    <td ng-if="is_device(obj)" class="text-center"><span ng-bind-html="obj.asset | yesno3 "></span></td>
-    <td>
-        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
-    </td>
-    <td>
-        <icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
-    </td>
-</script>
-
 <script type="text/ng-template" id="icsw.config.category.tree">
     <h3>
         {{ mode_display | capitalize }} Categories ({{ struct.dn_tree.mode_entries.length }}
@@ -98,6 +67,37 @@
             <icsw-config-category-contents-viewer icsw-category="selected_category"></icsw-config-category-contents-viewer>
         </div>
     </div>
+</script>
+
+<script type="text/ng-template" id="icsw.config.category.tree.row">
+    <td style="font-family:monospace;">
+        <span ng-bind-html="get_space(obj.depth )"></span>
+        {{ obj.name || '[TLN]' }}
+    </td>
+    <td>
+        <span ng-show="obj.depth">{{ obj.full_name }}</span>
+    </td>
+    <td>{{ obj.comment }}</td>
+    <td class="text-center">
+        <span ng-show="obj.depth > 1">{{ obj.num_refs || '---' }}</span>
+    </td>
+    <td class="text-center">
+        <span ng-bind-html="obj.useable | yesno3"></span>
+    </td>
+    <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.latitude | number:3 }}</td>
+    <td ng-if="is_location(obj) && !obj.useable"></td>
+    <td ng-if="is_location(obj) && obj.useable" class="text-right">{{ obj.longitude | number:3 }}</td>
+    <td ng-if="is_location(obj) && !obj.useable"></td>
+    <td ng-if="is_location(obj)" class="text-center">{{ obj.locked && 'locked' || 'unlocked' }}</td>
+    <td ng-if="is_location(obj)" class="text-center">{{ obj.physical && 'physical' || 'structural' }}</td>
+    <td ng-if="is_location(obj)" class="text-center">{{ obj.$gfx_list.length }}</td>
+    <td ng-if="is_device(obj)" class="text-center"><span ng-bind-html="obj.asset | yesno3 "></span></td>
+    <td>
+        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
+    </td>
+    <td>
+        <icsw-tools-button type="delete" size="xs" ng-click="delete($event, obj)" ng-show="obj.depth > 1"></icsw-tools-button>
+    </td>
 </script>
 
 <script type="text/ng-template" id="icsw.config.category.contents_viewer">

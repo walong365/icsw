@@ -43,14 +43,15 @@ angular.module(
 (
     $scope,
 ) ->
-    $scope.selected_category = (entry) ->
-        $scope.struct.current_cat = entry
     $scope.struct = {
         # devices
         devices: []
         # current category (==selected)
         current_cat: undefined
     }
+
+    $scope.select_category = ($event, entry) ->
+        $scope.struct.current_cat = entry
 
     $scope.new_devsel = (devs) ->
         $scope.struct.devices.length = 0
