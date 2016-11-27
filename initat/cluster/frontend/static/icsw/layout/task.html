@@ -42,7 +42,7 @@
         <fieldset>
             <legend>{{ new_task_def.json.taskStep.length }} Steps defined</legend>
             <ul class="list-group">
-                <li class="list-group-item" ng-repeat="step in new_task_def.json.taskStep">
+                <li ng-class="lgi_class(step)" ng-repeat="step in new_task_def.json.taskStep">
                     <h4>Step {{ step.$$idx + 1 }} of {{ new_task_def.json.taskStep.length }}:</h4>
                     {{ step.$$info_str }}
                 </li>

@@ -36,7 +36,6 @@ angular.module(
     icswDeviceTreeService, icswPeerInformationService, DeviceOverviewService,
 ) ->
 
-    console.log "state=", $state.current, $stateParams
     $scope.struct = {
         # device tree
         device_tree: undefined
@@ -195,7 +194,5 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.create.mask")
         controller: "icswDeviceCreateCtrl"
-        link: (scope, element, attrs) ->
-            console.log "sp=", $stateParams
     }
 ])

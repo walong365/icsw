@@ -230,6 +230,14 @@ angular.module(
 
         edit_scope.task_changed()
 
+        edit_scope.lgi_class = (item) ->
+            _class = ["list-group-item"]
+            if struct.active_task and edit_scope.new_task_def.task_def_id == edit_scope.running_task.task_def.task_def_id
+                # modifying current task
+                if item.$$idx == struct.active_task._step_idx
+                    _class.push("active")
+            return _class.join(" ")
+
         icswComplexModalService(
             {
                 message: $compile($templateCache.get("icsw.task.choose.task"))(edit_scope)
@@ -535,6 +543,8 @@ angular.module(
                     )
 
                 )
+            if not _struct.active_task
+                return null
             return div(
                 {
                     key: "top"
