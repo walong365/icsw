@@ -870,7 +870,7 @@ angular.module(
 ) ->
     return {
         restrict: "EA"
-        template: "<icsw-react-tree ng-if='struct.tree_ready' icsw-tree-config='struct.disp_cat_tree'></icsw-react-tree>"
+        template: $templateCache.get("icsw.config.category.tree.select")
         scope:
             # undefined, single object or list of objects (device, config or mon_check_command)
             edit_obj: "=editObj"
@@ -924,6 +924,12 @@ angular.module(
         cat_tree: undefined
         # monitoring data for filter mode
         mon_data: undefined
+        # current selection
+        current_selection: null
+        # new (== target) selection
+        new_selection: null
+        # selection changed
+        sel_changed: false
     }
 
     # selected category, used in directive
@@ -1069,8 +1075,12 @@ angular.module(
                         if _cat not of sel_cat
                             sel_cat[_cat] = []
                         sel_cat[_cat].push(_obj.idx)
+                        sel_cat[_cat].sort()
             else
                 sel_cat = {}
+            $scope.struct.current_selection = _.cloneDeep(sel_cat)
+            $scope.struct.new_selection = _.cloneDeep(sel_cat)
+            $scope.struct.sel_changed = false
         else
             # icswLivestatusFilter set, only some categories selectable und those are preselected
             if $scope.$$previous_filter?
@@ -1230,19 +1240,80 @@ angular.module(
                 _dct.lut[_node.parent.struct.idx].add_child(t_entry)
         _dct.show_selected(true)
 
+    $scope.cancel_it = ($event) ->
+        # cancel selection, reset to original one
+        sel_cat = $scope.struct.current_selection
+        for _obj in $scope.struct.objects
+            _obj.categories.length = 0
+            for _cat_idx, _obj_idxs of sel_cat
+                if _obj.idx in _obj_idxs
+                    _obj.categories.push(_cat_idx)
+        $scope.struct.sel_changed = false
+        build_tree()
+
+    $scope.modify_it = ($event) ->
+        # save selection to server
+        # build change list
+        change_list = []
+        for cat_idx, _new_sel of $scope.struct.new_selection
+            if cat_idx of $scope.struct.current_selection
+                _prev_sel = $scope.struct.current_selection[cat_idx]
+            else
+                _prev_sel = []
+            if not _.isEqual(_prev_sel, _new_sel)
+                _cat = $scope.struct.cat_tree.lut[cat_idx]
+                _to_add = (_idx for _idx in _new_sel when _idx not in _prev_sel)
+                _to_remove = (_idx for _idx in _prev_sel when _idx not in _new_sel)
+                if _to_add.length
+                    change_list.push([true, _cat, _to_add])
+                if _to_remove.length
+                    change_list.push([false, _cat, _to_remove])
+        if change_list.length
+            blockUI.start()
+            $q.all(
+                (
+                    icswConfigCategoryModifyCall(
+                        c_entry[2]
+                        [c_entry[1]]
+                        c_entry[0]
+                    ) for c_entry in change_list
+                )
+            ).then(
+                (done) ->
+                    blockUI.stop()
+                    # build_tree is called via $rootScope signal
+
+            )
+
     $scope.new_selection = (t_entry, new_sel) ->
         # console.log "S", t_entry, new_sel
         if $scope.struct.mode == "obj"
-            blockUI.start()
-            icswConfigCategoryModifyCall(
-                (_entry.idx for _entry in $scope.struct.objects)
-                [t_entry.obj]
-                t_entry.selected
-            ).then(
-                (res) ->
-                    blockUI.stop()
-                    # build_tree is called via $rootScope signal
-            )
+            # console.log "C", $scope.struct.current_selection, $scope.struct.new_selection
+            # console.log _.isEqual($scope.struct.current_selection, $scope.struct.new_selection)
+            if t_entry.obj.idx not of $scope.struct.new_selection
+                $scope.struct.new_selection[t_entry.obj.idx] = []
+            _sel_s = $scope.struct.new_selection[t_entry.obj.idx]
+            for _obj in $scope.struct.objects
+                if t_entry.selected
+                    # add
+                    if _obj.idx not in _sel_s
+                        _sel_s.push(_obj.idx)
+                else
+                    # remove
+                    _.remove(_sel_s, (entry) => return entry == _obj.idx)
+            _sel_s.sort()
+            $scope.struct.sel_changed = not _.isEqual($scope.struct.current_selection, $scope.struct.new_selection)
+            # now handled by modify_it call
+            # blockUI.start()
+            # icswConfigCategoryModifyCall(
+            #     (_entry.idx for _entry in $scope.struct.objects)
+            #     [t_entry.obj]
+            #     t_entry.selected
+            # ).then(
+            #     (res) ->
+            #         blockUI.stop()
+            #         # build_tree is called via $rootScope signal
+            # )
         else
             send_selection_to_filter(new_sel)
 ])
