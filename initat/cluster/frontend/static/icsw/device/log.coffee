@@ -170,7 +170,52 @@ device_logs = angular.module(
         data_loaded: false
         user_tree: undefined
         websocket: undefined
+
+        user_names: ['All Users']
+        selected_username: undefined
+
+        sources: ['All Sources']
+        selected_source: undefined
+
+        levels: ['All Levels']
+        selected_level: undefined
     }
+
+    $scope.on_selected_user = (username) ->
+        if username == 'All Users'
+            $scope.struct.selected_username = undefined
+
+    $scope.on_selected_source = (source) ->
+        if source == 'All Sources'
+            $scope.struct.selected_source = undefined
+
+    $scope.on_selected_level = (level) ->
+        if level == 'All Levels'
+            $scope.struct.selected_level = undefined
+
+
+    $scope.is_excluded_obj = (obj) ->
+        excluded = false
+
+        if $scope.struct.selected_username != undefined && $scope.struct.selected_username != obj.user_resolved
+            excluded = true
+
+        if $scope.struct.selected_source != undefined && $scope.struct.selected_source != obj.source.identifier
+            excluded = true
+
+        if $scope.struct.selected_level != undefined && $scope.struct.selected_level != obj.level.name
+            excluded = true
+
+        return excluded
+
+    update_filter_lists = (device_log_entry) ->
+        if !(device_log_entry.user_resolved in $scope.struct.user_names)
+            $scope.struct.user_names.push(device_log_entry.user_resolved)
+        if !(device_log_entry.source.identifier in $scope.struct.sources)
+            $scope.struct.sources.push(device_log_entry.source.identifier)
+        if !(device_log_entry.level.name in $scope.struct.levels)
+            $scope.struct.levels.push(device_log_entry.level.name)
+
 
     device = $scope.device
 
@@ -196,6 +241,8 @@ device_logs = angular.module(
                     log_entry.user_resolved = result[1].user_lut[log_entry.user].$$long_name
 
                 device.$$device_log_entries_list.push(log_entry)
+                update_filter_lists(log_entry)
+
                 if log_entry.idx > high_idx
                     high_idx = log_entry.idx
 
@@ -225,6 +272,7 @@ device_logs = angular.module(
                     $timeout(
                         () ->
                             device.$$device_log_entries_list.push(new_log_entry)
+                            update_filter_lists(new_log_entry)
                         0
                     )
 

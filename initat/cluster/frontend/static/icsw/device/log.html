@@ -116,15 +116,51 @@
                 </tr>
                 <tr>
                     <th st-sort="date" st-sort-default="reverse" style="width: 150px">Time</th>
-                    <th st-sort="user" style="width: 150px">User</th>
+                    <th st-sort="user_resolved" style="width: 150px">User</th>
                     <th st-sort="source.identifier" style="width: 150px">Source</th>
                     <th st-sort="level.level" style="width: 150px">Level</th>
                     <th>Text</th>
                 </tr>
+                <tr>
+                    <th></th>
+                    <th>
+                        <ui-select on-select="on_selected_user($select.selected)" ng-model="struct.selected_username">
+                            <ui-select-match class="ui-select-match" placeholder="Select User">
+                                {{ $select.selected }}
+                            </ui-select-match>
+                            <ui-select-choices repeat="username in struct.user_names | filter: $select.search">
+                                <div ng-bind="username"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </th>
+                    <th>
+                        <ui-select on-select="on_selected_source($select.selected)" ng-model="struct.selected_source">
+                            <ui-select-match class="ui-select-match" placeholder="Select Source">
+                                {{ $select.selected }}
+                            </ui-select-match>
+                            <ui-select-choices repeat="source in struct.sources | filter: $select.search">
+                                <div ng-bind="source"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </th>
+                    <th>
+                        <ui-select on-select="on_selected_level($select.selected)" ng-model="struct.selected_level">
+                            <ui-select-match class="ui-select-match" placeholder="Select Level">
+                                {{ $select.selected }}
+                            </ui-select-match>
+                            <ui-select-choices repeat="level in struct.levels | filter: $select.search">
+                                <div ng-bind="level"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </th>
+                    <th>
+                        <input st-search="text" placeholder="Filter by text" class="input-sm form-control" type="search"/>
+                    </th>
+                </tr>
             </thead>
 
             <tbody>
-                <tr ng-repeat="obj in entries_displayed">
+                <tr ng-repeat="obj in entries_displayed" ng-if="!is_excluded_obj(obj)">
                     <td>
                         {{ obj.pretty_date }}
                     </td>
