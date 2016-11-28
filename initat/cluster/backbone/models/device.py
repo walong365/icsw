@@ -914,6 +914,7 @@ class DeviceLogEntry(models.Model):
     level = models.ForeignKey("LogLevel")
     text = models.CharField(max_length=765, default="")
     date = models.DateTimeField(auto_now_add=True)
+    entry_counter = models.IntegerField()
 
     @staticmethod
     def new(**kwargs):
@@ -952,6 +953,14 @@ class DeviceLogEntry(models.Model):
             self.level.level,
         )
 
+@receiver(signals.pre_save, sender=DeviceLogEntry)
+def device_log_entry_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        cur_inst = kwargs["instance"]
+
+        entries = DeviceLogEntry.objects.filter(device=cur_inst.device).count()
+
+        cur_inst.entry_counter = entries + 1
 
 @receiver(signals.post_save, sender=DeviceLogEntry)
 def device_log_entry_post_save(sender, **kwargs):
@@ -965,7 +974,8 @@ def device_log_entry_post_save(sender, **kwargs):
             "device": cur_inst.device.idx,
             "user": cur_inst.user.idx if cur_inst.user else None,
             "level": cur_inst.level.name,
-            "source": cur_inst.source.identifier
+            "source": cur_inst.source.identifier,
+            "entry_counter": cur_inst.entry_counter
         }
 
         propagate_channel_object("device_log_entries", info_obj)

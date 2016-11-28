@@ -70,7 +70,7 @@ device_logs = angular.module(
             $scope.struct.log_lut[json_dict.idx] = true
             $timeout(
                 () ->
-                    $scope.struct.device_lut[json_dict.device].$$device_log_entries_count += 1
+                    $scope.struct.device_lut[json_dict.device].$$device_log_entries_count = json_dict.entry_counter
                     $scope.struct.device_lut[json_dict.device].$$device_log_entries_bg_color_class = info_available_class
                 0
             )
@@ -170,42 +170,90 @@ device_logs = angular.module(
         data_loaded: false
         user_tree: undefined
         websocket: undefined
+
+        user_names: ['All Users']
+        selected_username: undefined
+
+        sources: ['All Sources']
+        selected_source: undefined
+
+        levels: ['All Levels']
+        selected_level: undefined
+
+        device_log_entries: []
+        device_log_entries_lut: {}
+        device_log_entries_high_counter: 0
     }
+
+    $scope.on_selected_user = (username) ->
+        if username == 'All Users'
+            $scope.struct.selected_username = undefined
+
+    $scope.on_selected_source = (source) ->
+        if source == 'All Sources'
+            $scope.struct.selected_source = undefined
+
+    $scope.on_selected_level = (level) ->
+        if level == 'All Levels'
+            $scope.struct.selected_level = undefined
+
+
+    $scope.is_excluded_obj = (obj) ->
+        excluded = false
+
+        if $scope.struct.selected_username != undefined && $scope.struct.selected_username != obj.user_resolved
+            excluded = true
+
+        if $scope.struct.selected_source != undefined && $scope.struct.selected_source != obj.source.identifier
+            excluded = true
+
+        if $scope.struct.selected_level != undefined && $scope.struct.selected_level != obj.level.name
+            excluded = true
+
+        return excluded
+
+    update_filter_lists = (device_log_entry) ->
+        if !(device_log_entry.user_resolved in $scope.struct.user_names)
+            $scope.struct.user_names.push(device_log_entry.user_resolved)
+        if !(device_log_entry.source.identifier in $scope.struct.sources)
+            $scope.struct.sources.push(device_log_entry.source.identifier)
+        if !(device_log_entry.level.name in $scope.struct.levels)
+            $scope.struct.levels.push(device_log_entry.level.name)
+
 
     device = $scope.device
 
-    device.$$device_log_entries_list = []
-    device.$$device_log_entries_lut = {}
+    handle_log_entry = (log_entry) ->
+        log_entry.pretty_date = moment(log_entry.date).format("YYYY-MM-DD HH:mm:ss")
+        log_entry.user_resolved = "N/A"
+        if log_entry.user != null
+            log_entry.user_resolved = result[1].user_lut[log_entry.user].$$long_name
 
-    $q.all(
-        [
-            Restangular.all(ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LIST.slice(1)).getList(
-                {
-                    device_pks: angular.toJson([device.idx])
-                    high_idx: 0
-                }
-            )
-            icswUserGroupRoleTreeService.load($scope.$id)
-        ]
+        $scope.struct.device_log_entries.push(log_entry)
+        update_filter_lists(log_entry)
+
+        $scope.struct.device_log_entries_lut[log_entry.entry_counter] = log_entry
+
+        if log_entry.entry_counter > $scope.struct.device_log_entries_high_counter
+            $scope.struct.device_log_entries_high_counter = log_entry.entry_counter
+
+    icswUserGroupRoleTreeService.load($scope.$id).then((result) ->
+        $scope.struct.user_tree = result
+
+        Restangular.all(ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LIST.slice(1)).getList(
+            {
+                device_pks: angular.toJson([device.idx])
+            }
         ).then((result) ->
-            $scope.struct.user_tree = result[1]
-            for log_entry in result[0]
-                log_entry.pretty_date = moment(log_entry.date).format("YYYY-MM-DD HH:mm:ss")
-                log_entry.user_resolved = "N/A"
-                if log_entry.user != null
-                    log_entry.user_resolved = result[1].user_lut[log_entry.user].$$long_name
+            for log_entry in result
+                handle_log_entry(log_entry)
 
-                device.$$device_log_entries_list.push(log_entry)
-                if log_entry.idx > high_idx
-                    high_idx = log_entry.idx
-
-                device.$$device_log_entries_lut[log_entry.idx] = log_entry
+            $scope.struct.data_loaded = true
 
             $scope.struct.websocket = new WebSocket("ws://" + window.location.host + "/icsw/ws/device_log_entries/")
-
             $scope.struct.websocket.onmessage = (data) ->
                 json_dict = JSON.parse(data.data)
-                if json_dict.device == device.idx && device.$$device_log_entries_lut[json_dict.idx] == undefined
+                if json_dict.device == device.idx && $scope.struct.device_log_entries_lut[json_dict.entry_counter] == undefined
                     new_log_entry = {}
 
                     new_log_entry.idx = json_dict.idx
@@ -219,17 +267,38 @@ device_logs = angular.module(
                     new_log_entry.level = {}
                     new_log_entry.level.name = json_dict.level
                     new_log_entry.text = json_dict.text
+                    new_log_entry.entry_counter = json_dict.entry_counter
 
-                    device.$$device_log_entries_lut[new_log_entry.idx] = new_log_entry
+                    $scope.struct.device_log_entries_lut[new_log_entry.entry_counter] = new_log_entry
 
                     $timeout(
                         () ->
-                            device.$$device_log_entries_list.push(new_log_entry)
+                            $scope.struct.device_log_entries.push(new_log_entry)
+                            update_filter_lists(new_log_entry)
                         0
                     )
 
-            $scope.struct.data_loaded = true
+                    $scope.struct.device_log_entries_high_counter = new_log_entry.entry_counter
+
+                    missing_entries = []
+                    check_index = 1
+                    while check_index < $scope.struct.device_log_entries_high_counter
+                        if $scope.struct.device_log_entries_lut[check_index] == undefined
+                            missing_entries.push(check_index)
+                        check_index += 1
+
+                    if missing_entries.length > 0
+                        Restangular.all(ICSW_URLS.DEVICE_DEVICE_LOG_ENTRY_LIST.slice(1)).getList(
+                            {
+                                device_pks: angular.toJson([device.idx])
+                                entry_counters: angular.toJson(missing_entries)
+                            }).then((result) ->
+                                for log_entry in result
+                                    handle_log_entry(log_entry)
+                        )
+
         )
+    )
 
     $scope.$on("$destroy", () ->
         if $scope.struct.websocket?

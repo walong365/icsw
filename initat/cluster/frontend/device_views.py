@@ -1462,18 +1462,18 @@ class SystemCompletionIgnoreToggle(View):
 class DeviceLogEntryViewSet(viewsets.ViewSet):
     @method_decorator(login_required)
     def list(self, request):
-        high_idx = 0
-        if "high_idx" in request.query_params:
-            high_idx = int(request.query_params["high_idx"])
         prefetch_list = [
             "source",
             "level"
         ]
 
         if "device_pks" in request.query_params:
-            queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).filter(
-                Q(device__in=json.loads(request.query_params.getlist("device_pks")[0]), idx__gt=high_idx)
-            )
+            device_pks = json.loads(request.query_params.getlist("device_pks")[0])
+            if "entry_counters" in request.query_params:
+                entry_counters = json.loads(request.query_params.getlist("entry_counters")[0])
+                queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).filter(device__in=device_pks, entry_counter__in=entry_counters)
+            else:
+                queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).filter(device__in=device_pks)
         else:
             queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).all()
 
