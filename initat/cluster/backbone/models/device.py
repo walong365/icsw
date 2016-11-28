@@ -914,7 +914,7 @@ class DeviceLogEntry(models.Model):
     level = models.ForeignKey("LogLevel")
     text = models.CharField(max_length=765, default="")
     date = models.DateTimeField(auto_now_add=True)
-    entry_counter = models.IntegerField()
+    entry_counter = models.IntegerField(default=1)
 
     @staticmethod
     def new(**kwargs):
@@ -953,14 +953,15 @@ class DeviceLogEntry(models.Model):
             self.level.level,
         )
 
+
 @receiver(signals.pre_save, sender=DeviceLogEntry)
 def device_log_entry_pre_save(sender, **kwargs):
     if "instance" in kwargs:
         cur_inst = kwargs["instance"]
-
+        # very costly and not safe against races, to be improved ...
         entries = DeviceLogEntry.objects.filter(device=cur_inst.device).count()
-
         cur_inst.entry_counter = entries + 1
+
 
 @receiver(signals.post_save, sender=DeviceLogEntry)
 def device_log_entry_post_save(sender, **kwargs):

@@ -909,17 +909,25 @@ class DomainTypeEnum(models.Model):
 
     @staticmethod
     def create_db_entry(domain_enum):
+        from initat.cluster.backbone.models import ConfigServiceEnum
+        _dict = {}
+        for _type in {"default", "domain"}:
+            _val = getattr(domain_enum.value, "{}_enum".format(_type))
+            if _val is not None:
+                _dict[_type] = ConfigServiceEnum.objects.get(Q(enum_name=_val.name))
+            else:
+                _dict[_type] = None
         _new_entry = DomainTypeEnum.objects.create(
             enum_name=domain_enum.name,
             name=domain_enum.value.name,
             info=domain_enum.value.info,
-            default_enum=domain_enum.value.default_enum,
-            domain_enum=domain_enum.value.domain_enum,
+            default_enum=_dict["default"],
+            domain_enum=_dict["domain"],
         )
         return _new_entry
 
 
-class DomainDefinition(models.Model):
+class DistributedService(models.Model):
     idx = models.AutoField(primary_key=True)
     # link to enum
     domaintypeenum = models.OneToOneField("backbone.domaintypeenum")
@@ -929,12 +937,12 @@ class DomainDefinition(models.Model):
     created = models.DateTimeField(auto_now_add=True)
 
 
-class DomainDefinitionNode(models.Model):
+class DistributedServiceNode(models.Model):
     idx = models.AutoField(primary_key=True)
     # link to domaindefinition
-    domaindefinition = models.ForeignKey("backbone.domaindefinition")
+    domaindefinition = models.ForeignKey("backbone.distributedservice")
     # domain config
-    config = models.ForeignKey("backbone.device_config")
+    device_config = models.ForeignKey("backbone.device_config")
     # node type (default or domain, only one or none default allowed)
-    domain_node = models.BooleanField(default=False)
+    is_domain_node = models.BooleanField(default=False)
     created = models.DateTimeField(auto_now_add=True)

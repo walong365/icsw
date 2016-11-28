@@ -149,8 +149,8 @@ def _domain_enum_show_command(options):
             else:
                 _db_str = "no"
         if entry.name in _c_dict:
-            if options.sync:
-                _c_dict[entry.name].update_values(entry)
+            # if options.sync:
+            #     _c_dict[entry.name].update_values(entry)
             _db_str = "yes ({:d})".format(_c_dict[entry.name].pk)
         if entry.value.default_enum:
             _default_info = entry.value.default_enum.name
