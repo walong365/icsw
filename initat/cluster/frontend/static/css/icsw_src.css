@@ -548,3 +548,8 @@ th[st-sort]:not(.st-sort-ascent):not(.st-sort-descent):before {
     padding-right: 3px;
     vertical-align: middle;
 }
+
+/* fix for overflowing modal dialog content */
+.modal .modal-body {
+    overflow-y: auto;
+}
