@@ -76,7 +76,7 @@ def init_app_enum():
         _enums = _xml.get_config_enums(_inst)
         for _enum_str in _enums:
             if _enum_str.count("-"):
-                _err_str = "config-enum names in *.xml are not allowed to have dashes in there name: {}".format(
+                _err_str = "config-enum names in *.xml are not allowed to have dashes in their name: {}".format(
                     _enum_str,
                 )
                 raise SyntaxError(_err_str)

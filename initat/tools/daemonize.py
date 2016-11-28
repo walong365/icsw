@@ -29,6 +29,7 @@ import importlib
 import os
 import pwd
 import setproctitle
+import subprocess
 import sys
 
 import daemon
@@ -70,6 +71,7 @@ def main():
     _parser.add_argument("-d", dest="daemonize", default=False, action="store_true", help="daemonize process [%(default)s]")
     _parser.add_argument("--progname", default="", type=str, help="programm name for sys.argv [%(default)s]")
     _parser.add_argument("--modname", default="", type=str, help="python module to load [%(default)s]")
+    _parser.add_argument("--exename", default="", type=str, help="exe to start [%(default)s]")
     _parser.add_argument("--proctitle", default="", type=str, help="process title to set [%(default)s]")
     _parser.add_argument("--user", type=str, default="root", help="user to use for the process [%(default)s]")
     _parser.add_argument("--group", type=str, default="root", help="group to use for the process [%(default)s]")
@@ -79,7 +81,12 @@ def main():
     _parser.add_argument("--debug-flag", default=False, action="store_true", help="enable debug flag via environment (modify sys.path), [%(default)s]")
     _parser.add_argument("extra_args", nargs="*", type=str, help="extra  arguments")
     opts = _parser.parse_args()
-    _args = [opts.progname]
+    if opts.exename:
+        _mode = "exe"
+        _args = [opts.exename]
+    else:
+        _mode = "python"
+        _args = [opts.progname]
     if opts.user != "root":
         uid = get_uid_from_name(opts.user)[0]
     else:
@@ -96,6 +103,7 @@ def main():
     if opts.nice:
         os.nice(opts.nice)
     if opts.daemonize:
+        print("open")
         _daemon_context.open()
     else:
         if gids:
@@ -103,26 +111,41 @@ def main():
         if uid or gid:
             os.setgid(gid)
             os.setuid(uid)
-    if opts.debug:
-        # set debug flag
-        os.environ["ICSW_DEBUG_SOFTWARE"] = "1"
-        abs_path = os.path.dirname(__file__)
-        abs_path = os.path.split(os.path.split(abs_path)[0])[0]
-        sys.path.insert(0, abs_path)
-        _args.append("-d")
-        if opts.debug_flag:
-            os.environ["DEBUG_WEBFRONTEND"] = "yes"
-    if opts.extra_args:
-        _args.extend(opts.extra_args)
-    sys.argv = _args
-    setproctitle.setproctitle(opts.proctitle)
-    main_module = importlib.import_module(opts.modname)
-    if opts.daemonize:
-        # redirect IO-streams
-        from initat.tools.io_stream_helper import icswIOStream
-        sys.stdout = icswIOStream("/var/lib/logging-server/py_log_zmq")
-        sys.stderr = icswIOStream("/var/lib/logging-server/py_err_zmq")
-    main_module.main()
+    if _mode == "python":
+        # python path
+        if opts.debug:
+            # set debug flag
+            os.environ["ICSW_DEBUG_SOFTWARE"] = "1"
+            abs_path = os.path.dirname(__file__)
+            abs_path = os.path.split(os.path.split(abs_path)[0])[0]
+            sys.path.insert(0, abs_path)
+            _args.append("-d")
+            if opts.debug_flag:
+                os.environ["DEBUG_WEBFRONTEND"] = "yes"
+        if opts.extra_args:
+            _args.extend(opts.extra_args)
+        sys.argv = _args
+        setproctitle.setproctitle(opts.proctitle)
+        main_module = importlib.import_module(opts.modname)
+        if opts.daemonize:
+            # redirect IO-streams
+            from initat.tools.io_stream_helper import icswIOStream
+            sys.stdout = icswIOStream("/var/lib/logging-server/py_log_zmq")
+            sys.stderr = icswIOStream("/var/lib/logging-server/py_err_zmq")
+        main_module.main()
+    else:
+        # path for standard exe (munge, redis)
+        if opts.extra_args:
+            _args.extend(opts.extra_args)
+        setproctitle.setproctitle(opts.proctitle)
+        # if opts.daemonize:
+        #    # redirect IO-streams
+        #    from initat.tools.io_stream_helper import icswIOStream
+        #    sys.stdout = icswIOStream("/var/lib/logging-server/py_log_zmq")
+        #    sys.stderr = icswIOStream("/var/lib/logging-server/py_err_zmq")
+        os.execv(_args[0], _args)
+        # print("*", _args, os.getuid(), os.getgid())
+        # subprocess.call(_args)
 
 
 if __name__ == "__main__":

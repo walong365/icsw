@@ -37,7 +37,8 @@ from initat.icsw.service import instance
 from initat.icsw.service.tools import query_local_meta_server
 
 
-def enum_show_command(options):
+def _service_enum_show_command(options):
+
     from initat.cluster.backbone.server_enums import icswServiceEnum
     from initat.cluster.backbone.models import ConfigServiceEnum, config, config_catalog
     from initat.cluster.backbone import factories
@@ -45,6 +46,7 @@ def enum_show_command(options):
     from django.db.models import Q
 
     _c_dict = {entry.enum_name: entry for entry in ConfigServiceEnum.objects.all()}
+    print("")
     print("ServiceEnums defined: {:d}".format(len(icswServiceEnum)))
     _list = logging_tools.new_form_list()
     for entry in icswServiceEnum:
@@ -132,6 +134,50 @@ def enum_show_command(options):
                 print("    {} ({})".format(entry.name, unicode(entry.config_service_enum)))
 
 
+def _domain_enum_show_command(options):
+    from initat.cluster.backbone.domain_enum import icswDomainEnum
+    from initat.cluster.backbone.models import DomainTypeEnum
+    print("")
+    print("DomainEnums defined: {:d}".format(len(icswDomainEnum)))
+    _list = logging_tools.new_form_list()
+    _c_dict = {entry.enum_name: entry for entry in DomainTypeEnum.objects.all()}
+    for entry in icswDomainEnum:
+        if entry.name not in _c_dict:
+            if options.sync:
+                new_entry = DomainTypeEnum.create_db_entry(entry)
+                _c_dict[new_entry.enum_name] = new_entry
+            else:
+                _db_str = "no"
+        if entry.name in _c_dict:
+            if options.sync:
+                _c_dict[entry.name].update_values(entry)
+            _db_str = "yes ({:d})".format(_c_dict[entry.name].pk)
+        if entry.value.default_enum:
+            _default_info = entry.value.default_enum.name
+        else:
+            _default_info = "---"
+        if entry.value.domain_enum:
+            _domain_info = entry.value.domain_enum.name
+        else:
+            _domain_info = "---"
+        _list.append(
+            [
+                logging_tools.form_entry(entry.name, header="EnumName"),
+                logging_tools.form_entry(entry.value.name, header="Name"),
+                logging_tools.form_entry(entry.value.info, header="Info"),
+                logging_tools.form_entry_center(_db_str, header="DB info"),
+                logging_tools.form_entry(_default_info, header="Default Enum"),
+                logging_tools.form_entry(_domain_info, header="Domain Enum"),
+            ]
+        )
+    print(unicode(_list))
+
+
+def enum_show_command(options):
+    _service_enum_show_command(options)
+    _domain_enum_show_command(options)
+
+
 def show_command(options):
     for f_name in options.files:
         _obj_name = f_name if not options.short_path else os.path.basename(f_name)
@@ -212,13 +258,19 @@ def show_command(options):
 
 
 def role_command(options):
-    basic_services = ['logging-server', 'meta-server']
+    basic_services = [
+        'logging-server',
+        'meta-server'
+    ]
     log_com = icsw_logging.get_logger("config", options)
     inst_xml = instance.InstanceXML(log_com)
     if options.role == "noctua":
         create_noctua_fixtures()
         services = basic_services + [
-            "md-sync-server", "md-config-server", "icinga-init", "nginx",
+            "md-sync-server",
+            "md-config-server",
+            "icinga-init",
+            "nginx",
             "uwsgi-init",
         ]
     print("starting necessary services...")

@@ -52,6 +52,7 @@ __all__ = [
     b"TOP_MONITORING_CATEGORY",
     b"location_gfx",
     b"device_mon_location",
+    b"DomainTypeEnum",
 ]
 
 # top monitoring category
@@ -891,3 +892,49 @@ def device_mon_location_pre_save(sender, **kwargs):
                 pass
             else:
                 raise(ValidationError("combination already used"))
+
+
+class DomainTypeEnum(models.Model):
+    # domain types (present: mother (for boot), monitor (for mon dist))
+    idx = models.AutoField(primary_key=True)
+    enum_name = models.CharField(max_length=255, default="", unique=True)
+    name = models.CharField(max_length=255, default="", unique=True)
+    info = models.TextField(default="", blank=True)
+    # default enum (for all devices without a set domain, for instance monitoring [==monitor-server])
+    default_enum = models.ForeignKey("backbone.configserviceenum", related_name="dte_default", null=True)
+    # enum required for defined domains (== boot)
+    domain_enum = models.ForeignKey("backbone.configserviceenum", related_name="dte_domain", null=True)
+    # creation date
+    created = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def create_db_entry(domain_enum):
+        _new_entry = DomainTypeEnum.objects.create(
+            enum_name=domain_enum.name,
+            name=domain_enum.value.name,
+            info=domain_enum.value.info,
+            default_enum=domain_enum.value.default_enum,
+            domain_enum=domain_enum.value.domain_enum,
+        )
+        return _new_entry
+
+
+class DomainDefinition(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # link to enum
+    domaintypeenum = models.OneToOneField("backbone.domaintypeenum")
+    # name
+    name = models.CharField(max_length=128, default="Default domain", unique=True)
+    # creation date
+    created = models.DateTimeField(auto_now_add=True)
+
+
+class DomainDefinitionNode(models.Model):
+    idx = models.AutoField(primary_key=True)
+    # link to domaindefinition
+    domaindefinition = models.ForeignKey("backbone.domaindefinition")
+    # domain config
+    config = models.ForeignKey("backbone.device_config")
+    # node type (default or domain, only one or none default allowed)
+    domain_node = models.BooleanField(default=False)
+    created = models.DateTimeField(auto_now_add=True)
