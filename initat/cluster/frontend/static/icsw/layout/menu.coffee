@@ -994,6 +994,10 @@ menu_module = angular.module(
         _fetch_selection_list("em_selection")
     )
 
+    $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"), (event) ->
+        _fetch_selection_list("em_selection")
+    )
+
     _get_list = (in_sel) ->
         if in_sel.length
             sel_groups = in_sel[3].length
