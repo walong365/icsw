@@ -140,6 +140,8 @@ def basic_availability_test(host, machine_name):
     sys.stdout.write("Checking availability of icsw interface ... ")
     sys.stdout.flush()
 
+    time.sleep(60)
+
     driver = Webdriver(
         base_url='http://{}/icsw/main.html'.format(host),
         command_executor='http://192.168.1.246:4444/wd/hub',
@@ -147,14 +149,8 @@ def basic_availability_test(host, machine_name):
     )
     driver.maximize_window()
 
-    time.sleep(60)
-
-    title = None
-    try:
-        driver.log_in('admin', 'abc123')
-        title = driver.title
-    except:
-        pass
+    driver.log_in('admin', 'abc123')
+    title = driver.title
 
     if title and title == 'Dashboard':
         sys.stdout.write("done\n")
