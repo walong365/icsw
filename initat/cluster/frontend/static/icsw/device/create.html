@@ -105,6 +105,19 @@
                         </div>
                     </div>
                     <div class="form-group">
+                        <label class="control-label col-md-3 icsw-formlabel">Device Selection</label>
+                        <div class="controls col-md-6">
+                            <ui-select ng-model="device_data.dev_selection" class="maxwidth500">
+                                <ui-select-match class="ui-select-match" placeholder="Please select">
+                                    {{ $select.selected.value }}
+                                </ui-select-match>
+                                <ui-select-choices class="ui-select-choices" repeat="option in struct.dev_sel_list | props_filter:{key:$select.search} track by option.key">
+                                    <div ng-bind-html="option.value | highlight: $select.search"></div>
+                                </ui-select-choices>
+                            </ui-select>
+                        </div>
+                    </div>
+                    <div class="form-group">
                         <div class="controls icsw-buttoncol" ng-class="form_data.comment.$invalid && 'has-error'">
                             <icsw-tools-button type="create" ng-disabled="form_data.$invalid" value="create Device" ng-click="create_device($event)"/>
                             <icsw-tools-button type="create" ng-disabled="form_data.$invalid" value="create Device and edit" ng-click="create_device_and_edit($event)"/>

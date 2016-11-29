@@ -27,57 +27,14 @@ import time
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device, net_ip, ActiveDeviceScanEnum, config
+from initat.cluster.backbone.models import device, ActiveDeviceScanEnum, config
 from initat.snmp.snmp_struct import ResultNode
-from initat.tools import logging_tools, process_tools, server_command, config_tools, threading_tools
-from initat.tools.server_mixins import EggConsumeMixin
+from initat.tools import logging_tools, process_tools, server_command, threading_tools
+from initat.tools.server_mixins import EggConsumeMixin, GetRouteToDevicesMixin
 from .config import global_config
 from .ext_com_scan import BaseScanMixin, ScanBatch, WmiScanMixin, Dispatcher
 from .hm_functions import HostMonitoringMixin
 from .snmp_functions import SNMPBatch
-
-
-class GetRouteToDevicesMixin(object):
-    def get_route_to_devices(self, dev_list):
-        src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
-        src_nds = src_dev.netdevice_set.all().values_list("pk", flat=True)
-        self.log(
-            u"device list: {}".format(
-                ", ".join(
-                    [
-                        unicode(cur_dev) for cur_dev in dev_list
-                    ]
-                )
-            )
-        )
-        router_obj = config_tools.RouterObject(self.log)
-        for cur_dev in dev_list:
-            routes = router_obj.get_ndl_ndl_pathes(
-                src_nds,
-                cur_dev.netdevice_set.all().values_list("pk", flat=True),
-                only_endpoints=True,
-                add_penalty=True
-            )
-            cur_dev.target_ip = None
-            if routes:
-                for route in sorted(routes):
-                    found_ips = net_ip.objects.filter(Q(netdevice=route[2]))
-                    if found_ips:
-                        cur_dev.target_ip = found_ips[0].ip
-                        break
-            if cur_dev.target_ip:
-                self.log(
-                    "contact device {} via {}".format(
-                        unicode(cur_dev),
-                        cur_dev.target_ip
-                    )
-                )
-            else:
-                self.log(
-                    u"no route to device {} found".format(unicode(cur_dev)),
-                    logging_tools.LOG_LEVEL_ERROR
-                )
-        del router_obj
 
 
 class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, HostMonitoringMixin, BaseScanMixin, WmiScanMixin, EggConsumeMixin):

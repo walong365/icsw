@@ -27,13 +27,13 @@ angular.module(
     icswRouteExtensionProvider.add_route("main.devicecreate")
 ]).controller("icswDeviceCreateCtrl",
 [
-    "$scope", "$timeout", "$window", "$templateCache", "$q", "blockUI", "ICSW_URLS",
-    "icswSimpleAjaxCall", "Restangular", "$state", "$stateParams",
-    "icswDeviceTreeService", "icswPeerInformationService", "DeviceOverviewService",
+    "$scope", "$timeout", "$window", "$templateCache", "$q", "blockUI", "ICSW_URLS", "ICSW_SIGNALS",
+    "icswSimpleAjaxCall", "Restangular", "$state", "$stateParams", "icswActiveSelectionService",
+    "icswDeviceTreeService", "icswPeerInformationService", "DeviceOverviewService", "$rootScope",
 (
-    $scope, $timeout, $window, $templateCache, $q, blockUI, ICSW_URLS,
-    icswSimpleAjaxCall, Restangular, $state, $stateParams,
-    icswDeviceTreeService, icswPeerInformationService, DeviceOverviewService,
+    $scope, $timeout, $window, $templateCache, $q, blockUI, ICSW_URLS, ICSW_SIGNALS,
+    icswSimpleAjaxCall, Restangular, $state, $stateParams, icswActiveSelectionService,
+    icswDeviceTreeService, icswPeerInformationService, DeviceOverviewService, $rootScope,
 ) ->
 
     $scope.struct = {
@@ -49,6 +49,12 @@ angular.module(
         base_open: true
         # image url
         img_url: "/icsw/api/v2/static/icinga/linux40.png"
+        # device selection
+        dev_sel_list: [
+            {key: "keep", value: "keep current Selection"}
+            {key: "add", value: "add to current Selection"}
+            {key: "replace", value: "replace current Selection"}
+        ]
     }
     $scope.device_data = {
         # localhost would be plane stupid
@@ -60,6 +66,7 @@ angular.module(
         routing_capable: false
         peer: 0
         icon_name: "linux40"
+        dev_selection: $scope.struct.dev_sel_list[0]
     }
 
     $scope.on_icon_select = (item, model, label) ->
@@ -157,6 +164,13 @@ angular.module(
                             }
 
                             $scope.struct.device_tree.register_device_scan($scope.struct.device_tree.all_lut[_dev_pk], scan_settings)
+
+                            # DEVICE SELECTION
+                            if $scope.device_data.dev_selection.key == "replace"
+                                icswActiveSelectionService.get_selection().deselect_all_devices()
+                            if $scope.device_data.dev_selection.key in ["add", "replace"]
+                                icswActiveSelectionService.current().add_selection({idx: _dev_pk})
+                                $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
 
                             $timeout(
                                 () ->

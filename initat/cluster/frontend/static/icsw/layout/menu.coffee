@@ -984,6 +984,10 @@ menu_module = angular.module(
     # wait for domain_tree_loaded save flags
     $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED_DTL"), (event) ->
         _fetch_selection_list("selection")
+        $rootScope.$on(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"), (event) ->
+            console.log("may this cause an error????")
+            _fetch_selection_list("em_selection")
+        )
     )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_SEL_SYNC_STATE_CHANGED_DTL"), (event) ->

@@ -33,7 +33,9 @@ import zmq
 from django.conf import settings
 from django.db.models import Q
 from initat.tools import config_tools, configfile, logging_tools, process_tools, \
-    server_command, server_mixins, threading_tools, uuid_tools, net_tools
+    server_command, threading_tools, uuid_tools, net_tools
+from initat.tools.server_mixins import GetRouteToDevicesMixin, ICSWBasePool, SendToRemoteServerMixin
+
 from lxml import etree
 from lxml.builder import E
 
@@ -43,7 +45,6 @@ from initat.cluster.backbone.models import device, snmp_scheme
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.var_cache import VarCache
-from initat.discovery_server.discovery import GetRouteToDevicesMixin
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.process import SNMPProcessContainer
 from .aggregate import aggregate_process
@@ -58,7 +59,7 @@ from .sensor_threshold import ThresholdContainer
 RRD_CACHED_PID = "/var/run/rrdcached/rrdcached.pid"
 
 
-class server_process(GetRouteToDevicesMixin, server_mixins.ICSWBasePool, RSyncMixin, server_mixins.SendToRemoteServerMixin):
+class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRemoteServerMixin):
     def __init__(self):
         self.__verbose = global_config["VERBOSE"]
         long_host_name, _mach_name = process_tools.get_fqdn()

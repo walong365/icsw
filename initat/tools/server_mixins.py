@@ -30,7 +30,9 @@ from enum import IntEnum
 
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
-    configfile, config_store, uuid_tools, logging_functions
+    configfile, config_store, uuid_tools, logging_functions, config_tools
+from initat.cluster.backbone.models import device, net_ip
+from django.db.models import Q
 
 MAX_RESEND_COUNTER = 5
 
@@ -1212,3 +1214,48 @@ class ICSWBasePoolClient(threading_tools.process_pool, NetworkBindMixin, ServerS
     # to use the log-function of the ConfigCheckMixin
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         ConfigCheckMixin.log(self, what, log_level)
+
+
+class GetRouteToDevicesMixin(object):
+    def get_route_to_devices(self, dev_list):
+        global_config = configfile.get_global_config(process_tools.get_programm_name())
+
+        src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
+        src_nds = src_dev.netdevice_set.all().values_list("pk", flat=True)
+        self.log(
+            u"device list: {}".format(
+                ", ".join(
+                    [
+                        unicode(cur_dev) for cur_dev in dev_list
+                    ]
+                )
+            )
+        )
+        router_obj = config_tools.RouterObject(self.log)
+        for cur_dev in dev_list:
+            routes = router_obj.get_ndl_ndl_pathes(
+                src_nds,
+                cur_dev.netdevice_set.all().values_list("pk", flat=True),
+                only_endpoints=True,
+                add_penalty=True
+            )
+            cur_dev.target_ip = None
+            if routes:
+                for route in sorted(routes):
+                    found_ips = net_ip.objects.filter(Q(netdevice=route[2]))
+                    if found_ips:
+                        cur_dev.target_ip = found_ips[0].ip
+                        break
+            if cur_dev.target_ip:
+                self.log(
+                    "contact device {} via {}".format(
+                        unicode(cur_dev),
+                        cur_dev.target_ip
+                    )
+                )
+            else:
+                self.log(
+                    u"no route to device {} found".format(unicode(cur_dev)),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+        del router_obj
