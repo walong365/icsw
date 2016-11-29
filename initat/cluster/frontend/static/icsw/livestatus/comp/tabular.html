@@ -53,7 +53,7 @@
                 </td>
             </tr>
             <tr>
-                <th st-sort="host_name" st-sort-default="true">Device</th>
+                <th st-sort="$$host_mon_result.display_name" st-sort-default="true">Device</th>
                 <th ng-show="show_column.DevFlags">DevFlags</th>
                 <th ng-show="show_column.DevCats">DevCats</th>
                 <th ng-show="show_column.State" colspan="2" st-sort="$$icswStateString">State</th>
@@ -165,7 +165,7 @@
                 </td>
             </tr>
             <tr>
-                <th st-sort="host_name" st-sort-default="true">Device</th>
+                <th st-sort="display_name" st-sort-default="true">Device</th>
                 <th ng-show="show_column.DevCats">DevCats</th>
                 <th ng-show="show_column.State" colspan="2" st-sort="$$icswStateString">State</th>
                 <th ng-show="show_column.Flags">Flags</th>
