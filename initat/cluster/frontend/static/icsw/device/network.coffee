@@ -1246,7 +1246,19 @@ angular.module(
             scope.select_tab = (name) ->
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_NETWORK_TAB_SELECTED"), name)
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_SVG_FULLSIZELAYOUT_SETUP"))
+        controller: "icswDeviceNetworkTotalCtrl"
     }
+]).controller("icswDeviceNetworkTotalCtrl", [
+    "$scope", "icswNetworkListService"
+(
+    $scope, icswNetworkListService
+) ->
+    $scope.struct = {
+        icsw_network_list_service: icswNetworkListService
+    }
+
+    console.log($scope.struct)
+
 ]).controller("icswDeviceNetworkClusterCtrl",
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular", "$q", "icswAccessLevelService", "ICSW_URLS", "icswSimpleAjaxCall",
@@ -1501,11 +1513,11 @@ angular.module(
 [
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
     "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
-    "toaster", "icswToolsSimpleModalService",
+    "toaster", "icswToolsSimpleModalService", "$timeout"
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
     icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
-    toaster, icswToolsSimpleModalService
+    toaster, icswToolsSimpleModalService, $timeout
 ) ->
 
     # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1513,6 +1525,8 @@ angular.module(
     # network_device_types_rest = Restangular.all(ICSW_URLS.REST_NETWORK_DEVICE_TYPE_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
     # domain_tree_node_list = []
     # domain_tree_node_dict = {}
+
+    tabs = []
 
     get_defer = (q_type) ->
         d = $q.defer()
@@ -1557,6 +1571,9 @@ angular.module(
     domain_tree = undefined
 
     return {
+        get_tabs: () ->
+            return tabs
+
         fetch: (scope) ->
             # console.log "start fetch"
             defer = $q.defer()
@@ -1716,6 +1733,55 @@ angular.module(
                             entry.device_full_name = devices[nd.device].full_name
                         network_display.iplist = iplist
                 )
+
+        close_tab : (to_be_closed_tab) ->
+            $timeout(
+                () ->
+                    tabs_tmp = []
+
+                    for tab in tabs
+                        if tab != to_be_closed_tab
+                            tabs_tmp.push(tab)
+
+                    tabs.length = 0
+                    for tab in tabs_tmp
+                        tabs.push(tab)
+                0
+            )
+
+        create_new_tab : (obj) ->
+            new_network_display = {}
+
+            new_network_display.active_network = obj
+            q_list = [
+                get_defer(Restangular.all(ICSW_URLS.REST_NET_IP_LIST.slice(1)).getList({"network" : obj.idx, "_order_by" : "ip"}))
+                get_defer(Restangular.all(ICSW_URLS.REST_NETDEVICE_LIST.slice(1)).getList({"net_ip__network" : obj.idx}))
+                get_defer(Restangular.all(ICSW_URLS.REST_DEVICE_LIST.slice(1)).getList({"netdevice__net_ip__network" : obj.idx}))
+            ]
+            $q.all(q_list).then(
+                (data) ->
+                    iplist = data[0]
+                    netdevices = icswTools.build_lut(data[1])
+                    devices = icswTools.build_lut(data[2])
+                    for entry in iplist
+                        nd = netdevices[entry.netdevice]
+                        entry.netdevice_name = nd.devname
+                        entry.device_full_name = devices[nd.device].full_name
+                    new_network_display.iplist = iplist
+
+                    tab = {
+                        heading: new_network_display.active_network.identifier
+                        network_display: new_network_display
+                    }
+
+                    dupe = false
+                    for old_tab in tabs
+                        if tab.heading == old_tab.heading
+                            dupe = true
+                            break
+                    if !dupe
+                        tabs.push(tab)
+            )
 
         # range functions
 
