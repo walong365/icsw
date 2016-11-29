@@ -329,7 +329,6 @@ angular.module(
                 # not interactive, simple list of graphs
                 _g_list = (path(_.pickBy(_element, (value, key) -> return not key.match(/\$/))) for _element in root_node.element_list)
             # _g_list = []
-
             _svg = svg(
                 {
                     key: "svg.top"
@@ -525,11 +524,10 @@ angular.module(
             draw_params = new icswBurstDrawParameters(
                 {
                     inner_radius: 0
-                    outer_radius: 20
+                    outer_radius: 160
                     start_ring: 2
                 }
             )
-            scope.width = 60
             wait_list = [
                 icswDeviceLivestatusDataService.retain(scope.$id, [scope.device])
             ]

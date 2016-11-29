@@ -16,8 +16,8 @@
 
 <script type="text/ng-template" id="icsw.config.category.tree.select">
     <div>
-        <icsw-tools-button size="xs" type="modify" ng-show="struct.sel_changed" ng-click="modify_it($event)"></icsw-tools-button>
-        <icsw-tools-button size="xs" type="revert" ng-show="struct.sel_changed" ng-click="cancel_it($event)"></icsw-tools-button>
+        <icsw-tools-button type="modify" ng-disabled="!struct.sel_changed" ng-click="modify_it($event)"></icsw-tools-button>
+        <icsw-tools-button type="revert" ng-disabled="!struct.sel_changed" ng-click="cancel_it($event)"></icsw-tools-button>
         <icsw-react-tree ng-if='struct.tree_ready' icsw-tree-config='struct.disp_cat_tree'></icsw-react-tree>
     </div>
 </script>

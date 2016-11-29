@@ -115,7 +115,10 @@ class server_process(server_mixins.ICSWBasePool):
             ("router", zmq.ROUTER, global_config["COMMAND_PORT"], self._new_com),  # @UndefinedVariable
         ]:
             client = self.zmq_context.socket(sock_type)
-            client.setsockopt(zmq.IDENTITY, my_0mq_id)  # @UndefinedVariable
+            try:
+                client.setsockopt(zmq.IDENTITY, my_0mq_id)  # @UndefinedVariable
+            except TypeError:
+                client.setsockopt_string(zmq.IDENTITY, my_0mq_id)
             client.setsockopt(zmq.LINGER, 100)  # @UndefinedVariable
             client.setsockopt(zmq.RCVHWM, 256)  # @UndefinedVariable
             client.setsockopt(zmq.SNDHWM, 256)  # @UndefinedVariable
