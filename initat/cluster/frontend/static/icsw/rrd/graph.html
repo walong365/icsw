@@ -30,8 +30,8 @@
                     <td>
                         <div class="input-group form-inline">
                             <icsw-rrd-graph-setting></icsw-rrd-graph-setting>
-                            <button class="btn btn-success btn-xs" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
-                                <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
+                            <button class="btn btn-success btn-xs" ng-disabled="!cur_selected.length || !timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
+                                <span title="Draw Graph(s)" class="glyphicon glyphicon-pencil"></span>
                             </button>
                         </div>
                     </td>
@@ -69,14 +69,14 @@
                 <div class="input-group input-group-xs">
                     <input type="text" class="form-control" ng-disabled="struct.error_string.length" ng-model="struct.base_setting.search_string" placeholder="search ..." ng-change="update_search()"/>
                     <span class="input-group-addon input-group-addon-button">
-                        <button class="btn btn-success btn-xs" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
-                            <span title="draw graph(s)" class="glyphicon glyphicon-pencil"></span>
+                        <button class="btn btn-success btn-xs" ng-disabled="!cur_selected.length || !timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="draw_graph()">
+                            <span title="Draw Graph(s)" class="glyphicon glyphicon-pencil"></span>
                         </button>
-                        <button class="btn btn-warning btn-xs" ng-show="cur_selected.length && timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="clear_selection()">
-                            <span title="clear selection" class="fa fa-remove"></span>
+                        <button class="btn btn-warning btn-xs" ng-disabled="!cur_selected.length || !timeframe.valid" type="button" ladda="struct.is_drawing" ng-click="clear_selection()">
+                            <span title="Clear Selection" class="fa fa-remove"></span>
                         </button>
                         <button class="btn btn-warning btn-xs" type="button" ladda="struct.is_drawing" ng-click="select_with_sensor()">
-                            <span title="select all with sensors" class="fa fa-wrench"></span>
+                            <span title="Select all with Sensors" class="fa fa-wrench"></span>
                         </button>
                     </span>
                 </div>
