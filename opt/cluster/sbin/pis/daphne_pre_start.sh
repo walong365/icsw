@@ -21,6 +21,10 @@ APP_DIR=/var/run/daphne
 mkdir -p ${APP_DIR}
 chown -R ${USER}.${GROUP} ${APP_DIR}
 
+LOG_DIR=/var/log/icsw/daphne
+mkdir -p ${LOG_DIR}
+chown -R ${USER}.${GROUP} ${LOG_DIR}
+
 # creation of static files is now handled in webfrontend_post_install
 
 logger "init ${APP_DIR} with ${USER}.${GROUP} for daphne"
