@@ -547,6 +547,7 @@ th[st-sort]:not(.st-sort-ascent):not(.st-sort-descent):before {
     display: inline-block;
     padding-right: 3px;
     vertical-align: middle;
+    opacity: 0.5;
 }
 
 /* fix for overflowing modal dialog content */
