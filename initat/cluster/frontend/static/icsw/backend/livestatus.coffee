@@ -31,8 +31,10 @@ angular.module(
 ).service("icswLivestatusPipeSpecTree",
 [
     "$q", "icswSimpleAjaxCall", "ICSW_URLS", "Restangular", "icswUserGroupRoleTools",
+    "icswTools",
 (
     $q, icswSimpleAjaxCall, ICSW_URLS, Restangular, icswUserGroupRoleTools,
+    icswTools,
 ) ->
     class icswLivestatusPipeSpecTree
         constructor: (list) ->
@@ -61,6 +63,11 @@ angular.module(
         build_luts: () =>
             @lut = _.keyBy(@list, "idx")
             @name_lut = _.keyBy(@list, "name")
+            icswTools.order_in_place(
+                @list
+                ["system_pipe", "public_pipe", "name"]
+                ["desc", "asc", "desc"]
+            )
             @salt_list()
             @apply_user_filter()
 

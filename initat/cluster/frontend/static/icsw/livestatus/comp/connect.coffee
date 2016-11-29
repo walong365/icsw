@@ -355,7 +355,7 @@ angular.module(
             # user
             @user = user
             # connection specification as text
-            @spec_src = angular.fromJson(@object.json_spec)
+            @spec_json = angular.fromJson(@object.json_spec)
             console.log "Connector '#{@name}' (spec #{@object}, user #{@user.user.login})"
             @root_element = undefined
             # 0 ... only content, no dragNdrop, no resize - DASHBOARD LOCKED
@@ -400,7 +400,7 @@ angular.module(
             else
                 return "panel panel-warning"
 
-        _create_and_add_element: (parent_struct, name) =>
+        create_and_add_element: (parent_struct, name) =>
             @num_total_elements++
             @running_element_id++
             if parent_struct is null
@@ -419,6 +419,7 @@ angular.module(
                 id: name
                 name: name
                 parent: parent_struct
+                parent_id: if parent_struct then parent_struct.id else null
                 node: node
                 childs: []
             }
@@ -437,7 +438,12 @@ angular.module(
                 else
                     @hidden_elements.push(node)
             @build_info_str()
+            if parent_struct
+                parent_struct.node.add_child_node(_struct.node)
             $rootScope.$emit(ICSW_SIGNALS("ICSW_LIVESTATUS_PIPELINE_MODIFIED"))
+            if @record_mode
+                # add record
+                @records.push({action: "add", struct: _struct})
             return _struct
 
         build_structure: () =>
@@ -452,6 +458,19 @@ angular.module(
                 for key, value of in_obj
                     for _el in value
                         _resolve_iter(_el, depth+1)
+
+            # build dependencies
+
+            _build_iter = (in_obj, parent_struct) =>
+                for key, value of in_obj
+                    struct = @create_and_add_element(parent_struct, key)
+                    node = struct.node
+                    if node.__dp_depth == 0
+                        @root_element = node
+                        @root_element.check_for_emitter()
+                        @pipe_structure = struct
+                    (_build_iter(_el, struct) for _el in value)
+                return node
 
             @all_elements = []
             # list of display elements
@@ -477,21 +496,7 @@ angular.module(
                 @positions = {}
             # console.log "settings=", @_settings_name, @settings
 
-            # build dependencies
-            _build_iter = (in_obj, parent_struct) =>
-                for key, value of in_obj
-                    struct = @_create_and_add_element(parent_struct, key)
-                    node = struct.node
-                    if node.__dp_depth == 0
-                        @root_element = node
-                        @root_element.check_for_emitter()
-                        @pipe_structure = struct
-                    for _el in value
-                        node.add_child_node(_build_iter(_el, struct))
-                return node
-
-            # interpret and resolve spec_src
-            @spec_json = angular.fromJson(@spec_src)
+            # interpret and resolve spec_json
             @pipe_structure = null
             # resolve elements and build pipe_structure
             _resolve_iter(@spec_json)
@@ -500,7 +505,8 @@ angular.module(
             for el in @all_elements
                 if el.__dp_has_template
                     el.build_title()
-            console.log "*", @pipe_structure
+            # console.log "*", @pipe_structure
+            @active_struct = @build_current_json()
             @num_display_elements = @display_elements.length
             @num_hidden_elements = @hidden_elements.length
             (_element.set_display_flags() for _element in @all_elements)
@@ -510,9 +516,40 @@ angular.module(
             @init_gridster()
             @set_running_flag(true)
             @setup_ok = true
+            # flag if changes are being recorded
+            @record_mode = false
 
         build_info_str: () =>
             @$$info_str = "#{@name}, #{@num_total_elements} Elements"
+
+        check_for_new_struct: () =>
+            new_struct = @build_current_json()
+            if angular.toJson(new_struct) != angular.toJson(@active_struct)
+                @active_struct = new_struct
+                return true
+            else
+                return false
+
+        build_current_json: () =>
+            _iter = (node) ->
+                _struct = {}
+                if node.is_emitter
+                    _childs = (_iter(child) for child in node.__dp_childs)
+                else
+                    _childs = []
+                _struct[node.name] = _childs
+                return _struct
+            return _iter(@root_element)
+
+        get_struct_by_id: (id) =>
+            result = null
+            _iter = (head, s_id) =>
+                if head.id == s_id
+                    result = head
+                else
+                    (_iter(_child, s_id) for _child in head.childs)
+            _iter(@pipe_structure, id)
+            return result
 
         toggle_running: () =>
             @set_running_flag(!@running)
@@ -567,6 +604,8 @@ angular.module(
             defer = $q.defer()
             # display element
             element = struct.node
+            if @record_mode
+                @records.push({action: "remove", struct: element.__dp_struct})
             _.remove(@display_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
             _.remove(@hidden_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
             _.remove(@all_elements, (entry) -> return entry.__dp_element_id == element.__dp_element_id)
@@ -578,6 +617,13 @@ angular.module(
             @build_info_str()
             $rootScope.$emit(ICSW_SIGNALS("ICSW_LIVESTATUS_PIPELINE_MODIFIED"))
             return defer.promise
+
+        start_recording: () =>
+            @record_mode = true
+            @records = []
+
+        stop_recording: () =>
+            @record_mode = false
 
         init_gridster: () =>
             NUM_COLUMS = 20
@@ -653,32 +699,6 @@ angular.module(
             _iterate(@pipe_structure)
             return _list
 
-        modify_layout: ($event, $scope) =>
-            _prev_running = @set_running_flag(false)
-            sub_scope = $scope.$new(true)
-            sub_scope.connector = @
-            icswComplexModalService(
-                {
-                    message: $compile($templateCache.get("icsw.connect.modify.layout"))(sub_scope)
-                    title: "Modify Layout (Dendrogram)"
-                    ok_label: "Modify"
-                    closable: true
-                    css_class: ""
-                    ok_callback: (modal) =>
-                        d = $q.defer()
-                        d.resolve("created")
-                        return d.promise
-                    cancel_callback: (modal) ->
-                        d = $q.defer()
-                        d.resolve("cancel")
-                        return d.promise
-                }
-            ).then(
-                (fin) =>
-                    sub_scope.$destroy()
-                    @set_running_flag(_prev_running)
-            )
-
 ]).service("icswLivestatusLayoutHelpers",
 [
     "$q", "icswToolsSimpleModalService", "blockUI", "$rootScope", "ICSW_SIGNALS",
@@ -730,9 +750,9 @@ angular.module(
                     d = $q.defer()
                     _name = sub_scope.struct.new_element
                     # resolve element name to object
-                    struct = connector._create_and_add_element(parent_node, _name)
-                    node = struct.node
-                    parent_node.node.add_child_node(node)
+                    struct = connector.create_and_add_element(parent_node, _name)
+                    # node = struct.node
+                    # parent_node.node.add_child_node(node)
                     d.resolve("created")
                     return d.promise
                 cancel_callback: (modal) ->
@@ -898,7 +918,10 @@ angular.module(
                                     key: "delb"
                                     className: "btn btn-xs btn-danger"
                                     onClick: (event) =>
-                                        icswLivestatusLayoutHelpers.delete_node(event, an.data)
+                                        icswLivestatusLayoutHelpers.delete_node(event, an.data).then(
+                                            (done) =>
+                                                @setState({focus_node: null, active_node: null})
+                                        )
                                 }
                                 "Delete"
                             )

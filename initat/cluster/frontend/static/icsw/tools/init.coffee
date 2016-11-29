@@ -1881,6 +1881,8 @@ angular.module(
     if def_lang not in ["en", "de"]
         def_lang = "en"
 
+    def_lang = "en"
+
     return {
         get_lang: () ->
             return def_lang
