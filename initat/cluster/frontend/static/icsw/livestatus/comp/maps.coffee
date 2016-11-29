@@ -228,7 +228,8 @@ angular.module(
         constructor: () ->
             super("icswLivestatusGeoLocationDisplay", true, false)
             @set_template(
-                '<icsw-device-livestatus-geo-location-display icsw-connect-element="con_element"></icsw-device-livestatus-geo-location-display>'
+                '<icsw-livestatus-tooltip icsw-connect-element="con_element"></icsw-livestatus-tooltip>
+                <icsw-device-livestatus-geo-location-display icsw-connect-element="con_element"></icsw-device-livestatus-geo-location-display>'
                 "Geo Location"
                 10
                 8
