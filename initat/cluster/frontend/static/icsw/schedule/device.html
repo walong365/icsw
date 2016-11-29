@@ -16,7 +16,7 @@
         <table
             st-table="entries_displayed"
             st-safe-src="struct.dispatch_tree.list"
-            class="table table-condensed table-hover"
+            class="table table-condensed table-hover table-striped"
             style="width:auto;"
             ng-if="struct.dispatch_tree.list.length"
         >
@@ -46,10 +46,10 @@
                         <span ng-show="obj.is_system" class="label label-success">system</span>
                         <span ng-show="!obj.is_system">{{ struct.user_group_tree.user_lut[obj.user].login }}</span>
                     </td>
-                    <td>
+                    <td class="text-center">
                         {{ obj.$$com_caps }}
                     </td>
-                    <td>
+                    <td class="text-right">
                         {{ obj.mult }} {{ struct.dispatch_tree.schedule_lut[obj.run_schedule].name }}
                     </td>
                     <td class="text-right">

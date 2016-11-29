@@ -19,11 +19,15 @@
 #
 """ simple frontend to LiveStatus socket, also used by md-config-server (for KPI) """
 
+from __future__ import print_function, unicode_literals
 import csv
 import os.path
 import socket
+import time
 
 from enum import Enum
+
+from initat.tools import logging_tools, process_tools
 
 from .config import global_config
 
@@ -41,42 +45,44 @@ class LiveQuery(object):
         else:
             _res = self._conn.call(str(self))
         if LiveSocket.livestatus_enum:
-            _res = LiveSocket.map_result(self._resource, _res)
+            _res = LiveSocket.map_result(self._conn.log_com, self._resource, _res)
         return _res
 
     def __str__(self):
         r_field = [
-            "GET {}".format(self._resource)
+            b"GET {}".format(self._resource)
         ]
         if self._columns:
-            r_field.append("Columns: {}".format(" ".join(self._columns)))
+            r_field.append(b"Columns: {}".format(b" ".join(self._columns)))
         r_field.extend(self._filters)
         # print "\nQuery:\n" + "\n".join(r_field + ["", ""])
-        return "\n".join(r_field + ["", ""])
+        return b"\n".join(r_field + [b"", b""])
 
     def columns(self, *args):
         if LiveSocket.livestatus_enum:
             self._columns = LiveSocket.lookup_enum(self._resource, *args)
         else:
             self._columns = args
+        self._columns = [str(_val) for _val in self._columns]
         return self
 
     def filter(self, key, op, value, method="or", count=None):
         if type(value) != list:
             value = [value]
         for entry in value:
-            self._filters.append("Filter: {} {} {}".format(key, op, entry))
+            self._filters.append(b"Filter: {} {} {}".format(key, op, entry))
         _nv = len(value)
         _val = count if count is not None else _nv
         if _val > 1:
-            self._filters.append("{}: {:d}".format(method.title(), _val))
+            self._filters.append(b"{}: {:d}".format(method.title(), _val))
         return self
 
 
 class LiveSocket(object):
     livestatus_enum = None
 
-    def __init__(self, peer_name):
+    def __init__(self, log_com, peer_name):
+        self.log_com = log_com
         self.peer = peer_name
 
     def __getattr__(self, name):
@@ -92,9 +98,15 @@ class LiveSocket(object):
             s.connect(self.peer)
             s.send(request)
             s.shutdown(socket.SHUT_WR)
-            csv_lines = csv.DictReader(s.makefile(), columns, delimiter=';')
+            csv_lines = csv.DictReader(s.makefile(), columns, delimiter=b';')
             _result = list(csv_lines)
         except:
+            self.log_com(
+                "an error occured in call(): {}".format(
+                    process_tools.get_except_info()
+                ),
+                logging_tools.LOG_LEVEL_ERROR
+            )
             _result = []
         finally:
             if s is not None:
@@ -107,7 +119,7 @@ class LiveSocket(object):
         return [getattr(_enum, _key).value["name"] for _key in keys]
 
     @classmethod
-    def map_result(cls, t_type, res_list):
+    def map_result(cls, log_com, t_type, res_list):
         def _parse_icinga_dict(value):
             # start with empty dict
             _loc_dict = {}
@@ -131,28 +143,34 @@ class LiveSocket(object):
             for _key, _value in entry.iteritems():
                 try:
                     _type = getattr(_enum, _key).value["type"]
-                    if _type == "integer":
+                    if _type == "int":
                         # integer
                         entry[_key] = int(_value)
                     elif _type == "time":
                         # unix time in seconds
                         entry[_key] = int(_value)
+                    elif _type == "float":
+                        # float as double
+                        entry[_key] = float(_value)
                     elif _type == "string":
                         pass
                     elif _type == "dict":
                         # special icinga dict
                         entry[_key] = _parse_icinga_dict(_value)
                     else:
-                        # print "*", _key, _type, _value
-                        pass
+                        log_com(
+                            "unknown type '{}' for key {} (value={})".format(_type, _key, _value),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
                 except KeyError:
                     raise
         return res_list
 
     @classmethod
-    def init_enum(cls, sock_name):
+    def init_enum(cls, log_com, sock_name):
         # init enum for livestatus queries
-        _result = LiveSocket(sock_name).columns.call()
+        s_time = time.time()
+        _result = LiveSocket(log_com, sock_name).columns.call()
         _enum_list = []
         _dict = {}
         for entry in _result:
@@ -179,13 +197,15 @@ class LiveSocket(object):
             value="LivestatusEnum",
             names=_enum_list,
         )
+        e_time = time.time()
+        log_com()
 
     @classmethod
-    def get_mon_live_socket(cls):
+    def get_mon_live_socket(cls, log_com):
         sock_name = os.path.join(global_config["MD_BASEDIR"], "var", "live")
         if os.path.exists(sock_name):
             if not cls.livestatus_enum:
-                cls.init_enum(sock_name)
-            return LiveSocket(sock_name)
+                cls.init_enum(log_com, sock_name)
+            return LiveSocket(log_com, sock_name)
         else:
             raise IOError("socket '{}' does not exist".format(sock_name))

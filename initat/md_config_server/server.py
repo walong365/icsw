@@ -321,6 +321,8 @@ class ServerProcess(
                 lines=_ext_lines,
             )
             self.send_to_process("syncer", "ext_command", unicode(ext_com))
+        else:
+            self.log("created no external commands", logging_tools.LOG_LEVEL_ERROR)
 
     def _register_remote(self, *args, **kwargs):
         _src_proc, _src_id, remote_ip, remote_uuid, remote_enum_name = args

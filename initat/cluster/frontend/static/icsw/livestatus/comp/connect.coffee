@@ -870,7 +870,7 @@ angular.module(
             _act_node = @state.active_node
 
             editable = !@props.connector.object.system_pipe
-            console.log "E=", editable
+            # console.log "E=", editable
             dd_root = @props.connector.dd_root
             _svg = svg(
                 {
@@ -1098,7 +1098,7 @@ angular.module(
 [
     "$templateCache", "$compile",
 (
-    $templateCache, $compile
+    $templateCache, $compile,
 ) ->
     return {
         restrict: "E"
@@ -1108,12 +1108,12 @@ angular.module(
         link: (scope, element, attrs) ->
             _outer = $templateCache.get("icsw.connect.element")
             _content = scope.con_element.__dp_template
+
             # console.log "C=", scope.con_element
-            _template_content = _outer + _content + "</div></div>"
+
+            # not beautiful but working
+            _template_content = _outer  + _content + "</div></div>"
             element.append($compile(_template_content)(scope))
-            #scope.$on('gridster-item-initialized', ($event, element) ->
-            #    console.log "init", element, element.row, element.col
-            #)
 
     }
 ]).controller("icswConnectElementCtrl", [

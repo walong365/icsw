@@ -11,7 +11,7 @@
                     <span ng-class="struct.synced && 'fa fa-lock' || 'fa fa-unlock'"></span>
                     Current Selection
                 </uib-tab-heading>
-                <div class="container-fluid">
+                <div class="">
                     <form class="input-group" ng-submit="call_devsel_func()">
                         <div ng-class="struct.search_ok && 'form-group' || 'form-group has-error'">
                             <input
@@ -36,7 +36,7 @@
                         </span>
                     </form>
                 </div>
-                <div class="container-fluid">
+                <div class="">
                     <span class="btn-group btn-sm pull-right" uib-dropdown is-open="struct.isopen">
                         <button
                             class="btn btn-success btn-sm"
@@ -121,9 +121,11 @@
                 </small>
                 <form class="form-horizontal">
                     <div class="form-group" ng-show="struct.synced">
-                        <label class="col-md-2 control-label">
-                            Selected:
-                        </label>
+                        <div class="col-md-2" style="padding-top:4px;">
+                            <label class="control-label" style="text-align:left;">
+                                Selected:
+                            </label>
+                        </div>
                         <div class="col-md-10 form-control-static">
                             <span class="label label-warning" ng-show="struct.selection.db_obj.$$changed">
                                 changed

@@ -103,7 +103,6 @@ def main():
     if opts.nice:
         os.nice(opts.nice)
     if opts.daemonize:
-        print("open")
         _daemon_context.open()
     else:
         if gids:

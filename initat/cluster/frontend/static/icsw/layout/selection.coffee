@@ -581,28 +581,28 @@ angular.module(
             event.preventDefault()
     ).add(
         combo: "ctrl+g"
-        description: "Active group tab"
+        description: "Active Group Tab"
         allowIn: ["INPUT"]
         callback: (event) ->
             $scope.activate_tab("Dg")
             event.preventDefault()
     ).add(
         combo: "ctrl+c"
-        description: "Active category tab"
+        description: "Active Category Tab"
         allowIn: ["INPUT"]
         callback: (event) ->
             $scope.activate_tab("Dc")
             event.preventDefault()
     ).add(
         combo: "ctrl+l"
-        description: "Show DeviceClass selector"
+        description: "Show Device Class Selector"
         allowIn: ["INPUT"]
         callback: (event) ->
             $scope.show_class_filter(event)
             event.preventDefault()
     ).add(
         combo: "ctrl+s"
-        description: "Show SavedSelection selector"
+        description: "Show Saved Selection Selector"
         allowIn: ["INPUT"]
         callback: (event) ->
             $scope.activate_tab("Ss")

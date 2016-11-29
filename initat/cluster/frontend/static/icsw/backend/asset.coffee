@@ -156,10 +156,10 @@ device_asset_module = angular.module(
             if key of res_dict[name]
                 return res_dict[name][key][idx]
             else
-                console.error "unknown key #{key} for name #{name} in resolve"
+                console.error "unknown key '#{key}' for name '#{name}' in resolve()"
                 return "???"
         else
-            console.error "unknown name #{name} in resolve"
+            console.error "unknown name '#{name}' in resolve()"
             return "????"
 
     return {
