@@ -36,6 +36,56 @@ angular.module(
     icswLivestatusPipeSpecTreeService, icswToolsSimpleModalService, blockUI,
     icswMonDisplayPipeSpecBackup, toaster, icswUserGroupRoleTools,
 ) ->
+    modify_layout = (event, lsps_tree, connector) ->
+        _prev_running = connector.set_running_flag(false)
+        sub_scope = $rootScope.$new(true)
+        sub_scope.connector = connector
+        connector.start_recording()
+        icswComplexModalService(
+            {
+                message: $compile($templateCache.get("icsw.connect.modify.layout"))(sub_scope)
+                title: "Modify Layout (Dendrogram)"
+                ok_label: "Modify"
+                closable: true
+                css_class: ""
+                ok_callback: (modal) =>
+                    d = $q.defer()
+                    connector.stop_recording()
+                    if connector.check_for_new_struct()
+                        connector.object.json_spec = angular.toJson(connector.active_struct)
+                        lsps_tree.modify_spec(connector.object).then(
+                            (done) ->
+                                d.resolve("saved")
+                            (notok) ->
+                                d.reject("not saved")
+                        )
+                    else
+                        d.resolve("nothing")
+                    return d.promise
+                cancel_callback: (modal) =>
+                    d = $q.defer()
+                    connector.stop_recording()
+                    if connector.records.length
+                        # reverse connector records
+                        for entry in _.reverse(connector.records)
+                            parent_struct = connector.get_struct_by_id(entry.struct.parent_id)
+                            if entry.action == "add"
+                                # remove element
+                                struct = connector.get_struct_by_id(entry.struct.id)
+                                connector.delete_element(struct)
+
+                            else
+                                # add element
+                                connector.create_and_add_element(parent_struct, entry.struct.name)
+                    d.resolve("cancel")
+                    return d.promise
+            }
+        ).then(
+            (fin) =>
+                sub_scope.$destroy()
+                connector.set_running_flag(_prev_running)
+        )
+
     modify_spec = (lsps_tree, user, spec) ->
         sub_scope = $rootScope.$new(true)
         sub_scope.lsps_tree = lsps_tree
@@ -147,6 +197,9 @@ angular.module(
     return {
         show_overview: (user) ->
             return show_overview(user)
+
+        modify_layout: ($event, lsps_tree, connector) ->
+            return modify_layout($event, lsps_tree, connector)
     }
 
 ]).controller("icswDeviceLiveStatusCtrl",
@@ -297,7 +350,7 @@ angular.module(
 
     $scope.modify_layout = ($event) ->
         if $scope.struct.connector_set
-            $scope.struct.connector.modify_layout($event, $scope)
+            icswDeviceLivestatusTools.modify_layout($event, $scope.struct.lsps_tree, $scope.struct.connector)
 
     $scope.new_devsel = (_dev_sel) ->
         if $scope.struct.connector_set
