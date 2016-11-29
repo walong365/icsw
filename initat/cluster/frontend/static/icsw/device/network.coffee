@@ -1513,11 +1513,11 @@ angular.module(
 [
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
     "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
-    "toaster", "icswToolsSimpleModalService", "$timeout"
+    "toaster", "icswToolsSimpleModalService", "$timeout", "icswDispatcherSettingTreeService"
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
     icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
-    toaster, icswToolsSimpleModalService, $timeout
+    toaster, icswToolsSimpleModalService, $timeout, icswDispatcherSettingTreeService
 ) ->
 
     # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1623,46 +1623,53 @@ angular.module(
                 dbu.create_backup(obj_or_parent)
             scope.edit_obj = obj_or_parent
             sub_scope = scope.$new(false)
-            icswComplexModalService(
-                {
-                    message: $compile($templateCache.get("network.form"))(sub_scope)
-                    title: "Network"
-                    css_class: "modal-wide modal-form"
-                    ok_label: if create then "Create" else "Modify"
-                    closable: true
-                    ok_callback: (modal) ->
-                        d = $q.defer()
-                        if sub_scope.form_data.$invalid
-                            toaster.pop("warning", "form validation problem", "")
-                            d.reject("form not valid")
-                        else
-                            if create
-                                nw_tree.create_network(scope.edit_obj).then(
-                                    (ok) ->
-                                        d.resolve("created")
-                                    (notok) ->
-                                        d.reject("not created")
-                                )
+            icswDispatcherSettingTreeService.load(sub_scope.$id).then((result) ->
+                sub_scope.dispatcher_tree = result
+
+                icswComplexModalService(
+                    {
+                        message: $compile($templateCache.get("network.form"))(sub_scope)
+                        title: "Network"
+                        css_class: "modal-wide modal-form"
+                        ok_label: if create then "Create" else "Modify"
+                        closable: true
+                        ok_callback: (modal) ->
+                            console.log(scope.edit_obj)
+
+
+                            d = $q.defer()
+                            if sub_scope.form_data.$invalid
+                                toaster.pop("warning", "form validation problem", "")
+                                d.reject("form not valid")
                             else
-                                scope.edit_obj.put().then(
-                                    (ok) ->
-                                        nw_tree.reorder()
-                                        d.resolve("updated")
-                                    (not_ok) ->
-                                        d.reject("not updated")
-                                )
-                        return d.promise
-                    cancel_callback: (modal) ->
-                        if not create
-                            dbu.restore_backup(obj_or_parent)
-                        d = $q.defer()
-                        d.resolve("cancel")
-                        return d.promise
-                }
-            ).then(
-                (fin) ->
-                    console.log "finish"
-                    sub_scope.$destroy()
+                                if create
+                                    nw_tree.create_network(scope.edit_obj).then(
+                                        (ok) ->
+                                            d.resolve("created")
+                                        (notok) ->
+                                            d.reject("not created")
+                                    )
+                                else
+                                    scope.edit_obj.put().then(
+                                        (ok) ->
+                                            nw_tree.reorder()
+                                            d.resolve("updated")
+                                        (not_ok) ->
+                                            d.reject("not updated")
+                                    )
+                            return d.promise
+                        cancel_callback: (modal) ->
+                            if not create
+                                dbu.restore_backup(obj_or_parent)
+                            d = $q.defer()
+                            d.resolve("cancel")
+                            return d.promise
+                    }
+                ).then(
+                    (fin) ->
+                        console.log "finish"
+                        sub_scope.$destroy()
+                )
             )
 
         delete: (scope, event, nw) ->
