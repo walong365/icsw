@@ -274,6 +274,9 @@ angular.module(
                 _signal()
         )
 
+    _stop_active_task = () ->
+        struct.active_task = null
+
     # init tasks
     _init_tasks()
     # update keys
@@ -297,6 +300,9 @@ angular.module(
     return {
         get_struct: () ->
             return struct
+
+        stop_active_task: () ->
+            return _stop_active_task()
 
         choose_task: () ->
             return _choose_task()
@@ -434,8 +440,10 @@ angular.module(
 ]).controller("icswTaskProgressOverviewCtrl",
 [
     "$scope", "$q", "icswTaskService", "$rootScope", "ICSW_SIGNALS",
+    "icswToolsSimpleModalService",
 (
     $scope, $q, icswTaskService, $rootScope, ICSW_SIGNALS,
+    icswToolsSimpleModalService,
 ) ->
     $scope.struct = {
         # display flag
@@ -450,6 +458,7 @@ angular.module(
             $scope.struct.active_task = $scope.struct.task_struct.active_task
             $scope.struct.display = $scope.struct.active_task.settings.show_guide
         else
+            $scope.struct.active_task = null
             $scope.struct.display = false
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_TASK_SETTINGS_CHANGED"), () ->
@@ -460,6 +469,14 @@ angular.module(
     $scope.hide_guide = ($event) ->
         if $scope.struct.active_task
             $scope.struct.active_task.hide_guide()
+
+    $scope.stop_task = ($event) ->
+        if $scope.struct.active_task
+            icswToolsSimpleModalService("Really stop current task ?").then(
+                (ok) ->
+                    icswTaskService.stop_active_task()
+                    _update()
+            )
 
     $scope.choose_task = ($event) ->
         return icswTaskService.choose_task()

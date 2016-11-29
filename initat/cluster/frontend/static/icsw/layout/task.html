@@ -67,6 +67,12 @@
                     ng-click="hide_guide($event)"
                     icsw-value="'hide'"
                 ></icsw-tools-button>
+                <icsw-tools-button
+                    type="delete"
+                    size="xs"
+                    ng-click="stop_task($event)"
+                    icsw-value="'stop'"
+                ></icsw-tools-button>
                 Active Task: {{ struct.active_task.task_def.name }}
                 <icsw-task-progress-display></icsw-task-progress-display>
             </div>
