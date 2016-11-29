@@ -10,6 +10,14 @@
     <icsw-device-livestatus icsw-var-name="'$$livestatus_dashboard_pipe'"></icsw-device-livestatus>
 </script>
 
+
+<script type="text/ng-template" id="icsw.device.info.tab.devicelogs">
+    <uib-tab-heading>
+        Device Logs{{ addon_text }}
+    </uib-tab-heading>
+    <icsw-device-log-table icsw-device="devicelist[0]"></icsw-device-log-table>
+</script>
+
 <script type="text/ng-template" id="icsw.device.info.tab.general">
     <uib-tab-heading>
         General{{ addon_text }}
