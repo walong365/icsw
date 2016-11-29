@@ -95,7 +95,7 @@ angular.module(
                         title: "#{_md.services.length} Services"
                         titleSize: 14
                         className: "col-sm-6"
-                        focusMode: "simple"
+                        # focusMode: "simple"
                         showInfo: true
                         showDetails: true
                     }

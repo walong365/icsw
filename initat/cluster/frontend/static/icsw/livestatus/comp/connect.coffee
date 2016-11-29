@@ -661,7 +661,7 @@ angular.module(
                 {
                     message: $compile($templateCache.get("icsw.connect.modify.layout"))(sub_scope)
                     title: "Modify Layout (Dendrogram)"
-                    ok_label: "Add"
+                    ok_label: "Modify"
                     closable: true
                     css_class: ""
                     ok_callback: (modal) =>
