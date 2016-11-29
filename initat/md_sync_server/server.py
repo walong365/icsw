@@ -124,7 +124,7 @@ class server_process(
         res_dict = {}
         if "MD_TYPE" in global_config and global_config["MON_CURRENT_STATE"]:
             _cur_time = time.time()
-            cur_s = LiveSocket.get_mon_live_socket()
+            cur_s = LiveSocket.get_mon_live_socket(self.log)
             if not self.__latest_status_query or abs(self.__latest_status_query - _cur_time) > 10 * 60:
                 self.__latest_status_query = _cur_time
                 try:

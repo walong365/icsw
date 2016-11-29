@@ -19,6 +19,8 @@
 #
 """ status process, queries data from icinga via mk_livestatus """
 
+from __future__ import print_function, unicode_literals
+
 import json
 import time
 
@@ -28,8 +30,8 @@ from .common import LiveSocket
 from .config import global_config
 
 __all__ = [
-    "LiveSocket",
-    "StatusProcess",
+    b"LiveSocket",
+    b"StatusProcess",
 ]
 
 
@@ -93,7 +95,7 @@ class StatusProcess(threading_tools.process_obj):
     def _open(self):
         if self.__socket is None:
             try:
-                self.__socket = LiveSocket.get_mon_live_socket()
+                self.__socket = LiveSocket.get_mon_live_socket(self.log)
             except Exception as e:
                 self.log(unicode(e), logging_tools.LOG_LEVEL_ERROR)
         return self.__socket
@@ -192,6 +194,8 @@ class StatusProcess(threading_tools.process_obj):
                         _line for _line in fetch_dict["service_result"] if _line.get("host_name", "")
                     ]
                 )
+                # import pprint
+                # pprint.pprint(fetch_dict["host_result"])
                 srv_com["host_result"] = json.dumps(
                     fetch_dict["host_result"]
                 )

@@ -389,7 +389,7 @@ menu_module = angular.module(
                         className: "menu-help-text"
                     }
                     _info_text
-                    if data.$$allowed then "ok" else "not ok"
+                    if data.$$allowed then " (ok)" else " (not ok)"
                 )
             else
                 help_p = null

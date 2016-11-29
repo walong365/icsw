@@ -27,8 +27,7 @@ import dateutil.rrule
 import django.utils.timezone
 from django.core.exceptions import ValidationError
 from django.db import models
-from django.db.models import Avg
-from django.db.models import signals
+from django.db.models import Avg, signals
 from django.dispatch import receiver
 from enum import IntEnum
 
@@ -162,7 +161,7 @@ def DispatcherSettingPreSave(sender, **kwargs):
             if _name == _sched:
                 _check = True
             # if _val is not None:
-        print(_cur_inst.sched_start_second)
+        # print(_cur_inst.sched_start_second)
 
 
 class DeviceDispatcherLink(models.Model):

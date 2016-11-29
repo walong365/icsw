@@ -176,7 +176,7 @@ class KpiData(object):
     def _load_data(self):
 
         try:
-            self.icinga_socket = LiveSocket.get_mon_live_socket()
+            self.icinga_socket = LiveSocket.get_mon_live_socket(self.log)
         except IOError as e:
             self.log(u"error when opening monitoring socket: {}".format(e), logging_tools.LOG_LEVEL_ERROR)
             raise
