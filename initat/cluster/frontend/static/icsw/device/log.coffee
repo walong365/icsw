@@ -227,7 +227,7 @@ device_logs = angular.module(
             log_entry.pretty_date = moment(log_entry.date).format("YYYY-MM-DD HH:mm:ss")
             log_entry.user_resolved = "N/A"
             if log_entry.user != null
-                log_entry.user_resolved = result[1].user_lut[log_entry.user].$$long_name
+                log_entry.user_resolved = $scope.struct.user_tree.user_lut[log_entry.user].$$long_name
 
             $scope.struct.device_log_entries.push(log_entry)
             $scope.struct.device_log_entries_lut[log_entry.idx] = log_entry
