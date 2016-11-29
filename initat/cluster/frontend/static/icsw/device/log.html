@@ -115,7 +115,6 @@
                     </td>
                 </tr>
                 <tr>
-                    <th st-sort="entry_counter" style="width: 100px">#</th>
                     <th st-sort="date" st-sort-default="reverse" style="width: 150px">Time</th>
                     <th st-sort="user_resolved" style="width: 150px">User</th>
                     <th st-sort="source.identifier" style="width: 150px">Source</th>
@@ -123,7 +122,6 @@
                     <th>Text</th>
                 </tr>
                 <tr>
-                    <th></th>
                     <th></th>
                     <th>
                         <ui-select on-select="on_selected_user($select.selected)" ng-model="struct.selected_username">
@@ -163,9 +161,6 @@
 
             <tbody>
                 <tr ng-repeat="obj in entries_displayed" ng-if="!is_excluded_obj(obj)">
-                    <td>
-                        {{ obj.entry_counter }}
-                    </td>
                     <td>
                         {{ obj.pretty_date }}
                     </td>

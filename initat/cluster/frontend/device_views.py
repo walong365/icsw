@@ -1459,29 +1459,6 @@ class SystemCompletionIgnoreToggle(View):
         return SystemTask.toggle_ignore(request, system_component_name)
 
 
-class DeviceLogEntryViewSet(viewsets.ViewSet):
-    @method_decorator(login_required)
-    def list(self, request):
-        prefetch_list = [
-            "source",
-            "level"
-        ]
-
-        if "device_pks" in request.query_params:
-            device_pks = json.loads(request.query_params.getlist("device_pks")[0])
-            if "entry_counters" in request.query_params:
-                entry_counters = json.loads(request.query_params.getlist("entry_counters")[0])
-                queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).filter(device__in=device_pks, entry_counter__in=entry_counters)
-            else:
-                queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).filter(device__in=device_pks)
-        else:
-            queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).all()
-
-        serializer = DeviceLogEntrySerializer(queryset, many=True)
-
-        return Response(serializer.data)
-
-
 class DeviceLogEntryCount(View):
     @method_decorator(login_required)
     def post(self, request):
@@ -1499,3 +1476,22 @@ class DeviceLogEntryCount(View):
         return HttpResponse(
             json.dumps(pk_count_dict)
         )
+
+
+class DeviceLogEntryLoader(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        device_pk = request.POST.get("device_pk")
+        excluded_device_log_entry_pks = [int(obj) for obj in request.POST.getlist("excluded_device_log_entry_pks[]")]
+
+        prefetch_list = [
+            "source",
+            "level"
+        ]
+
+        queryset = DeviceLogEntry.objects.prefetch_related(*prefetch_list).filter(device=device_pk).\
+            exclude(idx__in=excluded_device_log_entry_pks)
+
+        serializer = DeviceLogEntrySerializer(queryset, many=True)
+
+        return HttpResponse(json.dumps(serializer.data))
