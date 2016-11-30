@@ -32,9 +32,8 @@ from django.utils import timezone
 from lxml import etree
 
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network, \
-    device_variable, AssetRun, RunStatus, BatchStatus, AssetType, ScanType, \
-    AssetBatch, RunResult, DeviceDispatcherLink, DispatcherSettingScheduleEnum, \
-    ScheduleItem, DeviceLogEntry
+    device_variable, AssetRun, RunStatus, BatchStatus, AssetType, ScanType, AssetBatch, RunResult, \
+    DispatcherSettingScheduleEnum, ScheduleItem, DeviceLogEntry, device
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
@@ -720,6 +719,8 @@ class PlannedRunsForDevice(object):
             # no more running, delete
             self.to_delete = True
 
+from initat.cluster.backbone.models import DispatcherLink
+import initat.cluster.backbone.models
 
 class Dispatcher(object):
     def __init__(self, discovery_process):
@@ -743,75 +744,54 @@ class Dispatcher(object):
         # called every 10 seconds
         _now = timezone.now().replace(microsecond=0)
 
-        links = DeviceDispatcherLink.objects.all().select_related(
-            "device",
-            "dispatcher_setting",
-        )
+        links = DispatcherLink.objects.all().select_related("dispatcher_setting")
 
-        for link in links:
-            device = link.device
-            ds = link.dispatcher_setting
-
-            # schedule settings counter
-            last_scheds = {}
-            # latest planned data for DispatcherSetting
-            last_sched = {}
-            for sched in ScheduleItem.objects.all():
-                if sched.device_id == device.idx and sched.dispatch_setting_id == ds.idx:
-                    if ds not in last_scheds:
-                        last_scheds[ds] = 0
-                    last_scheds[ds] += 1
-
-                    if ds not in last_sched:
-                        last_sched[ds] = sched
-                    elif sched.planned_date > last_sched[ds].planned_date:
-                        last_sched[ds] = sched
-
-            if ds not in last_sched:
-                # not scheduled
-                next_run = _ScheduleItem(
-                    device,
-                    align_time_to_baseline(_now, ds)
-                )
-                ScheduleItem.objects.create(
-                    device=next_run.device,
-                    planned_date=next_run.planned_date,
-                    dispatch_setting=ds
-                )
-                last_scheds[ds] = 1
-                last_sched[ds] = next_run
-
-            # plan next schedule when counter is below 2
-            if last_scheds[ds] < 2:
-                next_run = _ScheduleItem(
-                    device,
-                    last_sched[ds].planned_date + get_time_inc_from_ds(ds)
-                )
-                ScheduleItem.objects.create(
-                    device=next_run.device,
-                    planned_date=next_run.planned_date,
-                    dispatch_setting=ds,
-                )
-
-        # remove schedule items that are no longer linked to a device/dispatch_setting
-        schedule_items = ScheduleItem.objects.all()
-        # valid link list
-        link_items = DeviceDispatcherLink.objects.all().values_list("device", "dispatcher_setting")
-        for sched in schedule_items:
-            if sched.run_now:
-                # keep in list
+        for schedule_item in ScheduleItem.objects.all():
+            if schedule_item.run_now:
                 continue
 
-            found = any(sched.device_id == v[0] and sched.dispatch_setting_id == v[1] for v in link_items)
+            found_links = links.filter(
+                dispatcher_setting=schedule_item.dispatch_setting,
+                model_name=schedule_item.model_name,
+                schedule_handler=schedule_item.schedule_handler,
+                object_id=schedule_item.object_id)
 
-            if not found:
-                self.log(
-                    "Remove orphaned ScheduleItem {:d}".format(
-                        sched.pk
-                    ),
-                    logging_tools.LOG_LEVEL_WARN
+            if not found_links:
+                schedule_item.delete()
+
+        for link in links:
+            dispatcher_setting = link.dispatcher_setting
+
+            # every object_id, model_name, schedule_handler and dispatcher_setting  pair should have the next
+            # two planned runs created
+            schedule_items = [schedule_item for schedule_item in ScheduleItem.objects.filter(
+                object_id=link.object_id,
+                model_name=link.model_name,
+                schedule_handler=link.schedule_handler,
+                dispatch_setting=link.dispatcher_setting)]
+
+            if len(schedule_items) == 0:
+                # not scheduled
+                new_schedule_item = ScheduleItem.objects.create(
+                    model_name=link.model_name,
+                    object_id=link.object_id,
+                    planned_date=align_time_to_baseline(_now, dispatcher_setting),
+                    dispatch_setting=dispatcher_setting,
+                    schedule_handler=link.schedule_handler
                 )
-                sched.delete()
+                schedule_items.append(new_schedule_item)
+
+            if len(schedule_items) == 1:
+                last_schedule_item = schedule_items[0]
+                ScheduleItem.objects.create(
+                    model_name=link.model_name,
+                    object_id=link.object_id,
+                    planned_date=last_schedule_item.planned_date + get_time_inc_from_ds(dispatcher_setting),
+                    dispatch_setting=dispatcher_setting,
+                    schedule_handler=link.schedule_handler
+                )
+
+
 
     def dispatch_call(self):
         # called every second, way too often...
@@ -837,43 +817,15 @@ class Dispatcher(object):
                     asset_batch.save()
                     _pending += 1
 
-        for schedule_item in ScheduleItem.objects.all().select_related(
-            "device"
-        ).prefetch_related(
-            "device__com_capability_list"
-        ):
+        for schedule_item in ScheduleItem.objects.all():
             if schedule_item.planned_date < _now:
-                # check for allowed
-                if self.discovery_process.EC.consume("asset", schedule_item.device):
-                    cap_dict = {
-                        _com.matchcode: True for _com in schedule_item.device.com_capability_list.all()
-                    }
+                # default schedule handler is "asset_schedule_handler"
+                schedule_handler = "asset_schedule_handler"
+                if schedule_item.schedule_handler != None:
+                    schedule_handler = schedule_item.schedule_handler
 
-                    _dev = schedule_item.device
-                    _user = schedule_item.user
-                    if _dev.idx not in self.__device_planned_runs:
-                        self.__device_planned_runs[_dev.idx] = []
-
-                    self.discovery_process.get_route_to_devices([_dev])
-                    self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
-                    new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip, _user)
-                    new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
-
-                    if cap_dict.get("hm", False):
-                        self.__device_planned_runs[_dev.idx].append(new_pr)
-                        self._do_hm_scan(schedule_item, new_pr)
-                    elif cap_dict.get("nrpe", False):
-                        self.__device_planned_runs[_dev.idx].append(new_pr)
-                        self._do_nrpe_scan(schedule_item, new_pr)
-                    else:
-                        self.log(
-                            "Skipping non-capable device {}".format(
-                                unicode(schedule_item.device)
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR
-                        )
-                        new_pr.asset_batch.state_finished()
-                        new_pr.asset_batch.save()
+                schedule_handler_f = getattr(self, schedule_handler)
+                schedule_handler_f(schedule_item)
                 schedule_item.delete()
 
         # step 1: init commands
@@ -1042,13 +994,41 @@ class Dispatcher(object):
                 timeout
             )
 
+    def asset_schedule_handler(self, schedule_item):
+        # check for allowed
+        _device = device.objects.get(idx=schedule_item.object_id)
+        
+        if self.discovery_process.EC.consume("asset", _device):
+            cap_dict = {
+                _com.matchcode: True for _com in _device.com_capability_list.all()
+                }
 
-class _ScheduleItem(object):
-    def __init__(self, device, planned_date):
-        self.device = device
-        self.planned_date = planned_date
+            _dev = _device
+            _user = schedule_item.user
+            if _dev.idx not in self.__device_planned_runs:
+                self.__device_planned_runs[_dev.idx] = []
 
-    def __repr__(self):
-        return "ScheduleItem(dev={}, planned={})".format(
-            self.device, self.planned_date
-        )
+            self.discovery_process.get_route_to_devices([_dev])
+            self.log("Address of device {} is {}".format(unicode(_dev), _dev.target_ip))
+            new_pr = PlannedRunsForDevice(self, _dev, _dev.target_ip, _user)
+            new_pr.nrpe_port = device_variable.objects.get_device_variable_value(_dev, "NRPE_PORT", DEFAULT_NRPE_PORT)
+
+            if cap_dict.get("hm", False):
+                self.__device_planned_runs[_dev.idx].append(new_pr)
+                self._do_hm_scan(schedule_item, new_pr)
+            elif cap_dict.get("nrpe", False):
+                self.__device_planned_runs[_dev.idx].append(new_pr)
+                self._do_nrpe_scan(schedule_item, new_pr)
+            else:
+                self.log(
+                    "Skipping non-capable device {}".format(
+                        unicode(_device)
+                    ),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
+                new_pr.asset_batch.state_finished()
+                new_pr.asset_batch.save()
+
+    def network_scan_schedule_handler(self, schedule_item):
+        print(schedule_item)
+        print("network schedule handler called")

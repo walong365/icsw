@@ -42,7 +42,7 @@ from initat.cluster.backbone.models import device_group, device, \
     cd_connection, domain_tree_node, netdevice, ComCapability, \
     partition_table, monitoring_hint, DeviceSNMPInfo, snmp_scheme, \
     domain_name_tree, net_ip, peer_information, mon_ext_host, device_variable, \
-    SensorThreshold, package_device_connection, DeviceDispatcherLink, AssetRun, \
+    SensorThreshold, package_device_connection, DispatcherLink, AssetRun, \
     DeviceScanLock, device_variable_scope, StaticAsset, DeviceClass, \
     dvs_allowed_name
 from initat.cluster.backbone.models import get_change_reset_list, DeviceLogEntry
@@ -51,7 +51,7 @@ from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.backbone.serializers import netdevice_serializer, ComCapabilitySerializer, \
     partition_table_serializer, monitoring_hint_serializer, DeviceSNMPInfoSerializer, \
     snmp_scheme_serializer, device_variable_serializer, cd_connection_serializer, \
-    SensorThresholdSerializer, package_device_connection_serializer, DeviceDispatcherLinkSerializer, \
+    SensorThresholdSerializer, package_device_connection_serializer, DispatcherLinkSerializer, \
     AssetRunSimpleSerializer, ShallowPastAssetBatchSerializer, DeviceScanLockSerializer, \
     device_variable_scope_serializer, StaticAssetSerializer, DeviceClassSerializer, \
     dvs_allowed_name_serializer, DeviceLogEntrySerializer
@@ -357,6 +357,16 @@ class EnrichmentObject(object):
         _data = self.serializer(_result, many=True).data
         return _data
 
+class DispatchLinkEnrichment(object):
+    def fetch(self, pk_list):
+        links = DispatcherLink.objects.filter(model_name="device", object_id__in=pk_list)
+
+        data = DispatcherLinkSerializer(links, many=True).data
+
+        for entry in data:
+            entry['device'] = entry['object_id']
+
+        return data
 
 class ComCapabilityEnrichment(object):
     def fetch(self, pk_list):
@@ -541,7 +551,7 @@ class EnrichmentHelper(object):
         self._all["device_connection_info"] = DeviceConnectionEnrichment()
         self._all["sensor_threshold_info"] = SensorThresholdEnrichment()
         self._all["package_info"] = EnrichmentObject(package_device_connection, package_device_connection_serializer)
-        self._all["dispatcher_info"] = EnrichmentObject(DeviceDispatcherLink, DeviceDispatcherLinkSerializer)
+        self._all["dispatcher_info"] = DispatchLinkEnrichment()
         self._all["asset_info"] = AssetEnrichment()
         self._all["past_assetrun_info"] = PastAssetrunEnrichment()
         self._all["static_asset_info"] = StaticAssetEnrichment()

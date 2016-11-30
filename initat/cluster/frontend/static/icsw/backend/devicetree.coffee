@@ -1344,11 +1344,13 @@ angular.module(
             [_c_defer, _d_defer] = [$q.defer(), $q.defer()]
             if _to_add.length
                 _w_list = (
-                    Restangular.all(ICSW_URLS.REST_DEVICE_DISPATCHER_LINK_LIST.slice(1)).post(
+                    Restangular.all(ICSW_URLS.REST_DISPATCHER_LINK_LIST.slice(1)).post(
                         {
-                            device: device.idx
+                            model_name: "device"
+                            object_id: device.idx
                             dispatcher_setting: _add_idx
                             user: user.idx
+                            schedule_handler: "asset_schedule_handler"
                         }
                     ) for _add_idx in _to_add
                 )
@@ -1364,7 +1366,7 @@ angular.module(
             if _to_del.length
                 _d_list = []
                 for _del_disp in (entry for entry in device.dispatcher_set when entry.dispatcher_setting in _to_del)
-                    Restangular.restangularizeElement(null, _del_disp, ICSW_URLS.REST_DEVICE_DISPATCHER_LINK_DETAIL.slice(1).slice(0, -2))
+                    Restangular.restangularizeElement(null, _del_disp, ICSW_URLS.REST_DISPATCHER_LINK_DETAIL.slice(1).slice(0, -2))
                     _d_list.push(_del_disp.remove())
                 $q.all(_d_list).then(
                     (result) ->

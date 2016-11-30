@@ -39,11 +39,11 @@ __all__ = [
     b"DispatcherSettingSchedule",
     b"DispatcherSettingScheduleEnum",
     b"DispatcherSetting",
-    b"DeviceDispatcherLink",
     b"DispatchSetting",
     b"DiscoverySource",
     b"ScanHistory",
     b"ScheduleItem",
+    b"DispatcherLink"
 ]
 
 
@@ -164,15 +164,15 @@ def DispatcherSettingPreSave(sender, **kwargs):
         # print(_cur_inst.sched_start_second)
 
 
-class DeviceDispatcherLink(models.Model):
+class DispatcherLink(models.Model):
     idx = models.AutoField(primary_key=True)
-    # link to device
-    device = models.ForeignKey("backbone.device")
+    model_name = models.TextField()
+    object_id = models.IntegerField()
     dispatcher_setting = models.ForeignKey("backbone.DispatcherSetting")
-    # create by user
+    schedule_handler = models.TextField()
+
+    created = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey("backbone.user")
-    # creation date
-    date = models.DateTimeField(auto_now_add=True)
 
 
 class DispatchSetting(models.Model):
@@ -238,17 +238,21 @@ class ScanHistory(models.Model):
 
 class ScheduleItem(models.Model):
     idx = models.AutoField(primary_key=True)
-    # link to device
-    device = models.ForeignKey("backbone.device")
+
+    model_name = models.TextField()
+    object_id = models.IntegerField()
+
     dispatch_setting = models.ForeignKey("backbone.DispatcherSetting", null=True)
     planned_date = models.DateTimeField(default=None, null=True)
     run_now = models.BooleanField(default=False)
     user = models.ForeignKey("backbone.user", null=True)
+    schedule_handler = models.TextField()
 
     def __repr__(self):
-        return "ScheduleItem(dev={}, src={}, planned={}, run_now={})".format(
-            self.device,
-            self.source,
+        return "ScheduleItem(model_name={}, object_id={}, planned={}, run_now={}, schedule_handler={})".format(
+            self.model_name,
+            self.object_id,
             self.planned_date,
             self.run_now,
+            self.schedule_handler
         )

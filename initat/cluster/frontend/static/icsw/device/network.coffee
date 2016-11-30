@@ -1569,6 +1569,7 @@ angular.module(
     # trees
     nw_tree = undefined
     domain_tree = undefined
+    dispatcher_tree = undefined
 
     return {
         get_tabs: () ->
@@ -1581,11 +1582,13 @@ angular.module(
                 [
                     icswNetworkTreeService.load(scope.$id)
                     icswDomainTreeService.load(scope.$id)
+                    icswDispatcherSettingTreeService.load(scope.$id)
                 ]
             ).then(
                 (data) ->
                     nw_tree = data[0]
                     domain_tree = data[1]
+                    dispatcher_tree = data[2]
                     defer.resolve(nw_tree.nw_list)
             )
             return defer.promise
@@ -1623,53 +1626,51 @@ angular.module(
                 dbu.create_backup(obj_or_parent)
             scope.edit_obj = obj_or_parent
             sub_scope = scope.$new(false)
-            icswDispatcherSettingTreeService.load(sub_scope.$id).then((result) ->
-                sub_scope.dispatcher_tree = result
+            sub_scope.dispatcher_tree = dispatcher_tree
 
-                icswComplexModalService(
-                    {
-                        message: $compile($templateCache.get("network.form"))(sub_scope)
-                        title: "Network"
-                        css_class: "modal-wide modal-form"
-                        ok_label: if create then "Create" else "Modify"
-                        closable: true
-                        ok_callback: (modal) ->
-                            console.log(scope.edit_obj)
+            icswComplexModalService(
+                {
+                    message: $compile($templateCache.get("network.form"))(sub_scope)
+                    title: "Network"
+                    css_class: "modal-wide modal-form"
+                    ok_label: if create then "Create" else "Modify"
+                    closable: true
+                    ok_callback: (modal) ->
+                        console.log(scope.edit_obj)
 
 
-                            d = $q.defer()
-                            if sub_scope.form_data.$invalid
-                                toaster.pop("warning", "form validation problem", "")
-                                d.reject("form not valid")
+                        d = $q.defer()
+                        if sub_scope.form_data.$invalid
+                            toaster.pop("warning", "form validation problem", "")
+                            d.reject("form not valid")
+                        else
+                            if create
+                                nw_tree.create_network(scope.edit_obj).then(
+                                    (ok) ->
+                                        d.resolve("created")
+                                    (notok) ->
+                                        d.reject("not created")
+                                )
                             else
-                                if create
-                                    nw_tree.create_network(scope.edit_obj).then(
-                                        (ok) ->
-                                            d.resolve("created")
-                                        (notok) ->
-                                            d.reject("not created")
-                                    )
-                                else
-                                    scope.edit_obj.put().then(
-                                        (ok) ->
-                                            nw_tree.reorder()
-                                            d.resolve("updated")
-                                        (not_ok) ->
-                                            d.reject("not updated")
-                                    )
-                            return d.promise
-                        cancel_callback: (modal) ->
-                            if not create
-                                dbu.restore_backup(obj_or_parent)
-                            d = $q.defer()
-                            d.resolve("cancel")
-                            return d.promise
-                    }
-                ).then(
-                    (fin) ->
-                        console.log "finish"
-                        sub_scope.$destroy()
-                )
+                                scope.edit_obj.put().then(
+                                    (ok) ->
+                                        nw_tree.reorder()
+                                        d.resolve("updated")
+                                    (not_ok) ->
+                                        d.reject("not updated")
+                                )
+                        return d.promise
+                    cancel_callback: (modal) ->
+                        if not create
+                            dbu.restore_backup(obj_or_parent)
+                        d = $q.defer()
+                        d.resolve("cancel")
+                        return d.promise
+                }
+            ).then(
+                (fin) ->
+                    console.log "finish"
+                    sub_scope.$destroy()
             )
 
         delete: (scope, event, nw) ->
