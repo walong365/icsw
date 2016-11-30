@@ -93,6 +93,7 @@ icsw_app = angular.module(
         "icsw.backend.variable",
         "icsw.backend.livestatus",
         "icsw.backend.user",
+        "icsw.backend.monitoring",
         "icsw.rrd.graph",
         "icsw.system.background",
         "icsw.server.info",

@@ -51,10 +51,6 @@ def main():
         _dict[_cmd] = {
             "args": _args,
             "info": [_entry.string for _entry in _p_list],
-            "for_host": True if (_cmd.count("HOST_") or _cmd.endswith("_HOST")) else False,
-            "for_service": True if _cmd.count("SVC") else False,
-            "for_hostgroup": True if _cmd.count("HOSTGROUP") else False,
-            "for_servicegroup": True if _cmd.count("SERVICEGROUP") else False,
         }
     for _cmd in sorted(_dict.keys()):
         _stuff = _dict[_cmd]
@@ -88,11 +84,17 @@ def main():
                 else:
                     print("            IcingaCommandArg(\"{}\", optional=False),".format(_arg))
             print("        ],")
-            _stuff["for_host"] = "host_name" in _arg_names
+            for arg_name, flag_name in [
+                ("host_name", "for_host"),
+                ("service_description", "for_service"),
+                ("contact_name", "for_contact"),
+                ("contactgroup_name", "for_contactgroup"),
+                ("servicegroup_name", "for_servicegroup"),
+                ("hostgroup_name", "for_hostgroup"),
+            ]:
+                _stuff[flag_name] = arg_name in _arg_names
         else:
             print("        args=[],")
-            _stuff["for_host"] = False
-            _args = []
         # print("        args=[{}],".format(", ".join(["\"{}\"".format(_arg.replace("<", "").replace(">", "")) for _arg in _args])))
         # info
         _parts = _info.split()
@@ -108,8 +110,8 @@ def main():
                 _line = "{} {}".format(_line, _parts.pop(0)).strip()
             _line = _line.replace("\"", "\\\"")
             print("        {}\"{}{}".format(_pf, _line, " \"" if _parts else "\",")),
-        for _flag in ["host", "service", "hostgroup", "servicegroup"]:
-            print("        for_{}={},".format(_flag, _stuff["for_{}".format(_flag)]))
+        for _flag in ["host", "service", "hostgroup", "servicegroup", "contact", "contactgroup"]:
+            print("        for_{}={},".format(_flag, _stuff.get("for_{}".format(_flag), False)))
         print("    )")
     # pprint.pprint(_dict)
 

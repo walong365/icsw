@@ -35,7 +35,7 @@ __all__ = [
 
 
 class IcingaCommand(object):
-    def __init__(self, name, args, info, for_host, for_service, for_hostgroup, for_servicegroup):
+    def __init__(self, name, args, info, for_host, for_service, for_hostgroup, for_servicegroup, for_contact, for_contactgroup):
         self.name = name
         self.args = args
         self.info = info
@@ -43,13 +43,35 @@ class IcingaCommand(object):
         self.for_service = for_service
         self.for_hostgroup = for_hostgroup
         self.for_servicegroup = for_servicegroup
+        self.for_contact = for_contact
+        self.for_contactgroup = for_contactgroup
         _arg_names = [_arg.name for _arg in self.args]
-        if self.for_host and "host_name" not in _arg_names:
-            raise KeyError("missing argument 'host_name' when using for_host ({})".format(self.name))
+        for (flag_name, arg_name) in [
+            ("for_host", "host_name"),
+            ("for_service", "service_description"),
+            ("for_contact", "contact_name"),
+            ("for_contactgroup", "contactgroup_name"),
+            ("for_hostgroup", "hostgroup_name"),
+            ("for_servicegroup", "servicegroup_name"),
+        ]:
+            if getattr(self, flag_name) and arg_name not in _arg_names:
+                raise KeyError(
+                    "missing argument '{}' when {} is True ({})".format(
+                        arg_name,
+                        flag_name,
+                        self.name,
+                    )
+                )
 
 
 class IcingaCommandArg(object):
+    typedict = {}
+
     def __init__(self, name, optional):
+        if name.count(" "):
+            raise SyntaxError("Illegal IcingaCommandArg '{}'".format(name))
+        self.typedict.setdefault(name, 0)
+        self.typedict[name] += 1
         self.name = name
         self.optional = optional
 
@@ -67,6 +89,8 @@ class IcingaCommandSerializer(serializers.Serializer):
     for_service = serializers.BooleanField()
     for_hostgroup = serializers.BooleanField()
     for_servicegroup = serializers.BooleanField()
+    for_contact = serializers.BooleanField()
+    for_contactgroup = serializers.BooleanField()
 
 
 class IcingaCommandEnum(Enum):
@@ -95,6 +119,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     acknowledge_host_problem_expire = IcingaCommand(
         name="ACKNOWLEDGE_HOST_PROBLEM_EXPIRE",
@@ -113,6 +139,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     acknowledge_svc_problem = IcingaCommand(
         name="ACKNOWLEDGE_SVC_PROBLEM",
@@ -140,6 +168,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     acknowledge_svc_problem_expire = IcingaCommand(
         name="ACKNOWLEDGE_SVC_PROBLEM_EXPIRE",
@@ -159,6 +189,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     add_host_comment = IcingaCommand(
         name="ADD_HOST_COMMENT",
@@ -176,6 +208,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     add_svc_comment = IcingaCommand(
         name="ADD_SVC_COMMENT",
@@ -194,6 +228,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_contact_host_notification_timeperiod = IcingaCommand(
         name="CHANGE_CONTACT_HOST_NOTIFICATION_TIMEPERIOD",
@@ -211,6 +247,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=True,
+        for_contactgroup=False,
     )
     change_contact_modattr = IcingaCommand(
         name="CHANGE_CONTACT_MODATTR",
@@ -229,6 +267,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=True,
+        for_contactgroup=False,
     )
     change_contact_modhattr = IcingaCommand(
         name="CHANGE_CONTACT_MODHATTR",
@@ -247,6 +287,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=True,
+        for_contactgroup=False,
     )
     change_contact_modsattr = IcingaCommand(
         name="CHANGE_CONTACT_MODSATTR",
@@ -265,6 +307,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=True,
+        for_contactgroup=False,
     )
     change_contact_svc_notification_timeperiod = IcingaCommand(
         name="CHANGE_CONTACT_SVC_NOTIFICATION_TIMEPERIOD",
@@ -279,9 +323,11 @@ class IcingaCommandEnum(Enum):
              "notification timeperiod. The timeperiod must have been configured "
              "in Icinga before it was last (re)started.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=True,
+        for_contactgroup=False,
     )
     change_custom_contact_var = IcingaCommand(
         name="CHANGE_CUSTOM_CONTACT_VAR",
@@ -295,6 +341,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=True,
+        for_contactgroup=False,
     )
     change_custom_host_var = IcingaCommand(
         name="CHANGE_CUSTOM_HOST_VAR",
@@ -308,6 +356,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_custom_svc_var = IcingaCommand(
         name="CHANGE_CUSTOM_SVC_VAR",
@@ -322,6 +372,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_global_host_event_handler = IcingaCommand(
         name="CHANGE_GLOBAL_HOST_EVENT_HANDLER",
@@ -337,6 +389,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_global_svc_event_handler = IcingaCommand(
         name="CHANGE_GLOBAL_SVC_EVENT_HANDLER",
@@ -349,9 +403,11 @@ class IcingaCommandEnum(Enum):
              "used as the new service event handler. The command must have "
              "been configured in Icinga before it was last (re)started.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_host_check_command = IcingaCommand(
         name="CHANGE_HOST_CHECK_COMMAND",
@@ -368,6 +424,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_host_check_timeperiod = IcingaCommand(
         name="CHANGE_HOST_CHECK_TIMEPERIOD",
@@ -380,6 +438,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_host_event_handler = IcingaCommand(
         name="CHANGE_HOST_EVENT_HANDLER",
@@ -396,6 +456,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_host_modattr = IcingaCommand(
         name="CHANGE_HOST_MODATTR",
@@ -414,6 +476,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_host_notification_timeperiod = IcingaCommand(
         name="CHANGE_HOST_NOTIFICATION_TIMEPERIOD",
@@ -431,6 +495,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_max_host_check_attempts = IcingaCommand(
         name="CHANGE_MAX_HOST_CHECK_ATTEMPTS",
@@ -444,6 +510,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_max_svc_check_attempts = IcingaCommand(
         name="CHANGE_MAX_SVC_CHECK_ATTEMPTS",
@@ -458,6 +526,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_normal_host_check_interval = IcingaCommand(
         name="CHANGE_NORMAL_HOST_CHECK_INTERVAL",
@@ -471,6 +541,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_normal_svc_check_interval = IcingaCommand(
         name="CHANGE_NORMAL_SVC_CHECK_INTERVAL",
@@ -485,6 +557,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_retry_host_check_interval = IcingaCommand(
         name="CHANGE_RETRY_HOST_CHECK_INTERVAL",
@@ -497,6 +571,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_retry_svc_check_interval = IcingaCommand(
         name="CHANGE_RETRY_SVC_CHECK_INTERVAL",
@@ -510,6 +586,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_svc_check_command = IcingaCommand(
         name="CHANGE_SVC_CHECK_COMMAND",
@@ -527,6 +605,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_svc_check_timeperiod = IcingaCommand(
         name="CHANGE_SVC_CHECK_TIMEPERIOD",
@@ -544,6 +624,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_svc_event_handler = IcingaCommand(
         name="CHANGE_SVC_EVENT_HANDLER",
@@ -562,6 +644,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_svc_modattr = IcingaCommand(
         name="CHANGE_SVC_MODATTR",
@@ -581,6 +665,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     change_svc_notification_timeperiod = IcingaCommand(
         name="CHANGE_SVC_NOTIFICATION_TIMEPERIOD",
@@ -599,6 +685,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     delay_host_notification = IcingaCommand(
         name="DELAY_HOST_NOTIFICATION",
@@ -617,6 +705,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     delay_svc_notification = IcingaCommand(
         name="DELAY_SVC_NOTIFICATION",
@@ -636,6 +726,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     del_all_host_comments = IcingaCommand(
         name="DEL_ALL_HOST_COMMENTS",
@@ -647,6 +739,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     del_all_svc_comments = IcingaCommand(
         name="DEL_ALL_SVC_COMMENTS",
@@ -659,6 +753,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     del_downtime_by_hostgroup_name = IcingaCommand(
         name="DEL_DOWNTIME_BY_HOSTGROUP_NAME",
@@ -679,6 +775,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     del_downtime_by_host_name = IcingaCommand(
         name="DEL_DOWNTIME_BY_HOST_NAME",
@@ -698,11 +796,13 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     del_downtime_by_start_time_comment = IcingaCommand(
         name="DEL_DOWNTIME_BY_START_TIME_COMMENT",
         args=[
-            IcingaCommandArg("start time", optional=False),
+            IcingaCommandArg("start_time", optional=False),
             IcingaCommandArg("comment_string", optional=True),
         ],
         info="Deletes downtimes with start times matching the timestamp specified "
@@ -711,6 +811,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     del_host_comment = IcingaCommand(
         name="DEL_HOST_COMMENT",
@@ -723,6 +825,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     del_host_downtime = IcingaCommand(
         name="DEL_HOST_DOWNTIME",
@@ -737,6 +841,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     del_svc_comment = IcingaCommand(
         name="DEL_SVC_COMMENT",
@@ -746,9 +852,11 @@ class IcingaCommandEnum(Enum):
         info="Deletes a service comment. The id number of the comment that "
              "is to be deleted must be specified.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     del_svc_downtime = IcingaCommand(
         name="DEL_SVC_DOWNTIME",
@@ -760,9 +868,11 @@ class IcingaCommandEnum(Enum):
              "the service will come out of scheduled downtime (as long as there "
              "are no other overlapping active downtime entries).",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_all_notifications_beyond_host = IcingaCommand(
         name="DISABLE_ALL_NOTIFICATIONS_BEYOND_HOST",
@@ -776,6 +886,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_contactgroup_host_notifications = IcingaCommand(
         name="DISABLE_CONTACTGROUP_HOST_NOTIFICATIONS",
@@ -788,6 +900,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=True,
     )
     disable_contactgroup_svc_notifications = IcingaCommand(
         name="DISABLE_CONTACTGROUP_SVC_NOTIFICATIONS",
@@ -797,9 +911,11 @@ class IcingaCommandEnum(Enum):
         info="Disables service notifications for all contacts in a particular "
              "contactgroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=True,
     )
     disable_contact_host_notifications = IcingaCommand(
         name="DISABLE_CONTACT_HOST_NOTIFICATIONS",
@@ -811,6 +927,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=True,
+        for_contactgroup=False,
     )
     disable_contact_svc_notifications = IcingaCommand(
         name="DISABLE_CONTACT_SVC_NOTIFICATIONS",
@@ -819,9 +937,11 @@ class IcingaCommandEnum(Enum):
         ],
         info="Disables service notifications for a particular contact.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=True,
+        for_contactgroup=False,
     )
     disable_event_handlers = IcingaCommand(
         name="DISABLE_EVENT_HANDLERS",
@@ -831,6 +951,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_failure_prediction = IcingaCommand(
         name="DISABLE_FAILURE_PREDICTION",
@@ -840,6 +962,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_flap_detection = IcingaCommand(
         name="DISABLE_FLAP_DETECTION",
@@ -849,6 +973,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_hostgroup_host_checks = IcingaCommand(
         name="DISABLE_HOSTGROUP_HOST_CHECKS",
@@ -860,6 +986,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_hostgroup_host_notifications = IcingaCommand(
         name="DISABLE_HOSTGROUP_HOST_NOTIFICATIONS",
@@ -874,6 +1002,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_hostgroup_passive_host_checks = IcingaCommand(
         name="DISABLE_HOSTGROUP_PASSIVE_HOST_CHECKS",
@@ -885,6 +1015,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_hostgroup_passive_svc_checks = IcingaCommand(
         name="DISABLE_HOSTGROUP_PASSIVE_SVC_CHECKS",
@@ -894,9 +1026,11 @@ class IcingaCommandEnum(Enum):
         info="Disables passive checks for all services associated with hosts "
              "in a particular hostgroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_hostgroup_svc_checks = IcingaCommand(
         name="DISABLE_HOSTGROUP_SVC_CHECKS",
@@ -906,9 +1040,11 @@ class IcingaCommandEnum(Enum):
         info="Disables active checks for all services associated with hosts "
              "in a particular hostgroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_hostgroup_svc_notifications = IcingaCommand(
         name="DISABLE_HOSTGROUP_SVC_NOTIFICATIONS",
@@ -920,9 +1056,11 @@ class IcingaCommandEnum(Enum):
              "for the hosts in the hostgroup - see the DISABLE_HOSTGROUP_HOST_NOTIFICATIONS "
              "command for that.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_host_and_child_notifications = IcingaCommand(
         name="DISABLE_HOST_AND_CHILD_NOTIFICATIONS",
@@ -935,6 +1073,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_host_check = IcingaCommand(
         name="DISABLE_HOST_CHECK",
@@ -947,6 +1087,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_host_event_handler = IcingaCommand(
         name="DISABLE_HOST_EVENT_HANDLER",
@@ -958,6 +1100,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_host_flap_detection = IcingaCommand(
         name="DISABLE_HOST_FLAP_DETECTION",
@@ -969,6 +1113,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_host_freshness_checks = IcingaCommand(
         name="DISABLE_HOST_FRESHNESS_CHECKS",
@@ -978,6 +1124,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_host_notifications = IcingaCommand(
         name="DISABLE_HOST_NOTIFICATIONS",
@@ -989,6 +1137,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_host_svc_checks = IcingaCommand(
         name="DISABLE_HOST_SVC_CHECKS",
@@ -997,9 +1147,11 @@ class IcingaCommandEnum(Enum):
         ],
         info="Disables active checks of all services on the specified host.",
         for_host=True,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_host_svc_notifications = IcingaCommand(
         name="DISABLE_HOST_SVC_NOTIFICATIONS",
@@ -1008,9 +1160,11 @@ class IcingaCommandEnum(Enum):
         ],
         info="Disables notifications for all services on the specified host.",
         for_host=True,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_notifications = IcingaCommand(
         name="DISABLE_NOTIFICATIONS",
@@ -1020,6 +1174,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_notifications_expire_time = IcingaCommand(
         name="DISABLE_NOTIFICATIONS_EXPIRE_TIME",
@@ -1031,6 +1187,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_passive_host_checks = IcingaCommand(
         name="DISABLE_PASSIVE_HOST_CHECKS",
@@ -1043,6 +1201,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_passive_svc_checks = IcingaCommand(
         name="DISABLE_PASSIVE_SVC_CHECKS",
@@ -1055,6 +1215,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_performance_data = IcingaCommand(
         name="DISABLE_PERFORMANCE_DATA",
@@ -1065,6 +1227,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_servicegroup_host_checks = IcingaCommand(
         name="DISABLE_SERVICEGROUP_HOST_CHECKS",
@@ -1077,6 +1241,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_servicegroup_host_notifications = IcingaCommand(
         name="DISABLE_SERVICEGROUP_HOST_NOTIFICATIONS",
@@ -1089,6 +1255,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_servicegroup_passive_host_checks = IcingaCommand(
         name="DISABLE_SERVICEGROUP_PASSIVE_HOST_CHECKS",
@@ -1102,6 +1270,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_servicegroup_passive_svc_checks = IcingaCommand(
         name="DISABLE_SERVICEGROUP_PASSIVE_SVC_CHECKS",
@@ -1111,9 +1281,11 @@ class IcingaCommandEnum(Enum):
         info="Disables the acceptance and processing of passive checks for "
              "all services in a particular servicegroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_servicegroup_svc_checks = IcingaCommand(
         name="DISABLE_SERVICEGROUP_SVC_CHECKS",
@@ -1122,9 +1294,11 @@ class IcingaCommandEnum(Enum):
         ],
         info="Disables active checks for all services in a particular servicegroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_servicegroup_svc_notifications = IcingaCommand(
         name="DISABLE_SERVICEGROUP_SVC_NOTIFICATIONS",
@@ -1134,9 +1308,11 @@ class IcingaCommandEnum(Enum):
         info="Disables notifications for all services that are members of a "
              "particular servicegroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_service_freshness_checks = IcingaCommand(
         name="DISABLE_SERVICE_FRESHNESS_CHECKS",
@@ -1146,6 +1322,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_svc_check = IcingaCommand(
         name="DISABLE_SVC_CHECK",
@@ -1158,6 +1336,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_svc_event_handler = IcingaCommand(
         name="DISABLE_SVC_EVENT_HANDLER",
@@ -1170,6 +1350,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_svc_flap_detection = IcingaCommand(
         name="DISABLE_SVC_FLAP_DETECTION",
@@ -1182,6 +1364,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     disable_svc_notifications = IcingaCommand(
         name="DISABLE_SVC_NOTIFICATIONS",
@@ -1194,6 +1378,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_all_notifications_beyond_host = IcingaCommand(
         name="ENABLE_ALL_NOTIFICATIONS_BEYOND_HOST",
@@ -1209,6 +1395,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_contactgroup_host_notifications = IcingaCommand(
         name="ENABLE_CONTACTGROUP_HOST_NOTIFICATIONS",
@@ -1220,6 +1408,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=True,
     )
     enable_contactgroup_svc_notifications = IcingaCommand(
         name="ENABLE_CONTACTGROUP_SVC_NOTIFICATIONS",
@@ -1229,9 +1419,11 @@ class IcingaCommandEnum(Enum):
         info="Enables service notifications for all contacts in a particular "
              "contactgroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=True,
     )
     enable_contact_host_notifications = IcingaCommand(
         name="ENABLE_CONTACT_HOST_NOTIFICATIONS",
@@ -1243,6 +1435,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=True,
+        for_contactgroup=False,
     )
     enable_contact_svc_notifications = IcingaCommand(
         name="ENABLE_CONTACT_SVC_NOTIFICATIONS",
@@ -1251,9 +1445,11 @@ class IcingaCommandEnum(Enum):
         ],
         info="Disables service notifications for a particular contact.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=True,
+        for_contactgroup=False,
     )
     enable_event_handlers = IcingaCommand(
         name="ENABLE_EVENT_HANDLERS",
@@ -1263,6 +1459,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_failure_prediction = IcingaCommand(
         name="ENABLE_FAILURE_PREDICTION",
@@ -1272,6 +1470,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_flap_detection = IcingaCommand(
         name="ENABLE_FLAP_DETECTION",
@@ -1281,6 +1481,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_hostgroup_host_checks = IcingaCommand(
         name="ENABLE_HOSTGROUP_HOST_CHECKS",
@@ -1292,6 +1494,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_hostgroup_host_notifications = IcingaCommand(
         name="ENABLE_HOSTGROUP_HOST_NOTIFICATIONS",
@@ -1308,6 +1512,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_hostgroup_passive_host_checks = IcingaCommand(
         name="ENABLE_HOSTGROUP_PASSIVE_HOST_CHECKS",
@@ -1319,6 +1525,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_hostgroup_passive_svc_checks = IcingaCommand(
         name="ENABLE_HOSTGROUP_PASSIVE_SVC_CHECKS",
@@ -1328,9 +1536,11 @@ class IcingaCommandEnum(Enum):
         info="Enables passive checks for all services associated with hosts "
              "in a particular hostgroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_hostgroup_svc_checks = IcingaCommand(
         name="ENABLE_HOSTGROUP_SVC_CHECKS",
@@ -1340,9 +1550,11 @@ class IcingaCommandEnum(Enum):
         info="Enables active checks for all services associated with hosts "
              "in a particular hostgroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_hostgroup_svc_notifications = IcingaCommand(
         name="ENABLE_HOSTGROUP_SVC_NOTIFICATIONS",
@@ -1356,9 +1568,11 @@ class IcingaCommandEnum(Enum):
              "these services, notifications must be enabled on a program-wide "
              "basis as well.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_host_and_child_notifications = IcingaCommand(
         name="ENABLE_HOST_AND_CHILD_NOTIFICATIONS",
@@ -1373,6 +1587,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_host_check = IcingaCommand(
         name="ENABLE_HOST_CHECK",
@@ -1385,6 +1601,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_host_event_handler = IcingaCommand(
         name="ENABLE_HOST_EVENT_HANDLER",
@@ -1396,6 +1614,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_host_flap_detection = IcingaCommand(
         name="ENABLE_HOST_FLAP_DETECTION",
@@ -1409,6 +1629,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_host_freshness_checks = IcingaCommand(
         name="ENABLE_HOST_FRESHNESS_CHECKS",
@@ -1420,6 +1642,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_host_notifications = IcingaCommand(
         name="ENABLE_HOST_NOTIFICATIONS",
@@ -1433,6 +1657,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_host_svc_checks = IcingaCommand(
         name="ENABLE_HOST_SVC_CHECKS",
@@ -1441,9 +1667,11 @@ class IcingaCommandEnum(Enum):
         ],
         info="Enables active checks of all services on the specified host.",
         for_host=True,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_host_svc_notifications = IcingaCommand(
         name="ENABLE_HOST_SVC_NOTIFICATIONS",
@@ -1454,9 +1682,11 @@ class IcingaCommandEnum(Enum):
              "Note that notifications will not be sent out if notifications "
              "are disabled on a program-wide basis.",
         for_host=True,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_notifications = IcingaCommand(
         name="ENABLE_NOTIFICATIONS",
@@ -1466,6 +1696,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_passive_host_checks = IcingaCommand(
         name="ENABLE_PASSIVE_HOST_CHECKS",
@@ -1478,6 +1710,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_passive_svc_checks = IcingaCommand(
         name="ENABLE_PASSIVE_SVC_CHECKS",
@@ -1490,6 +1724,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_performance_data = IcingaCommand(
         name="ENABLE_PERFORMANCE_DATA",
@@ -1500,6 +1736,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_servicegroup_host_checks = IcingaCommand(
         name="ENABLE_SERVICEGROUP_HOST_CHECKS",
@@ -1512,6 +1750,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_servicegroup_host_notifications = IcingaCommand(
         name="ENABLE_SERVICEGROUP_HOST_NOTIFICATIONS",
@@ -1526,6 +1766,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_servicegroup_passive_host_checks = IcingaCommand(
         name="ENABLE_SERVICEGROUP_PASSIVE_HOST_CHECKS",
@@ -1539,6 +1781,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_servicegroup_passive_svc_checks = IcingaCommand(
         name="ENABLE_SERVICEGROUP_PASSIVE_SVC_CHECKS",
@@ -1548,9 +1792,11 @@ class IcingaCommandEnum(Enum):
         info="Enables the acceptance and processing of passive checks for all "
              "services in a particular servicegroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_servicegroup_svc_checks = IcingaCommand(
         name="ENABLE_SERVICEGROUP_SVC_CHECKS",
@@ -1559,9 +1805,11 @@ class IcingaCommandEnum(Enum):
         ],
         info="Enables active checks for all services in a particular servicegroup.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_servicegroup_svc_notifications = IcingaCommand(
         name="ENABLE_SERVICEGROUP_SVC_NOTIFICATIONS",
@@ -1573,9 +1821,11 @@ class IcingaCommandEnum(Enum):
              "out for these services, notifications must also be enabled on "
              "a program-wide basis.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_service_freshness_checks = IcingaCommand(
         name="ENABLE_SERVICE_FRESHNESS_CHECKS",
@@ -1587,6 +1837,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_svc_check = IcingaCommand(
         name="ENABLE_SVC_CHECK",
@@ -1599,6 +1851,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_svc_event_handler = IcingaCommand(
         name="ENABLE_SVC_EVENT_HANDLER",
@@ -1611,6 +1865,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_svc_flap_detection = IcingaCommand(
         name="ENABLE_SVC_FLAP_DETECTION",
@@ -1625,6 +1881,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     enable_svc_notifications = IcingaCommand(
         name="ENABLE_SVC_NOTIFICATIONS",
@@ -1639,6 +1897,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     process_file = IcingaCommand(
         name="PROCESS_FILE",
@@ -1655,6 +1915,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     process_host_check_result = IcingaCommand(
         name="PROCESS_HOST_CHECK_RESULT",
@@ -1672,6 +1934,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     process_service_check_result = IcingaCommand(
         name="PROCESS_SERVICE_CHECK_RESULT",
@@ -1687,9 +1951,11 @@ class IcingaCommandEnum(Enum):
              "contains text output from the service check, along with optional "
              "performance data.",
         for_host=True,
-        for_service=False,
+        for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     read_state_information = IcingaCommand(
         name="READ_STATE_INFORMATION",
@@ -1704,6 +1970,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     remove_host_acknowledgement = IcingaCommand(
         name="REMOVE_HOST_ACKNOWLEDGEMENT",
@@ -1717,6 +1985,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     remove_svc_acknowledgement = IcingaCommand(
         name="REMOVE_SVC_ACKNOWLEDGEMENT",
@@ -1731,6 +2001,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     restart_process = IcingaCommand(
         name="RESTART_PROCESS",
@@ -1740,6 +2012,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     save_state_information = IcingaCommand(
         name="SAVE_STATE_INFORMATION",
@@ -1755,6 +2029,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_and_propagate_host_downtime = IcingaCommand(
         name="SCHEDULE_AND_PROPAGATE_HOST_DOWNTIME",
@@ -1783,6 +2059,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_and_propagate_triggered_host_downtime = IcingaCommand(
         name="SCHEDULE_AND_PROPAGATE_TRIGGERED_HOST_DOWNTIME",
@@ -1813,6 +2091,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_forced_host_check = IcingaCommand(
         name="SCHEDULE_FORCED_HOST_CHECK",
@@ -1830,6 +2110,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_forced_host_svc_checks = IcingaCommand(
         name="SCHEDULE_FORCED_HOST_SVC_CHECKS",
@@ -1844,9 +2126,11 @@ class IcingaCommandEnum(Enum):
              "timeperiod restrictions are ignored) and whether or not active "
              "checks are enabled on a service-specific or program-wide basis.",
         for_host=True,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_forced_svc_check = IcingaCommand(
         name="SCHEDULE_FORCED_SVC_CHECK",
@@ -1865,6 +2149,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_hostgroup_host_downtime = IcingaCommand(
         name="SCHEDULE_HOSTGROUP_HOST_DOWNTIME",
@@ -1893,6 +2179,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_hostgroup_svc_downtime = IcingaCommand(
         name="SCHEDULE_HOSTGROUP_SVC_DOWNTIME",
@@ -1918,9 +2206,11 @@ class IcingaCommandEnum(Enum):
              "\"trigger_id\" argument to zero (0) if the downtime for the services "
              "should not be triggered by another downtime entry.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_host_check = IcingaCommand(
         name="SCHEDULE_HOST_CHECK",
@@ -1940,6 +2230,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_host_downtime = IcingaCommand(
         name="SCHEDULE_HOST_DOWNTIME",
@@ -1967,6 +2259,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_host_svc_checks = IcingaCommand(
         name="SCHEDULE_HOST_SVC_CHECKS",
@@ -1984,9 +2278,11 @@ class IcingaCommandEnum(Enum):
              "want to force the service checks to occur at the time you specify, "
              "look at the SCHEDULE_FORCED_HOST_SVC_CHECKS command.",
         for_host=True,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_host_svc_downtime = IcingaCommand(
         name="SCHEDULE_HOST_SVC_DOWNTIME",
@@ -2012,9 +2308,11 @@ class IcingaCommandEnum(Enum):
              "to zero (0) if the downtime for the services should not be triggered "
              "by another downtime entry.",
         for_host=True,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_servicegroup_host_downtime = IcingaCommand(
         name="SCHEDULE_SERVICEGROUP_HOST_DOWNTIME",
@@ -2043,6 +2341,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_servicegroup_svc_downtime = IcingaCommand(
         name="SCHEDULE_SERVICEGROUP_SVC_DOWNTIME",
@@ -2068,9 +2368,11 @@ class IcingaCommandEnum(Enum):
              "(0) if the downtime for the services should not be triggered "
              "by another downtime entry.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_svc_check = IcingaCommand(
         name="SCHEDULE_SVC_CHECK",
@@ -2091,6 +2393,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     schedule_svc_downtime = IcingaCommand(
         name="SCHEDULE_SVC_DOWNTIME",
@@ -2119,6 +2423,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     send_custom_host_notification = IcingaCommand(
         name="SEND_CUSTOM_HOST_NOTIFICATION",
@@ -2145,6 +2451,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     send_custom_svc_notification = IcingaCommand(
         name="SEND_CUSTOM_SVC_NOTIFICATION",
@@ -2173,6 +2481,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     set_host_notification_number = IcingaCommand(
         name="SET_HOST_NOTIFICATION_NUMBER",
@@ -2191,6 +2501,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     set_svc_notification_number = IcingaCommand(
         name="SET_SVC_NOTIFICATION_NUMBER",
@@ -2210,6 +2522,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     shutdown_process = IcingaCommand(
         name="SHUTDOWN_PROCESS",
@@ -2219,6 +2533,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     start_accepting_passive_host_checks = IcingaCommand(
         name="START_ACCEPTING_PASSIVE_HOST_CHECKS",
@@ -2229,15 +2545,19 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     start_accepting_passive_svc_checks = IcingaCommand(
         name="START_ACCEPTING_PASSIVE_SVC_CHECKS",
         args=[],
         info="Enables passive service checks on a program-wide basis.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     start_executing_host_checks = IcingaCommand(
         name="START_EXECUTING_HOST_CHECKS",
@@ -2247,15 +2567,19 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     start_executing_svc_checks = IcingaCommand(
         name="START_EXECUTING_SVC_CHECKS",
         args=[],
         info="Enables active checks of services on a program-wide basis.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     start_obsessing_over_host = IcingaCommand(
         name="START_OBSESSING_OVER_HOST",
@@ -2268,6 +2592,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     start_obsessing_over_host_checks = IcingaCommand(
         name="START_OBSESSING_OVER_HOST_CHECKS",
@@ -2278,6 +2604,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     start_obsessing_over_svc = IcingaCommand(
         name="START_OBSESSING_OVER_SVC",
@@ -2291,6 +2619,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     start_obsessing_over_svc_checks = IcingaCommand(
         name="START_OBSESSING_OVER_SVC_CHECKS",
@@ -2298,9 +2628,11 @@ class IcingaCommandEnum(Enum):
         info="Enables processing of service checks via the OCSP command on "
              "a program-wide basis.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     stop_accepting_passive_host_checks = IcingaCommand(
         name="STOP_ACCEPTING_PASSIVE_HOST_CHECKS",
@@ -2311,15 +2643,19 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     stop_accepting_passive_svc_checks = IcingaCommand(
         name="STOP_ACCEPTING_PASSIVE_SVC_CHECKS",
         args=[],
         info="Disables passive service checks on a program-wide basis.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     stop_executing_host_checks = IcingaCommand(
         name="STOP_EXECUTING_HOST_CHECKS",
@@ -2329,15 +2665,19 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     stop_executing_svc_checks = IcingaCommand(
         name="STOP_EXECUTING_SVC_CHECKS",
         args=[],
         info="Disables active checks of services on a program-wide basis.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     stop_obsessing_over_host = IcingaCommand(
         name="STOP_OBSESSING_OVER_HOST",
@@ -2350,6 +2690,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     stop_obsessing_over_host_checks = IcingaCommand(
         name="STOP_OBSESSING_OVER_HOST_CHECKS",
@@ -2360,6 +2702,8 @@ class IcingaCommandEnum(Enum):
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     stop_obsessing_over_svc = IcingaCommand(
         name="STOP_OBSESSING_OVER_SVC",
@@ -2373,6 +2717,8 @@ class IcingaCommandEnum(Enum):
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
     stop_obsessing_over_svc_checks = IcingaCommand(
         name="STOP_OBSESSING_OVER_SVC_CHECKS",
@@ -2380,7 +2726,12 @@ class IcingaCommandEnum(Enum):
         info="Disables processing of service checks via the OCSP command on "
              "a program-wide basis.",
         for_host=False,
-        for_service=True,
+        for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
+        for_contact=False,
+        for_contactgroup=False,
     )
+
+# import pprint
+# pprint.pprint(IcingaCommandArg.typedict)

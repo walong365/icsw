@@ -159,13 +159,125 @@ angular.module(
                     $(element).removeClass("info")
             )
     }
+]).service("icswIcingaCmdTools",
+[
+    "$q", "icswMonitoringBasicTreeService", "$rootScope", "$templateCache", "$compile",
+    "icswSimpleAjaxCall", "blockUI", "icswComplexModalService",
+(
+    $q, icswMonitoringBasicTreeService, $rootScope, $templateCache, $compile,
+    icswSimpleAjaxCall, blockUI, icswComplexModalService,
+) ->
+    _struct = {
+        basic_tree: null
+    }
+
+    load_tree = () ->
+        defer = $q.defer()
+        if _struct.basic_tree
+            defer.resolve(_struct.basic_tree)
+        else
+            blockUI.start("loading commands...")
+            icswMonitoringBasicTreeService.load("icswIcingaCmdTools").then(
+                (tree) ->
+                    blockUI.stop()
+                    _struct.basic_tree = tree
+                    defer.resolve(_struct.basic_tree)
+            )
+        return defer.promise
+
+    icinga_cmd = (obj_type, obj_key_list) ->
+        load_tree().then(
+            (tree) ->
+                sub_scope = $rootScope.$new(true)
+                sub_scope.obj_type = obj_type
+                sub_scope.obj_key_list = obj_key_list
+                # action
+
+                _actions = []
+                for entry in tree.icinga_command_list
+                    if not entry.$$private
+                        if obj_type == "host"
+                            # for host actions this must be a host-only action
+                            if entry.for_host and not entry.for_service
+                                _actions.push(entry)
+                        else if obj_type == "service"
+                            # for service actions this must be a service action (!)
+                            if entry.for_service
+                                _actions.push(entry)
+
+                sub_scope.valid_actions = _.orderBy(
+                    _actions
+                    ["name"]
+                    ["asc"]
+                )
+                sub_scope.edit_obj = {
+                    action: sub_scope.valid_actions[0]
+                }
+                sub_scope.arguments = []
+
+                sub_scope.action_changed = ($event) ->
+                    _act = sub_scope.edit_obj.action
+                    sub_scope.arguments.length = 0
+                    for arg in _act.args
+                        if arg.name not in ["host_name", "service_description"]
+                            sub_scope.arguments.push(arg)
+
+                sub_scope.action_changed()
+                icswComplexModalService(
+                    {
+                        message: $compile($templateCache.get("icsw.livestatus.modify.entries"))(sub_scope)
+                        title: "Submit Icinga command"
+                        ok_label: "Submit"
+                        closable: true
+                        ok_callback: (modal) ->
+                            d = $q.defer()
+                            blockUI.start()
+                            icswSimpleAjaxCall(
+                                {
+                                    url: ICSW_URLS.MON_SEND_MON_COMMAND
+                                    data:
+                                        json: angular.toJson(
+                                            action: sub_scope.edit_obj.action
+                                            type: obj_type
+                                            key_list: obj_key_list
+                                        )
+                                }
+                            ).then(
+                                (res) ->
+                                    console.log "r=", res
+                                    blockUI.stop()
+                                    d.resolve("close")
+                                (error) ->
+                                    blockUI.stop()
+                                    d.reject(error)
+                            )
+                            return d.promise
+                        cancel_callback: () ->
+                            d = $q.defer()
+                            d.resolve("close")
+                            return d.promise
+                    }
+                ).then(
+                    (fin) ->
+                        sub_scope.$destroy()
+                )
+
+
+        )
+    return {
+        icinga_cmd: (obj_type, obj_key_list) ->
+            return icinga_cmd(obj_type, obj_key_list)
+    }
+
 ]).controller("icswLivestatusDeviceMonTableCtrl",
 [
     "$scope", "DeviceOverviewService", "$q", "icswSimpleAjaxCall", "ICSW_URLS",
     "ICSW_SIGNALS", "icswComplexModalService", "$templateCache", "$compile", "blockUI",
+    "icswIcingaCmdTools",
 (
     $scope, DeviceOverviewService, $q, icswSimpleAjaxCall, ICSW_URLS,
     ICSW_SIGNALS, icswComplexModalService, $templateCache, $compile, $blockUI,
+    icswIcingaCmdTools,
 ) ->
     $scope.struct = {
         # monitoring data
@@ -240,47 +352,14 @@ angular.module(
     )
 
     $scope.modify_entries = ($event) ->
-        sub_scope = $scope.$new(true)
-        # action
-        sub_scope.valid_actions = [
-            {short: "none", long: "do nothing"}
-            {short: "ack", long: "Acknowledge"}
-        ]
-        sub_scope.edit_obj = {
-            action: sub_scope.valid_actions[0]
-        }
-        icswComplexModalService(
-            {
-                message: $compile($templateCache.get("icsw.livestatus.modify.entries"))(sub_scope)
-                title: "Modify entries"
-                ok_label: "Modify"
-                closable: true
-                ok_callback: (modal) ->
-                    d = $q.defer()
-                    if $scope.struct.d_type == "hosts"
-                        key_list = (entry.$$icswDevice.idx for entry in $scope.struct.monitoring_data.hosts when entry.$$selected)
-                    else
-                        key_list = (entry.description for entry in $scope.struct.monitoring_data.services when entry.$$selected)
-                    icswSimpleAjaxCall(
-                        {
-                            url: ICSW_URLS.MON_SEND_MON_COMMAND
-                            data:
-                                json: angular.toJson(
-                                    action: sub_scope.edit_obj.action
-                                    type: $scope.struct.d_type
-                                    key_list: key_list
-                                )
-                        }
-                    ).then(
-                        (res) ->
-                            console.log "r=", res
-                            d.resolve("close")
-                    )
-                    return d.promise
-            }
-        ).then(
-            (fin) ->
-                sub_scope.$destroy()
+        if $scope.struct.d_type == "hosts"
+            _obj_type = "host"
+            key_list = (entry.$$icswDevice.idx for entry in $scope.struct.monitoring_data.hosts when entry.$$selected)
+        else
+            _obj_type = "service"
+            key_list = (entry.description for entry in $scope.struct.monitoring_data.services when entry.$$selected)
+        icswIcingaCmdTools.icinga_cmd(
+            _obj_type
+            key_list
         )
-
 ])
