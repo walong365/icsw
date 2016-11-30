@@ -370,8 +370,11 @@ class icswInitHandlerUnified(ZMQHandler):
         # ensure init.at prefix
         if record.name.startswith("init.at."):
             record.name = record.name[8:]
-        form_str = "{:<s}/{}[{:d}]"
-        record.threadName = form_str.format(record.name, record.threadName, record.lineno)
+        _line_pf = "[{:d}]".format(record.lineno)
+        form_str = "{:<s}/{}{}"
+        if not record.threadName.endswith(_line_pf):
+            # prohibit mutliple prefixing
+            record.threadName = form_str.format(record.name, record.threadName, _line_pf)
         # save record.name
         _rec_name = record.name
         record.name = "init.at.{}".format(UNIFIED_NAME)

@@ -280,8 +280,8 @@ icsw-connect-element-display .panel[layout_unlocked="false"] h4 {
 }
 /* FORM STYLES START */
 .icsw-formlabel {
-    width: 250px;
-    text-align: left !important;
+    /* width: 250px;
+    text-align: left !important; */
 }
 .maxwidth500 {
     max-width: 500px;
