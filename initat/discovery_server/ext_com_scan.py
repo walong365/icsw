@@ -791,8 +791,6 @@ class Dispatcher(object):
                     schedule_handler=link.schedule_handler
                 )
 
-
-
     def dispatch_call(self):
         # called every second, way too often...
         _now = timezone.now().replace(microsecond=0)
@@ -819,13 +817,8 @@ class Dispatcher(object):
 
         for schedule_item in ScheduleItem.objects.all():
             if schedule_item.planned_date < _now:
-                # default schedule handler is "asset_schedule_handler"
-                schedule_handler = "asset_schedule_handler"
-                if schedule_item.schedule_handler != None:
-                    schedule_handler = schedule_item.schedule_handler
-
-                schedule_handler_f = getattr(self, schedule_handler)
-                schedule_handler_f(schedule_item)
+                schedule_handler_function = getattr(self, schedule_item.schedule_handler)
+                schedule_handler_function(schedule_item)
                 schedule_item.delete()
 
         # step 1: init commands

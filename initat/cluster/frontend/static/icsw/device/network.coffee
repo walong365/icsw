@@ -1513,11 +1513,11 @@ angular.module(
 [
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
     "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
-    "toaster", "icswToolsSimpleModalService", "$timeout", "icswDispatcherSettingTreeService"
+    "toaster", "icswToolsSimpleModalService", "$timeout", "icswDispatcherSettingTreeService", "icswUserService"
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
     icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
-    toaster, icswToolsSimpleModalService, $timeout, icswDispatcherSettingTreeService
+    toaster, icswToolsSimpleModalService, $timeout, icswDispatcherSettingTreeService, icswUserService
 ) ->
 
     # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1570,6 +1570,8 @@ angular.module(
     nw_tree = undefined
     domain_tree = undefined
     dispatcher_tree = undefined
+    user_tree = undefined
+    dispatcher_links = undefined
 
     return {
         get_tabs: () ->
@@ -1583,12 +1585,24 @@ angular.module(
                     icswNetworkTreeService.load(scope.$id)
                     icswDomainTreeService.load(scope.$id)
                     icswDispatcherSettingTreeService.load(scope.$id)
+                    icswUserService.load(scope.$id)
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.DISCOVERY_DISPATCHER_LINK_LOADER
+                            data:
+                                model_name: "network"
+                            dataType: "json"
+                        }
+                    )
                 ]
             ).then(
                 (data) ->
                     nw_tree = data[0]
                     domain_tree = data[1]
                     dispatcher_tree = data[2]
+                    user_tree = data[3]
+                    dispatcher_links = data[4]
+
                     defer.resolve(nw_tree.nw_list)
             )
             return defer.promise
@@ -1628,6 +1642,13 @@ angular.module(
             sub_scope = scope.$new(false)
             sub_scope.dispatcher_tree = dispatcher_tree
 
+            if scope.edit_obj.$$dispatchers == undefined
+                scope.edit_obj.$$dispatchers = []
+
+                for link in dispatcher_links
+                    if scope.edit_obj.idx == link.object_id
+                        scope.edit_obj.$$dispatchers.push(link.dispatcher_setting)
+
             icswComplexModalService(
                 {
                     message: $compile($templateCache.get("network.form"))(sub_scope)
@@ -1636,9 +1657,6 @@ angular.module(
                     ok_label: if create then "Create" else "Modify"
                     closable: true
                     ok_callback: (modal) ->
-                        console.log(scope.edit_obj)
-
-
                         d = $q.defer()
                         if sub_scope.form_data.$invalid
                             toaster.pop("warning", "form validation problem", "")
@@ -1659,6 +1677,21 @@ angular.module(
                                     (not_ok) ->
                                         d.reject("not updated")
                                 )
+
+                            icswSimpleAjaxCall(
+                                {
+                                    url: ICSW_URLS.DISCOVERY_DISPATCHER_LINK_SYNCER
+                                    data:
+                                        model_name: "network"
+                                        object_id: scope.edit_obj.idx
+                                        dispatcher_setting_ids: (idx for idx  in scope.edit_obj.$$dispatchers)
+                                        schedule_handler: "network_scan_schedule_handler"
+                                        user_id: user_tree.user.idx
+                                    dataType: "json"
+                                }
+                            )
+
+
                         return d.promise
                     cancel_callback: (modal) ->
                         if not create

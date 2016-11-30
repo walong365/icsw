@@ -33,7 +33,8 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from pymongo.errors import PyMongoError
 
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, DispatcherLink, DispatcherSetting, user
+from initat.cluster.backbone.serializers import DispatcherLinkSerializer
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.tools.mongodb import MongoDbConnector
 
@@ -520,3 +521,49 @@ class GetEventLog(View):
             bson.json_util.dumps(ret_dict),
             content_type="application/json"
         )
+
+
+class DispatcherLinkLoader(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        model_name = request.POST.get("model_name")
+        queryset = DispatcherLink.objects.filter(model_name=model_name)
+        serializer = DispatcherLinkSerializer(queryset, many=True)
+        return HttpResponse(json.dumps(serializer.data))
+
+class DispatcherLinkSyncer(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        model_name = request.POST.get("model_name")
+        object_id = request.POST.get("object_id")
+        schedule_handler = request.POST.get("schedule_handler")
+        user_id = request.POST.get("user_id")
+        dispatcher_setting_ids = [int(value) for value in request.POST.getlist("dispatcher_setting_ids[]")]
+
+        current_links = DispatcherLink.objects.filter(
+            model_name=model_name,
+            object_id=object_id,
+            schedule_handler=schedule_handler)
+
+        links_deleted = []
+        for link in current_links:
+            if link.dispatcher_setting.idx in dispatcher_setting_ids:
+                dispatcher_setting_ids.remove(link.dispatcher_setting.idx)
+            else:
+                links_deleted.append(link.idx)
+                link.delete()
+
+        links_created = []
+        for dispatcher_setting_id in dispatcher_setting_ids:
+            new_link = DispatcherLink(
+                model_name=model_name,
+                object_id=object_id,
+                schedule_handler=schedule_handler,
+                dispatcher_setting=DispatcherSetting.objects.get(idx=dispatcher_setting_id),
+                user=user.objects.get(idx=user_id)
+            )
+
+            new_link.save()
+            links_created.append(new_link.idx)
+
+        return HttpResponse(json.dumps([links_deleted, links_created]))
