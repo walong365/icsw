@@ -25,7 +25,13 @@ from __future__ import unicode_literals, print_function
 
 from enum import Enum
 
-from initat.cluster.backbone.server_enums import icswServiceEnum
+from rest_framework import serializers
+
+
+__all__ = [
+    b"IcingaCommandEnum",
+    b"IcingaCommandSerializer",
+]
 
 
 class IcingaCommand(object):
@@ -37,12 +43,43 @@ class IcingaCommand(object):
         self.for_service = for_service
         self.for_hostgroup = for_hostgroup
         self.for_servicegroup = for_servicegroup
+        _arg_names = [_arg.name for _arg in self.args]
+        if self.for_host and "host_name" not in _arg_names:
+            raise KeyError("missing argument 'host_name' when using for_host ({})".format(self.name))
+
+
+class IcingaCommandArg(object):
+    def __init__(self, name, optional):
+        self.name = name
+        self.optional = optional
+
+
+class IcingaCommandArgSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    optional = serializers.BooleanField()
+
+
+class IcingaCommandSerializer(serializers.Serializer):
+    name = serializers.CharField()
+    args = IcingaCommandArgSerializer(many=True)
+    info = serializers.CharField()
+    for_host = serializers.BooleanField()
+    for_service = serializers.BooleanField()
+    for_hostgroup = serializers.BooleanField()
+    for_servicegroup = serializers.BooleanField()
 
 
 class IcingaCommandEnum(Enum):
     acknowledge_host_problem = IcingaCommand(
         name="ACKNOWLEDGE_HOST_PROBLEM",
-        args=["host_name", "sticky", "notify", "persistent", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("sticky", optional=False),
+            IcingaCommandArg("notify", optional=False),
+            IcingaCommandArg("persistent", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Allows you to acknowledge the current problem for the specified "
              "host. By acknowledging the current problem, future notifications "
              "(for the same host state) are disabled. If the \"sticky\" option "
@@ -61,7 +98,15 @@ class IcingaCommandEnum(Enum):
     )
     acknowledge_host_problem_expire = IcingaCommand(
         name="ACKNOWLEDGE_HOST_PROBLEM_EXPIRE",
-        args=["host_name", "sticky", "notify", "persistent", "timestamp", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("sticky", optional=False),
+            IcingaCommandArg("notify", optional=False),
+            IcingaCommandArg("persistent", optional=False),
+            IcingaCommandArg("timestamp", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Allows you to define the time (seconds since the UNIX epoch) "
              "when the acknowledgement will expire (will be deleted).",
         for_host=True,
@@ -71,7 +116,15 @@ class IcingaCommandEnum(Enum):
     )
     acknowledge_svc_problem = IcingaCommand(
         name="ACKNOWLEDGE_SVC_PROBLEM",
-        args=["host_name", "service_description", "sticky", "notify", "persistent", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("sticky", optional=False),
+            IcingaCommandArg("notify", optional=False),
+            IcingaCommandArg("persistent", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Allows you to acknowledge the current problem for the specified "
              "service. By acknowledging the current problem, future notifications "
              "(for the same servicestate) are disabled. If the \"sticky\" option "
@@ -83,24 +136,38 @@ class IcingaCommandEnum(Enum):
              "has been acknowledged, if set to null (0) there will be no notification. "
              "If the \"persistent\" option is set to one (1), the comment associated "
              "with the acknowledgement will remain even after the service recovers.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     acknowledge_svc_problem_expire = IcingaCommand(
         name="ACKNOWLEDGE_SVC_PROBLEM_EXPIRE",
-        args=["host_name", "service_description", "sticky", "notify", "persistent", "timestamp", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("sticky", optional=False),
+            IcingaCommandArg("notify", optional=False),
+            IcingaCommandArg("persistent", optional=False),
+            IcingaCommandArg("timestamp", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Allows you to define the time (seconds since the UNIX epoch) "
              "when the acknowledgement will expire (will be deleted).",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     add_host_comment = IcingaCommand(
         name="ADD_HOST_COMMENT",
-        args=["host_name", "persistent", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("persistent", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Adds a comment to a particular host. If the \"persistent\" field "
              "is set to zero (0), the comment will be deleted the next time "
              "Icinga is restarted. Otherwise, the comment will persist across "
@@ -112,33 +179,45 @@ class IcingaCommandEnum(Enum):
     )
     add_svc_comment = IcingaCommand(
         name="ADD_SVC_COMMENT",
-        args=["host_name", "service_description", "persistent", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("persistent", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Adds a comment to a particular service. If the \"persistent\" field "
              "is set to zero (0), the comment will be deleted the next time "
              "Icinga is restarted. Otherwise, the comment will persist across "
              "program restarts until it is deleted manually.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_contact_host_notification_timeperiod = IcingaCommand(
         name="CHANGE_CONTACT_HOST_NOTIFICATION_TIMEPERIOD",
-        args=["contact_name", "notification_timeperiod"],
+        args=[
+            IcingaCommandArg("contact_name", optional=False),
+            IcingaCommandArg("notification_timeperiod", optional=False),
+        ],
         info="Changes the host notification timeperiod for a particular contact "
              "to what is specified by the \"notification_timeperiod\" option. "
              "The \"notification_timeperiod\" option should be the short name "
              "of the timeperiod that is to be used as the contact's host notification "
              "timeperiod. The timeperiod must have been configured in Icinga "
              "before it was last (re)started.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_contact_modattr = IcingaCommand(
         name="CHANGE_CONTACT_MODATTR",
-        args=["contact_name", "value"],
+        args=[
+            IcingaCommandArg("contact_name", optional=False),
+            IcingaCommandArg("value", optional=False),
+        ],
         info="This command changes the modified attributes value for the specified "
              "contact. Modified attributes values are used by Icinga to determine "
              "which object properties should be retained across program restarts. "
@@ -153,7 +232,10 @@ class IcingaCommandEnum(Enum):
     )
     change_contact_modhattr = IcingaCommand(
         name="CHANGE_CONTACT_MODHATTR",
-        args=["contact_name", "value"],
+        args=[
+            IcingaCommandArg("contact_name", optional=False),
+            IcingaCommandArg("value", optional=False),
+        ],
         info="This command changes the modified host attributes value for the "
              "specified contact. Modified attributes values are used by Icinga "
              "to determine which object properties should be retained across "
@@ -168,7 +250,10 @@ class IcingaCommandEnum(Enum):
     )
     change_contact_modsattr = IcingaCommand(
         name="CHANGE_CONTACT_MODSATTR",
-        args=["contact_name", "value"],
+        args=[
+            IcingaCommandArg("contact_name", optional=False),
+            IcingaCommandArg("value", optional=False),
+        ],
         info="This command changes the modified service attributes value for "
              "the specified contact. Modified attributes values are used by "
              "Icinga to determine which object properties should be retained "
@@ -183,7 +268,10 @@ class IcingaCommandEnum(Enum):
     )
     change_contact_svc_notification_timeperiod = IcingaCommand(
         name="CHANGE_CONTACT_SVC_NOTIFICATION_TIMEPERIOD",
-        args=["contact_name", "notification_timeperiod"],
+        args=[
+            IcingaCommandArg("contact_name", optional=False),
+            IcingaCommandArg("notification_timeperiod", optional=False),
+        ],
         info="Changes the service notification timeperiod for a particular "
              "contact to what is specified by the \"notification_timeperiod\" "
              "option. The \"notification_timeperiod\" option should be the short "
@@ -197,7 +285,11 @@ class IcingaCommandEnum(Enum):
     )
     change_custom_contact_var = IcingaCommand(
         name="CHANGE_CUSTOM_CONTACT_VAR",
-        args=["contact_name", "varname", "varvalue"],
+        args=[
+            IcingaCommandArg("contact_name", optional=False),
+            IcingaCommandArg("varname", optional=False),
+            IcingaCommandArg("varvalue", optional=False),
+        ],
         info="Changes the value of a custom contact variable.",
         for_host=False,
         for_service=False,
@@ -206,7 +298,11 @@ class IcingaCommandEnum(Enum):
     )
     change_custom_host_var = IcingaCommand(
         name="CHANGE_CUSTOM_HOST_VAR",
-        args=["host_name", "varname", "varvalue"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("varname", optional=False),
+            IcingaCommandArg("varvalue", optional=False),
+        ],
         info="Changes the value of a custom host variable.",
         for_host=True,
         for_service=False,
@@ -215,29 +311,38 @@ class IcingaCommandEnum(Enum):
     )
     change_custom_svc_var = IcingaCommand(
         name="CHANGE_CUSTOM_SVC_VAR",
-        args=["host_name", "service_description", "varname", "varvalue"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("varname", optional=False),
+            IcingaCommandArg("varvalue", optional=False),
+        ],
         info="Changes the value of a custom service variable.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_global_host_event_handler = IcingaCommand(
         name="CHANGE_GLOBAL_HOST_EVENT_HANDLER",
-        args=["event_handler_command"],
+        args=[
+            IcingaCommandArg("event_handler_command", optional=False),
+        ],
         info="Changes the global host event handler command to be that specified "
              "by the \"event_handler_command\" option. The \"event_handler_command\" "
              "option specifies the short name of the command that should be "
              "used as the new host event handler. The command must have been "
              "configured in Icinga before it was last (re)started.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_global_svc_event_handler = IcingaCommand(
         name="CHANGE_GLOBAL_SVC_EVENT_HANDLER",
-        args=["event_handler_command"],
+        args=[
+            IcingaCommandArg("event_handler_command", optional=False),
+        ],
         info="Changes the global service event handler command to be that specified "
              "by the \"event_handler_command\" option. The \"event_handler_command\" "
              "option specifies the short name of the command that should be "
@@ -250,7 +355,10 @@ class IcingaCommandEnum(Enum):
     )
     change_host_check_command = IcingaCommand(
         name="CHANGE_HOST_CHECK_COMMAND",
-        args=["host_name", "check_command"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("check_command", optional=False),
+        ],
         info="Changes the check command for a particular host to be that specified "
              "by the \"check_command\" option. The \"check_command\" option specifies "
              "the short name of the command that should be used as the new "
@@ -263,7 +371,10 @@ class IcingaCommandEnum(Enum):
     )
     change_host_check_timeperiod = IcingaCommand(
         name="CHANGE_HOST_CHECK_TIMEPERIOD",
-        args=["host_name", "timeperiod"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("timeperiod", optional=False),
+        ],
         info="Changes the valid check period for the specified host.",
         for_host=True,
         for_service=False,
@@ -272,7 +383,10 @@ class IcingaCommandEnum(Enum):
     )
     change_host_event_handler = IcingaCommand(
         name="CHANGE_HOST_EVENT_HANDLER",
-        args=["host_name", "event_handler_command"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("event_handler_command", optional=False),
+        ],
         info="Changes the event handler command for a particular host to be "
              "that specified by the \"event_handler_command\" option. The \"event_handler_command\" "
              "option specifies the short name of the command that should be "
@@ -285,7 +399,10 @@ class IcingaCommandEnum(Enum):
     )
     change_host_modattr = IcingaCommand(
         name="CHANGE_HOST_MODATTR",
-        args=["host_name", "value"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("value", optional=False),
+        ],
         info="This command changes the modified attributes value for the specified "
              "host. Modified attributes values are used by Icinga to determine "
              "which object properties should be retained across program restarts. "
@@ -300,7 +417,10 @@ class IcingaCommandEnum(Enum):
     )
     change_host_notification_timeperiod = IcingaCommand(
         name="CHANGE_HOST_NOTIFICATION_TIMEPERIOD",
-        args=["host_name", "notification_timeperiod"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("notification_timeperiod", optional=False),
+        ],
         info="Changes the notification timeperiod for a particular host to "
              "what is specified by the \"notification_timeperiod\" option. The "
              "\"notification_timeperiod\" option should be the short name of "
@@ -314,7 +434,10 @@ class IcingaCommandEnum(Enum):
     )
     change_max_host_check_attempts = IcingaCommand(
         name="CHANGE_MAX_HOST_CHECK_ATTEMPTS",
-        args=["host_name", "check_attempts"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("check_attempts", optional=False),
+        ],
         info="Changes the maximum number of check attempts (retries) for a "
              "particular host.",
         for_host=True,
@@ -324,17 +447,24 @@ class IcingaCommandEnum(Enum):
     )
     change_max_svc_check_attempts = IcingaCommand(
         name="CHANGE_MAX_SVC_CHECK_ATTEMPTS",
-        args=["host_name", "service_description", "check_attempts"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("check_attempts", optional=False),
+        ],
         info="Changes the maximum number of check attempts (retries) for a "
              "particular service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_normal_host_check_interval = IcingaCommand(
         name="CHANGE_NORMAL_HOST_CHECK_INTERVAL",
-        args=["host_name", "check_interval"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("check_interval", optional=False),
+        ],
         info="Changes the normal (regularly scheduled) check interval for a "
              "particular host.",
         for_host=True,
@@ -344,17 +474,24 @@ class IcingaCommandEnum(Enum):
     )
     change_normal_svc_check_interval = IcingaCommand(
         name="CHANGE_NORMAL_SVC_CHECK_INTERVAL",
-        args=["host_name", "service_description", "check_interval"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("check_interval", optional=False),
+        ],
         info="Changes the normal (regularly scheduled) check interval for a "
              "particular service",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_retry_host_check_interval = IcingaCommand(
         name="CHANGE_RETRY_HOST_CHECK_INTERVAL",
-        args=["host_name", "check_interval"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("check_interval", optional=False),
+        ],
         info="Changes the retry check interval for a particular host.",
         for_host=True,
         for_service=False,
@@ -363,56 +500,76 @@ class IcingaCommandEnum(Enum):
     )
     change_retry_svc_check_interval = IcingaCommand(
         name="CHANGE_RETRY_SVC_CHECK_INTERVAL",
-        args=["host_name", "service_description", "check_interval"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("check_interval", optional=False),
+        ],
         info="Changes the retry check interval for a particular service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_svc_check_command = IcingaCommand(
         name="CHANGE_SVC_CHECK_COMMAND",
-        args=["host_name", "service_description", "check_command"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("check_command", optional=False),
+        ],
         info="Changes the check command for a particular service to be that "
              "specified by the \"check_command\" option. The \"check_command\" "
              "option specifies the short name of the command that should be "
              "used as the new service check command. The command must have "
              "been configured in Icinga before it was last (re)started.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_svc_check_timeperiod = IcingaCommand(
         name="CHANGE_SVC_CHECK_TIMEPERIOD",
-        args=["host_name", "service_description", "check_timeperiod"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("check_timeperiod", optional=False),
+        ],
         info="Changes the check timeperiod for a particular service to what "
              "is specified by the \"check_timeperiod\" option. The \"check_timeperiod\" "
              "option should be the short name of the timeperod that is to be "
              "used as the service check timeperiod. The timeperiod must have "
              "been configured in Icinga before it was last (re)started.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_svc_event_handler = IcingaCommand(
         name="CHANGE_SVC_EVENT_HANDLER",
-        args=["host_name", "service_description", "event_handler_command"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("event_handler_command", optional=False),
+        ],
         info="Changes the event handler command for a particular service to "
              "be that specified by the \"event_handler_command\" option. The "
              "\"event_handler_command\" option specifies the short name of the "
              "command that should be used as the new service event handler. "
              "The command must have been configured in Icinga before it was "
              "last (re)started.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_svc_modattr = IcingaCommand(
         name="CHANGE_SVC_MODATTR",
-        args=["host_name", "service_description", "value"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("value", optional=False),
+        ],
         info="This command changes the modified attributes value for the specified "
              "service. Modified attributes values are used by Icinga to determine "
              "which object properties should be retained across program restarts. "
@@ -420,28 +577,35 @@ class IcingaCommandEnum(Enum):
              "This is an advanced option and should only be used by people "
              "who are intimately familiar with the data retention logic in "
              "Icinga.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     change_svc_notification_timeperiod = IcingaCommand(
         name="CHANGE_SVC_NOTIFICATION_TIMEPERIOD",
-        args=["host_name", "service_description", "notification_timeperiod"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("notification_timeperiod", optional=False),
+        ],
         info="Changes the notification timeperiod for a particular service "
              "to what is specified by the \"notification_timeperiod\" option. "
              "The \"notification_timeperiod\" option should be the short name "
              "of the timeperiod that is to be used as the service notification "
              "timeperiod. The timeperiod must have been configured in Icinga "
              "before it was last (re)started.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     delay_host_notification = IcingaCommand(
         name="DELAY_HOST_NOTIFICATION",
-        args=["host_name", "notification_time"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("notification_time", optional=False),
+        ],
         info="Delays the next notification for a particular host until \"notification_time\". "
              "The \"notification_time\" argument is specified in time_t format "
              "(seconds since the UNIX epoch). Note that this will only have "
@@ -456,7 +620,11 @@ class IcingaCommandEnum(Enum):
     )
     delay_svc_notification = IcingaCommand(
         name="DELAY_SVC_NOTIFICATION",
-        args=["host_name", "service_description", "notification_time"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("notification_time", optional=False),
+        ],
         info="Delays the next notification for a parciular service until \"notification_time\". "
              "The \"notification_time\" argument is specified in time_t format "
              "(seconds since the UNIX epoch). Note that this will only have "
@@ -464,14 +632,16 @@ class IcingaCommandEnum(Enum):
              "it is currently in. If the service changes to another state, "
              "a new notification may go out before the time you specify in "
              "the \"notification_time\" argument.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     del_all_host_comments = IcingaCommand(
         name="DEL_ALL_HOST_COMMENTS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Deletes all comments associated with a particular host.",
         for_host=True,
         for_service=False,
@@ -480,30 +650,44 @@ class IcingaCommandEnum(Enum):
     )
     del_all_svc_comments = IcingaCommand(
         name="DEL_ALL_SVC_COMMENTS",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Deletes all comments associated with a particular service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     del_downtime_by_hostgroup_name = IcingaCommand(
         name="DEL_DOWNTIME_BY_HOSTGROUP_NAME",
-        args=["hostgroup_name[", "hostname[", "servicedesc[", "starttime[", "commentstring]]]]"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+            IcingaCommandArg("hostname", optional=True),
+            IcingaCommandArg("servicedesc", optional=True),
+            IcingaCommandArg("starttime", optional=True),
+            IcingaCommandArg("commentstring", optional=True),
+        ],
         info="Deletes the host downtime entries and associated services of "
              "all hosts of the host group matching the \"hostgroup_name\" argument. "
              "If the downtime is currently in effect, the host will come out "
              "of scheduled downtime (as long as there are no other overlapping "
              "active downtime entries). Please note that you can add more (optional) "
              "\"filters\" to limit the scope.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     del_downtime_by_host_name = IcingaCommand(
         name="DEL_DOWNTIME_BY_HOST_NAME",
-        args=["host_name[", "servicedesc[", "starttime[", "commentstring]]]"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("servicedesc", optional=True),
+            IcingaCommandArg("starttime", optional=True),
+            IcingaCommandArg("commentstring", optional=True),
+        ],
         info="Deletes the host downtime entry and associated services for the "
              "host whose host_name matches the \"host_name\" argument. If the "
              "downtime is currently in effect, the host will come out of scheduled "
@@ -517,7 +701,10 @@ class IcingaCommandEnum(Enum):
     )
     del_downtime_by_start_time_comment = IcingaCommand(
         name="DEL_DOWNTIME_BY_START_TIME_COMMENT",
-        args=["start time[", "comment_string]"],
+        args=[
+            IcingaCommandArg("start time", optional=False),
+            IcingaCommandArg("comment_string", optional=True),
+        ],
         info="Deletes downtimes with start times matching the timestamp specified "
              "by the \"start time\" argument and an optional comment string.",
         for_host=False,
@@ -527,29 +714,35 @@ class IcingaCommandEnum(Enum):
     )
     del_host_comment = IcingaCommand(
         name="DEL_HOST_COMMENT",
-        args=["comment_id"],
+        args=[
+            IcingaCommandArg("comment_id", optional=False),
+        ],
         info="Deletes a host comment. The id number of the comment that is "
              "to be deleted must be specified.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     del_host_downtime = IcingaCommand(
         name="DEL_HOST_DOWNTIME",
-        args=["downtime_id"],
+        args=[
+            IcingaCommandArg("downtime_id", optional=False),
+        ],
         info="Deletes the host downtime entry that has an ID number matching "
              "the \"downtime_id\" argument. If the downtime is currently in effect, "
              "the host will come out of scheduled downtime (as long as there "
              "are no other overlapping active downtime entries).",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     del_svc_comment = IcingaCommand(
         name="DEL_SVC_COMMENT",
-        args=["comment_id"],
+        args=[
+            IcingaCommandArg("comment_id", optional=False),
+        ],
         info="Deletes a service comment. The id number of the comment that "
              "is to be deleted must be specified.",
         for_host=False,
@@ -559,7 +752,9 @@ class IcingaCommandEnum(Enum):
     )
     del_svc_downtime = IcingaCommand(
         name="DEL_SVC_DOWNTIME",
-        args=["downtime_id"],
+        args=[
+            IcingaCommandArg("downtime_id", optional=False),
+        ],
         info="Deletes the service downtime entry that has an ID number matching "
              "the \"downtime_id\" argument. If the downtime is currently in effect, "
              "the service will come out of scheduled downtime (as long as there "
@@ -571,7 +766,9 @@ class IcingaCommandEnum(Enum):
     )
     disable_all_notifications_beyond_host = IcingaCommand(
         name="DISABLE_ALL_NOTIFICATIONS_BEYOND_HOST",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Disables notifications for all hosts and services \"beyond\" (e.g. "
              "on all child hosts of) the specified host. The current notification "
              "setting for the specified host is not affected.",
@@ -582,17 +779,21 @@ class IcingaCommandEnum(Enum):
     )
     disable_contactgroup_host_notifications = IcingaCommand(
         name="DISABLE_CONTACTGROUP_HOST_NOTIFICATIONS",
-        args=["contactgroup_name"],
+        args=[
+            IcingaCommandArg("contactgroup_name", optional=False),
+        ],
         info="Disables host notifications for all contacts in a particular "
              "contactgroup.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     disable_contactgroup_svc_notifications = IcingaCommand(
         name="DISABLE_CONTACTGROUP_SVC_NOTIFICATIONS",
-        args=["contactgroup_name"],
+        args=[
+            IcingaCommandArg("contactgroup_name", optional=False),
+        ],
         info="Disables service notifications for all contacts in a particular "
              "contactgroup.",
         for_host=False,
@@ -602,16 +803,20 @@ class IcingaCommandEnum(Enum):
     )
     disable_contact_host_notifications = IcingaCommand(
         name="DISABLE_CONTACT_HOST_NOTIFICATIONS",
-        args=["contact_name"],
+        args=[
+            IcingaCommandArg("contact_name", optional=False),
+        ],
         info="Disables host notifications for a particular contact.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     disable_contact_svc_notifications = IcingaCommand(
         name="DISABLE_CONTACT_SVC_NOTIFICATIONS",
-        args=["contact_name"],
+        args=[
+            IcingaCommandArg("contact_name", optional=False),
+        ],
         info="Disables service notifications for a particular contact.",
         for_host=False,
         for_service=True,
@@ -647,69 +852,83 @@ class IcingaCommandEnum(Enum):
     )
     disable_hostgroup_host_checks = IcingaCommand(
         name="DISABLE_HOSTGROUP_HOST_CHECKS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Disables active checks for all hosts in a particular hostgroup.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     disable_hostgroup_host_notifications = IcingaCommand(
         name="DISABLE_HOSTGROUP_HOST_NOTIFICATIONS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Disables notifications for all hosts in a particular hostgroup. "
              "This does not disable notifications for the services associated "
              "with the hosts in the hostgroup - see the DISABLE_HOSTGROUP_SVC_NOTIFICATIONS "
              "command for that.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     disable_hostgroup_passive_host_checks = IcingaCommand(
         name="DISABLE_HOSTGROUP_PASSIVE_HOST_CHECKS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Disables passive checks for all hosts in a particular hostgroup.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     disable_hostgroup_passive_svc_checks = IcingaCommand(
         name="DISABLE_HOSTGROUP_PASSIVE_SVC_CHECKS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Disables passive checks for all services associated with hosts "
              "in a particular hostgroup.",
-        for_host=True,
+        for_host=False,
         for_service=True,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     disable_hostgroup_svc_checks = IcingaCommand(
         name="DISABLE_HOSTGROUP_SVC_CHECKS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Disables active checks for all services associated with hosts "
              "in a particular hostgroup.",
-        for_host=True,
+        for_host=False,
         for_service=True,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     disable_hostgroup_svc_notifications = IcingaCommand(
         name="DISABLE_HOSTGROUP_SVC_NOTIFICATIONS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Disables notifications for all services associated with hosts "
              "in a particular hostgroup. This does not disable notifications "
              "for the hosts in the hostgroup - see the DISABLE_HOSTGROUP_HOST_NOTIFICATIONS "
              "command for that.",
-        for_host=True,
+        for_host=False,
         for_service=True,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     disable_host_and_child_notifications = IcingaCommand(
         name="DISABLE_HOST_AND_CHILD_NOTIFICATIONS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Disables notifications for the specified host, as well as all "
              "hosts \"beyond\" (e.g. on all child hosts of) the specified host.",
         for_host=True,
@@ -719,7 +938,9 @@ class IcingaCommandEnum(Enum):
     )
     disable_host_check = IcingaCommand(
         name="DISABLE_HOST_CHECK",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Disables (regularly scheduled and on-demand) active checks of "
              "the specified host.",
         for_host=True,
@@ -729,7 +950,9 @@ class IcingaCommandEnum(Enum):
     )
     disable_host_event_handler = IcingaCommand(
         name="DISABLE_HOST_EVENT_HANDLER",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Disables the event handler for the specified host.",
         for_host=True,
         for_service=False,
@@ -738,7 +961,9 @@ class IcingaCommandEnum(Enum):
     )
     disable_host_flap_detection = IcingaCommand(
         name="DISABLE_HOST_FLAP_DETECTION",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Disables flap detection for the specified host.",
         for_host=True,
         for_service=False,
@@ -749,14 +974,16 @@ class IcingaCommandEnum(Enum):
         name="DISABLE_HOST_FRESHNESS_CHECKS",
         args=[],
         info="Disables freshness checks of all hosts on a program-wide basis.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     disable_host_notifications = IcingaCommand(
         name="DISABLE_HOST_NOTIFICATIONS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Disables notifications for a particular host.",
         for_host=True,
         for_service=False,
@@ -765,7 +992,9 @@ class IcingaCommandEnum(Enum):
     )
     disable_host_svc_checks = IcingaCommand(
         name="DISABLE_HOST_SVC_CHECKS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Disables active checks of all services on the specified host.",
         for_host=True,
         for_service=True,
@@ -774,7 +1003,9 @@ class IcingaCommandEnum(Enum):
     )
     disable_host_svc_notifications = IcingaCommand(
         name="DISABLE_HOST_SVC_NOTIFICATIONS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Disables notifications for all services on the specified host.",
         for_host=True,
         for_service=True,
@@ -803,7 +1034,9 @@ class IcingaCommandEnum(Enum):
     )
     disable_passive_host_checks = IcingaCommand(
         name="DISABLE_PASSIVE_HOST_CHECKS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Disables acceptance and processing of passive host checks for "
              "the specified host.",
         for_host=True,
@@ -813,9 +1046,12 @@ class IcingaCommandEnum(Enum):
     )
     disable_passive_svc_checks = IcingaCommand(
         name="DISABLE_PASSIVE_SVC_CHECKS",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Disables passive checks for the specified service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
@@ -832,38 +1068,46 @@ class IcingaCommandEnum(Enum):
     )
     disable_servicegroup_host_checks = IcingaCommand(
         name="DISABLE_SERVICEGROUP_HOST_CHECKS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Disables active checks for all hosts that have services that "
              "are members of a particular servicegroup.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
     )
     disable_servicegroup_host_notifications = IcingaCommand(
         name="DISABLE_SERVICEGROUP_HOST_NOTIFICATIONS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Disables notifications for all hosts that have services that "
              "are members of a particular servicegroup.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
     )
     disable_servicegroup_passive_host_checks = IcingaCommand(
         name="DISABLE_SERVICEGROUP_PASSIVE_HOST_CHECKS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Disables the acceptance and processing of passive checks for "
              "all hosts that have services that are members of a particular "
              "service group.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
     )
     disable_servicegroup_passive_svc_checks = IcingaCommand(
         name="DISABLE_SERVICEGROUP_PASSIVE_SVC_CHECKS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Disables the acceptance and processing of passive checks for "
              "all services in a particular servicegroup.",
         for_host=False,
@@ -873,7 +1117,9 @@ class IcingaCommandEnum(Enum):
     )
     disable_servicegroup_svc_checks = IcingaCommand(
         name="DISABLE_SERVICEGROUP_SVC_CHECKS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Disables active checks for all services in a particular servicegroup.",
         for_host=False,
         for_service=True,
@@ -882,7 +1128,9 @@ class IcingaCommandEnum(Enum):
     )
     disable_servicegroup_svc_notifications = IcingaCommand(
         name="DISABLE_SERVICEGROUP_SVC_NOTIFICATIONS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Disables notifications for all services that are members of a "
              "particular servicegroup.",
         for_host=False,
@@ -901,43 +1149,57 @@ class IcingaCommandEnum(Enum):
     )
     disable_svc_check = IcingaCommand(
         name="DISABLE_SVC_CHECK",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Disables active checks for a particular service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     disable_svc_event_handler = IcingaCommand(
         name="DISABLE_SVC_EVENT_HANDLER",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Disables the event handler for the specified service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     disable_svc_flap_detection = IcingaCommand(
         name="DISABLE_SVC_FLAP_DETECTION",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Disables flap detection for the specified service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     disable_svc_notifications = IcingaCommand(
         name="DISABLE_SVC_NOTIFICATIONS",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Disables notifications for a particular service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     enable_all_notifications_beyond_host = IcingaCommand(
         name="ENABLE_ALL_NOTIFICATIONS_BEYOND_HOST",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Enables notifications for all hosts and services \"beyond\" (e.g. "
              "on all child hosts of) the specified host. The current notification "
              "setting for the specified host is not affected. Notifications "
@@ -950,16 +1212,20 @@ class IcingaCommandEnum(Enum):
     )
     enable_contactgroup_host_notifications = IcingaCommand(
         name="ENABLE_CONTACTGROUP_HOST_NOTIFICATIONS",
-        args=["contactgroup_name"],
+        args=[
+            IcingaCommandArg("contactgroup_name", optional=False),
+        ],
         info="Enables host notifications for all contacts in a particular contactgroup.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     enable_contactgroup_svc_notifications = IcingaCommand(
         name="ENABLE_CONTACTGROUP_SVC_NOTIFICATIONS",
-        args=["contactgroup_name"],
+        args=[
+            IcingaCommandArg("contactgroup_name", optional=False),
+        ],
         info="Enables service notifications for all contacts in a particular "
              "contactgroup.",
         for_host=False,
@@ -969,16 +1235,20 @@ class IcingaCommandEnum(Enum):
     )
     enable_contact_host_notifications = IcingaCommand(
         name="ENABLE_CONTACT_HOST_NOTIFICATIONS",
-        args=["contact_name"],
+        args=[
+            IcingaCommandArg("contact_name", optional=False),
+        ],
         info="Enables host notifications for a particular contact.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     enable_contact_svc_notifications = IcingaCommand(
         name="ENABLE_CONTACT_SVC_NOTIFICATIONS",
-        args=["contact_name"],
+        args=[
+            IcingaCommandArg("contact_name", optional=False),
+        ],
         info="Disables service notifications for a particular contact.",
         for_host=False,
         for_service=True,
@@ -1014,73 +1284,87 @@ class IcingaCommandEnum(Enum):
     )
     enable_hostgroup_host_checks = IcingaCommand(
         name="ENABLE_HOSTGROUP_HOST_CHECKS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Enables active checks for all hosts in a particular hostgroup.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     enable_hostgroup_host_notifications = IcingaCommand(
         name="ENABLE_HOSTGROUP_HOST_NOTIFICATIONS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Enables notifications for all hosts in a particular hostgroup. "
              "This does not enable notifications for the services associated "
              "with the hosts in the hostgroup - see the ENABLE_HOSTGROUP_SVC_NOTIFICATIONS "
              "command for that. In order for notifications to be sent out for "
              "these hosts, notifications must be enabled on a program-wide "
              "basis as well.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     enable_hostgroup_passive_host_checks = IcingaCommand(
         name="ENABLE_HOSTGROUP_PASSIVE_HOST_CHECKS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Enables passive checks for all hosts in a particular hostgroup.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     enable_hostgroup_passive_svc_checks = IcingaCommand(
         name="ENABLE_HOSTGROUP_PASSIVE_SVC_CHECKS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Enables passive checks for all services associated with hosts "
              "in a particular hostgroup.",
-        for_host=True,
+        for_host=False,
         for_service=True,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     enable_hostgroup_svc_checks = IcingaCommand(
         name="ENABLE_HOSTGROUP_SVC_CHECKS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Enables active checks for all services associated with hosts "
              "in a particular hostgroup.",
-        for_host=True,
+        for_host=False,
         for_service=True,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     enable_hostgroup_svc_notifications = IcingaCommand(
         name="ENABLE_HOSTGROUP_SVC_NOTIFICATIONS",
-        args=["hostgroup_name"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+        ],
         info="Enables notifications for all services that are associated with "
              "hosts in a particular hostgroup. This does not enable notifications "
              "for the hosts in the hostgroup - see the ENABLE_HOSTGROUP_HOST_NOTIFICATIONS "
              "command for that. In order for notifications to be sent out for "
              "these services, notifications must be enabled on a program-wide "
              "basis as well.",
-        for_host=True,
+        for_host=False,
         for_service=True,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     enable_host_and_child_notifications = IcingaCommand(
         name="ENABLE_HOST_AND_CHILD_NOTIFICATIONS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Enables notifications for the specified host, as well as all "
              "hosts \"beyond\" (e.g. on all child hosts of) the specified host. "
              "Notifications will only be sent out for these hosts if notifications "
@@ -1092,7 +1376,9 @@ class IcingaCommandEnum(Enum):
     )
     enable_host_check = IcingaCommand(
         name="ENABLE_HOST_CHECK",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Enables (regularly scheduled and on-demand) active checks of "
              "the specified host.",
         for_host=True,
@@ -1102,7 +1388,9 @@ class IcingaCommandEnum(Enum):
     )
     enable_host_event_handler = IcingaCommand(
         name="ENABLE_HOST_EVENT_HANDLER",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Enables the event handler for the specified host.",
         for_host=True,
         for_service=False,
@@ -1111,7 +1399,9 @@ class IcingaCommandEnum(Enum):
     )
     enable_host_flap_detection = IcingaCommand(
         name="ENABLE_HOST_FLAP_DETECTION",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Enables flap detection for the specified host. In order for the "
              "flap detection algorithms to be run for the host, flap detection "
              "must be enabled on a program-wide basis as well.",
@@ -1126,14 +1416,16 @@ class IcingaCommandEnum(Enum):
         info="Enables freshness checks of all hosts on a program-wide basis. "
              "Individual hosts that have freshness checks disabled will not "
              "be checked for freshness.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     enable_host_notifications = IcingaCommand(
         name="ENABLE_HOST_NOTIFICATIONS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Enables notifications for a particular host. Notifications will "
              "be sent out for the host only if notifications are enabled on "
              "a program-wide basis as well.",
@@ -1144,7 +1436,9 @@ class IcingaCommandEnum(Enum):
     )
     enable_host_svc_checks = IcingaCommand(
         name="ENABLE_HOST_SVC_CHECKS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Enables active checks of all services on the specified host.",
         for_host=True,
         for_service=True,
@@ -1153,7 +1447,9 @@ class IcingaCommandEnum(Enum):
     )
     enable_host_svc_notifications = IcingaCommand(
         name="ENABLE_HOST_SVC_NOTIFICATIONS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Enables notifications for all services on the specified host. "
              "Note that notifications will not be sent out if notifications "
              "are disabled on a program-wide basis.",
@@ -1173,7 +1469,9 @@ class IcingaCommandEnum(Enum):
     )
     enable_passive_host_checks = IcingaCommand(
         name="ENABLE_PASSIVE_HOST_CHECKS",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Enables acceptance and processing of passive host checks for "
              "the specified host.",
         for_host=True,
@@ -1183,9 +1481,12 @@ class IcingaCommandEnum(Enum):
     )
     enable_passive_svc_checks = IcingaCommand(
         name="ENABLE_PASSIVE_SVC_CHECKS",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Enables passive checks for the specified service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
@@ -1202,40 +1503,48 @@ class IcingaCommandEnum(Enum):
     )
     enable_servicegroup_host_checks = IcingaCommand(
         name="ENABLE_SERVICEGROUP_HOST_CHECKS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Enables active checks for all hosts that have services that are "
              "members of a particular servicegroup.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
     )
     enable_servicegroup_host_notifications = IcingaCommand(
         name="ENABLE_SERVICEGROUP_HOST_NOTIFICATIONS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Enables notifications for all hosts that have services that are "
              "members of a particular servicegroup. In order for notifications "
              "to be sent out for these hosts, notifications must also be enabled "
              "on a program-wide basis.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
     )
     enable_servicegroup_passive_host_checks = IcingaCommand(
         name="ENABLE_SERVICEGROUP_PASSIVE_HOST_CHECKS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Enables the acceptance and processing of passive checks for all "
              "hosts that have services that are members of a particular service "
              "group.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
     )
     enable_servicegroup_passive_svc_checks = IcingaCommand(
         name="ENABLE_SERVICEGROUP_PASSIVE_SVC_CHECKS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Enables the acceptance and processing of passive checks for all "
              "services in a particular servicegroup.",
         for_host=False,
@@ -1245,7 +1554,9 @@ class IcingaCommandEnum(Enum):
     )
     enable_servicegroup_svc_checks = IcingaCommand(
         name="ENABLE_SERVICEGROUP_SVC_CHECKS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Enables active checks for all services in a particular servicegroup.",
         for_host=False,
         for_service=True,
@@ -1254,7 +1565,9 @@ class IcingaCommandEnum(Enum):
     )
     enable_servicegroup_svc_notifications = IcingaCommand(
         name="ENABLE_SERVICEGROUP_SVC_NOTIFICATIONS",
-        args=["servicegroup_name"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+        ],
         info="Enables notifications for all services that are members of a "
              "particular servicegroup. In order for notifications to be sent "
              "out for these services, notifications must also be enabled on "
@@ -1277,47 +1590,62 @@ class IcingaCommandEnum(Enum):
     )
     enable_svc_check = IcingaCommand(
         name="ENABLE_SVC_CHECK",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Enables active checks for a particular service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     enable_svc_event_handler = IcingaCommand(
         name="ENABLE_SVC_EVENT_HANDLER",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Enables the event handler for the specified service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     enable_svc_flap_detection = IcingaCommand(
         name="ENABLE_SVC_FLAP_DETECTION",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Enables flap detection for the specified service. In order for "
              "the flap detection algorithms to be run for the service, flap "
              "detection must be enabled on a program-wide basis as well.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     enable_svc_notifications = IcingaCommand(
         name="ENABLE_SVC_NOTIFICATIONS",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Enables notifications for a particular service. Notifications "
              "will be sent out for the service only if notifications are enabled "
              "on a program-wide basis as well.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     process_file = IcingaCommand(
         name="PROCESS_FILE",
-        args=["file_name", "delete"],
+        args=[
+            IcingaCommandArg("file_name", optional=False),
+            IcingaCommandArg("delete", optional=False),
+        ],
         info="Directs Icinga to process all external commands that are found "
              "in the file specified by the <file_name> argument. If the <delete> "
              "option is non-zero, the file will be deleted once it has been "
@@ -1330,7 +1658,11 @@ class IcingaCommandEnum(Enum):
     )
     process_host_check_result = IcingaCommand(
         name="PROCESS_HOST_CHECK_RESULT",
-        args=["host_name", "status_code", "plugin_output"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("status_code", optional=False),
+            IcingaCommandArg("plugin_output", optional=False),
+        ],
         info="This is used to submit a passive check result for a particular "
              "host. The \"status_code\" indicates the state of the host check "
              "and should be one of the following: 0=UP, 1=DOWN, 2=UNREACHABLE. "
@@ -1343,13 +1675,18 @@ class IcingaCommandEnum(Enum):
     )
     process_service_check_result = IcingaCommand(
         name="PROCESS_SERVICE_CHECK_RESULT",
-        args=["host_name", "service_description", "return_code", "plugin_output"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("return_code", optional=False),
+            IcingaCommandArg("plugin_output", optional=False),
+        ],
         info="This is used to submit a passive check result for a particular "
              "service. The \"return_code\" field should be one of the following: "
              "0=OK, 1=WARNING, 2=CRITICAL, 3=UNKNOWN. The \"plugin_output\" field "
              "contains text output from the service check, along with optional "
              "performance data.",
-        for_host=False,
+        for_host=True,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
@@ -1370,7 +1707,9 @@ class IcingaCommandEnum(Enum):
     )
     remove_host_acknowledgement = IcingaCommand(
         name="REMOVE_HOST_ACKNOWLEDGEMENT",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="This removes the problem acknowledgement for a particular host. "
              "Once the acknowledgement has been removed, notifications can "
              "once again be sent out for the given host.",
@@ -1381,11 +1720,14 @@ class IcingaCommandEnum(Enum):
     )
     remove_svc_acknowledgement = IcingaCommand(
         name="REMOVE_SVC_ACKNOWLEDGEMENT",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="This removes the problem acknowledgement for a particular service. "
              "Once the acknowledgement has been removed, notifications can "
              "once again be sent out for the given service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
@@ -1416,7 +1758,16 @@ class IcingaCommandEnum(Enum):
     )
     schedule_and_propagate_host_downtime = IcingaCommand(
         name="SCHEDULE_AND_PROPAGATE_HOST_DOWNTIME",
-        args=["host_name", "start_time", "end_time", "fixed", "trigger_id", "duration", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("start_time", optional=False),
+            IcingaCommandArg("end_time", optional=False),
+            IcingaCommandArg("fixed", optional=False),
+            IcingaCommandArg("trigger_id", optional=False),
+            IcingaCommandArg("duration", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Schedules downtime for a specified host and all of its children "
              "(hosts). If the \"fixed\" argument is set to one (1), downtime "
              "will start and end at the times specified by the \"start\" and "
@@ -1435,7 +1786,16 @@ class IcingaCommandEnum(Enum):
     )
     schedule_and_propagate_triggered_host_downtime = IcingaCommand(
         name="SCHEDULE_AND_PROPAGATE_TRIGGERED_HOST_DOWNTIME",
-        args=["host_name", "start_time", "end_time", "fixed", "trigger_id", "duration", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("start_time", optional=False),
+            IcingaCommandArg("end_time", optional=False),
+            IcingaCommandArg("fixed", optional=False),
+            IcingaCommandArg("trigger_id", optional=False),
+            IcingaCommandArg("duration", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Schedules downtime for a specified host and all of its children "
              "(hosts). If the \"fixed\" argument is set to one (1), downtime "
              "will start and end at the times specified by the \"start\" and "
@@ -1456,7 +1816,10 @@ class IcingaCommandEnum(Enum):
     )
     schedule_forced_host_check = IcingaCommand(
         name="SCHEDULE_FORCED_HOST_CHECK",
-        args=["host_name", "check_time"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("check_time", optional=False),
+        ],
         info="Schedules a forced active check of a particular host at \"check_time\". "
              "The \"check_time\" argument is specified in time_t format (seconds "
              "since the UNIX epoch). Forced checks are performed regardless "
@@ -1470,7 +1833,10 @@ class IcingaCommandEnum(Enum):
     )
     schedule_forced_host_svc_checks = IcingaCommand(
         name="SCHEDULE_FORCED_HOST_SVC_CHECKS",
-        args=["host_name", "check_time"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("check_time", optional=False),
+        ],
         info="Schedules a forced active check of all services associated with "
              "a particular host at \"check_time\". The \"check_time\" argument "
              "is specified in time_t format (seconds since the UNIX epoch). "
@@ -1484,21 +1850,34 @@ class IcingaCommandEnum(Enum):
     )
     schedule_forced_svc_check = IcingaCommand(
         name="SCHEDULE_FORCED_SVC_CHECK",
-        args=["host_name", "service_description", "check_time"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("check_time", optional=False),
+        ],
         info="Schedules a forced active check of a particular service at \"check_time\". "
              "The \"check_time\" argument is specified in time_t format (seconds "
              "since the UNIX epoch). Forced checks are performed regardless "
              "of what time it is (e.g. timeperiod restrictions are ignored) "
              "and whether or not active checks are enabled on a service-specific "
              "or program-wide basis.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     schedule_hostgroup_host_downtime = IcingaCommand(
         name="SCHEDULE_HOSTGROUP_HOST_DOWNTIME",
-        args=["hostgroup_name", "start_time", "end_time", "fixed", "trigger_id", "duration", "author", "comment"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+            IcingaCommandArg("start_time", optional=False),
+            IcingaCommandArg("end_time", optional=False),
+            IcingaCommandArg("fixed", optional=False),
+            IcingaCommandArg("trigger_id", optional=False),
+            IcingaCommandArg("duration", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Schedules downtime for all hosts in a specified hostgroup. If "
              "the \"fixed\" argument is set to one (1), downtime will start and "
              "end at the times specified by the \"start\" and \"end\" arguments. "
@@ -1510,14 +1889,23 @@ class IcingaCommandEnum(Enum):
              "scheduled downtime entry. Set the \"trigger_id\" argument to zero "
              "(0) if the downtime for the hosts should not be triggered by "
              "another downtime entry.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     schedule_hostgroup_svc_downtime = IcingaCommand(
         name="SCHEDULE_HOSTGROUP_SVC_DOWNTIME",
-        args=["hostgroup_name", "start_time", "end_time", "fixed", "trigger_id", "duration", "author", "comment"],
+        args=[
+            IcingaCommandArg("hostgroup_name", optional=False),
+            IcingaCommandArg("start_time", optional=False),
+            IcingaCommandArg("end_time", optional=False),
+            IcingaCommandArg("fixed", optional=False),
+            IcingaCommandArg("trigger_id", optional=False),
+            IcingaCommandArg("duration", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Schedules downtime for all services associated with hosts in "
              "a specified hostgroup. If the \"fixed\" argument is set to one "
              "(1), downtime will start and end at the times specified by the "
@@ -1529,14 +1917,17 @@ class IcingaCommandEnum(Enum):
              "is set to the ID of another scheduled downtime entry. Set the "
              "\"trigger_id\" argument to zero (0) if the downtime for the services "
              "should not be triggered by another downtime entry.",
-        for_host=True,
+        for_host=False,
         for_service=True,
         for_hostgroup=True,
         for_servicegroup=False,
     )
     schedule_host_check = IcingaCommand(
         name="SCHEDULE_HOST_CHECK",
-        args=["host_name", "check_time"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("check_time", optional=False),
+        ],
         info="Schedules the next active check of a particular host at \"check_time\". "
              "The \"check_time\" argument is specified in time_t format (seconds "
              "since the UNIX epoch). Note that the host may not actually be "
@@ -1552,7 +1943,16 @@ class IcingaCommandEnum(Enum):
     )
     schedule_host_downtime = IcingaCommand(
         name="SCHEDULE_HOST_DOWNTIME",
-        args=["host_name", "start_time", "end_time", "fixed", "trigger_id", "duration", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("start_time", optional=False),
+            IcingaCommandArg("end_time", optional=False),
+            IcingaCommandArg("fixed", optional=False),
+            IcingaCommandArg("trigger_id", optional=False),
+            IcingaCommandArg("duration", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Schedules downtime for a specified host. If the \"fixed\" argument "
              "is set to one (1), downtime will start and end at the times specified "
              "by the \"start\" and \"end\" arguments. Otherwise, downtime will "
@@ -1570,7 +1970,10 @@ class IcingaCommandEnum(Enum):
     )
     schedule_host_svc_checks = IcingaCommand(
         name="SCHEDULE_HOST_SVC_CHECKS",
-        args=["host_name", "check_time"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("check_time", optional=False),
+        ],
         info="Schedules the next active check of all services on a particular "
              "host at \"check_time\". The \"check_time\" argument is specified "
              "in time_t format (seconds since the UNIX epoch). Note that the "
@@ -1587,7 +1990,16 @@ class IcingaCommandEnum(Enum):
     )
     schedule_host_svc_downtime = IcingaCommand(
         name="SCHEDULE_HOST_SVC_DOWNTIME",
-        args=["host_name", "start_time", "end_time", "fixed", "trigger_id", "duration", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("start_time", optional=False),
+            IcingaCommandArg("end_time", optional=False),
+            IcingaCommandArg("fixed", optional=False),
+            IcingaCommandArg("trigger_id", optional=False),
+            IcingaCommandArg("duration", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Schedules downtime for all services associated with a particular "
              "host. If the \"fixed\" argument is set to one (1), downtime will "
              "start and end at the times specified by the \"start\" and \"end\" "
@@ -1606,7 +2018,16 @@ class IcingaCommandEnum(Enum):
     )
     schedule_servicegroup_host_downtime = IcingaCommand(
         name="SCHEDULE_SERVICEGROUP_HOST_DOWNTIME",
-        args=["servicegroup_name", "start_time", "end_time", "fixed", "trigger_id", "duration", "author", "comment"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+            IcingaCommandArg("start_time", optional=False),
+            IcingaCommandArg("end_time", optional=False),
+            IcingaCommandArg("fixed", optional=False),
+            IcingaCommandArg("trigger_id", optional=False),
+            IcingaCommandArg("duration", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Schedules downtime for all hosts that have services in a specified "
              "servicegroup. If the \"fixed\" argument is set to one (1), downtime "
              "will start and end at the times specified by the \"start\" and "
@@ -1618,14 +2039,23 @@ class IcingaCommandEnum(Enum):
              "another scheduled downtime entry. Set the \"trigger_id\" argument "
              "to zero (0) if the downtime for the hosts should not be triggered "
              "by another downtime entry.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=True,
     )
     schedule_servicegroup_svc_downtime = IcingaCommand(
         name="SCHEDULE_SERVICEGROUP_SVC_DOWNTIME",
-        args=["servicegroup_name", "start_time", "end_time", "fixed", "trigger_id", "duration", "author", "comment"],
+        args=[
+            IcingaCommandArg("servicegroup_name", optional=False),
+            IcingaCommandArg("start_time", optional=False),
+            IcingaCommandArg("end_time", optional=False),
+            IcingaCommandArg("fixed", optional=False),
+            IcingaCommandArg("trigger_id", optional=False),
+            IcingaCommandArg("duration", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Schedules downtime for all services in a specified servicegroup. "
              "If the \"fixed\" argument is set to one (1), downtime will start "
              "and end at the times specified by the \"start\" and \"end\" arguments. "
@@ -1644,7 +2074,11 @@ class IcingaCommandEnum(Enum):
     )
     schedule_svc_check = IcingaCommand(
         name="SCHEDULE_SVC_CHECK",
-        args=["host_name", "service_description", "check_time"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("check_time", optional=False),
+        ],
         info="Schedules the next active check of a specified service at \"check_time\". "
              "The \"check_time\" argument is specified in time_t format (seconds "
              "since the UNIX epoch). Note that the service may not actually "
@@ -1653,14 +2087,24 @@ class IcingaCommandEnum(Enum):
              "basis, the service is already scheduled to be checked at an earlier "
              "time, etc. If you want to force the service check to occur at "
              "the time you specify, look at the SCHEDULE_FORCED_SVC_CHECK command.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     schedule_svc_downtime = IcingaCommand(
         name="SCHEDULE_SVC_DOWNTIME",
-        args=["host_name", "service_description", "start_time", "end_time", "fixed", "trigger_id", "duration", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("start_time", optional=False),
+            IcingaCommandArg("end_time", optional=False),
+            IcingaCommandArg("fixed", optional=False),
+            IcingaCommandArg("trigger_id", optional=False),
+            IcingaCommandArg("duration", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Schedules downtime for a specified service. If the \"fixed\" argument "
              "is set to one (1), downtime will start and end at the times specified "
              "by the \"start\" and \"end\" arguments. Otherwise, downtime will "
@@ -1671,14 +2115,19 @@ class IcingaCommandEnum(Enum):
              "is set to the ID of another scheduled downtime entry. Set the "
              "\"trigger_id\" argument to zero (0) if the downtime for the specified "
              "service should not be triggered by another downtime entry.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     send_custom_host_notification = IcingaCommand(
         name="SEND_CUSTOM_HOST_NOTIFICATION",
-        args=["host_name", "options", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("options", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Allows you to send a custom host notification. Very useful in "
              "dire situations, emergencies or to communicate with all admins "
              "that are responsible for a particular host. When the host notification "
@@ -1699,7 +2148,13 @@ class IcingaCommandEnum(Enum):
     )
     send_custom_svc_notification = IcingaCommand(
         name="SEND_CUSTOM_SVC_NOTIFICATION",
-        args=["host_name", "service_description", "options", "author", "comment"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("options", optional=False),
+            IcingaCommandArg("author", optional=False),
+            IcingaCommandArg("comment", optional=False),
+        ],
         info="Allows you to send a custom service notification. Very useful "
              "in dire situations, emergencies or to communicate with all admins "
              "that are responsible for a particular service. When the service "
@@ -1714,14 +2169,17 @@ class IcingaCommandEnum(Enum):
              "for custom notifications). The contents of the comment field "
              "is available in notification commands using the $NOTIFICATIONCOMMENT$ "
              "macro.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     set_host_notification_number = IcingaCommand(
         name="SET_HOST_NOTIFICATION_NUMBER",
-        args=["host_name", "notification_number"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("notification_number", optional=False),
+        ],
         info="Sets the current notification number for a particular host. A "
              "value of 0 indicates that no notification has yet been sent for "
              "the current host problem. Useful for forcing an escalation (based "
@@ -1736,7 +2194,11 @@ class IcingaCommandEnum(Enum):
     )
     set_svc_notification_number = IcingaCommand(
         name="SET_SVC_NOTIFICATION_NUMBER",
-        args=["host_name", "service_description", "notification_number"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+            IcingaCommandArg("notification_number", optional=False),
+        ],
         info="Sets the current notification number for a particular service. "
              "A value of 0 indicates that no notification has yet been sent "
              "for the current service problem. Useful for forcing an escalation "
@@ -1744,7 +2206,7 @@ class IcingaCommandEnum(Enum):
              "in redundant monitoring environments. Notification numbers greater "
              "than zero have no noticeable affect on the notification process "
              "if the service is currently in an OK state.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
@@ -1763,7 +2225,7 @@ class IcingaCommandEnum(Enum):
         args=[],
         info="Enables acceptance and processing of passive host checks on a "
              "program-wide basis.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
@@ -1781,7 +2243,7 @@ class IcingaCommandEnum(Enum):
         name="START_EXECUTING_HOST_CHECKS",
         args=[],
         info="Enables active host checks on a program-wide basis.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
@@ -1797,7 +2259,9 @@ class IcingaCommandEnum(Enum):
     )
     start_obsessing_over_host = IcingaCommand(
         name="START_OBSESSING_OVER_HOST",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Enables processing of host checks via the OCHP command for the "
              "specified host.",
         for_host=True,
@@ -1810,17 +2274,20 @@ class IcingaCommandEnum(Enum):
         args=[],
         info="Enables processing of host checks via the OCHP command on a program-wide "
              "basis.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     start_obsessing_over_svc = IcingaCommand(
         name="START_OBSESSING_OVER_SVC",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Enables processing of service checks via the OCSP command for "
              "the specified service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
@@ -1840,7 +2307,7 @@ class IcingaCommandEnum(Enum):
         args=[],
         info="Disables acceptance and processing of passive host checks on "
              "a program-wide basis.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
@@ -1858,7 +2325,7 @@ class IcingaCommandEnum(Enum):
         name="STOP_EXECUTING_HOST_CHECKS",
         args=[],
         info="Disables active host checks on a program-wide basis.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
@@ -1874,7 +2341,9 @@ class IcingaCommandEnum(Enum):
     )
     stop_obsessing_over_host = IcingaCommand(
         name="STOP_OBSESSING_OVER_HOST",
-        args=["host_name"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+        ],
         info="Disables processing of host checks via the OCHP command for the "
              "specified host.",
         for_host=True,
@@ -1887,17 +2356,20 @@ class IcingaCommandEnum(Enum):
         args=[],
         info="Disables processing of host checks via the OCHP command on a "
              "program-wide basis.",
-        for_host=True,
+        for_host=False,
         for_service=False,
         for_hostgroup=False,
         for_servicegroup=False,
     )
     stop_obsessing_over_svc = IcingaCommand(
         name="STOP_OBSESSING_OVER_SVC",
-        args=["host_name", "service_description"],
+        args=[
+            IcingaCommandArg("host_name", optional=False),
+            IcingaCommandArg("service_description", optional=False),
+        ],
         info="Disables processing of service checks via the OCSP command for "
              "the specified service.",
-        for_host=False,
+        for_host=True,
         for_service=True,
         for_hostgroup=False,
         for_servicegroup=False,
