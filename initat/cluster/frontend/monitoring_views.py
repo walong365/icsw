@@ -56,6 +56,7 @@ from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
 from initat.md_config_server.icinga_log_reader.log_reader_utils import host_service_id_util
 from initat.tools import server_command, server_mixins, logging_tools, process_tools
+from initat.cluster.backbone.icinga_commands_enum import IcingaCommandEnum, IcingaCommandSerializer
 
 logger = logging.getLogger("cluster.monitoring")
 
@@ -566,6 +567,17 @@ class get_hist_timespan(RetrieveAPIView):
                 # print data
 
         return Response(data)
+
+
+class AllIcingaCmds(ListAPIView):
+    queryset = [entry.value for entry in IcingaCommandEnum]
+
+    @method_decorator(login_required)
+    @rest_logging
+    def list(self, request, *args, **kwargs):
+        return Response(
+            IcingaCommandSerializer(self.queryset, many=True).data
+        )
 
 
 class get_hist_device_data(ListAPIView):

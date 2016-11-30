@@ -1199,7 +1199,7 @@ angular.module(
                     # scan startet (or already done for base-scan because base-scan is synchronous)
                     @check_scans_running()
                     defer.resolve("scan started")
-                (error) ->
+                (error) =>
                     @check_scans_running()
                     defer.reject("scan not ok")
             )

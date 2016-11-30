@@ -53,8 +53,18 @@
                     <div class="form-group" ng-if="struct.mon_ext_host">
                         <label class="control-label col-md-5 icsw-formlabel">Icon</label>
                         <div class="controls col-md-6">
+                            <div class="row">
+                                <div class="col-md-1 col-xs-1" ng-repeat="entry in struct.mon_ext_host">
+                                    <a href="" class="thumbnail">
+                                        <img ng-src="{{ entry.data_image }}" width="32"/>
+                                    </a>
+                                </div>
+                            </div>
+
                             <div class="form-inline">
-                                <img ng-src="{{ struct.img_url }}" width="16"/>
+                                <!-- <a href="#" class="thumbnail"> -->
+                                    <img ng-src="{{ struct.img_url }}" width="16"/>
+                                <!-- </a> -->
                                 <input
                                     type="text"
                                     name="icon"
