@@ -48,7 +48,7 @@ angular.module(
         # base is open
         base_open: true
         # image url
-        img_url: "/icsw/api/v2/static/icinga/linux40.png"
+        img_url: ""
         # device selection
         dev_sel_list: [
             {key: "keep", value: "keep current Selection"}
@@ -93,6 +93,20 @@ angular.module(
                 $scope.struct.device_tree = data[0]
                 $scope.struct.peer_tree = data[1]
                 $scope.struct.mon_ext_host = data[2]
+                _match = (entry for entry in $scope.struct.mon_ext_host when entry.name == $scope.device_data.icon_name)
+                if _match.length
+                    _first = _match[0]
+                else if $scope.struct.mon_ext_host.length
+                    _first = $scope.struct.mon_ext_host[0]
+                else
+                    _first = null
+                if _first
+                    $scope.struct.img_url = _first.data_image
+                    $scope.device_data.icon_name = _first.name
+                else
+                    # nothing found
+                    $scope.struct.img_url = ""
+                    $scope.device_data.icon_name = ""
                 # present non-system device group
                 ns_dg = (entry for entry in $scope.struct.device_tree.group_list when $scope.struct.device_tree.ignore_cdg(entry))
                 if ns_dg.length
@@ -153,7 +167,8 @@ angular.module(
                     )
                     defer.promise.then(
                         (creat_msg) ->
-                            console.log _dev_pk, $scope.struct.device_tree.all_lut[_dev_pk]
+                            new_dev = $scope.struct.device_tree.all_lut[_dev_pk]
+                            console.log _dev_pk, new_dev
 
                             scan_settings = {
                                 manual_address: d_dict.ip
@@ -169,8 +184,8 @@ angular.module(
                             if $scope.device_data.dev_selection.key == "replace"
                                 icswActiveSelectionService.get_selection().deselect_all_devices()
                             if $scope.device_data.dev_selection.key in ["add", "replace"]
-                                icswActiveSelectionService.current().add_selection({idx: _dev_pk})
-                                $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
+                                icswActiveSelectionService.current().add_selection(new_dev)
+                                icswActiveSelectionService.current().signal_selection_changed()
 
                             $timeout(
                                 () ->

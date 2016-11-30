@@ -81,7 +81,7 @@ angular.module(
                                     # copy from icswActiveSelectionService, fixme
                                     @update(saved_sel.categories, saved_sel.device_groups, saved_sel.devices, saved_sel.devices)
                                     @sync_with_db(saved_sel)
-                                    $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
+                                    @signal_selection_changed()
                                     $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERVIEW_EMIT_SELECTION"))
                         )
 
@@ -93,7 +93,7 @@ angular.module(
                         @dev_sel = _stored.dev_sel
                         @tot_dev_sel = _stored.tot_dev_sel
                         @sync_with_db(undefined)
-                        $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
+                        @signal_selection_changed()
                 else
                     @_last_stored = ""
 
@@ -105,6 +105,9 @@ angular.module(
                     _ret.resolve("selected")
             )
             return _ret.promise
+
+        deselect_all_devices: (obj) =>
+            @update([], [], [], [])
 
         update: (cat_sel, devg_sel, dev_sel, tot_dev_sel) ->
             _changed = false
@@ -122,8 +125,11 @@ angular.module(
                     _changed = true
             @selection_changed()
             if _changed
-                $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
+                @signal_selection_changed()
             return _changed
+
+        signal_selection_changed: () =>
+            $rootScope.$emit(ICSW_SIGNALS("ICSW_SELECTION_CHANGED"))
 
         selection_changed: () =>
             if @user
@@ -203,11 +209,6 @@ angular.module(
         device_is_selected: (obj) =>
             # only works for devices
             return obj.idx in @dev_sel
-
-        deselect_all_devices: (obj) =>
-            @dev_sel = []
-            @tot_dev_sel = []
-            @selection_changed()
 
         selection_saved: () =>
             # database object saved
