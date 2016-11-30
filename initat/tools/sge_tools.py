@@ -1699,7 +1699,7 @@ def _shorten_list(in_list, **kwargs):
 class SGETopologyInfo(object):
     def __init__(self, in_str):
         self._info = []
-        if in_str:
+        if in_str and in_str not in ["NONE"]:
             for _c in in_str:
                 self._feed(_c)
 

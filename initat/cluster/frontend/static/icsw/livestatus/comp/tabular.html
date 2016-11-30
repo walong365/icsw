@@ -216,23 +216,50 @@
 <script type="text/ng-template" id="icsw.livestatus.modify.entries">
     <form class="form-horizontal" name="form_data">
         <fieldset>
-            <legend>Action</legend>
-            <div class="form-group">
-                <label class="control-label col-sm-3 requiredField icsw-formlabel">
+            <legend>Action ({{ valid_actions.length }} possible for Type: {{ obj_type }}, {{ obj_key_list.length }} Elements)</legend>
+            <div class="form-group row">
+                <label class="control-label col-sm-3 requiredField">
                     Action
                 </label>
-                <div class="controls col-sm-8">
-                    <ui-select ng-model="edit_obj.action" class="maxwidth500" ng-disabled="false">
+                <div class="controls col-sm-9">
+                    <ui-select ng-model="edit_obj.action" class="maxwidth500" ng-change="action_changed($event)">
                         <ui-select-match class="ui-select-match" placeholder="Action">
-                            {{ $select.selected.long }}
+                            {{ $select.selected.$$title }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value as value in valid_actions | props_filter:{long:$select.search}">
-                            <div ng-bind-html="value.long | highlight: $select.search"></div>
+                        <ui-select-choices class="ui-select-choices" repeat="value as value in valid_actions | props_filter:{$$title:$select.search}">
+                            <div ng-bind-html="value.$$title | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
+                <label class="control-label col-sm-3">
+                    Info
+                </label>
+                <div class="col-sm-9 control-label">
+                    <p class="text-justify" ng-repeat="text in edit_obj.action.info">
+                        {{ text }}
+                    </p>
+                </div>
             </div>
         </fieldset>
-        <fieldset/>
+        <fieldset ng-show="arguments.length">
+            <legend>{{ arguments.length }} Arguments</legend>
+            <div class="form-group row" ng-repeat="arg in arguments">
+                <label class="control-label col-sm-3">
+                    {{ arg.$$title }}
+                </label>
+                <div class="col-sm-9 controls">
+                    <div ng-if="arg.is_author">
+                        {{ user.user.login }}
+                    </div>
+                    <div ng-if="arg.is_boolean">
+                        <icsw-tools-yes-no flag="edit_obj.args[arg.name]"></icsw-tools-yes-no>
+                    </div>
+                    <div ng-if="arg.is_string">
+                         <input type="text" class="form-control input-sm" placeholder="{{ arg.$$title }}" title="Enter some text" ng-model="edit_obj.args[arg.name]"/>
+                    </div>
+                </div>
+            </div>
+        </fieldset>
+        <fieldset style="min-height:150px;"></fieldset>
     </form>
 </script>

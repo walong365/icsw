@@ -51,15 +51,9 @@ def main():
         _dict[_cmd] = {
             "args": _args,
             "info": [_entry.string for _entry in _p_list],
-            "for_host": True if (_cmd.count("HOST_") or _cmd.endswith("_HOST")) else False,
-            "for_service": True if _cmd.count("SVC") else False,
-            "for_hostgroup": True if _cmd.count("HOSTGROUP") else False,
-            "for_servicegroup": True if _cmd.count("SERVICEGROUP") else False,
         }
     for _cmd in sorted(_dict.keys()):
         _stuff = _dict[_cmd]
-        # info string
-        _info = " ".join(_stuff["info"]).replace("\n", " ").replace("  ", " ").replace("  ", " ")
         print("    {} = IcingaCommand(".format(_cmd.lower()))
         print("        name=\"{}\",".format(_cmd))
         # arguments
@@ -81,35 +75,40 @@ def main():
                     _next_opt = True
                 elif _arg.endswith("]"):
                     _this_opt = True
-                _arg = _arg.replace("<", "").replace(">", "").replace("[", "").replace("]", "")
+                _arg = _arg.replace("<", "").replace(">", "").replace("[", "").replace("]", "").replace(" ", "_")
                 _arg_names.append(_arg)
                 if _this_opt:
                     print("            IcingaCommandArg(\"{}\", optional=True),".format(_arg))
                 else:
                     print("            IcingaCommandArg(\"{}\", optional=False),".format(_arg))
             print("        ],")
-            _stuff["for_host"] = "host_name" in _arg_names
+            for arg_name, flag_name in [
+                ("host_name", "for_host"),
+                ("service_description", "for_service"),
+                ("contact_name", "for_contact"),
+                ("contactgroup_name", "for_contactgroup"),
+                ("servicegroup_name", "for_servicegroup"),
+                ("hostgroup_name", "for_hostgroup"),
+            ]:
+                _stuff[flag_name] = arg_name in _arg_names
         else:
             print("        args=[],")
-            _stuff["for_host"] = False
-            _args = []
         # print("        args=[{}],".format(", ".join(["\"{}\"".format(_arg.replace("<", "").replace(">", "")) for _arg in _args])))
         # info
-        _parts = _info.split()
-        _first = True
-        while _parts:
-            if _first:
-                _pf = "info="
-                _first = False
-            else:
-                _pf = "     "
-            _line = ""
-            while len(_line) < 60 and _parts:
-                _line = "{} {}".format(_line, _parts.pop(0)).strip()
-            _line = _line.replace("\"", "\\\"")
-            print("        {}\"{}{}".format(_pf, _line, " \"" if _parts else "\",")),
-        for _flag in ["host", "service", "hostgroup", "servicegroup"]:
-            print("        for_{}={},".format(_flag, _stuff["for_{}".format(_flag)]))
+        # info string
+        print("        info=[")
+        for _info in _stuff["info"]:
+            _info = _info.replace("\n", " ").replace("  ", " ").replace("  ", " ")
+            _parts = _info.split()
+            while _parts:
+                _line = ""
+                while len(_line) < 60 and _parts:
+                    _line = "{} {}".format(_line, _parts.pop(0)).strip()
+                _line = _line.replace("\"", "\\\"")
+                print("            \"{}{}".format(_line, " \"" if _parts else "\",")),
+        print("        ],")
+        for _flag in ["host", "service", "hostgroup", "servicegroup", "contact", "contactgroup"]:
+            print("        for_{}={},".format(_flag, _stuff.get("for_{}".format(_flag), False)))
         print("    )")
     # pprint.pprint(_dict)
 
