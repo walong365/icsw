@@ -217,17 +217,44 @@ angular.module(
                     action: sub_scope.valid_actions[0]
                     args: {}
                 }
+                sub_scope.dt_picker = {
+                    date_options: {
+                        format: "dd.MM.yyyy"
+                        formatYear: "yyyy"
+                        maxDate: new Date()
+                        minDate: new Date(2000, 1, 1)
+                        startingDay: 1
+                        minMode: "day"
+                        datepickerMode: "day"
+                    }
+                    time_options: {
+                        showMeridian: false
+                    }
+                    open: false
+                }
+
+                sub_scope.open_calendar = ($event, arg_name) ->
+                    sub_scope.open_calendars[arg_name] = true
+
+                sub_scope.set_duration = ($event, arg_name, hours) ->
+                    sub_scope.edit_obj.args[arg_name] = moment().add(hours, "hours").toDate()
+                    # console.log "SD", arg_name, hours
+
                 sub_scope.arguments = []
 
                 sub_scope.action_changed = ($event) ->
                     _act = sub_scope.edit_obj.action
                     sub_scope.arguments.length = 0
                     sub_scope.edit_obj.args = {}
+                    sub_scope.open_calendars = {}
                     for arg in _act.args
                         if arg.name not in ["host_name", "service_description"]
                             sub_scope.arguments.push(arg)
                             if arg.is_boolean
                                 _default = true
+                            else if arg.is_timestamp
+                                _default = moment().add(24, "hours").toDate()
+                                sub_scope.open_calendars[arg.name] = false
                             else
                                 _default = ""
                             sub_scope.edit_obj.args[arg.name] = _default

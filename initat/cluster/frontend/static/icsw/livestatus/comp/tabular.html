@@ -249,7 +249,7 @@
                 </label>
                 <div class="col-sm-9 controls">
                     <div ng-if="arg.is_author">
-                        {{ user.user.login }}
+                        {{ user.user.$$long_name }}
                     </div>
                     <div ng-if="arg.is_boolean">
                         <icsw-tools-yes-no flag="edit_obj.args[arg.name]"></icsw-tools-yes-no>
@@ -257,6 +257,35 @@
                     <div ng-if="arg.is_string">
                          <input type="text" class="form-control input-sm" placeholder="{{ arg.$$title }}" title="Enter some text" ng-model="edit_obj.args[arg.name]"/>
                     </div>
+                    <div ng-if="arg.is_timestamp">
+                        <span class="input-group">
+                            <input type="text"
+                                class="form-control"
+                                ng-model="edit_obj.args[arg.name]"
+                                is-open="open_calendars[arg.name]"
+                                datetime-picker="dd.MM.yyyy HH:mm"
+                                datepicker-options="dt_picker.date_options"
+                                timepicker-options="dt_picker.time_options"
+                                button-bar="button_bar"
+                                close-text="Close"
+                            >
+                                <span class="input-group-btn">
+                                    <button type="button" class="btn btn-default" ng-click="open_calendar($event, arg.name)">
+                                        <i class="glyphicon glyphicon-calendar"></i>
+                                    </button>
+                                </span>
+                            </input>
+                        </span>
+                    </div>
+                </div>
+                <div ng-if="arg.is_timestamp" class="col-sm-3">
+                </div>
+                <div ng-if="arg.is_timestamp" class="col-sm-9 controls">
+                    for
+                    <icsw-tools-button type="filter" size="xs" value="4 hours" ng-click="set_duration($event, arg.name, 4)"></icsw-tools-button>
+                    <icsw-tools-button type="filter" size="xs" value="12 hours" ng-click="set_duration($event, arg.name, 12)"></icsw-tools-button>
+                    <icsw-tools-button type="filter" size="xs" value="4 days" ng-click="set_duration($event, arg.name, 4 * 24)"></icsw-tools-button>
+                    <icsw-tools-button type="filter" size="xs" value="7 days" ng-click="set_duration($event, arg.name, 7 * 24)"></icsw-tools-button>
                 </div>
             </div>
         </fieldset>

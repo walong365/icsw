@@ -94,7 +94,25 @@ angular.module(
             struct.obj_lut_cache[key] = _.keyBy(_list, "idx")
         return struct.obj_list_cache[key]
 
+    salt_user = (user) ->
+        if user.first_name and user.last_name
+            _fn = "#{user.login} (#{user.first_name} #{user.last_name})"
+        else if user.first_name
+            _fn = "#{user.login} (#{user.first_name})"
+        else if user.last_name
+            _fn = "#{user.login} (#{user.last_name})"
+        else
+            _fn = "#{user.login}"
+        user.$$long_name = _fn
+        if user.email
+            user.$$user_email = "#{user.login} (#{user.email})"
+        else
+            user.$$user_email = "#{user.login} (N/A)"
+
     return {
+        salt_user: (user) ->
+            return salt_user(user)
+
         clean_cache: () ->
             return clean_cache()
 
@@ -122,9 +140,9 @@ angular.module(
     }
 ]).service("icswUser",
 [
-    "$q", "Restangular", "ICSW_URLS",
+    "$q", "Restangular", "ICSW_URLS", "icswUserGroupRoleTools",
 (
-    $q, Restangular, ICSW_URLS,
+    $q, Restangular, ICSW_URLS, icswUserGroupRoleTools,
 ) ->
     class icswUser
         constructor: (user) ->
@@ -136,6 +154,7 @@ angular.module(
             # user is in fact a list with only one element
             # (to simplify the framework layers)
             @user = user[0]
+            icswUserGroupRoleTools.salt_user(@user)
             @build_luts()
 
         is_authenticated: () =>
@@ -586,8 +605,10 @@ angular.module(
 ]).service("icswUserGroupRoleTree",
 [
     "$q", "Restangular", "ICSW_URLS", "$rootScope", "ICSW_SIGNALS",
+    "icswUserGroupRoleTools",
 (
     $q, Restangular, ICSW_URLS, $rootScope, ICSW_SIGNALS,
+    icswUserGroupRoleTools,
 ) ->
     # user / group tree representation
     class icswUserGroupRoletree
@@ -635,19 +656,7 @@ angular.module(
                 @user_lut[vdus.user].vdus_list.push(vdus)
             # create user long names
             for user in @user_list
-                if user.first_name and user.last_name
-                    _fn = "#{user.login} (#{user.first_name} #{user.last_name})"
-                else if user.first_name
-                    _fn = "#{user.login} (#{user.first_name})"
-                else if user.last_name
-                    _fn = "#{user.login} (#{user.last_name})"
-                else
-                    _fn = "#{user.login}"
-                user.$$long_name = _fn
-                if user.email
-                    user.$$user_email = "#{user.login} (#{user.email})"
-                else
-                    user.$$user_email = "#{user.login} (N/A)"
+                icswUserGroupRoletree.salt_user(user)
 
         # remove / delete calls
         delete_user: (user) =>

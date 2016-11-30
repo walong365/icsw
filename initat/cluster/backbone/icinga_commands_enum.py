@@ -78,6 +78,7 @@ class IcingaCommandArg(object):
         self.is_boolean = self.name in ["persistent", "notify", "sticky"]
         self.is_tristate = self.name in ["sticky"]
         self.is_string = self.name in ["comment"]
+        self.is_timestamp = self.name in ["timestamp"]
         # self.is_sticky = self.name in ["sticky"]
 
 
@@ -88,6 +89,7 @@ class IcingaCommandArgSerializer(serializers.Serializer):
     is_tristate = serializers.BooleanField()
     is_string = serializers.BooleanField()
     is_author = serializers.BooleanField()
+    is_timestamp = serializers.BooleanField()
 
 
 class IcingaCommandSerializer(serializers.Serializer):
