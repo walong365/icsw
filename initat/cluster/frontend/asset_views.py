@@ -135,11 +135,15 @@ class ScheduledRunViewSet(viewsets.ViewSet):
     def list(self, request):
         if "pks" in request.query_params:
             queryset = ScheduleItem.objects.filter(
-                Q(device__in=json.loads(request.query_params.getlist("pks")[0]))
+                Q(model_name="device", object_id__in=json.loads(request.query_params.getlist("pks")[0]))
             )
         else:
             queryset = ScheduleItem.objects.all()
         serializer = ScheduleItemSerializer(queryset, many=True)
+
+        for entry in serializer.data:
+            entry['device'] = entry['object_id']
+
         return Response(serializer.data)
 
 

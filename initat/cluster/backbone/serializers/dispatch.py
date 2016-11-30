@@ -24,13 +24,13 @@ from __future__ import print_function, unicode_literals
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import DispatchSetting, DispatcherSetting, DispatcherSettingSchedule, \
-    DeviceDispatcherLink, ScheduleItem
+    DispatcherLink, ScheduleItem
 
 __all__ = [
     b"DispatchSettingSerializer",
     b"DispatcherSettingSerializer",
     b"DispatcherSettingScheduleSerializer",
-    b"DeviceDispatcherLinkSerializer",
+    b"DispatcherLinkSerializer",
     b"ScheduleItemSerializer",
 ]
 
@@ -56,11 +56,11 @@ class DispatcherSettingScheduleSerializer(serializers.ModelSerializer):
         model = DispatcherSettingSchedule
 
 
-class DeviceDispatcherLinkSerializer(serializers.ModelSerializer):
+class DispatcherLinkSerializer(serializers.ModelSerializer):
 
     class Meta:
         fields = "__all__"
-        model = DeviceDispatcherLink
+        model = DispatcherLink
 
 
 class ScheduleItemSerializer(serializers.ModelSerializer):
