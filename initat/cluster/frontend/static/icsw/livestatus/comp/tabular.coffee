@@ -162,10 +162,12 @@ angular.module(
 ]).service("icswIcingaCmdTools",
 [
     "$q", "icswMonitoringBasicTreeService", "$rootScope", "$templateCache", "$compile",
-    "icswSimpleAjaxCall", "blockUI", "icswComplexModalService",
+    "icswSimpleAjaxCall", "blockUI", "icswComplexModalService", "icswUserService",
+    "ICSW_URLS",
 (
     $q, icswMonitoringBasicTreeService, $rootScope, $templateCache, $compile,
-    icswSimpleAjaxCall, blockUI, icswComplexModalService,
+    icswSimpleAjaxCall, blockUI, icswComplexModalService, icswUserService,
+    ISCW_URLS,
 ) ->
     _struct = {
         basic_tree: null
@@ -191,6 +193,7 @@ angular.module(
                 sub_scope = $rootScope.$new(true)
                 sub_scope.obj_type = obj_type
                 sub_scope.obj_key_list = obj_key_list
+                sub_scope.user = icswUserService.get()
                 # action
 
                 _actions = []
@@ -212,15 +215,22 @@ angular.module(
                 )
                 sub_scope.edit_obj = {
                     action: sub_scope.valid_actions[0]
+                    args: {}
                 }
                 sub_scope.arguments = []
 
                 sub_scope.action_changed = ($event) ->
                     _act = sub_scope.edit_obj.action
                     sub_scope.arguments.length = 0
+                    sub_scope.edit_obj.args = {}
                     for arg in _act.args
                         if arg.name not in ["host_name", "service_description"]
                             sub_scope.arguments.push(arg)
+                            if arg.is_boolean
+                                _default = true
+                            else
+                                _default = ""
+                            sub_scope.edit_obj.args[arg.name] = _default
 
                 sub_scope.action_changed()
                 icswComplexModalService(

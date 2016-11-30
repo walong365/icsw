@@ -235,8 +235,8 @@
                     Info
                 </label>
                 <div class="col-sm-9 control-label">
-                    <p class="text-justify">
-                        {{ edit_obj.action.info }}
+                    <p class="text-justify" ng-repeat="text in edit_obj.action.info">
+                        {{ text }}
                     </p>
                 </div>
             </div>
@@ -248,7 +248,15 @@
                     {{ arg.$$title }}
                 </label>
                 <div class="col-sm-9 controls">
-                    qeqweqwe
+                    <div ng-if="arg.is_author">
+                        {{ user.user.login }}
+                    </div>
+                    <div ng-if="arg.is_boolean">
+                        <icsw-tools-yes-no flag="edit_obj.args[arg.name]"></icsw-tools-yes-no>
+                    </div>
+                    <div ng-if="arg.is_string">
+                         <input type="text" class="form-control input-sm" placeholder="{{ arg.$$title }}" title="Enter some text" ng-model="edit_obj.args[arg.name]"/>
+                    </div>
                 </div>
             </div>
         </fieldset>

@@ -74,16 +74,23 @@ monitoring_basic_module = angular.module(
             # update icinga_command
             for entry in @icinga_command_list
                 entry.$$arguments = (_val.name for _val in entry.args)
-                entry.$$title = _.replace(_.startCase(_.lowerCase(entry.name)), "Svc", "Service")
+                _title = _.startCase(_.lowerCase(entry.name))
+                for [_src, _dst] in [["Svc", "Service"], ["Del", "Delete"]]
+                    _title = _.replace(_title, _src, _dst)
+                entry.$$title = _title
                 for arg in entry.args
                     arg.$$title = _.startCase(arg.name)
                 # private command
                 entry.$$private = false
                 if _.some(_val.match(/_id$/) for _val in entry.$$arguments)
                     entry.$$private = true
-                if _.some(_val in entry.$$arguments for _val in ["value", "varname", "varvalue"])
+                if _.some(_val in entry.$$arguments for _val in [
+                    "value", "varname", "varvalue",
+                    "check_command", "check_attempts", "event_handler_command",
+                    "check_timeperiod", "notification_timeperiod",
+                ])
                     entry.$$private = true
-                console.log entry.name, entry.$$arguments
+                # console.log entry.name, entry.$$arguments
 
         # create / delete mon_period
 
