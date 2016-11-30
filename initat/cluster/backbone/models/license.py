@@ -520,6 +520,7 @@ class icswEggEvaluationDef(models.Model):
                     valid=False,
                 )
             else:
+                print(_entry["action"].content_type)
                 if _cur_consum.egg_evaluation_def.idx != self.idx:
                     _cur_consum.valid = False
             _cur_consum.valid = False
@@ -654,7 +655,7 @@ class icswEggConsumer(models.Model):
             self.action,
             self.config_service_enum.name,
             logging_tools.get_plural("egg", self.multiplier),
-            self.content_type.model,
+            self.content_type.model if self.content_type else "N/A model",
         )
 
 

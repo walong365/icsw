@@ -74,7 +74,18 @@ class EggConsumeObject(object):
         self.__global_config = global_config
         _my_consumers = icswEggConsumer.objects.filter(Q(config_service_enum__enum_name=self.__global_config["SERVICE_ENUM_NAME"]))
         self.consumers = {_ec.action: _ec for _ec in _my_consumers}
+        if not self.consumers:
+            # something fishy
+            _defined = icswEggConsumer.objects.all().count()
+            self.log(
+                "No consumers found for '{}', total consumers defined: {:d}".format(
+                    self.__global_config["SERVICE_ENUM_NAME"],
+                    _defined,
+                ),
+                logging_tools.LOG_LEVEL_ERROR,
+            )
         self._cache.add_consumers(self.consumers.keys())
+        self.__latest_error = time.time() - 1000
 
     def _get_pk_from_object(self, obj_def):
         if type(obj_def) in [int, long]:
@@ -140,14 +151,17 @@ class EggConsumeObject(object):
             if type(obj_def) != list:
                 _result = _result[0]
         else:
-            self.log(
-                "unknown consume action '{}' for {} (known actions: {})".format(
-                    action,
-                    unicode(obj_def),
-                    ", ".join(sorted(self.consumers.keys())) or "none",
-                ),
-                logging_tools.LOG_LEVEL_CRITICAL
-            )
+            _cur_time = time.time()
+            if abs(_cur_time - self.__latest_error) > 60:
+                self.__latest_error = _cur_time
+                self.log(
+                    "unknown consume action '{}' for {} (known actions: {})".format(
+                        action,
+                        unicode(obj_def),
+                        ", ".join(sorted(self.consumers.keys())) or "none",
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL
+                )
             _result = self.get_result_struct(obj_def, False)
         return _result
 

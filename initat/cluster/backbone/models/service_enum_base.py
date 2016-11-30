@@ -43,6 +43,9 @@ class EggAction(object):
             except ContentType.DoesNotExist:
                 # this can happen during install
                 content_type = None
+            except ContentType.MultipleObjectsReturned:
+                print("Multiple objects defined in service_enum_base.py for content_type {}".format(content_type))
+                content_type = ContentType.objects.filter(Q(model=content_type))[0]
             except:
                 # this can happen on UCS installs
                 content_type = None
