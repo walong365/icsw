@@ -368,6 +368,8 @@ discovery_patterns = [
     # url(r"^EventLogOverview$", discovery_views.EventLogOverview.as_view(), name="EventLogOverview"),
     url(r"^GetEventLog$", discovery_views.GetEventLog.as_view(), name="GetEventLog"),
     url(r"^GetEventLogDeviceInfo$", discovery_views.GetEventLogDeviceInfo.as_view(), name="GetEventLogDeviceInfo"),
+    url(r"^dispatcher_link_loader$", discovery_views.DispatcherLinkLoader.as_view(), name="dispatcher_link_loader"),
+    url(r"^dispatcher_link_syncer$", discovery_views.DispatcherLinkSyncer.as_view(), name="dispatcher_link_syncer"),
 ]
 
 auth_patterns = [
