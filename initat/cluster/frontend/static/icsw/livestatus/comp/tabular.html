@@ -224,10 +224,10 @@
                 <div class="controls col-sm-9">
                     <ui-select ng-model="edit_obj.action" class="maxwidth500" ng-change="action_changed($event)">
                         <ui-select-match class="ui-select-match" placeholder="Action">
-                            {{ $select.selected.name }}
+                            {{ $select.selected.$$title }}
                         </ui-select-match>
-                        <ui-select-choices class="ui-select-choices" repeat="value as value in valid_actions | props_filter:{name:$select.search}">
-                            <div ng-bind-html="value.name | highlight: $select.search"></div>
+                        <ui-select-choices class="ui-select-choices" repeat="value as value in valid_actions | props_filter:{$$title:$select.search}">
+                            <div ng-bind-html="value.$$title | highlight: $select.search"></div>
                         </ui-select-choices>
                     </ui-select>
                 </div>
@@ -245,7 +245,7 @@
             <legend>{{ arguments.length }} Arguments</legend>
             <div class="form-group row" ng-repeat="arg in arguments">
                 <label class="control-label col-sm-3">
-                    {{ arg.name }}
+                    {{ arg.$$title }}
                 </label>
                 <div class="col-sm-9 controls">
                     qeqweqwe

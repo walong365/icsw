@@ -74,6 +74,9 @@ monitoring_basic_module = angular.module(
             # update icinga_command
             for entry in @icinga_command_list
                 entry.$$arguments = (_val.name for _val in entry.args)
+                entry.$$title = _.replace(_.startCase(_.lowerCase(entry.name)), "Svc", "Service")
+                for arg in entry.args
+                    arg.$$title = _.startCase(arg.name)
                 # private command
                 entry.$$private = false
                 if _.some(_val.match(/_id$/) for _val in entry.$$arguments)
