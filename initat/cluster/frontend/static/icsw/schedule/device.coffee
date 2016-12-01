@@ -31,8 +31,8 @@ monitoring_device_module = angular.module(
 (
     icswRouteExtensionProvider,
 ) ->
-    icswRouteExtensionProvider.add_route("main.scheddevice")
-    icswRouteExtensionProvider.add_route("main.schedoverview")
+    # no longer present
+    # icswRouteExtensionProvider.add_route("main.scheddevice")
     icswRouteExtensionProvider.add_route("main.statictemplates")
 ]).service("icswDispatcherSettingTree",
 [
