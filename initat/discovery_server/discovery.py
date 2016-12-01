@@ -50,6 +50,7 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
         self.register_func("base_scan", self._base_scan)
         self.register_func("wmi_scan", self._wmi_scan)
         self.register_func("ext_con_result", self._ext_con_result)
+        self.register_func("host_monitor_result", self._host_monitor_result)
         self.EC.init(global_config)
         self._server = device.objects.get(Q(pk=global_config["SERVER_IDX"]))
         self._config = config.objects.get(Q(pk=global_config["CONFIG_IDX"]))
@@ -92,6 +93,10 @@ class DiscoveryProcess(GetRouteToDevicesMixin, threading_tools.process_obj, Host
     def _ext_con_result(self, *args, **kwargs):
         run_idx, srv_reply = args
         self.dispatcher.got_result(run_idx, server_command.srv_command(source=srv_reply))
+
+    def _host_monitor_result(self, *args, **kwargs):
+        run_index, srv_reply = args
+        self.dispatcher.handle_hm_result(run_index, server_command.srv_command(source=srv_reply))
 
     def _iterate(self, srv_com, c_name, scan_type_enum):
         total_result = ResultNode()

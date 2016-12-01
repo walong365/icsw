@@ -473,7 +473,11 @@ class server_process(server_mixins.ICSWBasePool):
                 )
             )
         self._check_ret_dict(envelope)
-        self.sender_socket.send(envelope, zmq.SNDMORE)  # @UndefinedVariable
+        try:
+            self.sender_socket.send(envelope, zmq.SNDMORE)  # @UndefinedVariable
+        except TypeError:
+            self.sender_socket.send_string(envelope, zmq.SNDMORE)
+
         self.sender_socket.send_unicode(u"{:d}\0{}".format(ret_state, ret_str))
 
     def _send_return_xml(self, scheme):

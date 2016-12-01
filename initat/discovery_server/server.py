@@ -76,6 +76,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self._process_batch_assets_finished,
         )
         self.register_func("send_msg", self.send_msg)
+        self.register_func("send_host_monitor_command", self.send_host_monitor_command)
         self.register_func("timeout_handler", self.timeout_handler)
         db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
@@ -187,6 +188,27 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             del self.__ext_con_dict[run_idx]
         if srv_reply and run_idx:
             self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
+
+    def send_host_monitor_command(self, *args, **kwargs):
+        _from_name, _from_pid, run_index, conn_str, srv_com = args
+        srv_com = server_command.srv_command(source=srv_com)
+        srv_com["run_index"] = "{:d}".format(run_index)
+        _new_con = net_tools.ZMQConnection(
+            "host_monitor_command_{:d}".format(run_index),
+            context=self.zmq_context,
+            poller_base=self,
+            callback=self.__send_host_monitor_command_callback,
+        )
+        _new_con.add_connection(conn_str, srv_com)
+
+    def __send_host_monitor_command_callback(self, *args):
+        srv_reply = args[0]
+        run_index = None
+        if srv_reply:
+            run_index = int(srv_reply["*run_index"])
+
+        if srv_reply and run_index:
+            self.send_to_process("discovery", "host_monitor_result", run_index, unicode(srv_reply))
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):
