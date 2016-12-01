@@ -449,28 +449,61 @@
                     <span>Network Details: {{ tab.heading }}</span>
                     <icsw-tools-button size="xs" type="close" value="" ng-click="struct.icsw_network_list_service.close_tab(tab)"></icsw-tools-button>
                 </uib-tab-heading>
-                <h3>Network {{ tab.network_display.active_network.identifier }}, {{ tab.network_display.active_network.num_ip }} IP addresses</h3>
-                <table st-table="network_entries_displayed" st-safe-src="tab.network_display.iplist" class="table table-condensed table-hover" style="width:auto;">
-                    <thead>
-                        <tr>
-                            <td colspan="99">
-                                <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th st-sort="ip">IP</th>
-                            <th st-sort="netdevice_name">Netdevice</th>
-                            <th st-sort="device_full_name">Device</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr ng-repeat="obj in network_entries_displayed">
-                           <td>{{ obj.ip }}</td>
-                           <td>{{ obj.netdevice_name }}</td>
-                           <td>{{ obj.device_full_name }}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <br/>
+                <uib-tabset>
+                    <uib-tab>
+                        <uib-tab-heading>
+                            <span>Device/IP List</span>
+                        </uib-tab-heading>
+                            <h3>Network {{ tab.network_display.active_network.identifier }}, {{ tab.network_display.active_network.num_ip }} IP addresses</h3>
+                            <table st-table="network_entries_displayed" st-safe-src="tab.network_display.iplist" class="table table-condensed table-hover" style="width:auto;">
+                                <thead>
+                                    <tr>
+                                        <td colspan="99">
+                                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th st-sort="ip">IP</th>
+                                        <th st-sort="netdevice_name">Netdevice</th>
+                                        <th st-sort="device_full_name">Device</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="obj in network_entries_displayed">
+                                       <td>{{ obj.ip }}</td>
+                                       <td>{{ obj.netdevice_name }}</td>
+                                       <td>{{ obj.device_full_name }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                    </uib-tab>
+                    <uib-tab>
+                        <uib-tab-heading>
+                            <span>Host Discovery Scans</span>
+                        </uib-tab-heading>
+                            <h3>{{ tab.nmap_scans.length }} Host Discovery Scans</h3>
+                            <table st-table="entries_displayed" st-safe-src="tab.nmap_scans" class="table table-condensed table-hover" style="width:auto;">
+                                <thead>
+                                    <tr>
+                                        <td colspan="99">
+                                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th st-sort="date" st-sort-default="reverse">Scan Time</th>
+                                        <th st-sort="devices_found">Devices Found</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="obj in entries_displayed">
+                                       <td>{{ obj.$$created }}</td>
+                                       <td>{{ obj.devices_found }}</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                    </uib-tab>
+                </uib-tabset>
             </uib-tab>
         </uib-tabset>
     </div>
@@ -561,7 +594,7 @@
                     <td>
                         <icsw-tools-button type="delete" ng-show="obj.num_ip == 0" ng-click="delete($event, obj)" size="xs">
                         </icsw-tools-button>
-                        <button type="button" ng-click="config_service.create_new_tab(obj)" class="btn btn-success btn-xs">Open in new tab</button>
+                        <button type="button" ng-click="config_service.create_new_tab(obj)" class="btn btn-success btn-xs">Show Details</button>
                     </td>
                 </tr>
             </tbody>

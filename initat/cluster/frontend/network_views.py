@@ -36,7 +36,8 @@ from django.utils.decorators import method_decorator
 from django.views.generic import View
 from networkx.readwrite import json_graph
 
-from initat.cluster.backbone.models import device, peer_information, network, network_type
+from initat.cluster.backbone.serializers import NmapScanSerializer, NmapScanSerializerDetailed
+from initat.cluster.backbone.models import device, peer_information, network, network_type, NmapScan
 from initat.cluster.backbone.render import permission_required_mixin
 from initat.cluster.frontend.helper_functions import xml_wrapper
 from initat.tools import config_tools, ipvx_tools, logging_tools
@@ -309,3 +310,21 @@ class rescan_networks(View):
                     logging_tools.get_plural("network", len(new_nets))
                 )
             )
+
+
+class NmapScanDataLoader(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        simple = bool(int(request.POST['simple']))
+        if simple:
+            queryset = NmapScan.objects.all()
+            serializer = NmapScanSerializer(queryset, many=True)
+            return HttpResponse(json.dumps(serializer.data))
+
+        else:
+            network_id = int(request.POST['network_id'])
+            _network = network.objects.get(idx=network_id)
+
+            queryset = NmapScan.objects.filter(network=_network)
+            serializer = NmapScanSerializerDetailed(queryset, many=True)
+            return HttpResponse(json.dumps(serializer.data))

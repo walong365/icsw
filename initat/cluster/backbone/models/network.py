@@ -24,6 +24,7 @@ from __future__ import unicode_literals, print_function
 
 import logging
 import re
+from lxml import etree
 
 from django.apps import apps
 from django.core.exceptions import ValidationError
@@ -1101,6 +1102,21 @@ class snmp_network_type(models.Model):
     if_label = models.CharField(max_length=128, default="")
     date = models.DateTimeField(auto_now_add=True)
 
+
+class NmapDevice(object):
+    def __init__(self, ip, mac, hostname):
+        self.ip = ip
+        self.mac = mac
+        self.hostname = hostname
+
+    def get_dict(self):
+        return {
+            'ip': self.ip,
+            'mac': self.mac,
+            'hostname': self.hostname
+        }
+
+
 class NmapScan(models.Model):
     idx = models.AutoField(primary_key=True)
 
@@ -1108,3 +1124,29 @@ class NmapScan(models.Model):
     raw_result = models.TextField()
 
     date = models.DateTimeField(auto_now_add=True)
+
+    def interpret(self):
+        parser = etree.XMLParser(encoding='utf-8')
+
+        root = etree.fromstring(self.raw_result.encode('utf-8'), parser=parser)
+
+        devices = []
+
+        for host in root.findall('host'):
+            mac = None
+            ipv4 = None
+            hostname = None
+            for address in host.findall('address'):
+                if address.attrib['addrtype'] == 'mac':
+                    mac = address.attrib['addr']
+                elif address.attrib['addrtype'] == 'ipv4':
+                    ipv4 = address.attrib['addr']
+
+            hostnames = host.find('hostnames')
+            for hostname_elem in hostnames.findall('hostname'):
+                hostname = hostname_elem.attrib['name']
+
+            if ipv4:
+                devices.append(NmapDevice(ipv4, mac, hostname))
+
+        return devices

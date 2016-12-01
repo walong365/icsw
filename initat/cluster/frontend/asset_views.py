@@ -104,11 +104,13 @@ class run_assetrun_for_device_now(View):
     def post(self, request):
         _dev = device.objects.get(pk=int(request.POST['pk']))
         ScheduleItem.objects.create(
-            device=_dev,
+            model_name="device",
+            object_id=_dev.idx,
             planned_date=timezone.now(),
             run_now=True,
             dispatch_setting=None,
-            user=request.user
+            user=request.user,
+            schedule_handler="asset_schedule_handler"
         )
         return HttpResponse(
             json.dumps({"state": "started run"}),

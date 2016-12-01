@@ -1575,8 +1575,8 @@ angular.module(
     user_tree = undefined
     device_tree = undefined
     dispatcher_links = undefined
-
     device_list = []
+    nmap_scans = {}
 
     return {
         get_tabs: () ->
@@ -1600,6 +1600,14 @@ angular.module(
                             dataType: "json"
                         }
                     )
+                    icswSimpleAjaxCall(
+                        {
+                            url: ICSW_URLS.NETWORK_NMAP_SCAN_DATA_LOADER
+                            data:
+                                simple: 1
+                            dataType: "json"
+                        }
+                    )
                 ]
             ).then(
                 (data) ->
@@ -1609,6 +1617,13 @@ angular.module(
                     user_tree = data[3]
                     device_tree = data[4]
                     dispatcher_links = data[5]
+
+                    for network in nw_tree.nw_list
+                        nmap_scans[network.idx] = []
+
+                    for nmap_scan in data[6]
+                        nmap_scan.$$created = moment(nmap_scan.date).format("YYYY-MM-DD HH:mm:ss")
+                        nmap_scans[nmap_scan.network].push(nmap_scan)
 
                     for device in device_tree.all_list
                         if !device.is_meta_device
@@ -1815,6 +1830,7 @@ angular.module(
             ]
             $q.all(q_list).then(
                 (data) ->
+
                     iplist = data[0]
                     netdevices = icswTools.build_lut(data[1])
                     devices = icswTools.build_lut(data[2])
@@ -1824,9 +1840,12 @@ angular.module(
                         entry.device_full_name = devices[nd.device].full_name
                     new_network_display.iplist = iplist
 
+                    console.log(nmap_scans[obj.idx])
+
                     tab = {
                         heading: new_network_display.active_network.identifier
                         network_display: new_network_display
+                        nmap_scans: nmap_scans[obj.idx]
                     }
 
                     dupe = false

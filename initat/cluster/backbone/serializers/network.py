@@ -26,7 +26,7 @@ import logging
 from rest_framework import serializers
 
 from initat.cluster.backbone.models import network_type, network_device_type, network, net_ip, \
-    netdevice, netdevice_speed, peer_information, snmp_network_type
+    netdevice, netdevice_speed, peer_information, snmp_network_type, NmapScan
 
 __all__ = [
     "network_serializer",
@@ -38,6 +38,8 @@ __all__ = [
     "netdevice_speed_serializer",
     "peer_information_serializer",
     "snmp_network_type_serializer",
+    "NmapScanSerializer",
+    "NmapScanSerializerDetailed"
 ]
 
 logger = logging.getLogger(__name__)
@@ -122,3 +124,28 @@ class snmp_network_type_serializer(serializers.ModelSerializer):
     class Meta:
         fields = "__all__"
         model = snmp_network_type
+
+
+class NmapScanSerializer(serializers.ModelSerializer):
+    devices_found = serializers.SerializerMethodField()
+
+    def get_devices_found(self, obj):
+        return len(obj.interpret())
+
+    class Meta:
+        model = NmapScan
+        fields = (
+            "idx", "network", "date", "devices_found"
+        )
+
+class NmapScanSerializerDetailed(serializers.ModelSerializer):
+    devices = serializers.SerializerMethodField()
+
+    def get_devices(self, obj):
+        return [host.get_dict() for host in obj.interpret()]
+
+    class Meta:
+        model = NmapScan
+        fields = (
+            "idx", "network", "date", "devices"
+        )
