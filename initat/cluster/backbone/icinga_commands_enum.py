@@ -23,9 +23,13 @@
 
 from __future__ import unicode_literals, print_function
 
-from enum import Enum
+import time
 
+from dateutil import parser
+from enum import Enum
 from rest_framework import serializers
+
+from initat.cluster.backbone.models import functions
 
 
 __all__ = [
@@ -45,7 +49,8 @@ class IcingaCommand(object):
         self.for_servicegroup = for_servicegroup
         self.for_contact = for_contact
         self.for_contactgroup = for_contactgroup
-        _arg_names = [_arg.name for _arg in self.args]
+        self.__arg_dict = {arg.name: arg for arg in self.args}
+        _arg_names = self.__arg_dict.keys()
         for (flag_name, arg_name) in [
             ("for_host", "host_name"),
             ("for_service", "service_description"),
@@ -63,6 +68,36 @@ class IcingaCommand(object):
                     )
                 )
 
+    def resolve_args(self, args):
+        for name, struct in args.iteritems():
+            self.__arg_dict[name].resolve(struct)
+        return args
+
+    def create_commands(self, cmd_type, key_list, val_dict, name_dict):
+        # cmd_type is one of host or service
+        c_list = []
+        for entry in key_list:
+            entry["host_name"] = name_dict[entry["host_idx"]]
+            c_list.append(self.create_command(entry, val_dict))
+        return c_list
+
+    def create_command(self, entry, val_dict):
+        _r_list = [
+            "[{:d}] {}".format(
+                int(time.time()),
+                self.name,
+            )
+        ]
+        for arg in self.args:
+            if arg.name in ["host_name", "service_description"]:
+                _val = entry[arg.name]
+            else:
+                _val = val_dict[arg.name]["value"]
+            if isinstance(_val, int):
+                _val = "{:d}".format(_val)
+            _r_list.append(_val)
+        return ";".join(_r_list)
+
 
 class IcingaCommandArg(object):
     typedict = {}
@@ -76,17 +111,27 @@ class IcingaCommandArg(object):
         self.optional = optional
         self.is_author = self.name in ["author"]
         self.is_boolean = self.name in ["persistent", "notify", "sticky"]
-        self.is_tristate = self.name in ["sticky"]
+        # self.is_tristate = self.name in ["sticky"]
         self.is_string = self.name in ["comment"]
         self.is_timestamp = self.name in ["timestamp"]
         # self.is_sticky = self.name in ["sticky"]
+
+    def resolve(self, struct):
+        _raw = struct["raw"]
+        if self.is_boolean:
+            struct["value"] = (2 if self.name == "sticky" else 1) if _raw else 0
+        elif self.is_timestamp:
+            struct["value"] = "{:d}".format(int(functions.to_unix_seconds(parser.parse(_raw))))
+        else:
+            # default value
+            struct["value"] = _raw
 
 
 class IcingaCommandArgSerializer(serializers.Serializer):
     name = serializers.CharField()
     optional = serializers.BooleanField()
     is_boolean = serializers.BooleanField()
-    is_tristate = serializers.BooleanField()
+    # is_tristate = serializers.BooleanField()
     is_string = serializers.BooleanField()
     is_author = serializers.BooleanField()
     is_timestamp = serializers.BooleanField()

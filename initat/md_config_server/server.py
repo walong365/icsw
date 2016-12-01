@@ -24,18 +24,20 @@ from __future__ import unicode_literals, print_function
 import time
 
 import zmq
+import json
 from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import mon_notification, config_str, config_int, \
-    device
+    device, user
 from initat.cluster.backbone.server_enums import icswServiceEnum
-from initat.md_config_server.build import BuildControl
-from initat.md_config_server.config import global_config
-from initat.md_config_server.dynconfig import DynConfigProcess
-from initat.md_config_server.icinga_log_reader.log_reader import IcingaLogReader
-from initat.md_config_server.kpi import KpiProcess
-from initat.md_config_server.syncer import SyncerProcess, RemoteServer
+from initat.cluster.backbone.icinga_commands_enum import IcingaCommandEnum
+from .build import BuildControl
+from .config import global_config
+from .dynconfig import DynConfigProcess
+from .icinga_log_reader.log_reader import IcingaLogReader
+from .kpi import KpiProcess
+from .syncer import SyncerProcess, RemoteServer
 from initat.md_sync_server.mixins import VersionCheckMixin
 from initat.tools import logging_tools, process_tools, threading_tools, server_mixins, configfile, server_command
 from initat.tools.server_mixins import RemoteCall
@@ -291,34 +293,29 @@ class ServerProcess(
         self.CC.process_removed(src_pid)
 
     def handle_mon_command(self, srv_com):
-        action = srv_com["*action"]
-        t_type = srv_com["*type"]
-        key_list = srv_com["*key_list"]
-        # print key_list
-        self.log(
-            "got mon_command action '{}' ({}, {})".format(
-                action,
-                t_type,
-                logging_tools.get_plural("entry", len(key_list)),
+        data = json.loads(srv_com["*data"])
+        _enum = getattr(IcingaCommandEnum, data["action"].lower())
+        _val_dict = {key: {"raw": value} for key, value in data["arguments"].iteritems()}
+        _val_dict = _enum.value.resolve_args(_val_dict)
+        # add user
+        _val_dict["author"] = {"value": unicode(user.objects.get(Q(pk=data["user_idx"])))}
+        # unroll keys
+        host_idxs = set([entry["host_idx"] for entry in data["key_list"]])
+        name_dict = {dev.idx: dev.full_name for dev in device.objects.filter(Q(idx__in=host_idxs))}
+        cmd_lines = _enum.value.create_commands(data["type"], data["key_list"], _val_dict, name_dict)
+        import pprint
+        # pprint.pprint(cmd_lines)
+        srv_com.set_result(
+            "processed command {} (generated {})".format(
+                data["action"],
+                logging_tools.get_plural("line", len(cmd_lines)),
             )
         )
-        _ext_lines = []
-        if action == "ack":
-            # acknowleded command
-            if t_type == "hosts":
-                _ext_lines = [
-                    "[{:d}] ACKNOWLEDGE_HOST_PROBLEM;{};1;1;1;ich;done it".format(
-                        int(time.time()),
-                        _dev.full_name
-                    ) for _dev in device.objects.filter(Q(pk__in=key_list))
-                ]
-        else:
-            self.log("")
-        if _ext_lines:
-            self.log("created {}".format(logging_tools.get_plural("line", len(_ext_lines))))
+        if cmd_lines:
+            self.log("created {}".format(logging_tools.get_plural("line", len(cmd_lines))))
             ext_com = server_command.srv_command(
                 command="ext_command",
-                lines=_ext_lines,
+                lines=cmd_lines,
             )
             self.send_to_process("syncer", "ext_command", unicode(ext_com))
         else:
@@ -437,7 +434,6 @@ class ServerProcess(
     @RemoteCall()
     def mon_command(self, srv_com, **kwargs):
         self.handle_mon_command(srv_com)
-        srv_com.set_result("handled command")
         return srv_com
 
     @RemoteCall(target_process="syncer")

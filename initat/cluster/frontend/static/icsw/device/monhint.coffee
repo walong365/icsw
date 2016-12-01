@@ -368,7 +368,7 @@ angular.module(
                 ok_label: "Modify"
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    if sub_scope.form_data.invalid
+                    if sub_scope.form_data.$invalid
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else

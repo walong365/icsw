@@ -687,19 +687,27 @@ class SendMonCommand(View):
     @method_decorator(xml_wrapper)
     def post(self, request):
         data = json.loads(request.POST["json"])
-        # import pprint
-        # pprint.pprint(data)
-        _action = data["action"]["short"]
-        if _action != "none":
-            srv_com = server_command.srv_command(
-                command="mon_command",
-                action=_action,
-                type=data["type"],
-                key_list=data["key_list"]
-            )
-            contact_server(request, icswServiceEnum.monitor_server, srv_com)
+        # salt with user
+        data["user_idx"] = request.user.idx
+        srv_com = server_command.srv_command(
+            command="mon_command",
+            data=json.dumps(data),
+            # key_list=data["key_list"]
+        )
+        contact_server(request, icswServiceEnum.monitor_server, srv_com)
+        return
+        # request.xml_response.info("handled {}".format(data["action"]["long"]))
 
-        request.xml_response.info("handled {}".format(data["action"]["long"]))
+        import pprint
+        pprint.pprint(data)
+        _enum = getattr(IcingaCommandEnum, data["action"].lower())
+        print(dir(_enum))
+        print("-" * 20)
+        import pprint
+        pprint.pprint(_val_dict)
+        return
+        _action = data["action"]["short"]
+        # if _action != "none":
 
 
 class DuplicateDisplayPipe(View):

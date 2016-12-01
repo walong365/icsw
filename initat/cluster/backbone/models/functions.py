@@ -48,6 +48,11 @@ system_timezone = pytz.timezone(time.tzname[0])
 _enums_added = set()
 
 
+# datetime to unix secons
+def to_unix_seconds(in_dt):
+    return (in_dt.utcnow() - datetime.datetime(1970, 1, 1)).total_seconds()
+
+
 def register_service_enum(enum, name):
     if name not in _enums_added:
         from django.conf import settings
