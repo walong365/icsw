@@ -25,7 +25,7 @@ import collections
 import datetime
 import time
 import traceback
-#import netaddr
+import netaddr
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -34,11 +34,11 @@ from lxml import etree
 
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network, \
     device_variable, AssetRun, RunStatus, BatchStatus, AssetType, ScanType, AssetBatch, RunResult, \
-    DispatcherSettingScheduleEnum, ScheduleItem, DeviceLogEntry, device, DispatcherLink
+    DispatcherSettingScheduleEnum, ScheduleItem, DeviceLogEntry, device, DispatcherLink, NmapScan
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
-from initat.tools import logging_tools, process_tools, server_command, ipvx_tools
+from initat.tools import logging_tools, process_tools, server_command, ipvx_tools, net_tools
 from .config import global_config
 from .discovery_struct import ExtCom
 
@@ -733,7 +733,8 @@ class Dispatcher(object):
         self.log("init Dispatcher")
         # quasi-static constants
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
-        #self.__ext_com_lut = {}
+
+        self.__hm_commands_callbacks_lut = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.discovery_process.log("[Disp] {}".format(what), log_level)
@@ -1022,24 +1023,43 @@ class Dispatcher(object):
                 new_pr.asset_batch.save()
 
     def network_scan_schedule_handler(self, schedule_item):
-        # todo: do something
-        print("performing network scan...")
-        print("schedule_handler_data: {}".format(schedule_item.schedule_handler_data))
-    #     _network = network.objects.get(idx=schedule_item.object_id)
-    #     network_str = str(netaddr.IPNetwork("{}/{}".format(_network.network, _network.netmask)))
-    #
-    #     _com = "/opt/cluster/bin/nmap -sP -oX - {}".format(network_str)
-    #
-    #     new_ext_com = ExtCom(self.log, _com)
-    #
-    #     self.__ext_com_lut[self.get_free_ext_com_index()] = new_ext_com
-    #     new_ext_com.run()
-    #
-    # def get_free_ext_com_index(self):
-    #     index = 0
-    #
-    #     while True:
-    #         if index in self.__ext_com_lut:
-    #             index += 1
-    #         else:
-    #             return index
+        target_device = device.objects.get(idx=int(schedule_item.schedule_handler_data))
+        _network = network.objects.get(idx=schedule_item.object_id)
+        network_str = str(netaddr.IPNetwork("{}/{}".format(_network.network, _network.netmask)))
+
+        self.discovery_process.get_route_to_devices([target_device])
+
+        conn_str = "tcp://{}:{:d}".format(target_device.target_ip, self.__hm_port)
+        new_srv_com = server_command.srv_command(command="nmap_scan", network=network_str)
+        run_index = self.__get_free_hm_command_index()
+
+        data_dict = {
+            "network_id": _network.idx
+        }
+
+        self.__hm_commands_callbacks_lut[run_index] = (self.network_scan_schedule_handler_callback, data_dict)
+
+        self.discovery_process.send_pool_message("send_host_monitor_command", run_index, conn_str, unicode(new_srv_com))
+
+    def network_scan_schedule_handler_callback(self, data_dict, result):
+        _network = network.objects.get(idx=data_dict['network_id'])
+
+        _raw_result, _status = result.get_result()
+
+        new_nmap_scan = NmapScan(network=_network, raw_result=_raw_result)
+        new_nmap_scan.save()
+
+    def __get_free_hm_command_index(self):
+         index = 1
+
+         while True:
+             if index in self.__hm_commands_callbacks_lut:
+                 index += 1
+             else:
+                 return index
+
+    def handle_hm_result(self, run_index, srv_result):
+        if run_index in self.__hm_commands_callbacks_lut:
+            function_to_call, callback_data = self.__hm_commands_callbacks_lut[run_index]
+            del self.__hm_commands_callbacks_lut[run_index]
+            function_to_call(callback_data, srv_result)

@@ -1762,3 +1762,25 @@ class ntp_status_command(hm_classes.hm_command):
             )
         else:
             return limits.mon_STATE_CRITICAL, _lines[0]
+
+class nmap_scan_command(hm_classes.hm_command):
+    def __init__(self, name):
+        hm_classes.hm_command.__init__(self, name, positional_arguments=False)
+        self.parser.add_argument("--network", dest="network", type=str)
+
+    def __call__(self, srv_com, cur_ns):
+        if cur_ns.network:
+            network = cur_ns.network
+        else:
+            network = srv_com['network'].text
+
+        command = "/opt/cluster/bin/nmap -sP -oX - {}".format(network)
+
+        status, output = commands.getstatusoutput(command)
+
+        srv_com.set_result(output)
+
+    def interpret(self, srv_com, cur_ns):
+        _result, _state = srv_com.get_log_tuple()
+        _state = server_command.srv_reply_to_nag_state(_state)
+        return _state, _result

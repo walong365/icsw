@@ -51,6 +51,7 @@ __all__ = [
     b"snmp_network_type",
     b"NetDeviceDesiredStateEnum",
     b"NetDeviceSNMPMonOptions",
+    b"NmapScan"
 ]
 
 logger = logging.getLogger(__name__)
@@ -1098,4 +1099,12 @@ class snmp_network_type(models.Model):
     idx = models.AutoField(primary_key=True)
     if_type = models.IntegerField(default=0)
     if_label = models.CharField(max_length=128, default="")
+    date = models.DateTimeField(auto_now_add=True)
+
+class NmapScan(models.Model):
+    idx = models.AutoField(primary_key=True)
+
+    network = models.ForeignKey("backbone.network")
+    raw_result = models.TextField()
+
     date = models.DateTimeField(auto_now_add=True)
