@@ -170,6 +170,7 @@ class DispatcherLink(models.Model):
     object_id = models.IntegerField()
     dispatcher_setting = models.ForeignKey("backbone.DispatcherSetting")
     schedule_handler = models.TextField()
+    schedule_handler_data = models.TextField(null=True)
 
     created = models.DateTimeField(auto_now_add=True)
     user = models.ForeignKey("backbone.user")
@@ -247,6 +248,7 @@ class ScheduleItem(models.Model):
     run_now = models.BooleanField(default=False)
     user = models.ForeignKey("backbone.user", null=True)
     schedule_handler = models.TextField()
+    schedule_handler_data = models.TextField(null=True)
 
     def __repr__(self):
         return "ScheduleItem(model_name={}, object_id={}, planned={}, run_now={}, schedule_handler={})".format(

@@ -537,18 +537,24 @@ class DispatcherLinkSyncer(View):
         model_name = request.POST.get("model_name")
         object_id = request.POST.get("object_id")
         schedule_handler = request.POST.get("schedule_handler")
+        schedule_handler_data = request.POST.get("schedule_handler_data")
         user_id = request.POST.get("user_id")
         dispatcher_setting_ids = [int(value) for value in request.POST.getlist("dispatcher_setting_ids[]")]
 
         current_links = DispatcherLink.objects.filter(
             model_name=model_name,
             object_id=object_id,
-            schedule_handler=schedule_handler)
+            schedule_handler=schedule_handler
+        )
 
         links_deleted = []
         for link in current_links:
             if link.dispatcher_setting.idx in dispatcher_setting_ids:
-                dispatcher_setting_ids.remove(link.dispatcher_setting.idx)
+                if link.schedule_handler_data == schedule_handler_data:
+                    dispatcher_setting_ids.remove(link.dispatcher_setting.idx)
+                else:
+                    links_deleted.append(link.idx)
+                    link.delete()
             else:
                 links_deleted.append(link.idx)
                 link.delete()
@@ -559,6 +565,7 @@ class DispatcherLinkSyncer(View):
                 model_name=model_name,
                 object_id=object_id,
                 schedule_handler=schedule_handler,
+                schedule_handler_data=schedule_handler_data,
                 dispatcher_setting=DispatcherSetting.objects.get(idx=dispatcher_setting_id),
                 user=user.objects.get(idx=user_id)
             )
