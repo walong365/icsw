@@ -224,8 +224,9 @@ class FileModify(object):
                     if _src_el is not None:
                         _dst_el = _total_xml.find(_el_name)
                         for _el in _src_el:
-                            _el.attrib["app"] = _app_name
-                            _dst_el.append(_el)
+                            if not _el.tag is etree.Comment:
+                                _el.attrib["app"] = _app_name
+                                _dst_el.append(_el)
         # sys.exit(0)
         # check for validity
         try:
