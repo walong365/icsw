@@ -611,7 +611,7 @@ angular.module(
     icswUserGroupRoleTools,
 ) ->
     # user / group tree representation
-    class icswUserGroupRoletree
+    class icswUserGroupRoleTree
         constructor: (user_list, group_list, role_list, vdus_list) ->
             @user_list =[]
             @group_list = []
@@ -656,7 +656,7 @@ angular.module(
                 @user_lut[vdus.user].vdus_list.push(vdus)
             # create user long names
             for user in @user_list
-                icswUserGroupRoletree.salt_user(user)
+                icswUserGroupRoleTools.salt_user(user)
 
         # remove / delete calls
         delete_user: (user) =>
