@@ -420,7 +420,7 @@ monitoring_device_module = angular.module(
                 closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    if sub_scope.form_data.invalid
+                    if sub_scope.form_data.$invalid
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
@@ -617,7 +617,7 @@ monitoring_device_module = angular.module(
                 closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    if sub_scope.form_data.invalid
+                    if sub_scope.form_data.$invalid
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
@@ -882,7 +882,7 @@ monitoring_device_module = angular.module(
                 closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    if s2_scope.form_data.invalid
+                    if s2_scope.form_data.$invalid
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
@@ -982,7 +982,7 @@ monitoring_device_module = angular.module(
                 closable: true
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    if sub_scope.form_data.invalid
+                    if sub_scope.form_data.$invalid
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else
@@ -1038,7 +1038,7 @@ monitoring_device_module = angular.module(
                 ok_label: "Copy"
                 ok_callback: (modal) ->
                     d = $q.defer()
-                    if sub_scope.form_data.invalid
+                    if sub_scope.form_data.$invalid
                         toaster.pop("warning", "form validation problem", "")
                         d.reject("form not valid")
                     else

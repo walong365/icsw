@@ -75,7 +75,7 @@ monitoring_basic_module = angular.module(
             for entry in @icinga_command_list
                 entry.$$arguments = (_val.name for _val in entry.args)
                 _title = _.startCase(_.lowerCase(entry.name))
-                for [_src, _dst] in [["Svc", "Service"], ["Del", "Delete"]]
+                for [_src, _dst] in [["Svc ", "Service "], ["Del ", "Delete "]]
                     _title = _.replace(_title, _src, _dst)
                 entry.$$title = _title
                 for arg in entry.args
@@ -88,6 +88,7 @@ monitoring_basic_module = angular.module(
                     "value", "varname", "varvalue",
                     "check_command", "check_attempts", "event_handler_command",
                     "check_timeperiod", "notification_timeperiod",
+                    "servicegroup_name", "hostgroup_name",
                 ])
                     entry.$$private = true
                 # console.log entry.name, entry.$$arguments

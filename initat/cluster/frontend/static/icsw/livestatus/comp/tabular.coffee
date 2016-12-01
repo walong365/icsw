@@ -163,11 +163,11 @@ angular.module(
 [
     "$q", "icswMonitoringBasicTreeService", "$rootScope", "$templateCache", "$compile",
     "icswSimpleAjaxCall", "blockUI", "icswComplexModalService", "icswUserService",
-    "ICSW_URLS",
+    "ICSW_URLS", "toaster",
 (
     $q, icswMonitoringBasicTreeService, $rootScope, $templateCache, $compile,
     icswSimpleAjaxCall, blockUI, icswComplexModalService, icswUserService,
-    ISCW_URLS,
+    ICSW_URLS, toaster,
 ) ->
     _struct = {
         basic_tree: null
@@ -187,12 +187,12 @@ angular.module(
             )
         return defer.promise
 
-    icinga_cmd = (obj_type, obj_key_list) ->
+    icinga_cmd = (obj_type, obj_list) ->
         load_tree().then(
             (tree) ->
                 sub_scope = $rootScope.$new(true)
                 sub_scope.obj_type = obj_type
-                sub_scope.obj_key_list = obj_key_list
+                sub_scope.obj_list = obj_list
                 sub_scope.user = icswUserService.get()
                 # action
 
@@ -258,6 +258,8 @@ angular.module(
                             else
                                 _default = ""
                             sub_scope.edit_obj.args[arg.name] = _default
+                        else
+                            sub_scope.edit_obj.args[arg.name] = ""
 
                 sub_scope.action_changed()
                 icswComplexModalService(
@@ -268,26 +270,37 @@ angular.module(
                         closable: true
                         ok_callback: (modal) ->
                             d = $q.defer()
-                            blockUI.start()
-                            icswSimpleAjaxCall(
-                                {
-                                    url: ICSW_URLS.MON_SEND_MON_COMMAND
-                                    data:
-                                        json: angular.toJson(
-                                            action: sub_scope.edit_obj.action
-                                            type: obj_type
-                                            key_list: obj_key_list
-                                        )
-                                }
-                            ).then(
-                                (res) ->
-                                    console.log "r=", res
-                                    blockUI.stop()
-                                    d.resolve("close")
-                                (error) ->
-                                    blockUI.stop()
-                                    d.reject(error)
-                            )
+                            if sub_scope.form_data.$invalid
+                                toaster.pop("warning", "form validation problem", "")
+                                d.reject("formerror")
+                            else
+                                blockUI.start()
+                                if obj_type == "host"
+                                    # build key list for hosts
+                                    key_list = ({host_idx: entry.$$icswDevice.idx} for entry in obj_list)
+                                else
+                                    # build key list for services
+                                    key_list = ({host_idx: entry.$$host_mon_result.$$icswDevice.idx, service_description: entry.description} for entry in obj_list)
+                                icswSimpleAjaxCall(
+                                    {
+                                        url: ICSW_URLS.MON_SEND_MON_COMMAND
+                                        data:
+                                            json: angular.toJson(
+                                                action: sub_scope.edit_obj.action.name
+                                                type: obj_type
+                                                key_list: key_list
+                                                arguments: sub_scope.edit_obj.args
+                                            )
+                                    }
+                                ).then(
+                                    (res) ->
+                                        # console.log "r=", res
+                                        blockUI.stop()
+                                        d.resolve("close")
+                                    (error) ->
+                                        blockUI.stop()
+                                        d.reject(error)
+                                )
                             return d.promise
                         cancel_callback: () ->
                             d = $q.defer()
@@ -302,8 +315,8 @@ angular.module(
 
         )
     return {
-        icinga_cmd: (obj_type, obj_key_list) ->
-            return icinga_cmd(obj_type, obj_key_list)
+        icinga_cmd: (obj_type, obj_list) ->
+            return icinga_cmd(obj_type, obj_list)
     }
 
 ]).controller("icswLivestatusDeviceMonTableCtrl",
@@ -390,13 +403,15 @@ angular.module(
 
     $scope.modify_entries = ($event) ->
         if $scope.struct.d_type == "hosts"
-            _obj_type = "host"
+            obj_type = "host"
             key_list = (entry.$$icswDevice.idx for entry in $scope.struct.monitoring_data.hosts when entry.$$selected)
+            obj_list = (entry for entry in $scope.struct.monitoring_data.hosts when entry.$$selected)
         else
-            _obj_type = "service"
+            obj_type = "service"
             key_list = (entry.description for entry in $scope.struct.monitoring_data.services when entry.$$selected)
+            obj_list = (entry for entry in $scope.struct.monitoring_data.services when entry.$$selected)
         icswIcingaCmdTools.icinga_cmd(
-            _obj_type
-            key_list
+            obj_type
+            obj_list
         )
 ])
