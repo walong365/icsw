@@ -25,6 +25,7 @@ import collections
 import datetime
 import time
 import traceback
+#import netaddr
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q
@@ -33,7 +34,7 @@ from lxml import etree
 
 from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_speed, net_ip, network, \
     device_variable, AssetRun, RunStatus, BatchStatus, AssetType, ScanType, AssetBatch, RunResult, \
-    DispatcherSettingScheduleEnum, ScheduleItem, DeviceLogEntry, device
+    DispatcherSettingScheduleEnum, ScheduleItem, DeviceLogEntry, device, DispatcherLink
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
@@ -719,8 +720,6 @@ class PlannedRunsForDevice(object):
             # no more running, delete
             self.to_delete = True
 
-from initat.cluster.backbone.models import DispatcherLink
-import initat.cluster.backbone.models
 
 class Dispatcher(object):
     def __init__(self, discovery_process):
@@ -734,8 +733,7 @@ class Dispatcher(object):
         self.log("init Dispatcher")
         # quasi-static constants
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
-
-        self.schedule_items = []
+        #self.__ext_com_lut = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.discovery_process.log("[Disp] {}".format(what), log_level)
@@ -771,13 +769,13 @@ class Dispatcher(object):
                 dispatch_setting=link.dispatcher_setting)]
 
             if len(schedule_items) == 0:
-                # not scheduled
                 new_schedule_item = ScheduleItem.objects.create(
                     model_name=link.model_name,
                     object_id=link.object_id,
                     planned_date=align_time_to_baseline(_now, dispatcher_setting),
                     dispatch_setting=dispatcher_setting,
-                    schedule_handler=link.schedule_handler
+                    schedule_handler=link.schedule_handler,
+                    schedule_handler_data=link.schedule_handler_data
                 )
                 schedule_items.append(new_schedule_item)
 
@@ -788,7 +786,8 @@ class Dispatcher(object):
                     object_id=link.object_id,
                     planned_date=last_schedule_item.planned_date + get_time_inc_from_ds(dispatcher_setting),
                     dispatch_setting=dispatcher_setting,
-                    schedule_handler=link.schedule_handler
+                    schedule_handler=link.schedule_handler,
+                    schedule_handler_data=link.schedule_handler_data
                 )
 
     def dispatch_call(self):
@@ -1023,5 +1022,24 @@ class Dispatcher(object):
                 new_pr.asset_batch.save()
 
     def network_scan_schedule_handler(self, schedule_item):
-        print(schedule_item)
-        print("network schedule handler called")
+        # todo: do something
+        print("performing network scan...")
+        print("schedule_handler_data: {}".format(schedule_item.schedule_handler_data))
+    #     _network = network.objects.get(idx=schedule_item.object_id)
+    #     network_str = str(netaddr.IPNetwork("{}/{}".format(_network.network, _network.netmask)))
+    #
+    #     _com = "/opt/cluster/bin/nmap -sP -oX - {}".format(network_str)
+    #
+    #     new_ext_com = ExtCom(self.log, _com)
+    #
+    #     self.__ext_com_lut[self.get_free_ext_com_index()] = new_ext_com
+    #     new_ext_com.run()
+    #
+    # def get_free_ext_com_index(self):
+    #     index = 0
+    #
+    #     while True:
+    #         if index in self.__ext_com_lut:
+    #             index += 1
+    #         else:
+    #             return index

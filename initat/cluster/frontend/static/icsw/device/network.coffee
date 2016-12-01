@@ -1513,11 +1513,13 @@ angular.module(
 [
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
     "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
-    "toaster", "icswToolsSimpleModalService", "$timeout", "icswDispatcherSettingTreeService", "icswUserService"
+    "toaster", "icswToolsSimpleModalService", "$timeout", "icswDispatcherSettingTreeService", "icswUserService",
+    "icswDeviceTreeService"
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
     icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
-    toaster, icswToolsSimpleModalService, $timeout, icswDispatcherSettingTreeService, icswUserService
+    toaster, icswToolsSimpleModalService, $timeout, icswDispatcherSettingTreeService, icswUserService,
+    icswDeviceTreeService
 ) ->
 
     # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1571,7 +1573,10 @@ angular.module(
     domain_tree = undefined
     dispatcher_tree = undefined
     user_tree = undefined
+    device_tree = undefined
     dispatcher_links = undefined
+
+    device_list = []
 
     return {
         get_tabs: () ->
@@ -1586,6 +1591,7 @@ angular.module(
                     icswDomainTreeService.load(scope.$id)
                     icswDispatcherSettingTreeService.load(scope.$id)
                     icswUserService.load(scope.$id)
+                    icswDeviceTreeService.load(scope.$id)
                     icswSimpleAjaxCall(
                         {
                             url: ICSW_URLS.DISCOVERY_DISPATCHER_LINK_LOADER
@@ -1601,7 +1607,12 @@ angular.module(
                     domain_tree = data[1]
                     dispatcher_tree = data[2]
                     user_tree = data[3]
-                    dispatcher_links = data[4]
+                    device_tree = data[4]
+                    dispatcher_links = data[5]
+
+                    for device in device_tree.all_list
+                        if !device.is_meta_device
+                            device_list.push(device)
 
                     defer.resolve(nw_tree.nw_list)
             )
@@ -1641,6 +1652,7 @@ angular.module(
             scope.edit_obj = obj_or_parent
             sub_scope = scope.$new(false)
             sub_scope.dispatcher_tree = dispatcher_tree
+            sub_scope.device_list = device_list
 
             if scope.edit_obj.$$dispatchers == undefined
                 scope.edit_obj.$$dispatchers = []
@@ -1648,6 +1660,7 @@ angular.module(
                 for link in dispatcher_links
                     if scope.edit_obj.idx == link.object_id
                         scope.edit_obj.$$dispatchers.push(link.dispatcher_setting)
+                        scope.edit_obj.$$scan_device = parseInt(link.schedule_handler_data)
 
             icswComplexModalService(
                 {
@@ -1684,8 +1697,9 @@ angular.module(
                                     data:
                                         model_name: "network"
                                         object_id: scope.edit_obj.idx
-                                        dispatcher_setting_ids: (idx for idx  in scope.edit_obj.$$dispatchers)
+                                        dispatcher_setting_ids: (idx for idx in scope.edit_obj.$$dispatchers)
                                         schedule_handler: "network_scan_schedule_handler"
+                                        schedule_handler_data: "" + scope.edit_obj.$$scan_device
                                         user_id: user_tree.user.idx
                                     dataType: "json"
                                 }

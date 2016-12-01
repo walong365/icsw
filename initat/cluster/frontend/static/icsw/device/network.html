@@ -1110,15 +1110,14 @@
                 </fieldset>
             </uib-tab>
             <uib-tab heading="Host Discovery">
-                <fieldset style="min-height:150px;">
                 <legend>Scan Settings</legend>
                 <div class="form-group">
-                    <label class="control-label col-sm-3 icsw-formlabel">
-                        Perform scan
+                    <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                        Dispatcher(s)
                     </label>
                     <div class="controls col-sm-7">
                         <ui-select multiple="multiple" ng-model="edit_obj.$$dispatchers" class="maxwidth500">
-                            <ui-select-match class="ui-select-match" placeholder="Select Dispatchers">
+                            <ui-select-match class="ui-select-match" placeholder="Select dispatcher (how often to perform scan)">
                                 {{ $item.name }}
                             </ui-select-match>
                             <ui-select-choices class="ui-select-choices" repeat="value.idx as value in dispatcher_tree.list | props_filter:{name:$select.search}">
@@ -1127,7 +1126,21 @@
                         </ui-select>
                     </div>
                 </div>
-            </fieldset>
+                <div class="form-group">
+                    <label class="control-label col-sm-3 requiredField icsw-formlabel">
+                        Scan Device
+                    </label>
+                    <div class="controls col-sm-7">
+                        <ui-select ng-model="edit_obj.$$scan_device" class="maxwidth500">
+                            <ui-select-match class="ui-select-match" placeholder="Select device to perform scan on">
+                                {{ $select.selected.full_name }}
+                            </ui-select-match>
+                            <ui-select-choices class="ui-select-choices" repeat="value.idx as value in device_list | props_filter:{full_name:$select.search}">
+                                <div ng-bind-html="value.full_name | highlight: $select.search"></div>
+                            </ui-select-choices>
+                        </ui-select>
+                    </div>
+                </div>
             </uib-tab>
         </uib-tabset>
     </form>
