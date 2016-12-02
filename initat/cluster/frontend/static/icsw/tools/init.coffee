@@ -447,6 +447,7 @@ angular.module(
             @$$menu_key = "l#{@level}c#{@parent.num_childs}e#{@root.num_elements}"
 
         add_node: (data) =>
+            # console.log "d=", data
             @root.num_elements++
             @num_childs++
             _sub_node = new SimpleTreeNode(data)
@@ -499,7 +500,8 @@ angular.module(
                         state = $state.get(menuEntry.routeName)
                         if state? and state
                             data = state.icswData
-                            data.$$menuEntry = menuEntry
+                            # data.$$menuEntry = menuEntry
+                            menuEntry.$$state = state
                             menuEntry.sref = $state.href(state)
                             _add = true
                             _missing_info = []
@@ -539,7 +541,7 @@ angular.module(
                             data.$$missing_short = _missing_short
                             # console.log "*", _add, state.name
                             # always add state to menu
-                            _cur_sg.add_node(state)
+                            _cur_sg.add_node(menuEntry)
                             if data.$$allowed
                                 _struct.allowed_states.push(state)
                                 if data.$$menuEntry

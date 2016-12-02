@@ -24,13 +24,15 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.partition")
-    icswRouteExtensionProvider.add_route("main.monitordisk")
+    # now in assets
+    # icswRouteExtensionProvider.add_route("main.monitordisk")
 ]).directive("icswDevicePartitionOverview",
 [
     "$templateCache",
 (
     $templateCache
 ) ->
+    # no longer needed (deprecated, now in asset)
     return {
         restrict : "EA"
         template : $templateCache.get("icsw.device.partition.overview")
@@ -46,6 +48,7 @@ angular.module(
     $q, blockUI, ICSW_URLS,
     icswSimpleAjaxCall, icswDeviceTreeService, icswDeviceTreeHelperService,
 ) ->
+    # also deprecated, see above
     $scope.struct = {
         # loading
         loading: false
