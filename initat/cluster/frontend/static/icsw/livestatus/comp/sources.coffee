@@ -66,6 +66,8 @@ angular.module(
         return "label-#{_r_str}"
             
     _sanitize_entry = (entry) ->
+        if not entry.$$selected?
+            entry.$$selected = false
         entry.$$dummy = false
         entry.state = parseInt(entry.state)
         entry.$$numComments = entry._comments.length

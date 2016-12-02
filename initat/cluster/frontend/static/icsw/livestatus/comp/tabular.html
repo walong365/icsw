@@ -36,13 +36,7 @@
                          possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin:4px 15px 0 0;">
                     </div>
                     <div style="margin-top:4px;">
-                        <icsw-tools-button
-                            type="modify"
-                            size="sm"
-                            icsw-value="struct.modify_value"
-                            ng-show="struct.selected"
-                            ng-click="modify_entries($event)"
-                        ></icsw-tools-button>
+                        <icsw-livestatus-mon-table-sel-header></icsw-livestatus-mon-table-sel-header>
                     </div>
                 </td>
             </tr>
@@ -66,12 +60,38 @@
             </tr>
         </thead>
         <tbody>
-            <tr icsw-livestatus-mon-table-row icsw-livestatus-table-row-sel="service"
+            <tr
+                icsw-livestatus-mon-table-row
+                ng-click="toggle_selection($event, service)"
+                ng-class="{'info': service.$$selected}"
                 ng-repeat="service in entries_displayed"
             >
             </tr>
         </tbody>
     </table>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.mon.table.sel.header">
+    <icsw-tools-button
+        type="create"
+        size="sm"
+        icsw-value="'all'"
+        ng-click="select_all($event)"
+    ></icsw-tools-button>
+    <icsw-tools-button
+        type="delete"
+        size="sm"
+        ng-show="struct.selected"
+        icsw-value="'clear'"
+        ng-click="clear_selection($event)"
+    ></icsw-tools-button>
+    <icsw-tools-button
+        type="modify"
+        size="sm"
+        icsw-value="struct.modify_value"
+        ng-show="struct.selected"
+        ng-click="modify_entries($event)"
+    ></icsw-tools-button>
 </script>
 
 <script type="text/ng-template" id="icsw.livestatus.mon.table.row">
@@ -150,13 +170,7 @@
                          possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin:4px 15px 0 0;">
                     </div>
                     <div style="margin-top:4px;">
-                        <icsw-tools-button
-                            type="modify"
-                            size="sm"
-                            icsw-value="struct.modify_value"
-                            ng-show="struct.selected"
-                            ng-click="modify_entries($event)"
-                        ></icsw-tools-button>
+                        <icsw-livestatus-mon-table-sel-header></icsw-livestatus-mon-table-sel-header>
                     </div>
                 </td>
             </tr>
@@ -179,7 +193,8 @@
         <tbody>
             <tr
                 icsw-livestatus-device-table-row
-                icsw-livestatus-table-row-sel="host"
+                ng-class="{'info': host.$$selected}"
+                ng-click="toggle_selection($event, host)"
                 ng-repeat="host in entries_displayed"
             >
             </tr>
@@ -218,7 +233,7 @@
 <script type="text/ng-template" id="icsw.livestatus.modify.entries">
     <form class="form-horizontal" name="form_data">
         <fieldset>
-            <legend>Action ({{ valid_actions.length }} possible for Type: {{ obj_type }}, {{ obj_key_list.length }} Elements)</legend>
+            <legend>Action ({{ valid_actions.length }} possible for Type: {{ obj_type }}, {{ obj_list.length }} Elements)</legend>
             <div class="form-group row">
                 <label class="control-label col-sm-3 requiredField">
                     Action

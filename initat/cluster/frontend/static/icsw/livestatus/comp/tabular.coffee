@@ -134,31 +134,6 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.livestatus.device.table.row")
     }
-]).directive("icswLivestatusTableRowSel",
-[
-    "$q", "ICSW_SIGNALS",
-(
-    $q, ICSW_SIGNALS,
-) ->
-    return {
-        restrict: "A"
-        scope:
-            element: "=icswLivestatusTableRowSel"
-        link: (scope, element, attrs) ->
-            if not scope.element.$$selected?
-                scope.element.$$selected = false
-            if scope.element.$$selected
-                $(element).addClass("info")
-            $(element).bind("click", () ->
-                scope.element.$$selected = !scope.element.$$selected
-                if scope.element.$$selected
-                    scope.$emit(ICSW_SIGNALS("_ICSW_UPDATE_MON_SELECTION"), 1)
-                    $(element).addClass("info")
-                else
-                    scope.$emit(ICSW_SIGNALS("_ICSW_UPDATE_MON_SELECTION"), -1)
-                    $(element).removeClass("info")
-            )
-    }
 ]).service("icswIcingaCmdTools",
 [
     "$q", "icswMonitoringBasicTreeService", "$rootScope", "$templateCache", "$compile",
@@ -318,7 +293,16 @@ angular.module(
         icinga_cmd: (obj_type, obj_list) ->
             return icinga_cmd(obj_type, obj_list)
     }
-
+]).directive("icswLivestatusMonTableSelHeader",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.livestatus.mon.table.sel.header")
+    }
 ]).controller("icswLivestatusDeviceMonTableCtrl",
 [
     "$scope", "DeviceOverviewService", "$q", "icswSimpleAjaxCall", "ICSW_URLS",
@@ -393,22 +377,29 @@ angular.module(
         else
             $scope.struct.modify_value = "N/A"
 
-    $scope.$on(ICSW_SIGNALS("_ICSW_UPDATE_MON_SELECTION"), (event, val) ->
-        # handling of table-row clicks
-        $scope.$apply(
-            () ->
-                _update_selected()
-        )
-    )
+    $scope.clear_selection = ($event) ->
+        for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
+            entry.$$selected = false
+        $scope.struct.selected.length = 0
+        _update_selected()
+
+    $scope.select_all = ($event) ->
+        for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
+            entry.$$selected = true
+        _update_selected()
+
+    $scope.toggle_selection = ($event, element) ->
+        element.$$selected = !element.$$selected
+        _update_selected()
 
     $scope.modify_entries = ($event) ->
         if $scope.struct.d_type == "hosts"
             obj_type = "host"
-            key_list = (entry.$$icswDevice.idx for entry in $scope.struct.monitoring_data.hosts when entry.$$selected)
+            # key_list = (entry.$$icswDevice.idx for entry in $scope.struct.monitoring_data.hosts when entry.$$selected)
             obj_list = (entry for entry in $scope.struct.monitoring_data.hosts when entry.$$selected)
         else
             obj_type = "service"
-            key_list = (entry.description for entry in $scope.struct.monitoring_data.services when entry.$$selected)
+            # key_list = (entry.description for entry in $scope.struct.monitoring_data.services when entry.$$selected)
             obj_list = (entry for entry in $scope.struct.monitoring_data.services when entry.$$selected)
         icswIcingaCmdTools.icinga_cmd(
             obj_type
