@@ -66,12 +66,10 @@
                                 <td class="vertical-align">{{ obj.device_group_name }}</td>
                                 <td class="text-center vertical-align" ng-class="obj.$$device_log_entries_bg_color_class"><strong>{{ obj.$$device_log_entries_count }}</strong></td>
                                 <td class="text-center vertical-align">
-                                    <icsw-tools-button
-                                        type="modify"
+                                    <button ng-disabled="obj.$$device_log_entries_count == 0"
+                                        class="btn btn-primary btn-sm"
                                         ng-click="open_in_new_tab_for_system(task)"
-                                        size="sm"
-                                        value="Show Logs"
-                                    ></icsw-tools-button>
+                                    >Show Logs</button>
                                 </td>
                             </tr>
                         </tbody>
