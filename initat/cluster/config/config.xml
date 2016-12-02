@@ -664,6 +664,7 @@
                 <menuEntry icon="fa-table" name="Categories" routeName="main.categorytree"/>
                 <menuEntry icon="fa-map-marker" name="Location Service" routeName="main.monitorlocation"/>
                 <menuEntry icon="fa-laptop" name="Monitoring Settings" routeName="main.monitordevice"/>
+                <menuEntry icon="fa-check-square" name="Configurations" routeName="main.deviceconfig"/>
             </routeSubGroup>
             <routeSubGroup name="Reporting">
                 <menuEntry icon="fa-dot-circle-o" routeName="main.livestatus" name="Liveview"/>
@@ -678,6 +679,7 @@
                 <menuEntry icon="fa-check-square-o" name="Configurations" routeName="main.configoverview"/>
                 <menuEntry icon="fa-list-alt" routeName="main.domaintree" name="Domain Names"/>
                 <menuEntry icon="fa-info" routeName="main.monitorhint" name="Monitoring Hints"/>
+                <menuEntry icon="fa-check-square" name="Assign System Services" routeName="main.devicesrvconfig"/>
             </routeSubGroup>
             <routeSubGroup name="Reporting">
                 <menuEntry icon="fa-bars" name="Device Information" routeName="main.deviceinfo"/>
@@ -702,7 +704,7 @@
             <routeSubGroup name="Control">
                 <menuEntry icon="fa-plug" name="Power Controlling Connections" routeName="main.deviceconnection"/>
                 <menuEntry icon="fa-clock-o" name="Schedule Asset Run" routeName="main.schedasset"/>
-                <menuEntry icon="fa-info-circle" name="Control and Info" routeName="main.monitorbuildinfo"/>
+                <menuEntry icon="fa-eye" name="Monitoring" routeName="main.monitorbuildinfo"/>
                 <menuEntry icon="fa-reorder" name="Static Asset Templates" routeName="main.statictemplates"/>
             </routeSubGroup>
             <routeSubGroup name="Reporting">

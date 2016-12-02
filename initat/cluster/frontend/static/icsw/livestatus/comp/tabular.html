@@ -119,7 +119,7 @@
     <td class="text-nowrap text-center" ng-show="show_column.MonFlags">
         <span class="label" ng-class="service.$$icswAttemptLabelClass" title="attempt info">{{ service.$$icswAttemptInfo }}</span>
         <span class="fa fa-pencil" title="acknowledgment status" ng-show="service.acknowledged == '1'"></span>
-        <span ng-show="service.$$numComments">{{ service._comments.length }}</span>
+        <span ng-show="service.$$numComments" title="number of comments">{{ service._comments.length }}</span>
         <span ng-show="service.$$icswPassiveCheck" title="service is passive checked" class="glyphicon glyphicon-download"></span>
     </td>
     <td class="text-nowrap" ng-show="show_column.MonCats">{{ service.$$icswCategories }}</td>
@@ -218,7 +218,7 @@
     <td class="text-nowrap text-center" ng-show="show_column.Flags">
         <span class="label text-center" ng-class="host.$$icswAttemptLabelClass" title="attempt info">{{ host.$$icswAttemptInfo }}</span>
         <span class="fa fa-pencil" title="acknowledgment status" ng-show="host.acknowledged == '1'"></span>
-        <span ng-show="host.$$numComments">{{ host._comments.length }}</span>
+        <span ng-show="host.$$numComments" title="number of comments">{{ host._comments.length }}</span>
         <span ng-show="host.$$icswPassiveCheck" title="host is passive checked" class="glyphicon glyphicon-download"></span>
     </td>
     <td class="text-nowrap">{{ host.$$icswLastCheckString }}</td>
