@@ -2055,8 +2055,9 @@ rms_module = angular.module(
                 base_setting.show_settings = false
                 base_setting.display_tree_switch = false
                 base_setting.auto_select_keys = [
-                    "rms.fairshare\\..*\\.cpu$"
+                    # "rms.fairshare\\..*\\.cpu$"
                     "rms.fairshare\\..*\.share.actual"
+                    "compound.sge.shares"
                 ]
                 $scope.struct.local_setting = local_setting
                 $scope.struct.base_setting = base_setting

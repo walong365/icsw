@@ -200,6 +200,7 @@ class RMSMonProcess(threading_tools.process_obj):
         # queue dict
         _queues = {"total": QueueInfo()}
         for _node in _res.findall(".//node"):
+            # print(etree.tostring(_node, pretty_print=True))
             _host = _node.findtext("host")
             _queue = _node.findtext("queue")
             _queue_names.add(_queue)
