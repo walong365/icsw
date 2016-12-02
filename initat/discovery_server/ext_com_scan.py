@@ -1046,8 +1046,9 @@ class Dispatcher(object):
 
         _raw_result, _status = result.get_result()
 
-        new_nmap_scan = NmapScan(network=_network, raw_result=_raw_result)
-        new_nmap_scan.save()
+        if _status == 0:
+            new_nmap_scan = NmapScan(network=_network, raw_result=_raw_result)
+            new_nmap_scan.save()
 
     def __get_free_hm_command_index(self):
          index = 1

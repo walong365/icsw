@@ -46,3 +46,8 @@ class LongRunningCheck(object):
         p = Process(target=self.perform_check, args=(queue, ))
         p.start()
         return p
+
+    def post_perform_check(self):
+        """ Override this method to perform post operations after the check is performed.
+        """
+        raise NotImplementedError()
