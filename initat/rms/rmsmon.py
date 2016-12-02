@@ -225,7 +225,9 @@ class RMSMonProcess(threading_tools.process_obj):
                 _slots = int(_pe_text.split("(")[1].split(")")[0])
             _owner_dict.setdefault(_owner_text, []).append(_slots)
         _owner_dict = {key: sum(value) for key, value in _owner_dict.iteritems()}
+        _total = 0
         for _name, _slots in _owner_dict.iteritems():
+            _total += _slots
             _rms_vector.append(
                 hm_classes.mvect_entry(
                     "rms.user.{}.slots".format(_name),
@@ -237,6 +239,17 @@ class RMSMonProcess(threading_tools.process_obj):
                     base=1,
                 ).build_xml(_bldr)
             )
+        _rms_vector.append(
+            hm_classes.mvect_entry(
+                "rms.user.slots".format(_name),
+                info="Slots used by all users",
+                default=0,
+                value=_total,
+                factor=1,
+                valid_until=valid_until,
+                base=1,
+            ).build_xml(_bldr)
+        )
 
         # print("*", _owner_dict)
         # print("*", _pe_text, _owner_text, _slots)
