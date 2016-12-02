@@ -111,7 +111,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
     def long_running_checks_timer(self):
         new_checks = []
         for _idx, _stuff in enumerate(self.long_running_checks):
-            process, queue, zmq_sock, src_id, srv_com, c_buffer = _stuff
+            process, queue, zmq_sock, src_id, srv_com, c_buffer, long_running_check_obj = _stuff
             if process.is_alive():
                 try:
                     _queue_get = queue.get(False)
@@ -144,8 +144,12 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                         "Long running check {!r} failed".format(process.name),
                         logging_tools.LOG_LEVEL_ERROR
                     )
+                try:
+                    long_running_check_obj.post_perform_check()
+                except NotImplementedError:
+                    pass
             else:
-                new_checks.append((process, queue, zmq_sock, src_id, srv_com, c_buffer))
+                new_checks.append((process, queue, zmq_sock, src_id, srv_com, c_buffer, long_running_check_obj))
         self.long_running_checks = new_checks
         if not self.long_running_checks:
             self.unregister_timer(self.long_running_checks_timer)
@@ -645,7 +649,7 @@ class ServerCode(ICSWBasePool, HMHRMixin):
                 if not self.long_running_checks:
                     self.register_timer(self.long_running_checks_timer, 1.0)
                 self.long_running_checks.append(
-                    (process, queue, zmq_sock, src_id, srv_com, "")
+                    (process, queue, zmq_sock, src_id, srv_com, "", delayed)
                 )
             elif delayed:
                 # delayed is a subprocess_struct

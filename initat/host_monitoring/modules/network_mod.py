@@ -31,6 +31,8 @@ import psutil
 from initat.host_monitoring import hm_classes, limits
 from initat.tools import logging_tools, process_tools, server_command
 
+from ..long_running_checks import LongRunningCheck, LONG_RUNNING_CHECK_RESULT_KEY
+
 # name of total-device
 TOTAL_DEVICE_NAME = "all"
 # name of maximum device
@@ -1763,22 +1765,46 @@ class ntp_status_command(hm_classes.hm_command):
         else:
             return limits.mon_STATE_CRITICAL, _lines[0]
 
+
+class NmapScanCheck(LongRunningCheck):
+    def __init__(self, srv_command_obj, network_str, nmap_scan_command_object):
+        self.srv_command_obj = srv_command_obj
+        self.network_str = network_str
+        self.nmap_scan_command_obj = nmap_scan_command_object
+
+    def perform_check(self, queue):
+        command = "/opt/cluster/bin/nmap -sP -oX - {}".format(self.network_str)
+
+        status, output = commands.getstatusoutput(command)
+
+        self.srv_command_obj.set_result(output)
+
+        queue.put(unicode(self.srv_command_obj))
+
+    def post_perform_check(self):
+        self.nmap_scan_command_obj.current_nmap_scan_check = None
+
+
 class nmap_scan_command(hm_classes.hm_command):
     def __init__(self, name):
         hm_classes.hm_command.__init__(self, name, positional_arguments=False)
         self.parser.add_argument("--network", dest="network", type=str)
+        self.current_nmap_scan_check = None
 
-    def __call__(self, srv_com, cur_ns):
-        if cur_ns.network:
-            network = cur_ns.network
+    def __call__(self, srv_command_obj, arguments):
+        if arguments.network:
+            network_str = arguments.network
         else:
-            network = srv_com['network'].text
+            network_str = srv_command_obj['network'].text
 
-        command = "/opt/cluster/bin/nmap -sP -oX - {}".format(network)
-
-        status, output = commands.getstatusoutput(command)
-
-        srv_com.set_result(output)
+        if self.current_nmap_scan_check:
+            srv_command_obj.set_result(
+                "An nmap scan is already performed on this device",
+                server_command.SRV_REPLY_STATE_ERROR,
+            )
+        else:
+            self.current_nmap_scan_check = NmapScanCheck(srv_command_obj, network_str, self)
+            return self.current_nmap_scan_check
 
     def interpret(self, srv_com, cur_ns):
         _result, _state = srv_com.get_log_tuple()
