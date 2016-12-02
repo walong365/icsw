@@ -507,6 +507,7 @@ body.condensed .ova-statusbutton {
 }
 /* SUBMENU END */
 /* SVG TOOLTIPS START */
+/* also used for config overlays */
 .svg-tooltip {
     position: fixed;
     z-index: 9999;
@@ -527,6 +528,7 @@ body.condensed .ova-statusbutton {
     padding-left:5px;
 }
 /* SVG TOOLTIPS END */
+
 icsw-tools-button-static.fa:before {
     margin-right: 3px;
 }

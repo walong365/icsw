@@ -1157,11 +1157,10 @@ angular.module(
 
                     struct.divlayer.css('left', "#{event.clientX + left_offset}px")
                     struct.divlayer.css('top', "#{event.clientY + top_offset}px")
-                return
 
             struct.hide = () ->
-                struct.divlayer.css('left', "-1000px")
-                struct.divlayer.css('top', "-1000px")
+                struct.divlayer.css('left', "-10000px")
+                struct.divlayer.css('top', "-10000px")
                 scope.display = "none"
                 scope.tooltip_content = ""
 
