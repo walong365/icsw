@@ -198,7 +198,7 @@ class LiveSocket(object):
             names=_enum_list,
         )
         e_time = time.time()
-        log_com()
+        log_com("init_enum took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
 
     @classmethod
     def get_mon_live_socket(cls, log_com):

@@ -101,6 +101,10 @@ class StatusProcess(threading_tools.process_obj):
         return self.__socket
 
     def _get_node_status(self, srv_com_str, **kwargs):
+        def _salt_line(line, key, in_dict):
+            line["_comments"] = in_dict.get(line[key], [])
+            return line
+
         srv_com = server_command.srv_command(source=srv_com_str)
         # overview mode if overview is a top-level element
         _host_overview = True if "host_overview" in srv_com else False
@@ -176,6 +180,7 @@ class StatusProcess(threading_tools.process_obj):
                         )
                         fetch_dict["service_comment"] = cur_sock.comments.columns(
                             "host_name",
+                            "service_description",
                             "author",
                             "comment",
                             "entry_type",
@@ -189,19 +194,31 @@ class StatusProcess(threading_tools.process_obj):
                         )
                         # print str(fetch_dict["service_comment"])
                 fetch_dict.fetch()
+                _host_comments = {}
+                for entry in fetch_dict["host_comment_result"]:
+                    _host_comments.setdefault(entry["host_name"], []).append(entry)
+                _service_comments = {}
+                for entry in fetch_dict["service_comment_result"]:
+                    _service_comments.setdefault(entry["service_description"], []).append(entry)
+                # import pprint
+                # pprint.pprint(_host_comments)
+                # pprint.pprint(_service_comments)
                 srv_com["service_result"] = json.dumps(
                     [
-                        _line for _line in fetch_dict["service_result"] if _line.get("host_name", "")
+                        _salt_line(_line, "description", _service_comments) for _line in fetch_dict["service_result"] if _line.get("host_name", "")
                     ]
                 )
                 # import pprint
                 # pprint.pprint(fetch_dict["host_result"])
                 srv_com["host_result"] = json.dumps(
-                    fetch_dict["host_result"]
+                    [
+                        _salt_line(_line, "name", _host_comments) for _line in fetch_dict["host_result"]
+                    ]
                 )
                 srv_com.set_result(
                     fetch_dict.info_str
                 )
+                # print(srv_com.pretty_print())
             else:
                 srv_com.set_result("cannot connect to socket", server_command.SRV_REPLY_STATE_CRITICAL)
         except:
@@ -211,7 +228,9 @@ class StatusProcess(threading_tools.process_obj):
                 self.log(u" - {}".format(line), logging_tools.LOG_LEVEL_ERROR)
             self._close()
             srv_com.set_result(
-                "exception during fetch",
+                "exception during fetch: {}".format(
+                    process_tools.get_except_info()
+                ),
                 server_command.SRV_REPLY_STATE_CRITICAL
             )
         self.send_pool_message("remote_call_async_result", unicode(srv_com))

@@ -36,13 +36,7 @@
                          possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin:4px 15px 0 0;">
                     </div>
                     <div style="margin-top:4px;">
-                        <icsw-tools-button
-                            type="modify"
-                            size="sm"
-                            icsw-value="struct.modify_value"
-                            ng-show="struct.selected"
-                            ng-click="modify_entries($event)"
-                        ></icsw-tools-button>
+                        <icsw-livestatus-mon-table-sel-header></icsw-livestatus-mon-table-sel-header>
                     </div>
                 </td>
             </tr>
@@ -56,7 +50,7 @@
                 <th st-sort="$$host_mon_result.display_name" st-sort-default="true">Device</th>
                 <th ng-show="show_column.DevFlags">DevFlags</th>
                 <th ng-show="show_column.DevCats">DevCats</th>
-                <th ng-show="show_column.State" colspan="2" st-sort="$$icswStateString">State</th>
+                <th ng-show="show_column.State" colspan="2" st-sort="$$data.StateString">State</th>
                 <th ng-show="show_column.Description" st-sort="display_name">Description</th>
                 <th ng-show="show_column.MonFlags">MonFlags</th>
                 <th ng-show="show_column.MonCats">MonCats</th>
@@ -66,12 +60,38 @@
             </tr>
         </thead>
         <tbody>
-            <tr icsw-livestatus-mon-table-row icsw-livestatus-table-row-sel="service"
+            <tr
+                icsw-livestatus-mon-table-row
+                ng-click="toggle_selection($event, service)"
+                ng-class="{'info': service.$$selected}"
                 ng-repeat="service in entries_displayed"
             >
             </tr>
         </tbody>
     </table>
+</script>
+
+<script type="text/ng-template" id="icsw.livestatus.mon.table.sel.header">
+    <icsw-tools-button
+        type="create"
+        size="sm"
+        icsw-value="'all'"
+        ng-click="select_all($event)"
+    ></icsw-tools-button>
+    <icsw-tools-button
+        type="delete"
+        size="sm"
+        ng-show="struct.selected"
+        icsw-value="'clear'"
+        ng-click="clear_selection($event)"
+    ></icsw-tools-button>
+    <icsw-tools-button
+        type="modify"
+        size="sm"
+        icsw-value="struct.modify_value"
+        ng-show="struct.selected"
+        ng-click="modify_entries($event)"
+    ></icsw-tools-button>
 </script>
 
 <script type="text/ng-template" id="icsw.livestatus.mon.table.row">
@@ -90,7 +110,7 @@
         {{ service.$$host_mon_result.$$icswCategories }}
     </td>
     <td class="text-nowrap" ng-show="show_column.State" ng-class="service.$$icswStateClass">
-        {{ service.$$icswStateString }}
+        {{ service.$$data.StateString }}
     </td>
     <td ng-show="show_column.State" ng-class="service.$$icswStateClass">
         <span ng-show="show_column.StateType" class="badge">{{ service.$$icswStateTypeString|capitalize }}</span>
@@ -99,6 +119,7 @@
     <td class="text-nowrap text-center" ng-show="show_column.MonFlags">
         <span class="label" ng-class="service.$$icswAttemptLabelClass" title="attempt info">{{ service.$$icswAttemptInfo }}</span>
         <span class="fa fa-pencil" title="acknowledgment status" ng-show="service.acknowledged == '1'"></span>
+        <span ng-show="service.$$numComments">{{ service._comments.length }}</span>
         <span ng-show="service.$$icswPassiveCheck" title="service is passive checked" class="glyphicon glyphicon-download"></span>
     </td>
     <td class="text-nowrap" ng-show="show_column.MonCats">{{ service.$$icswCategories }}</td>
@@ -149,13 +170,7 @@
                          possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin:4px 15px 0 0;">
                     </div>
                     <div style="margin-top:4px;">
-                        <icsw-tools-button
-                            type="modify"
-                            size="sm"
-                            icsw-value="struct.modify_value"
-                            ng-show="struct.selected"
-                            ng-click="modify_entries($event)"
-                        ></icsw-tools-button>
+                        <icsw-livestatus-mon-table-sel-header></icsw-livestatus-mon-table-sel-header>
                     </div>
                 </td>
             </tr>
@@ -167,7 +182,7 @@
             <tr>
                 <th st-sort="display_name" st-sort-default="true">Device</th>
                 <th ng-show="show_column.DevCats">DevCats</th>
-                <th ng-show="show_column.State" colspan="2" st-sort="$$icswStateString">State</th>
+                <th ng-show="show_column.State" colspan="2" st-sort="$$data.StateString">State</th>
                 <th ng-show="show_column.Flags">Flags</th>
                 <!--<th ng-show="show_column.Description" st-sort="description">Description</th>-->
                 <th st-sort="last_check" class="text-nowrap">Last Check</th>
@@ -178,7 +193,8 @@
         <tbody>
             <tr
                 icsw-livestatus-device-table-row
-                icsw-livestatus-table-row-sel="host"
+                ng-class="{'info': host.$$selected}"
+                ng-click="toggle_selection($event, host)"
                 ng-repeat="host in entries_displayed"
             >
             </tr>
@@ -194,7 +210,7 @@
         {{ host.$$icswCategories }}
     </td>
     <td class="text-nowrap" ng-show="show_column.State" ng-class="host.$$icswStateClass">
-        {{ host.$$icswStateString }}
+        {{ host.$$data.StateString }}
     </td>
     <td ng-show="show_column.State" ng-class="host.$$icswStateClass">
         <span ng-show="show_column.StateType" class="badge">{{ host.$$icswStateTypeString }}</span>
@@ -202,6 +218,7 @@
     <td class="text-nowrap text-center" ng-show="show_column.Flags">
         <span class="label text-center" ng-class="host.$$icswAttemptLabelClass" title="attempt info">{{ host.$$icswAttemptInfo }}</span>
         <span class="fa fa-pencil" title="acknowledgment status" ng-show="host.acknowledged == '1'"></span>
+        <span ng-show="host.$$numComments">{{ host._comments.length }}</span>
         <span ng-show="host.$$icswPassiveCheck" title="host is passive checked" class="glyphicon glyphicon-download"></span>
     </td>
     <td class="text-nowrap">{{ host.$$icswLastCheckString }}</td>
@@ -216,7 +233,7 @@
 <script type="text/ng-template" id="icsw.livestatus.modify.entries">
     <form class="form-horizontal" name="form_data">
         <fieldset>
-            <legend>Action ({{ valid_actions.length }} possible for Type: {{ obj_type }}, {{ obj_key_list.length }} Elements)</legend>
+            <legend>Action ({{ valid_actions.length }} possible for Type: {{ obj_type }}, {{ obj_list.length }} Elements)</legend>
             <div class="form-group row">
                 <label class="control-label col-sm-3 requiredField">
                     Action

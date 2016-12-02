@@ -337,14 +337,17 @@ menu_module = angular.module(
 
     menu_line = React.createClass(
         propTypes: {
-            state: React.PropTypes.object
+            menuEntry: React.PropTypes.object
         }
 
         displayName: "icswMenuEntry"
 
         render: () ->
             cur_state = $state.current
-            state = @props.state
+            menu_entry = @props.menuEntry
+            state = menu_entry.$$state
+            # console.log menu_entry, state
+            # console.log "me=", menu_entry
             data = state.icswData
             a_attrs = {
                 key: "a"
@@ -353,11 +356,11 @@ menu_module = angular.module(
             active_state = false
             if data.$$allowed
                 _a_classes.push("icswMenuColor")
-                if data.$$menuEntry.href?
-                    a_attrs.href = data.$$menuEntry.href
+                if menu_entry.href?
+                    a_attrs.href = menu_entry.href
                 else
-                    a_attrs.href = data.$$menuEntry.sref
-                if data.$$menuEntry.routeName == cur_state.name
+                    a_attrs.href = menu_entry.sref
+                if menu_entry.routeName == cur_state.name
                     active_state = true
                 _mis_span = null
             else
@@ -373,10 +376,10 @@ menu_module = angular.module(
                 )
             if active_state
                 _a_classes.push("active")
-            if data.$$menuEntry.entryClass?
-                _a_classes.push(data.$$menuEntry.entryClass)
-            if data.$$menuEntry.title?
-                a_attrs.title = data.$$menuEntry.title
+            if menu_entry.entryClass?
+                _a_classes.push(menu_entry.entryClass)
+            if menu_entry.title?
+                a_attrs.title = menu_entry.title
             if data.description[def_lang]?
                 _info_text = data.description[def_lang].text
             else
@@ -398,9 +401,9 @@ menu_module = angular.module(
                 a(
                     a_attrs
                     span(
-                        {className: "fa #{data.$$menuEntry.icon} fa_icsw", key: "span"}
+                        {className: "fa #{menu_entry.icon} fa_icsw", key: "span"}
                     )
-                    " #{data.$$menuEntry.name} "
+                    " #{menu_entry.name} "
                     _mis_span
                 )
                 help_p
@@ -419,7 +422,7 @@ menu_module = angular.module(
             items_added = 0
             _items = []
             for sg_state in @props.menu.entries
-                sg_data = sg_state.data
+                menu_entry = sg_state.data
                 # if sg_state.data.hidden?
                 #    console.log "***", sg_state.data
                 #    _hidden = sg_state.data.hidden
@@ -431,18 +434,20 @@ menu_module = angular.module(
                         {
                             key: "#{sg_state.$$menu_key}_li"
                         }
-                        p({key: "p"}, strong({key: "strong"}, sg_data.name))
+                        p({key: "p"}, strong({key: "strong"}, menu_entry.name))
                     )
                 else
                     _head = li(
                         {
                             key: "#{sg_state.$$menu_key}_li"
                         }
-                        h3({key: "h3"}, sg_data.name)
+                        h3({key: "h3"}, menu_entry.name)
                     )
                 _head_added = false
                 for menu_entry in sg_state.entries
-                    state = menu_entry.data
+                    state = menu_entry.data.$$state
+                    # state = menu_entry.data.$$state
+                    # console.log "s=", state
                     data = state.icswData
                     _key = menu_entry.$$menu_key
                     # if data.$$menuEntry.isHidden? and data.$$menuEntry.isHidden
@@ -454,7 +459,7 @@ menu_module = angular.module(
                             _items.push(_head)
                         items_added += 1
                         _items.push(
-                            React.createElement(menu_line, {key: _key, state: state})
+                            React.createElement(menu_line, {key: _key, menuEntry: menu_entry.data})
                         )
 
             if items_added > 0
@@ -485,10 +490,10 @@ menu_module = angular.module(
 
                 _num_items = _items.length
                 # get number of rows
-                if _num_items > 12
+                if _num_items > 8
                     _num_cols = 3
                     _col_style = "col-sm-4"
-                else if _num_items > 6
+                else if _num_items > 4
                     _num_cols = 2
                     _col_style = "col-sm-6"
                 else
@@ -726,7 +731,7 @@ menu_module = angular.module(
             @ws = icswWebSocketService.register_ws("background_jobs")
             @ws.onmessage = (msg) =>
                 data = angular.fromJson(msg.data)
-                console.log "d=", data
+                # console.log "d=", data
                 @setState({num_jobs: data["background_jobs"]})
 
     )
