@@ -68,6 +68,8 @@ angular.module(
     _sanitize_entry = (entry) ->
         entry.$$dummy = false
         entry.state = parseInt(entry.state)
+        console.log "*", entry._comments
+        entry.$$numComments = entry._comments.length
         # console.log entry.last_check, typeof(entry.last_check)
         if entry.last_check in ["0"] and entry.state != 4
             entry.state = 5
@@ -115,6 +117,7 @@ angular.module(
             $$dummy: false
             last_check: 0
             last_state_change: 0
+            _comments: []
         }
         return entry
 
@@ -174,36 +177,42 @@ angular.module(
             info: "Up"
             iconCode: "\uf00c"
             iconFaName: "fa-check"
+            StateString: "Up"
         }
         1: {
             svgClassName:  "svg-dev-down"
             info: "Down"
             iconCode: "\uf0e7"
             iconFaName: "fa-bolt"
+            StateString: "Down"
         }
         2: {
             svgClassName: "svg-dev-unreach"
             info: "Unreachable"
             iconCode: "\uf071"
             iconFaName: "fa-warning"
+            StateString: "Unreachable"
         }
         3: {
             svgClassName: "svg-dev-unknown"
             info: "Unknown"
             iconCode: "\uf29c"
             iconFaName: "fa-question-circle-o"
+            StateString: "Not set"
         }
         4: {
             svgClassName: "svg-dev-notmonitored"
             info: "not monitored"
             iconCode: "\uf05e"
             iconFaName: "fa-ban"
+            StateString: "Not Monitored"
         }
         5: {
             svgClassName: "svg-dev-pending"
             info: "pending"
             iconCode: "\uf10c"
             iconFaName: "fa-circle-o"
+            StateString: "pending"
         }
     }
 
@@ -213,36 +222,42 @@ angular.module(
             info: "OK"
             iconCode: "\uf00c"
             iconFaName: "fa-check"
+            StateString: "OK"
         }
         1: {
             svgClassName: "svg-srv-warn"
             info: "Warning"
             iconCode: "\uf071"
             iconFaName: "fa-warning"
+            StateString: "Warning"
         }
         2: {
             svgClassName: "svg-srv-crit"
             info: "Critical"
             iconCode: "\uf0e7"
             iconFaName: "fa-bolt"
+            StateString: "Critical"
         }
         3: {
             svgClassName: "svg-srv-unknown"
             info: "Unknown"
             iconCode: "\uf29c"
             iconFaName: "fa-question-circle-o"
+            StateString: "Unknown"
         }
         4: {
             svgClassName: "svg-srv-notmonitored"
             info: "not monitored"
             iconCode: "\uf05e"
             iconFaName: "fa-ban"
+            StateString: "unmon"
         }
         5: {
             svgClassName: "svg-srv-pending"
             info: "pending"
             iconCode: "\uf10c"
             iconFaName: "fa-circle-o"
+            StateString: "pending"
         }
     }
     _struct = {
@@ -272,14 +287,6 @@ angular.module(
         # entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
         entry.$$icswStateBtnClass = "btn-#{_r_str}"
-        entry.$$icswStateString = {
-            0: "OK"
-            1: "Critical"
-            2: "Unreachable"
-            3: "Not set"
-            4: "Not monitored"
-            5: "pending"
-        }[entry.state]
 
     salt_service_state = (entry) ->
         _r_str = {
@@ -304,14 +311,6 @@ angular.module(
         # entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
         entry.$$icswStateBtnClass = "btn-#{_r_str}"
-        entry.$$icswStateString = {
-            0: "OK"
-            1: "Warning"
-            2: "Critical"
-            3: "Unknown"
-            4: "unmon"
-            5: "pending"
-        }[entry.state]
 
     salt_host = (entry, device_tree, cat_tree, device_cat_pks) ->
         if not entry.$$icswSalted?

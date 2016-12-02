@@ -56,7 +56,7 @@
                 <th st-sort="$$host_mon_result.display_name" st-sort-default="true">Device</th>
                 <th ng-show="show_column.DevFlags">DevFlags</th>
                 <th ng-show="show_column.DevCats">DevCats</th>
-                <th ng-show="show_column.State" colspan="2" st-sort="$$icswStateString">State</th>
+                <th ng-show="show_column.State" colspan="2" st-sort="$$data.StateString">State</th>
                 <th ng-show="show_column.Description" st-sort="display_name">Description</th>
                 <th ng-show="show_column.MonFlags">MonFlags</th>
                 <th ng-show="show_column.MonCats">MonCats</th>
@@ -90,7 +90,7 @@
         {{ service.$$host_mon_result.$$icswCategories }}
     </td>
     <td class="text-nowrap" ng-show="show_column.State" ng-class="service.$$icswStateClass">
-        {{ service.$$icswStateString }}
+        {{ service.$$data.StateString }}
     </td>
     <td ng-show="show_column.State" ng-class="service.$$icswStateClass">
         <span ng-show="show_column.StateType" class="badge">{{ service.$$icswStateTypeString|capitalize }}</span>
@@ -99,6 +99,7 @@
     <td class="text-nowrap text-center" ng-show="show_column.MonFlags">
         <span class="label" ng-class="service.$$icswAttemptLabelClass" title="attempt info">{{ service.$$icswAttemptInfo }}</span>
         <span class="fa fa-pencil" title="acknowledgment status" ng-show="service.acknowledged == '1'"></span>
+        <span ng-show="service.$$numComments">{{ service._comments.length }}</span>
         <span ng-show="service.$$icswPassiveCheck" title="service is passive checked" class="glyphicon glyphicon-download"></span>
     </td>
     <td class="text-nowrap" ng-show="show_column.MonCats">{{ service.$$icswCategories }}</td>
@@ -167,7 +168,7 @@
             <tr>
                 <th st-sort="display_name" st-sort-default="true">Device</th>
                 <th ng-show="show_column.DevCats">DevCats</th>
-                <th ng-show="show_column.State" colspan="2" st-sort="$$icswStateString">State</th>
+                <th ng-show="show_column.State" colspan="2" st-sort="$$data.StateString">State</th>
                 <th ng-show="show_column.Flags">Flags</th>
                 <!--<th ng-show="show_column.Description" st-sort="description">Description</th>-->
                 <th st-sort="last_check" class="text-nowrap">Last Check</th>
@@ -194,7 +195,7 @@
         {{ host.$$icswCategories }}
     </td>
     <td class="text-nowrap" ng-show="show_column.State" ng-class="host.$$icswStateClass">
-        {{ host.$$icswStateString }}
+        {{ host.$$data.StateString }}
     </td>
     <td ng-show="show_column.State" ng-class="host.$$icswStateClass">
         <span ng-show="show_column.StateType" class="badge">{{ host.$$icswStateTypeString }}</span>
@@ -202,6 +203,7 @@
     <td class="text-nowrap text-center" ng-show="show_column.Flags">
         <span class="label text-center" ng-class="host.$$icswAttemptLabelClass" title="attempt info">{{ host.$$icswAttemptInfo }}</span>
         <span class="fa fa-pencil" title="acknowledgment status" ng-show="host.acknowledged == '1'"></span>
+        <span ng-show="host.$$numComments">{{ host._comments.length }}</span>
         <span ng-show="host.$$icswPassiveCheck" title="host is passive checked" class="glyphicon glyphicon-download"></span>
     </td>
     <td class="text-nowrap">{{ host.$$icswLastCheckString }}</td>
