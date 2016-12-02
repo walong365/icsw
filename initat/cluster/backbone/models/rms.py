@@ -41,6 +41,8 @@ __all__ = [
     b"rms_user",
     b"rms_queue",
     b"rms_pe",
+    b"rms_accounting_run",
+    b"rms_accounting_record",
     b"ext_license_site",
     b"ext_license",
     b"ext_license_version",
@@ -115,6 +117,19 @@ class rms_user(models.Model):
 
     def __unicode__(self):
         return "rms_user {}".format(self.name)
+
+
+class rms_accounting_run(models.Model):
+    idx = models.AutoField(primary_key=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+
+class rms_accounting_record(models.Model):
+    idx = models.AutoField(primary_key=True)
+    rms_user = models.ForeignKey("backbone.rms_user")
+    rms_accounting_run = models.ForeignKey("backbone.rms_accounting_run")
+    slots_used = models.IntegerField(default=0)
+    date = models.DateTimeField(auto_now_add=True)
 
 
 class rms_job(models.Model):

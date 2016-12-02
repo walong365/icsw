@@ -28,7 +28,7 @@ from initat.cluster.backbone.models import rms_project, rms_department, rms_queu
     ext_license_client, ext_license_state, ext_license_usage, ext_license_user, \
     ext_license_version, ext_license_version_state, ext_license_vendor, ext_license_site, \
     ext_license_state_coarse, ext_license_version_state_coarse, RMSJobVariable, RMSJobVariableActionRun, \
-    RMSJobVariableAction, rms_user
+    RMSJobVariableAction, rms_user, rms_accounting_run, rms_accounting_record
 from rest_framework import serializers
 
 __all__ = [
@@ -40,6 +40,8 @@ __all__ = [
     b"rms_queue_serializer",
     b"rms_pe_serializer",
     b"rms_user_serializer",
+    b"rms_accounting_run_serializer",
+    b"rms_accounting_record_serializer",
     b"ext_license_site_serializer",
     b"ext_license_serializer",
     b"ext_license_version_serializer",
@@ -105,8 +107,19 @@ class rms_pe_serializer(serializers.ModelSerializer):
         fields = ("name",)
 
 
-class rms_job_serializer(serializers.ModelSerializer):
+class rms_accounting_run_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = rms_accounting_run
+        fields = "__all__"
 
+
+class rms_accounting_record_serializer(serializers.ModelSerializer):
+    class Meta:
+        model = rms_accounting_record
+        fields = "__all__"
+
+
+class rms_job_serializer(serializers.ModelSerializer):
     class Meta:
         model = rms_job
         fields = (

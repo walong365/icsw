@@ -34,7 +34,8 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device, rms_user
+from initat.cluster.backbone.models import device, rms_user, rms_accounting_record, \
+    rms_accounting_run
 from initat.host_monitoring import hm_classes
 from initat.tools import logging_tools, process_tools, server_command, \
     sge_tools, threading_tools
@@ -212,8 +213,13 @@ class RMSMonProcess(threading_tools.process_obj):
         _host_stats = {}
         # print(etree.tostring(run_res, pretty_print=True))
         _owner_dict = {
-            _name: [] for _name in rms_user.objects.all().values_list("name", flat=True)
+            _rms_user.name: {
+                "obj": _rms_user,
+                "slots": []
+            } for _rms_user in rms_user.objects.all()
         }
+        account_run = rms_accounting_run.objects.create()
+
         # print(_owner_dict)
         # running slots info
         for _node in run_res.findall(".//job"):
@@ -223,10 +229,27 @@ class RMSMonProcess(threading_tools.process_obj):
                 _slots = 1
             else:
                 _slots = int(_pe_text.split("(")[1].split(")")[0])
-            _owner_dict.setdefault(_owner_text, []).append(_slots)
-        _owner_dict = {key: sum(value) for key, value in _owner_dict.iteritems()}
+            if _owner_text not in _owner_dict:
+                new_user = rms_user(
+                    name=_owner_text,
+                )
+                new_user.save()
+                _owner_dict[new_user.name] = {
+                    "obj": new_user,
+                    "slots": [],
+                }
+            _owner_dict[_owner_text]["slots"].append(_slots)
         _total = 0
-        for _name, _slots in _owner_dict.iteritems():
+        _records = []
+        for _name, _struct in _owner_dict.iteritems():
+            _slots = sum(_struct["slots"])
+            _records.append(
+                rms_accounting_record(
+                    rms_accounting_run=account_run,
+                    rms_user=_struct["obj"],
+                    slots_used=_slots,
+                )
+            )
             _total += _slots
             _rms_vector.append(
                 hm_classes.mvect_entry(
@@ -239,6 +262,7 @@ class RMSMonProcess(threading_tools.process_obj):
                     base=1,
                 ).build_xml(_bldr)
             )
+        # total vector
         _rms_vector.append(
             hm_classes.mvect_entry(
                 "rms.user.slots".format(_name),
@@ -250,6 +274,8 @@ class RMSMonProcess(threading_tools.process_obj):
                 base=1,
             ).build_xml(_bldr)
         )
+        # create accounting records
+        rms_accounting_record.objects.bulk_create(_records)
 
         # print("*", _owner_dict)
         # print("*", _pe_text, _owner_text, _slots)
