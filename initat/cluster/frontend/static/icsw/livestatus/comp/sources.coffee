@@ -68,7 +68,6 @@ angular.module(
     _sanitize_entry = (entry) ->
         entry.$$dummy = false
         entry.state = parseInt(entry.state)
-        console.log "*", entry._comments
         entry.$$numComments = entry._comments.length
         # console.log entry.last_check, typeof(entry.last_check)
         if entry.last_check in ["0"] and entry.state != 4
