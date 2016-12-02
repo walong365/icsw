@@ -40,6 +40,7 @@ from initat.cluster.backbone.models.functions import check_empty_string, \
 from initat.cluster.backbone.signals import BootsettingsChanged
 from initat.constants import GEN_CS_NAME
 from initat.tools import ipvx_tools, logging_tools, process_tools, config_store
+from initat.tools.bgnotify.create import propagate_channel_object
 
 __all__ = [
     b"network",
@@ -1150,3 +1151,15 @@ class NmapScan(models.Model):
                 devices.append(NmapDevice(ipv4, mac, hostname))
 
         return devices
+
+
+@receiver(signals.post_save, sender=NmapScan)
+def nmap_scan_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        from initat.cluster.backbone.serializers import NmapScanSerializerSimple
+
+        cur_inst = kwargs["instance"]
+
+        serializer = NmapScanSerializerSimple(cur_inst)
+
+        propagate_channel_object("nmap_scans", serializer.data)

@@ -1514,12 +1514,12 @@ angular.module(
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
     "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
     "toaster", "icswToolsSimpleModalService", "$timeout", "icswDispatcherSettingTreeService", "icswUserService",
-    "icswDeviceTreeService"
+    "icswDeviceTreeService", "icswWebSocketService"
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
     icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
     toaster, icswToolsSimpleModalService, $timeout, icswDispatcherSettingTreeService, icswUserService,
-    icswDeviceTreeService
+    icswDeviceTreeService, icswWebSocketService
 ) ->
 
     # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1582,6 +1582,7 @@ angular.module(
     dispatcher_links = undefined
     device_list = []
     nmap_scans = {}
+    nmap_scans_websocket = undefined
 
     return {
         get_tabs: () ->
@@ -1633,6 +1634,23 @@ angular.module(
                     for device in device_tree.all_list
                         if !device.is_meta_device
                             device_list.push(device)
+
+                    nmap_scans_websocket = icswWebSocketService.register_ws("nmap_scans")
+                    nmap_scans_websocket.onmessage = (data) ->
+                        nmap_scan = JSON.parse(data.data)
+                        nmap_scan.$$created = moment(nmap_scan.date).format("YYYY-MM-DD HH:mm:ss")
+
+                        $timeout(
+                            () ->
+                                nmap_scans[nmap_scan.network].push(nmap_scan)
+                            0
+                        )
+
+                    scope.$on("$destroy", () ->
+                        if nmap_scans_websocket?
+                            nmap_scans_websocket.close()
+                            nmap_scans_websocket = undefined
+                    )
 
                     defer.resolve(nw_tree.nw_list)
             )

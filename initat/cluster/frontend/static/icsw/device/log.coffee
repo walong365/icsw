@@ -43,7 +43,7 @@ device_logs = angular.module(
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout", "icswWebSocketService",
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI, DeviceOverviewService
-    icswTools, icswSimpleAjaxCall, ICSW_URLS, $timeout, icswWebsocketService,
+    icswTools, icswSimpleAjaxCall, ICSW_URLS, $timeout, icswWebSocketService,
 ) ->
     $scope.struct = {
         data_loaded: false
@@ -60,7 +60,7 @@ device_logs = angular.module(
     info_available_class = "alert-success"
     info_warning_class = "alert-warning"
 
-    $scope.struct.websocket = icswWebsocketService.register_ws("device_log_entries")
+    $scope.struct.websocket = icswWebSocketService.register_ws("device_log_entries")
 
     $scope.struct.websocket.onmessage = (data) ->
         json_dict = JSON.parse(data.data)
@@ -159,9 +159,11 @@ device_logs = angular.module(
     }
 ]).controller("icswDeviceLogTableCtrl",
 [
-    "$q", "Restangular", "ICSW_URLS", "$scope", "icswUserGroupRoleTreeService", "$timeout", "icswSimpleAjaxCall"
+    "$q", "Restangular", "ICSW_URLS", "$scope", "icswUserGroupRoleTreeService", "$timeout", "icswSimpleAjaxCall",
+    "icswWebSocketService"
 (
-    $q, Restangular, ICSW_URLS, $scope, icswUserGroupRoleTreeService, $timeout, icswSimpleAjaxCall
+    $q, Restangular, ICSW_URLS, $scope, icswUserGroupRoleTreeService, $timeout, icswSimpleAjaxCall,
+    icswWebSocketService
 ) ->
 
     $scope.struct = {
@@ -282,7 +284,7 @@ device_logs = angular.module(
 
             start_timer()
 
-            $scope.struct.websocket = new WebSocket("ws://" + window.location.host + "/icsw/ws/device_log_entries/")
+            $scope.struct.websocket = icswWebSocketService.register_ws("device_log_entries")
             $scope.struct.websocket.onmessage = (data) ->
                 json_dict = JSON.parse(data.data)
                 if json_dict.device == device.idx && $scope.struct.device_log_entries_lut[json_dict.idx] == undefined
