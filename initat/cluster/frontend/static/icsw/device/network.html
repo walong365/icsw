@@ -487,18 +487,51 @@
                                 <thead>
                                     <tr>
                                         <td colspan="99">
-                                            <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                            <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
                                         </td>
                                     </tr>
                                     <tr>
-                                        <th st-sort="date" st-sort-default="reverse">Scan Time</th>
-                                        <th st-sort="devices_found">Devices Found</th>
+                                        <th st-sort="idx" class="text-center">Scan ID</th>
+                                        <th st-sort="date" st-sort-default="reverse" class="text-center">Scan Time</th>
+                                        <th st-sort="devices_found" class="text-center">Devices Found</th>
+                                        <th class="text-center">Action</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <tr ng-repeat="obj in entries_displayed">
-                                       <td>{{ obj.$$created }}</td>
-                                       <td>{{ obj.devices_found }}</td>
+                                       <td class="text-center">{{ obj.idx }}</td>
+                                       <td class="text-center">{{ obj.$$created }}</td>
+                                       <td class="text-center">{{ obj.devices_found }}</td>
+                                       <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab(tab, obj.idx)" class="btn btn-success btn-xs">Show Details</button></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                    </uib-tab>
+                    <uib-tab ng-repeat="sub_tab in tab.sub_tabs">
+                        <uib-tab-heading>
+                            <span>Scan: {{ sub_tab.index }}</span>
+                            <icsw-tools-button size="xs" type="close" value="" ng-click="struct.icsw_network_list_service.close_sub_tab(sub_tab, tab)"></icsw-tools-button>
+                        </uib-tab-heading>
+                            <table st-table="entries_displayed" st-safe-src="sub_tab.devices" class="table table-condensed table-hover" style="width:auto;">
+                                <thead>
+                                    <tr>
+                                        <td colspan="99">
+                                            <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <th st-sort="$$hostname_sort_hint" class="text-center">Hostname</th>
+                                        <th st-sort="$$ip_sort_hint" st-sort-default="true" class="text-center">IP</th>
+                                        <th st-sort="mac" class="text-center">MAC</th>
+                                        <th class="text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr ng-repeat="obj in entries_displayed">
+                                       <td class="text-center">{{ obj.$$hostname }}</td>
+                                       <td class="text-center">{{ obj.ip }}</td>
+                                       <td class="text-center">{{ obj.$$mac }}</td>
+                                       <td class="text-center"><button type="button" ng-click="do_something()" class="btn btn-success btn-xs">...</button></td>
                                     </tr>
                                 </tbody>
                             </table>

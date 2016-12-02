@@ -38,7 +38,7 @@ __all__ = [
     "netdevice_speed_serializer",
     "peer_information_serializer",
     "snmp_network_type_serializer",
-    "NmapScanSerializer",
+    "NmapScanSerializerSimple",
     "NmapScanSerializerDetailed"
 ]
 
@@ -126,7 +126,7 @@ class snmp_network_type_serializer(serializers.ModelSerializer):
         model = snmp_network_type
 
 
-class NmapScanSerializer(serializers.ModelSerializer):
+class NmapScanSerializerSimple(serializers.ModelSerializer):
     devices_found = serializers.SerializerMethodField()
 
     def get_devices_found(self, obj):

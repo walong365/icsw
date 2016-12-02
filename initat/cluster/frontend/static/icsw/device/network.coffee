@@ -1565,6 +1565,11 @@ angular.module(
                 blockUI.stop()
         )
 
+    convert_ip_str_to_int = (ip_str) ->
+        dots = ip_str.split(".")
+
+        return parseInt((dots[0] * 16777216) + (dots[1] * 65536) + (dots[2] * 256) + (dots[3]))
+
     # network currently displayed
     network_display = {}
 
@@ -1830,7 +1835,6 @@ angular.module(
             ]
             $q.all(q_list).then(
                 (data) ->
-
                     iplist = data[0]
                     netdevices = icswTools.build_lut(data[1])
                     devices = icswTools.build_lut(data[2])
@@ -1840,12 +1844,11 @@ angular.module(
                         entry.device_full_name = devices[nd.device].full_name
                     new_network_display.iplist = iplist
 
-                    console.log(nmap_scans[obj.idx])
-
                     tab = {
                         heading: new_network_display.active_network.identifier
                         network_display: new_network_display
                         nmap_scans: nmap_scans[obj.idx]
+                        sub_tabs: []
                     }
 
                     dupe = false
@@ -1857,8 +1860,57 @@ angular.module(
                         tabs.push(tab)
             )
 
-        # range functions
+        create_new_sub_tab: (tab, index) ->
+            for sub_tab in tab.sub_tabs
+                if sub_tab.index == index
+                    return
 
+            icswSimpleAjaxCall(
+                {
+                    url: ICSW_URLS.NETWORK_NMAP_SCAN_DATA_LOADER
+                    data:
+                        simple: 0
+                        nmap_scan_id: index
+                    dataType: "json"
+                }
+            ).then((data) ->
+                for device in data.devices
+                    device.$$mac = "N/A"
+                    if device.mac != null
+                        device.$$mac = device.mac
+
+                    device.$$hostname = "N/A"
+                    device.$$hostname_sort_hint = "-1"
+                    if device.hostname != null
+                        device.$$hostname = device.hostname
+                        device.$$hostname_sort_hint = device.hostname
+
+                    device.$$ip_sort_hint = convert_ip_str_to_int(device.ip)
+
+                sub_tab = {
+                    index: index
+                    devices: data.devices
+                }
+
+                tab.sub_tabs.push(sub_tab)
+            )
+
+        close_sub_tab : (to_be_closed_tab, from_tab) ->
+            $timeout(
+                () ->
+                    tabs_tmp = []
+
+                    for tab in from_tab.sub_tabs
+                        if tab != to_be_closed_tab
+                            tabs_tmp.push(tab)
+
+                    from_tab.sub_tabs.length = 0
+                    for tab in tabs_tmp
+                        from_tab.sub_tabs.push(tab)
+                0
+            )
+
+        # range functions
         autorange_set : (edit_obj) ->
             if edit_obj.start_range == "0.0.0.0" and edit_obj.end_range == "0.0.0.0"
                 return false
