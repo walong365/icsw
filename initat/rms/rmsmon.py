@@ -34,7 +34,7 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import device
+from initat.cluster.backbone.models import device, rms_user
 from initat.host_monitoring import hm_classes
 from initat.tools import logging_tools, process_tools, server_command, \
     sge_tools, threading_tools
@@ -91,6 +91,11 @@ class RMSMonProcess(threading_tools.process_obj):
         db_tools.close_connection()
         self._init_cache()
         self.__node_options = sge_tools.get_empty_node_options()
+        self.__run_options = sge_tools.get_empty_job_options(
+            suppress_times=True,
+            suppress_nodelist=True,
+            show_stdoutstderr=False,
+        )
         self._init_network()
         self._init_sge_info()
         # job content dict
@@ -132,14 +137,14 @@ class RMSMonProcess(threading_tools.process_obj):
 
     def _init_network(self):
         _v_conn_str = process_tools.get_zmq_ipc_name("vector", s_name="collserver", connect_to_root_instance=True)
-        vector_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-        vector_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
+        vector_socket = self.zmq_context.socket(zmq.PUSH)
+        vector_socket.setsockopt(zmq.LINGER, 0)
         vector_socket.connect(_v_conn_str)
         self.vector_socket = vector_socket
         _c_conn_str = "tcp://localhost:8002"
-        collectd_socket = self.zmq_context.socket(zmq.PUSH)  # @UndefinedVariable
-        collectd_socket.setsockopt(zmq.LINGER, 0)  # @UndefinedVariable
-        collectd_socket.setsockopt(zmq.IMMEDIATE, 1),  # @UndefinedVariable
+        collectd_socket = self.zmq_context.socket(zmq.PUSH)
+        collectd_socket.setsockopt(zmq.LINGER, 0)
+        collectd_socket.setsockopt(zmq.IMMEDIATE, 1)
         collectd_socket.connect(_c_conn_str)
         self.collectd_socket = collectd_socket
 
@@ -149,8 +154,9 @@ class RMSMonProcess(threading_tools.process_obj):
 
     def _update_nodes(self):
         self._update()
-        _res = sge_tools.build_node_list(self.__sge_info, self.__node_options)
-        self._generate_slotinfo(_res)
+        _node_res = sge_tools.build_node_list(self.__sge_info, self.__node_options)
+        _run_res = sge_tools.build_running_list(self.__sge_info, self.__run_options)
+        self._generate_slotinfo(_node_res, _run_res)
 
     def _get_device(self, dev_str):
         if dev_str in self.__cache["device"]:
@@ -191,15 +197,52 @@ class RMSMonProcess(threading_tools.process_obj):
             self.__cache["device"][dev_str] = _dev
         return _dev
 
-    def _generate_slotinfo(self, _res):
+    def _generate_slotinfo(self, node_res, run_res):
+        act_time = int(time.time())
+        # vector socket
+        drop_com = server_command.srv_command(command="set_vector")
+        _bldr = drop_com.builder()
+        _rms_vector = _bldr("values")
+        # 10 minutes valid
+        valid_until = act_time + 10 * 60
+
         _queue_names = set()
         _host_names = set()
-        act_time = int(time.time())
         _s_time = time.time()
         _host_stats = {}
+        # print(etree.tostring(run_res, pretty_print=True))
+        _owner_dict = {
+            _name: [] for _name in rms_user.objects.all().values_list("name", flat=True)
+        }
+        # print(_owner_dict)
+        # running slots info
+        for _node in run_res.findall(".//job"):
+            _pe_text = _node.findtext("granted_pe")
+            _owner_text = _node.findtext("owner")
+            if _pe_text == "-":
+                _slots = 1
+            else:
+                _slots = int(_pe_text.split("(")[1].split(")")[0])
+            _owner_dict.setdefault(_owner_text, []).append(_slots)
+        _owner_dict = {key: sum(value) for key, value in _owner_dict.iteritems()}
+        for _name, _slots in _owner_dict.iteritems():
+            _rms_vector.append(
+                hm_classes.mvect_entry(
+                    "rms.user.{}.slots".format(_name),
+                    info="Slots used by user '{}'".format(_name),
+                    default=0,
+                    value=_slots,
+                    factor=1,
+                    valid_until=valid_until,
+                    base=1,
+                ).build_xml(_bldr)
+            )
+
+        # print("*", _owner_dict)
+        # print("*", _pe_text, _owner_text, _slots)
         # queue dict
         _queues = {"total": QueueInfo()}
-        for _node in _res.findall(".//node"):
+        for _node in node_res.findall(".//node"):
             # print(etree.tostring(_node, pretty_print=True))
             _host = _node.findtext("host")
             _queue = _node.findtext("queue")
@@ -215,13 +258,7 @@ class RMSMonProcess(threading_tools.process_obj):
             if _host not in _host_stats:
                 _host_stats[_host] = QueueInfo()
             _host_stats[_host].feed(_st, _sr, _su, _state)
-        # print _res
-        # vector socket
-        drop_com = server_command.srv_command(command="set_vector")
-        _bldr = drop_com.builder()
-        _rms_vector = _bldr("values")
-        # 10 minutes valid
-        valid_until = act_time + 10 * 60
+        # print node_res
         _rms_vector.append(
             hm_classes.mvect_entry(
                 "rms.clusterqueues.total",
@@ -558,7 +595,7 @@ class RMSMonProcess(threading_tools.process_obj):
                         ),
                         logging_tools.LOG_LEVEL_WARN
                     )
-                    cur_stat, cur_out = call_command(
+                    _cur_stat, _cur_out = call_command(
                         "{} -astnode {}={:d}".format(
                             self._get_sge_bin("qconf"),
                             _path,
