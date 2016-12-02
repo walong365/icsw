@@ -234,6 +234,9 @@ config_module = angular.module(
                 mon.$$config = config
                 if not mon.$selected?
                     mon.$selected = false
+                mon.$$info_str = "#{mon.description} (#{mon.name})"
+                mon.$$command_str = mon.command_line
+                # console.log "m=", mon
             for vt in ["str", "int", "bool", "blob"]
                 for el in config["config_#{vt}_set"]
                     el.$$tree = @

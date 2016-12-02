@@ -620,12 +620,12 @@ angular.module(
 ]).service("icswDeviceConfigTableReact",
 [
     "$q", "blockUI", "icswConfigMonCheckCommandListService", "icswMonitoringBasicTreeService",
-    "$rootScope",
+    "$rootScope", "$window",
 (
     $q, blockUI, icswConfigMonCheckCommandListService, icswMonitoringBasicTreeService,
-    $rootScope,
+    $rootScope, $window,
 )->
-    {table, thead, div, tr, span, th, td, tbody, button} = React.DOM
+    {table, thead, div, tr, span, th, td, tbody, button, tbody} = React.DOM
     rot_header = React.createFactory(
         React.createClass(
             propTypes: {
@@ -643,7 +643,7 @@ angular.module(
                     _info_str = re.$$info_str
                     _title_str = re.$$long_info_str
                 else
-                    _title_str = "#{re.description} (#{re.name})"
+                    _title_str = re.$$info_str
                     _info_str = _title_str
                 _focus = @state.mouse or @props.focus
                 if _focus
@@ -687,13 +687,6 @@ angular.module(
                             }
                             _info_str
                         )
-                        # if _focus then span(
-                        #    {
-                        #        key: "text2"
-                        #        className: "label label-danger"
-                        #    }
-                        #    "*"
-                        # ) else null
                     )
                 )
         )
@@ -809,7 +802,7 @@ angular.module(
             }
 
             getInitialState: () ->
-                return {focus: false}
+                return {focus: false, x: 0, y: 0}
             render: () ->
                 _el = @props.rowElement
                 if @props.configHelper.mode in ["gen", "srv"]
@@ -821,6 +814,49 @@ angular.module(
                 [_class, _icon] = @props.configHelper.get_td_class_and_icon(_el, _conf, @props.device)
                 if @state.focus
                     _class = "#{_class} bg-primary"
+                if @state.focus and @props.configHelper.mode in ["mon"]
+                    # overlay
+                    _overlay = div(
+                        {
+                            key: "overlay"
+                            display: "block"
+                            className: "panel panel-default svg-tooltip"
+                            style: {left: @state.x, top: @state.y, color: "#000"}
+                        }
+                        div(
+                            {
+                                key: "heading"
+                                className: "panel-heading"
+                            }
+                            _info_str
+                        )
+                        table(
+                            {
+                                key: "table"
+                                className: "table table-striped table-condensed"
+                            }
+                            tbody(
+                                {
+                                    key: "tbody"
+                                }
+                                tr(
+                                    {
+                                        key: "first"
+                                    }
+                                    td(
+                                        {
+                                            key: "td0"
+                                        }
+                                        _el.$$command_str
+                                    )
+                                )
+                            )
+                        )
+                    )
+                    _title_str = null
+                else
+                    _overlay = null
+                    _title_str = _info_str
                 return td(
                     {
                         className: "text-center #{_class}"
@@ -832,16 +868,18 @@ angular.module(
                                         blockUI.stop()
                                 )
                         onMouseEnter: (event) =>
-                            @setState({focus: true})
+                            # calculate x / y
+                            @setState({focus: true, x: event.clientX, y: event.clientY})
                             @props.focusCallback(_el, _conf, @props.device, true)
                         onMouseLeave: (event) =>
                             @setState({focus: false})
                             @props.focusCallback(_el, _conf, @props.device, false)
-                        title: _info_str
+                        title: _title_str
                     }
                     span(
                         {className: _icon}
                     )
+                    _overlay
                 )
         )
     )

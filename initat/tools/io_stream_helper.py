@@ -61,6 +61,9 @@ class icswIOStream(object):
         return self.__sock_name
 
     def write(self, err_str):
+        if not isinstance(err_str, unicode):
+            err_str = unicode(err_str, errors="replace")
+            # print(type(self.__buffer), type(err_str))
         self.__buffer = u"{}{}".format(self.__buffer, err_str)
         if len(self.__buffer) > 1024 or not self.__buffered:
             # syslog.syslog(syslog.LOG_INFO, "****")
