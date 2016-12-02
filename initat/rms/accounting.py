@@ -38,7 +38,8 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
-    rms_project, rms_department, rms_pe, rms_queue, user, device, RMSJobVariable
+    rms_project, rms_department, rms_pe, rms_queue, user, device, RMSJobVariable, \
+    rms_user
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.rms.config import global_config
 from initat.rms.functions import call_command
@@ -49,6 +50,7 @@ _OBJ_DICT = {
     "rms_project": rms_project,
     "rms_department": rms_department,
     "rms_pe": rms_pe,
+    "rms_user": rms_user,
 }
 
 
@@ -456,17 +458,24 @@ class AccountingProcess(threading_tools.process_obj, server_mixins.EggConsumeMix
             )
         if not cur_job.user_id and "owner" in kwargs:
             try:
-                _user = user.objects.get(Q(login=kwargs["owner"]))  # @UndefinedVariable
-            except user.DoesNotExist:  # @UndefinedVariable
-                self.log(
-                    "no user with name {} found, check aliases ?".format(kwargs["owner"]),
-                    logging_tools.LOG_LEVEL_ERROR,
+                _rms_user = rms_user.objects.get(Q(name=kwargs["owner"]))
+            except rms_user.DoesNotExist:
+                _rms_user = rms_user(
+                    name=kwargs["owner"],
                 )
-            else:
-                if not self.__use_cache:
-                    self.log("set user of job {} to {}".format(unicode(cur_job), unicode(_user)))
-                cur_job.user = _user
-                cur_job.save()
+                _rms_user.save()
+                try:
+                    _user = user.objects.get(Q(login=kwargs["owner"]))
+                except user.DoesNotExist:
+                    self.log(
+                        "no user with name {} found, check aliases ?".format(kwargs["owner"]),
+                        logging_tools.LOG_LEVEL_ERROR,
+                    )
+                else:
+                    _rms_user.user = _user
+                    _rms_user.save()
+            cur_job.rms_user = _rms_user
+            cur_job.save()
         return cur_job
 
     def _get_device(self, dev_str):

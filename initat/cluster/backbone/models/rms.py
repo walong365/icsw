@@ -38,6 +38,7 @@ __all__ = [
     b"rms_pe_info",
     b"rms_project",
     b"rms_department",
+    b"rms_user",
     b"rms_queue",
     b"rms_pe",
     b"ext_license_site",
@@ -101,6 +102,21 @@ class rms_pe(models.Model):
         return "pe {}".format(self.name)
 
 
+class rms_user(models.Model):
+    idx = models.AutoField(primary_key=True)
+    name = models.CharField(unique=True, max_length=255)
+    # makes sense because this can change during time
+    fshare = models.IntegerField(default=0)
+    # link to user
+    user = models.ForeignKey("backbone.user", null=True)
+    # default project
+    default_project = models.ForeignKey("backbone.rms_project", null=True)
+    date = models.DateTimeField(auto_now_add=True)
+
+    def __unicode__(self):
+        return "rms_user {}".format(self.name)
+
+
 class rms_job(models.Model):
     idx = models.AutoField(primary_key=True)
     name = models.CharField(max_length=255)
@@ -108,6 +124,9 @@ class rms_job(models.Model):
     jobid = models.IntegerField()
     taskid = models.IntegerField(null=True)
     owner = models.CharField(max_length=255, default="")
+    # prefered
+    rms_user = models.ForeignKey("backbone.rms_user", null=True, on_delete=models.SET_NULL)
+    # fallback
     user = models.ForeignKey("backbone.user", null=True, on_delete=models.SET_NULL)
     date = models.DateTimeField(auto_now_add=True)
 

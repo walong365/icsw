@@ -21,39 +21,40 @@
 #
 """ serializers for RMS """
 
-# from django.db.models import Q, signals, get_model
-# from django.dispatch import receiver
+from __future__ import print_function, unicode_literals
+
 from initat.cluster.backbone.models import rms_project, rms_department, rms_queue, \
     rms_pe, rms_job, rms_job_run, rms_pe_info, ext_license, ext_license_check, \
     ext_license_client, ext_license_state, ext_license_usage, ext_license_user, \
     ext_license_version, ext_license_version_state, ext_license_vendor, ext_license_site, \
     ext_license_state_coarse, ext_license_version_state_coarse, RMSJobVariable, RMSJobVariableActionRun, \
-    RMSJobVariableAction
+    RMSJobVariableAction, rms_user
 from rest_framework import serializers
 
 __all__ = [
-    "rms_job_serializer",
-    "rms_job_run_serializer",
-    "rms_pe_info_serializer",
-    "rms_project_serializer",
-    "rms_department_serializer",
-    "rms_queue_serializer",
-    "rms_pe_serializer",
-    "ext_license_site_serializer",
-    "ext_license_serializer",
-    "ext_license_version_serializer",
-    "ext_license_vendor_serializer",
-    "ext_license_user_serializer",
-    "ext_license_client_serializer",
-    "ext_license_check_serializer",
-    "ext_license_state_serializer",
-    "ext_license_version_state_serializer",
-    "ext_license_usage_serializer",
-    "ext_license_state_coarse_serializer",
-    "ext_license_version_state_coarse_serializer",
-    "RMSJobVariableSerializer",
-    "RMSJobVariableActionSerializer",
-    "RMSJobVariableActionRunSerializer",
+    b"rms_job_serializer",
+    b"rms_job_run_serializer",
+    b"rms_pe_info_serializer",
+    b"rms_project_serializer",
+    b"rms_department_serializer",
+    b"rms_queue_serializer",
+    b"rms_pe_serializer",
+    b"rms_user_serializer",
+    b"ext_license_site_serializer",
+    b"ext_license_serializer",
+    b"ext_license_version_serializer",
+    b"ext_license_vendor_serializer",
+    b"ext_license_user_serializer",
+    b"ext_license_client_serializer",
+    b"ext_license_check_serializer",
+    b"ext_license_state_serializer",
+    b"ext_license_version_state_serializer",
+    b"ext_license_usage_serializer",
+    b"ext_license_state_coarse_serializer",
+    b"ext_license_version_state_coarse_serializer",
+    b"RMSJobVariableSerializer",
+    b"RMSJobVariableActionSerializer",
+    b"RMSJobVariableActionRunSerializer",
 ]
 
 
@@ -117,6 +118,12 @@ class rms_pe_info_serializer(serializers.ModelSerializer):
     class Meta:
         fields = "__all__"
         model = rms_pe_info
+
+
+class rms_user_serializer(serializers.ModelSerializer):
+    class Meta:
+        fields = "__all__"
+        model = rms_user
 
 
 class rms_job_run_serializer(serializers.ModelSerializer):
