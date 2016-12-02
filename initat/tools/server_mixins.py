@@ -31,7 +31,6 @@ from enum import IntEnum
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools, threading_tools, server_command, \
     configfile, config_store, uuid_tools, logging_functions
-from django.db.models import Q
 
 MAX_RESEND_COUNTER = 5
 
@@ -1233,6 +1232,7 @@ class GetRouteToDevicesMixin(object):
     def get_route_to_devices(self, dev_list):
         from initat.cluster.backbone.models import device, net_ip
         from initat.tools import config_tools
+        from django.db.models import Q
         global_config = configfile.get_global_config(process_tools.get_programm_name())
 
         src_dev = device.objects.get(Q(pk=global_config["SERVER_IDX"]))

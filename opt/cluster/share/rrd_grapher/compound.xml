@@ -56,5 +56,18 @@
             <key match="^net\.snmp_(?P&lt;key&gt;.*)\.errors$" required="1" color="#ff0000" draw_type="LINE2"></key>
         </key_list>
     </compound>
+    <compound key="compound.sge.shares" info="SGE FairShare tree">
+        <key_list>
+            <key match="^rms\.fairshare\..*\.actual$" required="1" color="set312" draw_type="AREA1STACK"></key>
+        </key_list>
+    </compound>
+    <compound key="compound.sge.queue_{key}" info="SGE QueueUsage for {ti}" order_key="key">
+        <key_list>
+            <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.reserved$" required="1" color="#4455ff" draw_type="AREA1"></key>
+            <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.free$" required="1" color="#44dd44" draw_type="AREASTACK"></key>
+            <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.used$" required="1" color="#88ff88" draw_type="AREASTACK"></key>
+            <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.disabled$" required="1" color="#ff4444" draw_type="LINE2"></key>
+        </key_list>
+    </compound>
 </compounds>
 

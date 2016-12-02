@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -38,8 +38,7 @@ from django.db.models import Q
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
-    rms_project, rms_department, rms_pe, rms_queue, user, device, cluster_timezone, \
-    RMSJobVariable
+    rms_project, rms_department, rms_pe, rms_queue, user, device, RMSJobVariable
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.rms.config import global_config
 from initat.rms.functions import call_command
