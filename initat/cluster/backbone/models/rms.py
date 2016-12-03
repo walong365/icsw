@@ -28,10 +28,12 @@ import time
 from enum import Enum
 
 from django.db import models
-from django.db.models import signals
+from django.db.models import signals, Q
 from django.dispatch import receiver
 
 from initat.cluster.backbone.models.functions import cluster_timezone, duration as duration_types
+
+from initat.tools import logging_tools
 
 __all__ = [
     b"rms_job",
@@ -62,6 +64,7 @@ __all__ = [
     b"RMSJobVariable",
     b"RMSJobVariableAction",
     b"RMSJobVariableActionRun",
+    b"RMSAggregationLevelEnum",
 ]
 
 
@@ -120,15 +123,240 @@ class rms_user(models.Model):
         return "rms_user {}".format(self.name)
 
 
+class RMSAggregationLevel(object):
+    run_idx = 0
+
+    def __init__(self, short, what):
+        self.short = short
+        self.what = what
+        self.idx = RMSAggregationLevel.run_idx
+        self.prev_idx = self.idx - 1
+        RMSAggregationLevel.run_idx += 1
+        # print(self.idx, self.short)
+
+    def aggregate(self, log_com):
+        # get base aggregation level
+        base = {
+            "h": "n",
+            "d": "h",
+            "m": "d",
+            "y": "m"
+        }.get(self.short, None)
+        if base:
+            # base is now the base level for aggregation
+            # get latest aggregated run
+            _latest = rms_accounting_run.objects.filter(Q(aggregation_level=self.short)).order_by("-pk")
+            # print("** {} {:d}".format(self.short, _latest.count()))
+            if _latest.count():
+                _latest = _latest[0]
+                _start_time = _latest.aggregation_end
+                # print("{}: {}".format(self.short, _start_time))
+            else:
+                # none defined
+                log_com(
+                    "No records found for {}".format(self.what),
+                    logging_tools.LOG_LEVEL_WARN
+                )
+                # aggregate all
+                _start_time = None
+            # get base records
+            src_records = rms_accounting_run.objects.filter(
+                Q(aggregation_level=base)
+            )
+            if _start_time is not None:
+                if base == "n":
+                    src_records = src_records.filter(
+                        Q(
+                            date__gte=_start_time
+                        )
+                    )
+                else:
+                    src_records = src_records.filter(
+                        Q(
+                            aggregation_start=_start_time
+                        )
+                    )
+            src_records = src_records.prefetch_related("rms_accounting_record_set__rms_user")
+            if src_records.count():
+                # print("found {:d} for {}".format(src_records.count(), self.short))
+
+                # quantify
+                # get min / max
+                if base == "n":
+                    min_date = min([entry.date for entry in src_records])
+                    max_date = max([entry.date for entry in src_records])
+                else:
+                    min_date = min([entry.aggregation_start for entry in src_records])
+                    max_date = max([entry.aggregation_end for entry in src_records])
+                # print(min_date, max_date)
+                min_date = cluster_timezone.normalize(min_date)
+                max_date = cluster_timezone.normalize(max_date)
+                # print(min_date, max_date)
+                # build quantify list based on min and max date
+                quant_list = self.build_quantify_list(min_date, max_date)
+                quant_list = self.fill_quant_list(quant_list, src_records)
+                # create new records
+                for entry in quant_list:
+                    self.evaluate_q_entry(entry, log_com)
+                # import pprint
+                # pprint.pprint(quant_list)
+
+    def build_quantify_list(self, min_date, max_date):
+        _list = []
+        abs_end_time = self.ts_to_base(cluster_timezone.localize(datetime.datetime.now()))
+        # print(min_date, abs_end_time, abs_end_time - min_date)
+        # hour
+        start_time = self.ts_to_base(min_date)
+        while True:
+            end_time = self.next_step(start_time)
+            if end_time > abs_end_time:
+                break
+            _list.append(
+                {
+                    "start": start_time,
+                    "end": end_time,
+                    "records": [],
+                }
+            )
+            start_time = end_time
+            if start_time >= max_date:
+                break
+        return _list
+
+    def fill_quant_list(self, q_list, src_records):
+        for entry in q_list:
+            n_list = []
+            for rec in src_records:
+                if rec.aggregation_level == "n":
+                    c_d = rec.date
+                else:
+                    c_d = rec.aggregation_start + datetime.timedelta(seconds=(rec.aggregation_end - rec.aggregation_start).total_seconds() / 2)
+                if c_d > entry["start"] and c_d < entry["end"]:
+                    entry["records"].append(rec)
+                else:
+                    n_list.append(rec)
+            src_records = n_list
+        return q_list
+
+    def evaluate_q_entry(self, entry, log_com):
+        # evaluate quantify entry
+        if entry["records"]:
+            timespan = (entry["end"] - entry["start"]).total_seconds()
+            # simple weight
+            #  - True: simple count entries
+            #  - False: weigth according to entry width
+            simple_weight = entry["records"][0].aggregation_level == "n"
+            if simple_weight:
+                _count = len(entry["records"])
+            _total_slots = 0
+            for run in entry["records"]:
+                if simple_weight:
+                    _fact = 1
+                    _div = _count
+                else:
+                    _fact = run.weight
+                    _div = timespan
+                _total_slots += run.slots_defined * _fact
+            new_run = rms_accounting_run(
+                aggregation_level=self.short,
+                aggregation_start=entry["start"],
+                aggregation_end=entry["end"],
+                weight=timespan,
+                num_source_records=len(entry["records"]),
+                slots_defined=int(_total_slots / float(_div))
+            )
+            new_run.save()
+            # print("create for {}".format(self.short))
+            _user_dict = {}
+            for run in entry["records"]:
+                if simple_weight:
+                    _fact = 1
+                    _div = _count
+                else:
+                    _fact = run.weight
+                    _div = timespan
+                _total_slots += run.slots_defined * _fact
+                for rec in run.rms_accounting_record_set.all():
+                    if rec.rms_user_id not in _user_dict:
+                        _user_dict[rec.rms_user_id] = {
+                            "rms_user": rec.rms_user,
+                            "slots": 0,
+                        }
+                    _user_dict[rec.rms_user_id]["slots"] += _fact * rec.slots_used
+            db_recs = []
+            for _key, _struct in _user_dict.iteritems():
+                _struct["slots"] /= float(_div)
+                db_recs.append(
+                    rms_accounting_record(
+                        rms_accounting_run=new_run,
+                        rms_user=_struct["rms_user"],
+                        slots_used=_struct["slots"],
+                    )
+                )
+                # print("*", _struct)
+            if db_recs:
+                rms_accounting_record.objects.bulk_create(db_recs)
+            log_com(
+                "creating new run for {} (from {}, {} created)".format(
+                    self.short,
+                    logging_tools.get_plural("source run", len(entry["records"])),
+                    logging_tools.get_plural("user record", len(db_recs)),
+                )
+            )
+            # import pprint
+            # print(self.short)
+            # pprint.pprint(_user_dict)
+
+    def ts_to_base(self, s_time):
+        if self.short == "h":
+            return s_time.replace(second=0, minute=0)
+        elif self.short == "d":
+            return s_time.replace(second=0, minute=0, hour=0)
+        elif self.short == "m":
+            return s_time.replace(second=0, minute=0, hour=0, day=1)
+        elif self.short == "y":
+            return s_time.replace(second=0, minute=0, hour=0, day=1, month=1)
+
+    def next_step(self, s_time):
+        # return next timestep for quantification
+        if self.short == "h":
+            return s_time + datetime.timedelta(hours=1)
+        elif self.short == "d":
+            return s_time + datetime.timedelta(days=1)
+        elif self.short == "m":
+            return (s_time + datetime.timedelta(days=32)).replace(day=1)
+        elif self.short == "y":
+            return (s_time + datetime.timedelta(days=366)).replace(day=1, month=1)
+        else:
+            return None
+
+
+class RMSAggregationLevelEnum(Enum):
+    none = RMSAggregationLevel("n", "base")
+    hour = RMSAggregationLevel("h", "hourly")
+    day = RMSAggregationLevel("d", "daily")
+    month = RMSAggregationLevel("m", "monthly")
+    year = RMSAggregationLevel("y", "yearly")
+
+
 class rms_accounting_run(models.Model):
     idx = models.AutoField(primary_key=True)
+    # run is aggregated (hour / day / month)
+    aggregation_level = models.CharField(
+        max_length=1,
+        default=RMSAggregationLevelEnum.none.value.short,
+        choices=[(_al.value.short, _al.name) for _al in RMSAggregationLevelEnum],
+    )
+    # number of slots defined
+    slots_defined = models.IntegerField(default=1)
+    # start and end of aggregation interval (end_of_n == start_of_n+1)
+    aggregation_start = models.DateTimeField(default=None, null=True)
+    aggregation_end = models.DateTimeField(default=None, null=True)
+    # weight in seconds
+    weight = models.IntegerField(default=0)
+    # number of source records
+    num_source_records = models.IntegerField(default=0)
     date = models.DateTimeField(auto_now_add=True)
-
-
-class RMSAggregationLevel(Enum):
-    none = "n"
-    hour = "h"
-    day = "d"
 
 
 class rms_accounting_record(models.Model):
@@ -136,15 +364,6 @@ class rms_accounting_record(models.Model):
     rms_user = models.ForeignKey("backbone.rms_user")
     rms_accounting_run = models.ForeignKey("backbone.rms_accounting_run")
     slots_used = models.IntegerField(default=0)
-    # record is aggregated (hour / day / month)
-    aggregation_level = models.CharField(
-        max_length=1,
-        default=RMSAggregationLevel.none.value,
-        choices=[(_al.value, _al.name) for _al in RMSAggregationLevel],
-    )
-    # start and end of aggregation interval
-    aggregation_start = models.DateTimeField(default=None, null=True)
-    aggregation_end = models.DateTimeField(default=None, null=True)
     date = models.DateTimeField(auto_now_add=True)
 
 

@@ -35,7 +35,7 @@ from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
 from initat.cluster.backbone.models import device, rms_user, rms_accounting_record, \
-    rms_accounting_run
+    rms_accounting_run, RMSAggregationLevelEnum
 from initat.host_monitoring import hm_classes
 from initat.tools import logging_tools, process_tools, server_command, \
     sge_tools, threading_tools
@@ -154,10 +154,20 @@ class RMSMonProcess(threading_tools.process_obj):
         self.__sge_info.build_luts()
 
     def _update_nodes(self):
+        s_time = time.time()
         self._update()
         _node_res = sge_tools.build_node_list(self.__sge_info, self.__node_options)
         _run_res = sge_tools.build_running_list(self.__sge_info, self.__run_options)
-        self._generate_slotinfo(_node_res, _run_res)
+        self.generate_slotinfo(_node_res, _run_res)
+        rms_accounting_run.objects.exclude(Q(aggregation_level=RMSAggregationLevelEnum.none.value.short)).delete()
+        self.aggregate_accounting()
+        e_time = time.time()
+        self.log("update() call took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
+
+    def aggregate_accounting(self):
+        # aggregate from (none) to (hour) to (day) to (week) to (month) to (year)
+        for entry in RMSAggregationLevelEnum:
+            entry.value.aggregate(self.log)
 
     def _get_device(self, dev_str):
         if dev_str in self.__cache["device"]:
@@ -198,7 +208,7 @@ class RMSMonProcess(threading_tools.process_obj):
             self.__cache["device"][dev_str] = _dev
         return _dev
 
-    def _generate_slotinfo(self, node_res, run_res):
+    def generate_slotinfo(self, node_res, run_res):
         act_time = int(time.time())
         # vector socket
         drop_com = server_command.srv_command(command="set_vector")
@@ -211,71 +221,6 @@ class RMSMonProcess(threading_tools.process_obj):
         _host_names = set()
         _s_time = time.time()
         _host_stats = {}
-        # print(etree.tostring(run_res, pretty_print=True))
-        _owner_dict = {
-            _rms_user.name: {
-                "obj": _rms_user,
-                "slots": []
-            } for _rms_user in rms_user.objects.all()
-        }
-        account_run = rms_accounting_run.objects.create()
-
-        # print(_owner_dict)
-        # running slots info
-        for _node in run_res.findall(".//job"):
-            _pe_text = _node.findtext("granted_pe")
-            _owner_text = _node.findtext("owner")
-            if _pe_text == "-":
-                _slots = 1
-            else:
-                _slots = int(_pe_text.split("(")[1].split(")")[0])
-            if _owner_text not in _owner_dict:
-                new_user = rms_user(
-                    name=_owner_text,
-                )
-                new_user.save()
-                _owner_dict[new_user.name] = {
-                    "obj": new_user,
-                    "slots": [],
-                }
-            _owner_dict[_owner_text]["slots"].append(_slots)
-        _total = 0
-        _records = []
-        for _name, _struct in _owner_dict.iteritems():
-            _slots = sum(_struct["slots"])
-            _records.append(
-                rms_accounting_record(
-                    rms_accounting_run=account_run,
-                    rms_user=_struct["obj"],
-                    slots_used=_slots,
-                )
-            )
-            _total += _slots
-            _rms_vector.append(
-                hm_classes.mvect_entry(
-                    "rms.user.{}.slots".format(_name),
-                    info="Slots used by user '{}'".format(_name),
-                    default=0,
-                    value=_slots,
-                    factor=1,
-                    valid_until=valid_until,
-                    base=1,
-                ).build_xml(_bldr)
-            )
-        # total vector
-        _rms_vector.append(
-            hm_classes.mvect_entry(
-                "rms.user.slots".format(_name),
-                info="Slots used by all users",
-                default=0,
-                value=_total,
-                factor=1,
-                valid_until=valid_until,
-                base=1,
-            ).build_xml(_bldr)
-        )
-        # create accounting records
-        rms_accounting_record.objects.bulk_create(_records)
 
         # print("*", _owner_dict)
         # print("*", _pe_text, _owner_text, _slots)
@@ -346,6 +291,74 @@ class RMSMonProcess(threading_tools.process_obj):
                         base=1000,
                     ).build_xml(_bldr)
                 )
+
+        # accounting records
+        total_slots = _queues["total"].total
+        # print(etree.tostring(run_res, pretty_print=True))
+        _owner_dict = {
+            _rms_user.name: {
+                "obj": _rms_user,
+                "slots": []
+            } for _rms_user in rms_user.objects.all()
+        }
+        account_run = rms_accounting_run.objects.create(slots_defined=total_slots)
+
+        # print(_owner_dict)
+        # running slots info
+        for _node in run_res.findall(".//job"):
+            _pe_text = _node.findtext("granted_pe")
+            _owner_text = _node.findtext("owner")
+            if _pe_text == "-":
+                _slots = 1
+            else:
+                _slots = int(_pe_text.split("(")[1].split(")")[0])
+            if _owner_text not in _owner_dict:
+                new_user = rms_user(
+                    name=_owner_text,
+                )
+                new_user.save()
+                _owner_dict[new_user.name] = {
+                    "obj": new_user,
+                    "slots": [],
+                }
+            _owner_dict[_owner_text]["slots"].append(_slots)
+        _total = 0
+        _records = []
+        for _name, _struct in _owner_dict.iteritems():
+            _slots = sum(_struct["slots"])
+            _records.append(
+                rms_accounting_record(
+                    rms_accounting_run=account_run,
+                    rms_user=_struct["obj"],
+                    slots_used=_slots,
+                )
+            )
+            _total += _slots
+            _rms_vector.append(
+                hm_classes.mvect_entry(
+                    "rms.user.{}.slots".format(_name),
+                    info="Slots used by user '{}'".format(_name),
+                    default=0,
+                    value=_slots,
+                    factor=1,
+                    valid_until=valid_until,
+                    base=1,
+                ).build_xml(_bldr)
+            )
+        # total vector
+        _rms_vector.append(
+            hm_classes.mvect_entry(
+                "rms.user.slots".format(_name),
+                info="Slots used by all users",
+                default=0,
+                value=_total,
+                factor=1,
+                valid_until=valid_until,
+                base=1,
+            ).build_xml(_bldr)
+        )
+        # create accounting records
+        rms_accounting_record.objects.bulk_create(_records)
         drop_com["vector_rms"] = _rms_vector
         drop_com["vector_rms"].attrib["type"] = "vector"
         # for cap_name in self.__cap_list:

@@ -43,7 +43,8 @@ from initat.cluster.backbone.models import rms_job, rms_job_run, rms_pe_info, \
 from initat.cluster.backbone.models.functions import cluster_timezone
 from initat.rms.config import global_config
 from initat.rms.functions import call_command
-from initat.tools import logging_tools, server_command, threading_tools, process_tools, server_mixins
+from initat.tools import logging_tools, server_command, threading_tools, process_tools, \
+    server_mixins
 
 _OBJ_DICT = {
     "rms_queue": rms_queue,
