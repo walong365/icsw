@@ -25,6 +25,7 @@ from __future__ import unicode_literals, print_function
 
 import datetime
 import time
+from enum import Enum
 
 from django.db import models
 from django.db.models import signals
@@ -124,11 +125,26 @@ class rms_accounting_run(models.Model):
     date = models.DateTimeField(auto_now_add=True)
 
 
+class RMSAggregationLevel(Enum):
+    none = "n"
+    hour = "h"
+    day = "d"
+
+
 class rms_accounting_record(models.Model):
     idx = models.AutoField(primary_key=True)
     rms_user = models.ForeignKey("backbone.rms_user")
     rms_accounting_run = models.ForeignKey("backbone.rms_accounting_run")
     slots_used = models.IntegerField(default=0)
+    # record is aggregated (hour / day / month)
+    aggregation_level = models.CharField(
+        max_length=1,
+        default=RMSAggregationLevel.none.value,
+        choices=[(_al.value, _al.name) for _al in RMSAggregationLevel],
+    )
+    # start and end of aggregation interval
+    aggregation_start = models.DateTimeField(default=None, null=True)
+    aggregation_end = models.DateTimeField(default=None, null=True)
     date = models.DateTimeField(auto_now_add=True)
 
 
