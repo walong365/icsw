@@ -159,7 +159,7 @@ class RMSMonProcess(threading_tools.process_obj):
         _node_res = sge_tools.build_node_list(self.__sge_info, self.__node_options)
         _run_res = sge_tools.build_running_list(self.__sge_info, self.__run_options)
         self.generate_slotinfo(_node_res, _run_res)
-        rms_accounting_run.objects.exclude(Q(aggregation_level=RMSAggregationLevelEnum.none.value.short)).delete()
+        # rms_accounting_run.objects.exclude(Q(aggregation_level=RMSAggregationLevelEnum.none.value.short)).delete()
         self.aggregate_accounting()
         e_time = time.time()
         self.log("update() call took {}".format(logging_tools.get_diff_time_str(e_time - s_time)))
