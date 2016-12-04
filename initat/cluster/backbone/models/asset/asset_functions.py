@@ -19,11 +19,13 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """ asset database, functions and constants """
 
+from __future__ import print_function, unicode_literals
+
 import base64
 import bz2
+import datetime
 import json
 import logging
-import datetime
 
 from enum import IntEnum
 from lxml import etree
@@ -33,16 +35,16 @@ from initat.tools import server_command
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "BaseAssetPackage",
-    "sizeof_fmt",
-    "get_packages_for_ar",
-    "ASSET_DATETIMEFORMAT",
-    "AssetType",
-    "ScanType",
-    "RunStatus",
-    "BatchStatus",
-    "RunResult",
-    "PackageTypeEnum",
+    b"BaseAssetPackage",
+    b"sizeof_fmt",
+    b"get_packages_for_ar",
+    b"ASSET_DATETIMEFORMAT",
+    b"AssetType",
+    b"ScanType",
+    b"RunStatus",
+    b"BatchStatus",
+    b"RunResult",
+    b"PackageTypeEnum",
 ]
 
 ########################################################################################################################

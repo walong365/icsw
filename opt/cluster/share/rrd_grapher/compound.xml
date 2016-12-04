@@ -64,8 +64,9 @@
     <compound key="compound.sge.queue_{key}" info="SGE QueueUsage for {ti}" order_key="key">
         <key_list>
             <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.reserved$" required="1" color="#4455ff" draw_type="AREA1"></key>
+            <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.used$" required="1" color="#ffff99" draw_type="AREASTACK"></key>
             <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.free$" required="1" color="#44dd44" draw_type="AREASTACK"></key>
-            <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.used$" required="1" color="#88ff88" draw_type="AREASTACK"></key>
+            <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.used$" required="1" color="#000000" draw_type="LINE2"></key>
             <key match="^rms\.queues\.(?P&lt;key&gt;.*)\.disabled$" required="1" color="#ff4444" draw_type="LINE2"></key>
         </key_list>
     </compound>

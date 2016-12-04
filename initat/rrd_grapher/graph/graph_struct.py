@@ -484,7 +484,11 @@ class GraphTarget(object):
         if self.__header:
             return self.__header
         elif self.graph_keys:
-            return self.graph_keys[0][0].split(".")[0]
+            _first = self.graph_keys[0][0]
+            if _first.startswith("compound."):
+                return "Compound '{}'".format(_first.split(".", 1)[1])
+            else:
+                return _first.split(".")[0]
         else:
             return "???"
 
