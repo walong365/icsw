@@ -166,8 +166,10 @@ class exception_info(object):
         self.log_lines = [
             u"caught exception {} ({}), traceback follows:".format(
                 exc_type,
-                get_except_info(self.except_info)),
-            u"exception in process/thread '{}'".format(self.thread_name)]
+                get_except_info(self.except_info)
+            ),
+            u"exception in process/thread '{}'".format(self.thread_name)
+        ]
         for file_name, line_no, name, line in traceback.extract_tb(tb_object):
             self.log_lines.append(u"File '{}', line {:d}, in {}".format(file_name, line_no, name))
             if line:

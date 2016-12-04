@@ -226,7 +226,7 @@ def _parse_lsblk(dump):
         'WSAME': int,
         'RAND': to_bool,
     }
-
+    print("***", dump, type(dump))
     lines = dump.split('\n')
     header = lines[0].split()
     rows = []
@@ -236,12 +236,14 @@ def _parse_lsblk(dump):
             continue
         data = line.split(' ')
         data = [escape_re.sub(unescape, d).strip() for d in data]
+        if len(data) != len(header):
+            # problem
+            pass
         data = OrderedDict([(k, v) for (k, v) in zip(header, data)])
         # if available, apply the mapping function
-        for (key, value) in data.items():
-            func = mappers.get(key)
-            if func:
-                data[key] = func(value)
+        for (key, value) in data.iteritems():
+            if key in mappers:
+                data[key] = mappers[key](value)
         rows.append(data)
 
     return rows
@@ -340,29 +342,34 @@ class Hardware(object):
 
     def _process_lshw(self, lshw_dump):
         for sub_tree in lshw_dump.xpath(
-                "//node[@id='cpu' and @class='processor']"):
+            "//node[@id='cpu' and @class='processor']"
+        ):
             self.cpus.append(HardwareCPU(sub_tree))
 
         sub_tree = lshw_dump.xpath(
             "/list/node/node[@id='core' and @class='bus']"
-            "/node[@id='memory' and @class='memory']")[0]
+            "/node[@id='memory' and @class='memory']"
+        )[0]
         self.memory = HardwareMemory(sub_tree)
 
         for sub_tree in lshw_dump.xpath(
-                "//node[@id='memory' and @class='memory']/node"):
+            "//node[@id='memory' and @class='memory']/node"
+        ):
             memory_module = MemoryModule(sub_tree)
             # don't add empty slots
             if memory_module.capacity:
                 self.memory_modules.append(memory_module)
 
         for sub_tree in lshw_dump.xpath(
-                "//node[@id='display' and @class='display']"):
+            "//node[@id='display' and @class='display']"
+        ):
             self.gpus.append(HardwareGPU(sub_tree))
 
         # add further disk information not available from lsblk
         device_hdds = {hdd.device_name: hdd for hdd in self.hdds}
         for sub_tree in lshw_dump.xpath(
-                "//node[@id='disk' and @class='disk']"):
+            "//node[@id='disk' and @class='disk']"
+        ):
             lshw_hdd = HardwareHdd(sub_tree)
             hdd = device_hdds.get(lshw_hdd.device_name)
             if hdd:
@@ -372,7 +379,7 @@ class Hardware(object):
                 "//node[@id='network' and @class='network']"):
             self.network_devices.append(
                 HardwareNetwork(sub_tree)
-                )
+            )
 
     def _process_win32(self, win32_tree):
         self._win32_tree = win32_tree
@@ -515,7 +522,7 @@ class Hardware(object):
             def infos(self):
                 # do a little bit of post-processing
                 res = OrderedDict()
-                for (key, lines) in self._infos.items():
+                for (key, lines) in self._infos.iteritems():
                     if len(lines) == 1:
                         res[key] = lines[0]
                     else:
@@ -608,19 +615,19 @@ class HardwareBase(object):
 
     def __repr__(self):
         infos = []
-        for (name, value) in self.__dict__.items():
+        for (name, value) in self.__dict__.iteritems():
             if not name.startswith('_') and value is not None:
                 infos.append('{}={}'.format(name, repr(value)))
         return '{}({})'.format(self.__class__.__name__, ', '.join(infos))
 
     def update(self, hw_instance):
-        for (name, value) in hw_instance.__dict__.items():
+        for (name, value) in hw_instance.__dict__.iteritems():
             cur_value = getattr(self, name)
             if cur_value is None:
                 setattr(self, name, value)
 
     def _populate_lshw(self):
-        for (prop_name, (xpath_expr, func)) in self.LSHW_ELEMENTS.items():
+        for (prop_name, (xpath_expr, func)) in self.LSHW_ELEMENTS.iteritems():
             try:
                 element = self._tree.xpath(xpath_expr)[0]
             except IndexError:
@@ -634,7 +641,7 @@ class HardwareBase(object):
             setattr(self, prop_name, value)
 
     def _populate_win32(self):
-        for (prop_name, (dict_key, func)) in self.WIN32_ELEMENTS.items():
+        for (prop_name, (dict_key, func)) in self.WIN32_ELEMENTS.iteritems():
             value = self._tree[dict_key] if dict_key else None
             if value is not None and func:
                 value = func(value)
@@ -643,7 +650,7 @@ class HardwareBase(object):
         self._path_w32 = self._tree['_path']
 
     def _populate_dmi(self):
-        for (prop_name, (handle_key, func)) in self.DMI_ELEMENTS.items():
+        for (prop_name, (handle_key, func)) in self.DMI_ELEMENTS.iteritems():
             value = self._tree[handle_key]['value']
             if value is not None and func:
                 value = func(value)

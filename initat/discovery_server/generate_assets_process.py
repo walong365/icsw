@@ -19,6 +19,8 @@
 #
 """ discovery-server, generate assets part """
 
+from __future__ import print_function, unicode_literals
+
 import time
 
 from initat.cluster.backbone import db_tools
@@ -55,11 +57,14 @@ class GenerateAssetsProcess(threading_tools.process_obj):
         try:
             asset_run.generate_assets()
         except:
+            _exc = process_tools.exception_info()
             _err = process_tools.get_except_info()
             self.log(
                 "error in asset_run.generate_assets: {}".format(_err),
                 logging_tools.LOG_LEVEL_ERROR
             )
+            for line in _exc.log_lines:
+                self.log(line, logging_tools.LOG_LEVEL_ERROR)
             asset_run.interpret_error_string = _err
             asset_run.save()
         finally:
@@ -84,11 +89,14 @@ class GenerateAssetsProcess(threading_tools.process_obj):
         try:
             asset_batch.generate_assets()
         except:
+            _exc = process_tools.exception_info()
             _err = process_tools.get_except_info()
             self.log(
                 "error in asset_batch.generate_assets: {}".format(_err),
                 logging_tools.LOG_LEVEL_ERROR
             )
+            for line in _exc.log_lines:
+                self.log(line, logging_tools.LOG_LEVEL_ERROR)
         finally:
             e_time = time.time()
             self.log(

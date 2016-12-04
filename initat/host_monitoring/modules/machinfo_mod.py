@@ -51,6 +51,7 @@ class _general(hm_classes.hm_module):
         self.lshw_bin = process_tools.find_file("lshw")
         self.lsblk_bin = process_tools.find_file("lsblk")
         self.xrandr_bin = process_tools.find_file("xrandr")
+        self.__lsblk_version = 0
 
     def init_module(self):
         self.local_lvm_info = partition_tools.lvm_struct("bin")
@@ -79,7 +80,8 @@ class _general(hm_classes.hm_module):
 
     def _lshw_int(self):
         (_lshw_stat, _lshw_result) = commands.getstatusoutput(
-            "{} -xml".format(self.lshw_bin))
+            "{} -xml".format(self.lshw_bin)
+        )
         return server_command.compress(_lshw_result)
 
     def _lsblk_int(self):
@@ -87,16 +89,49 @@ class _general(hm_classes.hm_module):
         # so manually provide the list of columns. Additionally it seems that
         # version 2.23.2 has a maximum length of command line arguments, so
         # only pass some selected columns to "lsblk".
-        columns = [
+        if not self.__lsblk_version:
+            _stat, _result = commands.getstatusoutput("lsblk -h")
+            self.__lsblk_columns = []
+            _in_opt = False
+            for line in _result.split("\n"):
+                if line.lower().count("available columns"):
+                    _in_opt = True
+                elif _in_opt and not line.strip():
+                    _in_opt = False
+                else:
+                    if _in_opt:
+                        self.__lsblk_columns.append(line.strip().split()[0])
+            self.__lsblk_version = len(self.__lsblk_columns)
+            self.log(
+                "lsblk has interal version {:d} ({})".format(
+                    self.__lsblk_version,
+                    ", ".join(self.__lsblk_columns),
+                )
+            )
+
+        target_columns = [
             'KNAME', 'FSTYPE', 'LABEL', 'UUID', 'PARTLABEL', 'PARTUUID', 'RA',
             'RO', 'MODEL', 'SERIAL', 'SIZE', 'STATE', 'OWNER', 'GROUP', 'MODE',
             'ROTA', 'SCHED', 'WSAME', 'WWN', 'RAND', 'PKNAME', 'HCTL', 'TRAN',
             'VENDOR',
         ]
-        options = '-arbp -o +{}'.format(','.join(columns))
-        (_lsblk_stat, _lsblk_result) = commands.getstatusoutput(
-            "{} {}".format(self.lsblk_bin, options))
-        return server_command.compress(_lsblk_result)
+        columns = [entry for entry in target_columns if entry in self.__lsblk_columns]
+        _META = {
+            "version": 1,
+        }
+        for options in [
+            '-arbp -o +{}'.format(','.join(columns)),
+            # try without p option and + option
+            '-arb -o {}'.format(','.join(columns)),
+        ]:
+            _META["options"] = options
+            (_lsblk_stat, _lsblk_result) = commands.getstatusoutput(
+                "{} {}".format(self.lsblk_bin, options)
+            )
+            if not _lsblk_stat:
+                break
+        _META["result"] = _lsblk_result
+        return server_command.compress(_META, json=True)
 
     def _xrandr_int(self):
         # Note: There is an unmaintained and segfaulting Python API for
@@ -2509,7 +2544,17 @@ class lsblk_command(hm_classes.hm_command):
         srv_com["lsblk_dump"] = self.module._lsblk_int()
 
     def interpret(self, srv_com, cur_ns):
-        dump = server_command.decompress(srv_com["*lsblk_dump"])
+        try:
+            # new format
+            dump = server_command.decompress(srv_com["*lsblk_dump"], json=True)
+            _version = dump["version"]
+            dump = dump["result"]
+        except:
+            # old format
+            dump = server_command.decompress(srv_com["*lsblk_dump"])
+            _version = 0
+        # print(_version)
+        # print(dump)
         return limits.mon_STATE_OK, dump
 
 

@@ -19,54 +19,51 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 """ asset database, models for dynamic assets """
 
+from __future__ import unicode_literals, print_function
+
+import ast
 import base64
 import bz2
 import datetime
 import json
 import logging
 import time
-import ast
 
 from django.db import models
 from django.utils import timezone, dateparse
 from lxml import etree
 
-from initat.cluster.backbone.models.functions import get_related_models
-from initat.cluster.backbone.models.partition import partition_disc, \
-    partition_table, partition, partition_fs, LogicalDisc, lvm_vg, \
-    sys_partition, lvm_lv
-from initat.cluster.backbone.tools.hw import Hardware
-from initat.snmp.snmp_struct import ResultNode
-from initat.tools import server_command, pci_database, dmi_tools, \
-    partition_tools, logging_tools
-from initat.tools.server_command import srv_command
 from initat.cluster.backbone.models.asset.asset_functions import \
     PackageTypeEnum, ScanType, BaseAssetPackage, BatchStatus, RunStatus, \
     RunResult, AssetType, sizeof_fmt
+from initat.cluster.backbone.models.partition import partition_disc, \
+    partition_table, partition, partition_fs, LogicalDisc
+from initat.cluster.backbone.tools.hw import Hardware
+from initat.tools import server_command, pci_database, dmi_tools
 
 logger = logging.getLogger(__name__)
 
 
 __all__ = [
-    "AssetHWMemoryEntry",
-    "AssetHWCPUEntry",
-    "AssetHWGPUEntry",
-    "AssetHWDisplayEntry",
-    "AssetHWNetworkDevice",
-    "AssetPackageVersionInstallInfo",
-    "AssetPackage",
-    "AssetPackageVersion",
-    "AssetHardwareEntry",
-    "AssetLicenseEntry",
-    "AssetUpdateEntry",
-    "AssetProcessEntry",
-    "AssetPCIEntry",
-    "AssetDMIHead",
-    "AssetDMIHandle",
-    "AssetDMIValue",
-    "AssetRun",
-    "AssetBatch",
-    "DeviceInventory",
+    b"AssetHWMemoryEntry",
+    b"AssetHWCPUEntry",
+    b"AssetHWGPUEntry",
+    b"AssetHWDisplayEntry",
+    b"AssetHWNetworkDevice",
+    b"AssetPackageVersionInstallInfo",
+    b"AssetPackage",
+    b"AssetPackageVersion",
+    b"AssetHardwareEntry",
+    b"AssetLicenseEntry",
+    b"AssetUpdateEntry",
+    b"AssetProcessEntry",
+    b"AssetPCIEntry",
+    b"AssetDMIHead",
+    b"AssetDMIHandle",
+    b"AssetDMIValue",
+    b"AssetRun",
+    b"AssetBatch",
+    b"DeviceInventory",
 ]
 
 
@@ -234,6 +231,7 @@ class AssetHardwareEntry(models.Model):
 
     class Meta:
         ordering = ("idx",)
+
 
 class AssetLicenseEntry(models.Model):
     idx = models.AutoField(primary_key=True)
@@ -1084,8 +1082,7 @@ class AssetBatch(models.Model):
 
             arg_name = runs[run.run_type]
 
-            if (run.run_status == RunStatus.FINISHED and
-                    run.run_result == RunResult.SUCCESS):
+            if run.run_status == RunStatus.FINISHED and run.run_result == RunResult.SUCCESS:
                 if run.run_type == AssetType.DMI:
                     arg_value = run.assetdmihead_set.get()
                 else:
@@ -1103,7 +1100,17 @@ class AssetBatch(models.Model):
                             )[0].text
                             if not blob:
                                 continue
-                            blob = bz2.decompress(base64.b64decode(blob))
+                            if arg_name in ["lsblk_dump"]:
+                                try:
+                                    blob = server_command.decompress(blob, json=True)
+                                except:
+                                    blob = {
+                                        "version": 0,
+                                        "result": server_command.decompress(blob),
+                                        "options": "",
+                                    }
+                            else:
+                                blob = server_command.decompress(blob)
                             if run.run_type == AssetType.LSHW:
                                 arg_value = etree.fromstring(blob)
                             else:
