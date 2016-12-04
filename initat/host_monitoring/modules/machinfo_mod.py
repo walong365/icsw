@@ -20,6 +20,7 @@
 """ machine information """
 
 import commands
+import subprocess
 import itertools
 import json
 import os
@@ -109,27 +110,25 @@ class _general(hm_classes.hm_module):
                 )
             )
 
-        target_columns = [
-            'KNAME', 'FSTYPE', 'LABEL', 'UUID', 'PARTLABEL', 'PARTUUID', 'RA',
-            'RO', 'MODEL', 'SERIAL', 'SIZE', 'STATE', 'OWNER', 'GROUP', 'MODE',
-            'ROTA', 'SCHED', 'WSAME', 'WWN', 'RAND', 'PKNAME', 'HCTL', 'TRAN',
-            'VENDOR',
-        ]
-        columns = [entry for entry in target_columns if entry in self.__lsblk_columns]
+        columns = self.__lsblk_columns
         _META = {
             "version": 1,
         }
+        # setup dummy env for output
+        my_env = os.environ.copy()
+        my_env["COLUMNS"] = "10000"
         for options in [
-            '-arbp -o +{}'.format(','.join(columns)),
+            '-abp --list -o {}'.format(','.join(columns)),
             # try without p option and + option
-            '-arb -o {}'.format(','.join(columns)),
+            '-ab --list -o {}'.format(','.join(columns)),
         ]:
             _META["options"] = options
-            (_lsblk_stat, _lsblk_result) = commands.getstatusoutput(
-                "{} {}".format(self.lsblk_bin, options)
-            )
-            if not _lsblk_stat:
-                break
+            _popen = subprocess.Popen([self.lsblk_bin] + options.split(), env=my_env, stdout=subprocess.PIPE)
+            _popen.wait()
+            if _popen.returncode:
+                _lsblk_result = ""
+            else:
+                _lsblk_result = _popen.stdout.read()
         _META["result"] = _lsblk_result
         return server_command.compress(_META, json=True)
 

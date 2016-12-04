@@ -226,23 +226,55 @@ def _parse_lsblk(dump):
         'WSAME': int,
         'RAND': to_bool,
     }
-    print("***", dump, type(dump))
-    lines = dump.split('\n')
-    header = lines[0].split()
+    result = dump["result"]
+    if dump["version"] == 0:
+        # original version, only space delimitered, impossible to parse
+        lines = result.split('\n')
+        header = lines.pop(0).split()
+        raw_data = [line.strip().split() for line in lines if line.strip()]
+    elif dump["version"] == 1:
+        # new version, list format, column are separated by vertical blank lines
+        lines = result.strip().split('\n')
+        _seps = [0]
+        longest_line = max([len(line) for line in lines])
+        for idx in xrange(longest_line):
+            if all([line[idx] == " " for line in lines if len(line) > idx]):
+                _seps.append(idx)
+        _seps.append(longest_line)
+        # print(_seps)
+        # print("*", lines[0])
+        line = lines[0]
+        line = "{}{}".format(line, " " * longest_line)[0:longest_line]
+        header = [
+            line[_seps[_idx - 1]:_seps[_idx] + 1].strip() for _idx in xrange(1, len(_seps))
+        ]
+        # print(raw_data)
+        _seps = _seps[:-1]
+        new_seps = []
+        # reorganize headers
+        for _sep, _header in zip(_seps, header):
+            if header:
+                new_seps.append(_sep)
+        new_seps.append(longest_line)
+        raw_data = []
+        for line in lines:
+            line = "{}{}".format(line, " " * longest_line)[0:longest_line]
+            _parts = [
+                line[new_seps[_idx - 1]:new_seps[_idx] + 1].strip() for _idx in xrange(1, len(_seps))
+            ]
+            raw_data.append(_parts)
+        header = raw_data.pop(0)
     rows = []
-    for line in lines[1:]:
-        line = line.strip()
-        if not line:
-            continue
-        data = line.split(' ')
+    for data in raw_data:
         data = [escape_re.sub(unescape, d).strip() for d in data]
         if len(data) != len(header):
             # problem
-            pass
+            continue
         data = OrderedDict([(k, v) for (k, v) in zip(header, data)])
         # if available, apply the mapping function
         for (key, value) in data.iteritems():
             if key in mappers:
+                # print("*", key, value, mappers[key], data)
                 data[key] = mappers[key](value)
         rows.append(data)
 
@@ -317,7 +349,13 @@ class Hardware(object):
         entries = _parse_lsblk(lsblk_dump)
         type_entries = defaultdict(list)
         for e in entries:
-            type_entries[e['TYPE']].append(e)
+            if "TYPE" in e:
+                type_entries[e['TYPE']].append(e)
+            else:
+                # old lsblk, try to guess
+                # sles11sp3 (Liebherr)
+                if e["MODEL"] == "LOGICAL VOLUME":
+                    type_entries["disk"].append(e)
 
         name_object = {}
         for disk_entry in type_entries['disk']:
@@ -337,8 +375,7 @@ class Hardware(object):
         for entry in entries:
             logical = LogicalDisc(lsblk_entry=entry)
             if logical.mount_point:
-                self._mount_point_logical_disks[logical.mount_point] = \
-                    logical
+                self._mount_point_logical_disks[logical.mount_point] = logical
 
     def _process_lshw(self, lshw_dump):
         for sub_tree in lshw_dump.xpath(
@@ -348,12 +385,12 @@ class Hardware(object):
 
         sub_tree = lshw_dump.xpath(
             "/list/node/node[@id='core' and @class='bus']"
-            "/node[@id='memory' and @class='memory']"
+            "/node[starts-with(@id, 'memory') and @class='memory']"
         )[0]
         self.memory = HardwareMemory(sub_tree)
 
         for sub_tree in lshw_dump.xpath(
-            "//node[@id='memory' and @class='memory']/node"
+            "//node[starts-with(@id, 'memory') and @class='memory']/node"
         ):
             memory_module = MemoryModule(sub_tree)
             # don't add empty slots
@@ -387,7 +424,8 @@ class Hardware(object):
             self.cpus.append(HardwareCPU(win32_tree=sub_tree))
 
         self.memory = HardwareMemory(
-            win32_tree=win32_tree['Win32_ComputerSystem'][0])
+            win32_tree=win32_tree['Win32_ComputerSystem'][0]
+        )
 
         for sub_tree in win32_tree['Win32_PhysicalMemory']:
             self.memory_modules.append(MemoryModule(win32_tree=sub_tree))
@@ -421,7 +459,7 @@ class Hardware(object):
             hdd = HardwareHdd(win32_tree=sub_tree)
             hdd.partitions = [
                 partition_path_partitions[p] for p in disk_path_partition[hdd._path_w32]
-                ]
+            ]
             self.hdds.append(hdd)
 
         for sub_tree in win32_tree['Win32_NetworkAdapter']:
@@ -958,3 +996,66 @@ class ScreenResolution():
         (self.resolution, self.hex, frequency, remainder) = match.groups()
         self.frequency = float(frequency)
         self.flags = remainder.split()
+
+
+if __name__ == "__main__":
+    # testcode for parsing
+    result = """
+NAME                                     KNAME MAJ:MIN FSTYPE      MOUNTPOINT                     LABEL UUID                                   RO RM MODEL                    SIZE OWNER GROUP MODE       ALIGNMENT MIN-IO OPT-IO PHY-SEC LOG-SEC ROTA SCHED
+sda                                      sda     8:0                                                                                            0  0 LOGICAL VOLUME   299966445568 root  disk  brw-rw----         0 524288 524288     512     512    1 cfq
+sda1                                     sda1    8:1   ext3        /boot                                f72f9c80-32bb-4b09-9ee2-eb5c52469dae    0  0                     271056896 root  disk  brw-rw----         0 524288 524288     512     512    1 cfq
+sda2                                     sda2    8:2   swap        [SWAP]                               7a49d927-a99c-43c1-a3f7-5d132a4d98d8    0  0                   17182490624 root  disk  brw-rw----         0 524288 524288     512     512    1 cfq
+sda3                                     sda3    8:3   btrfs                                            dd0b54c3-d6c3-4d26-95b4-30b7bf13bc31    0  0                   34357116928 root  disk  brw-rw----         0 524288 524288     512     512    1 cfq
+sda4                                     sda4    8:4   LVM2_member                                      SwdYsx-SttO-EuA3-vXzW-vOay-7wAq-pJBnEh  0  0                  248154947584 root  disk  brw-rw----         0 524288 524288     512     512    1 cfq
+data-apps (dm-3)                         dm-3  253:3   ext3        /usr/local/share/apps                c264fa8d-9f88-415b-a7a7-071351839458    0  0                   68719476736 root  disk  brw-rw----         0 524288 524288     512     512    1
+data-opt (dm-4)                          dm-4  253:4   xfs         /opt                                 ab9d8f62-52f0-4bf2-b781-ba1defa0bdf7    0  0                   89238011904 root  disk  brw-rw----         0 524288 524288     512     512    1
+data-rrd (dm-5)                          dm-5  253:5   ext3        /var/cache/rrd                       c5355afa-a291-4e4d-97d3-54253d0df51c    0  0                    4294967296 root  disk  brw-rw----         0 524288 524288     512     512    1
+data-home_rsmadmin (dm-6)                dm-6  253:6   ext3        /usr/local/share/home/rsmadmin       72c02a84-d369-4816-9936-0e150b7e4367    0  0                   85899345920 root  disk  brw-rw----         0 524288 524288     512     512    1
+sdb                                      sdb     8:16  LVM2_member                                      FBcoGZ-A9eE-iUgd-Cyle-LIXg-Mj40-VVBbD3  0  0 LOGICAL VOLUME   299966445568 root  disk  brw-rw----         0 262144 262144     512     512    1 cfq
+3600508b1001cf5e18e7a6238386e805d (dm-7) dm-7  253:7   LVM2_member                                      FBcoGZ-A9eE-iUgd-Cyle-LIXg-Mj40-VVBbD3  0  0                  299966445568 root  disk  brw-rw----         0 262144 262144     512     512    1 cfq
+data2-cransys (dm-0)                     dm-0  253:0   xfs         /usr/local/share/home/cransys        f79947e3-21cf-40ad-b770-e6429aec046c    0  0                  107374182400 root  disk  brw-rw----         0 262144 262144     512     512    1
+data2-cluster (dm-1)                     dm-1  253:1   xfs         /opt/cluster/system                  bce52cd1-773a-4562-8e14-a0f6b34e535b    0  0                   34359738368 root  disk  brw-rw----         0 262144 262144     512     512    1
+data2-ansys17 (dm-2)                     dm-2  253:2   xfs                                              7f4b1b4b-9208-4bdf-8d52-a502ba2287c0    0  0                   42949672960 root  disk  brw-rw----         0 262144 262144     512     512    1
+sr0                                      sr0    11:0                                                                                            0  1 DVD ROM UJ8C2      1073741312 root  cdrom brw-rw----         0    512      0     512     512    1 cfq
+loop0                                    loop0   7:0                                                                                            0  0                               root  disk  brw-rw----         0      0      0       0     512    1
+loop1                                    loop1   7:1                                                                                            0  0                               root  disk  brw-rw----         0      0      0       0     512    1
+loop2                                    loop2   7:2                                                                                            0  0                               root  disk  brw-rw----         0      0      0       0     512    1
+loop3                                    loop3   7:3                                                                                            0  0                               root  disk  brw-rw----         0      0      0       0     512    1
+loop4                                    loop4   7:4                                                                                            0  0                               root  disk  brw-rw----         0      0      0       0     512    1
+loop5                                    loop5   7:5                                                                                            0  0                               root  disk  brw-rw----         0      0      0       0     512    1
+loop6                                    loop6   7:6                                                                                            0  0                               root  disk  brw-rw----         0      0      0       0     512    1
+loop7                                    loop7   7:7                                                                                            0  0                               root  disk  brw-rw----         0      0      0       0     512    1
+"""
+    lines = result.strip().split('\n')
+    _seps = [0]
+    longest_line = max([len(line) for line in lines])
+    for idx in xrange(longest_line):
+        if all([line[idx] == " " for line in lines if len(line) > idx]):
+            _seps.append(idx)
+    _seps.append(longest_line)
+    print(_seps)
+    print("*", lines[0])
+    line = lines[0]
+    _line = "{}{}".format(line, " " * longest_line)[0:longest_line]
+    header = [
+        line[_seps[_idx - 1]:_seps[_idx] + 1].strip() for _idx in xrange(1, len(_seps))
+    ]
+    # print(raw_data)
+    _seps = _seps[:-1]
+    new_seps = []
+    # reorganize headers
+    for _sep, _header in zip(_seps, header):
+        if header:
+            new_seps.append(_sep)
+    new_seps.append(longest_line)
+    raw_data = []
+    for line in lines:
+        _line = "{}{}".format(line, " " * longest_line)[0:longest_line]
+        _parts = [
+            line[new_seps[_idx - 1]:new_seps[_idx] + 1].strip() for _idx in xrange(1, len(_seps))
+        ]
+        raw_data.append(_parts)
+    import pprint
+    pprint.pprint(raw_data)
+    # print(len(_seps), len(header))
+    # print("H=", header)

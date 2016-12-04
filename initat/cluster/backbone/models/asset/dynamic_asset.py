@@ -1167,12 +1167,17 @@ class AssetBatch(models.Model):
 
         # set the discs and partitions
         fs_dict = {fs.name: fs for fs in partition_fs.objects.all()}
-        name = "_".join([self.device.name, "part", str(self.idx)])
+        name = "_".join(
+            [
+                self.device.name, "part", str(self.idx)
+            ]
+        )
         partition_table_ = partition_table(
             name=name,
             description='partition information generated during asset run',
         )
         partition_table_.save()
+        partition_ = None
         self.partition_table_status = 1
         for hdd in hw.hdds:
             self.partition_table_status = 2
@@ -1214,7 +1219,9 @@ class AssetBatch(models.Model):
                 free_space=logical.free_space,
             )
             logical_db.save()
-            logical_db.partitions.add(partition_)
+            if partition_ is not None:
+                # hm, fixme ...
+                logical_db.partitions.add(partition_)
 
         self.partition_table = partition_table_
         # set the partition info on the device
