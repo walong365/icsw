@@ -666,8 +666,8 @@ menu_module = angular.module(
             @ws = undefined
             @setup_web_socket()
 
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), (() ->
-                @setup_web_socket()).bind(@)
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () =>
+                @setup_web_socket()
             )
 
             _reload = () =>
@@ -725,14 +725,18 @@ menu_module = angular.module(
                 )
         )
 
-        setup_web_socket: () ->
-            if @ws != undefined
+        close_web_socket: () ->
+            if @ws? and @ws
                 @ws.close()
+
+        setup_web_socket: () ->
+            @close_web_socket()
             @ws = icswWebSocketService.register_ws("background_jobs")
-            @ws.onmessage = (msg) =>
-                data = angular.fromJson(msg.data)
-                # console.log "d=", data
-                @setState({num_jobs: data["background_jobs"]})
+            if @ws
+                @ws.onmessage = (msg) =>
+                    data = angular.fromJson(msg.data)
+                    # console.log "d=", data
+                    @setState({num_jobs: data["background_jobs"]})
 
     )
 ]).service("icswReactOpenIssuesFactory",

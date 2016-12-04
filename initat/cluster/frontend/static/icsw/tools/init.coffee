@@ -1934,10 +1934,18 @@ angular.module(
     $q, $window,
 ) ->
     get_url = (model_name) ->
-        return "ws://#{$window.location.host}/icsw/ws/#{model_name}/"
+        if $window.location.protocol == "http:"
+            _prot = "ws:"
+        else
+            _prot = "wss:"
+        return "#{_prot}//#{$window.location.host}/icsw/ws/#{model_name}/"
 
     register_ws = (model_name) ->
-        ws = new WebSocket(get_url(model_name))
+        try
+            ws = new WebSocket(get_url(model_name))
+        catch error
+            console.error "WebSocket error: #{error}"
+            ws = null
         return ws
 
     return {

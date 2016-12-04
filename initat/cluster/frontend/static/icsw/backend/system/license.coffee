@@ -40,8 +40,8 @@ angular.module(
             @ws = undefined
             @setup_web_socket()
 
-            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), (() ->
-                @setup_web_socket()).bind(@)
+            $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDIN"), () =>
+                @setup_web_socket()
             )
 
         update: (c_list) ->
@@ -68,15 +68,19 @@ angular.module(
             @info_class = "label label-#{_class}"
             @status_class = _class
 
-        setup_web_socket: () ->
-            if @ws != undefined
+        close_web_socket: () =>
+            if @ws? and @ws
                 @ws.close()
+
+        setup_web_socket: () ->
+            @close_web_socket()
             @ws = icswWebSocketService.register_ws("ova_counter")
-            @ws.onmessage = (msg) =>
-                # console.log "n=", msg
-                data = angular.fromJson(msg.data)
-                @update_plain(data)
-                @on_update.notify(@system_cradle)
+            if @ws
+                @ws.onmessage = (msg) =>
+                    # console.log "n=", msg
+                    data = angular.fromJson(msg.data)
+                    @update_plain(data)
+                    @on_update.notify(@system_cradle)
 
 ]).service("icswSystemOvaCounterService",
 [
