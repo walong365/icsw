@@ -150,5 +150,10 @@ class AppEnum(Enum):
         "Configure a bind9 Server (Nameservice)",
         root_service=False
     )
+    nmap_scan_device = icswServiceEnumBase(
+        "nmap-scan-device",
+        "Configure device to allow performing of nmap scans",
+        root_service=False
+    )
 
 register_service_enum(AppEnum, "backbone")
