@@ -745,7 +745,7 @@ class RMSJobVariable(models.Model):
 
     class Meta:
         unique_together = (
-            ("name", "rms_job"),
+            ("name", "rms_job", "rms_job_run"),
         )
 
 

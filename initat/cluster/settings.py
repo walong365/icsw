@@ -223,7 +223,8 @@ if _db_idx in ICSW_DATABASE_DICT:
                 )
             )
 else:
-    print("No valid database found")
+    if DEBUG:
+        print("No valid database found")
 
 # print("*", DATABASES)
 
