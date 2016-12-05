@@ -721,6 +721,29 @@ class PlannedRunsForDevice(object):
             self.to_delete = True
 
 
+class HostMonitoringCommand:
+    host_monitoring_commands = {}
+
+    def __init__(self, callback, callback_dict, timeout=60):
+        self.callback = callback
+        self.callback_dict = callback_dict
+        self.run_index = self.__get_free_run_index()
+        self.host_monitoring_commands[self.run_index] = self
+        self.timeout_date = timezone.now() + datetime.timedelta(seconds=timeout)
+
+    def __get_free_run_index(self):
+        run_index = 1
+        while True:
+            if run_index not in self.host_monitoring_commands:
+                return run_index
+            run_index += 1
+
+    def handle(self, result=None):
+        if result:
+            self.callback(self.callback_dict, result)
+        del self.host_monitoring_commands[self.run_index]
+
+
 class Dispatcher(object):
     def __init__(self, discovery_process):
         self.discovery_process = discovery_process
@@ -733,8 +756,6 @@ class Dispatcher(object):
         self.log("init Dispatcher")
         # quasi-static constants
         self.__hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
-
-        self.__hm_commands_callbacks_lut = {}
 
     def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
         self.discovery_process.log("[Disp] {}".format(what), log_level)
@@ -893,6 +914,13 @@ class Dispatcher(object):
 
         self._check_for_finished_runs()
 
+        _now = timezone.now()
+        for run_index, host_monitoring_command in HostMonitoringCommand.host_monitoring_commands.items():
+            if _now > host_monitoring_command.timeout_date:
+                host_monitoring_command.handle()
+                self.discovery_process.send_pool_message("host_monitoring_command_timeout_handler", run_index)
+
+
     def got_result(self, run_idx, srv_reply):
         if run_idx in self.__ext_con_lut:
             prs = self.__ext_con_lut[run_idx]
@@ -1031,18 +1059,22 @@ class Dispatcher(object):
 
         conn_str = "tcp://{}:{:d}".format(target_device.target_ip, self.__hm_port)
         new_srv_com = server_command.srv_command(command="nmap_scan", network=network_str)
-        run_index = self.__get_free_hm_command_index()
 
-        data_dict = {
+        callback_dict = {
             "network_id": _network.idx
         }
 
-        self.__hm_commands_callbacks_lut[run_index] = (self.network_scan_schedule_handler_callback, data_dict)
+        hm_command = HostMonitoringCommand(self.network_scan_schedule_handler_callback, callback_dict)
 
-        self.discovery_process.send_pool_message("send_host_monitor_command", run_index, conn_str, unicode(new_srv_com))
+        self.discovery_process.send_pool_message(
+            "send_host_monitor_command",
+            hm_command.run_index,
+            conn_str,
+            unicode(new_srv_com)
+        )
 
-    def network_scan_schedule_handler_callback(self, data_dict, result):
-        _network = network.objects.get(idx=data_dict['network_id'])
+    def network_scan_schedule_handler_callback(self, callback_dict, result):
+        _network = network.objects.get(idx=callback_dict['network_id'])
 
         _raw_result, _status = result.get_result()
 
@@ -1050,17 +1082,7 @@ class Dispatcher(object):
             new_nmap_scan = NmapScan(network=_network, raw_result=_raw_result)
             new_nmap_scan.save()
 
-    def __get_free_hm_command_index(self):
-         index = 1
-
-         while True:
-             if index in self.__hm_commands_callbacks_lut:
-                 index += 1
-             else:
-                 return index
-
     def handle_hm_result(self, run_index, srv_result):
-        if run_index in self.__hm_commands_callbacks_lut:
-            function_to_call, callback_data = self.__hm_commands_callbacks_lut[run_index]
-            del self.__hm_commands_callbacks_lut[run_index]
-            function_to_call(callback_data, srv_result)
+        if run_index in HostMonitoringCommand.host_monitoring_commands:
+            host_monitoring_command = HostMonitoringCommand.host_monitoring_commands[run_index]
+            host_monitoring_command.handle(result=srv_result)

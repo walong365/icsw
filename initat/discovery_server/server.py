@@ -78,6 +78,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.register_func("send_msg", self.send_msg)
         self.register_func("send_host_monitor_command", self.send_host_monitor_command)
         self.register_func("timeout_handler", self.timeout_handler)
+        self.register_func("host_monitoring_command_timeout_handler", self.host_monitoring_command_timeout_handler)
         db_tools.close_connection()
         self.__max_calls = global_config["MAX_CALLS"] if not global_config["DEBUG"] else 5
         self.__snmp_running = True
@@ -90,6 +91,8 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         self.__pending_commands = {}
         if process_tools.get_machine_name() == "eddiex" and global_config["DEBUG"]:
             self._test()
+
+        self.__pending_host_monitoring_commands = {}
 
     def clear_pending_scans(self):
         pending_locks = DeviceScanLock.objects.filter(Q(server=global_config["SERVER_IDX"]) & Q(active=True))
@@ -166,6 +169,13 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             self.__ext_con_dict[run_idx].close()
             del self.__ext_con_dict[run_idx]
 
+    def host_monitoring_command_timeout_handler(self, *args, **kwargs):
+        _from_name, _from_pid, run_index = args
+
+        if run_index in self.__pending_host_monitoring_commands:
+            self.__pending_host_monitoring_commands[run_index].close()
+            del self.__pending_host_monitoring_commands[run_index]
+
     def send_msg(self, *args, **kwargs):
         _from_name, _from_pid, run_idx, conn_str, srv_com = args
         srv_com = server_command.srv_command(source=srv_com)
@@ -185,6 +195,7 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         if srv_reply:
             run_idx = int(srv_reply["*discovery_run_idx"])
         if run_idx in self.__ext_con_dict:
+            self.__ext_con_dict[run_idx].close()
             del self.__ext_con_dict[run_idx]
         if srv_reply and run_idx:
             self.send_to_process("discovery", "ext_con_result", run_idx, unicode(srv_reply))
@@ -199,6 +210,9 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
             poller_base=self,
             callback=self.__send_host_monitor_command_callback,
         )
+
+        self.__pending_host_monitoring_commands[run_index] = _new_con
+
         _new_con.add_connection(conn_str, srv_com)
 
     def __send_host_monitor_command_callback(self, *args):
@@ -207,8 +221,10 @@ class server_process(server_mixins.ICSWBasePool, server_mixins.RemoteCallMixin):
         if srv_reply:
             run_index = int(srv_reply["*run_index"])
 
-        if srv_reply and run_index:
+        if run_index:
             self.send_to_process("discovery", "host_monitor_result", run_index, unicode(srv_reply))
+            self.__pending_host_monitoring_commands[run_index].close()
+            del self.__pending_host_monitoring_commands[run_index]
 
     @RemoteCall()
     def status(self, srv_com, **kwargs):

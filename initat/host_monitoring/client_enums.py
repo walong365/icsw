@@ -38,8 +38,8 @@ class icswAppBaseServiceEnumClass(object):
             raise ValueError("value of serviceEnum has to be an instance of icswServiceEnumBaseClient")
 
 
-# this gets initialised as soon as this module is imported so import this onyl
-# whne you need this object
+# this gets initialised as soon as this module is imported so import this only
+# when you need this object
 
 icswServiceEnum = None
 

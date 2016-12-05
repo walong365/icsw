@@ -56,25 +56,29 @@
     <div class="container-fluid" ng-if="struct.display">
         <div class="row" class="bg-info">
             <div class="col-md-12">
-                <icsw-tools-button
-                    size="xs"
-                    type="modify"
-                    ng-click="choose_task($event)"
-                ></icsw-tools-button>
-                <icsw-tools-button
-                    type="show"
-                    size="xs"
-                    ng-click="hide_guide($event)"
-                    icsw-value="'hide'"
-                ></icsw-tools-button>
-                <icsw-tools-button
-                    type="delete"
-                    size="xs"
-                    ng-click="stop_task($event)"
-                    icsw-value="'stop'"
-                ></icsw-tools-button>
-                Active Task: {{ struct.active_task.task_def.name }}
-                <icsw-task-progress-display></icsw-task-progress-display>
+                <div>
+                    <icsw-task-progress-display></icsw-task-progress-display>
+                </div>
+                <div style="margin-top: -35px;">
+                    <icsw-tools-button
+                        size="xs"
+                        type="modify"
+                        ng-click="choose_task($event)"
+                    ></icsw-tools-button>
+                    <icsw-tools-button
+                        type="show"
+                        size="xs"
+                        ng-click="hide_guide($event)"
+                        icsw-value="'hide'"
+                    ></icsw-tools-button>
+                    <icsw-tools-button
+                        type="delete"
+                        size="xs"
+                        ng-click="stop_task($event)"
+                        icsw-value="'stop'"
+                    ></icsw-tools-button>
+                    Active Task: {{ struct.active_task.task_def.name }}
+                </div>
             </div>
         </div>
     </div>

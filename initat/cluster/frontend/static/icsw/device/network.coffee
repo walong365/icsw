@@ -1514,12 +1514,12 @@ angular.module(
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
     "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
     "toaster", "icswToolsSimpleModalService", "$timeout", "icswDispatcherSettingTreeService", "icswUserService",
-    "icswDeviceTreeService", "icswWebSocketService"
+    "icswDeviceTreeService", "icswWebSocketService", "icswConfigTreeService"
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
     icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
     toaster, icswToolsSimpleModalService, $timeout, icswDispatcherSettingTreeService, icswUserService,
-    icswDeviceTreeService, icswWebSocketService
+    icswDeviceTreeService, icswWebSocketService, icswConfigTreeService
 ) ->
 
     # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1579,6 +1579,7 @@ angular.module(
     dispatcher_tree = undefined
     user_tree = undefined
     device_tree = undefined
+    config_tree = undefined
     dispatcher_links = undefined
     device_list = []
     nmap_scans = {}
@@ -1598,6 +1599,7 @@ angular.module(
                     icswDispatcherSettingTreeService.load(scope.$id)
                     icswUserService.load(scope.$id)
                     icswDeviceTreeService.load(scope.$id)
+                    icswConfigTreeService.load(scope.$id)
                     icswSimpleAjaxCall(
                         {
                             url: ICSW_URLS.DISCOVERY_DISPATCHER_LINK_LOADER
@@ -1622,18 +1624,29 @@ angular.module(
                     dispatcher_tree = data[2]
                     user_tree = data[3]
                     device_tree = data[4]
-                    dispatcher_links = data[5]
+                    config_tree = data[5]
+                    dispatcher_links = data[6]
 
                     for network in nw_tree.nw_list
                         nmap_scans[network.idx] = []
 
-                    for nmap_scan in data[6]
+                    for nmap_scan in data[7]
                         nmap_scan.$$created = moment(nmap_scan.date).format("YYYY-MM-DD HH:mm:ss")
                         nmap_scans[nmap_scan.network].push(nmap_scan)
 
-                    for device in device_tree.all_list
-                        if !device.is_meta_device
-                            device_list.push(device)
+                    # add devices that are defined as "nmap-scan-device"
+                    for config in config_tree.list
+                        if config.name == "nmap-scan-device"
+                            for obj in config.device_config_set
+                                device_list.push(device_tree.all_lut[obj.device])
+
+                    # also add devices that are already linked as a nmap-scan-device
+                    for dispatch_link in dispatcher_links
+                        if dispatch_link.schedule_handler == "network_scan_schedule_handler"
+                            device_id = parseInt(dispatch_link.schedule_handler_data)
+                            device = device_tree.all_lut[device_id]
+                            if device != undefined and !(device in device_list)
+                                device_list.push(device)
 
                     nmap_scans_websocket = icswWebSocketService.register_ws("nmap_scans")
                     nmap_scans_websocket.onmessage = (data) ->
