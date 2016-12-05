@@ -271,3 +271,7 @@ a.bttn-bgjobs {
 .svg-tooltip-content {
     background-color: #777777;
 }
+.icsw-formlabel {
+    width: 250px;
+    text-align: left !important;
+}
