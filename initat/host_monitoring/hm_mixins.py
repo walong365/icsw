@@ -27,6 +27,11 @@ from __future__ import unicode_literals, print_function
 from initat.tools import logging_tools, process_tools
 from .config import global_config
 
+INIT_LIST = [
+    ("register_server", True),
+    ("init_module", False)
+]
+
 
 class HMHRMixin(object):
     def _init_commands(self):
@@ -37,18 +42,22 @@ class HMHRMixin(object):
         if self.modules.IMPORT_ERRORS:
             self.log("modules import errors:", logging_tools.LOG_LEVEL_ERROR)
             for mod_name, com_name, error_str in self.modules.IMPORT_ERRORS:
-                self.log("{:<24s} {:<32s} {}".format(mod_name.split(".")[-1], com_name, error_str), logging_tools.LOG_LEVEL_ERROR)
+                self.log(
+                    "{:<24s} {:<32s} {}".format(mod_name.split(".")[-1], com_name, error_str),
+                    logging_tools.LOG_LEVEL_ERROR
+                )
         _init_ok = True
-        for call_name, add_self in [
-            ("register_server", True),
-            ("init_module", False)
-        ]:
+        for cur_mod in self.modules.module_list:
+            # init state flags for correct handling of shutdown (do not call close_module when
+            # init_module was not called)
+            cur_mod.INIT_STATE = {_name: False for _name, _flag in INIT_LIST}
+        for call_name, add_self in INIT_LIST:
             for cur_mod in self.modules.module_list:
                 if global_config["VERBOSE"]:
                     self.log(
                         "calling {} for module '{}'".format(
                             call_name,
-                            cur_mod.name
+                            cur_mod.name,
                         )
                     )
                 try:
@@ -62,6 +71,8 @@ class HMHRMixin(object):
                         self.log(log_line, logging_tools.LOG_LEVEL_CRITICAL)
                     _init_ok = False
                     break
+                else:
+                    cur_mod.INIT_STATE[call_name] = True
             if not _init_ok:
                 break
         return _init_ok

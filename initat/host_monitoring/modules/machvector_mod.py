@@ -280,42 +280,52 @@ class MachineVector(object):
         for send_id in self.cs.keys():
             _struct = self.cs[send_id]
             if isinstance(_struct, dict):
-                if _struct["enabled"]:
-                    _struct["sent"] = 0
-                    p_pool.register_timer(
-                        self._send_vector,
-                        _struct.get("send_every", 30),
-                        data=send_id,
-                        instant=_struct.get("immediate", False),
-                    )
-                    # zmq sending, to collectd
-                    t_sock = process_tools.get_socket(
-                        p_pool.zmq_context,
-                        "PUSH",
-                        linger=0,
-                        sndhwm=16,
-                        backlog=4,
-                        # to stop 0MQ trashing the target socket
-                        reconnect_ivl=1000,
-                        reconnect_ivl_max=30000,
-                    )
-                    target_str = "tcp://{}:{:d}".format(
-                        _struct.get("target", "127.0.0.1"),
-                        _struct.get("port", 8002),
-                    )
-                    self.log("creating zmq.PUSH socket for {}".format(target_str))
-                    try:
-                        t_sock.connect(target_str)
-                        self.__socket_dict[send_id] = t_sock
-                    except:
-                        self.log(
-                            "error connecting to {}: {}".format(
-                                target_str,
-                                process_tools.get_except_info(),
-                            ),
-                            logging_tools.LOG_LEVEL_ERROR
+                # check validity of struct
+                _missing_keys = list({"enabled", "send_every", "immediate", "target", "port"} - set(_struct.keys()))
+                if _missing_keys:
+                    self.log(
+                        "{} missing: {}, ignoring entry".format(
+                            logging_tools.get_plural("key", len(_missing_keys)),
+                            ", ".join(sorted(_missing_keys)),
                         )
-                    self.cs[send_id] = _struct
+                    )
+                else:
+                    if _struct["enabled"]:
+                        _struct["sent"] = 0
+                        p_pool.register_timer(
+                            self._send_vector,
+                            _struct.get("send_every", 30),
+                            data=send_id,
+                            instant=_struct.get("immediate", False),
+                        )
+                        # zmq sending, to collectd
+                        t_sock = process_tools.get_socket(
+                            p_pool.zmq_context,
+                            "PUSH",
+                            linger=0,
+                            sndhwm=16,
+                            backlog=4,
+                            # to stop 0MQ trashing the target socket
+                            reconnect_ivl=1000,
+                            reconnect_ivl_max=30000,
+                        )
+                        target_str = "tcp://{}:{:d}".format(
+                            _struct.get("target", "127.0.0.1"),
+                            _struct.get("port", 8002),
+                        )
+                        self.log("creating zmq.PUSH socket for {}".format(target_str))
+                        try:
+                            t_sock.connect(target_str)
+                            self.__socket_dict[send_id] = t_sock
+                        except:
+                            self.log(
+                                "error connecting to {}: {}".format(
+                                    target_str,
+                                    process_tools.get_except_info(),
+                                ),
+                                logging_tools.LOG_LEVEL_ERROR
+                            )
+                        self.cs[send_id] = _struct
         self.cs.write()
 
     def add_target(self, send_name, target_ip):

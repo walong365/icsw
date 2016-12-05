@@ -788,7 +788,8 @@ class ServerCode(ICSWBasePool, HMHRMixin):
 
     def loop_end(self):
         for cur_mod in self.modules.module_list:
-            cur_mod.close_module()
+            if cur_mod.INIT_STATE["init_module"]:
+                cur_mod.close_module()
 
     def _close_modules(self):
         for cur_mod in self.module_list:

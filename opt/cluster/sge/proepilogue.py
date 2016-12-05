@@ -23,6 +23,8 @@
 #
 """ pro/epilogue script for SGE """
 
+from __future__ import print_function, unicode_literals
+
 import sys
 
 # clean sys.path, remove all paths not starting with /opt
@@ -66,6 +68,12 @@ RMS_SERVER_PORT = 8009
 
 
 SPECIAL_SCRIPT_NAMES = {"INTERACTIVE", "QLOGIN", "QRSH", "QRLOGIN"}
+
+
+if hasattr(net_tools, "ZMQConnection"):
+    ZMQConnection = net_tools.ZMQConnection
+else:
+    ZMQConnection = net_tools.zmq_connection
 
 
 def sec_to_str(in_sec):
@@ -127,7 +135,7 @@ class RMSJob(object):
 
     def _print(self, what):
         try:
-            print what
+            print(what)
         except:
             self.log(
                 u"cannot print '{}': {}".format(
@@ -1146,7 +1154,7 @@ class RMSJob(object):
         srv_com["config"] = _job_dict
         self.log("added {:d} config keys to srv_com ({:d} content)".format(_added, _content))
         # add all keys from global_config
-        _conn = net_tools.ZMQConnection(
+        _conn = ZMQConnection(
             "job_{}".format(global_config["FULL_JOB_ID"]),
             timeout=10
         )
@@ -1192,7 +1200,7 @@ class RMSJob(object):
                 arg_str
             )
         )
-        zmq_con = net_tools.ZMQConnection("job_{}".format(global_config["FULL_JOB_ID"]))
+        zmq_con = ZMQConnection("job_{}".format(global_config["FULL_JOB_ID"]))
         for targ_ip in all_nfs_ips:
             srv_com = server_command.srv_command(command="ping", init_ip="{}".format(targ_ip))
             srv_com["arguments:rest"] = arg_str
@@ -1250,7 +1258,7 @@ class RMSJob(object):
                 )
             )
             # create a new zmq connection object
-            zmq_con2 = net_tools.ZMQConnection("job_{}".format(global_config["FULL_JOB_ID"]))
+            zmq_con2 = ZMQConnection("job_{}".format(global_config["FULL_JOB_ID"]))
             for targ_ip in all_nfs_ips:
                 srv_com = server_command.srv_command(command="ipckill")
                 arg_str = "--min-uid {:d}".format(global_config["MIN_KILL_UID"])
@@ -1422,7 +1430,7 @@ class ProcessPool(threading_tools.process_pool):
 
     def _print(self, what):
         try:
-            print what
+            print(what)
         except:
             self.log(
                 "cannot print '{}': {}".format(
