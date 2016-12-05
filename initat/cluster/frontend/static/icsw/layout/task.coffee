@@ -488,7 +488,7 @@ angular.module(
     icswUserService, icswOverallStyle, icswTaskService, $rootScope,
     ICSW_SIGNALS,
 ) ->
-    {div, g, circle, svg, title} = React.DOM
+    {div, g, circle, svg, title, text} = React.DOM
     return React.createClass(
         # propTypes:
         #    side: React.PropTypes.string
@@ -517,22 +517,23 @@ angular.module(
         render: () ->
             _struct = icswTaskService.get_struct()
             height = 30
-            step_x = 40
+            step_x = 60
 
             draw_circle = (node, active_task) ->
                 _x = step_x * node.$$idx
                 _y = height / 2
                 _done = active_task._step_idx > node.$$idx
                 _current = active_task._step_idx == node.$$idx
+
                 if _done
-                    _fill = "#ddddff"
+                    _fill = "svg-dev-up"
                 else if _current
                     if active_task.$$step_valid
-                        _fill = "#ffbbbb"
+                        _fill = "svg-dev-down"
                     else
-                        _fill = "#ff6666"
+                        _fill = "svg-srv-warn"
                 else
-                    _fill = "#ffffff"
+                    _fill = "svg-inactive"  # svg-white
                 return g(
                     {
                         key: "node#{node.$$idx}"
@@ -544,11 +545,10 @@ angular.module(
                     circle(
                         {
                             key: "c"
-                            r: "12"
+                            r: "18"
+                            className: "svg-lightstroke #{_fill}"
                             style: {
-                                fill: _fill
-                                stroke: "#000000"
-                                strokeWidth: "1.5px"
+                                strokeWidth: "2px"
                             }
                         }
                     )
@@ -558,8 +558,22 @@ angular.module(
                         }
                         node.$$info_str
                     )
+                    if active_task.task_def.json.taskStep.length-1 > node.$$idx
+                        text(
+                            {
+                                key: "arrow"
+                                fontFamily: "FontAwesome"
+                                fontSize: 18
+                                x: 22
+                                y: 6
+                                className: "svg-lighttxt-color"
+                                #dangerouslySetInnerHTML: {__html: "&#xf061;"}
+                                dangerouslySetInnerHTML: {__html: "&#xf178;"}
+                            }
 
+                        )
                 )
+
             if not _struct.active_task
                 return null
             return div(
@@ -571,7 +585,7 @@ angular.module(
                         key: "top"
                         width: "98%"
                         height: "40"
-                        viewBox: "1 1 200 50"
+                        viewBox: "0 -5 200 40"
                     }
                     (
                         draw_circle(node, _struct.active_task) for node in _struct.active_task.task_def.json.taskStep
