@@ -502,39 +502,78 @@
                                        <td class="text-center">{{ obj.idx }}</td>
                                        <td class="text-center">{{ obj.$$created }}</td>
                                        <td class="text-center">{{ obj.devices_found }}</td>
-                                       <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab(tab, obj.idx)" class="btn btn-success btn-xs">Show Details</button></td>
+                                       <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_0(tab, obj.idx)" class="btn btn-success btn-xs">Show Details</button></td>
                                     </tr>
                                 </tbody>
                             </table>
                     </uib-tab>
-                    <uib-tab ng-repeat="sub_tab in tab.sub_tabs">
+                    <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.type == 0">
                         <uib-tab-heading>
                             <span>Scan: {{ sub_tab.index }}</span>
-                            <icsw-tools-button size="xs" type="close" value="" ng-click="struct.icsw_network_list_service.close_sub_tab(sub_tab, tab)"></icsw-tools-button>
+                            <icsw-tools-button size="xs" type="close" value="" ng-click="tab.close_sub_tab(sub_tab)"></icsw-tools-button>
                         </uib-tab-heading>
-                            <table st-table="entries_displayed" st-safe-src="sub_tab.devices" class="table table-condensed table-hover" style="width:auto;">
-                                <thead>
-                                    <tr>
-                                        <td colspan="99">
-                                            <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <th st-sort="$$hostname_sort_hint" class="text-center">Hostname</th>
-                                        <th st-sort="$$ip_sort_hint" st-sort-default="true" class="text-center">IP</th>
-                                        <th st-sort="mac" class="text-center">MAC</th>
-                                        <th class="text-center">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr ng-repeat="obj in entries_displayed">
-                                       <td class="text-center">{{ obj.$$hostname }}</td>
-                                       <td class="text-center">{{ obj.ip }}</td>
-                                       <td class="text-center">{{ obj.$$mac }}</td>
-                                       <td class="text-center"><button type="button" ng-click="do_something()" class="btn btn-success btn-xs">...</button></td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <table st-table="entries_displayed" st-safe-src="sub_tab.display_devices" class="table table-condensed table-hover" style="width:auto;">
+                            <thead>
+                                <tr>
+                                    <td colspan="99">
+                                        <div icsw-tools-pagination st-items-by-page="20" st-displayed-pages="11" possible-items-by-page="10,20,50,100,200,500,1000"></div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td colspan="99">
+                                        Toggle Linked Devices Display:
+                                        <div class="btn-group btn-group-xs">
+                                            <input
+                                                type="button"
+                                                title="Toggle Linked Devices Button"
+                                                ng-value="sub_tab.linked_devices_button_value"
+                                                ng-class="sub_tab.linked_devices_button_class"
+                                                ng-click="sub_tab.linked_devices_button_pressed()">
+                                            </input>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th st-sort="$$hostname_sort_hint" class="text-center">Hostname</th>
+                                    <th st-sort="$$ip_sort_hint" st-sort-default="true" class="text-center">IP</th>
+                                    <th st-sort="mac" class="text-center">MAC</th>
+                                    <th class="text-center">Linked Device</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                                <tr>
+                                    <th>
+                                        <input st-search="$$hostname" placeholder="filter by hostname" class="input-sm form-control" type="search"/>
+                                    </th>
+                                    <th>
+                                        <input st-search="ip" placeholder="filter by ip" class="input-sm form-control" type="search"/>
+                                    </th>
+                                    <th>
+                                        <input st-search="$$mac" placeholder="filter by mac" class="input-sm form-control" type="search"/>
+                                    </th>
+                                    <th>
+                                        <input st-search="linked_devices" placeholder="filter by device name" class="input-sm form-control" type="search"/>
+                                    </th>
+                                    <th></th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="obj in entries_displayed">
+                                    <td class="text-center">{{ obj.$$hostname }}</td>
+                                    <td class="text-center">{{ obj.ip }}</td>
+                                    <td class="text-center">{{ obj.$$mac }}</td>
+                                    <td class="text-center"><div ng-if="obj.linked_devices.length == 0">N/A</div><button ng-repeat="device in obj.linked_devices" type="button" class="btn btn-xs btn-success" ng-click="sub_tab.show_device($event, device)">{{ device.full_name }}</button></td>
+                                    <td class="text-center"><button type="button" ng-click="struct.icsw_network_list_service.create_new_sub_tab_type_1(tab, obj)" class="btn btn-success btn-xs">Create new Device</button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </uib-tab>
+                    <uib-tab ng-repeat="sub_tab in tab.sub_tabs" ng-if="sub_tab.type == 1">
+                        <uib-tab-heading>
+                            <span>Create new Device</span>
+                            <icsw-tools-button size="xs" type="close" value="" ng-click="tab.close_sub_tab(sub_tab)"></icsw-tools-button>
+                        </uib-tab-heading>
+                        <icsw-device-create-mask deviceinfo="sub_tab.device_info"></icsw-device-create-mask>
                     </uib-tab>
                 </uib-tabset>
             </uib-tab>

@@ -1514,12 +1514,12 @@ angular.module(
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
     "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
     "toaster", "icswToolsSimpleModalService", "$timeout", "icswDispatcherSettingTreeService", "icswUserService",
-    "icswDeviceTreeService", "icswWebSocketService", "icswConfigTreeService"
+    "icswDeviceTreeService", "icswWebSocketService", "icswConfigTreeService", "DeviceOverviewService"
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
     icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
     toaster, icswToolsSimpleModalService, $timeout, icswDispatcherSettingTreeService, icswUserService,
-    icswDeviceTreeService, icswWebSocketService, icswConfigTreeService
+    icswDeviceTreeService, icswWebSocketService, icswConfigTreeService, DeviceOverviewService
 ) ->
 
     # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1626,6 +1626,8 @@ angular.module(
                     device_tree = data[4]
                     config_tree = data[5]
                     dispatcher_links = data[6]
+
+                    console.log(device_tree)
 
                     for network in nw_tree.nw_list
                         nmap_scans[network.idx] = []
@@ -1882,6 +1884,21 @@ angular.module(
                         sub_tabs: []
                     }
 
+                    tab.close_sub_tab = (to_be_closed_tab) ->
+                        $timeout(
+                            () ->
+                                tabs_tmp = []
+
+                                for sub_tab in tab.sub_tabs
+                                    if sub_tab != to_be_closed_tab
+                                        tabs_tmp.push(sub_tab)
+
+                                tab.sub_tabs.length = 0
+                                for sub_tab in tabs_tmp
+                                    tab.sub_tabs.push(sub_tab)
+                            0
+                        )
+
                     dupe = false
                     for old_tab in tabs
                         if tab.heading == old_tab.heading
@@ -1891,7 +1908,7 @@ angular.module(
                         tabs.push(tab)
             )
 
-        create_new_sub_tab: (tab, index) ->
+        create_new_sub_tab_type_0: (tab, index) ->
             for sub_tab in tab.sub_tabs
                 if sub_tab.index == index
                     return
@@ -1905,6 +1922,18 @@ angular.module(
                     dataType: "json"
                 }
             ).then((data) ->
+                ip_to_device_lut = {}
+                for device in device_tree.all_list
+                    if !device.is_meta_device
+                        if device.netdevice_set != undefined
+                            for net_device in device.netdevice_set
+                                for net_ip in net_device.net_ip_set
+                                    if ip_to_device_lut[net_ip.ip] == undefined
+                                        ip_to_device_lut[net_ip.ip] = []
+
+                                    if !(device in ip_to_device_lut[net_ip.ip])
+                                      ip_to_device_lut[net_ip.ip].push(device)
+
                 for device in data.devices
                     device.$$mac = "N/A"
                     if device.mac != null
@@ -1918,28 +1947,61 @@ angular.module(
 
                     device.$$ip_sort_hint = convert_ip_str_to_int(device.ip)
 
+                    device.linked_devices = []
+                    if ip_to_device_lut[device.ip] != undefined
+                        device.linked_devices = ip_to_device_lut[device.ip]
+
+
                 sub_tab = {
                     index: index
-                    devices: data.devices
+                    devices: (device for device in data.devices)
+                    display_devices: (device for device in data.devices)
+                    linked_devices_button_value: "All Devices"
+                    linked_devices_button_class: "btn btn-default"
+                    linked_devices_button_state: 0
+                    type: 0
                 }
+
+                sub_tab.linked_devices_button_pressed = () ->
+                    if sub_tab.linked_devices_button_state == 0
+                        sub_tab.linked_devices_button_state = 1
+                        sub_tab.linked_devices_button_value = "Linked Only"
+                        sub_tab.display_devices.length = 0
+
+                        for device in sub_tab.devices
+                            if device.linked_devices.length > 0
+                                sub_tab.display_devices.push(device)
+
+                    else if sub_tab.linked_devices_button_state == 1
+                        sub_tab.linked_devices_button_state = 2
+                        sub_tab.linked_devices_button_value = "Unlinked Only"
+                        sub_tab.display_devices.length = 0
+
+                        for device in sub_tab.devices
+                            if device.linked_devices.length == 0
+                                sub_tab.display_devices.push(device)
+
+                    else if sub_tab.linked_devices_button_state == 2
+                        sub_tab.linked_devices_button_state = 0
+                        sub_tab.linked_devices_button_value = "All Devices"
+                        sub_tab.display_devices.length = 0
+
+                        for device in sub_tab.devices
+                            sub_tab.display_devices.push(device)
+
+                sub_tab.show_device = ($event, dev) ->
+                    DeviceOverviewService($event, [dev])
 
                 tab.sub_tabs.push(sub_tab)
             )
 
-        close_sub_tab : (to_be_closed_tab, from_tab) ->
-            $timeout(
-                () ->
-                    tabs_tmp = []
+        create_new_sub_tab_type_1: (tab, device_info) ->
+            sub_tab = {
+                device_info: device_info
+                type: 1
+            }
 
-                    for tab in from_tab.sub_tabs
-                        if tab != to_be_closed_tab
-                            tabs_tmp.push(tab)
-
-                    from_tab.sub_tabs.length = 0
-                    for tab in tabs_tmp
-                        from_tab.sub_tabs.push(tab)
-                0
-            )
+            tab.sub_tabs.push(sub_tab)
 
         # range functions
         autorange_set : (edit_obj) ->

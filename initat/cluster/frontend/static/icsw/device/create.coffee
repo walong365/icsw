@@ -36,6 +36,8 @@ angular.module(
     icswDeviceTreeService, icswPeerInformationService, DeviceOverviewService, $rootScope,
 ) ->
 
+    console.log($scope.device_info)
+
     $scope.struct = {
         # device tree
         device_tree: undefined
@@ -67,7 +69,14 @@ angular.module(
         peer: 0
         icon_name: "linux40"
         dev_selection: $scope.struct.dev_sel_list[0]
+        mac: "00:00:00:00:00:00"
     }
+
+    if $scope.device_info != undefined
+        if $scope.device_info.hostname != null
+            $scope.device_data.full_name = $scope.device_info.hostname
+        $scope.device_data.ip = $scope.device_info.ip
+        $scope.device_data.mac = $scope.device_info.$$mac
 
     $scope.on_icon_select = (item, model, label) ->
         $scope.struct.img_url = item.data_image
@@ -223,5 +232,8 @@ angular.module(
         restrict: "EA"
         template: $templateCache.get("icsw.device.create.mask")
         controller: "icswDeviceCreateCtrl"
+        scope: {
+            device_info: '=deviceinfo'
+        }
     }
 ])

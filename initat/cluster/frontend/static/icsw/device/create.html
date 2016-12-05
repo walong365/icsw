@@ -50,6 +50,17 @@
                             </span>
                         </div>
                     </div>
+                    <div class="form-group">
+                        <label class="control-label col-md-3 icsw-formlabel">
+                            MAC Address
+                        </label>
+                        <div class="controls col-md-6" ng-class="form_data.mac.$invalid && 'has-error'">
+                            <input name="mac" class="form-control maxwidth500" ng-model="device_data.mac" required ng-pattern="/^([0-9A-Fa-f]{2}[:]){5}([0-9A-Fa-f]{2})$/"/>
+                            <span ng-show="form_data.mac.$invalid" class="text-danger">
+                                Please enter a valid MAC Address
+                            </span>
+                        </div>
+                    </div>
                     <div class="form-group" ng-if="struct.mon_ext_host">
                         <label class="control-label col-md-5 icsw-formlabel">Icon</label>
                         <div class="controls col-md-6">

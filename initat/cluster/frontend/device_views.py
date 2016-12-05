@@ -696,6 +696,7 @@ class create_device(permission_required_mixin, View):
                         cur_nd = netdevice.objects.create(
                             devname="eth0",
                             device=cur_dev,
+                            macaddr=device_data["mac"],
                             routing=device_data["routing_capable"],
                         )
                         if device_data["peer"]:
