@@ -21,6 +21,8 @@
 
 """ background job definitions for collectd-init """
 
+from __future__ import print_function, unicode_literals
+
 import time
 
 from lxml import etree
@@ -426,8 +428,11 @@ class BackgroundJob(object):
             debug=BackgroundJob.debug,
         )
         self.result = None
-        self.__ec.run()
-        return self.__ec
+        if self.__ec.run():
+            return self.__ec
+        else:
+            self.running = False
+            return None
 
     def check_for_timeout(self):
         diff_time = int(abs(time.time() - self.last_start))

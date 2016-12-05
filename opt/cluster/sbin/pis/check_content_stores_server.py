@@ -168,7 +168,7 @@ def main():
         ("create.network.device.types", True),
         ("session.multiple.per.user.allowed", False),
         ("missing.timezone.is.critical", True),
-        ("overall.style", "normal"),
+        ("overall.style", "condensed"),
         ("multiple.databases", False),
         ("default.database.idx", 0),
     ]:

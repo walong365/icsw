@@ -19,6 +19,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import print_function, unicode_literals
+
 import json
 import os
 import rrdtool
@@ -30,7 +32,7 @@ import memcache
 from django.db.models import Q
 from lxml.builder import E
 
-from initat.cluster.backbone.models import device_variable, device
+from initat.cluster.backbone.models import device
 from initat.collectd.collectd_types.base import value, PerfdataObject
 from initat.collectd.config import global_config
 from initat.tools import logging_tools, process_tools, rrd_tools, server_mixins
@@ -358,6 +360,7 @@ class ext_com(object):
         )
 
     def run(self):
+        _success = True
         self.start_time = time.time()
         if self.__detach:
             self.popen = subprocess.Popen(
@@ -370,14 +373,24 @@ class ext_com(object):
             )
             self.log("start with pid {} (detached)".format(self.popen.pid))
         else:
-            self.popen = subprocess.Popen(
-                self.command,
-                shell=True,
-                stderr=subprocess.PIPE,
-                stdout=subprocess.PIPE
-            )
-            if self.debug:
-                self.log("start with pid {}".format(self.popen.pid))
+            try:
+                self.popen = subprocess.Popen(
+                    self.command,
+                    shell=True,
+                    stderr=subprocess.PIPE,
+                    stdout=subprocess.PIPE
+                )
+                if self.debug:
+                    self.log("start with pid {}".format(self.popen.pid))
+            except OSError:
+                self.log(
+                    "cannot start job: {}".format(
+                        process_tools.get_except_info(),
+                    ),
+                    logging_tools.LOG_LEVEL_CRITICAL,
+                )
+                _success = False
+        return _success
 
     def communicate(self):
         if self.popen:

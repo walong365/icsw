@@ -376,12 +376,12 @@ angular.module(
                 $scope.struct.local_setting = local_setting
                 $scope.struct.base_setting = base_setting
                 _routes = icswAccessLevelService.get_routing_info().routing
-                console.log _routes
-                if "rms_server" of _routes
+                # console.log _routes
+                if "grapher_server" of _routes
                     $scope.struct.to_date = moment()
                     $scope.struct.from_date = moment().subtract(moment.duration(4, "week"))
                     $scope.struct.base_data_set = true
-                    _server = _routes["rms_server"][0]
+                    _server = _routes["grapher_server"][0]
                     _device = _dt.all_lut[_server[2]]
                     if _device?
                         $scope.struct.devices.push(_device)
