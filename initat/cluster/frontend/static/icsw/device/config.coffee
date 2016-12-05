@@ -814,14 +814,13 @@ angular.module(
                 [_class, _icon] = @props.configHelper.get_td_class_and_icon(_el, _conf, @props.device)
                 if @state.focus
                     _class = "#{_class} bg-primary"
-                if @state.focus and @props.configHelper.mode in ["mon"]
+                if @props.configHelper.mode in ["mon"]
                     # overlay
                     _overlay = div(
                         {
                             key: "overlay"
                             display: "block"
                             className: "panel panel-default svg-tooltip"
-                            style: {left: @state.x, top: @state.y, color: "#000"}
                         }
                         div(
                             {
@@ -857,6 +856,10 @@ angular.module(
                 else
                     _overlay = null
                     _title_str = _info_str
+                showtooltip = (event) =>
+                    @setState({focus: true})
+                    @props.focusCallback(_el, _conf, @props.device, true)
+                    @props.configHelper.tooltip.show(_overlay)
                 return td(
                     {
                         className: "text-center #{_class}"
@@ -867,11 +870,10 @@ angular.module(
                                     (ok) ->
                                         blockUI.stop()
                                 )
-                        onMouseEnter: (event) =>
-                            # calculate x / y
-                            @setState({focus: true, x: event.clientX, y: event.clientY})
-                            @props.focusCallback(_el, _conf, @props.device, true)
+                        onMouseEnter: showtooltip
+                        onMouseMove: @props.configHelper.tooltip.pos
                         onMouseLeave: (event) =>
+                            @props.configHelper.tooltip.hide()
                             @setState({focus: false})
                             @props.focusCallback(_el, _conf, @props.device, false)
                         title: _title_str
@@ -879,7 +881,6 @@ angular.module(
                     span(
                         {className: _icon}
                     )
-                    _overlay
                 )
         )
     )
@@ -1049,4 +1050,51 @@ angular.module(
                 _element.forceUpdate()
             )
     }
+]).directive('icswAssignTooltipContainer',
+[
+    "$window",
+(
+    $window
+) ->
+    return {
+        restrict: "EA"
+        scope: {
+            helper: "=icswConfigHelper"
+        }
+        link: (scope, element, attrs) ->
+            struct =
+                divlayer: undefined
+
+            struct.show = (content) ->
+                if content?
+                    _element = ReactDOM.render(
+                        React.createElement(
+                            React.createClass(
+                                render: () -> content
+                            )
+                        )
+                        element[0]
+                    )
+                    struct.divlayer = element.children().first()
+
+            struct.pos = (event) ->
+                if struct.divlayer?
+                    t_os = 10  # Tooltip offset
+                    top_scroll = $window.innerHeight - event.clientY - struct.divlayer[0].offsetHeight - t_os > 0
+                    top_offset = if top_scroll then t_os else (struct.divlayer[0].offsetHeight + t_os) * -1
+                    left_scroll = $window.innerWidth - event.clientX - struct.divlayer[0].offsetWidth - t_os > 0
+                    left_offset = if left_scroll then t_os else (struct.divlayer[0].offsetWidth + t_os) * -1
+
+                    struct.divlayer.css('left', "#{event.clientX + left_offset}px")
+                    struct.divlayer.css('top', "#{event.clientY + top_offset}px")
+
+            struct.hide = () ->
+                if struct.divlayer?
+                    struct.divlayer.css('left', "-10000px")
+                    struct.divlayer.css('top', "-10000px")
+                    struct.divlayer = undefined
+
+             scope.helper.tooltip = struct
+    }
+
 ])
