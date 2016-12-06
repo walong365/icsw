@@ -138,9 +138,10 @@ class EggConsumeObject(object):
                     _allowed = _con.consume(_cur_req)
                     if not _allowed:
                         self.log(
-                            "action {} on {} not allowed".format(
+                            "action {} on {} (pk={:d}) not allowed".format(
                                 action,
-                                unicode(cur_obj),
+                                _con.content_type.name,
+                                _pk,
                             ),
                             logging_tools.LOG_LEVEL_ERROR
                         )
