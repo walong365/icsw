@@ -41,6 +41,7 @@ from initat.snmp.snmp_struct import ResultNode
 from initat.tools import logging_tools, process_tools, server_command, ipvx_tools, net_tools
 from .config import global_config
 from .discovery_struct import ExtCom
+from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP
 
 DEFAULT_NRPE_PORT = 5666
 
@@ -53,6 +54,8 @@ SERVER_RESULT_RUN_RESULT = {
     server_command.SRV_REPLY_STATE_CRITICAL: RunResult.FAILED,
     server_command.SRV_REPLY_STATE_UNSET: RunResult.UNKNOWN,
 }
+
+HM_CMD_TUPLES = [(asset_type, hm_command, 60) for asset_type, hm_command in ASSETTYPE_HM_COMMAND_MAP.items()]
 
 
 class ScanBatch(object):
@@ -943,20 +946,8 @@ class Dispatcher(object):
             self.log("Removed {}".format(logging_tools.get_plural("PlannedRunsForDevice", _removed)))
 
     def _do_hm_scan(self, schedule_item, planned_run):
-        cmd_tuples = [
-            (AssetType.PACKAGE, "rpmlist", 60),
-            (AssetType.HARDWARE, "lstopo", 60),
-            (AssetType.PROCESS, "proclist", 60),
-            (AssetType.PENDING_UPDATE, "updatelist", 60),
-            (AssetType.DMI, "dmiinfo", 60),
-            (AssetType.PCI, "pciinfo", 60),
-            (AssetType.LSHW, "lshw", 60),
-            (AssetType.PARTITION, "partinfo", 60),
-            (AssetType.LSBLK, "lsblk", 60),
-            (AssetType.XRANDR, "xrandr", 60),
-        ]
-        planned_run.start_feed(cmd_tuples)
-        for _idx, (runtype, _command, timeout) in enumerate(cmd_tuples):
+        planned_run.start_feed(HM_CMD_TUPLES)
+        for _idx, (runtype, _command, timeout) in enumerate(HM_CMD_TUPLES):
             run_index = len(planned_run.asset_batch.assetrun_set.all())
             new_asset_run = AssetRun(
                 run_index=run_index,

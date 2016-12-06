@@ -40,6 +40,7 @@ from initat.cluster.backbone.models.partition import partition_disc, \
     partition_table, partition, partition_fs, LogicalDisc
 from initat.cluster.backbone.tools.hw import Hardware
 from initat.tools import server_command, pci_database, dmi_tools
+from initat.cluster import settings
 
 logger = logging.getLogger(__name__)
 
@@ -637,26 +638,45 @@ class AssetRun(models.Model):
 
             install_infos_to_add.append(apv_install_info)
 
-        AssetPackage.objects.bulk_create(aps_needing_save)
+        db_is_postgres = settings.DATABASES['default']['ENGINE'] == 'django.db.backends.postgresql_psycopg2'
+
+        if db_is_postgres:
+            AssetPackage.objects.bulk_create(aps_needing_save)
+        else:
+            for ap in aps_needing_save:
+                ap.save()
 
         # needed to make further bulk_create calls work
         for apv in apvs_needing_save:
             ap = apv.asset_package
             apv.asset_package = ap
 
-        AssetPackageVersion.objects.bulk_create(apvs_needing_save)
+        if db_is_postgres:
+            AssetPackageVersion.objects.bulk_create(apvs_needing_save)
+        else:
+            for apv in apvs_needing_save:
+                apv.save()
 
         for apvii in apviis_needing_save:
             apv = apvii.package_version
             apvii.package_version = apv
 
-        AssetPackageVersionInstallInfo.objects.bulk_create(apviis_needing_save)
+        if db_is_postgres:
+            AssetPackageVersionInstallInfo.objects.bulk_create(apviis_needing_save)
+        else:
+            for apvii in apviis_needing_save:
+                apvii.save()
 
         self.asset_batch.installed_packages_status = 1
         if len(install_infos_to_add) > 0:
             self.asset_batch.installed_packages_status = 2
 
-        self.asset_batch.installed_packages.add(*install_infos_to_add)
+        if db_is_postgres:
+            self.asset_batch.installed_packages.add(*install_infos_to_add)
+        else:
+            for install_info_to_add in install_infos_to_add:
+                self.asset_batch.installed_packages.add(install_info_to_add)
+
         self.asset_batch.save()
 
     def _generate_assets_hardware_nrpe(self, data):
@@ -968,7 +988,7 @@ class AssetBatch(models.Model):
     error_string = models.TextField(default="")
 
     user = models.ForeignKey("backbone.user", null=True)
-    device = models.ForeignKey("backbone.device")
+    device = models.ForeignKey("backbone.device", null=True)
     date = models.DateTimeField(auto_now_add=True)
     created = models.DateTimeField(auto_now_add=True)
 
@@ -1262,3 +1282,17 @@ class DeviceInventory(models.Model):
     # serialized XML
     value = models.TextField()
     date = models.DateTimeField(auto_now_add=True)
+
+
+ASSETTYPE_HM_COMMAND_MAP = {
+    AssetType.PACKAGE: "rpmlist",
+    AssetType.HARDWARE: "lstopo",
+    AssetType.PROCESS: "proclist",
+    AssetType.PENDING_UPDATE: "updatelist",
+    AssetType.DMI: "dmiinfo",
+    AssetType.PCI: "pciinfo",
+    AssetType.LSHW: "lshw",
+    AssetType.PARTITION: "partinfo",
+    AssetType.LSBLK: "lsblk",
+    AssetType.XRANDR: "xrandr"
+}
