@@ -205,28 +205,33 @@ class FileModify(object):
         for _app_name, _file in mp_list:
             # simple merger, to be improved
             _full_path = os.path.join(settings.FILE_ROOT, _file)
-            _src_xml = etree.fromstring(
-                file(_full_path, "r").read()
-            )
-            try:
-                _my_relax.validate(_src_xml)
-            except:
-                sys.stderr.write(
-                    "*** Error validating {} for app {}: {}\n".format(
-                        _full_path,
-                        _app_name,
-                        process_tools.get_except_info(),
-                    )
+            if os.path.isfile(_full_path):
+                _src_xml = etree.fromstring(
+                    file(_full_path, "r").read()
                 )
+                try:
+                    _my_relax.validate(_src_xml)
+                except:
+                    sys.stderr.write(
+                        "*** Error validating {} for app {}: {}\n".format(
+                            _full_path,
+                            _app_name,
+                            process_tools.get_except_info(),
+                        )
+                    )
+                else:
+                    for _el_name in ROOT_ELEMENTS:
+                        _src_el = _src_xml.find(_el_name)
+                        if _src_el is not None:
+                            _dst_el = _total_xml.find(_el_name)
+                            for _el in _src_el:
+                                if _el.tag is not etree.Comment:
+                                    _el.attrib["app"] = _app_name
+                                    _dst_el.append(_el)
             else:
-                for _el_name in ROOT_ELEMENTS:
-                    _src_el = _src_xml.find(_el_name)
-                    if _src_el is not None:
-                        _dst_el = _total_xml.find(_el_name)
-                        for _el in _src_el:
-                            if not _el.tag is etree.Comment:
-                                _el.attrib["app"] = _app_name
-                                _dst_el.append(_el)
+                sys.stderr.write(
+                    "*** file {} does not exist".format(_full_path)
+                )
         # sys.exit(0)
         # check for validity
         try:
