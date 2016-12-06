@@ -25,6 +25,7 @@ from __future__ import unicode_literals, print_function
 
 import datetime
 import json
+import redis
 
 import requests
 from channels import Group
@@ -133,7 +134,10 @@ def propagate_channel_object(group, dict_obj):
     if any([_addr == "127.0.0.1" for _addr, _port in _hosts]):
         # send to backend, only text is allowed as key
         # print("g", group, dict_obj)
-        Group(group).send({"text": json.dumps(dict_obj)})
+        try:
+            Group(group).send({"text": json.dumps(dict_obj)})
+        except redis.ConnectionError:
+            print("Error connecting to redis, ignoring ...")
     else:
         requests.post(
             web_target.address.format(group),
