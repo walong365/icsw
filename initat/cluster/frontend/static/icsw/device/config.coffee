@@ -551,8 +551,8 @@ angular.module(
                     $scope.struct.mode = mode
                     $scope.struct.info_str = {
                         "gen": "Configurations",
-                        "mon": "Check commands",
-                        "srv": "System services ",
+                        "mon": "Check Commands",
+                        "srv": "System Services ",
                     }[$scope.struct.mode]
                     $q.all(
                         [
