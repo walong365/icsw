@@ -1514,12 +1514,14 @@ angular.module(
     "Restangular", "$q", "icswTools", "ICSW_URLS", "icswDomainTreeService", "icswSimpleAjaxCall", "blockUI",
     "icswNetworkTreeService", "icswNetworkBackup", "icswComplexModalService", "$compile", "$templateCache",
     "toaster", "icswToolsSimpleModalService", "$timeout", "icswDispatcherSettingTreeService", "icswUserService",
-    "icswDeviceTreeService", "icswWebSocketService", "icswConfigTreeService", "DeviceOverviewService"
+    "icswDeviceTreeService", "icswWebSocketService", "icswConfigTreeService", "DeviceOverviewService",
+    "icswDeviceTreeHelperService"
 (
     Restangular, $q, icswTools, ICSW_URLS, icswDomainTreeService, icswSimpleAjaxCall, blockUI,
     icswNetworkTreeService, icswNetworkBackup, icswComplexModalService, $compile, $templateCache,
     toaster, icswToolsSimpleModalService, $timeout, icswDispatcherSettingTreeService, icswUserService,
-    icswDeviceTreeService, icswWebSocketService, icswConfigTreeService, DeviceOverviewService
+    icswDeviceTreeService, icswWebSocketService, icswConfigTreeService, DeviceOverviewService,
+    icswDeviceTreeHelperService
 ) ->
 
     # networks_rest = Restangular.all(ICSW_URLS.REST_NETWORK_LIST.slice(1)).getList({"_with_ip_info" : true}).$object
@@ -1626,6 +1628,11 @@ angular.module(
                     device_tree = data[4]
                     config_tree = data[5]
                     dispatcher_links = data[6]
+
+                    device_tree.enrich_devices(
+                        icswDeviceTreeHelperService.create(device_tree, device_tree.all_list)
+                        ["network_info", "com_info"]
+                    )
 
                     console.log(device_tree)
 
