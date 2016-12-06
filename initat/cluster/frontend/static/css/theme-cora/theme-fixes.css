@@ -116,7 +116,11 @@ table.rotateheaders {
 .modal-body table.rotateheaders th {
     background-color: #393939;
 }
-
+.group-indicator,
+table.rotateheaders > thead > tr > th.group-indicator {
+    border: 2px solid #bbbbbb;
+    border-top: none;
+}
 .input-group-addon {
     background-color: #d5d5d5;
     line-height: 1.32857;

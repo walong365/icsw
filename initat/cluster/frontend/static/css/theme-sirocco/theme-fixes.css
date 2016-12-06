@@ -128,13 +128,17 @@ pre {
     color: #555555;
  }
 
-table.rotateheaders th {
-    background-color: #ffffff;
+table.rotateheaders {
+    background-color: transparent;
 }
 .modal-body table.rotateheaders th {
     background-color: #ffffff;
 }
-
+.group-indicator,
+table.rotateheaders > thead > tr > th.group-indicator {
+    border: 2px solid #92aa00;
+    border-top: none;
+}
 .input-group-addon {
     background-color: #d5d5d5;
     line-height: 1.32857;
