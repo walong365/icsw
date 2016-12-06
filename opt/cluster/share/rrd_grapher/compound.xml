@@ -44,9 +44,14 @@
             <key match="^io\.total\.bytes\.written$" required="1" invert="1" color="#44ff44a0" draw_type="AREA1"></key>
         </key_list>
     </compound>
-    <compound key="compound.icsw memory" info="CORVUS Memory">
+    <compound key="compound.icsw.memory" info="CORVUS Memory">
         <key_list>
             <key match="^mem\.icsw\..*\.total$" required="1" color="rdgy11" draw_type="AREA1STACK"></key>
+        </key_list>
+    </compound>
+    <compound key="compound.icsw.ova" info="Ova overview">
+        <key_list>
+            <key match="^icsw\.ova\..*\..*$" required="1" color="spectral8" draw_type="AREA1STACK"></key>
         </key_list>
     </compound>
     <compound key="compound.net.snmp_{key}" info="SNMP info for {ti}" order_key="key">
