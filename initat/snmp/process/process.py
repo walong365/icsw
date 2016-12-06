@@ -17,6 +17,8 @@
 #
 """ SNMP process definition """
 
+from __future__ import unicode_literals, print_function
+
 import signal
 
 from pyasn1.codec.ber import decoder

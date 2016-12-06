@@ -225,6 +225,20 @@ class _LicenseManager(models.Manager):
             )
         ]
 
+    def get_valid_parameters(self):
+        from initat.cluster.backbone.license_file_reader import LicenseFileReader
+        # fix for above problem: build a map dict where only the latest license files
+        # are referenced
+        merged_maps = LicenseFileReader._merge_maps(self._license_readers)
+        # import pprint
+        # pprint.pprint(merged_maps)
+        res = set()
+        for _struct in merged_maps.itervalues():
+            _idx = _struct["idx"]
+            for _val in _struct["reader"].get_valid_parameters():
+                res.add((_idx, _val))
+        return res
+
     def get_license_packages(self):
         """Returns license packages in custom format for the client."""
         from initat.cluster.backbone.license_file_reader import LicenseFileReader
@@ -267,10 +281,24 @@ class _LicenseManager(models.Manager):
 
         return readers
 
+    def check_ova(self):
+        import pprint
+        from initat.cluster.backbone.models import device_variable
+        # cluster id
+        c_id = device_variable.objects.get_cluster_id()
+        if c_id:
+            valid_params = self.get_valid_parameters()
+            # read all baskets
+            # for _basket in icswEggBasket.objects.all():
+
+            print("C=", c_id, valid_params)
+            # check all installed baskets against the licenses
+            # ToDo: return valid license parameters
+            # valid_packs = self.get_valid_licenses()
+
 
 ########################################
 # actual license documents:
-
 
 class License(models.Model):
     objects = _LicenseManager()
@@ -294,8 +322,9 @@ class License(models.Model):
 
 @receiver(signals.post_save, sender=License)
 @receiver(signals.post_delete, sender=License)
-def license_save(sender, **kwargs):
+def license_post_save_delete(sender, **kwargs):
     _LicenseManager._license_readers_cache.clear()
+    License.objects.check_ova()
 
 
 @receiver(signals.post_save, sender=License)

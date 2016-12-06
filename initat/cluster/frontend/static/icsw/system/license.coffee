@@ -39,6 +39,8 @@ angular.module(
     $scope.struct = {
         # data valid
         data_valid: false
+        # ova service
+        ova_service: null
         # license tree
         license_tree: undefined
         # license tab open
@@ -60,6 +62,7 @@ angular.module(
         ).then(
             (data) ->
                 $scope.struct.license_tree = data[0]
+                $scope.struct.ova_service = data[1]
                 $scope.struct.data_valid = true
         )
 

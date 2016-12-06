@@ -51,6 +51,7 @@ angular.module(
 
         update_plain: (cradle) =>
             @system_cradle = cradle
+            @system_cradle.used = @system_cradle.installed - @system_cradle.available
             @build_info_str()
 
         build_info_str: () ->

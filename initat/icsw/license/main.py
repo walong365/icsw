@@ -129,6 +129,7 @@ def show_license_info(opts):
 
     # print(License.objects.get_valid_licenses())
     # sys.exit(0)
+    License.objects.check_ova()
     if opts.raw:
         _raw_infos = License.objects.raw_license_info
         print("Raw License info, {}:".format(logging_tools.get_plural("license file", len(_raw_infos))))

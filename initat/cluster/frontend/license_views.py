@@ -27,21 +27,20 @@ from __future__ import unicode_literals, print_function
 import logging
 
 from django.contrib.auth.decorators import login_required
+from django.db.models import Q
 from django.utils.decorators import method_decorator
 from django.views.generic import View
-from django.db.models import Q
+from rest_framework import viewsets
 from rest_framework.generics import ListAPIView, RetrieveAPIView
 from rest_framework.response import Response
-from rest_framework import viewsets
 
 from initat.cluster.backbone.available_licenses import LicenseEnum, get_available_licenses
 from initat.cluster.backbone.license_file_reader import LicenseFileReader
 from initat.cluster.backbone.models import License, device_variable, icswEggCradle
-from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.serializers import icswEggCradleSerializer
+from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.frontend.helper_functions import contact_server, xml_wrapper
 from initat.cluster.frontend.rest_views import rest_logging
-from initat.tools import server_command
 
 logger = logging.getLogger("cluster.license")
 
@@ -86,10 +85,12 @@ class LicenseViewSet(viewsets.ViewSet):
             ]
         )
 
+
 class get_license_packages(ListAPIView):
     # no login required for this since we want to show it in the login page
     @rest_logging
     def list(self, request, *args, **kwargs):
+        License.objects.check_ova()
         return Response(License.objects.get_license_packages())
 
 
@@ -156,5 +157,5 @@ class upload_license_file(View):
                     new_lic.save()
                     request.xml_response.info("Successfully uploaded license file: {}".format(unicode(new_lic)))
 
-                    srv_com = server_command.srv_command(command="check_license_violations")
-                    contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, log_error=True, log_result=False)
+                    # srv_com = server_command.srv_command(command="check_license_violations")
+                    # contact_server(request, icswServiceEnum.cluster_server, srv_com, timeout=60, log_error=True, log_result=False)

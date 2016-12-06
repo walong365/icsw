@@ -34,14 +34,14 @@ from django.conf import settings
 from django.db.models import Q
 from initat.tools import config_tools, configfile, logging_tools, process_tools, \
     server_command, threading_tools, uuid_tools, net_tools
-from initat.tools.server_mixins import GetRouteToDevicesMixin, ICSWBasePool, SendToRemoteServerMixin
+from initat.tools.server_mixins import GetRouteToDevicesMixin, ICSWBasePool, \
+    SendToRemoteServerMixin
 
 from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone import db_tools
-from initat.cluster.backbone.models import DeviceFlagsAndSettings
-from initat.cluster.backbone.models import device, snmp_scheme
+from initat.cluster.backbone.models import device, snmp_scheme, DeviceFlagsAndSettings
 from initat.cluster.backbone.routing import get_server_uuid
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.cluster.backbone.var_cache import VarCache
@@ -118,7 +118,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         self.register_exception("int_error", self._int_error)
         self.register_exception("term_error", self._int_error)
         self.register_exception("hup_error", self._hup_error)
-        self._log_config()
+        self.CC.log_config()
         self._init_network_sockets()
         self.register_func("disable_rrd_cached", self.disable_rrd_cached)
         self.register_func("enable_rrd_cached", self.enable_rrd_cached)
@@ -176,15 +176,6 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
         # init host and perfdata structs
         CollectdHostInfo.setup(self.fc)
         self.__hosts = {}
-
-    def _log_config(self):
-        self.log("Config info:")
-        for line, log_level in global_config.get_log(clear=True):
-            self.log(" - clf: [{:d}] {}".format(log_level, line))
-        conf_info = global_config.get_config_info()
-        self.log("Found {:d} valid global config-lines:".format(len(conf_info)))
-        for conf in conf_info:
-            self.log("Config : {}".format(conf))
 
     def _int_error(self, err_cause):
         if not self.__snmp_running:
@@ -577,6 +568,7 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
                 "LOG_DESTINATION": global_config["LOG_DESTINATION"],
             },
             {
+                "process_pre_start": self._snmp_process_pre_start,
                 "process_start": self._snmp_process_start,
                 "process_exit": self._snmp_process_exit,
                 "all_stopped": self._snmp_all_stopped,
@@ -584,8 +576,12 @@ class server_process(GetRouteToDevicesMixin, ICSWBasePool, RSyncMixin, SendToRem
             }
         )
         _snmp_sock = self.spc.create_ipc_socket(self.zmq_context, IPC_SOCK_SNMP)
-        self.register_poller(_snmp_sock, zmq.POLLIN, self.spc.handle_with_socket)  # @UndefinedVariable
+        self.register_poller(_snmp_sock, zmq.POLLIN, self.spc.handle_with_socket)
         self.spc.check()
+
+    def _snmp_process_pre_start(self, snmp_proc):
+        from initat.cluster.backbone import db_tools
+        db_tools.close_connection()
 
     def _snmp_process_start(self, **kwargs):
         self.CC.process_added(kwargs["process_name"], kwargs["pid"])

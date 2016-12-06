@@ -284,6 +284,23 @@ class LicenseFileReader(object):
                 logger.debug("Invalid license in license file: {}".format(lic_id))
         return ret
 
+    def get_valid_parameters(self):
+        ret = []
+        for para_xml in [
+            _el_xml for _el_xml in self.content_xml.xpath(
+                "//icsw:package-parameter",
+                namespaces=ICSW_XML_NS_MAP
+            ) if self._get_state_from_license_xml(_el_xml).is_valid()
+        ]:
+            if para_xml is not None:
+                # print("*", etree.tostring(para_xml))
+                ret.append(
+                    int(
+                        para_xml.findtext(".//icsw:value", namespaces=ICSW_XML_NS_MAP)
+                    )
+                )
+        return ret
+
     @classmethod
     def _merge_maps(cls, license_readers):
         # merge all maps for the given license readers
@@ -364,7 +381,6 @@ class LicenseFileReader(object):
             fp_node = cluster_xml.xpath(fp_q, namespaces=ICSW_XML_NS_MAP)
 
             if len(fp_node):
-
                 return {
                     "info": "present",
                     "valid": fp_node[0] == hfp_tools.get_server_fp(serialize=True)

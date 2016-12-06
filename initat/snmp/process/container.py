@@ -29,7 +29,7 @@ from .config import DEFAULT_RETURN_NAME
 from .process import SNMPProcess
 
 __all__ = [
-    "SNMPProcessContainer",
+    b"SNMPProcessContainer",
 ]
 
 
@@ -139,22 +139,10 @@ class SNMPProcessContainer(object):
                     _npid += 1
                 self.__used_proc_ids.add(_npid)
                 cur_info = SNMPProcessInfo(_npid, new_idx, self.conf_dict)
+                if "process_pre_start" in self.__event_dict:
+                    self.__event_dict["process_pre_start"](cur_info)
                 cur_info.proc.main_queue_name = self.mq_name
                 cur_info.proc.start()
-                # cur_struct = {
-                #    "npid": _npid,
-                #    "name": "snmp_{:d}".format(new_idx),
-                #    "msi_name": "snmp_{:d}".format(_npid),
-                #    "proc": SNMPProcess("snmp_{:d}".format(new_idx), self.conf_dict, ignore_signals=True),
-                #    "running": False,
-                #    "stopping": False,
-                #    "stopped": False,
-                #    "jobs": 0,
-                #    "pending": 0,
-                #    "done": 0,
-                # }
-                # cur_struct["proc"].main_queue_name = self.mq_name
-                # cur_struct["proc"].start()
                 self.__snmp_dict[new_idx] = cur_info   # cur_struct
 
     def get_free_snmp_id(self):
