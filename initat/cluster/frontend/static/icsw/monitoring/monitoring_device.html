@@ -1,103 +1,102 @@
 
 <script type="text/ng-template" id="icsw.monitoring.device">
-
-    <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching data from Server ...</div>
-    <h3>Devices ({{ struct.devices.length }} Entries)</h3>
-    <table
-        st-table="entries_displayed"
-        st-safe-src="struct.devices"
-        class="table table-condensed table-hover"
-        style="width:auto;"
-        ng-show="struct.devices.length"
-    >
-        <thead>
-            <tr>
-                <td colspan="99">
-                    <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
-                </td>
-            </tr>
-            <tr>
-                <td colspan="99">
-                    <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
-                         possible-items-by-page="10,20,50,100,200,500,1000"></div>
-                </td>
-            </tr>
-            <tr>
-                <th st-sort="full_name" st-sort-default="true">Name</th>
-                <th st-sort="monitor_checks">Checks</th>
-                <th st-sort="mon_resolve_name">Resolve</th>
-                <th st-sort="mon_device_templ">Template</th>
-                <th st-sort="act_partition_table">Disk layout</th>
-                <th st-sort="mon_ext_host">Image</th>
-                <th st-sort="enable_perfdata">PerfData</th>
-                <th st-sort="flap_detection_enabled">Flap</th>
-                <th st-sort="automap_root_nagvis">NVroot</th>
-                <th st-sort="nagvis_parent">NVparent</th>
-                <th st-sort="monitor_server">MonServer</th>
-                <th colspan="1" class="text-center">Action</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr ng-repeat="obj in entries_displayed">
-                <td>{{ obj.full_name }}</td>
-                <td class="text-center">
-                    <span ng-bind-html="obj.monitor_checks | yesno4"></span>
-                </td>
-                <td class="text-center">
-                    <span ng-bind-html="obj.mon_resolve_name | yesno3"></span>
-                </td>
-                <td class="text-center">
-                    <span ng-show="obj.mon_device_templ">
-                        {{ struct.base_tree.mon_device_templ_lut[obj.mon_device_templ].name }}
-                    </span>
-                    <span ng-show="!obj.mon_device_templ">
-                        ---
-                    </span>
-                </td>
-                <td class="text-center">{{ obj.act_partition_table | yesno1 }}</td>
-                <td class="text-center">
-                    <span ng-show="obj.mon_ext_host">
-                        <img
-                            ng-src="{{ struct.base_tree.mon_ext_host_lut[obj.mon_ext_host].data_image }}"
-                            width="24px"
-                            height="24px"
-                        ></img>
-                    </span>
-                    <span ng-show="!obj.mon_ext_host">
-                        ---
-                    </span>
-                </td>
-                <td class="text-center">
-                    <span ng-bind-html="obj.enable_perfdata | yesno3"></span>
-                </td>
-                <td class="text-center">
-                    <span ng-bind-html="obj.flap_detection_enabled | yesno3"></span>
-                </td>
-                <td class="text-center">
-                    <span ng-bind-html="obj.automap_root_nagvis | yesno3"></span>
-                </td>
-                <td class="text-center">
-                    <span ng-show="obj.nagvis_parent">
-                        {{ struct.device_tree.all_lut[obj.nagvis_parent].full_name }}
-                    </span>
-                    <span ng-show="!obj.nagvis_parent">
-                        ---
-                    </span>
-                </td>
-                <td class="text-center">
-                    <span ng-show="obj.monitor_server">
-                        {{ struct.device_tree.all_lut[obj.monitor_server].full_name }}
-                    </span>
-                    <span ng-show="!obj.monitor_server">
-                        Master
-                    </span>
-                </td>
-                <td>
-                    <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" value="modify"/>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+    <div class="container-fluid">
+        <div uib-alert class="alert-warning" ng-show="struct.loading">Fetching Data from Server ...</div>
+        <h3>Devices ({{ struct.devices.length }} Entries)</h3>
+        <table
+            st-table="entries_displayed"
+            st-safe-src="struct.devices"
+            class="table table-condensed table-hover"
+            style="width:auto;"
+            ng-show="struct.devices.length"
+        >
+            <thead>
+                <tr>
+                    <td colspan="99">
+                        <div class="pull-left">
+                            <input st-search="" class="form-control" placeholder="filter ..." type="text"/>
+                        </div>
+                        <div icsw-tools-pagination st-items-by-page="10" st-displayed-pages="11"
+                             possible-items-by-page="10,20,50,100,200,500,1000" class="pull-left" style="margin-top:4px;"></div>
+                    </td>
+                </tr>
+                <tr>
+                    <th st-sort="full_name" st-sort-default="true">Name</th>
+                    <th st-sort="monitor_checks">Checks</th>
+                    <th st-sort="mon_resolve_name">Resolve</th>
+                    <th st-sort="mon_device_templ">Template</th>
+                    <th st-sort="act_partition_table">Disk layout</th>
+                    <th st-sort="mon_ext_host">Image</th>
+                    <th st-sort="enable_perfdata">PerfData</th>
+                    <th st-sort="flap_detection_enabled">Flap</th>
+                    <th st-sort="automap_root_nagvis">NVroot</th>
+                    <th st-sort="nagvis_parent">NVparent</th>
+                    <th st-sort="monitor_server">MonServer</th>
+                    <th colspan="1" class="text-center">Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr ng-repeat="obj in entries_displayed">
+                    <td>{{ obj.full_name }}</td>
+                    <td class="text-center">
+                        <span ng-bind-html="obj.monitor_checks | yesno4"></span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-bind-html="obj.mon_resolve_name | yesno3"></span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-show="obj.mon_device_templ">
+                            {{ struct.base_tree.mon_device_templ_lut[obj.mon_device_templ].name }}
+                        </span>
+                        <span ng-show="!obj.mon_device_templ">
+                            ---
+                        </span>
+                    </td>
+                    <td class="text-center">{{ obj.act_partition_table | yesno1 }}</td>
+                    <td class="text-center">
+                        <span ng-show="obj.mon_ext_host">
+                            <img
+                                ng-src="{{ struct.base_tree.mon_ext_host_lut[obj.mon_ext_host].data_image }}"
+                                width="24px"
+                                height="24px"
+                            ></img>
+                        </span>
+                        <span ng-show="!obj.mon_ext_host">
+                            ---
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-bind-html="obj.enable_perfdata | yesno3"></span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-bind-html="obj.flap_detection_enabled | yesno3"></span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-bind-html="obj.automap_root_nagvis | yesno3"></span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-show="obj.nagvis_parent">
+                            {{ struct.device_tree.all_lut[obj.nagvis_parent].full_name }}
+                        </span>
+                        <span ng-show="!obj.nagvis_parent">
+                            ---
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <span ng-show="obj.monitor_server">
+                            {{ struct.device_tree.all_lut[obj.monitor_server].full_name }}
+                        </span>
+                        <span ng-show="!obj.monitor_server">
+                            Master
+                        </span>
+                    </td>
+                    <td>
+                        <icsw-tools-button type="modify" size="xs" ng-click="edit($event, obj)" value="modify"/>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
 </script>
 
 
