@@ -551,8 +551,8 @@ angular.module(
                     $scope.struct.mode = mode
                     $scope.struct.info_str = {
                         "gen": "Configurations",
-                        "mon": "Check commands",
-                        "srv": "System services ",
+                        "mon": "Check Commands",
+                        "srv": "System Services ",
                     }[$scope.struct.mode]
                     $q.all(
                         [
@@ -700,8 +700,11 @@ angular.module(
             render: () ->
                 _conf_headers = []
                 _conf_infos = []
+                _conf_grouping = []
                 _last_idx = 0
                 _mark_header = false
+                create_groupinfo = false
+                colspan = 1
                 for row_el in @props.configHelper.active_rows
                     if @props.configHelper.mode in ["gen", "srv"]
                         _conf = row_el
@@ -711,9 +714,20 @@ angular.module(
                         _focus = _conf.idx == @props.focusElement
                     else
                         _focus = false
+
                     if _conf.idx != _last_idx
                         _last_idx = _conf.idx
                         _mark_header = !_mark_header
+                        colspan = if (@props.configHelper.mode !in ["gen", "srv"] &&
+                            _conf.$$_dc_num_mcs? &&
+                            _conf.$$_dc_num_mcs > 1) then _conf.$$_dc_num_mcs
+                            else 1
+                        if colspan > 1
+                            create_groupinfo = true
+                        groupstart = true
+                    else
+                        groupstart = false
+
                     _conf_headers.push(
                         rot_header(
                             {
@@ -724,21 +738,33 @@ angular.module(
                             }
                         )
                     )
-                    _conf_infos.push(
-                        th(
-                            {
-                                key: "info-#{row_el.idx}"
-                                className: ["text-center", if _mark_header then "bg-success" else "bg-warning"].join(" ")
-                            }
-                            span(
+                    if groupstart
+                        _conf_grouping.push(
+                            th(
                                 {
-                                    key: "span"
-                                    className: "label label-primary"
+                                    key: "grp-#{row_el.idx}"
+                                    colSpan: colspan
+                                    className: "group-indicator"
                                 }
-                                _conf.$$config_type_str
                             )
                         )
-                    )
+                        _conf_infos.push(
+                            th(
+                                {
+                                    key: "info-#{row_el.idx}"
+                                    colSpan: colspan
+                                    # className: ["text-center", if _mark_header then "bg-success" else "bg-warning"].join(" ")
+                                    className: "text-center"
+                                }
+                                span(
+                                    {
+                                        key: "span"
+                                        className: "label label-primary"
+                                    }
+                                    _conf.$$config_type_str
+                                )
+                            )
+                        )
                 if @props.configHelper.any_pending
                     modify_button = button(
                         {
@@ -768,6 +794,16 @@ angular.module(
                 else
                     modify_button = null
                     cancel_button = null
+                if create_groupinfo
+                    groupindicator = tr(
+                        {
+                        key: "groupindicator"
+                        }
+                        th({key: "g0", colSpan: 3})
+                        _conf_grouping
+                    )
+                else
+                    groupindicator = null
                 return thead(
                     {key: "head"}
                     tr(
@@ -782,11 +818,12 @@ angular.module(
                         )
                         _conf_headers
                     )
+                    groupindicator
                     tr(
                         {key: "info"}
                         th({key: "t0"}, "Type")
-                        td({key: "t1"}, "Local")
-                        td({key: "t2"}, "Meta")
+                        th({key: "t1"}, "Local")
+                        th({key: "t2"}, "Meta")
                         _conf_infos
                     )
                 )
@@ -1003,7 +1040,7 @@ angular.module(
                 {
                     key: "top"
                     className: "table rotateheaders table-condensed table-hover colhover"
-                    style: {width: "auto", overflowX: "auto", display: "block"}
+                    style: {width: "auto", overflowX: "auto", display: "block", borderCollapse: "separate"}
                 }
                 head_factory(
                     {

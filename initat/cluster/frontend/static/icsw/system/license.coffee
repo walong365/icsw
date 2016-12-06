@@ -371,7 +371,7 @@ angular.module(
                 base_setting.show_settings = false
                 base_setting.display_tree_switch = false
                 base_setting.auto_select_keys = [
-                    "icsw.ova"
+                    "compound.icsw.ova"
                 ]
                 $scope.struct.local_setting = local_setting
                 $scope.struct.base_setting = base_setting

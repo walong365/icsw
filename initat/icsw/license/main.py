@@ -78,12 +78,18 @@ def ova_init(opts):
 
 
 def show_license_info(opts):
-    def len_info(type_str, in_f):
+    def len_info(type_str, in_f, show_val=False):
         if len(in_f):
-            return "{} ({})".format(
-                logging_tools.get_plural(type_str, len(in_f)),
-                ", ".join(sorted(list(in_f))),
-            )
+            if show_val:
+                return "{} ({})".format(
+                    logging_tools.get_plural(type_str, len(in_f)),
+                    ", ".join(["{}={:d}".format(_key, in_f[_key]["value"]) for _key in sorted(in_f.keys())]),
+                )
+            else:
+                return "{} ({})".format(
+                    logging_tools.get_plural(type_str, len(in_f)),
+                    ", ".join(sorted(list(in_f))),
+                )
         else:
             return "no {}".format(type_str)
 
@@ -104,21 +110,20 @@ def show_license_info(opts):
         )
         for _cl_name in _cl_info:
             _cl_struct = info.get("lic_info", {})[_cl_name]
-            _sets = {"lics": set(), "paras": set()}
+            _sets = {"lics": {}, "paras": {}}
             for _skey, _dkey in [("licenses", "lics"), ("parameters", "paras")]:
                 # import pprint
                 # pprint.pprint(_info)
                 for _entry in _cl_struct.get(_skey, []):
                     # print _entry
-                    _sets[_dkey].add(_entry["id"])
-
+                    _sets[_dkey][_entry["id"]] = _entry
             print(
                 "Cluster {}: fingerprint is {} ({}), {}, {}".format(
                     _cl_name,
                     "valid" if _cl_struct["fp_info"]["valid"] else "invalid",
                     _cl_struct["fp_info"]["info"],
                     len_info("License", _sets["lics"]),
-                    len_info("Parameter", _sets["paras"]),
+                    len_info("Parameter", _sets["paras"], True),
                 )
             )
 

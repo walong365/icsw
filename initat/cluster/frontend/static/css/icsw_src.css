@@ -61,7 +61,7 @@ th.icsw-config-rotate {
 
 th.icsw-config-rotate > div {
     transform:
-        translate(18px, -9px)
+        translate(12px, -4px)
         rotate(-40deg);
     width: 30px;
     font-size: 12px;
@@ -69,7 +69,20 @@ th.icsw-config-rotate > div {
 
 th.icsw-config-rotate > div > span {
   border-bottom: 1px solid #ccc;
-  padding: 5px 10px;
+  padding: 5px;
+}
+table.rotateheaders th,
+table.rotateheaders > thead > tr > th{
+    border: none;
+}
+.group-indicator,
+table.rotateheaders > thead > tr > th.group-indicator {
+    border: 2px solid #aaaaaa;
+    border-top: none;
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+    padding: 0;
+    height: 8px;
 }
 /*
 th.icsw-config-rotate {

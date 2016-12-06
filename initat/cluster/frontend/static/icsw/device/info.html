@@ -98,8 +98,8 @@
 
 <script type="text/ng-template" id="icsw.device.info.overview">
     <div class="container-fluid">
-        <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Fetching data from server ...</div>
-        <div uib-alert class="alert-warning" ng-if="struct.data_valid && struct.devices.length == 0">No devices selected</div>
+        <div uib-alert class="alert-warning" ng-if="!struct.data_valid">Fetching Data from Server ...</div>
+        <div uib-alert class="alert-warning" ng-if="struct.data_valid && struct.devices.length == 0">No Devices selected</div>
         <uib-tabset ng-if="struct.data_valid && struct.slist.length > 1" active="struct.active_tab">
             <uib-tab ng-repeat="entry in struct.slist">
                 <uib-tab-heading>

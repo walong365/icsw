@@ -124,7 +124,7 @@ class FileCreator(object):
                             "--step",
                             "{:d}".format(_step),
                         ] + _ds_list + _rra_list
-                        rrdtool.create(*_args)
+                        rrdtool.create(*[str(_val) for _val in _args])
                     except rrdtool.error:
                         self.log(
                             "error creating file {}: {}".format(
