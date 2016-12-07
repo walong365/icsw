@@ -128,7 +128,79 @@ class ArgusProcess(object):
         self.popen.kill()
 
 
-class compress_job(object):
+FC_KEYS = {"fcp_input", "fcp_output", "rx_", "tx_"}
+
+
+class FCEntry(object):
+    def __init__(self, module, name, base_path):
+        self.module = module
+        self.name = name
+        self.base_path = base_path
+        self.__stat_dir = os.path.join(self.base_path, "statistics")
+        self.log("init")
+        self.init_stat_keys()
+        self._values = []
+
+    def log(self, what, log_level=logging_tools.LOG_LEVEL_OK):
+        self.module.log("[FC {}] {}".format(self.name, what), log_level)
+
+    def init_stat_keys(self):
+        self.keys = []
+        self.key_units = {}
+        self.key_mult = {}
+        for entry in os.listdir(self.__stat_dir):
+            if any([entry.startswith(_fck) for _fck in FC_KEYS]):
+                self.keys.append(entry)
+                if entry.lower().count("megaby"):
+                    self.key_units[entry] = "Byte/s"
+                    self.key_mult[entry] = 1024
+                else:
+                    self.key_units[entry] = "1/s"
+                    self.key_mult[entry] = 1000
+            self.__registered = False
+        self.log(
+            "{} found: {}".format(
+                logging_tools.get_plural("statistic key", len(self.keys)),
+                ", ".join(sorted(self.keys))
+            )
+        )
+
+    def parse_stats(self, cur_time):
+        _res = {}
+        for entry in self.keys:
+            _content = file(os.path.join(self.__stat_dir, entry), "r").read().split()
+            if _content.startswith("0x"):
+                _value = int(_content, 16)
+            else:
+                _value = int(_content)
+            if entry.lower().count("megaby"):
+                _value *= 1024 * 1024
+            _res[entry] = _value
+        self._values.append({"when": cur_time, "data": _res})
+        if len(self._values) > 5:
+            self._values.pop(0)
+
+    def update(self, cur_time, mvect):
+        # parse values
+        self.parse_stats(cur_time)
+        if len(self._values) > 1:
+            # calc speed
+            _prev = self.values[-2]
+            _current = self.values[-1]
+            time_diff = abs(_current["when"] - _prev["when"])
+            values = {key: (_current["data"][key] - _prev["data"][key]) / time_diff for key in self.keys}
+            values = {key: value if value > 0 else 0 for key, value in values.iteritems()}
+            _pf = "net.fc.{}".format(self.name)
+            if not self.__registered:
+                # register values
+                for key in self.keys:
+                    mvect.register_entry("{}.{}".format(_pf, key), 0, "{} on $3".format(key), self.key_units[key], self.key_mult[key])
+            else:
+                for key in self.keys:
+                    mvect["{}.{}".format(_pf, key)] = values[key]
+
+
+class NetCompressJob(object):
     def __init__(self, proc, cmd, f_name):
         self.f_name = f_name
         self.command = "{} {}".format(cmd, os.path.join(ARGUS_TARGET, f_name))
@@ -173,6 +245,9 @@ class _general(hm_classes.hm_module):
         else:
             self.log("no ethtool found", logging_tools.LOG_LEVEL_WARN)
         self.ethtool_path = ethtool_path
+
+        # infiniband checks
+
         s_path = []
         if os.path.isdir("/opt/ofed"):
             s_path = s_path + ["/usr/ofed/sbin", "/opt/ofed/bin"]
@@ -182,6 +257,34 @@ class _general(hm_classes.hm_module):
         else:
             self.log("no ibv_devinfo found", logging_tools.LOG_LEVEL_WARN)
         self.ibv_devinfo_path = ibv_devinfo_path
+
+        # fibre channel tests
+        self.fc_devices = []
+        systool_path = process_tools.find_file("systool")
+        if systool_path:
+            self.log("found systool at {}".format(systool_path))
+            _fc_stat, _fc_out = commands.getstatusoutput("{} -c fc_host".format(systool_path))
+            if _fc_stat:
+                self.log("found no fc_hosts ({:d}): {}".format(_fc_stat, _fc_out), logging_tools.LOG_LEVEL_WARN)
+            else:
+                self.log("found some fc_hosts:")
+                for _line in _fc_out.split("\n"):
+                    self.log(_line)
+                _basedir = "/sys/class/fc_host"
+                for entry in os.listdir(_basedir):
+                    _full_path = os.path.join(_basedir, entry)
+                    _full_path = os.path.join(_basedir, os.readlink(_full_path))
+                    self.log("found {} at {}".format(entry, _full_path))
+                    _stat_dir = os.path.join(_full_path, "statistics")
+                    if os.path.isdir(_stat_dir):
+                        self.fc_devices.append(FCEntry(self, entry, _full_path))
+                    else:
+                        self.log("not statistics dir found", logging_tools.LOG_LEVEL_ERROR)
+        else:
+            self.log("no systool found", logging_tools.LOG_LEVEL_WARN)
+        self.systool_path = systool_path
+        # iptables
+
         iptables_path = process_tools.find_file("iptables")
         if iptables_path:
             self.log("iptables found at {}".format(iptables_path))
@@ -269,7 +372,7 @@ class _general(hm_classes.hm_module):
                         )
                         [os.unlink(os.path.join(ARGUS_TARGET, _file)) for _file in _to_delete]
                     if _to_compress:
-                        self.__compress_jobs.extend([compress_job(self, self.__bzip2_path, _file) for _file in _to_compress])
+                        self.__compress_jobs.extend([NetCompressJob(self, self.__bzip2_path, _file) for _file in _to_compress])
             except:
                 self.log(
                     "error handling compressed / old files: {}".format(
@@ -340,7 +443,7 @@ class _general(hm_classes.hm_module):
                 self.__argus_interfaces.remove(_entry)
 
     def init_machine_vector(self, mv):
-        self.act_nds = netspeed(self.ethtool_path, self.ibv_devinfo_path)  # self.bonding_devices)
+        self.act_nds = NetSpeed(self.ethtool_path, self.ibv_devinfo_path)  # self.bonding_devices)
         mv.register_entry("net.count.tcp", 0, "number of TCP connections", "1", 1)
         mv.register_entry("net.count.udp", 0, "number of UDP connections", "1", 1)
 
@@ -351,7 +454,7 @@ class _general(hm_classes.hm_module):
             self._net_int(mv)
         except:
             self.log(
-                "error in net_int:",
+                "exception in net_int:",
                 logging_tools.LOG_LEVEL_ERROR
             )
             for log_line in process_tools.exception_info().log_lines:
@@ -471,6 +574,9 @@ class _general(hm_classes.hm_module):
             self._detailed_dict = ns_info
             for del_key in set(self._detailed_dict.keys()) - dn_keys:
                 mvect.unregister_entry("net.detail.{}".format(del_key))
+        # fibrechannel
+        for _fc_entry in self.fc_devices:
+            _fc_entry.update(act_time, mvect)
         nd_dict = self.act_nds.make_speed_dict()
         # pprint.pprint(nd_dict)
         if nd_dict:
@@ -610,7 +716,7 @@ class _general(hm_classes.hm_module):
 ND_HIST_SIZE = 5
 
 
-class net_device(object):
+class NetDevice(object):
     def __init__(self, name, mapping, ethtool_path, ibv_devinfo_path):
         self.name = name
         self.nd_mapping = mapping
@@ -799,7 +905,7 @@ class net_device(object):
         return result
 
 
-class netspeed(object):
+class NetSpeed(object):
     def __init__(self, ethtool_path, ibv_devinfo_path):
         self.ethtool_path = ethtool_path
         self.ibv_devinfo_path = ibv_devinfo_path
@@ -870,7 +976,7 @@ class netspeed(object):
                     self[key].invalidate()
                 for key, value in line_list:
                     if key not in self:
-                        self[key] = net_device(key, self.nd_mapping, self.ethtool_path, self.ibv_devinfo_path)
+                        self[key] = NetDevice(key, self.nd_mapping, self.ethtool_path, self.ibv_devinfo_path)
                     self[key].feed(value)
                     self[key].update()
             self.__a_time = ntime
