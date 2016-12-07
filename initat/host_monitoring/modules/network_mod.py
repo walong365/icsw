@@ -194,7 +194,13 @@ class FCEntry(object):
             if not self.__registered:
                 # register values
                 for key in self.keys:
-                    mvect.register_entry("{}.{}".format(_pf, key), 0, "{} on $3".format(key), self.key_units[key], self.key_mult[key])
+                    mvect.register_entry(
+                        "{}.{}".format(_pf, key),
+                        0,
+                        "{} on $3".format(key.replace("_", " ")),
+                        self.key_units[key],
+                        self.key_mult[key],
+                    )
             else:
                 for key in self.keys:
                     mvect["{}.{}".format(_pf, key)] = values[key]
