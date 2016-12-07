@@ -61,7 +61,7 @@ class Parser(object):
             "--address",
             default="",
             type=str,
-            help="comma-separated list of addresses to remove [%(default)s]",
+            help="comma-separated list of addresses to remove or filter for [%(default)s]",
         )
 
     def _execute(self, opt_ns):

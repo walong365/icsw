@@ -58,17 +58,27 @@ class HRSink(dict):
         if self.opts.port and self.opts.port != _port:
             pass
         else:
-            self.setdefault(value, {}).setdefault(_port, []).append((key, service))
+            self.setdefault(value, {}).setdefault(_port, []).append((key, service, _addr, _port))
 
-    def filter(self):
-        if self.opts.remove_unique:
-            _del = []
+    def filter(self, addr_list):
+        _del = []
+        if addr_list:
+            # filter for address
+            for _uuid, _struct in self.iteritems():
+                _keep = False
+                for _port, _list in _struct.iteritems():
+                    for _tuple in _list:
+                        if _tuple[2] in addr_list:
+                            _keep = True
+                if not _keep:
+                    _del.append(_uuid)
+        elif self.opts.remove_unique:
             for _uuid, _struct in self.iteritems():
                 if len(_struct.keys()) == 1:
                     if len(_struct.values()[0]) == 1:
                         _del.append(_uuid)
-            for _dk in _del:
-                del self[_dk]
+        for _dk in _del:
+            del self[_dk]
 
     def dump(self):
         _keys = sorted(self.keys())
@@ -150,12 +160,13 @@ def main(opts):
     sink = HRSink(opts)
     for _key, _value in store.get_dict().iteritems():
         sink.feed(_key, _value)
-    sink.filter()
+    _addr_list = [_entry.strip().lower() for _entry in opts.address.split(",") if _entry.strip()]
+    sink.filter([])
     _changed = False
     if opts.mode == "dump":
+        sink.filter(_addr_list)
         sink.dump()
     elif opts.mode == "remove":
-        _addr_list = [_entry.strip().lower() for _entry in opts.address.split(",") if _entry.strip()]
         if not _addr_list:
             print("no addresses given to remove")
             sys.exit(-1)

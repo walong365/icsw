@@ -192,6 +192,7 @@ class FCEntry(object):
             values = {key: value if value > 0 else 0 for key, value in values.iteritems()}
             _pf = "net.fc.{}".format(self.name)
             if not self.__registered:
+                self.__registered = True
                 # register values
                 for key in self.keys:
                     mvect.register_entry(

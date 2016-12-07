@@ -612,8 +612,9 @@ angular.module(
             scope.filter_list = [
                 new DefinedFilter("c", "Custom", "")
                 new DefinedFilter("a", "All Services and Hosts", "O:W:C:U:p;U:D:?:M:p;S:H;S:H;ul")
+                new DefinedFilter("hd", "All Down and Problem hosts", "O:W:C:U:p;D:?:M:p;S:H;S:H;ul")
                 new DefinedFilter("um", "All Unmonitored and Pending Hosts", "O:W:C:U:p;M:p;S:H;S:H;ul")
-                new DefinedFilter("upp", "All Hard Problems on Up Hosts", "O:W:C:U:p;U;H;H;l")
+                new DefinedFilter("upp", "All Hard Problems on Up Hosts", "W:C:U:p;U;H;H;l")
             ]
 
             scope.filter_changed = () ->
