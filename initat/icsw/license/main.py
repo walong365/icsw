@@ -52,6 +52,14 @@ def ova_show(opts):
     _sys_c = icswEggCradle.objects.get_system_cradle()
     _sys_c.calc()
     print("System cradle info: {}".format(unicode(_sys_c)))
+    print("")
+    print("Baskets defined: {:d}".format(icswEggBasket.objects.all().count()))
+    _out_list = logging_tools.new_form_list()
+    for _basket in icswEggBasket.objects.all():
+        _out_list.append(_basket.get_info_line())
+    print(unicode(_out_list))
+    print("")
+    print("Consumers defined: {:d}".format(_sys_c.icsweggconsumer_set.all().count()))
     _out_list = logging_tools.new_form_list()
     for _cons in _sys_c.icsweggconsumer_set.all():
         _out_list.append(_cons.get_info_line())
@@ -70,6 +78,7 @@ def ova_init(opts):
     if not icswEggBasket.objects.num_valid_baskets():
         _sys_b = icswEggBasket.objects.create_dummy_basket(eggs=500)
         print("Added dummy basket '{}'".format(unicode(_sys_b)))
+    License.objects.check_ova_baskets()
     if not icswEggEvaluationDef.objects.get_active_def():
         _dummy_d = icswEggEvaluationDef.objects.create_dummy_def()
         print("Added dummy def '{}'".format(_dummy_d))
@@ -129,7 +138,7 @@ def show_license_info(opts):
 
     # print(License.objects.get_valid_licenses())
     # sys.exit(0)
-    License.objects.check_ova()
+    License.objects.check_ova_baskets()
     if opts.raw:
         _raw_infos = License.objects.raw_license_info
         print("Raw License info, {}:".format(logging_tools.get_plural("license file", len(_raw_infos))))

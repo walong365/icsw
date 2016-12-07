@@ -235,7 +235,11 @@ class _LicenseManager(models.Manager):
         res = set()
         for _struct in merged_maps.itervalues():
             _idx = _struct["idx"]
+            # pprint.pprint(_struct)
             for _val in _struct["reader"].get_valid_parameters():
+                # import pprint
+                # pprint.pprint(_struct)
+                # print(_val)
                 res.add((_idx, _val))
         return res
 
@@ -281,20 +285,40 @@ class _LicenseManager(models.Manager):
 
         return readers
 
-    def check_ova(self):
-        import pprint
+    def check_ova_baskets(self):
         from initat.cluster.backbone.models import device_variable
         # cluster id
         c_id = device_variable.objects.get_cluster_id()
         if c_id:
-            valid_params = self.get_valid_parameters()
+            valid_params = dict(self.get_valid_parameters())
+            _present_lics = set(valid_params.keys())
             # read all baskets
-            # for _basket in icswEggBasket.objects.all():
-
-            print("C=", c_id, valid_params)
-            # check all installed baskets against the licenses
-            # ToDo: return valid license parameters
-            # valid_packs = self.get_valid_licenses()
+            bk_dict = {
+                _basket.license_id: _basket for _basket in icswEggBasket.objects.exclude(Q(license=None))
+            }
+            # delete baskets where the license has vanished
+            for _del_bk in set(bk_dict.keys()) - _present_lics:
+                # print("del", _del_bk)
+                _basket = bk_dict[_del_bk]
+                _basket.is_valid = False
+                _basket.save()
+            # update matching pks
+            for _ok_bk in set(bk_dict.keys()) & _present_lics:
+                _basket = bk_dict[_ok_bk]
+                _basket.update(valid_params[_ok_bk])
+                # if _basket.eggs != valid_params[_ok_bk]:
+                #     _basket.eggs = valid_params[_ok_bk]
+                #    _basket.save()
+            # new pks
+            for _new_bk in _present_lics - set(bk_dict.keys()):
+                _data = valid_params[_new_bk]
+                # print("add", _data)
+                new_basket = icswEggBasket.objects.create_basket(
+                    eggs=_data[0],
+                    valid_from=cluster_timezone.localize(_data[1]),
+                    valid_to=cluster_timezone.localize(_data[2]),
+                    license=License.objects.get(Q(pk=_new_bk)),
+                )
 
 
 ########################################
@@ -324,7 +348,7 @@ class License(models.Model):
 @receiver(signals.post_delete, sender=License)
 def license_post_save_delete(sender, **kwargs):
     _LicenseManager._license_readers_cache.clear()
-    License.objects.check_ova()
+    License.objects.check_ova_baskets()
 
 
 @receiver(signals.post_save, sender=License)
@@ -423,18 +447,26 @@ class icswEggBasketManager(models.Manager):
     def num_valid_baskets(self):
         return self.get_valid_baskets().count()
 
-    def create_dummy_basket(self, eggs=10, validity=20):
-        _now = django.utils.timezone.now()
+    def create_basket(self, **kwargs):
         _sys_c = icswEggCradle.objects.get(Q(system_cradle=True))
         _new_b = self.create(
             egg_cradle=_sys_c,
-            dummy=True,
+            dummy=kwargs.pop("dummy", False),
             is_valid=True,
+            **kwargs
+        )
+        return _new_b
+
+    def create_dummy_basket(self, eggs=10, validity=1):
+        # validity is in years
+        _now = django.utils.timezone.now()
+        _sys_c = icswEggCradle.objects.get(Q(system_cradle=True))
+        return self.create_basket(
+            dummy=True,
             valid_from=_now - datetime.timedelta(days=1),
             valid_to=_now.replace(year=_now.year + validity),
             eggs=eggs,
         )
-        return _new_b
 
 
 class icswEggBasket(models.Model):
@@ -457,11 +489,37 @@ class icswEggBasket(models.Model):
     # creation date
     date = models.DateTimeField(auto_now_add=True)
 
+    def update(self, data):
+        _eggs, _from, _to = data
+        self.eggs = _eggs
+        self.valid_from = cluster_timezone.localize(_from)
+        self.valid_to = cluster_timezone.localize(_to)
+        self.save()
+
     class Meta:
         abstract = False
 
+    def get_info_line(self):
+        return [
+            logging_tools.form_entry(self.dummy, header="Dummy"),
+            logging_tools.form_entry(unicode(self.valid_from), header="valid from"),
+            logging_tools.form_entry(unicode(self.valid_to), header="valdi to"),
+            logging_tools.form_entry_center(self.is_valid, header="valid"),
+            logging_tools.form_entry_right(self.eggs, header="eggs"),
+        ]
+
     def __unicode__(self):
         return "EggBasket (valid={})".format(self.is_valid)
+
+
+@receiver(signals.pre_save, sender=icswEggBasket)
+def icsw_egg_basket_pre_save(sender, **kwargs):
+    if "instance" in kwargs:
+        _inst = kwargs["instance"]
+        if not _inst.license_id and not _inst.dummy:
+            raise ValidationError("EggBasket without license needs the dummy flag set")
+        _now = django.utils.timezone.now()
+        _inst.valid = _inst.valid_from <= _now and _now <= _inst.valid_to
 
 
 @receiver(signals.post_save, sender=icswEggBasket)
@@ -549,7 +607,7 @@ class icswEggEvaluationDef(models.Model):
                     valid=False,
                 )
             else:
-                print(_entry["action"].content_type)
+                # print(_entry["action"].content_type)
                 if _cur_consum.egg_evaluation_def.idx != self.idx:
                     _cur_consum.valid = False
             _cur_consum.valid = False

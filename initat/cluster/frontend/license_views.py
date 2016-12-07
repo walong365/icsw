@@ -90,7 +90,7 @@ class get_license_packages(ListAPIView):
     # no login required for this since we want to show it in the login page
     @rest_logging
     def list(self, request, *args, **kwargs):
-        License.objects.check_ova()
+        License.objects.check_ova_baskets()
         return Response(License.objects.get_license_packages())
 
 

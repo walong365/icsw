@@ -285,6 +285,11 @@ class LicenseFileReader(object):
         return ret
 
     def get_valid_parameters(self):
+        """
+        :return:
+         Returns all package-parameters (==ova) which are currently
+         valid as list (num, from_date, to_date)
+        """
         ret = []
         for para_xml in [
             _el_xml for _el_xml in self.content_xml.xpath(
@@ -294,9 +299,21 @@ class LicenseFileReader(object):
         ]:
             if para_xml is not None:
                 # print("*", etree.tostring(para_xml))
+                _from = datetime.datetime.strptime(
+                    para_xml.findtext(".//icsw:valid-from", namespaces=ICSW_XML_NS_MAP),
+                    "%Y-%m-%d"
+                )
+                _to = datetime.datetime.strptime(
+                    para_xml.findtext(".//icsw:valid-to", namespaces=ICSW_XML_NS_MAP),
+                    "%Y-%m-%d"
+                )
                 ret.append(
-                    int(
-                        para_xml.findtext(".//icsw:value", namespaces=ICSW_XML_NS_MAP)
+                    (
+                        int(
+                            para_xml.findtext(".//icsw:value", namespaces=ICSW_XML_NS_MAP)
+                        ),
+                        _from,
+                        _to,
                     )
                 )
         return ret
