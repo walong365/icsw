@@ -251,6 +251,8 @@ install: install_webcontent
 	rm -rf ${DESTDIR}/${PYTHON_SITE}/initat/host_monitoring/modules/deprecated
 	# remove pyc
 	find ${DESTDIR}/${PYTHON_SITE} -iname "*.pyc" -exec rm {} \;
+	# remove test_settings.py
+	rm -f ${DESTDIR}/${PYTHON_SITE}/initat/cluster/test_settings.py
 	# create version cstore
 	./tools/create_version_file.py --version ${VERSION} --release ${RELEASE} --target ${DESTDIR}/${ICSW_ETC}/cstores.d/icsw.sysversion_config.xml ; \
 
