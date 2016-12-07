@@ -338,11 +338,7 @@ class Hardware(object):
         if partinfo_tree is not None:
             self._process_partinfo(partinfo_tree)
         if xrandr_dump:
-            try:
-                self._process_xrandr(xrandr_dump)
-            except Exception:
-                # parse error
-                pass
+            self._process_xrandr(xrandr_dump)
 
     def _process_lsblk(self, lsblk_dump):
         self._lsblk_dump = lsblk_dump
@@ -379,7 +375,7 @@ class Hardware(object):
 
     def _process_lshw(self, lshw_dump):
         for sub_tree in lshw_dump.xpath(
-            "//node[@id='cpu' and @class='processor']"
+            "//node[starts-with(@id, 'cpu') and @class='processor']"
         ):
             self.cpus.append(HardwareCPU(sub_tree))
 
@@ -566,7 +562,7 @@ class Hardware(object):
                     else:
                         res[key] = [l for l in lines if l]
                 if 'EDID' in res:
-                    res['EDID'] = str.decode(''.join(res['EDID']), 'hex')
+                    res['EDID'] = unicode.decode(''.join(res['EDID']), 'hex')
                 return res
 
         virt_screen_re = re.compile(

@@ -31,19 +31,74 @@ from lxml import etree
 
 import pickle
 
+
+ASSET_MANAGEMENT_TEST_LOCATION = "backbone/tools/tests/asset_management_tests/data/asset_management_test_data"
+
+
+class ResultObject(object):
+    def __init__(self, identifier, ignore_tests, result_dict):
+        self.identifier = identifier
+        self.ignore_tests = ignore_tests
+        self.result_dict = result_dict
+
+
 class Command(BaseCommand):
     help = "Create new test data entry to be used by asset management tests"
+    ignorable_properties = ["cpus", "memory_modules", "gpus", "displays", "network_devices"]
 
-    def add_arguments(selfself, parser):
-        parser.add_argument('ip', type=str, help="ip/hostname of device to scan")
-        parser.add_argument('identifier', type=str, help="identifier string for this entry")
+    def add_arguments(self, parser):
+        parser.add_argument('--ip',
+                            action="store",
+                            dest="ip",
+                            type=str,
+                            help="ip/hostname of device to scan")
+        parser.add_argument('--identifier',
+                            action="store",
+                            dest="identifier",
+                            type=str,
+                            help="Identifier string for this entry")
+        parser.add_argument('--list',
+                            action='store_true',
+                            dest="list",
+                            default=False,
+                            help="List stored result objects")
+        parser.add_argument('--ignore-test',
+                            action='append',
+                            default=[],
+                            dest='ignore_tests',
+                            help="Ignore testing for this entry and property. Available properties [{}]".format(
+                                ", ".join(self.ignorable_properties)))
+        parser.add_argument('--delete',
+                            action='store',
+                            type=int,
+                            default=None,
+                            dest='delete_index',
+                            help="Delete entry with this index (see --list)")
 
     def handle(self, **options):
+        if options['delete_index'] is not None:
+            self.handle_delete(options['delete_index'])
+            return
+        if options['list']:
+            self.handle_list()
+            return
+
+        for _property in options['ignore_tests']:
+            if _property not in self.ignorable_properties:
+                print("Invalid property: {}".format(_property))
+                return
+
+        if options['ip'] is None:
+            print("IP/Hostname missing")
+            return
+        if options['identifier'] is None:
+            print("Identifier for this entry missing")
+            return
+
         hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
         conn_str = "tcp://{}:{:d}".format(options['ip'], hm_port)
 
         result_dict = {}
-        valid = True
         for asset_type, hm_command in ASSETTYPE_HM_COMMAND_MAP.items():
             result_dict[asset_type] = None
 
@@ -53,29 +108,62 @@ class Command(BaseCommand):
             result = new_con.loop()
             if result:
                 result = result[0]
-                (status_string, server_result_code) = result.get_result()
+                if result:
+                    (status_string, server_result_code) = result.get_result()
 
-                if server_result_code == server_command.SRV_REPLY_STATE_OK:
-                    result_dict[asset_type] = etree.tostring(result.tree)
-                else:
-                    valid = False
-            else:
-                valid = False
+                    if server_result_code == server_command.SRV_REPLY_STATE_OK:
+                        result_dict[asset_type] = etree.tostring(result.tree)
 
+        valid = all([result_dict[asset_type] is not None for asset_type in ASSETTYPE_HM_COMMAND_MAP])
         if valid:
             try:
-                f = open("backbone/tools/tests/asset_management_tests/data/asset_management_test_data", "rb")
+                f = open(ASSET_MANAGEMENT_TEST_LOCATION, "rb")
                 data = pickle.load(f)
                 f.close()
             except IOError:
                 data = []
 
-            data.append((options['identifier'], result_dict))
+            data.append(ResultObject(options['identifier'], options['ignore_tests'], result_dict))
 
-            f = open("backbone/tools/tests/asset_management_tests/data/asset_management_test_data", "wb")
+            f = open(ASSET_MANAGEMENT_TEST_LOCATION, "wb")
             pickle.dump(data, f)
             f.close()
 
             print("New entry added")
         else:
             print("Failed to generate new entry")
+            missing_types = []
+            for asset_type, result in result_dict.items():
+                if result is None:
+                    missing_types.append(asset_type)
+            print("No hm result for: {}".format(missing_types))
+
+    @staticmethod
+    def handle_list():
+        f = open(ASSET_MANAGEMENT_TEST_LOCATION, "rb")
+        data = pickle.load(f)
+        f.close()
+
+        index = 0
+        print_lines = False
+        for result_obj in data:
+            if print_lines:
+                print("-" * 80)
+            print("Index:\t{}".format(index))
+            print("Identifier:\t{}".format(result_obj.identifier))
+            print("Ignored Tests:\t{}".format(result_obj.ignore_tests))
+            print("HM Results:\t{}".format(len(result_obj.result_dict.items())))
+            print_lines = True
+            index += 1
+
+    @staticmethod
+    def handle_delete(delete_index):
+        f = open(ASSET_MANAGEMENT_TEST_LOCATION, "rb")
+        data = pickle.load(f)
+        f.close()
+
+        del data[delete_index]
+
+        f = open(ASSET_MANAGEMENT_TEST_LOCATION, "wb")
+        pickle.dump(data, f)
+        f.close()

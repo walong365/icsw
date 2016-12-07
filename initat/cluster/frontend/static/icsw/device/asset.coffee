@@ -302,7 +302,7 @@ device_asset_module = angular.module(
             obj["$$" + info_list_name + "_availability_class"] = info_not_available_class
             obj["$$" + info_list_name + "_availability_text"] = info_not_available_text
 
-            if obj[info_list_name + "_status"] > 0
+            if obj[info_list_name + "_status"] > 1
                 obj["$$" + info_list_name + "_availability_class"] = info_available_class
                 obj["$$" + info_list_name + "_availability_text"] = info_available_text
 

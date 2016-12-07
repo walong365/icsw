@@ -1,76 +1,111 @@
 import os
 import pickle
+import sys
+from io import StringIO
 
-from django.test import TestCase
+from unittest import TestCase
 
-from initat.cluster.backbone.models import AssetRun, AssetBatch, AssetType, ScanType, RunStatus, RunResult
+from initat.cluster.backbone.models import AssetRun, AssetBatch, AssetType, ScanType, RunStatus, RunResult, device, \
+    device_group
 
-class DummyDevice(object):
-    def __init__(self):
-        self.name = "DummyDevice"
+from initat.cluster.backbone.management.commands.create_icsw_fixtures import Command as CreateFixturesCommand
 
-    def save(self):
-        pass
 
 class TestAssetManagement(TestCase):
     BASE_PATH = os.path.join(os.path.dirname(__file__), 'data')
     TEST_DATA = pickle.load(open(os.path.join(BASE_PATH, "asset_management_test_data"), "rb"))
+    CHECKABLE_ASSET_BATCH_PROPERTIES = ["cpus", "memory_modules", "gpus", "displays", "network_devices"]
 
     assetbatch_dict = {}
-    assetrun_dict = {}
+
+    @classmethod
+    def setUpClass(cls):
+        standard_stdout = sys.stdout
+        sys.stdout = StringIO()
+        CreateFixturesCommand().handle()
+        sys.stdout = standard_stdout
+
+        cdg_group = device_group(name="cdg", cluster_device_group=True)
+        cdg_group.save()
+
+        dummy_device_group = device_group(name="dummy_device_group", cluster_device_group=False)
+        dummy_device_group.save()
 
     def test_00_asset_type_package(self):
-        for asset_run, asset_batch in self.__assetrun_assetbatch_setup_iterator(AssetType.PACKAGE):
-            self.assertTrue(len(asset_batch.installed_packages.all()) > 0)
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.PACKAGE):
+            self.assertGreater(asset_batch.installed_packages.all().count(), 0, "Failed for {}".format(identifier))
 
     def test_01_asset_type_hardware(self):
-        for asset_run, asset_batch in self.__assetrun_assetbatch_setup_iterator(AssetType.HARDWARE):
-            self.assertTrue(asset_run.assethardwareentry_set.all() > 0)
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.HARDWARE):
+            self.assertGreater(asset_run.assethardwareentry_set.all().count(), 0, "Failed for {}".format(identifier))
 
     def test_02_asset_type_process(self):
-        for asset_run, asset_batch in self.__assetrun_assetbatch_setup_iterator(AssetType.PROCESS):
-            self.assertTrue(asset_run.assetprocessentry_set.all() > 0)
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.PROCESS):
+            self.assertGreater(asset_run.assetprocessentry_set.all().count(), 0, "Failed for {}".format(identifier))
 
     def test_03_asset_type_pending_update(self):
-        for asset_run, asset_batch in self.__assetrun_assetbatch_setup_iterator(AssetType.PENDING_UPDATE):
-            self.assertTrue(asset_batch.pending_updates_status > 0)
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.PENDING_UPDATE):
+            self.assertGreater(asset_batch.pending_updates_status, 0, "Failed for {}".format(identifier))
 
     def test_04_asset_type_dmi(self):
-        for asset_run, asset_batch in self.__assetrun_assetbatch_setup_iterator(AssetType.DMI):
-            self.assertTrue(asset_run.assetdmihead_set.all() > 0)
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.DMI):
+            self.assertGreater(asset_run.assetdmihead_set.all().count(), 0, "Failed for {}".format(identifier))
 
     def test_05_asset_type_pci(self):
-        for asset_run, asset_batch in self.__assetrun_assetbatch_setup_iterator(AssetType.PCI):
-            self.assertTrue(asset_run.assetpcientry_set.all() > 0)
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.PCI):
+            self.assertGreater(asset_run.assetpcientry_set.all().count(), 0, "Failed for {}".format(identifier))
 
     def test_06_asset_type_lshw(self):
-        for asset_run, asset_batch in self.__assetrun_assetbatch_setup_iterator(AssetType.LSHW):
-            self.assertTrue(asset_run.run_type == AssetType.LSHW)
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.LSHW):
+            self.assertTrue(asset_run.run_type == AssetType.LSHW, "Failed for {}".format(identifier))
 
     def test_07_asset_type_partition(self):
-        for asset_run, asset_batch in self.__assetrun_assetbatch_setup_iterator(AssetType.PARTITION):
-            self.assertTrue(asset_run.run_type == AssetType.PARTITION)
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.PARTITION):
+            self.assertTrue(asset_run.run_type == AssetType.PARTITION, "Failed for {}".format(identifier))
 
     def test_08_asset_type_lsblk(self):
-        for asset_run, asset_batch in self.__assetrun_assetbatch_setup_iterator(AssetType.LSBLK):
-            self.assertTrue(asset_run.run_type == AssetType.LSBLK)
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.LSBLK):
+            self.assertTrue(asset_run.run_type == AssetType.LSBLK, "Failed for {}".format(identifier))
 
     def test_09_asset_type_xrandr(self):
-        for asset_run, asset_batch in self.__assetrun_assetbatch_setup_iterator(AssetType.XRANDR):
-            self.assertTrue(asset_run.run_type == AssetType.XRANDR)
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.XRANDR):
+            self.assertTrue(asset_run.run_type == AssetType.XRANDR, "Failed for {}".format(identifier))
 
     def test_10_asset_batch(self):
-        print(AssetBatch.objects.all())
+        for result_obj, asset_batch in self.assetbatch_dict.items():
+            identifier = result_obj.identifier
+
+            asset_batch.generate_assets()
+
+            check_properties = [_property for _property in self.CHECKABLE_ASSET_BATCH_PROPERTIES if
+                                _property not in result_obj.ignore_tests]
+            for _property in check_properties:
+                self.assertGreater(getattr(asset_batch, _property).all().count(), 0,
+                                   "Failed for {} with property {}".format(identifier, _property))
+            for _property in result_obj.ignore_tests:
+                self.assertTrue(getattr(asset_batch, _property).all().count() == 0,
+                                "Failed for {} with property {}".format(identifier, _property))
+
+            self.assertTrue(asset_batch.partition_table is not None, "Failed for {}".format(identifier))
+            self.assertGreater(asset_batch.partition_table.partition_disc_set.all().count(), 0,
+                               "Failed for {}".format(identifier))
 
     def __assetrun_assetbatch_setup_iterator(self, asset_type):
-        for identifier, result_dict in self.TEST_DATA:
-            if identifier in self.assetbatch_dict:
-                asset_batch = self.assetbatch_dict[identifier]
+        idx = 0
+        for result_obj in self.TEST_DATA:
+            identifier = result_obj.identifier
+            result_dict = result_obj.result_dict
+            idx += 1
+            if result_obj in self.assetbatch_dict:
+                asset_batch = self.assetbatch_dict[result_obj]
             else:
-                asset_batch = AssetBatch()
+                dummy_device_group = device_group.objects.get(name="dummy_device_group")
+                dummy_device = device(name="dummy_device_{}".format(idx), device_group=dummy_device_group)
+                dummy_device.save()
+
+                asset_batch = AssetBatch(device=dummy_device)
                 asset_batch.save()
-                print(asset_batch.idx)
-                self.assetbatch_dict[identifier] = asset_batch
+                self.assetbatch_dict[result_obj] = asset_batch
 
             raw_result_str = result_dict[asset_type]
             run_index = len(asset_batch.assetrun_set.all())
@@ -87,4 +122,4 @@ class TestAssetManagement(TestCase):
             asset_run.generate_assets()
             asset_run.state_finished(RunResult.SUCCESS, "")
 
-            yield (asset_run, asset_batch)
+            yield (asset_run, asset_batch, identifier)
