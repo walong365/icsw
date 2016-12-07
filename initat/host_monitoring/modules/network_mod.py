@@ -168,7 +168,7 @@ class FCEntry(object):
     def parse_stats(self, cur_time):
         _res = {}
         for entry in self.keys:
-            _content = file(os.path.join(self.__stat_dir, entry), "r").read().split()
+            _content = file(os.path.join(self.__stat_dir, entry), "r").read().strip()
             if _content.startswith("0x"):
                 _value = int(_content, 16)
             else:
