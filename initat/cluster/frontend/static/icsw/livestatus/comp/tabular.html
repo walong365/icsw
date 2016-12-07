@@ -2,7 +2,7 @@
     <div uib-alert class="alert-warning" ng-show="!struct.monitoring_data.services.length">No Service Results</div>
     <table
         st-table="entries_displayed"
-        st-safe-src="struct.monitoring_data.services"
+        st-safe-src="struct.source_list"
         class="table table-condensed table-hover table-striped"
         style="font-size:100%;"
         ng-if="struct.monitoring_data.services.length"
@@ -77,6 +77,7 @@
         size="sm"
         icsw-value="'all'"
         ng-click="select_all($event)"
+        ng-show="struct.selectable"
     ></icsw-tools-button>
     <icsw-tools-button
         type="delete"
@@ -99,6 +100,7 @@
         <button type="button" class="btn btn-xs" ng-class="service.$$host_mon_result.$$icswStateBtnClass" ng-click="show_device($event, service.$$host_mon_result)">
             {{ service.$$host_mon_result.display_name }}
         </button>
+        <icsw-tools-button size="xs" type="display" icsw-value="" ng-click="select_device($event, service.$$host_mon_result)"></icsw-tools-button>
     </td>
     <td class="text-nowrap text-center" ng-show="show_column.DevFlags">
         <div class="text-nowrap">
@@ -136,7 +138,7 @@
     <div uib-alert class="alert-warning" ng-show="!struct.monitoring_data.hosts.length">No Device Results</div>
     <table
         st-table="entries_displayed"
-        st-safe-src="struct.monitoring_data.hosts"
+        st-safe-src="struct.source_list"
         class="table table-condensed table-hover table-striped"
         style="font-size:100%;"
         ng-if="struct.monitoring_data.hosts.length"

@@ -325,14 +325,31 @@ angular.module(
         }
         # selected
         selected: 0
+        # selectable (unselected)
+        selectable: 0
         # display type
         d_type: undefined
         # value for modify button
         modify_value: "N/A"
         # external notifier
-
         external_notifier: $q.defer()
+        # selected device (for service overview)
+        sel_device: 0
+        # source list
+        source_list: []
     }
+
+    _copy_to_source_list = () ->
+        $scope.struct.source_list.length = 0
+        if $scope.struct.d_type == "services" and $scope.struct.sel_device
+            _f_idx = $scope.struct.sel_device
+            for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
+                if entry.$$host_mon_result.$$icswDevice.idx == _f_idx
+                    $scope.struct.source_list.push(entry)
+        else
+            for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
+                $scope.struct.source_list.push(entry)
+
     $scope.link = (con_element, notifier, d_type) ->
         $scope.struct.d_type = d_type
         # console.log $scope.struct.d_type
@@ -348,6 +365,7 @@ angular.module(
             (rejected) ->
             (data) ->
                 $scope.struct.monitoring_data = data
+                _copy_to_source_list()
                 $scope.struct.external_notifier.notify("new")
                 _update_selected()
         )
@@ -356,7 +374,19 @@ angular.module(
         $scope.struct.external_notifier.reject()
     )
 
+    $scope.select_device = ($event, dev_check) ->
+        $event.stopPropagation()
+        $event.preventDefault()
+        if $scope.struct.sel_device == dev_check.$$icswDevice.idx
+            $scope.struct.sel_device = 0
+        else
+            $scope.struct.sel_device = dev_check.$$icswDevice.idx
+        _copy_to_source_list()
+        _update_selected()
+
     $scope.show_device = ($event, dev_check) ->
+        $event.stopPropagation()
+        $event.preventDefault()
         DeviceOverviewService($event, [dev_check.$$icswDevice])
 
     $scope.pagination_changed = (pag) ->
@@ -371,20 +401,22 @@ angular.module(
         $scope.struct.con_element.pipeline_settings_changed(angular.toJson($scope.struct.settings))
 
     _update_selected = () ->
-        $scope.struct.selected = (entry for entry in $scope.struct.monitoring_data[$scope.struct.d_type] when entry.$$selected).length
+        $scope.struct.selected = (entry for entry in $scope.struct.source_list when entry.$$selected).length
+        $scope.struct.selectable = $scope.struct.source_list.length - $scope.struct.selected
         if $scope.struct.selected
             $scope.struct.modify_value = "modify #{$scope.struct.selected} #{$scope.struct.d_type}"
         else
             $scope.struct.modify_value = "N/A"
 
     $scope.clear_selection = ($event) ->
-        for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
+        for entry in $scope.struct.source_list
             entry.$$selected = false
         $scope.struct.selected.length = 0
+        $scope.struct.selectable = $scope.struct.source_list.length
         _update_selected()
 
     $scope.select_all = ($event) ->
-        for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
+        for entry in $scope.struct.source_list
             entry.$$selected = true
         _update_selected()
 
@@ -395,12 +427,9 @@ angular.module(
     $scope.modify_entries = ($event) ->
         if $scope.struct.d_type == "hosts"
             obj_type = "host"
-            # key_list = (entry.$$icswDevice.idx for entry in $scope.struct.monitoring_data.hosts when entry.$$selected)
-            obj_list = (entry for entry in $scope.struct.monitoring_data.hosts when entry.$$selected)
         else
             obj_type = "service"
-            # key_list = (entry.description for entry in $scope.struct.monitoring_data.services when entry.$$selected)
-            obj_list = (entry for entry in $scope.struct.monitoring_data.services when entry.$$selected)
+        obj_list = (entry for entry in $scope.struct.source_list when entry.$$selected)
         icswIcingaCmdTools.icinga_cmd(
             obj_type
             obj_list
