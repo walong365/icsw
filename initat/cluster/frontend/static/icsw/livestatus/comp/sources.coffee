@@ -507,9 +507,15 @@ angular.module(
 
             @hosts.length = 0
             device_cat_counters = {}
+            # results types (active / passive)
+            valid_check_types = []
+            if filter.active_results
+                valid_check_types.push(0)
+            if filter.passive_results
+                valid_check_types.push(1)
             # _device_cats = []
             for entry in src_data.hosts
-                if filter.host_types[entry.state_type] and filter.host_states[entry.state]
+                if filter.host_types[entry.state_type] and filter.host_states[entry.state] and entry.check_type in valid_check_types
                     @hosts.push(entry)
                     device_cat_counters = icswTools.merge_count_dict(device_cat_counters, _.countBy(entry.$$device_categories))
                     _host_pks.push(entry.$$icswDevice.idx)
@@ -519,7 +525,7 @@ angular.module(
             for entry in src_data.services
                 if filter.linked and entry.$$host_mon_result.$$icswDevice.idx not in _host_pks
                     true
-                else if filter.service_types[entry.state_type] and filter.service_states[entry.state]
+                else if filter.service_types[entry.state_type] and filter.service_states[entry.state] and entry.check_type in valid_check_types
                     @services.push(entry)
                     if entry.custom_variables? and entry.custom_variables.cat_pks?
                         mon_cat_counters = icswTools.merge_count_dict(mon_cat_counters, _.countBy(entry.custom_variables.cat_pks))

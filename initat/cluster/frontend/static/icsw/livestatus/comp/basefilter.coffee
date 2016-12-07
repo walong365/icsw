@@ -133,8 +133,12 @@ angular.module(
             ]
             @host_type_lut = {}
 
-            # host / service filters are linke
+            # host / service filters are linked
             @linked = false
+            # show active results
+            @active_results = true
+            # show passive results
+            @passive_results = true
 
             # default values for service states
             @service_states = {}
@@ -172,8 +176,18 @@ angular.module(
         restore_settings: (settings) =>
             # console.log "RS", settings
             # restore settings
-            [_ss, _hs, _st, _ht, _linked] = settings.split(";")
-            @linked = if _linked == "l" then true else false
+            [_ss, _hs, _st, _ht, _flags] = settings.split(";")
+            if _flags.length == 1
+                # old format
+                @linked = if _flags == "l" then true else false
+                @active_results = true
+                @passive_results = true
+            else
+                _flags = _flags.split(":")
+                @linked = if _flags[0] == "l" then true else false
+                @active_results = if _flags[1] == "ar" then true else false
+                @passive_results = if _flags[2] == "pr" then true else false
+
             for [_field, _attr_prefix] in [
                 [_ss, "service_state"]
                 [_hs, "host_state"]
@@ -195,6 +209,14 @@ angular.module(
 
         toggle_link_state: () =>
             @linked = !@linked
+            @_settings_changed()
+
+        toggle_active_results: () =>
+            @active_results = !@active_results
+            @_settings_changed()
+
+        toggle_passive_results: () =>
+            @passive_results = !@passive_results
             @_settings_changed()
 
         toggle_service_state: (code) =>
@@ -230,8 +252,12 @@ angular.module(
         _get_host_type_str: () =>
             return (entry.short_code for entry in @host_type_list when @host_types[entry.idx]).join(":")
 
-        _get_linked_str: () =>
-            return if @linked then "l" else "ul"
+        _get_flags_str: () =>
+            return [
+                if @linked then "l" else "ul"
+                if @active_results then "ar" else "r"
+                if @passive_results then "pr" else "r"
+            ].join(":")
 
         get_filter_state_str: () ->
             return [
@@ -239,7 +265,7 @@ angular.module(
                 @_get_host_state_str()
                 @_get_service_type_str()
                 @_get_host_type_str()
-                @_get_linked_str()
+                @_get_flags_str()
             ].join(";")
 
         _settings_changed: () ->
@@ -473,6 +499,88 @@ angular.module(
                                 )
                                 g(
                                     {
+                                        key: "activepassivebutton"
+                                        transform: "translate(0, 50)"
+                                    }
+                                    [
+                                        rect(
+                                            {
+                                                key: "activerect"
+                                                x: -21
+                                                y: -18
+                                                width: 20
+                                                height: 20
+                                                rx: 2
+                                                ry: 2
+                                                className: "svg-box"
+                                                style: {fill: if _lf.active_results then "#ffffff" else "#888888"}
+                                            }
+                                        )
+                                        text(
+                                            {
+                                                key: "linktexta"
+                                                x: -11
+                                                y: -1
+                                                fontFamily: "fontAwesome"
+                                                className: "cursorpointer svg-box-content"
+                                                fontSize: "20px"
+                                                # alignmentBaseline: "middle"  # bad for browser/ os compat
+                                                textAnchor: "middle"
+                                                pointerEvents: "painted"
+                                                onClick: (event) =>
+                                                    _lf.toggle_active_results()
+                                                    @setState({filter_state_str: _lf.get_filter_state_str()})
+                                                    _filter_changed()
+                                            }
+                                            title(
+                                                {
+                                                    key: "title.activetext"
+                                                }
+                                                if _lf.active_results then "Show active results" else "Show no active results"
+                                            )
+                                            "\uf062"
+                                        )
+                                        rect(
+                                            {
+                                                key: "passiverect"
+                                                x: 1
+                                                y: -18
+                                                width: 20
+                                                height: 20
+                                                rx: 2
+                                                ry: 2
+                                                className: "svg-box"
+                                                style: {fill: if _lf.passive_results then "#ffffff" else "#888888"}
+                                            }
+                                        )
+                                        text(
+                                            {
+                                                key: "linktextb"
+                                                x: 11
+                                                y: -1
+                                                fontFamily: "fontAwesome"
+                                                className: "cursorpointer svg-box-content"
+                                                fontSize: "20px"
+                                                # alignmentBaseline: "middle"  # bad for browser/ os compat
+                                                textAnchor: "middle"
+                                                pointerEvents: "painted"
+                                                onClick: (event) =>
+                                                    _lf.toggle_passive_results()
+                                                    @setState({filter_state_str: _lf.get_filter_state_str()})
+                                                    _filter_changed()
+                                            }
+                                            title(
+                                                {
+                                                    key: "title.linktext"
+                                                }
+                                                if _lf.passive_results then "Show passive results" else "Show no passive results"
+                                            )
+                                            "\uf063"
+                                        )
+                                    ]
+                                )
+                                g(
+                                    {
                                         key: "linkbutton"
                                         transform: "translate(0, -50)"
                                     }
@@ -509,8 +617,7 @@ angular.module(
                                                 {
                                                     key: "title.linktext"
                                                 }
-                                            if _lf.linked then "Unlink Devices and Services" else
-                                                "Link Services to Devices"
+                                                if _lf.linked then "Unlink Devices and Services" else "Link Services to Devices"
                                             )
                                             if _lf.linked then "\uf023" else "\uf13e"
                                         )
@@ -611,10 +718,10 @@ angular.module(
             # predefined filters
             scope.filter_list = [
                 new DefinedFilter("c", "Custom", "")
-                new DefinedFilter("a", "All Services and Hosts", "O:W:C:U:p;U:D:?:M:p;S:H;S:H;ul")
-                new DefinedFilter("hd", "All Down and Problem hosts", "O:W:C:U:p;D:?:M:p;S:H;S:H;ul")
-                new DefinedFilter("um", "All Unmonitored and Pending Hosts", "O:W:C:U:p;M:p;S:H;S:H;ul")
-                new DefinedFilter("upp", "All Hard Problems on Up Hosts", "W:C:U:p;U;H;H;l")
+                new DefinedFilter("a", "All Services and Hosts", "O:W:C:U:p;U:D:?:M:p;S:H;S:H;ul:ar:pr")
+                new DefinedFilter("hd", "All Down and Problem hosts", "O:W:C:U:p;D:?:M:p;S:H;S:H;ul:ar:pr")
+                new DefinedFilter("um", "All Unmonitored and Pending Hosts", "O:W:C:U:p;M:p;S:H;S:H;ul:ar:pr")
+                new DefinedFilter("upp", "All Hard Problems on Up Hosts", "W:C:U:p;U;H;H;l:ar:pr")
             ]
 
             scope.filter_changed = () ->
