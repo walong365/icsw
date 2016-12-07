@@ -185,8 +185,8 @@ class FCEntry(object):
         self.parse_stats(cur_time)
         if len(self._values) > 1:
             # calc speed
-            _prev = self.values[-2]
-            _current = self.values[-1]
+            _prev = self._values[-2]
+            _current = self._values[-1]
             time_diff = abs(_current["when"] - _prev["when"])
             values = {key: (_current["data"][key] - _prev["data"][key]) / time_diff for key in self.keys}
             values = {key: value if value > 0 else 0 for key, value in values.iteritems()}
