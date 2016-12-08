@@ -1065,7 +1065,8 @@ menu_module = angular.module(
                     icon: state.icswData.menuEntry.icon
                     sref: state.name
                     name: state.icswData.menuEntry.name
-                    has_devsel: state.icswData.hasDevselFunc
+                    state: state
+                    count: 1
                 }
             else if state.icswData.pageTitle?
                 _add = true
@@ -1073,14 +1074,22 @@ menu_module = angular.module(
                     icon: ""
                     sref: state.name
                     name: state.icswData.pageTitle
-                    has_devsel: state.icswData.hasDevselFunc
+                    state: state
+                    count: 1
                 }
             if _add
-                _.remove(bc_list, (entry) -> return entry.sref == _add_struct.sref)
-                # state with menu entry
-                bc_list.push(_add_struct)
-                if bc_list.length > 6
-                    bc_list = bc_list.slice(1)
+                cur_entry = (entry for entry in bc_list when entry.sref == _add_struct.sref)
+                if cur_entry.length
+                    # already present
+                    cur_entry[0].count++
+                else
+                    if bc_list.length > 2
+                        # new entry, remove the one with the lowest count
+                        _ctrs = ({count: entry.count, sref: entry.sref} for entry in bc_list)
+                        _ctrs = _.orderBy(_ctrs, ["count"], ["asc"])
+                        # remove the one with the lowest count
+                        _.remove(bc_list, (entry) -> return entry.sref == _ctrs[0].sref)
+                    bc_list.push(_add_struct)
                 $rootScope.$emit(ICSW_SIGNALS("ICSW_BREADCRUMBS_CHANGED"), bc_list)
 
     return {

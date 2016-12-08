@@ -604,9 +604,11 @@ angular.module(
 [
     "$rootScope", "ICSW_SIGNALS", "DeviceOverviewSettings",
     "icswActiveSelectionService", "icswDeviceTreeService",
+    "$state",
 (
     $rootScope, ICSW_SIGNALS, DeviceOverviewSettings,
-    icswActiveSelectionService, icswDeviceTreeService
+    icswActiveSelectionService, icswDeviceTreeService,
+    $state,
 ) ->
     # important: for icsw-sel-man to work the controller has to be specified separatedly (and not via overloading the link-function)
     # selection manager directive
@@ -619,6 +621,10 @@ angular.module(
             # console.log "comp selman"
             return {
                 pre: (scope, el, attrs) ->
+                    cur_state = $state.current
+                    if cur_state.icswData?
+                        # override predefined value
+                        cur_state.icswData.hasDevselFunc = true
                     # console.log "pre selman"
                     # console.log "link selman to scope", scope
                     # is an active selection (listen to icswDeviceList)
