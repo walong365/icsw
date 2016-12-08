@@ -224,6 +224,7 @@ angular.module(
             iconCode: "\uf00c"
             iconFaName: "fa-check"
             StateString: "OK"
+            weight: 0
         }
         1: {
             svgClassName: "svg-srv-warn"
@@ -231,6 +232,7 @@ angular.module(
             iconCode: "\uf071"
             iconFaName: "fa-warning"
             StateString: "Warning"
+            weight: 1
         }
         2: {
             svgClassName: "svg-srv-crit"
@@ -238,6 +240,7 @@ angular.module(
             iconCode: "\uf0e7"
             iconFaName: "fa-bolt"
             StateString: "Critical"
+            weight: 5
         }
         3: {
             svgClassName: "svg-srv-unknown"
@@ -245,6 +248,7 @@ angular.module(
             iconCode: "\uf29c"
             iconFaName: "fa-question-circle-o"
             StateString: "Unknown"
+            weight: 10
         }
         4: {
             svgClassName: "svg-srv-notmonitored"
@@ -252,6 +256,7 @@ angular.module(
             iconCode: "\uf05e"
             iconFaName: "fa-ban"
             StateString: "unmon"
+            weight: 2
         }
         5: {
             svgClassName: "svg-srv-pending"
@@ -259,6 +264,7 @@ angular.module(
             iconCode: "\uf10c"
             iconFaName: "fa-circle-o"
             StateString: "pending"
+            weight: 3
         }
     }
     _struct = {
@@ -377,6 +383,11 @@ angular.module(
                 _r_list.push(_info)
         return _r_list
 
+    calculate_service_weight = (entry) ->
+        entry.$$serviceWeight = 0
+        for srv in entry.$$service_list
+            entry.$$serviceWeight += srv.$$data.weight
+
     return {
         get_luts: () ->
             return {
@@ -396,6 +407,8 @@ angular.module(
         salt_device_state: salt_device_state
 
         salt_host: salt_host
+
+        calculate_service_weight: calculate_service_weight
 
         salt_service: salt_service
 
@@ -759,6 +772,8 @@ angular.module(
                             entry.$$host_mon_result = h_m_result
                             if entry.custom_variables and entry.custom_variables.cat_pks?
                                 mon_cat_counters = icswTools.merge_count_dict(mon_cat_counters, _.countBy(entry.custom_variables.cat_pks))
+                        for entry in host_entries
+                            icswSaltMonitoringResultService.calculate_service_weight(entry)
                     for _idx in _unknown_hosts
                         if _idx of device_tree.all_lut
                             dev = device_tree.all_lut[_idx]

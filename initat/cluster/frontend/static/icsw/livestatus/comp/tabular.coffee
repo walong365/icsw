@@ -455,4 +455,109 @@ angular.module(
             obj_type
             obj_list
         )
+]).service("icswLivestatusDeviceServiceOverviewReact",
+[
+    "$q",
+(
+    $q,
+) ->
+    # display of livestatus filter
+    {span, rect, title, span, svg, path, g, text, div} = React.DOM
+
+    return React.createClass(
+        displayName: "DeviceServiceOverview"
+        propTypes: {
+            mon_device: React.PropTypes.object
+        }
+        getInitialState: () ->
+            return {}
+        render: () ->
+            dev = @props.mon_device
+            if not dev.$$service_list.length
+                return div(
+                    {}
+                    "N/A"
+                )
+            # state lut
+            state_lut = {}
+            # calculate total width and build lut
+            num = 0
+            for srv in dev.$$service_list
+                if srv.state not of state_lut
+                    state_lut[srv.state] = _.clone(srv.$$data)
+                    state_lut[srv.state].num = 0
+                state_lut[srv.state].num++
+                num++
+            _w = 86
+            _h = 16
+            _rect_list = []
+            idx = 0
+            state_idxs = _.keys(state_lut)
+            state_idxs.sort()
+            title_str = ["w=#{dev.$$serviceWeight}"]
+            # rect list and title string
+            for state_idx in state_idxs
+                state = state_lut[state_idx]
+                _rect_list.push(
+                    rect(
+                        {
+                            key: "service.#{state_idx}"
+                            x: parseInt(_w * idx / num)
+                            y: 0
+                            width: parseInt(_w * (idx + state.num) / num)
+                            height: _h
+                            className: state.svgClassName
+                        }
+                    )
+                )
+                title_str.push("#{state.num} #{state.info}")
+                idx += state.num
+            # border
+            _rect_list.push(
+                rect(
+                    {
+                        key: "service.border"
+                        x: 0
+                        y: 0
+                        width: "#{_w}px"
+                        height: "#{_h}px"
+                        style: {fill: "none", strokeWidth: "1px", stroke: "black"}
+                    }
+                )
+            )
+            return div(
+                {
+                    key: "top"
+                    title: title_str.join(", ")
+                }
+                svg(
+                    {
+                        width: "#{_w}px"
+                        height: "#{_h}px"
+                    }
+                    _rect_list
+                )
+            )
+    )
+]).directive("icswLivestatusDeviceServiceOverview",
+[
+    "$q", "icswLivestatusDeviceServiceOverviewReact",
+(
+    $q, icswLivestatusDeviceServiceOverviewReact,
+) ->
+    return {
+        restrict: "E"
+        scope: false
+        link: (scope, element, attrs) ->
+            new_rel = ReactDOM.render(
+                React.createElement(
+                    icswLivestatusDeviceServiceOverviewReact
+                    {
+                        mon_device: scope.$eval(attrs.monDevice)
+                    }
+                )
+                $(element)[0]
+            )
+
+    }
 ])
