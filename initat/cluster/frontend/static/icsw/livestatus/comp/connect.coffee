@@ -342,11 +342,14 @@ angular.module(
     $templateCache, $compile, icswLivestatusPipeRegister, $timeout, ICSW_SIGNALS,
     icswLivestatusPipeFunctions,
 ) ->
+    C_ID = 0
     # creates a DisplayPipeline
     class icswMonLivestatusPipeConnector
         constructor: (pipespec_obj, user) ->
             # resolve all elements
             icswLivestatusPipeFunctions.resolve()
+            C_ID++
+            @connector_id = C_ID
             @setup_ok = false
             # object
             @object = pipespec_obj

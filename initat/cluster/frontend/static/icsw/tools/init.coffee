@@ -785,6 +785,8 @@ angular.module(
         ICSW_OPEN_SETUP_TASKS_CHANGED: "icsw.open.setup.tasks.changed"
         # livestatus pipeline modified
         ICSW_LIVESTATUS_PIPELINE_MODIFIED: "icsw.livestatus.pipeline.modified"
+        # livestatus device focus
+        ICSW_LIVESTATUS_DEVICE_FOCUS: "icsw.device.livestatus.focus"
 
         # local signals (for local $emit / $on)
 

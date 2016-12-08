@@ -93,14 +93,20 @@
         ng-show="struct.selected"
         ng-click="modify_entries($event)"
     ></icsw-tools-button>
+    <span ng-show="struct.focus_device" class="label label-primary">focus</span>
 </script>
 
 <script type="text/ng-template" id="icsw.livestatus.mon.table.row">
     <td ng-class="service.$$host_mon_result.$$icswStateClass" class="text-nowrap">
+        <icsw-tools-button
+            size="xs"
+            type="display"
+            icsw-value=""
+            ng-click="focus_device($event, service.$$host_mon_result)"
+        ></icsw-tools-button>
         <button type="button" class="btn btn-xs" ng-class="service.$$host_mon_result.$$icswStateBtnClass" ng-click="show_device($event, service.$$host_mon_result)">
             {{ service.$$host_mon_result.display_name }}
         </button>
-        <icsw-tools-button size="xs" type="display" icsw-value="" ng-click="select_device($event, service.$$host_mon_result)"></icsw-tools-button>
     </td>
     <td class="text-nowrap text-center" ng-show="show_column.DevFlags">
         <div class="text-nowrap">
@@ -206,7 +212,18 @@
 
 <script type="text/ng-template" id="icsw.livestatus.device.table.row">
     <td ng-class="host.$$icswStateClass" class="text-nowrap">
-        <button type="button" class="btn btn-xs" ng-class="host.$$icswStateBtnClass" ng-click="show_device($event, host)">{{ host.display_name }}</button>
+        <icsw-tools-button
+            size="xs"
+            type="display"
+            icsw-value=""
+            ng-click="focus_device($event, host)"
+        ></icsw-tools-button>
+        <button
+            type="button"
+            class="btn btn-xs"
+            ng-class="host.$$icswStateBtnClass"
+            ng-click="show_device($event, host)"
+        >{{ host.display_name }}</button>
     </td>
     <td ng-show="show_column.DevCats" class="text-nowrap">
         {{ host.$$icswCategories }}

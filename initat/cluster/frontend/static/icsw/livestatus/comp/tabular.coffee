@@ -307,11 +307,11 @@ angular.module(
 [
     "$scope", "DeviceOverviewService", "$q", "icswSimpleAjaxCall", "ICSW_URLS",
     "ICSW_SIGNALS", "icswComplexModalService", "$templateCache", "$compile", "blockUI",
-    "icswIcingaCmdTools",
+    "icswIcingaCmdTools", "$rootScope",
 (
     $scope, DeviceOverviewService, $q, icswSimpleAjaxCall, ICSW_URLS,
     ICSW_SIGNALS, icswComplexModalService, $templateCache, $compile, $blockUI,
-    icswIcingaCmdTools,
+    icswIcingaCmdTools, $rootScope,
 ) ->
     $scope.struct = {
         # monitoring data
@@ -333,19 +333,24 @@ angular.module(
         modify_value: "N/A"
         # external notifier
         external_notifier: $q.defer()
-        # selected device (for service overview)
-        sel_device: 0
+        # focus device (for service overview)
+        focus_device: 0
         # source list
         source_list: []
     }
 
     _copy_to_source_list = () ->
         $scope.struct.source_list.length = 0
-        if $scope.struct.d_type == "services" and $scope.struct.sel_device
-            _f_idx = $scope.struct.sel_device
-            for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
-                if entry.$$host_mon_result.$$icswDevice.idx == _f_idx
-                    $scope.struct.source_list.push(entry)
+        if $scope.struct.focus_device
+            _f_idx = $scope.struct.focus_device
+            if $scope.struct.d_type == "services"
+                for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
+                    if entry.$$host_mon_result.$$icswDevice.idx == _f_idx
+                        $scope.struct.source_list.push(entry)
+            else
+                for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
+                    if entry.$$icswDevice.idx == _f_idx
+                        $scope.struct.source_list.push(entry)
         else
             for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
                 $scope.struct.source_list.push(entry)
@@ -370,19 +375,35 @@ angular.module(
                 _update_selected()
         )
 
+    unreg_func = []
+
+    unreg_func.push(
+        $rootScope.$on(
+            ICSW_SIGNALS("ICSW_LIVESTATUS_DEVICE_FOCUS")
+            (event, c_id, t_type, dev_idx) ->
+                if c_id == $scope.struct.con_element.__dp_connector.connector_id
+                    if $scope.struct.focus_device == dev_idx
+                        $scope.struct.focus_device = 0
+                    else
+                        $scope.struct.focus_device = dev_idx
+                    _copy_to_source_list()
+                    _update_selected()
+        )
+    )
     $scope.$on("$destroy", () ->
         $scope.struct.external_notifier.reject()
+        (_func() for _func in unreg_func)
     )
 
-    $scope.select_device = ($event, dev_check) ->
+    $scope.focus_device = ($event, dev_check) ->
         $event.stopPropagation()
         $event.preventDefault()
-        if $scope.struct.sel_device == dev_check.$$icswDevice.idx
-            $scope.struct.sel_device = 0
-        else
-            $scope.struct.sel_device = dev_check.$$icswDevice.idx
-        _copy_to_source_list()
-        _update_selected()
+        $rootScope.$emit(
+            ICSW_SIGNALS("ICSW_LIVESTATUS_DEVICE_FOCUS")
+            $scope.struct.con_element.__dp_connector.connector_id
+            $scope.struct.d_type
+            dev_check.$$icswDevice.idx
+        )
 
     $scope.show_device = ($event, dev_check) ->
         $event.stopPropagation()
