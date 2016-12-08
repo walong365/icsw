@@ -1059,10 +1059,11 @@ menu_module = angular.module(
     add_state = (state) ->
         if state.icswData?
             _add = false
+            # console.log "*", state
             if state.icswData.menuEntry? and state.icswData.menuEntry.sref?
                 _add = true
                 _add_struct = {
-                    icon: state.icswData.menuEntry.icon
+                    # icon: state.icswData.menuEntry.icon
                     sref: state.name
                     name: state.icswData.menuEntry.name
                     state: state
@@ -1071,7 +1072,7 @@ menu_module = angular.module(
             else if state.icswData.pageTitle?
                 _add = true
                 _add_struct = {
-                    icon: ""
+                    # icon: ""
                     sref: state.name
                     name: state.icswData.pageTitle
                     state: state

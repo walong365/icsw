@@ -66,7 +66,7 @@
         </route>
         <route name="main.deviceconfig">
             <stateData url="/deviceconfig" templateUrl="icsw/main/device/config.html"/>
-            <icswData pageTitle="Assign Configurations" hasDevselFunc_bool="yes">
+            <icswData pageTitle="Assign Configurations">
                 <rights>
                     <value>backbone.device.change_config</value>
                 </rights>
@@ -77,7 +77,7 @@
         </route>
         <route name="main.devicemonconfig">
             <stateData url="/devicemonconfig" templateUrl="icsw/main/device/mon/config.html"/>
-            <icswData pageTitle="Assign Monitoring Checks" hasDevselFunc_bool="yes">
+            <icswData pageTitle="Assign Monitoring Checks">
                 <rights>
                     <value>backbone.device.change_config</value>
                 </rights>
@@ -88,7 +88,7 @@
         </route>
         <route name="main.devicesrvconfig">
             <stateData url="/devicesrvconfig" templateUrl="icsw/main/device/srv/config.html"/>
-            <icswData pageTitle="Assign System Services" hasDevselFunc_bool="yes">
+            <icswData pageTitle="Assign System Services">
                 <rights>
                     <value>backbone.device.change_config</value>
                 </rights>
@@ -99,7 +99,7 @@
         </route>
         <route name="main.devicenetwork">
             <stateData url="/network" templateUrl="icsw/device/network/total"/>
-            <icswData pageTitle="Network" hasDevselFunc_bool="yes">
+            <icswData pageTitle="Network">
                 <rights>
                     <value>backbone.device.change_network</value>
                 </rights>
@@ -110,7 +110,7 @@
         </route>
         <route name="main.devvars">
             <stateData url="/variables" templateUrl="icsw/device/variable.html"/>
-            <icswData pageTitle="Device variables" hasDevselFunc_bool="yes">
+            <icswData pageTitle="Device variables">
                 <rights>
                     <value>backbone.device.change_variables</value>
                 </rights>
@@ -176,7 +176,7 @@
         </route>
         <route name="main.deviceconnection">
             <stateData url="/deviceconnection" templateUrl="icsw/main/device/connection.html"/>
-            <icswData pageTitle="Power Controlling Connections" hasDevselFunc_bool="yes">
+            <icswData pageTitle="Power Controlling Connections">
                 <rights>
                     <value>backbone.device.change_connection</value>
                 </rights>
@@ -294,7 +294,7 @@
         </route>
         <route name="main.monitorlocation">
             <stateData url="/monitorlocation" templateUrl="icsw/device/location/monitoring"/>
-            <icswData pageTitle="Location Service" hasDevselFunc_bool="yes">
+            <icswData pageTitle="Location Service">
                 <description>
                     <infoText language="en">TODO: Show monitoring data at Google maps and with location images</infoText>
                 </description>
@@ -444,7 +444,7 @@
         </route>
         <route name="main.deployboot">
             <stateData url="/deployboot" templateUrl="icsw/main/deploy/boot.html"/>
-            <icswData pageTitle="Boot nodes" hasDevselFunc_bool="yes">
+            <icswData pageTitle="Boot nodes">
                 <serviceTypes>
                     <value>mother_server</value>
                 </serviceTypes>
@@ -481,7 +481,7 @@
         </route>
         <route name="main.packageinstall">
             <stateData url="/packageinstall" templateUrl="icsw/package/install/overview"/>
-            <icswData pageTitle="Package install" hasDevselFunc_bool="yes">
+            <icswData pageTitle="Package install">
                 <licenses>
                     <value>package_install</value>
                 </licenses>
