@@ -19,6 +19,8 @@
 #
 """ machine information """
 
+from __future__ import print_function, unicode_literals
+
 import commands
 import subprocess
 import itertools
@@ -123,12 +125,20 @@ class _general(hm_classes.hm_module):
             '-ab --list -o {}'.format(','.join(columns)),
         ]:
             _META["options"] = options
+            stdout, stderr = ("" ,"")
             _popen = subprocess.Popen([self.lsblk_bin] + options.split(), env=my_env, stdout=subprocess.PIPE)
+
+            while True:
+                _new_stdout, _new_stderr = _popen.communicate()
+                stdout = "{}{}".format(stdout, _new_stdout)
+                stderr = "{}{}".format(stderr, _new_stderr)
+                if _popen.returncode is not None:
+                    break
             _popen.wait()
             if _popen.returncode:
                 _lsblk_result = ""
             else:
-                _lsblk_result = _popen.stdout.read()
+                _lsblk_result = stdout
         _META["result"] = _lsblk_result
         return server_command.compress(_META, json=True)
 
@@ -2136,7 +2146,7 @@ class cpuinfo_command(hm_classes.hm_command):
         except:
             join_str, head_str = ("; ", "error decoding cpu_info: %s" % (process_tools.get_except_info()))
             exc_info = process_tools.exception_info()
-            print "\n".join(exc_info.log_lines)
+            print("\n".join(exc_info.log_lines))
         else:
             for cpu in [cpu_info[cpu_idx] for cpu_idx in cpu_info.cpu_idxs()]:
                 if cpu.get("online", True):
