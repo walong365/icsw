@@ -697,18 +697,25 @@ menu_module = angular.module(
             @backg_timer = null
 
         render: () ->
-            # if @state.num_jobs == 0
-            #     return null
+            buttontext = div(
+                {
+                    key: "bgbtttext"
+                    className: "pull-right menubuttontext"
+                }
+                @state.num_jobs
+            )
             if @state.num_jobs > 4
                 _class = "danger"
             else if @state.num_jobs > 0
                 _class = "warning"
             else
                 _class = "success"
+                buttontext = null
             return li(
                 {}
                 button(
                     {
+                        key: "bgbutton"
                         type: "button"
                         title: "Number of Background Jobs: #{@state.num_jobs}"
                         className: "btn btn-default btn-xs menu-backgroundjobs"
@@ -717,11 +724,13 @@ menu_module = angular.module(
                     }
                     img(
                         {
+                            key: "bgbttimg"
                             src: ICSW_URLS.STATIC_URL + "/bgjobs_#{_class}.svg"  # (danger, warning, success)
                             title: "Number of Background Jobs: #{@state.num_jobs}"
                             height: 23
                         }
                     )
+                    buttontext
                 )
         )
 
@@ -769,7 +778,7 @@ menu_module = angular.module(
             }
 
         render: () ->
-            if @state.num_unfulfilled > -2  # DEBUG set value 0
+            if @state.num_unfulfilled > 0
                 return li(
                     {}
                     button(
@@ -788,7 +797,13 @@ menu_module = angular.module(
                                 height: 23
                             }
                         )
-
+                        div(
+                            {
+                                key: "oibtttext"
+                                className: "pull-right menubuttontext"
+                            }
+                            @state.num_unfulfilled
+                        )
                     )
                 )
             else

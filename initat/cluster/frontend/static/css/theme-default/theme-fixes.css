@@ -98,3 +98,6 @@ icsw-tools-button{
     border: 1px solid #cccccc!important;
     color: #777777!important;
 }
+div.menubuttontext {
+    margin-top: 1px;
+}
