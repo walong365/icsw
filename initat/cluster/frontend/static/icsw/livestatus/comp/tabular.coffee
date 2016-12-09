@@ -307,11 +307,11 @@ angular.module(
 [
     "$scope", "DeviceOverviewService", "$q", "icswSimpleAjaxCall", "ICSW_URLS",
     "ICSW_SIGNALS", "icswComplexModalService", "$templateCache", "$compile", "blockUI",
-    "icswIcingaCmdTools", "$rootScope",
+    "icswIcingaCmdTools", "$rootScope", "$timeout",
 (
     $scope, DeviceOverviewService, $q, icswSimpleAjaxCall, ICSW_URLS,
     ICSW_SIGNALS, icswComplexModalService, $templateCache, $compile, $blockUI,
-    icswIcingaCmdTools, $rootScope,
+    icswIcingaCmdTools, $rootScope, $timeout,
 ) ->
     $scope.struct = {
         # monitoring data
@@ -337,7 +337,12 @@ angular.module(
         focus_device: 0
         # source list
         source_list: []
+        # current page (saved for focus)
+        saved_page: 0
     }
+
+    # pagination control
+    $scope.pag_control = {counter: 0}
 
     _copy_to_source_list = () ->
         $scope.struct.source_list.length = 0
@@ -345,15 +350,28 @@ angular.module(
             _f_idx = $scope.struct.focus_device
             if $scope.struct.d_type == "services"
                 for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
-                    if entry.$$host_mon_result.$$icswDevice.idx == _f_idx
+                    entry.$$hasFocus = entry.$$host_mon_result.$$icswDevice.idx == _f_idx
+                    if entry.$$hasFocus
                         $scope.struct.source_list.push(entry)
             else
                 for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
-                    if entry.$$icswDevice.idx == _f_idx
-                        $scope.struct.source_list.push(entry)
+                    entry.$$hasFocus = entry.$$icswDevice.idx == _f_idx
+                    $scope.struct.source_list.push(entry)
         else
             for entry in $scope.struct.monitoring_data[$scope.struct.d_type]
+                entry.$$hasFocus = false
                 $scope.struct.source_list.push(entry)
+            if $scope.struct.d_type == "services" and $scope.struct.saved_page
+                _restore = $scope.struct.saved_page
+                $scope.struct.saved_page = 0
+                $timeout(
+                    () ->
+                        # console.log "restore", _restore
+                        # trigger watcher
+                        $scope.pag_control.counter++
+                        $scope.pag_control.current_page = _restore
+                    0
+                )
 
     $scope.link = (con_element, notifier, d_type) ->
         $scope.struct.d_type = d_type
@@ -362,7 +380,15 @@ angular.module(
         if $scope.struct.con_element._settings?
             $scope.struct.settings = angular.fromJson($scope.struct.con_element._settings)
             if "pag" of $scope.struct.settings
-                $scope.pagination_settings = $scope.struct.settings["pag"]
+                _pag_settings = $scope.struct.settings.pag
+                $scope.pag_control.$id = $scope.$id
+                if "items_by_page" of _pag_settings
+                    $scope.pag_control.items_by_page = _pag_settings.items_by_page
+                if "sort" of _pag_settings
+                    $scope.pag_control.sort = _pag_settings.sort
+                # trigger reload
+                $scope.pag_control.counter++
+                # console.log $scope.struct.settings["pag"]
             if "columns" of $scope.struct.settings
                 $scope.columns_from_settings = $scope.struct.settings["columns"]
         notifier.promise.then(
@@ -411,11 +437,11 @@ angular.module(
         DeviceOverviewService($event, [dev_check.$$icswDevice])
 
     $scope.pagination_changed = (pag) ->
-        if not pag?
-            return $scope.struct.settings["pag"]
-        else
+        if not $scope.struct.focus_device
+            # console.log "pag=", pag
             $scope.struct.settings["pag"] = pag
             $scope.struct.con_element.pipeline_settings_changed(angular.toJson($scope.struct.settings))
+            $scope.struct.saved_page = pag.current_page
 
     $scope.columns_changed = (col_setup) ->
         $scope.struct.settings["columns"] = col_setup

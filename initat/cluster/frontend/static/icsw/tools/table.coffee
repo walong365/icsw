@@ -69,6 +69,7 @@ angular.module(
             stDisplayedPages: '=?'
             noNumberOfElements: '=?'
             icsw_callback: "=icswCallback"
+            icsw_control: "=icswControl"
         }
         template: $templateCache.get("icsw.tools.paginator")
         link: (scope, element, attrs, ctrl) ->
@@ -78,10 +79,10 @@ angular.module(
                 scope.stItemsByPage = parseInt(attrs.stItemsByPage)
             else
                 scope.stItemsByPage = 10
-            if scope.icsw_callback?
-                _settings = scope.icsw_callback()
-                if "items_by_page" of _settings
-                    scope.stItemsByPage = _settings.items_by_page
+            #if scope.icsw_callback?
+            #    _settings = scope.icsw_callback()
+            #    if "items_by_page" of _settings
+            #        scope.stItemsByPage = _settings.items_by_page
             scope.noNumberOfElements = scope.noNumberOfElements or false
             scope.Math = Math
             # this is not nice but only needed for a minor thing (see template above)
@@ -96,11 +97,34 @@ angular.module(
             scope.currentPage = 1
             scope.pages = []
 
+            _copy_settings = () ->
+                vals = scope.icsw_control
+                if vals.items_by_page?
+                    scope.stItemsByPage = vals.items_by_page
+                if vals.current_page?
+                    scope.selectPage(vals.current_page)
+                if vals.sort?
+                    ctrl.tableState().sort = vals.sort
+
+            if attrs.icswControl?
+                _copy_settings()
+                scope.$watch(
+                    "icsw_control"
+                    (new_val) ->
+                        _copy_settings()
+                    true
+                )
+
+            sent_page = -1
+
             call_callback = () ->
                 if scope.icsw_callback?
+                    sent_page = scope.currentPage
                     scope.icsw_callback(
                         {
                             items_by_page: scope.stItemsByPage
+                            current_page: scope.currentPage
+                            sort: ctrl.tableState().sort
                         }
                     )
 
@@ -125,8 +149,17 @@ angular.module(
 
             # table state --> view
             scope.$watch(
-                () -> return ctrl.tableState().pagination
+                () ->
+                    return ctrl.tableState().pagination
                 redraw
+                true
+            )
+
+            scope.$watch(
+                () ->
+                    return ctrl.tableState().sort
+                () ->
+                    call_callback()
                 true
             )
 
@@ -141,6 +174,8 @@ angular.module(
             scope.selectPage = (page) ->
                 if (page > 0 && page <= scope.numPages) 
                     ctrl.slice((page - 1) * scope.stItemsByPage, scope.stItemsByPage)
+                if scope.currentPage != sent_page
+                    call_callback()
 
             # select the first page
             ctrl.slice(0, scope.stItemsByPage)

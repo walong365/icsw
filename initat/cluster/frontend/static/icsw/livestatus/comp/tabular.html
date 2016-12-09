@@ -32,7 +32,7 @@
                     <div class="pull-left">
                         <input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="Filter ..." type="search"/>
                     </div>
-                    <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed"
+                    <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed" icsw-control="pag_control"
                          possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin:4px 15px 0 0;">
                     </div>
                     <div style="margin-top:4px;">
@@ -47,7 +47,7 @@
                 </td>
             </tr>
             <tr>
-                <th st-sort="$$host_mon_result.display_name" st-sort-default="true">Device</th>
+                <th st-sort="$$host_mon_result.display_name">Device</th>
                 <th ng-show="show_column.DevFlags">DevFlags</th>
                 <th ng-show="show_column.DevCats">DevCats</th>
                 <th ng-show="show_column.State" colspan="2" st-sort="$$data.StateString">State</th>
@@ -174,7 +174,7 @@
                     <div class="pull-left">
                         <input st-search="$$search_string" class="form-control form-control-inline" style="margin-right:20px;" placeholder="Filter ..." type="search"/>
                     </div>
-                    <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed"
+                    <div icsw-tools-pagination st-items-by-page="20" icsw-callback="pagination_changed" icsw-control="pag_control"
                          possible-items-by-page="20,50,100,200,500,1000" class="pull-left" style="margin:4px 15px 0 0;">
                     </div>
                     <div style="margin-top:4px;">
@@ -188,7 +188,7 @@
                 </td>
             </tr>
             <tr>
-                <th st-sort="display_name" st-sort-default="true">Device</th>
+                <th st-sort="display_name">Device</th>
                 <th st-sort="$$serviceWeight" ng-show="show_column.Services">Services</th>
                 <th ng-show="show_column.DevCats">DevCats</th>
                 <th ng-show="show_column.State" colspan="2" st-sort="$$data.StateString">State</th>

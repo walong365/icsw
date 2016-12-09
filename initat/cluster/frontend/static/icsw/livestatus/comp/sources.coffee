@@ -340,6 +340,7 @@ angular.module(
                 entry.$$icswCategories = (cat_tree.lut[_cat].name for _cat in entry.$$device_categories).join(", ")
             else
                 entry.$$icswCategories = "---"
+            entry.$$search_string = "#{entry.display_name} #{entry.plugin_output}"
         return entry
 
     salt_service = (entry, cat_tree) ->
@@ -384,9 +385,12 @@ angular.module(
         return _r_list
 
     calculate_service_weight = (entry) ->
-        entry.$$serviceWeight = 0
-        for srv in entry.$$service_list
-            entry.$$serviceWeight += srv.$$data.weight
+        if entry.$$service_list.length
+            entry.$$serviceWeight = _.round(
+                _.sumBy(entry.$$service_list, (srv) -> return srv.$$data.weight) / entry.$$service_list.length, 3
+            )
+        else
+            entry.$$serviceWeight = 0.0
 
     return {
         get_luts: () ->
