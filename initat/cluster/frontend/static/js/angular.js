@@ -1,1 +1,1 @@
-angular-1.5.9.js
+angular-1.6.0.js
