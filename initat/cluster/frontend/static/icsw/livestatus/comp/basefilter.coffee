@@ -459,6 +459,10 @@ angular.module(
                     @setState({filter_state_str: _lf.get_filter_state_str()})
             )
             _width = 220
+
+            head_text_width = (in_str) ->
+                return _.min([1.8 * 56 / (2 + in_str.length), 15])
+
             _height = 140
             # console.log "RENDER"
             return div(
@@ -650,6 +654,7 @@ angular.module(
                                                     y: 5
                                                     x: 10
                                                     className: "svg-filter-head-text"
+                                                    style: {"font-size" : head_text_width(_host_text)}
                                                 }
                                                 "#{_host_text}"
                                             )
@@ -685,6 +690,7 @@ angular.module(
                                                     y: 5
                                                     x: -10
                                                     className: "svg-filter-head-text"
+                                                    style: {"font-size" : head_text_width(_service_text)}
                                                 }
                                                 "#{_service_text}"
                                             )

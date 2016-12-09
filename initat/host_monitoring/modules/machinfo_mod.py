@@ -125,7 +125,7 @@ class _general(hm_classes.hm_module):
             '-ab --list -o {}'.format(','.join(columns)),
         ]:
             _META["options"] = options
-            stdout, stderr = ("" ,"")
+            stdout, stderr = ("", "")
             _popen = subprocess.Popen([self.lsblk_bin] + options.split(), env=my_env, stdout=subprocess.PIPE)
 
             while True:
