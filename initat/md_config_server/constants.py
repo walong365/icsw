@@ -24,19 +24,32 @@ from __future__ import unicode_literals, print_function
 from enum import Enum
 
 
-class BuildModes(Enum):
+class BuildMode(object):
+    def __init__(self, short, full_build=False, master=True, dynamic_check=False, user_sync=False, reload=False):
+        self.short = short
+        self.full_build = full_build
+        self.master = master
+        self.dynamic_check = dynamic_check
+        self.user_sync = user_sync
+        self.reload = reload
+
+
+class BuildModesEnum(Enum):
     # build all and redistribute, master process
-    all_master = "all_master"
+    all_master = BuildMode("all_master", full_build=True, master=True, reload=True)
     # build all and redistribute, slave process
-    all_slave = "all_slave"
+    all_slave = BuildMode("all_slave", full_build=True, reload=True)
     # build some and do not redistribute
-    some_check = "some_check"
+    some_check = BuildMode("some_check")
     # build some and redistribute, for dynamic updates, master process
-    some_master = "some_master"
+    some_master = BuildMode("some_master", master=True, reload=True)
     # build some and redistribute, slave process
-    some_slave = "some_slave"
+    some_slave = BuildMode("some_slave", reload=True)
     # dynamic update run
-    dyn_master = "dyn_master"
+    dyn_master = BuildMode("dyn_master", dynamic_check=True, master=True)
+    # http sync commands
+    sync_users_master = BuildMode("sync_users_master", master=True, user_sync=True)
+    sync_users_slave = BuildMode("sync_users_slave", user_sync=True)
 
 
 # icinga constants

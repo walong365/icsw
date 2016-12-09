@@ -43,7 +43,7 @@ from ..special_commands.struct import DynamicCheckMode
 from initat.tools import config_tools, logging_tools, server_mixins, server_command
 from initat.tools.bgnotify import create_bg_job
 from ..config.build_cache import BuildCache, HostBuildCache
-from ..constants import BuildModes
+from ..constants import BuildModesEnum
 from ..mixins import ImageMapMixin, DistanceMapMixin, NagVisMixin
 
 
@@ -59,8 +59,6 @@ class BuildProcess(
         self.CC.init(None, global_config)
         db_tools.close_connection()
         self.__hosts_pending, self.__hosts_waiting = (set(), set())
-        # self.version = int(time.time())
-        # self.log("initial config_version is {:d}".format(self.version))
         self.register_func("start_build", self._start_build)
         self.register_func("fetch_dyn_config", self._fetch_dyn_config)
         self.register_func("routing_fingerprint", self._routing_fingerprint)
@@ -284,7 +282,7 @@ class BuildProcess(
 
     def _start_build(self, *args, **kwargs):
         args = list(args)
-        self.build_mode = args.pop(0)
+        self.build_mode = getattr(BuildModesEnum, args.pop(0))
         self.__gen_config = MainConfig(self, args.pop(0))
         self.version = args.pop(0)
         self.srv_com = server_command.srv_command(source=args.pop(0))
@@ -299,7 +297,7 @@ class BuildProcess(
                 full_build=not self.single_build,
                 router_obj=self.router_obj,
             )
-            if self.build_mode == BuildModes.all_master:
+            if self.build_mode == BuildModesEnum.all_master:
                 # from mixin
                 # todo, remove, move to syncer
                 self.VCM_check_md_version()
@@ -327,7 +325,7 @@ class BuildProcess(
                 "enabled" if hdep_from_topo else "disabled",
             )
         )
-        if self.build_mode in [BuildModes.all_master, BuildModes.some_master]:
+        if self.build_mode in [BuildModesEnum.all_master, BuildModesEnum.some_master]:
             _bgj = create_bg_job(
                 global_config["SERVER_IDX"],
                 None,
@@ -338,18 +336,22 @@ class BuildProcess(
                 # set timeout to 30 minutes for big installs
                 timeout=30 * 60
             )
-
-            if int(time.time()) > self.version:
-                self.version = int(time.time())
-            else:
-                self.version += 1
+            # the version is controlled by control.py (to keep all slaves in sync)
+            # print("*", self.version, int(time.time()))
+            # if int(time.time()) > self.version:
+            #     self.version = int(time.time())
+            # else:
+            #     self.version += 1
             self.log("config_version for full build is {:d}".format(self.version))
-            self.send_pool_message("build_info", "start_build", self.version, self.build_mode == BuildModes.all_master, target="syncer")
+            self.send_pool_message("build_info", "start_build", self.version, self.build_mode.name, target="syncer")
+        elif self.build_mode in [BuildModesEnum.sync_users_master]:
+            self.send_pool_message("build_info", "start_build", self.version, self.build_mode.name, target="syncer")
+            _bgj = None
         else:
             _bgj = None
 
         # fetch SNMP-stuff from cluster and initialise var cache
-        self._create_general_config(self.build_mode, write_entries=self.build_mode not in [BuildModes.some_check])
+        self._create_general_config(self.build_mode, write_entries=self.build_mode not in [BuildModesEnum.some_check])
         bc_valid = self.__gen_config.is_valid
         if bc_valid:
             # get device templates
@@ -365,14 +367,14 @@ class BuildProcess(
                     self.log("service templates are not valid", logging_tools.LOG_LEVEL_ERROR)
                 bc_valid = False
         if bc_valid:
-            if self.build_mode == BuildModes.some_check:
+            if self.build_mode == BuildModesEnum.some_check:
                 # clean device and service entries
                 for key in constants.SINGLE_BUILD_MAPS:
                     if key in self.__gen_config:
                         self.__gen_config[key].refresh(self.__gen_config)
             # hosts to build
             total_hosts = self._get_number_of_hosts()
-            if self.build_mode in [BuildModes.all_master, BuildModes.all_slave]:
+            if self.build_mode in [BuildModesEnum.all_master, BuildModesEnum.all_slave]:
                 # build distance map
                 cur_dmap, unreachable_pks, unreachable_names = self.DM_build_distance_map(
                     self.__gen_config.monitor_server,
@@ -393,36 +395,41 @@ class BuildProcess(
             else:
                 cur_dmap = {}
             cur_gc = self.__gen_config
-            if self.build_mode == BuildModes.all_master:
+            if self.build_mode in [BuildModesEnum.all_master, BuildModesEnum.sync_users_master, BuildModesEnum.sync_users_slave]:
                 # recreate access files
-                cur_gc._create_access_entries()
+                cur_gc.create_access_entries()
 
-            # global build cache
-            gbc = build_cache
-            gbc.background_job = _bgj
-            gbc.host_list = self.host_list
-            gbc.dev_templates = dev_templates
-            gbc.serv_templates = serv_templates
-            gbc.single_build = self.single_build
-            gbc.debug = self.gc["DEBUG"]
-            # set global config and other global values
-            gbc.set_global_config(cur_gc, cur_dmap, hdep_from_topo)
-            self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
-            self.create_all_host_configs(gbc)
-            self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
-            if self.build_mode in [BuildModes.all_master, BuildModes.all_slave, BuildModes.some_master, BuildModes.some_slave]:
-                # refresh implies _write_entries
-                cur_gc.refresh()
-                # write config to disk
+            if self.build_mode in [BuildModesEnum.sync_users_master, BuildModesEnum.sync_users_slave]:
                 cur_gc.write_entries()
                 # start syncing
-                self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
-            del gbc
+                self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, cur_gc.access_entry_files, target="syncer")
+            else:
+                # global build cache
+                gbc = build_cache
+                gbc.background_job = _bgj
+                gbc.host_list = self.host_list
+                gbc.dev_templates = dev_templates
+                gbc.serv_templates = serv_templates
+                gbc.single_build = self.single_build
+                gbc.debug = self.gc["DEBUG"]
+                # set global config and other global values
+                gbc.set_global_config(cur_gc, cur_dmap, hdep_from_topo)
+                self.send_pool_message("build_info", "start_config_build", cur_gc.monitor_server.full_name, target="syncer")
+                self.create_all_host_configs(gbc)
+                self.send_pool_message("build_info", "end_config_build", cur_gc.monitor_server.full_name, target="syncer")
+                if self.build_mode in [BuildModesEnum.all_master, BuildModesEnum.all_slave, BuildModesEnum.some_master, BuildModesEnum.some_slave]:
+                    # refresh implies _write_entries
+                    cur_gc.refresh()
+                    # write config to disk
+                    cur_gc.write_entries()
+                    # start syncing
+                    self.send_pool_message("build_info", "sync_slave", cur_gc.monitor_server.full_name, target="syncer")
+                del gbc
             if _bgj:
                 _bgj.set_state(BackgroundJobState.done)
-        if self.build_mode == BuildModes.all_master:
-            self.send_pool_message("build_info", "end_build", self.version, target="syncer")
-        if self.build_mode in [BuildModes.some_check, BuildModes.some_master]:
+        if self.build_mode in [BuildModesEnum.all_master, BuildModesEnum.sync_users_master]:
+            self.send_pool_message("build_info", "end_build", self.version, self.build_mode.name, target="syncer")
+        if self.build_mode in [BuildModesEnum.some_check, BuildModesEnum.some_master]:
             cur_gc = self.__gen_config
             res_node = E.config(
                 *sum(
@@ -469,7 +476,7 @@ class BuildProcess(
         # hostgroups
         cur_gc.add_config(MonAllHostGroups(cur_gc))
         # device dir
-        cur_gc.add_config(MonDirContainer("device", full_build=mode in [BuildModes.all_master, BuildModes.all_slave]))
+        cur_gc.add_config(MonDirContainer("device", full_build=mode in [BuildModesEnum.all_master, BuildModesEnum.all_slave]))
         # host_dependencies
         cur_gc.add_config(MonAllHostDependencies(cur_gc))
         cur_gc.dump_logs()

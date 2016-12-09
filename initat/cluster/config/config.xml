@@ -697,7 +697,7 @@
         <menuHeader name="Global" icon="fa-globe" side="left">
             <routeSubGroup name="Setup">
                 <menuEntry icon="fa-wrench" name="Monitoring" routeName="main.monitorbasics"/>
-                <menuEntry icon="fa-user" name="User" routeName="main.usertree"/>
+                <menuEntry icon="fa-user" name="Users, Groups and Roles" routeName="main.usertree"/>
                 <menuEntry icon="fa-gears" name="Schedule" routeName="main.schedoverviewasset"/>
                 <menuEntry icon="fa-map-marker" name="Locations" routeName="main.devlocation"/>
             </routeSubGroup>

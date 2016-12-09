@@ -175,12 +175,16 @@ class MainConfig(dict, NagVisMixin):
                 self.log("already exists : {}".format(full_path))
 
     def _clear_etc_dir(self):
-        if self.master:
-            self.log("not clearing {} dir (master)".format(self.__w_dir_dict["etc"]))
-        else:
-            self.log("clearing {} dir (slave)".format(self.__w_dir_dict["etc"]))
-            for dir_e in os.listdir(self.__w_dir_dict["etc"]):
-                full_path = os.path.join(self.__w_dir_dict["etc"], dir_e)
+        self.log(
+            "clearing {} dir ({})".format(
+                self.__w_dir_dict["etc"],
+                "master" if self.master else "slave",
+            )
+        )
+        del_dict = {"files": 0, "dirs": 0}
+        for dir_path, dir_list, file_list in os.walk(self.__w_dir_dict["etc"], topdown=False):
+            for file_name in file_list:
+                full_path = os.path.join(dir_path, file_name)
                 if os.path.isfile(full_path):
                     try:
                         os.unlink(full_path)
@@ -192,6 +196,30 @@ class MainConfig(dict, NagVisMixin):
                             ),
                             logging_tools.LOG_LEVEL_ERROR
                         )
+                    else:
+                        del_dict["files"] += 1
+            for dir_name in dir_list:
+                full_path = os.path.join(dir_path, dir_name)
+                if os.path.isdir(full_path):
+                    try:
+                        os.rmdir(full_path)
+                    except:
+                        self.log(
+                            "Cannot delete directory {}: {}".format(
+                                full_path,
+                                process_tools.get_except_info()
+                            ),
+                            logging_tools.LOG_LEVEL_ERROR
+                        )
+                    else:
+                        del_dict["dirs"] += 1
+        self.log(
+            "deletion stats: {}".format(
+                ", ".join(
+                    ["{}={:d}".format(_key, _value) for _key, _value in del_dict.iteritems()]
+                )
+            )
+        )
 
     def _create_base_config_entries(self):
         _md_type = global_config["MD_TYPE"]
@@ -497,23 +525,32 @@ class MainConfig(dict, NagVisMixin):
         if global_config["ENABLE_NAGVIS"] and self.master:
             self.NV_create_base_entries()
 
-    def _create_access_entries(self):
+    @property
+    def access_entry_files(self):
+        return [
+            (
+                os.path.join(self.__w_dir_dict["etc"], "http_users.cfg"),
+                os.path.join(self.__r_dir_dict["etc"], "http_users.cfg"),
+            ),
+        ]
+
+    def create_access_entries(self):
+        self.log("creating http_users.cfg file")
+        # create htpasswd
+        http_file = os.path.join(self.__w_dir_dict["etc"], "http_users.cfg")
+        file(http_file, "w").write(
+            "\n".join(
+                [
+                    "{}:{{SSHA}}{}".format(
+                        cur_u.login,
+                        cur_u.password_ssha.split(":", 1)[1]
+                    ) for cur_u in user.objects.filter(
+                        Q(active=True)
+                    ) if cur_u.password_ssha.count(":")
+                ] + [""]
+            ).encode("utf8")
+        )
         if self.master:
-            self.log("creating http_users.cfg file")
-            # create htpasswd
-            htp_file = os.path.join(self.__r_dir_dict["etc"], "http_users.cfg")
-            file(htp_file, "w").write(
-                "\n".join(
-                    [
-                        "{}:{{SSHA}}{}".format(
-                            cur_u.login,
-                            cur_u.password_ssha.split(":", 1)[1]
-                        ) for cur_u in user.objects.filter(
-                            Q(active=True)
-                        ) if cur_u.password_ssha.count(":")
-                    ] + [""]
-                ).encode("utf8")
-            )
             if global_config["ENABLE_NAGVIS"]:
                 self.NV_create_access_entries()
 

@@ -26,8 +26,10 @@ software and performance
 
 """
 
+from __future__ import print_function, unicode_literals
+
 from initat.icsw.service.instance import InstanceXML
-from initat.tools import logging_tools, server_command, threading_tools
+from initat.tools import logging_tools
 from .config import global_config
 from .sync_config import SyncConfig
 

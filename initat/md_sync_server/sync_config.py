@@ -19,9 +19,11 @@
 #
 """ syncer definition for md-sync-server """
 
+from __future__ import print_function, unicode_literals
+
 import base64
 import bz2
-import datetime
+import json
 import os
 import signal
 import stat
@@ -558,7 +560,7 @@ class SyncConfig(object):
                     self.send_time,
                 )
             )
-            _to_send, _num_files, _size_data = self._get_send_commands()
+            _to_send, _num_files, _size_data = self._get_send_commands(json.loads(srv_com["*file_tuples"]))
             self.num_send[self.config_version_send] = 0
             for _send_com in _to_send:
                 self.send_slave_command(_send_com)
@@ -573,7 +575,10 @@ class SyncConfig(object):
         else:
             self.log("slave has no valid IP-address, skipping send", logging_tools.LOG_LEVEL_ERROR)
 
-    def _get_send_commands(self):
+    def _get_send_commands(self, file_tuples):
+        # file tuples are used for httpd-users syncs
+        excl_file_dict = {src: dst for src, dst in file_tuples}
+        # print("*", excl_file_dict)
         MAX_SEND_SIZE = 65536
         _to_send = []
         # number of atomic commands
@@ -582,17 +587,18 @@ class SyncConfig(object):
         dir_offset = len(self.__w_dir_dict["etc"])
         # generation 1 transfer
         del_dirs = []
-        for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
-            rel_dir = cur_dir[dir_offset + 1:]
-            del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
-        if del_dirs:
-            srv_com = self._get_slave_srv_command(
-                "clear_directories",
-                version="{:d}".format(int(self.send_time)),
-            )
-            _bld = srv_com.builder()
-            srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
-            _to_send.append(srv_com)
+        if not file_tuples:
+            for cur_dir, _dir_names, file_names in os.walk(self.__w_dir_dict["etc"]):
+                rel_dir = cur_dir[dir_offset + 1:]
+                del_dirs.append(os.path.join(self.__r_dir_dict["etc"], rel_dir))
+            if del_dirs:
+                srv_com = self._get_slave_srv_command(
+                    "clear_directories",
+                    version="{:d}".format(int(self.send_time)),
+                )
+                _bld = srv_com.builder()
+                srv_com["directories"] = _bld.directories(*[_bld.directory(del_dir) for del_dir in del_dirs])
+                _to_send.append(srv_com)
         _send_list, _send_size = ([], 0)
         # clear file dict
         self.__file_dict = {}
@@ -602,15 +608,20 @@ class SyncConfig(object):
                 full_r_path = os.path.join(self.__w_dir_dict["etc"], rel_dir, cur_file)
                 full_w_path = os.path.join(self.__r_dir_dict["etc"], rel_dir, cur_file)
                 if os.path.isfile(full_r_path):
-                    self.__file_dict[full_w_path] = FileInfo(full_w_path, self.config_version_send)
-                    _content = file(full_r_path, "r").read()
-                    _size_data += len(_content)
-                    _num_files += 1
-                    if _send_size + len(_content) > MAX_SEND_SIZE:
-                        self._send(self._build_file_content(_send_list))
-                        _send_list, _send_size = ([], 0)
-                    # format: uid, gid, path, content_len, content
-                    _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
+                    if excl_file_dict:
+                        _take = full_r_path in excl_file_dict
+                    else:
+                        _take = True
+                    if _take:
+                        self.__file_dict[full_w_path] = FileInfo(full_w_path, self.config_version_send)
+                        _content = file(full_r_path, "r").read()
+                        _size_data += len(_content)
+                        _num_files += 1
+                        if _send_size + len(_content) > MAX_SEND_SIZE:
+                            self._send(self._build_file_content(_send_list))
+                            _send_list, _send_size = ([], 0)
+                        # format: uid, gid, path, content_len, content
+                        _send_list.append((os.stat(full_r_path)[stat.ST_UID], os.stat(full_r_path)[stat.ST_GID], full_w_path, len(_content), _content))
         if _send_list:
             _to_send.append(self._build_file_content(_send_list))
         return _to_send, _num_files, _size_data
@@ -628,8 +639,11 @@ class SyncConfig(object):
         self._check_for_ras()
 
     def handle_local_sync_slave(self, srv_com):
+        # copy config versions from srv_com (see handle_remote_sync_slave)
+        self.config_version_build = int(srv_com["*config_version_build"])
+        self.config_version_send = self.config_version_build
         # create send commands
-        _to_send, _num_files, _size_data = self._get_send_commands()
+        _to_send, _num_files, _size_data = self._get_send_commands(json.loads(srv_com["*file_tuples"]))
         self.log(
             "local sync, handling {} ({})".format(
                 logging_tools.get_plural("file", _num_files),
@@ -656,7 +670,6 @@ class SyncConfig(object):
 
     def handle_direct_file_content_bulk(self, srv_com):
         new_vers = int(srv_com["*config_version_send"])
-        _file_list = srv_com["file_list"][0]
         _bulk = bz2.decompress(base64.b64decode(srv_com["*bulk"]))
         cur_offset = 0
         self.log(
@@ -798,6 +811,14 @@ class SyncConfig(object):
             self.reload_after_sync_flag = False
             self.log("sending reload")
             self.__process.send_signal(signal.SIGHUP)
+        else:
+            self.log(
+                "not sending reload: reload_after_sync_flag is {}, dist_ok is {}".format(
+                    str(self.reload_after_sync_flag),
+                    str(self.dist_ok),
+                ),
+                logging_tools.LOG_LEVEL_WARN
+            )
 
     def handle_action(self, action, srv_com, src, dst):
         s_time = time.time()

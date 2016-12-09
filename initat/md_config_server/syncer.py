@@ -34,12 +34,13 @@ from initat.cluster.backbone import db_tools, routing
 from initat.cluster.backbone.models import device
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from initat.md_config_server.config import global_config, SyncConfig
+from initat.md_config_server.constants import BuildModesEnum
 from initat.md_sync_server.base_config import RemoteServer
 from initat.tools import config_tools, logging_tools, server_command, threading_tools
 
 __all__ = [
-    "RemoteServer",
-    "SyncerProcess",
+    b"RemoteServer",
+    b"SyncerProcess",
 ]
 
 
@@ -202,25 +203,36 @@ class SyncerProcess(threading_tools.process_obj):
         _bi_type = _vals.pop(0)
         if _bi_type == "start_build":
             # config build started
-            self.__build_in_progress, self.__build_version, full_build = (True, _vals.pop(0), _vals.pop(0))
+            self.__build_in_progress, self.__build_version, build_mode = (
+                True,
+                _vals.pop(0),
+                getattr(BuildModesEnum, _vals.pop(0)),
+            )
             self.log(
-                "build started ({:d}, build is {})".format(
+                "build {} started ({:d}, build is {})".format(
+                    build_mode.name,
                     self.__build_version,
-                    "full" if full_build else "partial"
+                    "full" if build_mode.value.full_build else "partial"
                 )
             )
-            self._master_md = self.__master_config.start_build(self.__build_version, full_build)
+            self._master_md = self.__master_config.start_build(self.__build_version, build_mode.value.full_build)
             for _conf in self.__slave_configs.values():
                 if not _conf.master:
-                    _conf.start_build(self.__build_version, full_build, master=self._master_md)
+                    _conf.start_build(self.__build_version, build_mode.value.full_build, master=self._master_md)
         elif _bi_type == "end_build":
-            self.__build_in_progress = False
-            self.log("build ended ({:d})".format(self.__build_version))
+            self.__build_in_progress, _build_version, build_mode = (
+                False,
+                _vals.pop(0),
+                getattr(BuildModesEnum, _vals.pop(0)),
+            )
+            self.log("build ended ({:d} / {:d})".format(self.__build_version, _build_version))
             self.__master_config.end_build()
-            # trigger reload when sync is done
-            for _slave in self.__slave_configs.itervalues():
-                _slave.reload_after_sync()
-            self.__master_config.reload_after_sync()
+            if build_mode.value.reload:
+                self.log("sending reload after sync")
+                # trigger reload when sync is done
+                for _slave in self.__slave_configs.itervalues():
+                    _slave.reload_after_sync()
+                self.__master_config.reload_after_sync()
         elif _bi_type == "unreachable_devices":
             self.__master_config.unreachable_devices(_vals[0])
         elif _bi_type == "unreachable_device":
@@ -235,8 +247,13 @@ class SyncerProcess(threading_tools.process_obj):
             self.__slave_configs[self.__slave_lut[_srv_name]].device_count(_vals[0])
         elif _bi_type == "sync_slave":
             slave_name = _vals.pop(0)
+            # tuple of (source, dest) files
+            if len(_vals):
+                transfer_tuples = _vals.pop(0)
+            else:
+                transfer_tuples = []
             if slave_name in self.__slave_lut:
-                self.__slave_configs[self.__slave_lut[slave_name]].sync_slave()
+                self.__slave_configs[self.__slave_lut[slave_name]].sync_slave(transfer_tuples)
             else:
                 self.log("unknown slave '{}'".format(slave_name), logging_tools.LOG_LEVEL_CRITICAL)
         else:

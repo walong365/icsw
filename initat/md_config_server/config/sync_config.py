@@ -22,6 +22,7 @@
 from __future__ import unicode_literals, print_function
 
 import datetime
+import json
 import os
 import time
 
@@ -337,10 +338,11 @@ class SyncConfig(object):
             self.__md_struct.build_end = cluster_timezone.localize(datetime.datetime.now())
             self.__md_struct.save()
 
-    def sync_slave(self):
+    def sync_slave(self, file_tuples):
         self.send_slave_command(
             "sync_slave",
-            config_version_build="{:d}".format(self.config_version_build)
+            config_version_build="{:d}".format(self.config_version_build),
+            file_tuples=json.dumps(file_tuples),
         )
 
     def _check_for_ras(self):

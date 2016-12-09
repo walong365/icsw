@@ -29,7 +29,7 @@ from initat.cluster.backbone.models import device
 from initat.md_config_server.config import MainConfigContainer, global_config
 from initat.tools import logging_tools, server_command
 from .process import BuildProcess
-from ..constants import BuildModes
+from ..constants import BuildModesEnum
 
 
 class BuildControl(object):
@@ -118,10 +118,11 @@ class BuildControl(object):
         else:
             return self.fetch_dyn_config(srv_com)
 
-    def sync_http_users(self, *args, **kwargs):
-        self.log("syncing http-users")
-        self.log("not handled correctly right now, please fixme", logging_tools.LOG_LEVEL_CRITICAL)
-        # self.__gen_config._create_access_entries()
+    def sync_http_users(self, srv_com):
+        srv_com.set_result("syncing httpd-users")
+        # bump version
+        self.version += 1
+        self._rebuild_config(srv_com)
 
     def build_step(self, *args, **kwargs):
         _action = args[2]
@@ -140,6 +141,10 @@ class BuildControl(object):
     def build_host_config(self, srv_com):
         # all builds are handled via this call
         dev_pks = srv_com.xpath(".//device_list/device/@pk", smart_strings=False)
+        new_version = int(time.time())
+        while new_version < self.version:
+            new_version += 1
+        self.version = new_version
         if dev_pks:
             dev_names = [
                 cur_dev.full_name for cur_dev in device.objects.filter(Q(pk__in=dev_pks)).select_related("domain_tree_node")
@@ -170,36 +175,40 @@ class BuildControl(object):
         _b_list = [self.__master_config.serialize()]
         if len(args):
             if kwargs.get("only_build", False):
-                _mode = BuildModes.some_master
+                _mode = BuildModesEnum.some_master
             else:
-                _mode = BuildModes.some_check
+                _mode = BuildModesEnum.some_check
+        elif srv_com["*command"] == "sync_http_users":
+            _mode = BuildModesEnum.sync_users_master
         else:
-            _mode = BuildModes.all_master
-        if _mode not in [BuildModes.some_check]:
+            _mode = BuildModesEnum.all_master
+        if _mode not in [BuildModesEnum.some_check]:
             # build config for all hosts, one process per slave
             _b_list.extend(
                 [_slave.serialize() for _slave in self.__slave_configs.itervalues()]
             )
 
         self._build_slave_names = []
+        # print("*", self.version, _mode)
         for _build_id, _ser_info in enumerate(_b_list, 1):
             _p_name = "build{:d}".format(_build_id)
             self.__process.add_process(BuildProcess(_p_name), start=True)
             self.__process.send_to_process(
                 _p_name,
                 "start_build",
-                _mode,
+                _mode.name,
                 _ser_info,
                 self.version,
                 unicode(srv_com),
                 *args
             )
-            if _mode in [BuildModes.some_slave, BuildModes.all_slave]:
+            if _mode in [BuildModesEnum.some_slave, BuildModesEnum.all_slave, BuildModesEnum.sync_users_slave]:
                 self._build_slave_names.append(_p_name)
             # advance mode
             _mode = {
-                BuildModes.some_master: BuildModes.some_slave,
-                BuildModes.all_master: BuildModes.all_slave,
+                BuildModesEnum.some_master: BuildModesEnum.some_slave,
+                BuildModesEnum.all_master: BuildModesEnum.all_slave,
+                BuildModesEnum.sync_users_master: BuildModesEnum.sync_users_slave,
             }.get(_mode, _mode)
 
     def process_action(self, proc_name, ss_flag):
@@ -223,7 +232,7 @@ class BuildControl(object):
             self.__process.send_to_process(
                 _p_name,
                 "fetch_dyn_config",
-                BuildModes.dyn_master,
+                BuildModesEnum.dyn_master,
                 self.__master_config.serialize(),
                 unicode(srv_com),
                 *dev_pks
