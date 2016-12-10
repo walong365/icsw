@@ -390,7 +390,8 @@ angular.module(
                 _.sumBy(entry.$$service_list, (srv) -> return srv.$$data.weight) / entry.$$service_list.length, 3
             )
         else
-            entry.$$serviceWeight = 0.0
+            # just a tad above zero
+            entry.$$serviceWeight = 0.001
 
     return {
         get_luts: () ->

@@ -17,6 +17,8 @@
 #
 """ checks for Megaraid RAID controllers """
 
+from __future__ import print_function,  unicode_literals
+
 import base64
 import bz2
 import json
@@ -210,6 +212,9 @@ class ctrl_type_megaraid_sas(ctrl_type):
         if run_type == "done":
             # last run type, store in ccs
             # pprint.pprint(self._dict)
+            # ignore unicode errors, see srv_command definition
+            # this is not very clever but always better than discarding the complete check
+            ccs.srv_com.ignore_unicode_errors = True
             for ctrl_id, ctrl_stuff in self._dict.iteritems():
                 ccs.srv_com["result:ctrl_{:d}".format(ctrl_id)] = ctrl_stuff
             return

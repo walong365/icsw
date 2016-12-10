@@ -137,13 +137,14 @@ def add_namespace(in_str):
 
 class srv_command(object):
     srvc_open = 0
-    __slots__ = ["__builder", "__tree", "srvc_open"]
+    __slots__ = ["__builder", "__tree", "srvc_open", "ignore_unicode_errors"]
 
     def __init__(self, **kwargs):
         # init tree with None so that __del__ always succeeds
         self.__tree = None
         srv_command.srvc_open += 1
         self.__builder = ElementMaker(namespace=XML_NS)
+        self.ignore_unicode_errors = False
         if "source" in kwargs:
             if isinstance(kwargs["source"], basestring):
                 self.__tree = etree.fromstring(kwargs["source"])
@@ -339,7 +340,13 @@ class srv_command(object):
             try:
                 cur_element.text = value
             except ValueError:
-                cur_element.text = value.decode("utf8")
+                try:
+                    cur_element.text = value.decode("utf8")
+                except ValueError:
+                    if self.ignore_unicode_errors:
+                        cur_element.text = ""
+                    else:
+                        raise
             cur_element.attrib["type"] = "str"
         elif type(value) in [int, long]:
             cur_element.text = "{:d}".format(value)

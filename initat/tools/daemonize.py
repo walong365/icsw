@@ -99,7 +99,13 @@ def main():
         gids = [get_gid_from_name(_gid)[0] for _gid in opts.groups.strip().split(",")]
     else:
         gids = []
-    _daemon_context = daemon.DaemonContext(detach_process=True, uid=uid, gid=gid, gids=gids)
+    _daemon_context = daemon.DaemonContext(
+        detach_process=True,
+        uid=uid,
+        gid=gid,
+        gids=gids,
+        init_groups=True
+    )
     if opts.nice:
         os.nice(opts.nice)
     if opts.daemonize:

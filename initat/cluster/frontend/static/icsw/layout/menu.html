@@ -50,13 +50,13 @@
             </li>
             <li class="pull-right cursorpointer">
                 <span ng-repeat="entry in struct.bc_list">
-                    <a class="cursorpointer" ui-sref="{{ entry.sref }}" ui-sref-opts="{icswRegister: false}" ng-show="!entry.state.icswData.hasDevselFunc">
-                        <!-- icon is no longer referenced in state <span class="fa" ng-class="entry.icon"/> -->
-                        {{ entry.name }}
-                    </a>
-                    <button type="button" ng-show="entry.state.icswData.hasDevselFunc" class="btn btn-xs btn-default" ng-click="activate_state(entry)">
+                    <button type="button" ng-show="!entry.state.icswData.hasDevselFunc" class="btn btn-xs btn-default" ng-click="activate_state(entry)">
                         <!-- <span class="fa" ng-class="entry.icon"/> -->
                         {{ entry.name }}
+                    </button>
+                    <button type="button" ng-show="entry.state.icswData.hasDevselFunc" class="btn btn-xs btn-default" ng-click="activate_state(entry)">
+                        <!-- <span class="fa" ng-class="entry.icon"/> -->
+                        <strong>{{ entry.name }}</strong>
                     </button>
                 </span>
                 <span
