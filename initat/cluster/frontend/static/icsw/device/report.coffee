@@ -108,6 +108,7 @@ device_report_module = angular.module(
             (error) ->
                 console.log(error)
         )
+
     refresh_available_reports()
 
     initialize_buttons = () ->

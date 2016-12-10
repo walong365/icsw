@@ -104,7 +104,8 @@ def main():
         uid=uid,
         gid=gid,
         gids=gids,
-        init_groups=True
+        # valid with python-daemonize-2.1.2
+        # init_groups=False
     )
     if opts.nice:
         os.nice(opts.nice)

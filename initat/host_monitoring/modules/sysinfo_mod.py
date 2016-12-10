@@ -19,6 +19,8 @@
 #
 """ system related information """
 
+from __future__ import print_function,  unicode_literals
+
 import commands
 
 from initat.host_monitoring import hm_classes, limits

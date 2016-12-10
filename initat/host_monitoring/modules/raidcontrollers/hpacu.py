@@ -17,6 +17,8 @@
 #
 """ checks for HPACU Controllers """
 
+from __future__ import print_function,  unicode_literals
+
 import re
 
 from initat.host_monitoring import limits, hm_classes

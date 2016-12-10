@@ -17,6 +17,8 @@
 #
 """ checks for GDTH / ICP RAID controller """
 
+from __future__ import print_function,  unicode_literals
+
 import datetime
 import os
 import time

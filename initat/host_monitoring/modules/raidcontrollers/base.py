@@ -17,6 +17,8 @@
 #
 """ raid controller base structures and helper functions """
 
+from __future__ import print_function,  unicode_literals
+
 import commands
 import os
 import time

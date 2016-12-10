@@ -17,6 +17,8 @@
 #
 """ checks for IBM Bladecenter RAID controllers """
 
+from __future__ import print_function,  unicode_literals
+
 import base64
 import marshal
 import os

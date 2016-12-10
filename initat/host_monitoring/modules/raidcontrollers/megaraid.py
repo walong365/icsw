@@ -174,7 +174,6 @@ class ctrl_type_megaraid_sas(ctrl_type):
     def scan_ctrl(self):
         cur_stat, cur_lines = self.exec_command(" -AdpAllInfo -aAll -noLog", post="strip")
         if not cur_stat:
-            _adp_check = False
             for line in cur_lines:
                 if line.lower().startswith("adapter #"):
                     line_p = line.split()

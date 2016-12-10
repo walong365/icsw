@@ -1,4 +1,4 @@
-# Copyright (C) 2001-2008,2012-2015 Andreas Lang-Nevyjel, init.at
+# Copyright (C) 2001-2008,2012-2016 Andreas Lang-Nevyjel, init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -16,6 +16,8 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 """ raid controller, container for all controllers """
+
+from __future__ import print_function,  unicode_literals
 
 from initat.tools import logging_tools
 

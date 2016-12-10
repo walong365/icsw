@@ -17,6 +17,8 @@
 #
 """ checks for ips (AAC) RAID controller """
 
+from __future__ import print_function,  unicode_literals
+
 import base64
 import bz2
 import marshal
