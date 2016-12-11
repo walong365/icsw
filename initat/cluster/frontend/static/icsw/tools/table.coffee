@@ -73,7 +73,6 @@ angular.module(
         }
         template: $templateCache.get("icsw.tools.paginator")
         link: (scope, element, attrs, ctrl) ->
-
             scope.stDisplayedPages = scope.stDisplayedPages or 5
             if attrs.stItemsByPage
                 scope.stItemsByPage = parseInt(attrs.stItemsByPage)
@@ -97,20 +96,29 @@ angular.module(
             scope.currentPage = 1
             scope.pages = []
 
+            scope.$$delay_settings = false
+
             _copy_settings = () ->
                 vals = scope.icsw_control
-                if vals.items_by_page?
-                    scope.stItemsByPage = vals.items_by_page
-                if vals.current_page?
-                    scope.selectPage(vals.current_page)
-                if vals.sort?
-                    ctrl.tableState().sort = vals.sort
+                # check if selectPage is already defined
+                if scope.selectPage?
+                    scope.$$delay_settings = false
+                    # console.log "S", scope.selectPage, scope.stItemsByPage
+                    if vals.items_by_page?
+                        scope.stItemsByPage = vals.items_by_page
+                    if vals.current_page?
+                        scope.selectPage(vals.current_page)
+                    if vals.sort?
+                        ctrl.tableState().sort = vals.sort
+                else
+                    scope.$$delay_settings = true
 
             if attrs.icswControl?
                 _copy_settings()
                 scope.$watch(
                     "icsw_control"
                     (new_val) ->
+                        # console.log "copy", new_val
                         _copy_settings()
                     true
                 )
@@ -145,6 +153,9 @@ angular.module(
 
                 for i in [start..(end-1)]
                     scope.pages.push(i)
+                if scope.$$delay_settings
+                    # console.log "delay"
+                    _copy_settings()
                 call_callback()
 
             # table state --> view

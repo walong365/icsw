@@ -342,7 +342,9 @@ angular.module(
     }
 
     # pagination control
-    $scope.pag_control = {counter: 0}
+    $scope.pag_control = {
+        counter: 0
+    }
 
     _copy_to_source_list = () ->
         $scope.struct.source_list.length = 0
@@ -389,6 +391,7 @@ angular.module(
                 # trigger reload
                 $scope.pag_control.counter++
                 # console.log $scope.struct.settings["pag"]
+            # console.log "ns", $scope.struct.settings
             if "columns" of $scope.struct.settings
                 $scope.columns_from_settings = $scope.struct.settings["columns"]
         notifier.promise.then(
@@ -438,8 +441,10 @@ angular.module(
 
     $scope.pagination_changed = (pag) ->
         if not $scope.struct.focus_device
-            # console.log "pag=", pag
+            # console.log $scope.$id, "pag=", pag
             $scope.struct.settings["pag"] = pag
+            # copy to pag_control
+            $scope.pag_control.items_by_page = $scope.struct.settings.pag.items_by_page
             $scope.struct.con_element.pipeline_settings_changed(angular.toJson($scope.struct.settings))
             $scope.struct.saved_page = pag.current_page
 

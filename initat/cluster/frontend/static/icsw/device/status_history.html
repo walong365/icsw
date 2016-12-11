@@ -128,7 +128,9 @@
                         ng-click="entry.log_viewer_enabled = !entry.log_viewer_enabled"
                         style="cursor: pointer"
                     >
-                        <td><i ng-class="entry.log_viewer_enabled && 'glyphicon glyphicon-chevron-down' || 'glyphicon glyphicon-chevron-right'"></i></td>
+                        <td>
+                            <i ng-class="entry.log_viewer_enabled && 'glyphicon glyphicon-chevron-down' || 'glyphicon glyphicon-chevron-right'"></i>
+                        </td>
                         <td>{{ entry.name }}</td>
                         <td class="text-right">
                             <icsw-tools-piechart diameter="28" data="entry.pie_data"></icsw-tools-piechart>

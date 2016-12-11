@@ -339,7 +339,8 @@ angular.module(
                 scope.clickAttr()
                 # TODO possibly pass entry outside along the lines of  scope.clickAttr()({entry: entry)) and setting click just to handle_click (not handle_click())
 
-            scope.width = scope.widthAttr() or 300
+            scope.width = scope.widthAttr() or 400
+            # console.log scope.width
             scope.height = scope.heightAttr() or base_height
 
             scope.fontSize = 10
@@ -403,7 +404,7 @@ angular.module(
 
                         # tooltip
                         _tooltip = angular.element("<div/>")
-                        _tooltip.addClass("icsw-tooltip").css("min-width", "350px").css("max-width", "350px")
+                        _tooltip.addClass("icsw-tooltip").css("min-width", "400px").css("max-width", "350px")
                         _tooltip.hide()
                         _div.append(_tooltip)
                         # calculate data to show
