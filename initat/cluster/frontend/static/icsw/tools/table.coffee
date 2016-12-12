@@ -345,4 +345,33 @@ Show/Hide Columns: <div class="btn-group btn-group-xs">
 
             )
      }
-)
+).directive("icswToolsFloatingTableHeader",
+[
+    "$window",
+(
+    $window,
+) ->
+    # container element contains 2 elements (head, body)
+    return {
+        restrict: 'EAC'
+        scope: false
+        link: (scope, element, attrs) ->
+            header = angular.element(element.children()[0])
+            body = angular.element(element.children()[1])
+
+            fixheader = (e) ->
+                menu_height = parseInt(window.getComputedStyle($window.document.body, null).paddingTop)
+                rel_pos = element[0].getBoundingClientRect().top - menu_height
+                if rel_pos < 0
+                    # fix header
+                    body[0].style.paddingTop = "#{header[0].clientHeight}px"
+                    header[0].style.top = "#{menu_height}px"
+                    header[0].style.position = "fixed"
+                else
+                    # default
+                    header[0].style.position = "static"
+                    body[0].style.paddingTop = 0
+                    header[0].style.top = 0
+            $($window).bind("scroll", fixheader)
+    }
+])

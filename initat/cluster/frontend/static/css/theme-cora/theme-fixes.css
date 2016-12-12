@@ -111,14 +111,14 @@ pre {
 }
 
 table.rotateheaders {
-    background-color: transparent;
+    background-color: #313131;
 }
 .modal-body table.rotateheaders th {
     background-color: #393939;
 }
 .group-indicator,
 table.rotateheaders > thead > tr > th.group-indicator {
-    border: 2px solid #bbbbbb;
+    border: 2px solid #92aa00;
     border-top: none;
 }
 .input-group-addon {
@@ -164,6 +164,7 @@ table.rotateheaders > thead > tr > th.group-indicator {
     background-color: #292929;
     margin-bottom: 17px;
     min-height: 25px;
+    margin-top:-25px;
     vertical-align: 10px;
     border: none;
     border-bottom: 1px solid #222222;
@@ -250,6 +251,9 @@ body.condensed .submenu-bar{
 }
 body.condensed .ova-statusbutton {
     margin: 8px 0 0 0;
+}
+body.normal {
+    padding-top: 95px;
 }
 a.bttn-bgjobs {
     padding: 43px 0 0 0!important;

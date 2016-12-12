@@ -49,6 +49,7 @@ icsw-tools-button{
     background-color:#f0f0f0;
     margin-bottom: 17px;
     min-height: 30px;
+    margin-top:-30px;
     vertical-align: 10px;
 }
 .submenu-bar .sub-breadcrumb {
@@ -100,4 +101,7 @@ icsw-tools-button{
 }
 div.menubuttontext {
     margin-top: 1px;
+}
+table.rotateheaders {
+    background-color: #ffffff;
 }

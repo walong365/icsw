@@ -105,6 +105,18 @@ th.icsw-config-rotate div:before {
     display:inline-block;
     vertical-align:middle;
 }*/
+table.rotateheaders .label {
+    padding: .2em .5em .3em;
+}
+table.assigntable.table-condensed > thead > tr > th,
+table.assigntable.table-condensed > tbody > tr > th,
+table.assigntable.table-condensed > tfoot > tr > th,
+table.assigntable.table-condensed > thead > tr > td,
+table.assigntable.table-condensed > tbody > tr > td,
+table.assigntable.table-condensed > tfoot > tr > td{
+    padding: 4px;
+}
+
 .angular-google-map-container {
     height: 480px;
 }
@@ -573,4 +585,17 @@ th[st-sort]:not(.st-sort-ascent):not(.st-sort-descent):not(.bg-info):before {
 /* fix for overflowing modal dialog content */
 .modal .modal-body {
     overflow-y: auto;
+}
+.assigntable {
+    margin-bottom: 0;
+}
+.assigntable tr.formatwidth > :nth-child(1) {
+    width: 200px;
+}
+.assigntable tr.formatwidth > :nth-child(2),
+.assigntable tr.formatwidth > :nth-child(3){
+    width: 50px;
+}
+.assigntable tr.formatwidth > :nth-child(n+4){
+    width: 38px;
 }

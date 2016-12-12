@@ -799,7 +799,9 @@ angular.module(
                         {
                         key: "groupindicator"
                         }
-                        th({key: "g0", colSpan: 3})
+                        th({key: "g0"})
+                        th({key: "g1"})
+                        th({key: "g2"})
                         _conf_grouping
                     )
                 else
@@ -807,15 +809,16 @@ angular.module(
                 return thead(
                     {key: "head"}
                     tr(
-                        {key: "head"}
+                        {key: "head", className: "formatwidth"}
                         th(
                             {
                                 key: "head"
-                                colSpan: 3
                             }
                             modify_button
                             cancel_button
                         )
+                        th({key: "head2"})
+                        th({key: "head3"})
                         _conf_headers
                     )
                     groupindicator
@@ -951,7 +954,7 @@ angular.module(
                 else
                     [_name, _class] = [dev.full_name, ""]
                 return tr(
-                    {}
+                    {className: "formatwidth"}
                     th(
                         {key: "head", className: _class}
                         _name
@@ -1036,27 +1039,40 @@ angular.module(
             if not @props.configHelper.devices.length
                 return null
 
-            table(
+            div(
                 {
-                    key: "top"
-                    className: "table rotateheaders table-condensed table-hover colhover"
-                    style: {width: "auto", overflowX: "auto", display: "block", borderCollapse: "separate"}
+                key: "configcontainer"
+                className: "icsw-tools-floating-table-header"
                 }
-                head_factory(
+                table(
                     {
-                        configHelper: @props.configHelper
-                        focusElement: @state.focus_el
+                    key: "label"
+                    className: "table rotateheaders table-condensed table-hover colhover assigntable"
+                    style: {width: "auto", overflowX: "visible", display: "block", borderCollapse: "separate", position:"static"}
                     }
-                )
-                [
-                    tbody_factory(
+                    head_factory(
                         {
                             configHelper: @props.configHelper
-                            groupStruct: group
-                            focusCallback: focus_cb
+                            focusElement: @state.focus_el
                         }
-                    ) for group in @props.configHelper.groups
-                ]
+                    )
+                )
+                table(
+                    {
+                        key: "top"
+                        className: "table rotateheaders table-condensed table-hover colhover assigntable"
+                        style: {width: "auto", overflowX: "auto", display: "block", borderCollapse: "separate"}
+                    }
+                    [
+                        tbody_factory(
+                            {
+                                configHelper: @props.configHelper
+                                groupStruct: group
+                                focusCallback: focus_cb
+                            }
+                        ) for group in @props.configHelper.groups
+                    ]
+                )
             )
     )
 ]).directive("icswDeviceConfigReact",
@@ -1065,7 +1081,7 @@ angular.module(
     "icswDeviceConfigTableReact",
 (
     $templateCache, $compile, $rootScope, ICSW_SIGNALS, blockUI,
-    icswDeviceConfigTableReact,
+    icswDeviceConfigTableReact
 ) ->
     return {
         restrict: "EA"
@@ -1081,8 +1097,9 @@ angular.module(
                         configGeneration: scope.helper.generation
                     }
                 )
-                element[0]
+                element[0],
             )
+            $compile(element.contents())(scope)
             $rootScope.$on(ICSW_SIGNALS("_ICSW_DEVICE_CONFIG_CHANGED"), (event, helper) ->
                 _element.forceUpdate()
             )
