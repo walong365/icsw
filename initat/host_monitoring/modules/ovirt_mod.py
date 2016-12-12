@@ -78,6 +78,7 @@ class APIClient(object):
     def _get_kwargs(self):
         _kwargs = {
             "auth": (self.username, self.password),
+            "headers": {'Connection':'close'},
         }
         if self.ignore_ssl_warnings:
             _kwargs["verify"] = False
