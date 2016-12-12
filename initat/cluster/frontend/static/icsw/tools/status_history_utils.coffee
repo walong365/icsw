@@ -34,8 +34,9 @@ angular.module(
     return {
         restrict: 'E'
         scope: {
-            data: "="  # if data is passed right through here, the other attributes are discarded
-                       # data must be defined if we are not below the status history ctrl
+            # if data is passed right through here, the other attributes are discarded
+            # data must be defined if we are not below the status history ctrl
+            data: "="
             device: "=icswDevice"
         }
         require: '?^icswDeviceStatusHistoryOverview'
@@ -132,12 +133,13 @@ angular.module(
     # shows piechart of state of service. shows how many service are in which state at a given time frame
     # currently only used in monitoring_overview
     return {
-        restrict: 'E',
+        restrict: 'E'
         scope: {
-            data: "="  # if data is passed right through here, the other attributes are discarded
-                       # data must be defined if we are not below the status history ctrl
+            # if data is passed right through here, the other attributes are discarded
+            # data must be defined if we are not below the status history ctrl
+            data: "="
             device: "=icswDevice"
-        },
+        }
         templateUrl: "icsw.tools.service_hist_status"
         require: '?^icswDeviceStatusHistoryCtrl'
         link: (scope, element, attrs, status_history_ctrl) ->
@@ -160,7 +162,8 @@ angular.module(
                         status_history_ctrl.time_frame.time_range,
                         [],
                         cont,
-                        merge_services=1)
+                        merge_services=1
+                    )
 
             scope.update_from_local_data = () ->
                 if scope.data?

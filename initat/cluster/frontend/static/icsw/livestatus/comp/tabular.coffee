@@ -366,14 +366,10 @@ angular.module(
             if $scope.struct.d_type == "services" and $scope.struct.saved_page
                 _restore = $scope.struct.saved_page
                 $scope.struct.saved_page = 0
-                $timeout(
-                    () ->
-                        # console.log "restore", _restore
-                        # trigger watcher
-                        $scope.pag_control.counter++
-                        $scope.pag_control.current_page = _restore
-                    0
-                )
+                # console.log "RESTORE", _restore
+                # trigger watcher
+                $scope.pag_control.counter++
+                $scope.pag_control.current_page = _restore
 
     $scope.link = (con_element, notifier, d_type) ->
         $scope.struct.d_type = d_type

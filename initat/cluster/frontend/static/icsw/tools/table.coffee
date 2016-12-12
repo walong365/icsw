@@ -116,9 +116,9 @@ angular.module(
             if attrs.icswControl?
                 _copy_settings()
                 scope.$watch(
-                    "icsw_control"
-                    (new_val) ->
-                        # console.log "copy", new_val
+                    () ->
+                        return scope.icsw_control.counter
+                    (_val) ->
                         _copy_settings()
                     true
                 )
@@ -153,9 +153,17 @@ angular.module(
 
                 for i in [start..(end-1)]
                     scope.pages.push(i)
-                if scope.$$delay_settings
+                # console.log "*", scope.$id, scope.currentPage
+                # if current_page is set in icsw_control check if this page is already set
+                if scope.icsw_control.current_page?
+                    if scope.icsw_control.current_page != scope.currentPage
+                        # no set it
+                        _copy_settings()
+                else if scope.$$delay_settings
                     # console.log "delay"
                     _copy_settings()
+                # current page is reached
+                scope.icsw_control.current_page = undefined
                 call_callback()
 
             # table state --> view
