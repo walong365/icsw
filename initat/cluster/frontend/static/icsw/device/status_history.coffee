@@ -324,12 +324,10 @@ angular.module(
                             # create service caches
                             for entry in scope.service_data
                                 scope.struct.service_cache[entry.name] = {}
-                                console.log entry.main_data
                                 for idx in scope.struct.salt_struct.service_states
                                     scope.struct.service_cache[entry.name][idx] = status_utils_functions.float_format(
                                         _.sum((_entry.value for _entry in _.filter(entry.main_data, (e) -> e.$$data.idx == idx)))
                                     )
-                            console.log "*", scope.struct.service_cache
                             scope.struct.loading = false
                         (error) ->
                             scope.struct.loading = false

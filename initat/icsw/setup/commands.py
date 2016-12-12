@@ -597,7 +597,7 @@ def create_db(opts, first_run):
     # schemamigrations
     if first_run:
         print("Doing fast initial migration")
-        # create dummy migrations
+        # first step: migrate contenttypes
         DummyFile(
             os.path.join(MIGRATIONS_DIR, "0001_initial.py"),
             """
@@ -639,7 +639,7 @@ class Migration(migrations.Migration):
         os.environ["ICSW_DISABLE_MIGRATIONS"] = "yes"
         apply_migration("", migrate_args=["--run-syncdb"])
         del os.environ["ICSW_DISABLE_MIGRATIONS"]
-        # first step: migrate contenttypes
+        # second step: create dummy migrations
         apply_migration("contenttypes", migrate_args=["--fake-initial", "--fake"])
         # go to migration 0982'
         apply_migration("backbone", target_migration=["0982"], migrate_args=["--fake-initial", "--fake"])

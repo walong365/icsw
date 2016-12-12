@@ -65,12 +65,15 @@ def safe_unicode(obj):
 
     Returned value is only a *representation*, not necessarily identical.
     """
-    if type(obj) not in (six.text_type, six.binary_type):
-        obj = six.text_type(obj)
-    if type(obj) is six.text_type:
-        return obj
+    if isinstance(obj, list):
+        return [safe_unicode(_entry) for _entry in obj]
     else:
-        return obj.decode(errors='ignore')
+        if type(obj) not in (six.text_type, six.binary_type):
+            obj = six.text_type(obj)
+        if type(obj) is six.text_type:
+            return obj
+        else:
+            return obj.decode(errors='ignore')
 
 
 def compress_struct(input):
@@ -148,7 +151,7 @@ def get_except_info(exc_info=None, **kwargs):
             if hasattr(_exc_list, "messages"):
                 _result.extend(_exc_list.messages)
         _exc_list = ", ".join(_result)
-    elif exc_name in ["IntegrityError"]:
+    elif hasattr(_exc_list, "message"):
         _exc_list = _exc_list.message
     return u"{} ({}{})".format(
         safe_unicode(exc_info[0]),
