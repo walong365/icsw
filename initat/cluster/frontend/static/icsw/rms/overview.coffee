@@ -165,8 +165,12 @@ rms_module = angular.module(
 ) ->
     class icswRMSJobVarStruct
         constructor: () ->
-            @job_list = []
             @var_list = []
+            # used for user changes
+            @job_list = []
+            # used for rebuild of tables after reload (temporary list only)
+            @_feed_list = []
+            # both lists are composed of entries of the form {job: <JOB>, job_type: {r, d}}
             @reset()
         
         reset: () =>
@@ -174,7 +178,7 @@ rms_module = angular.module(
             @build_luts()
             
         build_luts: () =>
-            @job_lut = _.keyBy(@job_list, "$$full_job_id")
+            @job_lut = _.keyBy(@job_list, "job.$$full_job_id")
             if @job_list.length
                 @show = true
                 if @job_list.length == 1
@@ -184,45 +188,49 @@ rms_module = angular.module(
             else
                 @show = false
                 @info = "---"
-            @build_table(@job_list)
+            @build_table()
 
-        toggle: (job) =>
+        toggle: (job, job_type) =>
             if job.$$full_job_id of @job_lut
-                @remove(job)
+                @_remove_job(job, job_type)
             else
-                @add(job)
+                @_add_job(job, job_type)
 
-        remove: (job) =>
+        _remove_job: (job, job_type) =>
             id = job.$$full_job_id
-            _.remove(@job_list, (entry) -> return entry.$$full_job_id == id)
+            _.remove(@job_list, (entry) -> return entry.job.$$full_job_id == id)
             job.$$jv_shown = false
             job.$$jv_button_class = "btn btn-xs btn-default"
             @build_luts()
             
-        add: (job) =>
+        _add_job: (job, job_type) =>
             id = job.$$full_job_id
             if id not of @job_lut
                 job.$$jv_shown = true
                 job.$$jv_button_class = "btn btn-xs btn-success"
-                @job_list.push(job)
+                @job_list.push({job: job, job_type: job_type})
                 @build_luts()
 
-        feed_start: () ->
+        feed_start: (job_type) ->
             # start feeding of data from server
-            @feed_list = []
+            _.remove(@job_list, (entry) -> return entry.job_type == job_type)
+            @_feed_list.length = 0
 
-        feed_job: (job) ->
-            @feed_list.push(job)
+        feed_job: (job, job_type) ->
+            @_feed_list.push({job: job, job_type: job_type})
 
         feed_end: () ->
             # console.log "f", @feed_list
-            @build_table(@feed_list)
+            for entry in @_feed_list
+                @job_list.push(entry)
+            @build_luts()
+            @build_table()
 
-        build_table: (in_list) ->
-            @num_jobs = in_list.length
-            @used_list = in_list
+        build_table: () ->
+            @num_jobs = @job_list.length
             _names = []
-            for job in in_list
+            for job_struct in @job_list
+                job = job_struct.job
                 job.$$jv_lut = _.keyBy(job.rmsjobvariable_set, "name")
                 for _loc_name in (jv.name for jv in job.rmsjobvariable_set)
                     if _loc_name not in _names
@@ -231,7 +239,8 @@ rms_module = angular.module(
             @var_list.length = 0
             for _name in _names
                 jvar = new icswRMSJobVariable(_name)
-                for job in in_list
+                for job_struct in @job_list
+                    job = job_struct.job
                     if _name of job.$$jv_lut
                         jvar.feed_var(job, job.$$jv_lut[_name])
                     else
@@ -656,9 +665,13 @@ rms_module = angular.module(
                 # job lookup table
                 entry.jobs = {}
         
-        check_jobvar_display: () ->
+        check_jobvar_display: (job_type) ->
+            # job type is r(unning) or d(one)
             {jv_struct} = @struct
             for entry in @list
+                if job_type == "r"
+                    # copy from raw value
+                    entry.rmsjobvariable_set = entry.jobvars.raw
                 if entry.rmsjobvariable_set?
                     _num_jv = entry.rmsjobvariable_set.length
                 else
@@ -667,7 +680,7 @@ rms_module = angular.module(
                 if _num_jv
                     entry.$$jv_present = true
                     if entry.$$full_job_id of jv_struct.job_lut
-                        jv_struct.feed_job(entry)
+                        jv_struct.feed_job(entry, job_type)
                         entry.$$jv_shown = true
                         entry.$$jv_button_class = "btn btn-xs btn-success"
                     else
@@ -710,7 +723,7 @@ rms_module = angular.module(
             @feed_xml_list(simple_list)
             @set_alter_job_flags()
             @set_full_ids()
-            @check_jobvar_display()
+            @check_jobvar_display("r")
             _running_slots = 0
             for entry in @list
                 nodes = entry.nodelist.value.split(",")
@@ -837,7 +850,7 @@ rms_module = angular.module(
             @feed_json_list(simple_list)
             @salt_datetimes()
             @set_full_ids()
-            @check_jobvar_display()
+            @check_jobvar_display("d")
             {name_lut} = @struct
             for entry in @list
                 # exit status
@@ -1255,7 +1268,9 @@ rms_module = angular.module(
                 dataType: "json"
             ).then(
                 (json) ->
+                    $scope.struct.jv_struct.feed_start("d")
                     $scope.struct.rms.done.feed_list(json.done_table)
+                    $scope.struct.jv_struct.feed_end()
                     $scope.struct.fetch_done_timeout = $timeout(fetch_done_data, 60000)
                 (error) ->
                     $scope.struct.fetch_done_timeout = $timeout(fetch_done_data, 15000)
@@ -1276,7 +1291,7 @@ rms_module = angular.module(
                     $scope.struct.rms.sched.feed_list(json.sched_conf)
                     # reset counter
                     $scope.struct.slot_info.reset()
-                    $scope.struct.jv_struct.feed_start()
+                    $scope.struct.jv_struct.feed_start("r")
 
                     $scope.struct.rms.running.feed_list(json.run_table, json.files)
                     $scope.struct.rms.waiting.feed_list(json.wait_table)

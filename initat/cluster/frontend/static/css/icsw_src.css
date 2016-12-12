@@ -560,7 +560,8 @@ th[st-sort] {
 }
 
 /* default sorting indicator for sortable table columns */
-th[st-sort]:not(.st-sort-ascent):not(.st-sort-descent):before {
+/* do not show it on RMS-tables */
+th[st-sort]:not(.st-sort-ascent):not(.st-sort-descent):not(.bg-info):before {
     font-family: FontAwesome;
     content: '\f0dc';
     display: inline-block;

@@ -53,6 +53,7 @@ def get_empty_job_options(**kwargs):
     options.queue_details = False
     options.long_status = False
     options.show_stdoutstderr = True
+    options.show_variables = False
     for key, value in kwargs.iteritems():
         if not hasattr(options, key):
             print("wrong key in get_empty_node_options: {}".format(key))
@@ -1215,7 +1216,28 @@ def build_fstree_info(s_info):
 
 
 def build_running_list(s_info, options, **kwargs):
+    django_init = kwargs.get("django_init", False)
     user = kwargs.get("user", None)
+    if options.show_variables:
+        if django_init:
+            from django.db.models import Q
+            from initat.cluster.backbone.models import rms_job_run
+            from initat.cluster.backbone.serializers import RMSJobVariableSerializer
+            job_ids = s_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]/@full_id", smart_strings=False)
+            run_jobs_db = rms_job_run.objects.filter(
+                Q(rms_job__jobid__in=set([entry.split(".")[0] for entry in job_ids]))
+            ).select_related(
+                "rms_job"
+            ).exclude(
+                rmsjobvariable=None
+            ).prefetch_related(
+                "rmsjobvariable_set",
+            )
+            var_dict = {job.rms_job.full_id: job for job in run_jobs_db}
+        else:
+            var_dict = {}
+    else:
+        var_dict = {}
     # build various local luts
     # print s_info, etree.tostring(s_info.tree, pretty_print=True)
     r_jobs = sorted(s_info.running_jobs, key=lambda x: x.get("full_id"))
@@ -1340,6 +1362,23 @@ def build_running_list(s_info, options, **kwargs):
         if options.show_stdoutstderr:
             cur_job.append(create_stdout_stderr(act_job, "stdout"))
             cur_job.append(create_stdout_stderr(act_job, "stderr"))
+        if options.show_variables:
+            _full_id = act_job.attrib["full_id"]
+            if _full_id in var_dict:
+                _vars = list(var_dict[_full_id].rmsjobvariable_set.all())
+                cur_job.append(
+                    E.variables(
+                        logging_tools.get_plural("variable", len(_vars)),
+                        raw=json.dumps(RMSJobVariableSerializer(_vars, many=True).data),
+                    )
+                )
+            else:
+                cur_job.append(
+                    E.variables(
+                        "-",
+                        raw=json.dumps([])
+                    )
+                )
         cur_job.append(create_file_content(act_job))
         if not options.suppress_nodelist:
             if act_job.get("full_id") in job_host_pe_lut:
@@ -1430,6 +1469,12 @@ def get_running_headers(options):
             [
                 E.stdout(),
                 E.stderr()
+            ]
+        )
+    if options.show_variables:
+        cur_job.extend(
+            [
+                E.jobvars(),
             ]
         )
     cur_job.append(E.files())

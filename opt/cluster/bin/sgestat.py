@@ -221,7 +221,7 @@ class window(object):
             return "no data"
 
 
-class dt_tree(object):
+class dtTree(object):
     def __init__(self, head_node):
         self.head_node = head_node
         self.head_node.set_tree(self)
@@ -251,7 +251,7 @@ class dt_tree(object):
         return handled
 
 
-class dt_node(object):
+class dtNode(object):
     def __init__(self, question, action=None, edges=None):
         self.question = question
         self.edges = []
@@ -278,13 +278,13 @@ class dt_node(object):
         return sub_edge.target
 
 
-class dt_edge(object):
+class dtEdge(object):
     def __init__(self, trigger, target=None):
         self.trigger = trigger
         self.target = target
 
 
-class my_opt_parser(argparse.ArgumentParser):
+class OptParser(argparse.ArgumentParser):
     def __init__(self, run_mode):
         argparse.ArgumentParser.__init__(self)
         if run_mode in ["sjs", "sns"]:
@@ -324,6 +324,7 @@ class my_opt_parser(argparse.ArgumentParser):
             )
             self.add_argument("--stdoe", dest="show_stdoutstderr", help="supress display of stdout / stderr [%(default)s]", action="store_false", default=True)
             self.add_argument("--nc", dest="compress_nodelist", default=True, action="store_false", help="do not compress the nodelist [%(default)s]")
+            self.add_argument("--vars", dest="show_variables", default=False, action="store_true", help="enable display of variables [%(default)s]")
         self.add_argument("-v", dest="verbose", help="set verbose mode [%(default)s]", action="store_true", default=False)
         self.add_argument("--mode", dest="mode", choices=["auto", "sns", "sjs"], default="auto", help="set operation mode [%(default)s]")
         if os.uname()[1] in ["eddie", "lemmy"]:
@@ -388,10 +389,10 @@ def main():
         "sjs": "sjs",
         "sns": "sns",
     }.get(os.path.basename(sys.argv[0]), "sjs")
-    options = my_opt_parser(run_mode).parse_args()
+    options = OptParser(run_mode).parse_args()
     if options.mode != "auto":
         run_mode = options.mode
-        options = my_opt_parser(run_mode).parse_args()
+        options = OptParser(run_mode).parse_args()
     if getattr(options, "stress", False):
         stress_system()
     act_si = sge_tools.SGEInfo(
@@ -407,20 +408,20 @@ def main():
             window(
                 callback=sjs,
                 args=(act_si, options),
-                tree=dt_tree(
-                    dt_node(
+                tree=dtTree(
+                    dtNode(
                         "press p to print and q to exit",
                         edges=[
-                            dt_edge(
+                            dtEdge(
                                 "p",
-                                dt_node(
+                                dtNode(
                                     "Are you sure",
                                     edges=[
-                                        dt_edge("y", dt_node(None, action="back_to_top")),
-                                        dt_edge("n", dt_node(None, action="back_to_top"))])),
-                            dt_edge(
+                                        dtEdge("y", dtNode(None, action="back_to_top")),
+                                        dtEdge("n", dtNode(None, action="back_to_top"))])),
+                            dtEdge(
                                 "q",
-                                dt_node(
+                                dtNode(
                                     None,
                                     action="close"
                                 )
@@ -436,13 +437,13 @@ def main():
             window(
                 callback=sns,
                 args=(act_si, options),
-                tree=dt_tree(
-                    dt_node(
+                tree=dtTree(
+                    dtNode(
                         "press q to exit",
                         edges=[
-                            dt_edge(
+                            dtEdge(
                                 "q",
-                                dt_node(
+                                dtNode(
                                     None,
                                     action="close"
                                 )

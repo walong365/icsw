@@ -30,6 +30,7 @@ import logging
 import sys
 import threading
 import time
+import operator
 import re
 from initat.cluster.backbone.server_enums import icswServiceEnum
 from collections import namedtuple
@@ -120,7 +121,7 @@ my_sge_info = ThreadLockedSGEInfo()
 
 
 def get_job_options(request):
-    return sge_tools.get_empty_job_options(compress_nodelist=False, queue_details=True)
+    return sge_tools.get_empty_job_options(compress_nodelist=False, queue_details=True, show_variables=True)
 
 
 def get_node_options(request):
@@ -224,7 +225,7 @@ def _fetch_rms_info(request):
             _user = request.user
         else:
             _user = None
-        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=_user)
+        run_job_list = sge_tools.build_running_list(my_sge_info, get_job_options(request), user=_user, django_init=True)
         wait_job_list = sge_tools.build_waiting_list(my_sge_info, get_job_options(request), user=_user)
 
         if RMS_ADDONS:
@@ -318,6 +319,7 @@ class get_rms_current_json(View):
 
         fc_dict = {}
         cur_time = time.time()
+        job_ids = my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]/@full_id", smart_strings=False)
         for file_el in my_sge_info.get_tree().xpath(".//job_list[master/text() = \"MASTER\"]", smart_strings=False):
             file_contents = file_el.findall(".//file_content")
             if len(file_contents):

@@ -385,7 +385,7 @@
             ng-show="job.$$jv_present"
             type="button"
             ng-class="job.$$jv_button_class"
-            ng-click="gstruct.jv_struct.toggle(job)"
+            ng-click="gstruct.jv_struct.toggle(job, 'd')"
         >{{ job.$$jv_info }}</button>
     </td>
 </script>
@@ -397,13 +397,13 @@
     <table
         st-table="displayed_entries"
         st-safe-src="struct.var_list"
-        class="table table-striped"
+        class="table table-striped table-hover table-condensed"
         style="width:auto;"
     >
         <thead>
             <tr>
                 <th>Name</th>
-                <th ng-repeat-start="job in struct.used_list">
+                <th ng-repeat-start="job_struct in struct.job_list">
                     Value
                 </th>
                 <th>Value (int)</th>
@@ -412,10 +412,13 @@
             <tr>
                 <th></th>
                 <th
-                    ng-repeat="job in struct.used_list"
+                    ng-repeat="job_struct in struct.job_list"
                     colspan="3"
                     class="text-center"
-                >Job {{ job.$$full_job_id }}</th>
+                >
+                    Job {{ job_struct.job.$$full_job_id }}
+                    <span class="label label-default">{{ job_struct.job_type }}</span>
+                </th>
             </tr>
             <tr>
                 <td colspan="99">
@@ -567,6 +570,9 @@
     <td ng-show="struct.toggle['load']">
         {{ job.load.value }}
     </td>
+    <td ng-show="struct.toggle['posix_priority']" class="text-right">
+        {{ job.posix_priority.value }}
+    </td>
     <td ng-show="struct.toggle['queue_details']">
         {{ job.queue_details.value }}
         <button
@@ -602,6 +608,16 @@
     </td>
     <td ng-show="struct.toggle['nodelist']">
         {{ job.$$nodelist }}
+    </td>
+    <td ng-show="struct.toggle['jobvars']">
+        <button
+            ng-show="job.$$jv_present"
+            type="button"
+            ng-class="job.$$jv_button_class"
+            ng-click="gstruct.jv_struct.toggle(job, 'r')"
+        >
+            {{ job.$$jv_info }}
+        </button>
     </td>
     <td ng-show="struct.toggle['action']">
         <icsw-rms-job-action icsw-rms-job="job" ng-if="job.$$alter_job" icsw-rms-job-type="'r'" icsw-rms-is-operator="gstruct.rms_operator"></icsw-rms-job-action>
