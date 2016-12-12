@@ -50,7 +50,7 @@
                 <th st-sort="$$host_mon_result.display_name">Device</th>
                 <th ng-show="show_column.DevFlags">DevFlags</th>
                 <th ng-show="show_column.DevCats">DevCats</th>
-                <th ng-show="show_column.State" colspan="2" st-sort="$$data.StateString">State</th>
+                <th ng-show="show_column.State" colspan="2" st-sort="$$data.StateId">State</th>
                 <th ng-show="show_column.Description" st-sort="display_name">Description</th>
                 <th ng-show="show_column.MonFlags">MonFlags</th>
                 <th ng-show="show_column.MonCats">MonCats</th>
@@ -191,7 +191,7 @@
                 <th st-sort="display_name">Device</th>
                 <th st-sort="$$serviceWeight" ng-show="show_column.Services">Services</th>
                 <th ng-show="show_column.DevCats">DevCats</th>
-                <th ng-show="show_column.State" colspan="2" st-sort="$$data.StateString">State</th>
+                <th ng-show="show_column.State" colspan="2" st-sort="$$data.StateId">State</th>
                 <th ng-show="show_column.Flags">Flags</th>
                 <!--<th ng-show="show_column.Description" st-sort="description">Description</th>-->
                 <th st-sort="last_check" class="text-nowrap">Last Check</th>

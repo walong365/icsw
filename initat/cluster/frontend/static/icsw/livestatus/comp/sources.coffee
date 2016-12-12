@@ -179,6 +179,7 @@ angular.module(
             iconCode: "\uf00c"
             iconFaName: "fa-check"
             StateString: "Up"
+            StateId: 1
         }
         1: {
             svgClassName:  "svg-dev-down"
@@ -186,6 +187,7 @@ angular.module(
             iconCode: "\uf0e7"
             iconFaName: "fa-bolt"
             StateString: "Down"
+            StateId: 2
         }
         2: {
             svgClassName: "svg-dev-unreach"
@@ -193,6 +195,7 @@ angular.module(
             iconCode: "\uf071"
             iconFaName: "fa-warning"
             StateString: "Unreachable"
+            StateId: 3
         }
         3: {
             svgClassName: "svg-dev-unknown"
@@ -200,6 +203,7 @@ angular.module(
             iconCode: "\uf29c"
             iconFaName: "fa-question-circle-o"
             StateString: "Not set"
+            StateId: 4
         }
         4: {
             svgClassName: "svg-dev-notmonitored"
@@ -207,6 +211,7 @@ angular.module(
             iconCode: "\uf05e"
             iconFaName: "fa-ban"
             StateString: "Not Monitored"
+            StateId: 5
         }
         5: {
             svgClassName: "svg-dev-pending"
@@ -214,6 +219,7 @@ angular.module(
             iconCode: "\uf10c"
             iconFaName: "fa-circle-o"
             StateString: "pending"
+            Stateid: 6
         }
     }
 
@@ -224,6 +230,7 @@ angular.module(
             iconCode: "\uf00c"
             iconFaName: "fa-check"
             StateString: "OK"
+            StateId: 1
             weight: 0
         }
         1: {
@@ -232,6 +239,7 @@ angular.module(
             iconCode: "\uf071"
             iconFaName: "fa-warning"
             StateString: "Warning"
+            StateId: 2
             weight: 1
         }
         2: {
@@ -240,6 +248,7 @@ angular.module(
             iconCode: "\uf0e7"
             iconFaName: "fa-bolt"
             StateString: "Critical"
+            StateId: 3
             weight: 5
         }
         3: {
@@ -248,6 +257,7 @@ angular.module(
             iconCode: "\uf29c"
             iconFaName: "fa-question-circle-o"
             StateString: "Unknown"
+            StateId: 4
             weight: 10
         }
         4: {
@@ -256,6 +266,7 @@ angular.module(
             iconCode: "\uf05e"
             iconFaName: "fa-ban"
             StateString: "unmon"
+            StateId: 5
             weight: 2
         }
         5: {
@@ -264,6 +275,7 @@ angular.module(
             iconCode: "\uf10c"
             iconFaName: "fa-circle-o"
             StateString: "pending"
+            StateId: 6
             weight: 3
         }
     }
