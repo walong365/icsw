@@ -183,6 +183,7 @@ angular.module(
             # for ordering
             orderint: -10
             height: 15
+            weight: 1
         }
         1: {
             svgClassName:  "svg-dev-down"
@@ -194,6 +195,7 @@ angular.module(
             # for ordering
             orderint: -8
             height: 30
+            weight: 2
         }
         2: {
             svgClassName: "svg-dev-unreach"
@@ -205,6 +207,7 @@ angular.module(
             # for ordering
             orderint: -6
             height: 22
+            weight: 3
         }
         3: {
             svgClassName: "svg-dev-unknown"
@@ -216,6 +219,7 @@ angular.module(
             # for ordering
             orderint: -4
             height: 18
+            weight: 4
         }
         4: {
             svgClassName: "svg-dev-notmonitored"
@@ -228,6 +232,7 @@ angular.module(
             # for ordering
             orderint: 0
             height: 30
+            weight: 5
         }
         5: {
             svgClassName: "svg-dev-pending"
@@ -238,6 +243,7 @@ angular.module(
             pycode: "UD"
             orderint: -5
             height: 18
+            weight: 6
         }
         # planned down is missing ...
         # flapping is missing ...
@@ -250,6 +256,7 @@ angular.module(
             iconCode: "\uf00c"
             iconFaName: "fa-check"
             StateString: "OK"
+            weight: 1
             weight: 0
             pycode: "O"
             # for ordering

@@ -5,9 +5,7 @@ from io import StringIO
 
 from unittest import TestCase
 
-from initat.cluster.backbone.models import AssetRun, AssetBatch, AssetType, ScanType, RunStatus, RunResult, device, \
-    device_group
-
+from initat.cluster.backbone.models import AssetRun, AssetBatch, AssetType, RunStatus, RunResult, device, device_group
 from initat.cluster.backbone.management.commands.create_icsw_fixtures import Command as CreateFixturesCommand
 
 
@@ -71,7 +69,15 @@ class TestAssetManagement(TestCase):
         for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.XRANDR):
             self.assertTrue(asset_run.run_type == AssetType.XRANDR, "Failed for {}".format(identifier))
 
-    def test_10_asset_batch(self):
+    def test_10_asset_type_update(self):
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.UPDATE):
+            self.assertGreater(asset_batch.installed_updates.all().count(), 0, "Failed for {}".format(identifier))
+
+    def test_11_asset_type_prettywinhw(self):
+        for asset_run, asset_batch, identifier in self.__assetrun_assetbatch_setup_iterator(AssetType.PRETTYWINHW):
+            self.assertTrue(asset_run.run_type == AssetType.PRETTYWINHW, "Failed for {}".format(identifier))
+
+    def test_12_asset_batch(self):
         for result_obj, asset_batch in self.assetbatch_dict.items():
             identifier = result_obj.identifier
 
@@ -89,6 +95,12 @@ class TestAssetManagement(TestCase):
             self.assertTrue(asset_batch.partition_table is not None, "Failed for {}".format(identifier))
             self.assertGreater(asset_batch.partition_table.partition_disc_set.all().count(), 0,
                                "Failed for {}".format(identifier))
+            for disk in asset_batch.partition_table.partition_disc_set.all():
+                self.assertTrue(disk.size is not None, "Failed for {}".format(identifier))
+                self.assertGreater(disk.size, 0, "Failed for {}".format(identifier))
+                for partition in disk.partition_set.all():
+                    self.assertTrue(partition.size is not None, "Failed for {}".format(identifier))
+                    self.assertGreater(partition.size, 0, "Failed for {}".format(identifier))
 
     def __assetrun_assetbatch_setup_iterator(self, asset_type):
         idx = 0
@@ -107,13 +119,17 @@ class TestAssetManagement(TestCase):
                 asset_batch.save()
                 self.assetbatch_dict[result_obj] = asset_batch
 
+            if asset_type not in result_dict:
+                continue
+
+            scan_type = result_obj.scan_type
             raw_result_str = result_dict[asset_type]
             run_index = len(asset_batch.assetrun_set.all())
             asset_run = AssetRun(
                 run_index=run_index,
                 run_type=asset_type,
                 run_status=RunStatus.PLANNED,
-                scan_type=ScanType.HM,
+                scan_type=scan_type,
                 batch_index=0,
                 asset_batch=asset_batch,
                 raw_result_str=raw_result_str

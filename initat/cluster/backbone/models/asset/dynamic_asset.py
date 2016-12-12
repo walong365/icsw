@@ -692,7 +692,7 @@ class AssetRun(models.Model):
                     struct_el.depth = _parent.depth + 1
 
                 struct_el.save()
-            else:
+            elif _root_tree.getpath(element.getparent()) in _struct_lut:
                 _struct_el = _struct_lut[_root_tree.getpath(element.getparent())]
                 _struct_el._info_dict.setdefault(element.tag, []).append(
                     json.dumps(
@@ -1276,4 +1276,15 @@ ASSETTYPE_HM_COMMAND_MAP = {
     AssetType.PARTITION: "partinfo",
     AssetType.LSBLK: "lsblk",
     AssetType.XRANDR: "xrandr"
+}
+
+
+ASSETTYPE_NRPE_COMMAND_MAP = {
+    AssetType.PACKAGE: "list-software-py3",
+    AssetType.HARDWARE: "list-hardware-lstopo-py3",
+    AssetType.UPDATE: "list-updates-alt-py3",
+    AssetType.DMI: "dmiinfo",
+    AssetType.PCI: "pciinfo",
+    AssetType.PRETTYWINHW: "list-hardware-py3",
+    AssetType.PENDING_UPDATE: "list-pending-updates-py3"
 }
