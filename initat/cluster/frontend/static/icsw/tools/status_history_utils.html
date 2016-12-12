@@ -14,8 +14,8 @@
                 <table class="table table-condensed table-hover table-striped">
                     <tbody>
                         <tr ng-repeat="state in host_data">
-                            <td> {{ state.state }} </td>
-                            <td class="text-right"> {{ state.value }} </td>
+                            <td> {{ state.$$data.StateString }} </td>
+                            <td class="text-right"> {{ state.$$value }} </td>
                         </tr>
                     </tbody>
                 </table>
@@ -28,7 +28,7 @@
             </div>
         </div>
     </div>
-    <div ng-if="!detailed_view"> <!-- only chart -->
+    <div ng-if="!detailed_view">
         <icsw-tools-piechart diameter="40" data="pie_data"></icsw-tools-piechart>
     </div>
 </script>
@@ -82,7 +82,7 @@
             <tbody>
                 <tr ng-repeat="entry in log_entries_displayed" class="text-left">
                     <td ng-bind="entry.date | datetime_concise"></td>
-                    <td ng-bind="entry.state"></td>
+                    <td ng-bind="entry.$$data.StateString"></td>
                     <td ng-bind="entry.msg"></td>
                 </tr>
             </tbody>

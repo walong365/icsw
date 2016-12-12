@@ -226,8 +226,10 @@ angular.module(
 ]).directive("icswDeviceStatusHistoryDevice",
 [
     "status_utils_functions", "Restangular", "ICSW_URLS", "$q", "icswStatusHistorySettings",
+    "icswSaltMonitoringResultService",
 (
     status_utils_functions, Restangular, ICSW_URLS, $q, icswStatusHistorySettings,
+    icswSaltMonitoringResultService,
 ) ->
     return {
         restrict : "EA"
@@ -243,6 +245,8 @@ angular.module(
                 loading: false
                 # service cache, service -> key -> value
                 service_cache: {}
+                # struct from salt
+                salt_struct: icswSaltMonitoringResultService.get_struct()
             }
 
             _extract_service_name = (service_key) ->
@@ -293,10 +297,10 @@ angular.module(
                         ]
                     ).then(
                         (new_data) ->
-                            service_data = new_data[0].plain()[0]
+                            service_data = new_data[0]
                             service_data = service_data[_.keys(service_data)[0]]  # there is only one device
                             # line data
-                            line_data = new_data[1].plain()[0]
+                            line_data = new_data[1]
                             line_data = line_data[_.keys(line_data)[0]]
                             # new_data is dict, but we want it as list to be able to sort it
 
@@ -320,10 +324,12 @@ angular.module(
                             # create service caches
                             for entry in scope.service_data
                                 scope.struct.service_cache[entry.name] = {}
-                                for key in status_utils_functions.get_service_states()
-                                    scope.struct.service_cache[entry.name][key] = status_utils_functions.float_format(
-                                        _.sum((_entry.value for _entry in _.filter(entry.main_data, (e) -> e.state == key)))
+                                console.log entry.main_data
+                                for idx in scope.struct.salt_struct.service_states
+                                    scope.struct.service_cache[entry.name][idx] = status_utils_functions.float_format(
+                                        _.sum((_entry.value for _entry in _.filter(entry.main_data, (e) -> e.$$data.idx == idx)))
                                     )
+                            console.log "*", scope.struct.service_cache
                             scope.struct.loading = false
                         (error) ->
                             scope.struct.loading = false

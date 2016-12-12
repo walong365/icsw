@@ -464,7 +464,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                         used_device_services[entry.device_id].add(entry.service.pk)
 
                     relevant_data_from_entry = {
-                        'state': trans[entry.state],
+                        'state': entry.state,
                         'state_type': entry.state_type,
                         'value': entry.value
                     }
@@ -489,7 +489,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                         if num_missing > 0:
                             data_per_device[device_id][service_key].append(
                                 {
-                                    'state': trans[mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED],
+                                    'state': mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
                                     'state_type': mon_icinga_log_raw_service_alert_data.STATE_UNDETERMINED,
                                     'value': 1 * num_missing,  # this works since we normalize afterwards
                                 }
@@ -506,7 +506,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                 data_concat = list(itertools.chain.from_iterable(s_data for s_data in device_data.itervalues()))
                 return_data[device_id] = self.merge_state_types(
                     data_concat,
-                    trans[mon_icinga_log_raw_base.STATE_UNDETERMINED],
+                    mon_icinga_log_raw_base.STATE_UNDETERMINED,
                     normalize=True
                 )
             return return_data
@@ -518,7 +518,7 @@ class mon_icinga_log_aggregated_service_data_manager(models.Manager):
                 return_data[device_id] = {
                     service_key: self.merge_state_types(
                         service_data,
-                        trans[mon_icinga_log_raw_base.STATE_UNDETERMINED],
+                        mon_icinga_log_raw_base.STATE_UNDETERMINED,
                         normalize=len(timespans) > 1  # don't need to normalize if only 1
                     ) for service_key, service_data in device_service_data.iteritems()
                 }

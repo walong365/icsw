@@ -112,13 +112,13 @@
                         <th></th>
                         <th>Service</th>
                         <th style="width: 10%;" class="text-center"><!-- chart --></th>
-                        <th style="width: 50px;" class="text-center">Ok</th>
-                        <th style="width: 50px;" class="text-center">Warning</th>
-                        <th style="width: 50px;" class="text-center">Critical</th>
-                        <th style="width: 50px;" class="text-center">Unknown</th>
-                        <th style="width: 50px;" class="text-center">Undeterm.</th>
-                        <th style="width: 50px;" class="text-center">Planned down</th>
-                        <th style="width: 50px;" class="text-center">Flapping</th>
+                        <th
+                            style="width: 50px;"
+                            class="text-center"
+                            ng-repeat="ss in struct.salt_struct.service_states"
+                        >
+                            {{ struct.salt_struct.service_lut[ss].info }}
+                        </th>
                         <th class="text-center">Timeline</th>
                     </tr>
                 </thead>
@@ -135,13 +135,13 @@
                         <td class="text-right">
                             <icsw-tools-piechart diameter="28" data="entry.pie_data"></icsw-tools-piechart>
                         </td>
-                        <td class="text-right" style="vertical-align: middle"> {{ struct.service_cache[entry.name]["Ok"] }} </td>
-                        <td class="text-right" style="vertical-align: middle"> {{ struct.service_cache[entry.name]["Warning"] }} </td>
-                        <td class="text-right" style="vertical-align: middle"> {{ struct.service_cache[entry.name]["Critical"] }} </td>
-                        <td class="text-right" style="vertical-align: middle"> {{ struct.service_cache[entry.name]["Unknown"] }} </td>
-                        <td class="text-right" style="vertical-align: middle"> {{ struct.service_cache[entry.name]["Undetermined"] }} </td>
-                        <td class="text-right" style="vertical-align: middle"> {{ struct.service_cache[entry.name]["Planned down"] }} </td>
-                        <td class="text-right" style="vertical-align: middle"> {{ struct.service_cache[entry.name]["Flapping"] }} </td>
+                        <td
+                            class="text-right"
+                            style="vertical-align: middle"
+                            ng-repeat="ss in struct.salt_struct.service_states"
+                        >
+                            {{ struct.service_cache[entry.name][ss] }}
+                        </td>
                         <td>
                             <icsw-tools-hist-line-graph for-host="false" data="entry.line_graph_data" click="TODO"></icsw-tools-hist-line-graph>
                         </td>

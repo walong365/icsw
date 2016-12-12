@@ -51,13 +51,6 @@ angular.module(
             # TODO: make this into a filter, then remove also from serviceHist*
             scope.float_format = (n) -> return (n*100).toFixed(3) + "%"
 
-            weights = {
-                "Up": -10
-                "Down": -8
-                "Unreachable": -6
-                "Undetermined": -4
-            }
-
             scope.host_data = []
             scope.pie_data = []
             scope.line_graph_data = []
@@ -76,19 +69,15 @@ angular.module(
                         ]
                     ).then(
                         (new_data) ->
-                            srv_data = new_data[0].plain()[0]
+                            srv_data = new_data[0]
                             if _.keys(srv_data).length
                                 srv_data = srv_data[_.keys(srv_data)[0]]
-                                [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(
+                                [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_device_state_data(
                                     srv_data
-                                    weights
-                                    status_utils_functions.host_colors
-                                    status_utils_functions.host_cssclass
-                                    scope.float_format
                                 )
                             else
                                 [scope.host_data, scope.pie_data] = [[], []]
-                            line_data = new_data[1].plain()[0]
+                            line_data = new_data[1]
                             line_data = line_data[_.keys(line_data)[0]]
                             if line_data?
                                 scope.line_graph_data = line_data
@@ -102,12 +91,8 @@ angular.module(
 
             scope.update_from_local_data = () ->
                 if scope.data?
-                    [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_state_data(
+                    [scope.host_data, scope.pie_data] = status_utils_functions.preprocess_device_state_data(
                         scope.data
-                        weights
-                        status_utils_functions.host_colors
-                        status_utils_functions.host_cssclass
-                        scope.float_format
                     )
 
             if attrs.data?
@@ -157,11 +142,11 @@ angular.module(
                         [scope.service_data, scope.pie_data] = status_utils_functions.preprocess_service_state_data(new_data)
 
                     status_utils_functions.get_service_data(
-                        [scope.deviceid],
-                        status_history_ctrl.time_frame.date_gui,
-                        status_history_ctrl.time_frame.time_range,
-                        [],
-                        cont,
+                        [scope.deviceid]
+                        status_history_ctrl.time_frame.date_gui
+                        status_history_ctrl.time_frame.time_range
+                        []
+                        cont
                         merge_services=1
                     )
 
@@ -182,46 +167,13 @@ angular.module(
     }
 ]).service('status_utils_functions',
 [
-    "Restangular", "ICSW_URLS",
+    "Restangular", "ICSW_URLS", "$q", "icswSaltMonitoringResultService",
 (
-    Restangular, ICSW_URLS
+    Restangular, ICSW_URLS, $q, icswSaltMonitoringResultService,
 ) ->
     service_states = [
         "Ok", "Warning", "Critical", "Unknown", "Undetermined", "Planned down", "Flapping",
     ]
-    service_colors = {
-        "Ok": "#66dd66"
-        "Warning": "#f0ad4e"
-        "Critical": "#ff7777"
-        "Unknown": "#c7c7c7"
-        "Undetermined": "#c7c7c7"
-        "Planned down": "#5bc0de"
-    }
-    service_cssclass = {
-        "Ok": "svg-srv-ok"
-        "Warning": "svg-srv-warn"
-        "Critical": "svg-srv-crit"
-        "Unknown": "svg-srv-unknown"
-        "Undetermined": "svg-srv-notmonitored"
-        "Planned down": "svg-plandown"
-    }
-
-    host_colors = {
-        "Up": "#66dd66"
-        "Down": "#ff7777"
-        "Unreachable": "#f0ad4e"
-        "Undetermined": "#c7c7c7"
-        "Planned down": "#5bc0de"
-    }
-    host_cssclass = {
-        "Up": "svg-dev-up"
-        "Down": "svg-dev-down"
-        "Unreachable": "svg-dev-unreach"
-        "Undetermined": "svg-dev-notmonitored"
-        "Planned down": "svg-plandown"
-    }
-    # olive? "#808000"
-
     get_device_data = (devices, start_date, timerange, db_ids, line_graph_data=false) ->
         query_data = {
             device_ids: angular.toJson((_dev.idx for _dev in devices))
@@ -234,7 +186,13 @@ angular.module(
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_LINE_GRAPH_DATA.slice(1))
         else
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_DEVICE_DATA.slice(1))
-        return base.getList(query_data)
+        defer = $q.defer()
+        base.getList(query_data).then(
+            (data) ->
+                data = data.plain()
+                defer.resolve(icswSaltMonitoringResultService.salt_hist_device_data(data[0]))
+        )
+        return defer.promise
 
     get_service_data = (devices, start_date, timerange, db_ids, merge_services=0, line_graph_data=false) ->
         # merge_services: boolean as int
@@ -252,7 +210,17 @@ angular.module(
         else
             base = Restangular.all(ICSW_URLS.MON_GET_HIST_SERVICE_DATA.slice(1))
         # we always return a list for easier REST handling
-        return base.getList(query_data)
+        defer = $q.defer()
+        base.getList(query_data).then(
+            (data) ->
+                data = data.plain()
+                _salted =
+                defer.resolve(
+                    icswSaltMonitoringResultService.salt_hist_service_data(data[0], merge_services)
+                )
+        )
+        return defer.promise
+        # return base.getList(query_data)
 
     get_timespan = (start_date, timerange) ->
         query_data = {
@@ -262,45 +230,46 @@ angular.module(
         return Restangular.all(ICSW_URLS.MON_GET_HIST_TIMESPAN.slice(1)).customGET("", query_data)
 
     float_format = (n) ->
-        return (n * 100).toFixed(3) + "%"
+        return "#{_.round(n * 100, 3)}%"
 
-    preprocess_state_data = (new_data, weights, colors, cssclass) ->
-        formatted_data = _.cloneDeep(new_data)
-        for key of weights
-            if not _.some(new_data, (d) -> return d['state'] == key)
-                formatted_data.push(
+    _preprocess_state_data = (in_data, order_lut) ->
+        # formatted_data = _.cloneDeep(new_data)
+        new_data = []
+        for entry in in_data
+            new_data.push(
+                {
+                    state: entry.state
+                    $$data: entry.$$data
+                    value: entry.value
+                }
+            )
+        for orderint, struct of order_lut
+            if not _.some(in_data, (d) -> return d['state'] == struct.pycode)
+                new_data.push(
                     {
-                        state: key
+                        state: struct.pycode
                         value: 0
+                        $$data: struct
                     }
                 )
-
-        for d in formatted_data
-            d['value'] = float_format(d['value'])
-        final_data = _.sortBy(formatted_data, (d) -> return weights[d['state']])
-
-        new_data = _.sortBy(new_data, (d) -> return weights[d['state']])
+        for d in new_data
+            d['$$value'] = float_format(d['value'])
+        new_data = _.sortBy(new_data, (d) -> return d.$$data.orderint)
 
         pie_data = []
         for d in new_data
             if d['state'] != "Flapping"  # can't display flapping in pie
                 pie_data.push {
-                    title: d['state']
+                    "$$data": d.$$data
                     value: Math.round(d['value'] * 10000) / 100
-                    color: colors[d['state']]
-                    cssclass: cssclass[d['state']]
                 }
-        return [final_data, pie_data]
+        return [new_data, pie_data]
 
-    preprocess_service_state_data = (new_data, float_format) ->
-        weights = {
-            Ok: -10
-            Warning: -9
-            Critical: -8
-            Unknown: -5
-            Undetermined: -4
-        }
-        return preprocess_state_data(new_data, weights, service_colors, service_cssclass, float_format)
+    preprocess_device_state_data = (new_data) ->
+        return _preprocess_state_data(new_data, icswSaltMonitoringResultService.get_struct().ordering_device_lut)
+
+    preprocess_service_state_data = (new_data) ->
+        return _preprocess_state_data(new_data, icswSaltMonitoringResultService.get_struct().ordering_service_lut)
 
     return {
         float_format: float_format
@@ -309,14 +278,13 @@ angular.module(
         get_service_states: () ->
             return service_states
         get_timespan: get_timespan
-        preprocess_state_data: preprocess_state_data
+        preprocess_device_state_data: preprocess_device_state_data
         preprocess_service_state_data: preprocess_service_state_data
+
         # kpi states and service states currently coincide even though kpis also have host data
+
         preprocess_kpi_state_data: preprocess_service_state_data
-        service_colors: service_colors
-        service_cssclass: service_cssclass
-        host_colors: host_colors
-        host_cssclass: host_cssclass
+
     }
 ]).directive("icswToolsHistLineGraph",
 [
@@ -362,7 +330,6 @@ angular.module(
 
                 # calculate data to show
                 if time_frame? and scope.data?
-
                     _div = angular.element("<div class='icsw-chart'></div>")
                     _div.css("width", "#{scope.width}px").css("height", "#{scope.height}px").css("margin-bottom", "7px")
                     if scope.data.length > 5000
@@ -407,6 +374,7 @@ angular.module(
 
                         # tooltip
                         _tooltip = angular.element("<div/>")
+
                         _tooltip.addClass("icsw-tooltip").css("min-width", "400px").css("max-width", "350px")
                         _tooltip.hide()
                         _div.append(_tooltip)
@@ -463,28 +431,8 @@ angular.module(
                             if index != 0
 
                                 last_entry = data_for_iteration[index-1]
-
-                                # these heights are for a total height of 30
-                                if scope.forHost()
-                                    entry_height = switch last_entry.state
-                                        when "Up" then 15
-                                        when "Down" then 30
-                                        when "Planned down" then 22
-                                        when "Unreachable" then 22
-                                        when "Undetermined" then 18
-                                    color = status_utils_functions.host_colors[last_entry.state]
-                                    cssclass = status_utils_functions.host_cssclass[last_entry.state]
-                                else
-                                    entry_height = switch last_entry.state
-                                        when "Ok" then 15
-                                        when "Planned down" then 22
-                                        when "Warning" then 22
-                                        when "Critical" then 30
-                                        when "Unknown" then 18
-                                        when "Undetermined" then 18
-                                    color = status_utils_functions.service_colors[last_entry.state]
-                                    cssclass = status_utils_functions.service_cssclass[last_entry.state]
-
+                                entry_height = last_entry.$$data.height
+                                cssclass = last_entry.$$data.svgClassName
                                 label_height = 13
 
                                 entry_height /= (base_height)
@@ -512,7 +460,6 @@ angular.module(
                                         y: pos_y
                                         rx: 1
                                         ry: 1
-                                        #style: "fill:#{color}; stroke-width: 0; stroke: rgb(0, 0, 0);"
                                         class: cssclass
                                     }
                                 )

@@ -402,15 +402,7 @@
     >
         <thead>
             <tr>
-                <th>Name</th>
-                <th ng-repeat-start="job_struct in struct.job_list">
-                    Value
-                </th>
-                <th>Value (int)</th>
-                <th ng-repeat-end>Unit</th>
-            </tr>
-            <tr>
-                <th></th>
+                <th>JobID</th>
                 <th
                     ng-repeat="job_struct in struct.job_list"
                     colspan="3"
@@ -419,6 +411,14 @@
                     Job {{ job_struct.job.$$full_job_id }}
                     <span class="label label-default">{{ job_struct.job_type }}</span>
                 </th>
+            </tr>
+            <tr>
+                <th>Name</th>
+                <th ng-repeat-start="job_struct in struct.job_list">
+                    Value
+                </th>
+                <th>Value (int)</th>
+                <th ng-repeat-end>Unit</th>
             </tr>
             <tr>
                 <td colspan="99">

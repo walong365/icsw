@@ -35,15 +35,18 @@ angular.module(
     $q, $rootScope, icswMonLivestatusPipeBase, icswMonitoringResult, $timeout,
     icswSaltMonitoringResultService,
 ) ->
-    _luts = icswSaltMonitoringResultService.get_luts()
+    struct = icswSaltMonitoringResultService.get_struct()
 
     class StateEntry
         constructor: (@type, @idx, @short_code, @default_sel, @help_str, @btn_class) ->
-            @data = _luts[@type][@idx]
+            if @type == "dev"
+                @data = struct.device_lut[@idx]
+            else
+                @data = struct.service_lut[@idx]
 
     class StateTypeEntry
         constructor: (@type, @idx, @short_code, @default_sel, @help_str, @btn_class) ->
-            @data = _luts.state[@idx]
+            @data = struct.state_lut[@idx]
 
     running_id = 0
     class icswLivestatusFilter extends icswMonLivestatusPipeBase

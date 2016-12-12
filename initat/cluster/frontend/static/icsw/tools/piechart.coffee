@@ -112,7 +112,7 @@ angular.module(
                     _path = createSVGElement(
                         "path"
                         {
-                            class: "pie-segment #{entry.cssclass}"
+                            class: "pie-segment #{entry.$$data.svgClassName}"
                             d: cmd.join(" ")
                         }
                     )

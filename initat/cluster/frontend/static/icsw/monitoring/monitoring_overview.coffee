@@ -1,4 +1,4 @@
-# Copyright (C) 2012-2015 init.at
+# Copyright (C) 2012-2016 init.at
 #
 # Send feedback to: <lang-nevyjel@init.at>
 #
@@ -106,18 +106,6 @@ monitoring_overview_module = angular.module(
             )
     )
 
-    #() -> [$scope.entries, $scope.filter_settings]
-    #    () ->
-    #        $scope.entries_filtered = (entry for entry in $scope.entries when $scope.filter_predicate(entry))
-    #            $scope.load_monitoring_overview_data($scope.entries_filtered)
-    #        true)
-
-    #$scope.device_list = []
-    #$q.all(wait_list).then( (data) ->
-    #    $scope.device_list = data[0]
-    #    $scope.update_device_list()
-    #)
-
     $scope.get_selected_entries = () ->
         return (entry for entry in $scope.entries when entry.selected)
 
@@ -145,18 +133,18 @@ monitoring_overview_module = angular.module(
                     status_utils_functions.get_device_data(_devs, $scope.yesterday, 'day', [])
                     status_utils_functions.get_device_data(_devs, $scope.last_week, 'week', [])
                     status_utils_functions.get_device_data(_devs, $scope.last_month, 'month', [])
-                    status_utils_functions.get_service_data(_devs, $scope.yesterday, 'day', [], merge_services=1)  #, historic_cont("service_data_yesterday"), merge_services=1)
-                    status_utils_functions.get_service_data(_devs, $scope.last_week, 'week', [], merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
-                    status_utils_functions.get_service_data(_devs, $scope.last_month, 'month', [], merge_services=1)  #, historic_cont("service_data_last_week"), merge_services=1)
+                    status_utils_functions.get_service_data(_devs, $scope.yesterday, 'day', [], merge_services=1)
+                    status_utils_functions.get_service_data(_devs, $scope.last_week, 'week', [], merge_services=1)
+                    status_utils_functions.get_service_data(_devs, $scope.last_month, 'month', [], merge_services=1)
                 ]
             ).then(
                 (data) ->
-                    historic_cont("$$device_data_yesterday", data[0][0].plain())
-                    historic_cont("$$device_data_last_week", data[1][0].plain())
-                    historic_cont("$$device_data_last_month", data[2][0].plain())
-                    historic_cont("$$service_data_yesterday", data[3][0].plain())
-                    historic_cont("$$service_data_last_week", data[4][0].plain())
-                    historic_cont("$$service_data_last_month", data[5][0].plain())
+                    historic_cont("$$device_data_yesterday", data[0])
+                    historic_cont("$$device_data_last_week", data[1])
+                    historic_cont("$$device_data_last_month", data[2])
+                    historic_cont("$$service_data_yesterday", data[3])
+                    historic_cont("$$service_data_last_week", data[4])
+                    historic_cont("$$service_data_last_month", data[5])
                     $scope.struct.loading = false
             )
 ])

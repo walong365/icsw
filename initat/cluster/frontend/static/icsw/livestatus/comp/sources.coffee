@@ -179,6 +179,10 @@ angular.module(
             iconCode: "\uf00c"
             iconFaName: "fa-check"
             StateString: "Up"
+            pycode: "UP"
+            # for ordering
+            orderint: -10
+            height: 15
         }
         1: {
             svgClassName:  "svg-dev-down"
@@ -186,6 +190,10 @@ angular.module(
             iconCode: "\uf0e7"
             iconFaName: "fa-bolt"
             StateString: "Down"
+            pycode: "D"
+            # for ordering
+            orderint: -8
+            height: 30
         }
         2: {
             svgClassName: "svg-dev-unreach"
@@ -193,6 +201,10 @@ angular.module(
             iconCode: "\uf071"
             iconFaName: "fa-warning"
             StateString: "Unreachable"
+            pycode: "UR"
+            # for ordering
+            orderint: -6
+            height: 22
         }
         3: {
             svgClassName: "svg-dev-unknown"
@@ -200,6 +212,10 @@ angular.module(
             iconCode: "\uf29c"
             iconFaName: "fa-question-circle-o"
             StateString: "Not set"
+            pycode: "U"
+            # for ordering
+            orderint: -4
+            height: 18
         }
         4: {
             svgClassName: "svg-dev-notmonitored"
@@ -207,6 +223,11 @@ angular.module(
             iconCode: "\uf05e"
             iconFaName: "fa-ban"
             StateString: "Not Monitored"
+            # not present in code
+            pycode: "???"
+            # for ordering
+            orderint: 0
+            height: 30
         }
         5: {
             svgClassName: "svg-dev-pending"
@@ -214,7 +235,12 @@ angular.module(
             iconCode: "\uf10c"
             iconFaName: "fa-circle-o"
             StateString: "pending"
+            pycode: "UD"
+            orderint: -5
+            height: 18
         }
+        # planned down is missing ...
+        # flapping is missing ...
     }
 
     _service_lut = {
@@ -225,6 +251,10 @@ angular.module(
             iconFaName: "fa-check"
             StateString: "OK"
             weight: 0
+            pycode: "O"
+            # for ordering
+            orderint: -10
+            height: 15
         }
         1: {
             svgClassName: "svg-srv-warn"
@@ -233,6 +263,10 @@ angular.module(
             iconFaName: "fa-warning"
             StateString: "Warning"
             weight: 1
+            pycode: "W"
+            # for ordering
+            orderint: -9
+            height: 22
         }
         2: {
             svgClassName: "svg-srv-crit"
@@ -241,6 +275,10 @@ angular.module(
             iconFaName: "fa-bolt"
             StateString: "Critical"
             weight: 5
+            pycode: "C"
+            # for ordering
+            orderint: -8
+            height: 30
         }
         3: {
             svgClassName: "svg-srv-unknown"
@@ -249,6 +287,10 @@ angular.module(
             iconFaName: "fa-question-circle-o"
             StateString: "Unknown"
             weight: 10
+            pycode: "U"
+            # for ordering
+            orderint: -5
+            height: 18
         }
         4: {
             svgClassName: "svg-srv-notmonitored"
@@ -257,6 +299,10 @@ angular.module(
             iconFaName: "fa-ban"
             StateString: "unmon"
             weight: 2
+            pycode: "???"
+            # for ordering
+            orderint: -4
+            height: 30
         }
         5: {
             svgClassName: "svg-srv-pending"
@@ -265,14 +311,45 @@ angular.module(
             iconFaName: "fa-circle-o"
             StateString: "pending"
             weight: 3
+            pycode: "UD"
+            # for ordering
+            orderint: -3
+            height: 18
         }
+        # planned down is missing ...
+        # flapping is missing ...
     }
+
+    # build helper luts for pycode lookup / ordering lookup
+    
+    _py_device_lut = {}
+    _orderint_device_lut = {}
+    for key, value of _device_lut
+        value.idx = parseInt(key)
+        _py_device_lut[value.pycode] = value
+        _orderint_device_lut[value.orderint] = value
+
+    _py_service_lut = {}
+    _ordering_service_lut = {}
+    for key, value of _service_lut
+        value.idx = parseInt(key)
+        _py_service_lut[value.pycode] = value
+        _ordering_service_lut[value.orderint] = value
+
     _struct = {
         device_lut: _device_lut
         service_lut: _service_lut
+        state_lut: _state_lut
+        py_device_lut: _py_device_lut
+        py_service_lut: _py_service_lut
+        ordering_device_lut: _orderint_device_lut
+        ordering_service_lut: _ordering_service_lut
         device_states: [0, 1, 2, 3, 4, 5]
         service_states: [0, 1, 2, 3, 4, 5]
     }
+
+    # console.log "*", _struct
+
     salt_device_state = (entry) ->
         entry.$$data = _device_lut[entry.state]
         #    0: "svg-dev-up"
@@ -393,13 +470,29 @@ angular.module(
             # just a tad above zero
             entry.$$serviceWeight = 0.001
 
+    salt_hist_device_data = (obj) ->
+        for d_idx, v_list of obj
+            for _val in v_list
+                _val.$$data = _py_device_lut[_val.state]
+            # console.log d_idx, v_list
+        return obj
+
+    salt_hist_service_data = (obj, merge_services) ->
+        if merge_services
+            for d_idx, v_list of obj
+                for _val in v_list
+                    _val.$$data = _py_service_lut[_val.state]
+        else
+            # one object per service
+            for d_idx, s_obj of obj
+                for srv_name, v_list of s_obj
+                    for _val in v_list
+                        _val.$$data = _py_service_lut[_val.state]
+        return obj
+
     return {
-        get_luts: () ->
-            return {
-                dev: _device_lut
-                srv: _service_lut
-                state: _state_lut
-            }
+        get_struct: () ->
+            return _struct
 
         get_unmonitored_device_entry: get_unmonitored_device_entry
 
@@ -418,6 +511,10 @@ angular.module(
         salt_service: salt_service
 
         build_circle_info: build_circle_info
+
+        salt_hist_device_data: salt_hist_device_data
+
+        salt_hist_service_data: salt_hist_service_data
     }
 ]).service("icswMonitoringResult",
 [

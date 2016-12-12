@@ -486,7 +486,7 @@ class _device_status_history_util(object):
                     l.append(
                         {
                             'date': entry['date'],
-                            'state': trans[entry['state']],
+                            'state': entry['state'],
                             'msg': entry['msg']
                         }
                     )
@@ -494,7 +494,7 @@ class _device_status_history_util(object):
                     l.append(
                         {
                             'date': entry.date,
-                            'state': trans[entry.state],
+                            'state': entry.state,
                             'msg': entry.msg
                         }
                     )
@@ -597,7 +597,6 @@ class get_hist_device_data(ListAPIView):
 
         data_per_device = {device_id: [] for device_id in device_ids}
         for d in data:
-            d['state'] = mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[d['state']].capitalize()
             data_per_device[d['device_id']].append(d)
 
         data_merged_state_types = {}
@@ -607,7 +606,7 @@ class get_hist_device_data(ListAPIView):
             if _eco.consume("dashboard", device_id):
                 data_merged_state_types[device_id] = mon_icinga_log_aggregated_service_data.objects.merge_state_types(
                     device_data,
-                    mon_icinga_log_aggregated_host_data.STATE_CHOICES_READABLE[mon_icinga_log_raw_base.STATE_UNDETERMINED]
+                    mon_icinga_log_raw_base.STATE_UNDETERMINED
                 )
 
         return Response([data_merged_state_types])  # fake a list, see coffeescript
