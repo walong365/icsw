@@ -21,6 +21,7 @@
 
 from __future__ import unicode_literals, print_function
 
+import os
 import re
 from collections import defaultdict, OrderedDict
 
@@ -375,7 +376,7 @@ class Hardware(object):
 
     def _process_lshw(self, lshw_dump):
         for sub_tree in lshw_dump.xpath(
-            "//node[starts-with(@id, 'cpu') and @class='processor']"
+            "//node[starts-with(@id, 'cpu') and @class='processor' and not(@disabled='true')]"
         ):
             self.cpus.append(HardwareCPU(sub_tree))
 
@@ -394,22 +395,24 @@ class Hardware(object):
                 self.memory_modules.append(memory_module)
 
         for sub_tree in lshw_dump.xpath(
-            "//node[@id='display' and @class='display']"
+            "//node[starts-with(@id, 'display') and @class='display']"
         ):
             self.gpus.append(HardwareGPU(sub_tree))
 
         # add further disk information not available from lsblk
         device_hdds = {hdd.device_name: hdd for hdd in self.hdds}
         for sub_tree in lshw_dump.xpath(
-            "//node[@id='disk' and @class='disk']"
+            "//node[starts-with(@id, 'disk') and @class='disk']"
         ):
             lshw_hdd = HardwareHdd(sub_tree)
             hdd = device_hdds.get(lshw_hdd.device_name)
+            if not hdd:
+                hdd = device_hdds.get(os.path.split(lshw_hdd.device_name)[-1])
             if hdd:
                 hdd.update(lshw_hdd)
 
         for sub_tree in lshw_dump.xpath(
-                "//node[@id='network' and @class='network']"):
+                "//node[starts-with(@id, 'network') and @class='network']"):
             self.network_devices.append(
                 HardwareNetwork(sub_tree)
             )
@@ -832,6 +835,10 @@ class HardwareHdd(HardwareBase):
         entry = self._lsblk_entry
         self.device_name = entry['KNAME']
         self.product = entry['MODEL']
+        if 'SERIAL' in entry:
+            self.serial = entry['SERIAL']
+        if 'SIZE' in entry:
+            self.size = int(entry['SIZE'])
 
 
 class Partition(HardwareBase):

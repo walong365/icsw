@@ -38,10 +38,10 @@ from initat.cluster.backbone.models import ComCapability, netdevice, netdevice_s
 from initat.discovery_server.wmi_struct import WmiUtils
 from initat.icsw.service.instance import InstanceXML
 from initat.snmp.snmp_struct import ResultNode
-from initat.tools import logging_tools, process_tools, server_command, ipvx_tools, net_tools
+from initat.tools import logging_tools, process_tools, server_command, ipvx_tools
 from .config import global_config
 from .discovery_struct import ExtCom
-from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP
+from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP, ASSETTYPE_NRPE_COMMAND_MAP
 
 DEFAULT_NRPE_PORT = 5666
 
@@ -56,6 +56,7 @@ SERVER_RESULT_RUN_RESULT = {
 }
 
 HM_CMD_TUPLES = [(asset_type, hm_command, 60) for asset_type, hm_command in ASSETTYPE_HM_COMMAND_MAP.items()]
+NRPE_CMD_TUPLES = ASSETTYPE_NRPE_COMMAND_MAP.items()
 
 
 class ScanBatch(object):
@@ -427,18 +428,6 @@ class WmiScanMixin(_ExtComScanMixin):
     def wmi_scan(self, dev_com, scan_dev):
         self._register_timer()
         return WmiScanBatch(dev_com, scan_dev).start_result
-
-
-LIST_SOFTWARE_CMD = "list-software-py3"
-LIST_KEYS_CMD = "list-keys-py3"
-LIST_METRICS_CMD = "list-metrics-py3"
-LIST_PROCESSES_CMD = "list-processes-py3"
-LIST_UPDATES_CMD = "list-updates-alt-py3"
-LIST_PENDING_UPDATES_CMD = "list-pending-updates-py3"
-LIST_HARDWARE_CMD = "list-hardware-lstopo-py3"
-DMIINFO_CMD = "dmiinfo"
-PCIINFO_CMD = "pciinfo"
-PRETTYWINHW_CMD = "list-hardware-py3"
 
 
 def align_second(now, sched_start_second):
@@ -966,17 +955,8 @@ class Dispatcher(object):
             )
 
     def _do_nrpe_scan(self, schedule_item, planned_run):
-        cmd_tuples = [
-            (AssetType.PACKAGE, LIST_SOFTWARE_CMD),
-            (AssetType.HARDWARE, LIST_HARDWARE_CMD),
-            (AssetType.UPDATE, LIST_UPDATES_CMD),
-            (AssetType.DMI, DMIINFO_CMD),
-            (AssetType.PCI, PCIINFO_CMD),
-            (AssetType.PRETTYWINHW, PRETTYWINHW_CMD),
-            (AssetType.PENDING_UPDATE, LIST_PENDING_UPDATES_CMD)
-        ]
-        planned_run.start_feed(cmd_tuples)
-        for _idx, (runtype, _command) in enumerate(cmd_tuples):
+        planned_run.start_feed(NRPE_CMD_TUPLES)
+        for _idx, (runtype, _command) in enumerate(NRPE_CMD_TUPLES):
             timeout = 30
             if runtype == AssetType.PENDING_UPDATE:
                 timeout = 3600

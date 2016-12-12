@@ -24,22 +24,26 @@
 from __future__ import unicode_literals, print_function
 
 from django.core.management.base import BaseCommand
-from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP
+from initat.cluster.backbone.models.asset.dynamic_asset import ASSETTYPE_HM_COMMAND_MAP, ASSETTYPE_NRPE_COMMAND_MAP, \
+    ScanType
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import server_command, net_tools
 from lxml import etree
 
 import pickle
+import subprocess
 
 
 ASSET_MANAGEMENT_TEST_LOCATION = "backbone/tools/tests/asset_management_tests/data/asset_management_test_data"
+DEFAULT_NRPE_PORT = 5666
 
 
 class ResultObject(object):
-    def __init__(self, identifier, ignore_tests, result_dict):
+    def __init__(self, identifier, ignore_tests, result_dict, scan_type):
         self.identifier = identifier
         self.ignore_tests = ignore_tests
         self.result_dict = result_dict
+        self.scan_type = scan_type
 
 
 class Command(BaseCommand):
@@ -74,6 +78,12 @@ class Command(BaseCommand):
                             default=None,
                             dest='delete_index',
                             help="Delete entry with this index (see --list)")
+        parser.add_argument('--scan-type',
+                            action='store',
+                            type=str,
+                            default=None,
+                            dest='scan_type',
+                            help="Which scan to perform for this device [NRPE, HM]")
 
     def handle(self, **options):
         if options['delete_index'] is not None:
@@ -88,6 +98,11 @@ class Command(BaseCommand):
                 print("Invalid property: {}".format(_property))
                 return
 
+        if options['scan_type'] is None:
+            print("Scan Type missing")
+            return
+        if options['scan_type'] not in ['HM', 'NRPE']:
+            print("Invalid Scan Type: {}".format(options['scan_type']))
         if options['ip'] is None:
             print("IP/Hostname missing")
             return
@@ -95,26 +110,46 @@ class Command(BaseCommand):
             print("Identifier for this entry missing")
             return
 
-        hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
-        conn_str = "tcp://{}:{:d}".format(options['ip'], hm_port)
-
         result_dict = {}
-        for asset_type, hm_command in ASSETTYPE_HM_COMMAND_MAP.items():
-            result_dict[asset_type] = None
+        if options['scan_type'] == "HM":
+            scan_type = ScanType.HM
+            hm_port = InstanceXML(quiet=True).get_port_dict("host-monitoring", command=True)
+            conn_str = "tcp://{}:{:d}".format(options['ip'], hm_port)
 
-            srv_com = server_command.srv_command(command=hm_command)
-            new_con = net_tools.ZMQConnection(hm_command)
-            new_con.add_connection(conn_str, srv_com)
-            result = new_con.loop()
-            if result:
-                result = result[0]
+            for asset_type, hm_command in ASSETTYPE_HM_COMMAND_MAP.items():
+                result_dict[asset_type] = None
+
+                srv_com = server_command.srv_command(command=hm_command)
+                new_con = net_tools.ZMQConnection(hm_command, timeout=30)
+                new_con.add_connection(conn_str, srv_com)
+                result = new_con.loop()
                 if result:
-                    (status_string, server_result_code) = result.get_result()
+                    result = result[0]
+                    if result:
+                        (status_string, server_result_code) = result.get_result()
 
-                    if server_result_code == server_command.SRV_REPLY_STATE_OK:
-                        result_dict[asset_type] = etree.tostring(result.tree)
+                        if server_result_code == server_command.SRV_REPLY_STATE_OK:
+                            result_dict[asset_type] = etree.tostring(result.tree)
 
-        valid = all([result_dict[asset_type] is not None for asset_type in ASSETTYPE_HM_COMMAND_MAP])
+            valid = all([result_dict[asset_type] is not None for asset_type in ASSETTYPE_HM_COMMAND_MAP])
+        else:
+            scan_type = ScanType.NRPE
+
+            for asset_type, nrpe_command in ASSETTYPE_NRPE_COMMAND_MAP.items():
+                result_dict[asset_type] = None
+
+                _com = "/opt/cluster/sbin/check_nrpe -H{} -2 -P1048576 -p{} -n -c{} -t{}".format(
+                    options['ip'],
+                    DEFAULT_NRPE_PORT,
+                    nrpe_command,
+                    1000,
+                )
+                output = subprocess.check_output(_com.split(" "))
+
+                if output and len(output) > 0:
+                    result_dict[asset_type] = output
+
+            valid = all([result_dict[asset_type] is not None for asset_type in ASSETTYPE_NRPE_COMMAND_MAP])
         if valid:
             try:
                 f = open(ASSET_MANAGEMENT_TEST_LOCATION, "rb")
@@ -123,7 +158,7 @@ class Command(BaseCommand):
             except IOError:
                 data = []
 
-            data.append(ResultObject(options['identifier'], options['ignore_tests'], result_dict))
+            data.append(ResultObject(options['identifier'], options['ignore_tests'], result_dict, scan_type))
 
             f = open(ASSET_MANAGEMENT_TEST_LOCATION, "wb")
             pickle.dump(data, f)
@@ -136,7 +171,7 @@ class Command(BaseCommand):
             for asset_type, result in result_dict.items():
                 if result is None:
                     missing_types.append(asset_type)
-            print("No hm result for: {}".format(missing_types))
+            print("No result for: {}".format(missing_types))
 
     @staticmethod
     def handle_list():
@@ -152,7 +187,8 @@ class Command(BaseCommand):
             print("Index:\t{}".format(index))
             print("Identifier:\t{}".format(result_obj.identifier))
             print("Ignored Tests:\t{}".format(result_obj.ignore_tests))
-            print("HM Results:\t{}".format(len(result_obj.result_dict.items())))
+            print("HM/NRPE Results:\t{}".format(len(result_obj.result_dict.items())))
+            print("Scan Type:\t{}".format(result_obj.scan_type.name))
             print_lines = True
             index += 1
 
