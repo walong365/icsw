@@ -430,11 +430,22 @@ def get_update_list():
         # todo error handling
         lines = output.split("\n")
 
+        prevline = None
         for line in lines:
             line = line.strip()
+            if line.startswith("Obsoleting Packages"):
+                break
             if line:
                 comps = [s for s in line.split(" ") if s]
-                update_list.append((comps[0].strip(), comps[1].strip()))
+                if prevline:
+                    update_list.append((prevline.strip(), comps[0].strip()))
+                    prevline = None
+                else:
+                    if len(comps) > 1:
+                        update_list.append((comps[0].strip(), comps[1].strip()))
+                    else:
+                        prevline = comps[0].strip()
+
 
     elif use_apt:
         status, output = commands.getstatusoutput("apt-get update")

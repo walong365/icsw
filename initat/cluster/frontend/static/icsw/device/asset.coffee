@@ -532,13 +532,8 @@ device_asset_module = angular.module(
     $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall, icswTools,
     icswAssetHelperFunctions
 ) ->
-    $scope.struct = {
-        selected_assetrun: undefined
-        package_tree: undefined
-    }
-
-    $scope.expand_assetbatch = ($event, assetbatch) ->
-        assetbatch.$$expanded = !assetbatch.$$expanded
+    $scope.select_assetbatch = (asset_batch) ->
+        console.log(asset_batch)
 
     $scope.open_in_new_tab = (asset_batch) ->
         for tab in asset_batch.$$device.info_tabs
@@ -674,8 +669,6 @@ device_asset_module = angular.module(
                 asset_batch.$$device.info_tabs.push(tab)
                 blockUI.stop()
         )
-
-
 ]).directive("icswAssetBatchDetails",
 [
     "$q", "$templateCache", "$compile",
@@ -809,4 +802,47 @@ device_asset_module = angular.module(
             tab: "=icswTab"
         }
     }
+]).directive("icswAssetScanHistoryTab",
+[
+    "$q", "$templateCache",
+(
+    $q, $templateCache,
+) ->
+    return {
+        scope: {
+            device: "=device"
+        }
+        restrict: "E"
+        template: $templateCache.get("icsw.asset.scan.history.tab")
+        controller: "icswAssetScanHistoryTabCtrl"
+    }
+]).controller("icswAssetScanHistoryTabCtrl",
+[
+    "$scope", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout"
+(
+    $scope, icswSimpleAjaxCall, ICSW_URLS, $timeout
+) ->
+    $scope.scan_device = () ->
+        $scope.device.$$scan_device_button_disabled = true
+        icswSimpleAjaxCall(
+            {
+                url: ICSW_URLS.ASSET_RUN_ASSETRUN_FOR_DEVICE_NOW
+                data:
+                    pk: $scope.device.idx
+                dataType: "json"
+            }
+        ).then(
+            (ok) ->
+                $timeout(
+                    () ->
+                        $scope.device.$$scan_device_button_disabled = false
+                    5000
+                )
+            (not_ok) ->
+                $timeout(
+                    () ->
+                        $scope.device.$$scan_device_button_disabled = false
+                    5000
+                )
+        )
 ])
