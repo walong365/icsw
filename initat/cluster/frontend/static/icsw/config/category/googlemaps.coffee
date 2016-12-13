@@ -137,7 +137,7 @@ angular.module(
 (
     $q, icswDeviceLivestatusBurstReactContainer, icswBurstDrawParameters,
 ) ->
-    OUTER_RAD = 50
+    OUTER_RAD = 80
     {div, svg, rect} = React.DOM
     return React.createClass(
         propTypes: {

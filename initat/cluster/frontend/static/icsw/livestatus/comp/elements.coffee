@@ -18,7 +18,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
-# livestatus elements (curcle info)
+# small livestatus elements (circle info) for table headings
 
 angular.module(
     "icsw.livestatus.comp.elements",
