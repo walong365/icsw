@@ -206,13 +206,13 @@ angular.module(
 [
     "$scope", "$compile", "$templateCache", "Restangular", "icswUserService",
     "$q", "$timeout", "icswTools", "ICSW_URLS", "icswSimpleAjaxCall",
-    "icswDeviceLivestatusDataService", "icswCachingCall", "icswLivestatusFilterService",
+    "icswDeviceLivestatusDataService", "icswLivestatusFilterService",
     "icswDeviceTreeService", "icswMonLivestatusPipeConnector", "$rootScope", "ICSW_SIGNALS",
     "icswLivestatusPipeSpecTreeService", "icswDeviceLivestatusTools",
 (
     $scope, $compile, $templateCache, Restangular, icswUserService,
     $q, $timeout, icswTools, ICSW_URLS, icswSimpleAjaxCall,
-    icswDeviceLivestatusDataService, icswCachingCall, icswLivestatusFilterService,
+    icswDeviceLivestatusDataService, icswLivestatusFilterService,
     icswDeviceTreeService, icswMonLivestatusPipeConnector, $rootScope, ICSW_SIGNALS,
     icswLivestatusPipeSpecTreeService, icswDeviceLivestatusTools,
 ) ->

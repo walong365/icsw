@@ -74,10 +74,10 @@ device_asset_module = angular.module(
 
 ]).service("icswAssetPackageTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools",
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswTools",
     "icswAssetPackageTree", "icswTreeBase",
 (
-    $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools,
+    $q, Restangular, ICSW_URLS, $window, icswTools,
     icswAssetPackageTree, icswTreeBase,
 ) ->
     rest_map = [
@@ -474,10 +474,10 @@ device_asset_module = angular.module(
 
 ]).service("icswStaticAssetTemplateTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall", "icswTools",
+    "$q", "Restangular", "ICSW_URLS", "$window", "icswTools",
     "icswStaticAssetTemplateTree", "$rootScope", "ICSW_SIGNALS", "icswTreeBase",
 (
-    $q, Restangular, ICSW_URLS, $window, icswCachingCall, icswTools,
+    $q, Restangular, ICSW_URLS, $window, icswTools,
     icswStaticAssetTemplateTree, $rootScope, ICSW_SIGNALS, icswTreeBase,
 ) ->
     rest_map = [

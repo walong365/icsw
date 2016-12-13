@@ -1686,7 +1686,6 @@ angular.module(
                     @client_dict = {}
                     @pk_list = null
                 (error) =>
-                    # console.log "e=", error
                     # hm, difficult ...
                     for c_id, _defer of @client_dict
                         # console.log "**", c_id
@@ -1832,10 +1831,8 @@ angular.module(
             )
             _start = new Date().getTime()
             @_load_defer = $q.defer()
-            console.log "l", client, _wait_list
             $q.all(_wait_list).then(
                 (data) =>
-                    console.log "d", client, data
                     _map_len = @rest_map.length
                     _tot_len = _wait_list.length
                     _extra_len = _tot_len - _map_len
@@ -1862,7 +1859,12 @@ angular.module(
                             # console.log "emit", _send_signal, @_result
                             $rootScope.$emit(ICSW_SIGNALS(_send_signal), @_result)
                 (error) =>
-                    console.log "e", client, data
+                    _end = new Date().getTime()
+                    # runtime in milliseconds
+                    #noinspection JSUnresolvedVariable
+                    _run_time = icswTools.get_diff_time_ms(_end - _start)
+                    console.error " -> #{@name} not loaded due to error (runtime #{_run_time})", error
+                    @send_error(error)
             )
             return @_load_defer
 
@@ -1878,6 +1880,13 @@ angular.module(
                 # resolve clients
                 @_fetch_dict[client].resolve(@_result)
             # reset fetch_dict
+            @_fetch_dict = {}
+
+        send_error: (error) =>
+            @_load_defer.reject(error)
+            for client of @_fetch_dict
+                # reject clients
+                @_fetch_dict[client].reject(error)
             @_fetch_dict = {}
 
         fetch_data: (client) =>

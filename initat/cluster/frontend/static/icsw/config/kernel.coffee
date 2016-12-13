@@ -81,10 +81,10 @@ kernel_module = angular.module(
 
 ]).service("icswKernelTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "$window", "icswCachingCall",
+    "$q", "Restangular", "ICSW_URLS", "$window",
     "icswTools", "$rootScope", "ICSW_SIGNALS", "icswKernelTree", "icswTreeBase",
 (
-    $q, Restangular, ICSW_URLS, $window, icswCachingCall,
+    $q, Restangular, ICSW_URLS, $window,
     icswTools, $rootScope, ICSW_SIGNALS, icswKernelTree, icswTreeBase,
 ) ->
     rest_map = [

@@ -145,14 +145,14 @@ angular.module(
 [
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$uibModal", "$timeout", "ICSW_URLS", "icswRRDGraphTree", "icswSimpleAjaxCall",
-    "icswParseXMLResponseService", "toaster", "icswCachingCall", "icswUserService",
+    "icswParseXMLResponseService", "toaster", "icswUserService",
     "icswSavedSelectionService", "icswRRDGraphUserSettingService", "icswDeviceTreeService",
     "icswUserGroupRoleTreeService", "icswDeviceTreeHelperService", "icswRRDDisplayGraph",
     "icswRRDGraphBasicSetting", "icswTimeFrameService", "ICSW_SIGNALS",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $uibModal, $timeout, ICSW_URLS, icswRRDGraphTree, icswSimpleAjaxCall,
-    icswParseXMLResponseService, toaster, icswCachingCall, icswUserService,
+    icswParseXMLResponseService, toaster, icswUserService,
     icswSavedSelectionService, icswRRDGraphUserSettingService, icswDeviceTreeService,
     icswUserGroupRoleTreeService,  icswDeviceTreeHelperService, icswRRDDisplayGraph,
     icswRRDGraphBasicSetting, icswTimeFrameService, ICSW_SIGNALS,

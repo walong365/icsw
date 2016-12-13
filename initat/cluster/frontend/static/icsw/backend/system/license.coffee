@@ -260,11 +260,11 @@ angular.module(
 ]).service("icswSystemLicenseDataService",
 [
     "Restangular", "ICSW_URLS", "gettextCatalog", "icswSimpleAjaxCall", "$q",
-    "icswSystemLicenseDataTree", "icswCachingCall", "$rootScope", "ICSW_SIGNALS",
+    "icswSystemLicenseDataTree", "$rootScope", "ICSW_SIGNALS",
     "icswTreeBase",
 (
     Restangular, ICSW_URLS, gettextCatalog, icswSimpleAjaxCall, $q,
-    icswSystemLicenseDataTree, icswCachingCall, $rootScope, ICSW_SIGNALS,
+    icswSystemLicenseDataTree, $rootScope, ICSW_SIGNALS,
     icswTreeBase,
 ) ->
     rest_map = [

@@ -162,13 +162,13 @@ device_variable_module = angular.module(
                     return obj.key
 ]).service("icswDeviceVariableListService",
 [
-    "$q", "Restangular", "icswCachingCall", "icswSimpleAjaxCall",
+    "$q", "Restangular", "icswSimpleAjaxCall", "blockUI",
     "ICSW_URLS", "icswDeviceTreeService", "icswToolsSimpleModalService", "icswComplexModalService",
-    "$compile", "$templateCache", "icswDeviceVariableBackup", "toaster", "blockUI",
+    "$compile", "$templateCache", "icswDeviceVariableBackup", "toaster",
 (
-    $q, Restangular, icswCachingCall, icswSimpleAjaxCall,
+    $q, Restangular, icswSimpleAjaxCall, blockUI,
     ICSW_URLS, icswDeviceTreeService, icswToolsSimpleModalService, icswComplexModalService,
-    $compile, $templateCache, icswDeviceVariableBackup, toaster, blockUI,
+    $compile, $templateCache, icswDeviceVariableBackup, toaster,
 ) ->
     create_or_edit = (scope, event, create, obj_or_parent) ->
         _dvst = scope.device_variable_scope_tree

@@ -203,10 +203,10 @@ angular.module(
 
 ]).service("icswLivestatusPipeSpecTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTreeBase",
+    "$q", "Restangular", "ICSW_URLS", "icswTreeBase",
     "icswTools", "icswLivestatusPipeSpecTree",
 (
-    $q, Restangular, ICSW_URLS, icswCachingCall, icswTreeBase,
+    $q, Restangular, ICSW_URLS, icswTreeBase,
     icswTools, icswLivestatusPipeSpecTree,
 ) ->
     rest_map = [

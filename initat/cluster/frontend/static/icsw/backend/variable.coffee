@@ -268,10 +268,10 @@ angular.module(
 
 ]).service("icswDeviceVariableScopeTreeService",
 [
-    "$q", "Restangular", "ICSW_URLS", "icswCachingCall", "icswTreeBase",
+    "$q", "Restangular", "ICSW_URLS", "icswTreeBase",
     "icswTools", "icswDeviceVariableScopeTree", "$rootScope", "ICSW_SIGNALS",
 (
-    $q, Restangular, ICSW_URLS, icswCachingCall, icswTreeBase,
+    $q, Restangular, ICSW_URLS, icswTreeBase,
     icswTools, icswDeviceVariableScopeTree, $rootScope, ICSW_SIGNALS,
 ) ->
     rest_map = [
