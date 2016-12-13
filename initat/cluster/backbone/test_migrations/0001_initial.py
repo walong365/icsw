@@ -184,7 +184,7 @@ class Migration(migrations.Migration):
                 ('manufacturer', models.TextField(null=True)),
                 ('product_name', models.TextField(null=True)),
                 ('device_name', models.TextField(null=True)),
-                ('speed', models.IntegerField(null=True)),
+                ('speed', models.BigIntegerField(null=True)),
                 ('mac_address', models.TextField(null=True)),
             ],
         ),
