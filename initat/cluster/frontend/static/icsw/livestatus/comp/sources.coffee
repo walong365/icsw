@@ -385,6 +385,7 @@ angular.module(
             5: "default"
         }[entry.state]
         entry.$$icswStateClass = _r_str
+        entry.$$icswStateSvgClass = _device_lut[entry.state].svgClassName
         # entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
         entry.$$icswStateBtnClass = "btn-#{_r_str}"
@@ -409,6 +410,7 @@ angular.module(
         #    5: "svg-srv-unknown"
         # }[entry.state]
         entry.$$icswStateClass = _r_str
+        entry.$$icswStateSvgClass = _service_lut[entry.state].svgClassName
         # entry.$$icswStateLabelClass = "label-#{_r_str}"
         entry.$$icswStateTextClass = "text-#{_r_str}"
         entry.$$icswStateBtnClass = "btn-#{_r_str}"
