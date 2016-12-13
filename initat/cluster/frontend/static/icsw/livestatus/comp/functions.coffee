@@ -331,6 +331,7 @@ angular.module(
                         $$segment: node
                         # link to check (node or device or devicegroup or system)
                         $$service: srvc
+                        className: srvc.$$icswStateSvgClass
                     }
                     if _ia
                         # add values for interactive display
