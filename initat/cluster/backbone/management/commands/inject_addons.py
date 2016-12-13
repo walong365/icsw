@@ -25,6 +25,7 @@ import codecs
 import json
 import os
 import re
+import copy
 import sys
 
 from django.conf import settings
@@ -188,20 +189,21 @@ class FileModify(object):
                     )
                 )
                 raise
-        return [
-            "    {}".format(_line) for _line in json.dumps(_res, indent=4).split("\n")[1:-1]
-        ]
+        return _res
 
     def read_configs(self, mp_list):
         # mp_list is a list of tuples (app, config.path)
         # relax instance
         _my_relax = ConfigRelax()
         ROOT_ELEMENTS = ["routes", "menu", "tasks"]
-        _total_xml = E.config(
-            *[
-                getattr(E, _root_el_name)() for _root_el_name in ROOT_ELEMENTS
-            ]
-        )
+        # dict, one entry per style
+        res_dict = {
+            style: E.config(
+                *[
+                    getattr(E, _root_el_name)() for _root_el_name in ROOT_ELEMENTS
+                ]
+            ) for style in settings.ICSW_ALLOWED_OVERALL_STYLES
+        }
         for _app_name, _file in mp_list:
             # simple merger, to be improved
             _full_path = os.path.join(settings.FILE_ROOT, _file)
@@ -221,33 +223,47 @@ class FileModify(object):
                     )
                 else:
                     for _el_name in ROOT_ELEMENTS:
-                        _src_el = _src_xml.find(_el_name)
-                        if _src_el is not None:
-                            _dst_el = _total_xml.find(_el_name)
-                            for _el in _src_el:
-                                if _el.tag is not etree.Comment:
-                                    _el.attrib["app"] = _app_name
-                                    _dst_el.append(_el)
+                        _src_els = _src_xml.findall(_el_name)
+                        if len(_src_els):
+                            for _src_el in _src_els:
+                                _target_style = _src_el.attrib.get("style", None)
+                                if _target_style is None:
+                                    _target_styles = settings.ICSW_ALLOWED_OVERALL_STYLES
+                                else:
+                                    _target_styles = [_target_style]
+                                for _target_style in _target_styles:
+                                    _dst_el = res_dict[_target_style].find(_el_name)
+                                    for _el in _src_el:
+                                        if _el.tag is not etree.Comment:
+                                            _el.attrib["app"] = _app_name
+                                            _dst_el.append(copy.deepcopy(_el))
             else:
                 sys.stderr.write(
                     "*** file {} does not exist".format(_full_path)
                 )
         # sys.exit(0)
         # check for validity
-        try:
-            _my_relax.validate(_total_xml)
-        except:
-            sys.stderr.write(
-                "*** Error validating merged XML: {}\n".format(
-                    process_tools.get_except_info(),
+        overall_dict = {}
+        for _style, _total_xml in res_dict.iteritems():
+            try:
+                _my_relax.validate(_total_xml)
+            except:
+                sys.stderr.write(
+                    "*** Error validating merged XML for style {}: {}\n".format(
+                        _style,
+                        process_tools.get_except_info(),
+                    )
                 )
-            )
-            raise
+                raise
+            else:
+                overall_dict[_style] = self.config_xml_to_json(_total_xml)
         # transform XML
         # _total_xml = self.transform(_total_xml)
         # transform to json
         # print("\n".join(self.config_xml_to_json(_total_xml)))
-        return self.config_xml_to_json(_total_xml)
+        return [
+            "    {}".format(_line) for _line in json.dumps(overall_dict, indent=4).split("\n")[1:-1]
+        ]
 
     def inject(self, options):
         _v_dict = {}

@@ -651,7 +651,7 @@
             </icswData>
         </route>
     </routes>
-    <menu>
+    <menu style="condensed">
         <menuHeader name="Basic" icon="fa-desktop" side="left">
             <routeSubGroup name="Create">
                 <menuEntry icon="fa-plus-circle" name="Device" routeName="main.devicecreate"/>
@@ -714,7 +714,34 @@
                 <menuEntry icon="fa-cubes" name="Setup Progress" routeName="main.setupprogress"/>
             </routeSubGroup>
         </menuHeader>
-        <!-- <menuHeader name="Devices" icon="fa-desktop" side="left">
+        <menuHeader name="HPC" icon="fa-cloud" side="left">
+            <routeSubGroup name="Cluster">
+                <menuEntry icon="fa-rocket" routeName="main.deployboot" name="Boot nodes"/>
+                <menuEntry icon="fa-linux" routeName="main.imagekernel" name="Images and Kernels"/>
+                <menuEntry icon="fa-database" routeName="main.partition" name="Partition overview"/>
+                <menuEntry icon="fa-download" routeName="main.packageinstall" name="Package install"/>
+            </routeSubGroup>
+            <routeSubGroup name="RMS">
+                <menuEntry icon="fa-table" name="RMS Overview" routeName="main.rmsoverview"/>
+                <menuEntry icon="fa-line-chart" name="License Liveview" routeName="main.licoverview"/>
+            </routeSubGroup>
+        </menuHeader>
+        <menuHeader name="$$USER_INFO" icon="fa-cog" side="right">
+            <routeSubGroup name="History">
+                <menuEntry icon="fa-list" name="Background Job Info" routeName="main.backgroundinfo"/>
+                <menuEntry icon="fa-history" name="Database History" routeName="main.history"/>
+            </routeSubGroup>
+            <routeSubGroup name="Miscellaneous">
+                <menuEntry icon="fa-bars" routeName="main.statelist" name="Internal State list"/>
+            </routeSubGroup>
+            <routeSubGroup name="My Settings">
+                <menuEntry icon="fa-info" name="Account Info" routeName="main.useraccount"/>
+                <menuEntry icon="fa-sign-out" name="Logout" title="Logout and remember selection" routeName="logout"/>
+            </routeSubGroup>
+        </menuHeader>
+    </menu>
+    <menu style="normal">
+        <menuHeader name="Devices" icon="fa-desktop" side="left">
             <routeSubGroup name="Settings">
                 <menuEntry icon="fa-plus-circle" name="Add new Device" routeName="main.devicecreate"/>
                 <menuEntry icon="fa-bars" name="Device Information" routeName="main.deviceinfo"/>
@@ -739,8 +766,8 @@
             <routeSubGroup name="Status">
                 <menuEntry icon="fa-dot-circle-o" routeName="main.livestatus" name="Liveview Dashboard"/>
                 <menuEntry icon="fa-list" name="Monitoring Overview" routeName="main.monitorov"/>
-                <menuEntry icon="fa-line-chart" routeName="main.graph" name="Show Graphs"/> -->
-                <!-- <menuEntry icon="fa-hdd-o" routeName="main.monitordisk" name="Disk Information"/>
+                <menuEntry icon="fa-line-chart" routeName="main.graph" name="Show Graphs"/>
+                <!-- <menuEntry icon="fa-hdd-o" routeName="main.monitordisk" name="Disk Information"/> -->
                 <menuEntry icon="fa-pie-chart" routeName="main.statushistory" name="Device Availability"/>
                 <menuEntry icon="fa-list-alt" name="Event Logs" routeName="main.eventlog"/>
                 <menuEntry icon="fa-info-circle" name="Control and Info" routeName="main.monitorbuildinfo"/>
@@ -761,7 +788,7 @@
                 <menuEntry icon="fa-reorder" name="Static Asset Templates" routeName="main.statictemplates"/>
                 <menuEntry icon="fa-reorder" name="Static Asset Overview" routeName="main.inventorystaticoverview"/>
             </routeSubGroup>
-        </menuHeader> -->
+        </menuHeader>
         <menuHeader name="HPC" icon="fa-cloud" side="left">
             <routeSubGroup name="Cluster">
                 <menuEntry icon="fa-rocket" routeName="main.deployboot" name="Boot nodes"/>

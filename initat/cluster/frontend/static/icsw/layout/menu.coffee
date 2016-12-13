@@ -1150,8 +1150,9 @@ menu_module = angular.module(
 
     generate_path = () ->
         # generate path
-        _start = $state.$current.$$simpleTreeNode
-        if _start?
+        if $state.$current.icswData.menu_entries.length
+            # why the first one ? FIXME
+            _start = $state.$current.icswData.menu_entries[0].$$simpleTreeNode
             _path = []
             while true
                 # walk upwards
@@ -1177,7 +1178,7 @@ menu_module = angular.module(
                 ret_path.push({name: entry.data.name, icon: ""})
             else
                 # menu entry
-                _curr = entry.data.icswData.$$menuEntry
+                _curr = entry.data
                 curr_entry = {
                     name: _curr.name
                     icon: _curr.icon

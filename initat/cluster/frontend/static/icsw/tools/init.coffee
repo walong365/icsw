@@ -59,12 +59,15 @@ angular.module(
     $q, ICSW_SIGNALS, $rootScope,
 ) ->
     _style = "normal"
+    _first = true
     return {
         get: () ->
             return _style
         set: (name) ->
-            _style = name
-            $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"))
+            if _style != name or _first
+                _first = false
+                _style = name
+                $rootScope.$emit(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"))
     }
 ]).controller("icswBodyCtrl",
 [
@@ -379,11 +382,10 @@ angular.module(
                             console.error "missing attribute #{_name} in dashboardEntry for", @
 
     _add_route = (name, resolve_map) ->
-        # console.log ICSW_CONFIG_JSON
         # reads from ICSW_CONFIG_JSON and adds to $stateProvider
-        if name not of ICSW_CONFIG_JSON.routes
+        if name not of ICSW_CONFIG_JSON.normal.routes
             throw new Error("stateName '#{name}' not found in ICSW_CONFIG_JSON")
-        _data = ICSW_CONFIG_JSON.routes[name]
+        _data = ICSW_CONFIG_JSON.normal.routes[name]
         if not _data.icswData? or not _data.stateData?
             throw new Error("icswData or stateData not found for stateName '#{name}'")
         _ext = new icswRouteExtension(_data.icswData)
@@ -417,10 +419,10 @@ angular.module(
 ]).service("icswRouteHelper",
 [
     "icswRouteExtension", "$state", "$rootScope", "ICSW_SIGNALS", "icswAccessLevelService",
-    "icswTools", "ICSW_CONFIG_JSON",
+    "icswTools", "ICSW_CONFIG_JSON", "icswOverallStyle",
 (
     icswRouteExtension, $state, $rootScope, ICSW_SIGNALS, icswAccessLevelService,
-    icswTools, ICSW_CONFIG_JSON,
+    icswTools, ICSW_CONFIG_JSON, icswOverallStyle,
 ) ->
     _init = false
     _user = undefined
@@ -469,6 +471,8 @@ angular.module(
     }
 
     _check_rights = () ->
+        # get style
+        _style = icswOverallStyle.get()
         # states for menus entries
         _struct.menu_states.length = 0
         # states for menu_headers
@@ -486,7 +490,7 @@ angular.module(
 
             # create menu
 
-            for menuHeader in ICSW_CONFIG_JSON.menu.menuHeader
+            for menuHeader in ICSW_CONFIG_JSON[_style].menu.menuHeader
                 _cur_menu = _struct.menu_node.add_node(menuHeader)
 
                 # add subgroup(s)
@@ -500,7 +504,6 @@ angular.module(
                         state = $state.get(menuEntry.routeName)
                         if state? and state
                             data = state.icswData
-                            # data.$$menuEntry = menuEntry
                             menuEntry.$$state = state
                             menuEntry.sref = $state.href(state)
                             _add = true
@@ -550,6 +553,13 @@ angular.module(
                                     _struct.quicklink_states.push(state)
                                 if data.$$dashboardEntry
                                     _struct.dashboard_states.push(state)
+                            # add menuEntry to state
+                            if not state.icswData.menu_entries?
+                                state.icswData.menu_entries = []
+                            # link menuEntries with state
+                            if menuEntry.$$simpleTreeNode.$$menu_key not in (_entry.$$simpleTreeNode.$$menu_key for _entry in state.icswData.menu_entries)
+                                state.icswData.menu_entries.push(menuEntry)
+                            # data.$$menuEntry = menuEntry
                         else
                             console.error "unknown state #{menuEntry.routeName}"
                 # if data.$$routeSubGroup

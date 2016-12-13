@@ -99,6 +99,9 @@ if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
         )
     )
 
+ICSW_ALLOWED_OVERALL_STYLES = {"normal", "condensed"}
+
+
 if "overall.style" in _cs:
     ICSW_OVERALL_STYLE = _cs["overall.style"]
 else:

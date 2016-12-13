@@ -111,44 +111,49 @@
             </element>
         </oneOrMore>
     </element>
-    <element name="menu">
-        <oneOrMore>
-            <element name="menuHeader">
-                <attribute name="name"/>
-                <optional>
-                    <!-- set after merge -->
-                    <attribute name="app"/>
-                </optional>
-                <attribute name="side">
-                    <choice>
-                        <value>left</value>
-                        <value>right</value>
-                    </choice>
-                </attribute>
-                <optional>
-                    <attribute name="icon"></attribute>
-                </optional>
-                <oneOrMore>
-                    <element name="routeSubGroup">
-                        <attribute name="name"/>
-                        <oneOrMore>
-                            <element name="menuEntry">
-                                <attribute name="icon"></attribute>
-                                <attribute name="routeName"></attribute>
-                                <attribute name="name"></attribute>
-                                <optional>
-                                    <attribute name="title"></attribute>
-                                </optional>
-                                <optional>
-                                    <attribute name="entryClass"></attribute>
-                                </optional>
-                            </element>
-                        </oneOrMore>
-                    </element>
-                </oneOrMore>
-            </element>
-        </oneOrMore>
-    </element>
+    <oneOrMore>
+        <element name="menu">
+            <optional>
+                <attribute name="style"></attribute>
+            </optional>
+            <oneOrMore>
+                <element name="menuHeader">
+                    <attribute name="name"/>
+                    <optional>
+                        <!-- set after merge -->
+                        <attribute name="app"/>
+                    </optional>
+                    <attribute name="side">
+                        <choice>
+                            <value>left</value>
+                            <value>right</value>
+                        </choice>
+                    </attribute>
+                    <optional>
+                        <attribute name="icon"></attribute>
+                    </optional>
+                    <oneOrMore>
+                        <element name="routeSubGroup">
+                            <attribute name="name"/>
+                            <oneOrMore>
+                                <element name="menuEntry">
+                                    <attribute name="icon"></attribute>
+                                    <attribute name="routeName"></attribute>
+                                    <attribute name="name"></attribute>
+                                    <optional>
+                                        <attribute name="title"></attribute>
+                                    </optional>
+                                    <optional>
+                                        <attribute name="entryClass"></attribute>
+                                    </optional>
+                                </element>
+                            </oneOrMore>
+                        </element>
+                    </oneOrMore>
+                </element>
+            </oneOrMore>
+        </element>
+    </oneOrMore>
     <optional>
         <element name="tasks">
             <oneOrMore>

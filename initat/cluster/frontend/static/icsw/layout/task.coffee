@@ -27,11 +27,11 @@ angular.module(
 [
     "$q", "$rootScope", "ICSW_SIGNALS", "icswComplexModalService", "blockUI",
     "$compile", "$templateCache", "ICSW_CONFIG_JSON", "$state", "icswLanguageTool",
-    "hotkeys",
+    "hotkeys", "icswOverallStyle",
 (
     $q, $rootScope, ICSW_SIGNALS, icswComplexModalService, blockUI,
     $compile, $templateCache, ICSW_CONFIG_JSON, $state, icswLanguageTool,
-    hotkeys,
+    hotkeys, icswOverallStyle,
 ) ->
     # default language
     def_lang = icswLanguageTool.get_lang()
@@ -44,6 +44,9 @@ angular.module(
         constructor: (@id_path) ->
             @list = []
             @lut = {}
+
+        reset: () =>
+            @list.length = 0
 
         feed: (el) =>
             @list.push(el)
@@ -196,7 +199,9 @@ angular.module(
         $rootScope.$emit(ICSW_SIGNALS("ICSW_TASK_SETTINGS_CHANGED"))
 
     _init_tasks = () ->
-        _task_list = ICSW_CONFIG_JSON.tasks.task
+        _style = icswOverallStyle.get()
+        _task_list = ICSW_CONFIG_JSON[_style].tasks.task
+        struct.task_container.reset()
         for _task in _task_list
             struct.task_container.feed(new icswTaskDef(_task))
 
@@ -290,6 +295,10 @@ angular.module(
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_USER_LOGGEDOUT"), () ->
         _remove_keys()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
+        _init_tasks()
     )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_STATE_CHANGED"), () ->
