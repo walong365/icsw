@@ -98,14 +98,8 @@ angular.module(
         do_layout: () =>
             # calc some settings for layout
             _outer = @outer_radius
-            if @is_interactive
-                @text_radius = 1.1 * _outer
-                @text_width = 1.15 * _outer
-                @total_width = 2 * _outer * 1.2 + 200
-                @total_height = 2 * _outer * 1.2
-            else
-                @total_width = 2 * _outer
-                @total_height = 2 * _outer
+            @total_width = 2 * _outer
+            @total_height = 2 * _outer
             
 
 ]).service("icswStructuredBurstNode",
