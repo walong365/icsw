@@ -66,10 +66,11 @@ class SysInfoViewSet(viewsets.ViewSet):
     def get_all(self, request):
         srv_com = server_command.srv_command(command="get_sys_info")
         result, _logs = contact_server(request, icswServiceEnum.monitor_server, srv_com)
-        if "sys_info" in result:
+        if result is not None and "sys_info" in result:
             _raw_info = server_command.decompress(result["*sys_info"], json=True)
+            _raw_info = None
             _sys_info = {
-                "master": [entry for entry in _raw_info if entry["master"]][0],
+                "master": [_entry for _entry in _raw_info if _entry["master"]][0],
                 "slaves": [_entry for _entry in _raw_info if not _entry["master"]],
             }
         else:

@@ -1261,33 +1261,37 @@ angular.module(
         return data
     )
 
-    Restangular.setErrorInterceptor((resp) ->
-        error_list = []
-        if typeof(resp.data) == "string"
-            if resp.data
-                resp.data = {
-                    error: resp.data
-                }
-            else
-                resp.data = {}
-        for key, value of resp.data
-            key_str = if key == "__all__" then "error: " else "#{key} : "
-            if key != "_reset_list"
-                if Array.isArray(value)
-                    for sub_val in value
-                        if sub_val.non_field_errors
-                            error_list.push(key_str + sub_val.non_field_errors.join(", "))
-                        else
-                            error_list.push(key_str + String(sub_val))
+    Restangular.setErrorInterceptor(
+        (resp, deferred, response_handler) ->
+            # console.log "*", resp
+            error_list = []
+            if typeof(resp.data) == "string"
+                if resp.data
+                    resp.data = {
+                        error: resp.data
+                    }
                 else
-                    if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
-                        error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
-        new_error_list = []
-        for _err in error_list
-            if _err not in new_error_list
-                new_error_list.push(_err)
-                toaster.pop("error", _err, "")
-        return true
+                    resp.data = {}
+            for key, value of resp.data
+                key_str = if key == "__all__" then "error: " else "#{key} : "
+                if key != "_reset_list"
+                    if Array.isArray(value)
+                        for sub_val in value
+                            if sub_val.non_field_errors
+                                error_list.push(key_str + sub_val.non_field_errors.join(", "))
+                            else
+                                error_list.push(key_str + String(sub_val))
+                    else
+                        if (typeof(value) == "object" or typeof(value) == "string") and (not key.match(/^_/) or key == "__all__")
+                            error_list.push(key_str + if typeof(value) == "string" then value else value.join(", "))
+            new_error_list = []
+            for _err in error_list
+                if _err not in new_error_list
+                    new_error_list.push(_err)
+                    toaster.pop("error", _err, "")
+            # console.log deferred, response_handler
+            # deferred.reject("no")
+            return true
     )
 ]).service("icswInfoModalService",
 [
@@ -1485,7 +1489,7 @@ angular.module(
         return uuid
 ])
 
-d3js_module = angular.module(
+angular.module(
     "icsw.d3",
     []
 ).factory("d3_service",
@@ -1515,7 +1519,7 @@ d3js_module = angular.module(
     }
 ])
 
-dimple_module = angular.module(
+angular.module(
     "icsw.dimple", []
 ).factory("dimple_service",
 [
@@ -1681,7 +1685,16 @@ angular.module(
                             _defer.resolve(local_result)
                     @client_dict = {}
                     @pk_list = null
+                (error) =>
+                    # console.log "e=", error
+                    # hm, difficult ...
+                    for c_id, _defer of @client_dict
+                        # console.log "**", c_id
+                        _defer.reject(error)
+                    @client_dict = {}
+                    @pk_list = null
             )
+
     start_timeout = {}
     load_info = {}
 
@@ -1819,8 +1832,10 @@ angular.module(
             )
             _start = new Date().getTime()
             @_load_defer = $q.defer()
+            console.log "l", client, _wait_list
             $q.all(_wait_list).then(
                 (data) =>
+                    console.log "d", client, data
                     _map_len = @rest_map.length
                     _tot_len = _wait_list.length
                     _extra_len = _tot_len - _map_len
@@ -1846,6 +1861,8 @@ angular.module(
                         if _send_signal
                             # console.log "emit", _send_signal, @_result
                             $rootScope.$emit(ICSW_SIGNALS(_send_signal), @_result)
+                (error) =>
+                    console.log "e", client, data
             )
             return @_load_defer
 
