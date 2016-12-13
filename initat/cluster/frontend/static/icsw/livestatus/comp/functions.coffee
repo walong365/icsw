@@ -108,7 +108,8 @@ angular.module(
                 @total_height = 2 * _outer
             
 
-]).service("icswStructuredBurstNode", [
+]).service("icswStructuredBurstNode",
+[
     "$q",
 (
     $q,
@@ -300,9 +301,10 @@ angular.module(
         _len = _.sum((entry.width for entry in r_data))
         _result = []
         # flag if all segments are omitted
-        all_omitted = true
         if _len
             _idx = 0
+            _omit_idx = 0
+            _omit_list = []
             for node in r_data
                 srvc = node.check
                 _idx++
@@ -310,7 +312,6 @@ angular.module(
                 end_num += node.width
                 end_arc = 2 * Math.PI * end_num / _len + arc_offset
                 if draw_params.draw_segment((end_arc - start_arc) * outer)
-                    all_omitted = false
                     if _len == 1 and draw_params.collapse_one_element_rings
                         _path = ring_path(inner, outer)
                     else if _len == node.width
@@ -323,12 +324,10 @@ angular.module(
                     #    structural information
                     # $$service is the pointer to the linked service check (may be a dummy check)
                     if not srvc.$$data?
-                        console.warn "no $$data tag in", srvc
+                        console.warn "no $$data tag in #{srvc}"
                     _el = {
                         key: "path.#{key_prefix}.#{_idx}"
                         d: _path
-                        #classes : srvc.className #not needed any more?
-                        className: "sb-lines #{srvc.$$data.svgClassName}"
                         $$segment: node
                         # link to check (node or device or devicegroup or system)
                         $$service: srvc
@@ -338,26 +337,50 @@ angular.module(
                         _el.$$mean_arc = (start_arc + end_arc) / 2.0
                         _el.$$mean_radius = (outer + inner) / 2.0
                     _result.push(_el)
-                if all_omitted
+                else
+                    _omit_list.push([end_num - node.width, end_num])
+            if _omit_list.length
+                _dummy = icswSaltMonitoringResultService.get_dummy_service_entry("omitted", 10)
+                # any omitted ?
+                if _omit_list.length == r_data.length
                     # all segments omitted, draw dummy graph
-                    _dummy = icswSaltMonitoringResultService.get_dummy_service_entry()
+                    _omit_idx++
                     _result.push(
                         {
-                            key: "path.#{key_prefix}.omit"
+                            key: "path.#{key_prefix}.omit#{_omit_idx}"
                             d: ring_path(inner, outer)
                             $$service: _dummy
-                            className: "sb-lines"
                         }
                     )
+                else
+                    # not all omitted, get optimized omit-list
+                    _new_omit_list = []
+                    _prev_end = undefined
+                    for entry in _omit_list
+                        # console.log _new_omit_list
+                        if _prev_end? and _prev_end == entry[0]
+                            _prev = _new_omit_list.pop(-1)
+                            _new_omit_list.push([_prev[0], entry[1]])
+                        else
+                            _new_omit_list.push(entry)
+                        _prev_end = entry[1]
+                    for [start_num, end_num] in _new_omit_list
+                        _omit_idx++
+                        _result.push(
+                            {
+                                key: "path.#{key_prefix}.omit#{_omit_idx}"
+                                d: ring_segment_path(inner, outer, 2 * Math.PI * start_num / _len + arc_offset, 2 * Math.PI * end_num / _len + arc_offset)
+                                $$service: _dummy
+                            }
+                        )
         else
-            _dummy = icswSaltMonitoringResultService.get_dummy_service_entry()
+            _dummy = icswSaltMonitoringResultService.get_dummy_service_entry("n/a", 4)
             # draw an empty (== grey) ring
             _result.push(
                 {
                     key: "path.#{key_prefix}.empty"
                     d: ring_path(inner, outer)
                     $$service: _dummy
-                    className: "sb-lines"
                 }
             )
         return _result
@@ -440,7 +463,10 @@ angular.module(
         draw_params.start_feed()
 
         for [_ring, _inner_rad, _outer_rad, _arc_offset] in draw_params.create_ring_draw_list(_ring_keys)
-            _root_node.element_list = _.concat(_root_node.element_list, build_burst_ring(_inner_rad, _outer_rad, _arc_offset, "ring#{_ring}", _root_node.ring_lut[_ring], draw_params))
+            _root_node.element_list = _.concat(
+                _root_node.element_list
+                build_burst_ring(_inner_rad, _outer_rad, _arc_offset, "ring#{_ring}", _root_node.ring_lut[_ring], draw_params)
+            )
         return _root_node
         
     return {
