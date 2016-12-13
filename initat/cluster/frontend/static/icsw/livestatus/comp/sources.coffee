@@ -122,11 +122,11 @@ angular.module(
         }
         return entry
 
-    get_dummy_service_entry = (display_name) ->
+    get_dummy_service_entry = (display_name, state=4) ->
         entry = _get_dummy_entry(display_name, "service")
         # is a dummy entry
         entry.$$dummy = true
-        entry.state = 4
+        entry.state = state
         entry.state_type = 1
         entry.check_type = 0
         salt_service_state(entry)
@@ -325,6 +325,16 @@ angular.module(
         }
         # planned down is missing ...
         # flapping is missing ...
+        10: {
+            svgClassName: "svg-srv-omitted"
+            info: "omitted"
+            # no iconCode needed
+            StateString: "Omitted"
+            weigth: 0
+            pycode: "???"
+            orderint: 0
+            height: 0
+        }
     }
 
     # build helper luts for pycode lookup / ordering lookup

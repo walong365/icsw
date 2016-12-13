@@ -68,7 +68,10 @@
 .svg-stroke { stroke: #aaaaaa; stroke-width: 0.5; }
 .pie-segment { stroke-width: 0.5; stroke-miterlimit: 2; stroke: #fff; }
 .svg-sel { opacity: 0.7; }
-.svg-clicked { stroke-width: 2px !important; }
+.svg-clicked {
+    stroke-width: 2px !important;
+    stroke: #ffffff;
+}
 
 .svg-d3link { stroke: #888888; stroke-width: 2px; opacity: 1; }
 .svg-d3circle { stroke-width: 2px; stroke: #888888; fill: #aaaaaa; }

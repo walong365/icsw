@@ -42,12 +42,14 @@ angular.module(
         render: () ->
             _path_el = @props.element
             # focus element
-            _bn = @props.element.$$segment
-            _cls = _path_el.className
-            if _bn.sel_by_child or _bn.sel_by_parent
-                _cls = "#{_cls} svg-sel"
-            if _bn.clicked
-                _cls = "#{_cls} svg-clicked"
+            _cls = "sb-lines #{_path_el.$$service.$$data.svgClassName}"
+            if @props.element.$$segment?
+                _bn = @props.element.$$segment
+                # console.log "*", @props
+                if _bn.sel_by_child or _bn.sel_by_parent
+                    _cls = "#{_cls} svg-sel"
+                if _bn.clicked
+                    _cls = "#{_cls} svg-clicked"
             _segment = {
                 key: _path_el.key
                 d: _path_el.d
@@ -325,6 +327,8 @@ angular.module(
                                     }
                                 )
                             )
+                # if @clicked_focus
+                #    console.log "*", @clicked_focus, root_node
             else
                 # not interactive, simple list of graphs
                 _g_list = (path(_.pickBy(_element, (value, key) -> return not key.match(/\$/))) for _element in root_node.element_list)
