@@ -1150,7 +1150,7 @@ menu_module = angular.module(
 
     generate_path = () ->
         # generate path
-        if $state.$current.icswData.menu_entries.length
+        if $state.$current.icswData.menu_entries? and $state.$current.icswData.menu_entries.length
             # why the first one ? FIXME
             _start = $state.$current.icswData.menu_entries[0].$$simpleTreeNode
             _path = []
