@@ -62,6 +62,18 @@ except ImportError:
 
 logger = logging.getLogger(__name__)
 
+class SimpleAssetBatchLoader(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        device_pks = [int(obj) for obj in request.POST.getlist("device_pks[]")]
+        excluded_assetbatch_pks = [int(obj) for obj in request.POST.getlist("excluded_assetbatch_pks[]")]
+
+        queryset = AssetBatch.objects.filter(device__in=device_pks).exclude(idx__in=excluded_assetbatch_pks)
+
+        serializer = SimpleAssetBatchSerializer(queryset, many=True)
+
+        return HttpResponse(json.dumps(serializer.data))
+
 
 class AssetBatchViewSet(viewsets.ViewSet):
     def list(self, request):

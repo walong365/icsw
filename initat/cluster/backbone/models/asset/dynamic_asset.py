@@ -31,6 +31,7 @@ import time
 
 from django.db import models
 from django.utils import timezone, dateparse
+from django.dispatch import receiver
 from lxml import etree
 
 from initat.cluster.backbone.models.asset.asset_functions import \
@@ -40,6 +41,8 @@ from initat.cluster.backbone.models.partition import partition_disc, \
     partition_table, partition, partition_fs, LogicalDisc
 from initat.cluster.backbone.tools.hw import Hardware
 from initat.tools import server_command, pci_database, dmi_tools
+from initat.tools.bgnotify.create import propagate_channel_object
+
 
 logger = logging.getLogger(__name__)
 
@@ -1288,3 +1291,15 @@ ASSETTYPE_NRPE_COMMAND_MAP = {
     AssetType.PRETTYWINHW: "list-hardware-py3",
     AssetType.PENDING_UPDATE: "list-pending-updates-py3"
 }
+
+
+@receiver(models.signals.post_save, sender=AssetBatch)
+def asset_batch_post_save(sender, **kwargs):
+    if "instance" in kwargs:
+        from initat.cluster.backbone.serializers import SimpleAssetBatchSerializer
+
+        cur_inst = kwargs["instance"]
+
+        serializer = SimpleAssetBatchSerializer(cur_inst)
+
+        propagate_channel_object("asset_batch", serializer.data)

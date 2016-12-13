@@ -48,6 +48,7 @@ report_patterns = [
 
 asset_patterns = [
     url("^get_fieldvalues_for_template$", asset_views.get_fieldvalues_for_template.as_view(), name="get_fieldvalues_for_template"),
+    url("^simple_asset_batch_loader$", asset_views.SimpleAssetBatchLoader.as_view(), name="simple_asset_batch_loader"),
     url("^get_assetbatch_list$", asset_views.AssetBatchViewSet.as_view({"get": "list"}), name="get_assetbatch_list"),
     url("^export_assetbatch_to_xlsx$", asset_views.export_assetbatch_to_xlsx.as_view(), name="export_assetbatch_to_xlsx"),
     url("^export_assetbatch_to_pdf$", asset_views.export_assetbatch_to_pdf.as_view(), name="export_assetbatch_to_pdf"),

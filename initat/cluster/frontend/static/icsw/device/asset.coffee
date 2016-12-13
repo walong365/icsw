@@ -58,12 +58,12 @@ device_asset_module = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "$q", "$uibModal", "blockUI",
     "icswTools", "icswSimpleAjaxCall", "ICSW_URLS", "icswAssetHelperFunctions",
     "icswDeviceTreeService", "icswDeviceTreeHelperService", "$timeout",
-    "icswDispatcherSettingTreeService", "Restangular", "icswAssetPackageTreeService",
+    "icswDispatcherSettingTreeService", "Restangular", "icswAssetPackageTreeService", "icswWebSocketService"
 (
     $scope, $compile, $filter, $templateCache, $q, $uibModal, blockUI,
     icswTools, icswSimpleAjaxCall, ICSW_URLS, icswAssetHelperFunctions,
     icswDeviceTreeService, icswDeviceTreeHelperService, $timeout,
-    icswDispatcherSettingTreeService, Restangular, icswAssetPackageTreeService,
+    icswDispatcherSettingTreeService, Restangular, icswAssetPackageTreeService, icswWebSocketService
 ) ->
     # struct to hand over to VarCtrl
     $scope.struct = {
@@ -87,21 +87,42 @@ device_asset_module = angular.module(
         added_changeset: []
         removed_changeset: []
 
-        # AssetBatch data
-        asset_batch_list: []
         asset_batch_lookup_cache: {}
 
         # Scheduled Runs tab properties
         schedule_items: []
         # reload timer
         reload_timer: undefined
-        # reload flag
-        reloading: false
 
+        websocket: undefined
     }
 
+    $scope.struct.websocket = icswWebSocketService.register_ws("asset_batch")
+    $scope.struct.websocket.onmessage = (data) ->
+        asset_batch = JSON.parse(data.data)
+        salt_asset_batch(asset_batch)
+
+        if $scope.struct.asset_batch_lookup_cache[asset_batch.idx] == undefined
+            $scope.struct.asset_batch_lookup_cache[asset_batch.idx] = asset_batch
+            $timeout(
+                () ->
+                    if asset_batch.$$device.asset_batch_list == undefined
+                        asset_batch.$$device.asset_batch_list = []
+                    asset_batch.$$device.asset_batch_list.push(asset_batch)
+                0
+            )
+        else
+            old_obj = $scope.struct.asset_batch_lookup_cache[asset_batch.idx]
+            if old_obj.run_status < asset_batch.run_status
+                $timeout(
+                    () ->
+                        _.extend(old_obj, asset_batch)
+                    0
+                )
+
     reload_data = () ->
-        $scope.struct.reloading = true
+        idx_list = (idx for idx in Object.keys($scope.struct.asset_batch_lookup_cache) when $scope.struct.asset_batch_lookup_cache[idx].is_finished_processing == true)
+
         $q.all(
             [
                 Restangular.all(ICSW_URLS.ASSET_GET_SCHEDULE_LIST.slice(1)).getList(
@@ -109,10 +130,13 @@ device_asset_module = angular.module(
                         pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
                     }
                 )
-                Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
+                icswSimpleAjaxCall(
                     {
-                        device_pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
-                        simple: angular.toJson(1)
+                        url: ICSW_URLS.ASSET_SIMPLE_ASSET_BATCH_LOADER
+                        data:
+                            device_pks: (dev.idx for dev in $scope.struct.devices)
+                            excluded_assetbatch_pks: idx_list
+                        dataType: "json"
                     }
                 )
             ]
@@ -122,12 +146,7 @@ device_asset_module = angular.module(
 
                 update_asset_batch_list(result[1])
 
-                $scope.struct.reloading = false
-
-                for asset_batch in $scope.struct.asset_batch_list
-                    if !asset_batch.is_finished_processing
-                        start_timer()
-                        break
+                start_timer()
         )
 
     start_timer = () ->
@@ -135,7 +154,7 @@ device_asset_module = angular.module(
         $scope.struct.reload_timer = $timeout(
             () ->
                 reload_data()
-            10000
+            15000
         )
 
     stop_timer = () ->
@@ -144,28 +163,11 @@ device_asset_module = angular.module(
             $timeout.cancel($scope.struct.reload_timer)
             $scope.struct.reload_timer = undefined
 
-    set_asset_batch_list = (asset_batch_list) ->
-        $scope.struct.asset_batch_list.length = 0
-        $scope.struct.asset_batch_lookup_cache = {}
-
-        dev_lookup_table = {}
-
-        for dev in $scope.struct.devices
-            dev.asset_batch_list.length = 0
-            dev_lookup_table[dev.idx] = dev
-
-        for asset_batch in asset_batch_list
-            $scope.struct.asset_batch_list.push(asset_batch)
-            salt_asset_batch(asset_batch)
-            dev_lookup_table[asset_batch.device].asset_batch_list.push(asset_batch)
-            $scope.struct.asset_batch_lookup_cache[asset_batch.idx] = asset_batch
-
     update_asset_batch_list = (asset_batch_list) ->
         for asset_batch in asset_batch_list
             salt_asset_batch(asset_batch)
 
             if $scope.struct.asset_batch_lookup_cache[asset_batch.idx] == undefined
-                $scope.struct.asset_batch_list.push(asset_batch)
                 asset_batch.$$device.asset_batch_list.push(asset_batch)
                 $scope.struct.asset_batch_lookup_cache[asset_batch.idx] = asset_batch
             else
@@ -183,11 +185,14 @@ device_asset_module = angular.module(
             obj.$$device.schedule_items.push(obj)
 
     $scope.$on("$destroy", () ->
+        if $scope.struct.websocket?
+            $scope.struct.websocket.close()
+            $scope.struct.websocket = undefined
+
         stop_timer()
     )
 
     $scope.load_package_tree = () ->
-        console.log("called")
         blockUI.start("Loading Data ...")
         $q.all(
             [
@@ -195,7 +200,6 @@ device_asset_module = angular.module(
             ]
         ).then(
             (data) ->
-                console.log(data[0])
                 $scope.struct.package_tree = data[0]
                 blockUI.stop()
         )
@@ -215,13 +219,8 @@ device_asset_module = angular.module(
                 for dev in devs
                     # filter out metadevices
                     if not dev.is_meta_device
-                        if not dev.assetrun_set?
-                            dev.assetrun_set = []
-
                         if not dev.asset_batch_list?
                             dev.asset_batch_list = []
-                        else
-                            dev.asset_batch_list.length = 0
 
                         if not dev.info_tabs?
                             dev.info_tabs = []
@@ -237,34 +236,9 @@ device_asset_module = angular.module(
 
                         $scope.struct.devices.push(dev)
 
-                $q.all(
-                    [
-                        Restangular.all(ICSW_URLS.ASSET_GET_SCHEDULE_LIST.slice(1)).getList(
-                            {
-                                pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
-                            }
-                        )
-                        Restangular.all(ICSW_URLS.ASSET_GET_ASSETBATCH_LIST.slice(1)).getList(
-                            {
-                                device_pks: angular.toJson((dev.idx for dev in $scope.struct.devices))
-                                simple: angular.toJson(1)
-                            }
-                        )
-                    ]
-                ).then(
-                    (result) ->
-                        # schedule list
-                        set_schedule_items(result[0])
-
-                        set_asset_batch_list(result[1])
-
-                        $scope.struct.data_loaded = true
-
-                        for asset_batch in $scope.struct.asset_batch_list
-                            if !asset_batch.is_finished_processing
-                                start_timer()
-                                break
-                )
+                reload_data()
+                start_timer()
+                $scope.struct.data_loaded = true
         )
 
     # salt functions
@@ -387,7 +361,6 @@ device_asset_module = angular.module(
                     _device.info_tabs.push(tab)
             0
         )
-
 ]).filter('assetRunFilter'
 [
     "$filter",
@@ -584,7 +557,6 @@ device_asset_module = angular.module(
             ]
         ).then(
             (result) ->
-                console.log(result[0][0])
                 tab = {}
                 tab.asset_batch = result[0][0]
                 tab.tab_heading_text = "Scan (ID:" + asset_batch.idx + ")"

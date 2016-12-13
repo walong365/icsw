@@ -17,7 +17,6 @@
         <div ng-if="struct.data_loaded">
             <h1>
                 Asset System Overview
-                <span ng-show="struct.reloading" class="text-warning">Updating Data from Server ...</span>
             </h1>
 
             <uib-tabset>
@@ -42,11 +41,6 @@
                                         icsw-schedule-items="struct.schedule_items">
                                 </icsw-asset-scheduled-runs-table>
                             </div>
-                        </uib-tab>
-                        <uib-tab>
-                            <uib-tab-heading>
-                                <span>Scan Devices</span>
-                            </uib-tab-heading>
                         </uib-tab>
                         <uib-tab ng-click="load_package_tree()">
                             <uib-tab-heading>
@@ -76,7 +70,7 @@
                                     Scans for device '{{ dev.full_name }}' (group {{ dev.device_group_name }})
                                 </span>
                                 <span ng-show="!dev.asset_batch_list.length">
-                                    No scan for this device yet.
+                                    No scan(s) for this device yet.
                                 </span>
                             </h3>
                             <div>
@@ -128,7 +122,7 @@
                     Scans for device '{{ dev.full_name }}' (group {{ dev.device_group_name }})
                 </span>
                 <span ng-show="!dev.asset_batch_list.length">
-                    No scan for this device yet.
+                    No scan(s) for this device yet.
                 </span>
             </h3>
             <div>

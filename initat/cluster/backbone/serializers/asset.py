@@ -386,6 +386,14 @@ class AssetBatchSerializer(serializers.ModelSerializer):
 
 
 class SimpleAssetBatchSerializer(serializers.ModelSerializer):
+    run_status = serializers.SerializerMethodField()
+
+    def get_run_status(self, obj):
+        try:
+            return obj.run_status.value
+        except AttributeError:
+            return obj.run_status
+
     class Meta:
         model = AssetBatch
         fields = ("idx", "run_start_time", "run_end_time", "run_time", "run_status", "device", "installed_packages_status",
