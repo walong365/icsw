@@ -1140,6 +1140,8 @@ class _general(hm_classes.hm_module):
                                                 os.readlink("/dev/mapper/{}{}".format(vg_name, "-{}".format(lv_name) if lv_name is not None else ""))
                                             )
                                         )
+                                        if lv_name is None:
+                                            lv_name = 1
                                         dev_dict.setdefault("/dev/mapper/{}".format(vg_name), {})[lv_name] = {
                                             "mountpoint": mp,
                                             "fstype": fstype,
