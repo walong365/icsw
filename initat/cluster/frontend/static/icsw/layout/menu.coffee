@@ -728,6 +728,7 @@ menu_module = angular.module(
                             src: ICSW_URLS.STATIC_URL + "/bgjobs_#{_class}.svg"  # (danger, warning, success)
                             title: "Number of Background Jobs: #{@state.num_jobs}"
                             height: 23
+                            className: "pull-left"
                         }
                     )
                     buttontext

@@ -236,63 +236,55 @@ angular.module(
             scope.get_class = () ->
                 return if scope.flag then "btn-success" else "btn-default"
     }
-]).directive("icswToolsTriButton",
+]).controller("icswToolsTriButtonCtrl",
 [
-    "$q", "$templateCache", "$timeout",
+    "$scope", "$timeout",
 (
-    $q, $templateCache, $timeout,
+    $scope, $timeout,
 ) ->
-    # tri-state button, ignore, set, unset (for selections)
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.tools.tri.button")
-        scope:
-            state: "=icswState"
-            callback: "=icswCallback"
-        link: (scope, element, attrs) ->
-            if attrs.size
-                _size = "btn-#{attrs.size}"
-            else
-                _size = ""
-
-            new_state = () ->
-                new_val = scope.state
-                # state, 1: set, 0: ignore, -1:
-                if new_val == 1
-                    scope.css_class = "btn btn-success #{_size}"
-                    scope.button_value = "set"
-                else if new_val == 0
-                    scope.css_class = "btn btn-warning #{_size}"
-                    scope.button_value = "ignore"
-                else if new_val == -1
-                    scope.css_class = "btn btn-danger #{_size}"
-                    scope.button_value = "not set"
-                if scope.callback?
-                    $timeout(
-                        () ->
-                            scope.callback(new_val)
-                        0
-                    )
-
-            _cur_val = 666
-
-            scope.toggle_state = ($event) ->
-                scope.state++
-                if scope.state == 2
-                    scope.state = -1
-                _cur_val = scope.state
-                new_state()
-
-            scope.$watch(
-                "state",
-                (new_val) ->
-                    if new_val != _cur_val
-                        _cur_val = new_val
-                        new_state()
+    new_state = () =>
+        new_val = @state
+        _size = @size | "sm"
+        # state, 1: set, 0: ignore, -1:
+        if new_val == 1
+            @css_class = "btn btn-success #{_size}"
+            @button_value = "set"
+        else if new_val == 0
+            @css_class = "btn btn-warning #{_size}"
+            @button_value = "ignore"
+        else if new_val == -1
+            @css_class = "btn btn-danger #{_size}"
+            @button_value = "not set"
+        if @callback?
+            $timeout(
+                () =>
+                    @callback(new_val)
+                0
             )
 
-    }
-]).directive('icswToolsButton',
+    @$onInit = () =>
+        new_state()
+
+    @$onChanges = (changes) ->
+        # console.log "C", changes
+
+    @toggle_state = ($event) ->
+        @state++
+        if @state == 2
+            @state = -1
+        new_state()
+    return null
+
+]).component("icswToolsTriButton", {
+    # tri-state button, the states are ignore, set, unset (for selections)
+    template: ["$templateCache", ($templateCache) -> return $templateCache.get("icsw.tools.tri.button")]
+    controller: "icswToolsTriButtonCtrl as ctrl"
+    bindings:
+        state: "=icswState"
+        callback: "=icswCallback"
+        size: "@icswSize"
+
+}).directive('icswToolsButton',
 [
     "icswToolsButtonConfigService", "gettextCatalog", "$templateCache",
 (

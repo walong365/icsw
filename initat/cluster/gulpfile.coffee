@@ -193,7 +193,7 @@ sources = {
             "frontend/static/js/restangular.min.js",
             "frontend/static/js/angular-block-ui.js",
             "frontend/static/js/select.js",
-            "frontend/static/js/ui-bootstrap-tpls-2.3.0.min.js",
+            "frontend/static/js/ui-bootstrap-tpls-2.3.1.min.js",
             "frontend/static/js/angular-ui-router.js",
             "frontend/static/js/datetime-picker.js",
             "frontend/static/js/datetime-picker.tpls.js",
