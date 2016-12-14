@@ -27,11 +27,11 @@ angular.module(
 [
     "$q", "$rootScope", "ICSW_SIGNALS", "icswComplexModalService", "blockUI",
     "$compile", "$templateCache", "ICSW_CONFIG_JSON", "$state", "icswLanguageTool",
-    "hotkeys", "icswOverallStyle",
+    "hotkeys", "icswMenuSettings",
 (
     $q, $rootScope, ICSW_SIGNALS, icswComplexModalService, blockUI,
     $compile, $templateCache, ICSW_CONFIG_JSON, $state, icswLanguageTool,
-    hotkeys, icswOverallStyle,
+    hotkeys, icswMenuSettings,
 ) ->
     # default language
     def_lang = icswLanguageTool.get_lang()
@@ -152,6 +152,8 @@ angular.module(
         task_def_id: 0
         # running task id
         task_id: 0
+        # current menu layout
+        menu_layout: ""
     }
 
     # key helper functions
@@ -199,8 +201,9 @@ angular.module(
         $rootScope.$emit(ICSW_SIGNALS("ICSW_TASK_SETTINGS_CHANGED"))
 
     _init_tasks = () ->
-        _style = icswOverallStyle.get()
-        _task_list = ICSW_CONFIG_JSON[_style].tasks.task
+        _layout = icswMenuSettings.get_menu_layout()
+        _task_list = ICSW_CONFIG_JSON[_layout].tasks.task
+        struct.menu_layout = _layout
         struct.task_container.reset()
         for _task in _task_list
             struct.task_container.feed(new icswTaskDef(_task))
@@ -297,8 +300,9 @@ angular.module(
         _remove_keys()
     )
 
-    $rootScope.$on(ICSW_SIGNALS("ICSW_OVERALL_STYLE_CHANGED"), () ->
-        _init_tasks()
+    $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_SETTINGS_CHANGED"), () ->
+        if struct.menu_layout != icswMenuSettings.get_menu_layout()
+            _init_tasks()
     )
 
     $rootScope.$on(ICSW_SIGNALS("ICSW_STATE_CHANGED"), () ->

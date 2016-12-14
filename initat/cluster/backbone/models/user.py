@@ -761,6 +761,16 @@ class user_manager(models.Manager):
         cache.set(_user.mc_key(), django.core.serializers.serialize("json", [_user]))
         return _user
 
+    def ensure_default_variables(self, user_obj):
+        for _var_name, _var_value in [
+            ("$$ICSW_THEME_SELECTION$$", "default"),
+            ("$$ICSW_MENU_LAYOUT_SELECTION$$", "normal"),
+        ]:
+            try:
+                cur_var = user_obj.user_variable_set.get(Q(name=_var_name))
+            except user_variable.DoesNotExist:
+                user_variable.create_system_variable(user_obj, _var_name, _var_value)
+
     def create_superuser(self, login, email, password):
         if not password:
             if "DJANGO_SUPERUSER_PASSWORD" in os.environ:
@@ -844,8 +854,6 @@ class user(models.Model):
     scan_user_home = models.BooleanField(default=False)
     # scan depth
     scan_depth = models.IntegerField(default=2)
-    # theme
-    ui_theme_selection = models.CharField(max_length=64, default=settings.THEME_DEFAULT)
 
     @property
     def is_anonymous(self):
@@ -1254,6 +1262,27 @@ class user_device_login(models.Model):
         db_table = u'user_device_login'
 
 
+class login_history(models.Model):
+    idx = models.AutoField(primary_key=True)
+    user = models.ForeignKey("backbone.user")
+    success = models.BooleanField(default=False)
+    remote_addr = models.CharField(default="", max_length=128)
+    remote_host = models.CharField(default="", max_length=128)
+    http_user_agent = models.CharField(default="", max_length=256)
+    date = models.DateTimeField(auto_now_add=True)
+
+    @staticmethod
+    def login_attempt(_user, request, success):
+        entry = login_history.objects.create(
+            user=_user,
+            success=success,
+            remote_addr=request.META["REMOTE_ADDR"],
+            remote_host=request.META.get("REMOTE_HOST", request.META["REMOTE_ADDR"]),
+            http_user_agent=request.META["HTTP_USER_AGENT"],
+        )
+        return entry
+
+
 class user_variable(models.Model):
     idx = models.AutoField(primary_key=True)
     user = models.ForeignKey("backbone.user")
@@ -1307,6 +1336,18 @@ class user_variable(models.Model):
         elif self.var_type == "n":
             self.value = None
 
+    @classmethod
+    def create_system_variable(cls, user_obj, name, value):
+        _new_var = user_variable(
+            user=user_obj,
+            name=name,
+            description="System variable '{}'".format(name),
+            value=value,
+            editable=False,
+            hidden=True,
+        )
+        _new_var.save()
+
     def __unicode__(self):
         return "UserVar {} type {}, {}, {}".format(
             self.name,
@@ -1317,27 +1358,6 @@ class user_variable(models.Model):
 
     class Meta:
         unique_together = [("name", "user"), ]
-
-
-class login_history(models.Model):
-    idx = models.AutoField(primary_key=True)
-    user = models.ForeignKey("backbone.user")
-    success = models.BooleanField(default=False)
-    remote_addr = models.CharField(default="", max_length=128)
-    remote_host = models.CharField(default="", max_length=128)
-    http_user_agent = models.CharField(default="", max_length=256)
-    date = models.DateTimeField(auto_now_add=True)
-
-    @staticmethod
-    def login_attempt(_user, request, success):
-        entry = login_history.objects.create(
-            user=_user,
-            success=success,
-            remote_addr=request.META["REMOTE_ADDR"],
-            remote_host=request.META.get("REMOTE_HOST", request.META["REMOTE_ADDR"]),
-            http_user_agent=request.META["HTTP_USER_AGENT"],
-        )
-        return entry
 
 
 @receiver(signals.pre_save, sender=user_variable)
