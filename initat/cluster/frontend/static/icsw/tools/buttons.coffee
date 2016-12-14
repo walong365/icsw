@@ -137,6 +137,7 @@ angular.module(
             ret_obj.css_class = "btn-primary"
             ret_obj.button_value = gettextCatalog.getString("submit")
             ret_obj.icon_class = "fa fa-arrow-circle-right"
+            ret_obj.button_type = "submit"
         else if type == "save"
             ret_obj.css_class = "btn-success"
             ret_obj.button_value = "save"
@@ -236,11 +237,20 @@ angular.module(
             scope.get_class = () ->
                 return if scope.flag then "btn-success" else "btn-default"
     }
-]).controller("icswToolsTriButtonCtrl",
+]).component("icswToolsTriButton", {
+    # tri-state button, the states are ignore, set, unset (for selections)
+    template: ["$templateCache", ($templateCache) -> return $templateCache.get("icsw.tools.tri.button")]
+    controller: "icswToolsTriButtonCtrl as ctrl"
+    bindings:
+        state: "<icswState"
+        callback: "&icswCallback"
+        size: "@icswSize"
+
+}).controller("icswToolsTriButtonCtrl",
 [
-    "$scope", "$timeout",
+    "$timeout",
 (
-    $scope, $timeout,
+    $timeout,
 ) ->
     new_state = () =>
         new_val = @state
@@ -275,21 +285,103 @@ angular.module(
         new_state()
     return null
 
-]).component("icswToolsTriButton", {
-    # tri-state button, the states are ignore, set, unset (for selections)
-    template: ["$templateCache", ($templateCache) -> return $templateCache.get("icsw.tools.tri.button")]
-    controller: "icswToolsTriButtonCtrl as ctrl"
+]).component("icswToolsButton", {
+    template: ["$templateCache", ($templateCache) -> return $templateCache.get("icsw.tools.button")]
+    controller: "icswToolsButtonCtrl as ctrl"
     bindings:
-        state: "=icswState"
-        callback: "=icswCallback"
-        size: "@icswSize"
+        # attrs:
+        # - type (mandatory): "modify", "create", "delete", "reload", "show", "clear_selection", "download"
+        # - button-type: inserted into type, so use "button" or "submit" (default is "button")
+        # - size: inserted into "btn-{{size}}", no default
+        # - value: Custom text to display in button
+        # - showValue: Custom text to show for show buttons if state is show
+        # - hideValue: Custom text to show for show buttons if state is hide
+        # - disabled: whether button is enabled
 
-}).directive('icswToolsButton',
+        type: "@"
+        isShow: '<isShow'
+        showValue: "<"
+        hideValue: "<"
+        disabled: '<icswDisabled'
+        isEnable: '@'
+        isLock: '@'
+        value: "@"
+        buttonType: "@"
+        icsw_value: "<icswValue"
+        hide_text: "@icswHideText"
+        size: "@"
+
+}).controller("icswToolsButtonCtrl",
+[
+    "icswToolsButtonConfigService", "gettextCatalog",
+(
+    icswToolsButtonConfigService, gettextCatalog,
+) ->
+    @$onInit = () =>
+        # must be defined
+        # new_state()
+        angular.extend(@, icswToolsButtonConfigService.get_config_for_button_type(@type))
+        # console.log "I", @type, icswToolsButtonConfigService.get_config_for_button_type(@type)
+        # sane starting value
+
+        if @hide_text?
+            @show_text = false
+            @button_value = ""
+        else
+            @show_text = true
+        if @value?
+            @button_value = @value
+        if not @button_type?
+            @button_type = "button"
+        if @size
+            @additional_class = "btn-#{@size}"
+        else
+            @additional_class = ""
+        if @disabled?
+            @is_disabled = @disabled
+        else
+            @is_disabled = false
+
+    @$onChanges = (changes) =>
+        # console.log "Cx", changes
+        if "disabled" of changes and changes.disabled.currentValue?
+            console.log changes.disabled.currentValue
+            @is_disabled = changes.disabled.currentValue
+        if @type == "show" and "isShow" of changes
+            if changes.isShow.currentValue
+                @button_value = @hideValue or gettextCatalog.getString("hide")
+            else
+                @button_value = @showValue or gettextCatalog.getString("show")
+        else if @type == "enable" and "isEnable" of changes
+            if changes.isEnable.currentValue
+                @button_value = gettextCatalog.getString("disable")
+                @css_class = "btn-warning"
+            else
+                @button_value = gettextCatalog.getString("enable")
+                @css_class = "btn-success"
+            if @icsw_value?
+                @button_value = @icsw_value
+        else if @type == "lock" and "isLock" of changes
+            if changes.isLock.currentValue
+                if @show_text
+                    @button_value = gettextCatalog.getString("unlock")
+                @css_class = "btn-warning"
+                @icon_class = "fa fa-unlock"
+            else
+                if @show_text
+                    @button_value = gettextCatalog.getString("lock")
+                @css_class = "btn-success"
+                @icon_class = "fa fa-lock"
+
+    return null
+
+]).directive('icswToolsButtonOld',
 [
     "icswToolsButtonConfigService", "gettextCatalog", "$templateCache",
 (
     icswToolsButtonsConfigService, gettextCatalog, $templateCache,
 ) ->
+    # old code, please do not use
     return {
         restrict: "EA",
         template: $templateCache.get("icsw.tools.button")

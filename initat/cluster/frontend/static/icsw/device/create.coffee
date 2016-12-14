@@ -25,18 +25,32 @@ angular.module(
     ]
 ).config(["icswRouteExtensionProvider", (icswRouteExtensionProvider) ->
     icswRouteExtensionProvider.add_route("main.devicecreate")
+]).directive("icswDeviceCreateMask",
+[
+    "$templateCache",
+(
+    $templateCache,
+) ->
+    return {
+        restrict: "EA"
+        template: $templateCache.get("icsw.device.create.mask")
+        controller: "icswDeviceCreateCtrl"
+        scope: {
+            device_info: '=deviceinfo'
+        }
+    }
 ]).controller("icswDeviceCreateCtrl",
 [
     "$scope", "$timeout", "$window", "$templateCache", "$q", "blockUI", "ICSW_URLS", "ICSW_SIGNALS",
     "icswSimpleAjaxCall", "Restangular", "$state", "$stateParams", "icswActiveSelectionService",
-    "icswDeviceTreeService", "icswPeerInformationService", "DeviceOverviewService", "$rootScope",
+    "icswDeviceTreeService", "icswPeerInformationService", "DeviceOverviewService",
 (
     $scope, $timeout, $window, $templateCache, $q, blockUI, ICSW_URLS, ICSW_SIGNALS,
     icswSimpleAjaxCall, Restangular, $state, $stateParams, icswActiveSelectionService,
-    icswDeviceTreeService, icswPeerInformationService, DeviceOverviewService, $rootScope,
+    icswDeviceTreeService, icswPeerInformationService, DeviceOverviewService,
 ) ->
 
-    console.log($scope.device_info)
+    # console.log($scope.device_info)
 
     $scope.struct = {
         # device tree
@@ -58,6 +72,7 @@ angular.module(
             {key: "replace", value: "replace current Selection"}
         ]
     }
+
     $scope.device_data = {
         # localhost would be plane stupid
         full_name: ""
@@ -125,6 +140,7 @@ angular.module(
 
                 $scope.resolve_name()
                 blockUI.stop()
+
                 $scope.struct.data_ready = true
         )
     $scope.reload()
@@ -222,18 +238,4 @@ angular.module(
             (error) ->
                 blockUI.stop()
         )
-]).directive("icswDeviceCreateMask",
-[
-    "$templateCache", "$stateParams"
-(
-    $templateCache, $stateParams,
-) ->
-    return {
-        restrict: "EA"
-        template: $templateCache.get("icsw.device.create.mask")
-        controller: "icswDeviceCreateCtrl"
-        scope: {
-            device_info: '=deviceinfo'
-        }
-    }
 ])

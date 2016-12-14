@@ -3,9 +3,9 @@
 </script>
 
 <script type="text/ng-template" id="icsw.device.create.mask">
-    <div class="container-fluid">
+    <div class="container-fluid" ng-if="struct.data_ready">
         <h3>Add a new Device</h3>
-        <form class="form-horizontal" name="form_data" novalidate ng-if="struct.data_ready">
+        <form class="form-horizontal" name="form_data" novalidate>
             <uib-accordion ng-cloak close-others="false">
                 <div uib-accordion-group class="panel-default" heading="Base Data" is-open="struct.base_open">
                     <!-- {{ form_data || json }} {{form_data.$valid}} -->
@@ -139,14 +139,12 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <div class="controls icsw-buttoncol" ng-class="form_data.comment.$invalid && 'has-error'">
-                            <icsw-tools-button type="create" ng-disabled="form_data.$invalid" value="create Device" ng-click="create_device($event)"/>
-                            <icsw-tools-button type="create" ng-disabled="form_data.$invalid" value="create Device and edit" ng-click="create_device_and_edit($event)"/>
+                        <div class="controls icsw-buttoncol" ng-class="struct.form_valid && 'has-error'">
+                            <icsw-tools-button type="create" icsw-disabled="form_data.$invalid" value="create Device" ng-click="create_device($event)"/>
+                            <icsw-tools-button type="create" icsw-disabled="form_data.$invalid" value="create Device and edit" ng-click="create_device_and_edit($event)"/>
                         </div>
                     </div>
                 </div>
-                <!--div uib-accordion-group class="panel-default" heading="Optional Data">
-                </div>-->
             </uib-accordion>
         </form>
     </div>

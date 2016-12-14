@@ -196,13 +196,13 @@ class FileModify(object):
         # relax instance
         _my_relax = ConfigRelax()
         ROOT_ELEMENTS = ["routes", "menu", "tasks"]
-        # dict, one entry per style
+        # dict, one entry per menu layout
         res_dict = {
-            style: E.config(
+            layout: E.config(
                 *[
                     getattr(E, _root_el_name)() for _root_el_name in ROOT_ELEMENTS
                 ]
-            ) for style in settings.ICSW_ALLOWED_OVERALL_STYLES
+            ) for layout in settings.ICSW_ALLOWED_MENU_LAYOUTS
         }
         for _app_name, _file in mp_list:
             # simple merger, to be improved
@@ -226,13 +226,13 @@ class FileModify(object):
                         _src_els = _src_xml.findall(_el_name)
                         if len(_src_els):
                             for _src_el in _src_els:
-                                _target_style = _src_el.attrib.get("style", None)
-                                if _target_style is None:
-                                    _target_styles = settings.ICSW_ALLOWED_OVERALL_STYLES
+                                _target_layout = _src_el.attrib.get("layout", None)
+                                if _target_layout is None:
+                                    _target_layouts = settings.ICSW_ALLOWED_MENU_LAYOUTS
                                 else:
-                                    _target_styles = [_target_style]
-                                for _target_style in _target_styles:
-                                    _dst_el = res_dict[_target_style].find(_el_name)
+                                    _target_layouts = [_target_layout]
+                                for _target_layout in _target_layouts:
+                                    _dst_el = res_dict[_target_layout].find(_el_name)
                                     for _el in _src_el:
                                         if _el.tag is not etree.Comment:
                                             _el.attrib["app"] = _app_name
@@ -244,19 +244,19 @@ class FileModify(object):
         # sys.exit(0)
         # check for validity
         overall_dict = {}
-        for _style, _total_xml in res_dict.iteritems():
+        for _layout, _total_xml in res_dict.iteritems():
             try:
                 _my_relax.validate(_total_xml)
             except:
                 sys.stderr.write(
-                    "*** Error validating merged XML for style {}: {}\n".format(
-                        _style,
+                    "*** Error validating merged XML for layout {}: {}\n".format(
+                        _layout,
                         process_tools.get_except_info(),
                     )
                 )
                 raise
             else:
-                overall_dict[_style] = self.config_xml_to_json(_total_xml)
+                overall_dict[_layout] = self.config_xml_to_json(_total_xml)
         # transform XML
         # _total_xml = self.transform(_total_xml)
         # transform to json

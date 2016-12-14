@@ -123,6 +123,7 @@ angular.module(
         if _theme_list.length == 1
             return
         current_theme = $window.sessionStorage.getItem('current_theme')
+        console.log current_theme, _theme_lut
         _idx = _theme_lut[current_theme].idx + 1
         if _idx == _theme_list.length
             _idx = 0
@@ -131,8 +132,7 @@ angular.module(
         icswUserService = $injector.get("icswUserService")
         _cur_user = icswUserService.get()
         if _cur_user? and _cur_user
-            _cur_user.user.ui_theme_selection = new_theme
-            _cur_user.update_user()
+            _cur_user.set_var("$$ICSW_THEME_SELECTION$$", new_theme, "s")
         activate(new_theme)
 
     return {

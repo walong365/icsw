@@ -419,10 +419,10 @@ angular.module(
 ]).service("icswRouteHelper",
 [
     "icswRouteExtension", "$state", "$rootScope", "ICSW_SIGNALS", "icswAccessLevelService",
-    "icswTools", "ICSW_CONFIG_JSON", "icswOverallStyle",
+    "icswTools", "ICSW_CONFIG_JSON", "icswOverallStyle", "icswMenuSettings",
 (
     icswRouteExtension, $state, $rootScope, ICSW_SIGNALS, icswAccessLevelService,
-    icswTools, ICSW_CONFIG_JSON, icswOverallStyle,
+    icswTools, ICSW_CONFIG_JSON, icswOverallStyle, icswMenuSettings,
 ) ->
     _init = false
     _user = undefined
@@ -471,8 +471,8 @@ angular.module(
     }
 
     _check_rights = () ->
-        # get style
-        _style = icswOverallStyle.get()
+        # get menu layout
+        _layout = icswMenuSettings.get_menu_layout()
         # states for menus entries
         _struct.menu_states.length = 0
         # states for menu_headers
@@ -490,7 +490,7 @@ angular.module(
 
             # create menu
 
-            for menuHeader in ICSW_CONFIG_JSON[_style].menu.menuHeader
+            for menuHeader in ICSW_CONFIG_JSON[_layout].menu.menuHeader
                 _cur_menu = _struct.menu_node.add_node(menuHeader)
 
                 # add subgroup(s)
@@ -597,6 +597,11 @@ angular.module(
             _acls_valid = _acls.acls_are_valid
         else
             _acls_valid = false
+        _check_rights()
+    )
+
+    $rootScope.$on(ICSW_SIGNALS("ICSW_MENU_LAYOUT_CHANGED"), (event) ->
+        console.log "mlc"
         _check_rights()
     )
 
@@ -803,6 +808,8 @@ angular.module(
         ICSW_LIVESTATUS_PIPELINE_MODIFIED: "icsw.livestatus.pipeline.modified"
         # livestatus device focus
         ICSW_LIVESTATUS_DEVICE_FOCUS: "icsw.device.livestatus.focus"
+        # menu layout changed
+        ICSW_MENU_LAYOUT_CHANGED: "icsw.menu.layout.changed"
 
         # local signals (for local $emit / $on)
 

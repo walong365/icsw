@@ -148,7 +148,14 @@ menu_module = angular.module(
         themes_valid: false
         # user is logged in
         user_loggedin: false
+        # menu layout
+        menu_layout: "normal"
     }
+
+    MENU_LAYOUTS = [
+        {short: "normal", name: "Optimized Menu Layout"}
+        {short: "oldstyle", name: "Oldstyle Menu Layout"}
+    ]
 
     _get_menu_help = () ->
         return SETTINGS.menu_help
@@ -165,6 +172,14 @@ menu_module = angular.module(
         SETTINGS.themes_valid = true
         _redraw()
         return _get_themes_valid()
+
+    _set_menu_layout = (layout) ->
+        SETTINGS.menu_layout = layout
+        $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_LAYOUT_CHANGED"))
+        return _get_menu_layout()
+
+    _get_menu_layout = () ->
+        return SETTINGS.menu_layout
 
     _redraw = () ->
         $rootScope.$emit(ICSW_SIGNALS("ICSW_MENU_SETTINGS_CHANGED"))
@@ -197,6 +212,12 @@ menu_module = angular.module(
     )
 
     return {
+        set_menu_layout: (layout) ->
+            return _set_menu_layout(layout)
+
+        get_menu_layout: () ->
+            return _get_menu_layout()
+
         set_menu_help: (state) ->
             return _set_menu_help(state)
 
@@ -211,6 +232,9 @@ menu_module = angular.module(
 
         get_settings: () ->
             return SETTINGS
+
+        get_menu_layouts: () ->
+            return MENU_LAYOUTS
     }
 
 ]).directive("icswLayoutMenubar",

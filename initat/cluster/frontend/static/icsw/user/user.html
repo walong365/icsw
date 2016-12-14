@@ -835,9 +835,9 @@
         </uib-tabset>
         <div class="form-actions text-right">
             <icsw-tools-button type="modify" value="Modify" ng-show="!create_mode && changed() && modify_ok" ng-click="modify()"></icsw-tools-button>
-            <icsw-tools-button type="modify" value="Modify" title="Nothing to save!" disabled="true" ng-show="!create_mode && !changed()" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="modify" value="Modify" title="Nothing to save!" icsw-disabled="true" ng-show="!create_mode && !changed()" ng-click="modify()"></icsw-tools-button>
             <icsw-tools-button type="create" value="Create" ng-show="create_mode && modify_ok" ng-click="modify()"></icsw-tools-button>
-            <icsw-tools-button type="create" value="Create" title="Create a password first!" disabled="true" ng-show="create_mode && !modify_ok" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="create" value="Create" title="Create a password first!" icsw-disabled="true" ng-show="create_mode && !modify_ok" ng-click="modify()"></icsw-tools-button>
             &nbsp;
             <icsw-tools-button type="close" value="Close" ng-click="close()"></icsw-tools-button>
             &nbsp;
@@ -1316,11 +1316,26 @@
                                 Theme
                             </label>
                             <div class="controls col-xs-8">
-                                <ui-select ng-model="struct.user.ui_theme_selection" class="maxwidth500">
-                                    <ui-select-match class="ui-select-match" placeholder="Select a theme">
+                                <ui-select ng-model="struct.current_theme" class="maxwidth500">
+                                    <ui-select-match class="ui-select-match" placeholder="Select a Theme">
                                         {{ $select.selected.name }}
                                     </ui-select-match>
                                     <ui-select-choices class="ui-select-choices" repeat="value.short as value in themes">
+                                        <div ng-bind-html="value.name | highlight: $select.search"></div>
+                                    </ui-select-choices>
+                                </ui-select>
+                            </div>
+                        </div>
+                        <div class="form-group" ng-show="themes.length > 1">
+                            <label class="control-label col-xs-4 icsw-formlabel">
+                                Menu Layout
+                            </label>
+                            <div class="controls col-xs-8">
+                                <ui-select ng-model="struct.menu_layout" class="maxwidth500">
+                                    <ui-select-match class="ui-select-match" placeholder="Select a Menu Layout">
+                                        {{ $select.selected.name }}
+                                    </ui-select-match>
+                                    <ui-select-choices class="ui-select-choices" repeat="value.short as value in menu_layouts">
                                         <div ng-bind-html="value.name | highlight: $select.search"></div>
                                     </ui-select-choices>
                                 </ui-select>

@@ -651,7 +651,7 @@
             </icswData>
         </route>
     </routes>
-    <menu style="condensed">
+    <menu layout="normal">
         <menuHeader name="Basic" icon="fa-desktop" side="left">
             <routeSubGroup name="Create">
                 <menuEntry icon="fa-plus-circle" name="Device" routeName="main.devicecreate"/>
@@ -740,7 +740,7 @@
             </routeSubGroup>
         </menuHeader>
     </menu>
-    <menu style="normal">
+    <menu layout="oldstyle">
         <menuHeader name="Devices" icon="fa-desktop" side="left">
             <routeSubGroup name="Settings">
                 <menuEntry icon="fa-plus-circle" name="Add new Device" routeName="main.devicecreate"/>

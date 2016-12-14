@@ -9,7 +9,7 @@
                 <h3>
                     Service Escalation Templates ({{ entries.length }} Entries)
                     <icsw-tools-button
-                        disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                        icsw-disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
                         style="display: inline-block"
                         size="xs"
                         title="{{ config_service.get_data_incomplete_error() }}"
@@ -68,7 +68,7 @@
                 <h3>
                     Device Escalation Templates ({{ entries.length }} Entries)
                     <icsw-tools-button
-                        disabled="config_service.get_data_incomplete_error()"
+                        icsw-disabled="config_service.get_data_incomplete_error()"
                         type="create"
                         value="create new"
                         size="xs"

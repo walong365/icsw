@@ -328,10 +328,10 @@ angular.module(
 ]).service("icswUserService",
 [
     "$q", "ICSW_URLS", "icswSimpleAjaxCall", "$rootScope", "ICSW_SIGNALS",
-    "Restangular", "icswUser", "icswTreeBase", "icswThemeService",
+    "Restangular", "icswUser", "icswTreeBase", "icswThemeService", "icswMenuSettings",
 (
     $q, ICSW_URLS, icswSimpleAjaxCall, $rootScope, ICSW_SIGNALS,
-    Restangular, icswUser, icswTreeBase, icswThemeService,
+    Restangular, icswUser, icswTreeBase, icswThemeService, icswMenuSettings,
 ) ->
     class icswUserService extends icswTreeBase
         get: () =>
@@ -375,9 +375,11 @@ angular.module(
         new_data_set: () =>
             # called from icswTreeBase
             result = @get_result()
-            # send theme to themeservice
-            # console.log "usertheme", result.user.ui_theme_selection
-            icswThemeService.setcurrent(result.user.ui_theme_selection)
+            # send theme to themeservice and menusetting
+            if result.has_var("$$ICSW_THEME_SELECTION$$")
+                icswThemeService.setcurrent(result.get_var("$$ICSW_THEME_SELECTION$$").value)
+            if result.has_var("$$ICSW_MENU_LAYOUT_SELECTION$$")
+                icswMenuSettings.set_menu_layout(result.get_var("$$ICSW_MENU_LAYOUT_SELECTION$$").value)
 
     return new icswUserService(
         "User"

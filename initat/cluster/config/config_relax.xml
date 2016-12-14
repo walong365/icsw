@@ -114,7 +114,7 @@
     <oneOrMore>
         <element name="menu">
             <optional>
-                <attribute name="style"></attribute>
+                <attribute name="layout"></attribute>
             </optional>
             <oneOrMore>
                 <element name="menuHeader">

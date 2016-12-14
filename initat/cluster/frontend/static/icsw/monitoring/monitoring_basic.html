@@ -143,7 +143,7 @@
                 <h3>
                     Service Templates ({{ entries.length }} Entries)
                     <icsw-tools-button
-                        disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                        icsw-disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
                         style="display: inline-block" title="{{config_service.get_data_incomplete_error()}}"
                         ng-click="create($event)" size="xs">
 
@@ -225,7 +225,7 @@
                 <h3>
                     Device Templates ({{ entries.length }} Entries)
                     <icsw-tools-button
-                        disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                        icsw-disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
                         style="display: inline-block" title="{{ config_service.get_data_incomplete_error() }}"
                         ng-click="create($event, null)" size="xs">
                     </icsw-tools-button>
@@ -339,7 +339,7 @@
                 <h3>
                     Contacts ({{ entries.length }} Entries)
                     <icsw-tools-button
-                        disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
+                        icsw-disabled="config_service.get_data_incomplete_error()" type="create" value="create new"
                         style="display: inline-block" title="{{ config_service.get_data_incomplete_error() }}"
                         ng-click="create($event)" size="xs"></icsw-tools-button>
                 </h3>

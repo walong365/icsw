@@ -205,10 +205,7 @@ def _login(request, _user_object, login_credentials=None):
 
     _user_object.login_count += 1
     _user_object.save(update_fields=["login_count"])
-    _theme_shorts = [_short for _short, _long in settings.THEMES]
-    if _user_object.ui_theme_selection not in _theme_shorts:
-        _user_object.ui_theme_selection = _theme_shorts[0]
-        _user_object.save()
+    user.objects.ensure_default_variables(_user_object)
     # log user
 
     _cs = config_store.ConfigStore(GEN_CS_NAME, quiet=True)
@@ -238,6 +235,7 @@ class login_addons(View):
         request.xml_response["django_version"] = ".".join(_vers)
         request.xml_response["next_url"] = _next_url or ""
         request.xml_response["theme_default"] = settings.THEME_DEFAULT
+        # request.xml_response["menu_default"] = "normal"
         request.xml_response["password_character_count"] = "{:d}".format(_cs["password.character.count"])
         request.xml_response["icsw_databases"] = json.dumps(
             [

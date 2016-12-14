@@ -496,17 +496,21 @@ user_module = angular.module(
     "$scope", "$compile", "$filter", "$templateCache", "Restangular",
     "$q", "$timeout", "$uibModal", "ICSW_URLS", "icswUserService",
     "icswUserGroupRoleSettingsTreeService", "icswUserGroupRolePermissionTreeService",
-    "icswUserGetPassword", "blockUI", "icswThemeService",
+    "icswUserGetPassword", "blockUI", "icswThemeService", "icswMenuSettings",
 (
     $scope, $compile, $filter, $templateCache, Restangular,
     $q, $timeout, $uibModal, ICSW_URLS, icswUserService,
     icswUserGroupRoleSettingsTreeService, icswUserGroupRolePermissionTreeService,
-    icswUserGetPassword, blockUI, icswThemeService,
+    icswUserGetPassword, blockUI, icswThemeService, icswMenuSettings,
 ) ->
     $scope.struct = {
         data_valid: false
         user: undefined
         settings_tree: undefined
+        # theme selection
+        current_theme: ""
+        # menu layout
+        menu_layout: ""
     }
     # for permission view, FIXME, ToDo
     $scope.perm_tree = undefined
@@ -528,11 +532,14 @@ user_module = angular.module(
                 $scope.struct.data_valid = true
                 $scope.struct.user = data[0].user
                 $scope.themes = icswThemeService.get_theme_list()
+                $scope.menu_layouts = icswMenuSettings.get_menu_layouts()
                 $scope.struct.settings_tree = data[1]
                 $scope.perm_tree = data[2]
                 # hack, to be improved, FIXME, ToDo
                 $scope.permission_set = $scope.struct.user.user_permission_set
                 $scope.object_permission_set = $scope.struct.user.user_object_permission_set
+                $scope.struct.current_theme = data[0].get_var("$$ICSW_THEME_SELECTION$$").value
+                $scope.struct.menu_layout = data[0].get_var("$$ICSW_MENU_LAYOUT_SELECTION$$").value
         )
 
     $scope.change_password = () ->
@@ -546,11 +553,20 @@ user_module = angular.module(
 
     $scope.update_account = () ->
         blockUI.start("saving account changes")
-        icswUserService.update_user().then(
-           (data) ->
-               blockUI.stop()
-           (resp) ->
-               blockUI.stop()
+        _user = icswUserService.get()
+        $q.all(
+            [
+                _user.set_var("$$ICSW_THEME_SELECTION$$", $scope.struct.current_theme, "s")
+                _user.set_var("$$ICSW_MENU_LAYOUT_SELECTION$$", $scope.struct.menu_layout, "s")
+            ]
+        ).then(
+            (done) ->
+                icswUserService.update_user().then(
+                   (data) ->
+                       blockUI.stop()
+                   (resp) ->
+                       blockUI.stop()
+                )
         )
 
     $scope.get_vdus = (idx) ->

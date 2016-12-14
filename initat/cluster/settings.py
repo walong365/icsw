@@ -100,6 +100,7 @@ if _cs["password.hash.function"] not in ["SHA1", "CRYPT"]:
     )
 
 ICSW_ALLOWED_OVERALL_STYLES = {"normal", "condensed"}
+ICSW_ALLOWED_MENU_LAYOUTS = {"normal", "oldstyle"}
 
 
 if "overall.style" in _cs:

@@ -121,7 +121,7 @@
 </script>
 
 <script type="text/ng-template" id="icsw.authentication.form">
-    <form ng-submit="do_login()">
+    <form ng-submit="do_login()" name="form_data">
         <fieldset>
             <legend>
                 Please enter your login credentials
@@ -145,7 +145,7 @@
         </fieldset>
         <div class="form-group row">
             <div class="control col-sm-12">
-                <icsw-tools-button ng-disabled="struct.disabled" class="pull-right" button-type="submit" type="submit" value="Login"></icsw-tools-button>
+                <icsw-tools-button icsw-disabled="struct.disabled || form_data.$invalid" class="pull-right" type="submit" value="Login"></icsw-tools-button>
             </div>
         </div>
     </form>
