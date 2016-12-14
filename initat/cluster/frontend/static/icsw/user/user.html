@@ -835,9 +835,9 @@
         </uib-tabset>
         <div class="form-actions text-right">
             <icsw-tools-button type="modify" value="Modify" ng-show="!create_mode && changed() && modify_ok" ng-click="modify()"></icsw-tools-button>
-            <icsw-tools-button type="modify" value="Modify" title="Nothing to save!" disabled="true" ng-show="!create_mode && !changed()" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="modify" value="Modify" title="Nothing to save!" icsw-disabled="true" ng-show="!create_mode && !changed()" ng-click="modify()"></icsw-tools-button>
             <icsw-tools-button type="create" value="Create" ng-show="create_mode && modify_ok" ng-click="modify()"></icsw-tools-button>
-            <icsw-tools-button type="create" value="Create" title="Create a password first!" disabled="true" ng-show="create_mode && !modify_ok" ng-click="modify()"></icsw-tools-button>
+            <icsw-tools-button type="create" value="Create" title="Create a password first!" icsw-disabled="true" ng-show="create_mode && !modify_ok" ng-click="modify()"></icsw-tools-button>
             &nbsp;
             <icsw-tools-button type="close" value="Close" ng-click="close()"></icsw-tools-button>
             &nbsp;

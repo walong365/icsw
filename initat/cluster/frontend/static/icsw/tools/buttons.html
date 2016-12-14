@@ -1,11 +1,11 @@
 <script type="text/ng-template" id="icsw.tools.button">
     <button
-        ng-attr-type="{{ button_type }}"
+        ng-attr-type="{{ ctrl.button_type }}"
         name="button"
-        class="btn {{ css_class }} {{ additional_class }} {{ icon_class }}"
-        ng-disabled="is_disabled"
+        class="btn {{ ctrl.css_class }} {{ ctrl.additional_class }} {{ ctrl.icon_class }}"
+        ng-disabled="ctrl.is_disabled"
     >
-        {{ button_value }}
+        {{ ctrl.button_value }}
     </button>
 </script>
 
