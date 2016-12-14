@@ -348,11 +348,12 @@ class Hardware(object):
         for e in entries:
             if "TYPE" in e:
                 type_entries[e['TYPE']].append(e)
-            else:
+            elif "MODEL" in e and (e["MODEL"] == "LOGICAL VOLUME" or e["MODEL"] == "LOGICAL"):
                 # old lsblk, try to guess
                 # sles11sp3 (Liebherr)
-                if e["MODEL"] == "LOGICAL VOLUME":
-                    type_entries["disk"].append(e)
+                type_entries["disk"].append(e)
+            elif "FSTYPE" in e and len(e["FSTYPE"]) > 0:
+                type_entries["part"].append(e)
 
         name_object = {}
         for disk_entry in type_entries['disk']:
@@ -361,13 +362,20 @@ class Hardware(object):
             name_object[hdd.device_name] = hdd
         # disk, partitions
         for part_entry in type_entries['part']:
+            #print(part_entry)
             partition = Partition(lsblk_entry=part_entry)
             logical = LogicalDisc(lsblk_entry=part_entry)
             partition.logical = logical
             # add partition to the disk
-            parent_hdd = name_object.get(partition._parent)
-            if parent_hdd:
-                parent_hdd.partitions.append(partition)
+            if partition._parent:
+                parent_hdd = name_object.get(partition._parent)
+                if parent_hdd:
+                    parent_hdd.partitions.append(partition)
+            elif partition._maj and partition._min:
+                for hdd in self.hdds:
+                    if hdd._maj == hdd._maj:
+                        hdd.partitions.append(partition)
+
         # logical disk
         for entry in entries:
             logical = LogicalDisc(lsblk_entry=entry)
@@ -823,6 +831,8 @@ class HardwareHdd(HardwareBase):
         self.serial = None
         self.size = None
         self._lsblk_entry = lsblk_entry
+        self._maj = None
+        self._min = None
 
         self.partitions = []
 
@@ -839,7 +849,8 @@ class HardwareHdd(HardwareBase):
             self.serial = entry['SERIAL']
         if 'SIZE' in entry:
             self.size = int(entry['SIZE'])
-
+        if "MAJ:MIN" in entry:
+            self._maj, self._min = entry["MAJ:MIN"].split(":")
 
 class Partition(HardwareBase):
     """Represents the partition information as available from the partition
@@ -870,6 +881,8 @@ class Partition(HardwareBase):
         self.device_name = None
         self.type = None
         self._lsblk_entry = lsblk_entry
+        self._maj = None
+        self._min = None
 
         self.logical = None
 
@@ -886,7 +899,11 @@ class Partition(HardwareBase):
             self.index = match.group()
         self.device_name = entry['KNAME']
         self.type = entry['FSTYPE'].lower()
-        self._parent = entry['PKNAME']
+        self._parent = None
+        if "PKNAME" in entry:
+            self._parent = entry['PKNAME']
+        if "MAJ:MIN" in entry:
+            self._maj, self._min = entry["MAJ:MIN"].split(":")
 
     def _set_from_logical_win32(self, logical_disc):
         self.free_space = logical_disc.free_space

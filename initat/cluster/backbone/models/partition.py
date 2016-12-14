@@ -297,7 +297,10 @@ def partition_disc_pre_save(sender, **kwargs):
         if not disc_re_unix.match(d_name) and not disc_re_win.match(d_name):
             d_name = "/dev/{}".format(d_name)
             if not disc_re_unix.match(d_name):
-                raise ValidationError("illegal name '{}'".format(d_name))
+                # output from lsblk might use cciss!c0d0 notation (instead of expected cciss/c0d0)
+                d_name = d_name.replace("!", "/")
+                if not disc_re_unix.match(d_name):
+                    raise ValidationError("illegal name '{}'".format(d_name))
         all_discs = partition_disc.objects.exclude(Q(pk=cur_inst.pk)).filter(Q(partition_table=cur_inst.partition_table)).values_list("disc", flat=True)
         if d_name in all_discs:
             raise ValidationError("disc name '{}' already used".format(d_name))
