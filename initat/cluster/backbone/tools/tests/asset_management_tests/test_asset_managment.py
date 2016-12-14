@@ -5,7 +5,8 @@ from io import StringIO
 
 from unittest import TestCase
 
-from initat.cluster.backbone.models import AssetRun, AssetBatch, AssetType, RunStatus, RunResult, device, device_group
+from initat.cluster.backbone.models import AssetRun, AssetBatch, AssetType, RunStatus, RunResult, device, \
+    device_group, partition_disc
 from initat.cluster.backbone.management.commands.create_icsw_fixtures import Command as CreateFixturesCommand
 
 
@@ -81,9 +82,9 @@ class TestAssetManagement(TestCase):
         for result_obj, asset_batch in self.assetbatch_dict.items():
             identifier = result_obj.identifier
 
-            # print("")
-            # print("------")
-            # print(identifier)
+            print("")
+            print("------")
+            print(identifier)
 
             asset_batch.generate_assets()
 
@@ -100,32 +101,66 @@ class TestAssetManagement(TestCase):
             self.assertGreater(asset_batch.partition_table.partition_disc_set.all().count(), 0,
                                "Failed for {}".format(identifier))
             for disk in asset_batch.partition_table.partition_disc_set.all():
-                # print("HDD: {}".format(disk.disc))
-                # print("SERIAL: {}".format(disk.serial))
-                # print("SIZE: {}".format(disk.size))
+                print("HDD: {}".format(disk.disc))
+                print("SERIAL: {}".format(disk.serial))
+                print("SIZE: {}".format(disk.size))
 
                 self.assertTrue(disk.size is not None, "Failed for {}".format(identifier))
                 self.assertGreater(disk.size, 0, "Failed for {}".format(identifier))
                 for partition in disk.partition_set.all():
-                    # print("--MOUNTPOINT: {}".format(partition.mountpoint))
-                    # print("--SIZE: {}".format(partition.size))
-                    # print("--FS: {}".format(partition.partition_fs.name))
-                    # print("")
+                    print("\_MOUNTPOINT: {}".format(partition.mountpoint))
+                    print("\_SIZE: {}".format(partition.size))
+                    print("\_FS: {}".format(partition.partition_fs.name))
+                    print("")
 
                     self.assertTrue(partition.size is not None, "Failed for {}".format(identifier))
                     self.assertGreater(partition.size, 0, "Failed for {}".format(identifier))
 
+            self.assertGreater(asset_batch.partition_table.logicaldisc_set.all().count(), 0,
+                "Failed for {}".format(identifier))
+            for logical_disk in asset_batch.partition_table.logicaldisc_set.all():
+                print("")
+                print("NAME: {}".format(logical_disk.device_name))
+                print("FS: {}".format(logical_disk.partition_fs.name))
+                print("SIZE: {}".format(logical_disk.size))
+                print("FREE: {}".format(logical_disk.free_space))
+                print("")
+
+
             for expected_hdd in result_obj.expected_hdds:
-                disk = asset_batch.partition_table.partition_disc_set.get(disc=expected_hdd.device_name)
-                self.assertEqual(expected_hdd.serial, disk.serial, "Failed for {}".format(identifier))
-                self.assertEqual(expected_hdd.size, disk.size)
+                try:
+                    asset_batch.partition_table.partition_disc_set.get(
+                        disc=expected_hdd.device_name,
+                        serial=expected_hdd.serial,
+                        size=expected_hdd.size
+                        )
+                except partition_disc.DoesNotExist:
+                    self.fail("Expected HDD [{}, {}, {}] for {} not found".format(expected_hdd.device_name,
+                                                                                  expected_hdd.serial,
+                                                                                  expected_hdd.size,
+                                                                                  identifier))
 
             for expected_partition in result_obj.expected_partitions:
-                disk = asset_batch.partition_table.partition_disc_set.get(disc=expected_partition.device_name)
-                partition = disk.partition_set.get(mountpoint=expected_partition.mountpoint)
-                self.assertEqual(expected_partition.size, partition.size, "Failed for {}".format(identifier))
-                self.assertEqual(expected_partition.filesystem, partition.partition_fs.name,
-                                 "Failed for {}".format(identifier))
+                try:
+                    disk = asset_batch.partition_table.partition_disc_set.get(disc=expected_partition.device_name)
+                except partition_disc.DoesNotExist:
+                    self.fail("Expected device [{}] for {} not found".format(expected_partition.device_name,
+                                                                             identifier))
+                else:
+                    found = False
+                    for partition in disk.partition_set.all():
+                        if partition.mountpoint == expected_partition.mountpoint:
+                            if partition.size == expected_partition.size:
+                                if partition.partition_fs.name == expected_partition.filesystem:
+                                    found = True
+
+                    if not found:
+                        self.fail("Expected Partition [{}, {}, {}, {}] for {} not found".format(
+                            expected_partition.device_name,
+                            expected_partition.mountpoint,
+                            expected_partition.size,
+                            expected_partition.filesystem,
+                            identifier))
 
     def __assetrun_assetbatch_setup_iterator(self, asset_type):
         idx = 0

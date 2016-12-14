@@ -53,6 +53,14 @@ class ExpectedPartition(object):
         self.filesystem = filesystem
 
 
+class ExpectedLogicalVolume(object):
+    def __init__(self, device_name, size, free, filesystem):
+        self.device_name = device_name
+        self.size = size
+        self.free = free
+        self.filesystem = filesystem
+
+
 class ResultObject(object):
     def __init__(self, identifier, ignore_tests, result_dict, scan_type):
         self.identifier = identifier
@@ -61,6 +69,7 @@ class ResultObject(object):
         self.scan_type = scan_type
         self.expected_hdds = []
         self.expected_partitions = []
+        self.expected_logical_volumes = []
 
 
 class Command(BaseCommand):
@@ -113,6 +122,12 @@ class Command(BaseCommand):
                             default=None,
                             dest='expected_partition',
                             help="Add an expected hdd. Syntax is index:device_name:mountpoint:size:filesystem")
+        parser.add_argument('--add-expected-logical-volume',
+                            action='store',
+                            type=str,
+                            default=None,
+                            dest='expected_logical_volume',
+                            help="Add an expected logical volume. Syntax is index:device_name:size:free:filesystem")
 
     def handle(self, **options):
         if options['delete_index'] is not None:
@@ -126,6 +141,9 @@ class Command(BaseCommand):
             return
         if options['expected_partition'] is not None:
             self.handle_add_expected_partition(options['expected_partition'])
+            return
+        if options['expected_logical_volume'] is not None:
+            self.handle_add_expected_logical_volume(options['expected_logical_volume'])
             return
 
         for _property in options['ignore_tests']:
@@ -248,13 +266,29 @@ class Command(BaseCommand):
             if len(expected_partitions_str) == 0:
                 expected_partitions_str = "N/A"
 
-            print("Index:\t\t\t{}".format(index))
-            print("Identifier:\t\t{}".format(result_obj.identifier))
-            print("Ignored Tests:\t\t{}".format(result_obj.ignore_tests))
-            print("HM/NRPE Results:\t{}".format(len(result_obj.result_dict.items())))
-            print("Scan Type:\t\t{}".format(result_obj.scan_type.name))
-            print("Expected HDDs:\t\t{}".format(expected_hdds_str))
-            print("Expected Partitions:\t{}".format(expected_partitions_str))
+            expected_logical_volumes_str = ""
+            for expected_logical_volume in result_obj.expected_logical_volumes:
+                expected_logical_volume_str = "[{}:{}:{}:{}]".format(
+                    expected_logical_volume.device_name,
+                    expected_logical_volume.size,
+                    expected_logical_volume.free,
+                    expected_logical_volume.filesystem)
+                if expected_logical_volumes_str:
+                    expected_logical_volumes_str = "{}, {}".format(expected_logical_volumes_str,
+                                                                   expected_logical_volume_str)
+                else:
+                    expected_logical_volumes_str = expected_logical_volume_str
+            if len(expected_logical_volumes_str) == 0:
+                expected_logical_volumes_str = "N/A"
+
+            print("Index:\t\t\t\t{}".format(index))
+            print("Identifier:\t\t\t{}".format(result_obj.identifier))
+            print("Ignored Tests:\t\t\t{}".format(result_obj.ignore_tests))
+            print("HM/NRPE Results:\t\t{}".format(len(result_obj.result_dict.items())))
+            print("Scan Type:\t\t\t{}".format(result_obj.scan_type.name))
+            print("Expected HDDs:\t\t\t{}".format(expected_hdds_str))
+            print("Expected Partitions:\t\t{}".format(expected_partitions_str))
+            print("Expected Logical Volumes:\t{}".format(expected_logical_volumes_str))
             print_lines = True
             index += 1
 
@@ -295,6 +329,21 @@ class Command(BaseCommand):
         f.close()
 
         data[index].expected_partitions.append(ExpectedPartition(device_name, mountpoint, size, filesystem))
+
+        f = open(ASSET_MANAGEMENT_TEST_LOCATION, "wb")
+        pickle.dump(data, f)
+        f.close()
+
+    @staticmethod
+    def handle_add_expected_logical_volume(expected_logical_volume_str):
+        index, device_name, size, free, filesystem = expected_logical_volume_str.split(":")
+        index, size, free = int(index), int(size), int(free)
+
+        f = open(ASSET_MANAGEMENT_TEST_LOCATION, "rb")
+        data = pickle.load(f)
+        f.close()
+
+        data[index].expected_partitions.append(ExpectedLogicalVolume(device_name, size, free, filesystem))
 
         f = open(ASSET_MANAGEMENT_TEST_LOCATION, "wb")
         pickle.dump(data, f)

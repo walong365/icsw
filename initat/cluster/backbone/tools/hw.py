@@ -417,6 +417,9 @@ class Hardware(object):
             if not hdd:
                 hdd = device_hdds.get(os.path.split(lshw_hdd.device_name)[-1])
             if hdd:
+                # lshw serial seems to be more accurate, overwrite value from lsblk
+                if lshw_hdd.serial:
+                    hdd.serial = lshw_hdd.serial
                 hdd.update(lshw_hdd)
 
         for sub_tree in lshw_dump.xpath(
@@ -660,19 +663,19 @@ class HardwareBase(object):
 
     def __repr__(self):
         infos = []
-        for (name, value) in self.__dict__.iteritems():
+        for (name, value) in self.__dict__.items():
             if not name.startswith('_') and value is not None:
                 infos.append('{}={}'.format(name, repr(value)))
         return '{}({})'.format(self.__class__.__name__, ', '.join(infos))
 
     def update(self, hw_instance):
-        for (name, value) in hw_instance.__dict__.iteritems():
+        for (name, value) in hw_instance.__dict__.items():
             cur_value = getattr(self, name)
             if cur_value is None:
                 setattr(self, name, value)
 
     def _populate_lshw(self):
-        for (prop_name, (xpath_expr, func)) in self.LSHW_ELEMENTS.iteritems():
+        for (prop_name, (xpath_expr, func)) in self.LSHW_ELEMENTS.items():
             try:
                 element = self._tree.xpath(xpath_expr)[0]
             except IndexError:
@@ -686,7 +689,7 @@ class HardwareBase(object):
             setattr(self, prop_name, value)
 
     def _populate_win32(self):
-        for (prop_name, (dict_key, func)) in self.WIN32_ELEMENTS.iteritems():
+        for (prop_name, (dict_key, func)) in self.WIN32_ELEMENTS.items():
             value = self._tree[dict_key] if dict_key else None
             if value is not None and func:
                 value = func(value)
@@ -695,7 +698,7 @@ class HardwareBase(object):
         self._path_w32 = self._tree['_path']
 
     def _populate_dmi(self):
-        for (prop_name, (handle_key, func)) in self.DMI_ELEMENTS.iteritems():
+        for (prop_name, (handle_key, func)) in self.DMI_ELEMENTS.items():
             value = self._tree[handle_key]['value']
             if value is not None and func:
                 value = func(value)
@@ -855,6 +858,10 @@ class HardwareHdd(HardwareBase):
 class Partition(HardwareBase):
     """Represents the partition information as available from the partition
     table."""
+    type_map = {
+        'vfat': 'fat',
+        'LVM2_member': 'lvm'
+    }
 
     LSHW_ELEMENTS = {
         'size': (None, unicode),
@@ -898,7 +905,7 @@ class Partition(HardwareBase):
         if match:
             self.index = match.group()
         self.device_name = entry['KNAME']
-        self.type = entry['FSTYPE'].lower()
+        self.type = self.type_map.get(entry['FSTYPE'], entry['FSTYPE'])
         self._parent = None
         if "PKNAME" in entry:
             self._parent = entry['PKNAME']

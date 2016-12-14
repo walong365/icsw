@@ -433,9 +433,9 @@ def get_update_list():
         prevline = None
         for line in lines:
             line = line.strip()
-            if line.startswith("Obsoleting Packages"):
-                break
             if line:
+                if line.startswith("Obsoleting Packages"):
+                    break
                 comps = [s for s in line.split(" ") if s]
                 if prevline:
                     update_list.append((prevline.strip(), comps[0].strip()))
@@ -445,7 +445,6 @@ def get_update_list():
                         update_list.append((comps[0].strip(), comps[1].strip()))
                     else:
                         prevline = comps[0].strip()
-
 
     elif use_apt:
         status, output = commands.getstatusoutput("apt-get update")
