@@ -1061,7 +1061,7 @@ angular.module(
                     {
                         key: "top"
                         className: "table rotateheaders table-condensed table-hover colhover assigntable"
-                        style: {width: "auto", overflowX: "auto", display: "block", borderCollapse: "separate"}
+                        style: {width: "auto", overflowX: "visible", display: "block", borderCollapse: "separate"}
                     }
                     [
                         tbody_factory(
