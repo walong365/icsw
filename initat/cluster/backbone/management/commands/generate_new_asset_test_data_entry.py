@@ -38,12 +38,29 @@ ASSET_MANAGEMENT_TEST_LOCATION = "backbone/tools/tests/asset_management_tests/da
 DEFAULT_NRPE_PORT = 5666
 
 
+class ExpectedHdd(object):
+    def __init__(self, device_name, serial, size):
+        self.device_name = device_name
+        self.serial = serial
+        self.size = size
+
+
+class ExpectedPartition(object):
+    def __init__(self, device_name, mountpoint, size, filesystem):
+        self.device_name = device_name
+        self.mountpoint = mountpoint
+        self.size = size
+        self.filesystem = filesystem
+
+
 class ResultObject(object):
     def __init__(self, identifier, ignore_tests, result_dict, scan_type):
         self.identifier = identifier
         self.ignore_tests = ignore_tests
         self.result_dict = result_dict
         self.scan_type = scan_type
+        self.expected_hdds = []
+        self.expected_partitions = []
 
 
 class Command(BaseCommand):
@@ -84,6 +101,18 @@ class Command(BaseCommand):
                             default=None,
                             dest='scan_type',
                             help="Which scan to perform for this device [NRPE, HM]")
+        parser.add_argument('--add-expected-hdd',
+                            action='store',
+                            type=str,
+                            default=None,
+                            dest='expected_hdd',
+                            help="Add an expected hdd. Syntax is index:device_name:serial:size")
+        parser.add_argument('--add-expected-partition',
+                            action='store',
+                            type=str,
+                            default=None,
+                            dest='expected_partition',
+                            help="Add an expected hdd. Syntax is index:device_name:mountpoint:size:filesystem")
 
     def handle(self, **options):
         if options['delete_index'] is not None:
@@ -91,6 +120,12 @@ class Command(BaseCommand):
             return
         if options['list']:
             self.handle_list()
+            return
+        if options['expected_hdd'] is not None:
+            self.handle_add_expected_hdd(options['expected_hdd'])
+            return
+        if options['expected_partition'] is not None:
+            self.handle_add_expected_partition(options['expected_partition'])
             return
 
         for _property in options['ignore_tests']:
@@ -119,6 +154,7 @@ class Command(BaseCommand):
             for asset_type, hm_command in ASSETTYPE_HM_COMMAND_MAP.items():
                 result_dict[asset_type] = None
 
+                print("Running command [{}] on {}".format(hm_command, conn_str))
                 srv_com = server_command.srv_command(command=hm_command)
                 new_con = net_tools.ZMQConnection(hm_command, timeout=30)
                 new_con.add_connection(conn_str, srv_com)
@@ -184,11 +220,41 @@ class Command(BaseCommand):
         for result_obj in data:
             if print_lines:
                 print("-" * 80)
-            print("Index:\t{}".format(index))
-            print("Identifier:\t{}".format(result_obj.identifier))
-            print("Ignored Tests:\t{}".format(result_obj.ignore_tests))
+
+            expected_hdds_str = ""
+            for expected_hdd in result_obj.expected_hdds:
+                expected_hdd_str = "[{}:{}:{}]".format(
+                    expected_hdd.device_name,
+                    expected_hdd.serial,
+                    expected_hdd.size)
+                if expected_hdds_str:
+                    expected_hdds_str = "{}, {}".format(expected_hdds_str, expected_hdd_str)
+                else:
+                    expected_hdds_str = expected_hdd_str
+            if len(expected_hdds_str) == 0:
+                expected_hdds_str = "N/A"
+
+            expected_partitions_str = ""
+            for expected_partition in result_obj.expected_partitions:
+                expected_partition_str = "[{}:{}:{}:{}]".format(
+                    expected_partition.device_name,
+                    expected_partition.mountpoint,
+                    expected_partition.size,
+                    expected_partition.filesystem)
+                if expected_partitions_str:
+                    expected_partitions_str = "{}, {}".format(expected_partitions_str, expected_partition_str)
+                else:
+                    expected_partitions_str = expected_partition_str
+            if len(expected_partitions_str) == 0:
+                expected_partitions_str = "N/A"
+
+            print("Index:\t\t\t{}".format(index))
+            print("Identifier:\t\t{}".format(result_obj.identifier))
+            print("Ignored Tests:\t\t{}".format(result_obj.ignore_tests))
             print("HM/NRPE Results:\t{}".format(len(result_obj.result_dict.items())))
-            print("Scan Type:\t{}".format(result_obj.scan_type.name))
+            print("Scan Type:\t\t{}".format(result_obj.scan_type.name))
+            print("Expected HDDs:\t\t{}".format(expected_hdds_str))
+            print("Expected Partitions:\t{}".format(expected_partitions_str))
             print_lines = True
             index += 1
 
@@ -199,6 +265,36 @@ class Command(BaseCommand):
         f.close()
 
         del data[delete_index]
+
+        f = open(ASSET_MANAGEMENT_TEST_LOCATION, "wb")
+        pickle.dump(data, f)
+        f.close()
+
+    @staticmethod
+    def handle_add_expected_hdd(expected_hdd_str):
+        index, device_name, serial, size = expected_hdd_str.split(":")
+        index, size = int(index), int(size)
+
+        f = open(ASSET_MANAGEMENT_TEST_LOCATION, "rb")
+        data = pickle.load(f)
+        f.close()
+
+        data[index].expected_hdds.append(ExpectedHdd(device_name, serial, size))
+
+        f = open(ASSET_MANAGEMENT_TEST_LOCATION, "wb")
+        pickle.dump(data, f)
+        f.close()
+
+    @staticmethod
+    def handle_add_expected_partition(expected_partition_str):
+        index, device_name, mountpoint, size, filesystem = expected_partition_str.split(":")
+        index, size = int(index), int(size)
+
+        f = open(ASSET_MANAGEMENT_TEST_LOCATION, "rb")
+        data = pickle.load(f)
+        f.close()
+
+        data[index].expected_partitions.append(ExpectedPartition(device_name, mountpoint, size, filesystem))
 
         f = open(ASSET_MANAGEMENT_TEST_LOCATION, "wb")
         pickle.dump(data, f)

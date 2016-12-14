@@ -532,8 +532,14 @@ device_asset_module = angular.module(
     $scope, $q, ICSW_URLS, blockUI, Restangular, icswAssetPackageTreeService, icswSimpleAjaxCall, icswTools,
     icswAssetHelperFunctions
 ) ->
+    for asset_batch in $scope.asset_batch_list
+        asset_batch.$$selected = false
+
     $scope.select_assetbatch = (asset_batch) ->
-        console.log(asset_batch)
+        asset_batch.$$selected = !asset_batch.$$selected
+        asset_batch.$$table_class_str = ""
+        if asset_batch.$$selected == true
+            asset_batch.$$table_class_str = "info"
 
     $scope.open_in_new_tab = (asset_batch) ->
         for tab in asset_batch.$$device.info_tabs

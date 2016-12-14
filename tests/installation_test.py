@@ -136,7 +136,7 @@ def reset_test_server(user, password, server_id, snapshot_id, machine_name):
             sys.stdout.flush()
 
 
-def basic_availability_test(host, machine_name):
+def basic_availability_test(host):
     sys.stdout.write("Checking availability of icsw interface ... ")
     sys.stdout.flush()
 
@@ -190,7 +190,7 @@ def main():
 
     reset_test_server(args.ovirt_user[0], args.ovirt_pass[0], test_system_id, snapshot_id, test_system_name)
     install_icsw_base_system(ip, "root", password, package_manager, test_system_name)
-    basic_availability_test(ip, test_system_name)
+    basic_availability_test(ip)
 
 
 if __name__ == "__main__":
