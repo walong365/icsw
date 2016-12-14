@@ -10,8 +10,13 @@
 </script>
 
 <script type="text/ng-template" id="icsw.tools.tri.button">
-    <button type="button" name="button" ng-class="css_class" ng-click="toggle_state($event)" icsw-callback="">
-        {{ button_value }}
+    <button
+        type="button"
+        name="button"
+        ng-class="ctrl.css_class"
+        ng-click="ctrl.toggle_state($event)"
+        icsw-callback=""
+    >
+        {{ ctrl.button_value }}
     </button>
-
 </script>
