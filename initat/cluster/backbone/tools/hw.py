@@ -514,6 +514,7 @@ class Hardware(object):
                 except KeyError:
                     pass
                 else:
+                    logical.size = usage['total']
                     logical.free_space = usage['free']
                     self.logical_disks.append(logical)
 

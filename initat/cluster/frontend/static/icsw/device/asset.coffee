@@ -233,6 +233,7 @@ device_asset_module = angular.module(
                             dev.schedule_items.length = 0
 
                         dev.$$scan_device_button_disabled = false
+                        dev.$$assetbatch_ids_selected_for_delete = []
 
                         $scope.struct.devices.push(dev)
 
@@ -540,6 +541,9 @@ device_asset_module = angular.module(
         asset_batch.$$table_class_str = ""
         if asset_batch.$$selected == true
             asset_batch.$$table_class_str = "info"
+            asset_batch.$$device.$$assetbatch_ids_selected_for_delete.push(asset_batch.idx)
+        else
+            _.pull(asset_batch.$$device.$$assetbatch_ids_selected_for_delete, asset_batch.idx)
 
     $scope.open_in_new_tab = (asset_batch) ->
         for tab in asset_batch.$$device.info_tabs
@@ -640,6 +644,7 @@ device_asset_module = angular.module(
                             new_partition_o = {
                                 "mountpoint": "N/A"
                                 "size": "N/A"
+                                "filesystem": partition.filesystem_name
                             }
 
                             if partition.mountpoint
@@ -832,9 +837,9 @@ device_asset_module = angular.module(
     }
 ]).controller("icswAssetScanHistoryTabCtrl",
 [
-    "$scope", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout"
+    "$scope", "icswSimpleAjaxCall", "ICSW_URLS", "$timeout", "icswToolsSimpleModalService", "blockUI"
 (
-    $scope, icswSimpleAjaxCall, ICSW_URLS, $timeout
+    $scope, icswSimpleAjaxCall, ICSW_URLS, $timeout, icswToolsSimpleModalService, blockUI
 ) ->
     $scope.scan_device = () ->
         $scope.device.$$scan_device_button_disabled = true
@@ -858,5 +863,31 @@ device_asset_module = angular.module(
                         $scope.device.$$scan_device_button_disabled = false
                     5000
                 )
+        )
+
+    $scope.delete_selected = () ->
+        icswToolsSimpleModalService("Delete selected items?").then(
+            (_yes) ->
+                blockUI.start("Please wait...")
+                icswSimpleAjaxCall(
+                    {
+                        url: ICSW_URLS.ASSET_ASSET_BATCH_DELETER
+                        data:
+                            assetbatch_pks: $scope.device.$$assetbatch_ids_selected_for_delete
+                        dataType: "json"
+                    }
+                ).then((result) ->
+                    objs_selected_for_deletion = []
+                    for idx in $scope.device.$$assetbatch_ids_selected_for_delete
+                        for assetbatch in $scope.device.asset_batch_list
+                            if assetbatch.idx == idx
+                                objs_selected_for_deletion.push(assetbatch)
+
+                    _.pullAllBy($scope.device.asset_batch_list, objs_selected_for_deletion, "idx")
+                    $scope.device.$$assetbatch_ids_selected_for_delete.length = 0
+                    blockUI.stop()
+                )
+            (_no) ->
+                console.log("no")
         )
 ])

@@ -318,7 +318,7 @@ class StaticAssetTemplateRefsSerializer(serializers.Serializer):
 class AssetPartitionSerializer(serializers.ModelSerializer):
     class Meta:
         model = partition
-        fields = ("idx", "mountpoint", "size")
+        fields = ("idx", "mountpoint", "size", "filesystem_name")
 
 
 class AssetLogicalDiscSerializer(serializers.ModelSerializer):

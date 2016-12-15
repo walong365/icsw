@@ -186,6 +186,10 @@ class partition(models.Model):
                     p_list.append((logging_tools.LOG_LEVEL_ERROR, "no mount_options given for {}".format(p_name), False))
         return p_list
 
+    @property
+    def filesystem_name(self):
+        return self.partition_fs.name
+
     class Meta:
         db_table = u'partition'
         ordering = ("pnum",)

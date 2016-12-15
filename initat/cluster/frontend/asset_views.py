@@ -75,6 +75,19 @@ class SimpleAssetBatchLoader(View):
         return HttpResponse(json.dumps(serializer.data))
 
 
+class AssetBatchDeleter(View):
+    @method_decorator(login_required)
+    def post(self, request):
+        assetbatch_pks = [int(obj) for obj in request.POST.getlist("assetbatch_pks[]")]
+        print(assetbatch_pks)
+
+        queryset = AssetBatch.objects.filter(idx__in=assetbatch_pks)
+
+        deletion_info = queryset.delete()
+
+        return HttpResponse(json.dumps(deletion_info))
+
+
 class AssetBatchViewSet(viewsets.ViewSet):
     def list(self, request):
         if "simple" in request.query_params:
@@ -660,3 +673,4 @@ class get_fieldvalues_for_template(View):
                 }
             )
         )
+
