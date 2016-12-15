@@ -34,6 +34,7 @@ from lxml import etree
 from lxml.builder import E
 
 from initat.cluster.backbone.models import csw_permission
+from initat.cluster.backbone.management.commands import show_icsw_urls
 from initat.icsw.service.instance import InstanceXML
 from initat.tools import logging_tools, process_tools
 
@@ -325,6 +326,17 @@ class FileModify(object):
                         for _line in menu_json_lines:
                             _injected += 1
                             new_content.append(_line)
+                    elif marker_type == "URLS":
+                        urls = show_icsw_urls.get_urls()
+                        for _url, _reverse in urls:
+                            _injected += 1
+                            new_content.append("        \"{}\": \"{}\",".format(_url, _reverse))
+                    else:
+                        self.debug(
+                            " *** marker {} is unknown ***".format(
+                                marker_type,
+                            )
+                        )
                     self.debug("injected {:d} lines".format(_injected))
             elif in_marker:
                 # ignore everything inside marker (i.e. replace with new content)
@@ -354,26 +366,26 @@ class Command(BaseCommand):
             action="append",
             dest="files",
             default=[],
-            help="Name of the files to modify",
+            help="Name of the files to modify [%(default)s]",
 
         )
         parser.add_argument(
             "--modify",
             action="store_true",
             default=False,
-            help="rewrite file (and disable debug)",
+            help="rewrite file (and disable debug) [%(default)s]",
         )
         parser.add_argument(
             "--with-addons",
             type=str,
             default="false",
-            help="inject menu JSON",
+            help="also add fragments for addons [%(default)s]",
         )
         parser.add_argument(
             "--cleanup-path",
             action="store_true",
             default=False,
-            help="fix wrong relative imports",
+            help="fix wrong relative imports [%(default)s]",
         )
 
     def handle(self, **options):

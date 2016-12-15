@@ -78,65 +78,61 @@ def extract_views_from_urlpatterns(urlpatterns, base='', namespace=None):
     return views
 
 
+def get_urls():
+    urls = []
+    if getattr(settings, 'ADMIN_FOR', None):
+        settings_modules = [__import__(m, {}, {}, ['']) for m in settings.ADMIN_FOR]
+    else:
+        settings_modules = [settings]
+
+    for settings_mod in settings_modules:
+        try:
+            urlconf = __import__(settings_mod.ROOT_URLCONF, {}, {}, [b''])
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            print("Error occurred while trying to load {}: {}".format(settings_mod.ROOT_URLCONF, str(e)))
+            continue
+
+        view_functions = extract_views_from_urlpatterns(urlconf.urlpatterns)
+        for (func, regex, url_name) in view_functions:
+
+            if hasattr(func, '__globals__'):
+                func_globals = func.__globals__
+            elif hasattr(func, 'func_globals'):
+                func_globals = func.func_globals
+            else:
+                func_globals = {}
+
+            # decorators = [d for d in decorator if d in func_globals]
+            # if isinstance(func, functools.partial):
+            #    func = func.func
+            #    decorators.insert(0, 'functools.partial')
+
+            if hasattr(func, '__name__'):
+                func_name = func.__name__
+            elif hasattr(func, '__class__'):
+                func_name = '{}()'.format(func.__class__.__name__)
+            else:
+                func_name = re.sub(r' at 0x[0-9a-f]+', '', repr(func))
+
+            # print regex, func, url_name
+            if url_name:
+                _my_re = re.compile(regex)
+                try:
+                    _reverse = reverse(url_name, args=[1] * _my_re.groups)
+                except:
+                    pass
+                else:
+                    _url = _rewrite(url_name)
+                    urls.append((_url, _reverse))
+    return urls
+
+
 class Command(BaseCommand):
     help = "Displays all of the url matching routes for the project."
 
     def handle(self, *args, **options):
-        if args:
-            appname, = args
-
-        if getattr(settings, 'ADMIN_FOR', None):
-            settings_modules = [__import__(m, {}, {}, ['']) for m in settings.ADMIN_FOR]
-        else:
-            settings_modules = [settings]
-
-        language = options.get('language', None)
-        if language is not None:
-            activate(language)
-
-        decorator = options.get('decorator')
-        if not decorator:
-            decorator = ['login_required']
-
-        for settings_mod in settings_modules:
-            try:
-                urlconf = __import__(settings_mod.ROOT_URLCONF, {}, {}, [b''])
-            except Exception as e:
-                if options.get('traceback', None):
-                    import traceback
-                    traceback.print_exc()
-                print("Error occurred while trying to load %s: %s" % (settings_mod.ROOT_URLCONF, str(e)))
-                continue
-
-            view_functions = extract_views_from_urlpatterns(urlconf.urlpatterns)
-            for (func, regex, url_name) in view_functions:
-
-                if hasattr(func, '__globals__'):
-                    func_globals = func.__globals__
-                elif hasattr(func, 'func_globals'):
-                    func_globals = func.func_globals
-                else:
-                    func_globals = {}
-
-                # decorators = [d for d in decorator if d in func_globals]
-                # if isinstance(func, functools.partial):
-                #    func = func.func
-                #    decorators.insert(0, 'functools.partial')
-
-                if hasattr(func, '__name__'):
-                    func_name = func.__name__
-                elif hasattr(func, '__class__'):
-                    func_name = '%s()' % func.__class__.__name__
-                else:
-                    func_name = re.sub(r' at 0x[0-9a-f]+', '', repr(func))
-
-                # print regex, func, url_name
-                if url_name:
-                    _my_re = re.compile(regex)
-                    try:
-                        _reverse = reverse(url_name, args=[1] * _my_re.groups)
-                    except:
-                        pass
-                    else:
-                        _url = _rewrite(url_name)
-                        print("        \"{}\": \"{}\",".format(_url, _reverse))
+        urls = get_urls()
+        for _url, _reverse in urls:
+            print("        \"{}\": \"{}\",".format(_url, _reverse))
